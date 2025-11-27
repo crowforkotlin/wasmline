@@ -1,0 +1,3 @@
+/Users/crowforkotlin/kotlin/wasmline/build/CMakeFiles/wasmline_sample.dir
+/Users/crowforkotlin/kotlin/wasmline/build/CMakeFiles/edit_cache.dir
+/Users/crowforkotlin/kotlin/wasmline/build/CMakeFiles/rebuild_cache.dir

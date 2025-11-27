@@ -1,1 +1,1 @@
-C:\Users\CrowF\Desktop\wasmtime-kotlin-wasi\wasmtime-kotlin\wasmtime-app\android\build\intermediates\cxx\Debug\s5i141r2\obj\arm64-v8a
+/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a

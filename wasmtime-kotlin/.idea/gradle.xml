@@ -33,9 +33,9 @@
             <option value="$PROJECT_DIR$/wasmtime-build-logic/base" />
             <option value="$PROJECT_DIR$/wasmtime-build-logic/shared" />
             <option value="$PROJECT_DIR$/wasmtime-core" />
-            <option value="$PROJECT_DIR$/wasmtime-core/wasmtime-common" />
-            <option value="$PROJECT_DIR$/wasmtime-core/wasmtime-host" />
-            <option value="$PROJECT_DIR$/wasmtime-core/wasmtime-plugin" />
+            <option value="$PROJECT_DIR$/wasmtime-core/common" />
+            <option value="$PROJECT_DIR$/wasmtime-core/host" />
+            <option value="$PROJECT_DIR$/wasmtime-core/plugin" />
           </set>
         </option>
       </GradleProjectSettings>
