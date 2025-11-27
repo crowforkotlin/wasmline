@@ -1231,10 +1231,10 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "The CMake toolchain file"
 				}
 			],
-			"type" : "UNINITIALIZED",
+			"type" : "FILEPATH",
 			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake"
 		},
 		{

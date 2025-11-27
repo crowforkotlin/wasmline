@@ -1,9 +1,5 @@
 # ninja log v5
-502	663	1764270526099232075	/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	aa01e9f9f983452c
-456	502	1764270525957878000	libwasmtime_core.a	8e635c6226d2eff7
-0	457	1764270525905890431	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	2969da87c355b3da
-0	455	1764270525905451512	CMakeFiles/wasmtime_core.dir/Users/crowforkotlin/kotlin/wasmline/WasmtimeCore.cpp.o	9c6e5c4ae27be46a
-2	568	1764270599798985602	CMakeFiles/wasmtime_core.dir/Users/crowforkotlin/kotlin/wasmline/WasmtimeCore.cpp.o	8ada7487fa829d37
-568	610	1764270599845136000	libwasmtime_core.a	8e635c6226d2eff7
-610	869	1764270600083220672	/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	aa01e9f9f983452c
-0	8	0	clean	e340021fd34127d3
+0	449	1764277342326750342	CMakeFiles/wasmtime_core.dir/Users/crowforkotlin/kotlin/wasmline/WasmtimeCore.cpp.o	8ada7487fa829d37
+0	451	1764277342328216735	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	2969da87c355b3da
+451	494	1764277342377221000	libwasmtime_core.a	8e635c6226d2eff7
+494	658	1764277342515866193	/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	aa01e9f9f983452c
