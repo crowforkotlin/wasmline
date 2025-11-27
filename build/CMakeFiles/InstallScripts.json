@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/crowforkotlin/kotlin/wasmline/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
