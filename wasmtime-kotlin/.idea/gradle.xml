@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT">
+            <builds>
+              <build path="$PROJECT_DIR$/wasmtime-build-logic" name="wasmedge-build-logic">
+                <projects>
+                  <project path="$PROJECT_DIR$/wasmtime-build-logic" />
+                  <project path="$PROJECT_DIR$/wasmtime-build-logic/app" />
+                  <project path="$PROJECT_DIR$/wasmtime-build-logic/base" />
+                  <project path="$PROJECT_DIR$/wasmtime-build-logic/shared" />
+                </projects>
+              </build>
+            </builds>
+          </compositeBuild>
+        </compositeConfiguration>
+        <option name="testRunner" value="CHOOSE_PER_TEST" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="gradleHome" value="D:\program\gradle\gradle-8.7" />
+        <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/wasmtime-app" />
+            <option value="$PROJECT_DIR$/wasmtime-app/android" />
+            <option value="$PROJECT_DIR$/wasmtime-app/application" />
+            <option value="$PROJECT_DIR$/wasmtime-build-logic" />
+            <option value="$PROJECT_DIR$/wasmtime-build-logic/app" />
+            <option value="$PROJECT_DIR$/wasmtime-build-logic/base" />
+            <option value="$PROJECT_DIR$/wasmtime-build-logic/shared" />
+            <option value="$PROJECT_DIR$/wasmtime-core" />
+            <option value="$PROJECT_DIR$/wasmtime-core/wasmtime-common" />
+            <option value="$PROJECT_DIR$/wasmtime-core/wasmtime-host" />
+            <option value="$PROJECT_DIR$/wasmtime-core/wasmtime-plugin" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>
