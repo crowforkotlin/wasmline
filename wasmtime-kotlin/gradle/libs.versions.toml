@@ -1,0 +1,282 @@
+# compose plugin - [https://mvnrepository.com/artifact/org.jetbrains.compose/compose-gradle-plugin]
+
+
+[versions]
+agp = "8.12.1"
+android-compileSdk = "36"
+android-minSdk = "23"
+android-targetSdk = "36"
+androidx-activity = "1.11.0"
+androidx-appcompat = "1.7.1"
+androidx-constraintlayout = "2.2.1"
+androidx-core-ktx = "1.17.0"
+androidx-espresso-core = "3.7.0"
+androidx-lifecycle = "2.9.2"
+androidx-material = "1.12.0"
+androidx-test-junit = "1.3.0"
+androidx-datastore = "1.1.7"
+
+
+
+# https://developer.android.com/jetpack/androidx/releases/compose
+androidx-compose = "1.9.1"
+
+# [https://plugins.gradle.org/plugin/org.jetbrains.compose] [https://github.com/JetBrains/compose-multiplatform]
+compose-plugin = "1.8.2"
+
+# https://developer.android.com/jetpack/androidx/releases/compose-material3
+material3="1.5.0-alpha04"
+
+# https://github.com/JetBrains/skiko [warning : do not update!]
+skiko = "0.8.18"
+
+# https://github.com/junit-team/junit4
+junit = "4.13.2"
+
+# https://github.com/JetBrains/kotlin
+#kotlin = "2.2.20-RC"
+kotlin = "2.3.0-RC"
+
+# https://github.com/google/ksp
+ksp = "2.2.10-2.0.2"
+
+# https://github.com/square/kotlinpoet
+kotlinpoet = "2.2.0"
+
+# https://github.com/Kotlin/kotlinx.coroutines
+kotlinx-coroutines = "1.10.2"
+
+# https://github.com/Kotlin/kotlinx.serialization
+kotlinx-serialization = "1.9.0"
+
+# https://github.com/gmazzo/gradle-buildconfig-plugin
+buildconfig = "5.6.7"
+
+# https://github.com/InsertKoinIO/koin
+koin = "4.1.0"
+
+# https://github.com/ktorio/ktor
+ktor = "3.2.3"
+
+# https://github.com/adrielcafe/voyager
+voyager = "1.1.0-beta03"
+
+# https://github.com/fourlastor-alexandria/construo
+construo = "1.7.1"
+
+# https://developer.android.google.cn/jetpack/androidx/releases/room?hl=zh-cn
+androidx-room = "2.7.2"
+
+# https://developer.android.google.cn/jetpack/androidx/releases/sqlite?hl=zh-cn
+androidx-sqlite = "2.5.2"
+
+#https://github.com/Kotlin/kotlinx.collections.immutable
+kotlinx-collections = "0.4.0"
+
+# https://github.com/Kotlin/kotlinx-datetime
+kotlinx-datetime = "0.7.1"
+
+# https://github.com/Kotlin/kotlinx-browser
+kotlinx-browser = "0.5.0"
+
+# https://github.com/chrisbanes/haze
+haze = "1.6.10"
+
+# https://github.com/coil-kt/coil
+coil = "3.3.0"
+
+# https://github.com/xxfast/KStore
+kstore = "1.0.0"
+
+# https://github.com/JFormDesigner/FlatLaf
+flatlaf = "3.6.1"
+
+# https://github.com/JuulLabs/kable
+kabel = "0.39.2"
+
+# https://github.com/ismai117/kottie
+kottie = "2.0.1"
+
+# https://github.com/icerockdev/moko-permissions
+moko = "0.20.0"
+
+# https://github.com/dokar3/compose-sonner
+sonner = "0.3.8"
+
+# [https://plugins.gradle.org/plugin/dev.hydraulic.conveyor] [https://github.com/hydraulic-software/conveyor]
+conveyor = "1.12"
+
+# https://mvnrepository.com/artifact/dev.hydraulic.conveyor/conveyor-control
+conveyor-control = "1.1"
+
+# https://github.com/cashapp/zipline
+#zipline = "1.23.0"
+zipline = "1.24.0"
+
+# https://github.com/square/okio
+okio = "3.16.0"
+
+# https://github.com/square/okhttp
+okhttp = "5.1.0"
+
+log4j2 = "2.25.2"
+slf4j = "2.0.17"
+
+[libraries]
+log4j2-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j2" }
+log4j2-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j2" }
+log4j2-slf4j = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j2" }
+slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+
+okio-core = { module = "com.squareup.okio:okio", version.ref = "okio" }
+
+zipline = { module = "io.github.crowforkotlin.zipline:zipline", version.ref = "zipline"}
+zipline-loader = { module = "io.github.crowforkotlin.zipline:zipline-loader", version.ref = "zipline"}
+zipline-profiler = { module = "io.github.crowforkotlin.zipline:zipline-profiler", version.ref = "zipline"}
+
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+
+kotlin-stdlib-js = { module = "org.jetbrains.kotlin:kotlin-stdlib-js", version.ref = "kotlin" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-wrapper-js = { module = "org.jetbrains.kotlin-wrappers:kotlin-js", version= "2025.8.19" }
+
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+androidx-compose-material-ripple = { group = "androidx.compose.material", name = "material-ripple", version.ref = "androidx-compose" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "androidx-compose" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "androidx-compose" }
+androidx-compose-ui-tooling= { module = "androidx.compose.ui:ui-tooling", version.ref = "androidx-compose" }
+androidx-compose-ui-tooling-preview= { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "androidx-compose" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "androidx-compose" }
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "androidx-compose" }
+
+# androidx-javascript-engine = { module = "androidx.javascriptengine:javascriptengine", version.ref = "androidx-javascript"}
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core-ktx" }
+androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-junit" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
+androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "androidx-constraintlayout" }
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "androidx-activity" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "androidx-room" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "androidx-room" }
+androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "androidx-room" }
+androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "androidx-datastore" }
+androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "androidx-datastore" }
+androidx-datastore-preference = { module = "androidx.datastore:datastore-preferences", version.ref = "androidx-datastore" }
+
+androidx-sqlite = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidx-sqlite" }
+
+jetbrains-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
+jetbrains-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
+skiko = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko" }
+
+kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "kotlinx-coroutines"}
+
+ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+
+kotlinpoet = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-collections = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections" }
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-wasm = { module = "io.insert-koin:koin-core-wasm-js", version.ref = "koin" }
+koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+koin-compose-viewmodel-navigation = { module = "io.insert-koin:koin-compose-viewmodel-navigation", version.ref = "koin" }
+
+coil = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
+
+voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyager" }
+voyager-screenModel = { module = "cafe.adriel.voyager:voyager-screenmodel", version.ref = "voyager" }
+voyager-bottomSheetNavigator = { module = "cafe.adriel.voyager:voyager-bottom-sheet-navigator", version.ref = "voyager" }
+voyager-tabNavigator = { module = "cafe.adriel.voyager:voyager-tab-navigator", version.ref = "voyager" }
+voyager-transitions = { module = "cafe.adriel.voyager:voyager-transitions", version.ref = "voyager" }
+voyager-koin = { module = "cafe.adriel.voyager:voyager-koin", version.ref = "voyager" }
+voyager-hilt = { module = "cafe.adriel.voyager:voyager-hilt", version.ref = "voyager" }
+voyager-kodein = { module = "cafe.adriel.voyager:voyager-kodein", version.ref = "voyager" }
+voyager-rxjava = { module = "cafe.adriel.voyager:voyager-rxjava", version.ref = "voyager" }
+
+
+jetbrains-compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version = "1.7.3" }
+jetbrains-compose-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
+jetbrains-compose-material-window = { module = "org.jetbrains.compose.material3:material3-window-size-class", version.ref = "compose-plugin" }
+jetbrains-compose-material3-adaptive = { module = "org.jetbrains.compose.material3.adaptive:adaptive", version = "1.2.0-alpha03" }
+jetbrains-compose-material3-adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version = "1.2.0-alpha03" }
+jetbrains-compose-material3-adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version = "1.2.0-alpha03" }
+jetbrains-androidx-navigation = { module = "org.jetbrains.androidx.navigation:navigation-compose", version = "2.9.0-beta03" }
+jetbrains-browser = { module = "org.jetbrains.kotlinx:kotlinx-browser", version.ref = "kotlinx-browser" }
+jetbrains-jewel-decorated = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window-243", version = "0.26.2" }
+
+flatlaf = { module = "com.formdev:flatlaf", version.ref = "flatlaf" }
+
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
+haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "haze" }
+
+# for common
+kstore = { module = "io.github.xxfast:kstore", version.ref = "kstore" }
+
+# for android, iOS, desktop and nodeJs
+kstore-file = { module = "io.github.xxfast:kstore-file", version.ref = "kstore" }
+
+# for jsBrowser and wasmJsBrowser
+kstore-storage = { module = "io.github.xxfast:kstore-storage", version.ref = "kstore" }
+
+# bluetooth for compose multiplatform
+kable-core = { module = "com.juul.kable:kable-core", version.ref = "kabel" }
+
+# lottie for compose multiplatform
+kottie = { module = "io.github.ismai117:kottie", version.ref = "kottie" }
+
+# Moko permission
+moko = { module = "dev.icerock.moko:permissions", version.ref = "moko" }
+moko-compose = { module = "dev.icerock.moko:permissions-compose", version.ref = "moko" }
+
+# toast
+sonner = { module = "io.github.dokar3:sonner", version.ref = "sonner" }
+
+# mac package
+conveyor = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref= "conveyor-control" }
+
+gradle-ksp-plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
+gradle-compose-plugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "compose-plugin" }
+gradle-compose-compiler-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
+gradle-kotlinx-serialization-plugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
+gradle-android-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+gradle-kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+
+androidx-room = { id = "androidx.room", version.ref = "androidx-room" }
+
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
+
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+github-fourlastor-construo = { id = "io.github.fourlastor.construo", version.ref = "construo" }
+
+zipline = { id = "io.github.crowforkotlin.zipline", version.ref = "zipline" }
+
+conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
