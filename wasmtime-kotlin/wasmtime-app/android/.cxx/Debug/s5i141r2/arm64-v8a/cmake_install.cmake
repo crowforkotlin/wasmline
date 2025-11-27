@@ -1,8 +1,8 @@
-# Install script for directory: C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp
+# Install script for directory: /Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/WasmLine")
+  set(CMAKE_INSTALL_PREFIX "/usr/local")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -39,7 +39,7 @@ endif()
 
 # Set default install directory permissions.
 if(NOT DEFINED CMAKE_OBJDUMP)
-  set(CMAKE_OBJDUMP "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-objdump.exe")
+  set(CMAKE_OBJDUMP "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-objdump")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

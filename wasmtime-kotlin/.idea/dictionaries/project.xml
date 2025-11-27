@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>wasmline</w>
+      <w>wasmtime</w>
     </words>
   </dictionary>
 </component>

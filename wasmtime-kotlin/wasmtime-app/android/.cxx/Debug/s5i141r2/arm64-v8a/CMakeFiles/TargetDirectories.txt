@@ -1,4 +1,4 @@
-C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/wasmtime_core.dir
-C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/wasmline.dir
-C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/edit_cache.dir
-C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rebuild_cache.dir
+/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/wasmtime_core.dir
+/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/wasmline.dir
+/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rebuild_cache.dir

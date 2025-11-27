@@ -1,5 +1,0 @@
-# ninja log v5
-3	890	7859343782295141	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	c13808a50c834ed5
-0	930	7859343782690602	CMakeFiles/wasmtime_core.dir/WasmtimeCore.cpp.o	cac3e0793cedfc97
-930	990	7859343783217040	libwasmtime_core.a	62b139f8685f36a2
-990	1357	7859343786702793	C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/RelWithDebInfo/6w55k174/obj/arm64-v8a/libwasmline.so	65f48618899608fb
