@@ -9,115 +9,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":bug: wasmedge 0.14.0 only support ..">
-      <change afterPath="$PROJECT_DIR$/.idea/artifacts/plugin_wasm_wasi_0_0_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/caches/deviceStreaming.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/copilot.data.migration.agent.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/wasmtime-kotlin-wasi.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platforms/windows/x64/wasmtime.dll" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platforms/windows/x64/wasmtime.dll.lib" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platforms/windows/x64/wasmtime.lib" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/artifacts/wasmtime_plugin_wasm_wasi_0_0_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/artifacts/wasmtime_plugin_wasm_wasi_0_0_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/project.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/query/client-agp/cache-v2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/query/client-agp/cmakeFiles-v1" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/query/client-agp/codemodel-v2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cache-v2-cc9c8756990520fd611a.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-f1b1c3abdb38d936f28a.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-a17518254fdbb3bb72b2.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/directory-.-Debug-d0094a50bb2071803777.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/index-2025-11-27T07-31-43-0843.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmline-Debug-fc290c68d8dab178ca20.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmtime_core-Debug-b6447754c8dedcb3af28.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCXXCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeDetermineCompilerABI_C.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeDetermineCompilerABI_CXX.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeSystem.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/cmake.check_cache" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/wasmtime_core.dir/WasmtimeCore.cpp.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/additional_project_files.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/configure_fingerprint.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/libwasmtime_core.a" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/prefab_config.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/hash_key.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/query/client-agp/cache-v2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/query/client-agp/cmakeFiles-v1" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/query/client-agp/codemodel-v2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/reply/cache-v2-d15d669ea72248a87988.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-c1b3c115173da71f35cc.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-525457b5c50697700b32.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/reply/directory-.-RelWithDebInfo-d0094a50bb2071803777.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/reply/index-2025-11-27T08-12-57-0290.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/reply/target-wasmline-RelWithDebInfo-fb37c0f31058c3738389.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.cmake/api/v1/reply/target-wasmtime_core-RelWithDebInfo-93fa2614410b2831a1d8.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.ninja_deps" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/.ninja_log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeCache.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCXXCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeDetermineCompilerABI_C.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeDetermineCompilerABI_CXX.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeSystem.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/CMakeOutput.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/TargetDirectories.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/cmake.check_cache" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/rules.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/CMakeFiles/wasmtime_core.dir/WasmtimeCore.cpp.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/additional_project_files.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/android_gradle_build.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/android_gradle_build_mini.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/build.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/build_file_index.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/cmake_install.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/compile_commands.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/compile_commands.json.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/configure_fingerprint.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/libwasmtime_core.a" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/metadata_generation_command.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/prefab_config.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/arm64-v8a/symbol_folder_index.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/RelWithDebInfo/6w55k174/hash_key.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/tools/release/arm64-v8a/compile_commands.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeCore.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeCore.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/wasmtime-common/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/common/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/wasmtime-host/build.gradle.kts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/wasmtime-plugin/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/wasmtime-plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" afterDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":bug: wasmedge 0.14.0 only support .." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -226,7 +118,7 @@
     "Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
     "Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor": "Run",
     "Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor": "Run",
-    "Gradle.wasmtime-kotlin [clean].executor": "Debug",
+    "Gradle.wasmtime-kotlin [clean].executor": "Run",
     "Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor": "Run",
     "Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
     "Gradle.wazero-kotlin [app:run].executor": "Run",
@@ -320,8 +212,8 @@
       <command value="./gradlew wasmtime-app:android:configureCMakeDebug" />
       <command value="./gradlew :wasmtime-app:android:buildCMakeDebug" />
       <command value="./gradlew :wasmtime-app:android:buildCMakeDebug --info" />
-      <command value="./gradlew clean" />
       <command value="./gradlew :wasmtime-build-logic:clean" />
+      <command value="./gradlew clean" />
     </option>
   </component>
   <component name="RunManager" selected="Gradle.wasmtime-kotlin [clean]">

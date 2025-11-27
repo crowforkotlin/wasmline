@@ -1,1 +1,8 @@
-./platforms
+platforms/
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.bin
