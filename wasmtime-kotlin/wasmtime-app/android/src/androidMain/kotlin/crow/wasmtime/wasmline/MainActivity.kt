@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.system.measureTimeMillis
+import kotlin.time.measureTime
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,7 +34,8 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        WasmRuntime.init()
+        "init time is : ${measureTimeMillis { WasmRuntime.init() }}"
+            .info()
         binding.load.setOnClickListener {
             binding.content.text = "Loading..."
             runWasm()
@@ -73,7 +76,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 // 4. (可选) 释放模块
-                // module.release()
+//                 module.release()
 
             } catch (e: Exception) {
                 e.printStackTrace()

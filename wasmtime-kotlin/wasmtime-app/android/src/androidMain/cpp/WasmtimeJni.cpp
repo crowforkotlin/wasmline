@@ -19,42 +19,32 @@ Java_crow_wasmtime_WasmRuntime_nativeRelease(JNIEnv *env, jobject thiz) {
     WasmManager::getInstance().releaseEngine();
 }
 
+// 修正：从源码加载 (JIT)
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmtime_WasmModule_nativeLoadSource(JNIEnv *env, jobject thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
 
-    auto data = FileUtils::readFile(path);
-    bool success = false;
-
-    if (!data.empty()) {
-        auto* mod = WasmManager::getInstance().loadModule(key, data, true);
-        success = (mod != nullptr);
-    } else {
-        LOGE("Failed to read file: %s", path);
-    }
+    // 核心修改：直接传路径，由 Manager 决定是否需要读取
+    auto* mod = WasmManager::getInstance().getOrLoadModule(key, path, true /* JIT */);
 
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
-    return success;
+    return (mod != nullptr);
 }
 
+// 修正：从缓存加载 (AOT)
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmtime_WasmModule_nativeLoadCache(JNIEnv *env, jobject thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
 
-    auto data = FileUtils::readFile(path);
-    bool success = false;
-
-    if (!data.empty()) {
-        auto* mod = WasmManager::getInstance().loadModule(key, data, false);
-        success = (mod != nullptr);
-    }
+    // 核心修改：直接传路径
+    auto* mod = WasmManager::getInstance().getOrLoadModule(key, path, false /* AOT */);
 
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
-    return success;
+    return (mod != nullptr);
 }
 
 JNIEXPORT jboolean JNICALL
@@ -63,11 +53,10 @@ Java_crow_wasmtime_WasmModule_nativeSaveCache(JNIEnv *env, jobject thiz, jstring
     const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
     bool success = false;
 
-    // 获取的已经是 wasmtime_module_t*
+    // 这里使用 getModule，因为序列化前提是模块必须已经加载在内存里了
     auto* module = WasmManager::getInstance().getModule(key);
     if (module) {
         wasm_byte_vec_t serialized;
-        // [修复] 参数类型匹配了
         wasmtime_error_t* err = wasmtime_module_serialize(module, &serialized);
         if (!err) {
             std::vector<uint8_t> data(serialized.data, serialized.data + serialized.size);
@@ -98,9 +87,10 @@ Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jobject thiz, jstring keyS
 
     std::string result = "{\"error\":\"Module not found\"}";
 
+    // 获取模块 (读锁，极快)
     auto* module = WasmManager::getInstance().getModule(key);
     if (module) {
-        // [修复] 构造函数参数匹配
+        // 创建 Session (栈对象，自动销毁，线程安全)
         WasmSession session(WasmManager::getInstance().getEngine(), module);
         session.registerHostFunctions();
         result = session.call(act, jsn);
