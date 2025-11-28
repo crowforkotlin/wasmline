@@ -61,7 +61,7 @@ namespace crow {
             LOGI("Wasm Engine Released.");
         }
     }
-
+    
     // 核心优化：懒加载 + 线程安全
     wasmtime_module_t* WasmManager::getOrLoadModule(const std::string& key, const std::string& filePath, bool isJit) {
         // [阶段1] 快速路径：读锁检查 (无 IO)

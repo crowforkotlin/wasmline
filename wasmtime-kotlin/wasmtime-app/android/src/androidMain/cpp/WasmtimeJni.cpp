@@ -85,17 +85,22 @@ Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jobject thiz, jstring keyS
     const char* act = env->GetStringUTFChars(action, nullptr);
     const char* jsn = env->GetStringUTFChars(json, nullptr);
 
-    std::string result = "{\"error\":\"Module not found\"}";
+    std::string result;
 
     // 获取模块 (读锁，极快)
     auto* module = WasmManager::getInstance().getModule(key);
+
+    auto start_time = std::chrono::high_resolution_clock::now();
     if (module) {
         // 创建 Session (栈对象，自动销毁，线程安全)
         WasmSession session(WasmManager::getInstance().getEngine(), module);
         session.registerHostFunctions();
         result = session.call(act, jsn);
+    } else {
+        result = "{\"error\":\"Module not found\"}";
     }
-
+    long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+    LOGI("Module [%s] loading time: %lld ms", key, ms);
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(action, act);
     env->ReleaseStringUTFChars(json, jsn);
