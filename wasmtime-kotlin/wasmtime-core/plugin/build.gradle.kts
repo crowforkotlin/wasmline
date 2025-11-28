@@ -33,7 +33,7 @@ kotlin {
 }
 
 tasks.register<Copy>("wasmCopy") {
-    val assetsDir = rootProject.file("${projects.wasmtimeApp.android.path.replace(":","/")}/src/androidMain/assets")
+    val assetsDir = rootProject.file("./${projects.wasmtimeApp.android.path.replace(":","/")}/src/androidMain/assets")
     from(file("build/compileSync/wasmWasi/main/productionExecutable/optimized"))
     include("*.wasm")
     rename { "plugin.wasm" }

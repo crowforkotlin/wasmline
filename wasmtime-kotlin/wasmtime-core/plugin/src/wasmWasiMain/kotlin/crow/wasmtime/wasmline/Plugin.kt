@@ -19,6 +19,23 @@ fun initApp() {
     WasmRouter.register("add") {
         "{\"result\": 999}"
     }
+    WasmRouter.register("A") {
+        println("A Running.................")
+        var count = 0L
+        while (true) {
+            count ++
+            if (count > Int.MAX_VALUE) {
+                count = 0
+            }
+        }
+        "{AAA}"
+    }
+    WasmRouter.register("B") {
+        repeat(10000) {
+
+        }
+        "{BBB}"
+    }
 }
 
 @WasmExport

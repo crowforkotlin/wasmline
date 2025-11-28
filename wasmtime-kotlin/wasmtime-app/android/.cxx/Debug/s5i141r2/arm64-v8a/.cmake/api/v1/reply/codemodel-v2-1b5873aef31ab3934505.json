@@ -6,7 +6,7 @@
 			[
 				{
 					"build" : ".",
-					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.6.0"
@@ -41,14 +41,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "wasmline::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-wasmline-Debug-2ad8bca9ed538eed22ea.json",
+					"jsonFile" : "target-wasmline-Debug-22d4783c67644fa1007e.json",
 					"name" : "wasmline",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "wasmtime_core::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-wasmtime_core-Debug-2661970c4f7e51a93dc9.json",
+					"jsonFile" : "target-wasmtime_core-Debug-19666aed262c2a624921.json",
 					"name" : "wasmtime_core",
 					"projectIndex" : 0
 				}
@@ -58,8 +58,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a",
-		"source" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp"
+		"build" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a",
+		"source" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp"
 	},
 	"version" : 
 	{

@@ -4,7 +4,40 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="65050e88-389a-4ba2-95b2-2ba12f5463d0" name="Changes" comment="" />
+    <list default="true" id="65050e88-389a-4ba2-95b2-2ba12f5463d0" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/src/WasmModule.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-cpp/src/WasmModule.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/dictionaries/project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/.idea/dictionaries/project.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cache-v2-1c5ad87acd72e654f56d.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-8223bc9713f906c82e36.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-2459c75b9cae70ca4230.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/directory-.-Debug-d0094a50bb2071803777.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/index-2025-11-28T07-08-53-0169.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmline-Debug-2ad8bca9ed538eed22ea.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmtime_core-Debug-2661970c4f7e51a93dc9.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCCompiler.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCXXCompiler.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeSystem.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/plugin/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/plugin/build.gradle.kts" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -13,9 +46,12 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 8
-}]]></component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
   <component name="ProjectId" id="363AZrYxBod2Z3OJEk7oVoC5N19" />
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
@@ -25,11 +61,13 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
-    "last_opened_file_path": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/crowforkotlin/kotlin/wasmline",
     "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
