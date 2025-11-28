@@ -1,34 +1,27 @@
+@file:OptIn(ExperimentalWasmInterop::class)
+
 package crow.wasmtime.wasmline
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.tan
-import kotlin.random.Random
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
+@Serializable
+data class User(val id: Int, val name: String)
 
-@WasmExport
-fun add(a: Int, b: Int): Int {
-    println("--- Wasm Module: 'add' Starting ---")
-    
-    val initialTanValue = tan(0.5)
-    println("Initial Tan Value: $initialTanValue")
-
-    CoroutineScope(Dispatchers.Default).launch {
-        println("*********************** [Coroutine Started] ***********************")
-        repeat(3) {
-            delay(1000)
-            println("repeat count : $it")
-        }
+// 用户只需要在一个地方初始化路由
+fun initApp() {
+    WasmRouter.register("getUser") { jsonArgs ->
+        // 纯粹的业务逻辑
+        val user = User(1, "Crow Optimized")
+        Json.encodeToString(user)
     }
 
-    val rangeSize = 5
-    println("Starting loop from 0 to ${rangeSize - 1}...")
-
-
-    println("\nLoop finished.")
-    
-    println("--- Wasm Module: 'add' Finished. Returning sum. ---")
-    return a + b
+    WasmRouter.register("add") {
+        "{\"result\": 999}"
+    }
 }
+
+@WasmExport
+fun run_entry() { RunWasmEngineEntry() }
+
+fun main() { initApp() }

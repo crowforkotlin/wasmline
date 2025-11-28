@@ -22,10 +22,15 @@ set_target_properties(libwasmtime PROPERTIES IMPORTED_LOCATION "${LIBRARY_DIR}/$
 
 # 设置头文件路径
 include_directories(${LIBRARY_DIR}/${ANDROID_ABI}/include)
-include_directories(${ROOT_DIR})
+include_directories(${ROOT_DIR}/wasmtime-cpp/include)
 
 # 编译为静态库，供 JNI 复用
-add_library(wasmtime_core STATIC "${ROOT_DIR}/WasmtimeCore.cpp")
+add_library(wasmtime_core STATIC
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmConfig.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/JniUtils.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmModule.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmExecutor.cpp
+)
 
 # 编译为共享库
 add_library(wasmline SHARED WasmtimeJni.cpp)

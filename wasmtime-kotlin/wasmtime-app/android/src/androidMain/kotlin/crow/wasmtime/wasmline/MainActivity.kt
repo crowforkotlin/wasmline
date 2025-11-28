@@ -1,58 +1,78 @@
+@file:SuppressLint("SetTextI18n")
+
 package crow.wasmtime.wasmline
 
+import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import crow.wasmtime.app.android.R
+import crow.wasmtime.app.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.IOException
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+val baseJson = Json {
+    prettyPrint = true
+    isLenient = true
+}
+
+@Serializable
+data class Common(
+    val id: Int,
+    val datas: List<String>,
+)
 
 class MainActivity : AppCompatActivity() {
 
-    companion object {
-        init {
-            System.loadLibrary("wasmline")
-        }
-    }
-
-    // 定义 Native 方法
-    // 传入 wasm 文件的字节数组，返回计算结果
-    private external fun runWasmAdd(wasmBytes: ByteArray): Int
+    private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
+        setContentView(binding.root)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
+        binding.load.setOnClickListener {
+            binding.content.text = "Loading..."
+            load()
+        }
+    }
+
+
+    private fun load() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // 1. 从 assets 目录读取 add.wasm
-                // 确保你把 add.wasm 放到了 src/main/assets/ 目录下
-                val inputStream = assets.open("add.wasm")
-                val wasmBytes = inputStream.readBytes()
-                inputStream.close()
+                val start = System.currentTimeMillis()
+                // 1. 初始化 (全自动：有缓存读缓存，没缓存编译并存缓存)
+                // 确保 assets 里放的是 plugin.wasm (源码)
+                val engine = WasmEngine.loadFromAssets(
+                    context = applicationContext,
+                    assetName = "plugin.wasm",
+                    cacheName = "plugin.cwasm"
+                )
 
-                Log.d("WasmHost", "Wasm file read, size: ${wasmBytes.size} bytes")
+                // 2. 调用
+                val result = engine.call("getUser", "{\"id\": 123}")
+                "Result: $result".info()
 
-                // 2. 调用 Native 执行
-                val result = runWasmAdd(wasmBytes)
+                withContext(Dispatchers.Main) {
+                    binding.content.text = "$result\n\n${System.currentTimeMillis() - start} MS"
+                }
+                // 3. 释放
+                engine.close()
 
-                Log.d("WasmHost", "Execution Result: $result")
-
-            } catch (e: IOException) {
-                Log.e("WasmHost", "Failed to read wasm file", e)
             } catch (e: Exception) {
-                Log.e("WasmHost", "Native execution failed", e)
+                e.printStackTrace()
             }
         }
     }
