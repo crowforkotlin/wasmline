@@ -4,6 +4,7 @@ package crow.wasmtime.wasmline
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -12,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import crow.wasmtime.app.android.R
 import crow.wasmtime.app.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -44,7 +46,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.load.setOnClickListener {
             binding.content.text = "Loading..."
-            load()
+            loadTest()
         }
     }
 
@@ -74,6 +76,27 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private fun loadTest() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            // 疯狂加载、销毁 50 次
+            repeat(1000) { i ->
+                Log.d("Test", "Cycle: $i")
+
+                // 1. 加载
+                val engine = WasmEngine.loadFromAssets(applicationContext, "plugin.wasm")
+                engine.call("getUser", "...")
+                engine.close() // 关闭句柄
+
+                // 2. 销毁资源
+                WasmEngine.freeAllResources()
+
+                // 3. 稍微停顿一下（可选）
+                delay(1)
+            }
+            "Test Finished".info()
         }
     }
 }

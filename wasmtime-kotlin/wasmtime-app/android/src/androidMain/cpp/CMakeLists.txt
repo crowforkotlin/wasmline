@@ -29,6 +29,7 @@ add_library(wasmtime_core STATIC
         ${ROOT_DIR}/wasmtime-cpp/src/WasmConfig.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/JniUtils.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/WasmModule.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmSession.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/WasmExecutor.cpp
 )
 

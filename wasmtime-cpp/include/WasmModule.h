@@ -5,35 +5,23 @@
 
 class WasmModule {
 public:
-    ~WasmModule();
+    // 定义智能指针类型
+    using EnginePtr = std::shared_ptr<wasm_engine_t>;
+    using ModulePtr = std::shared_ptr<wasmtime_module_t>;
 
-    // --- 工厂方法 ---
-    // AOT: 从文件路径加载 (.cwasm)
-    static WasmModule* loadFromPath(const std::string& path);
-    // JIT: 从内存字节编译 (.wasm)
-    static WasmModule* loadFromSource(const std::vector<uint8_t>& source);
-    // 相比 loadFromSource(vector)，这个方法由 C++ 自己读文件，避免 Java 层 OOM
-    static WasmModule* loadFromSourcePath(const std::string& path);
-    
-    // --- 功能 ---
-    // 序列化当前模块并保存到指定路径
-    bool saveCacheToPath(const std::string& path);
+    // 获取全局 Engine
+    static EnginePtr getGlobalEngine();
 
-    // 执行调用
-    std::string call(const std::string& action, const std::string& json);
+    // 加载方法 (返回智能指针)
+    static ModulePtr loadFromPath(const std::string& path);
+    static ModulePtr loadFromSourcePath(const std::string& path);
+    static ModulePtr loadFromSource(const std::vector<uint8_t>& source);
 
-    // 获取器
-    wasm_engine_t* getEngine() const { return engine; }
-    wasmtime_module_t* getModule() const { return module; }
-    wasmtime_linker_t* getLinker() const { return linker; }
+    // 资源清理
+    static void removeCache(const std::string& path);
+    static void freeAllResources();
 
-private:
-    WasmModule();
-    bool initCommon(); // 初始化 Engine 和 Linker
-
-    wasm_engine_t* engine = nullptr;
-    wasmtime_module_t* module = nullptr;
-    wasmtime_linker_t* linker = nullptr;
+    // 序列化 (接收智能指针)
+    static bool saveCacheToPath(ModulePtr module, const std::string& path);
 };
-
 #endif //WASM_MODULE_H

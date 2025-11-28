@@ -77,7 +77,8 @@
 				0,
 				1,
 				2,
-				3
+				3,
+				4
 			],
 			"sysroot" : 
 			{
@@ -102,7 +103,8 @@
 				0,
 				1,
 				2,
-				3
+				3,
+				4
 			]
 		}
 	],
@@ -124,6 +126,12 @@
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
 			"path" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmModule.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmSession.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{

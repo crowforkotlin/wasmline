@@ -6,7 +6,6 @@
 #include <memory>
 #include <android/log.h>
 
-// Wasmtime C API
 #include "wasm.h"
 #include "wasi.h"
 #include "wasmtime.h"

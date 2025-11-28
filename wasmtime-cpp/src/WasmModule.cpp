@@ -1,180 +1,158 @@
 #include "WasmModule.h"
 #include "WasmConfig.h"
-#include "WasmExecutor.h"
 #include "JniUtils.h"
-#include <chrono>
+#include <mutex>
+#include <map>
 
-// 辅助：计算耗时
-static long long current_ms() {
-    auto now = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+// 1. 智能指针管理全局 Engine
+static WasmModule::EnginePtr g_engine = nullptr;
+static std::mutex g_engine_mutex;
+
+// 2. 智能指针管理模块缓存
+static std::map<std::string, WasmModule::ModulePtr> g_module_cache;
+static std::mutex g_module_cache_mutex;
+
+// Engine 删除器
+static void delete_engine_internal(wasm_engine_t* engine) {
+    if (engine) {
+        LOGI("Running wasm_engine_delete...");
+        wasm_engine_delete(engine);
+    }
 }
 
-WasmModule::WasmModule() {}
-
-WasmModule::~WasmModule() {
-    if (linker) wasmtime_linker_delete(linker);
-    if (module) wasmtime_module_delete(module);
-    if (engine) wasm_engine_delete(engine);
+// Module 删除器
+static void delete_module_internal(wasmtime_module_t* module) {
+    if (module) {
+        // LOGI("Running wasmtime_module_delete..."); 
+        wasmtime_module_delete(module);
+    }
 }
 
-// 全局唯一的 Engine 指针
-static wasm_engine_t* g_engine = nullptr;
-
-// 获取全局 Engine（懒加载，线程安全由 C++11 静态变量保证，或者单纯依靠主线程初始化）
-static wasm_engine_t* getGlobalEngine() {
+WasmModule::EnginePtr WasmModule::getGlobalEngine() {
+    std::lock_guard<std::mutex> lock(g_engine_mutex);
     if (!g_engine) {
-        // 1. 创建配置
-        wasm_config_t* conf = WasmConfig::createAndroidConfig();
-        
-        // 2. 创建 Engine (Engine 会接管 Config 的所有权)
-        g_engine = wasm_engine_new_with_config(conf);
-        
-        if (!g_engine) {
-            LOGE("FATAL: Failed to create global wasm engine!");
-        } else {
-            LOGI("Global Wasm Engine initialized.");
+        wasm_engine_t* raw_engine = wasm_engine_new_with_config(WasmConfig::createAndroidConfig());
+        if(raw_engine) {
+            g_engine = WasmModule::EnginePtr(raw_engine, delete_engine_internal);
+            LOGI("Global Engine Initialized");
         }
+        else LOGE("Global Engine Init Failed");
     }
     return g_engine;
 }
 
-bool WasmModule::initCommon() {
-
-    // 获取全局单例
-    engine = getGlobalEngine();
-    if (!engine) {
-        LOGE("Failed to create engine");
-        return false;
-    }
-
-    // 3. 创建 Linker 并配置 WASI
-    linker = wasmtime_linker_new(engine);
-    wasmtime_linker_define_wasi(linker);
-
-    // 4. 注册 Host Functions
-    // 这里将具体的函数注册逻辑交给 Executor 处理
-    WasmExecutor::registerHostFunctions(linker);
-
-    return true;
+// 辅助：获取缓存
+static WasmModule::ModulePtr getCached(const std::string& key) {
+    std::lock_guard<std::mutex> lock(g_module_cache_mutex);
+    auto it = g_module_cache.find(key);
+    return (it != g_module_cache.end()) ? it->second : nullptr;
 }
 
-WasmModule* WasmModule::loadFromPath(const std::string& path) {
-    if (!JniUtils::fileExists(path)) {
-        LOGI("Cache file not found: %s", path.c_str());
-        return nullptr;
-    }
+// 辅助：存入缓存
+static void putCached(const std::string& key, WasmModule::ModulePtr m) {
+    std::lock_guard<std::mutex> lock(g_module_cache_mutex);
+    g_module_cache[key] = m;
+}
 
-    auto start = current_ms();
-    // 从 C++ 层直接读取文件，不经过 Java
+WasmModule::ModulePtr WasmModule::loadFromPath(const std::string& path) {
+    if (!JniUtils::fileExists(path)) return nullptr;
+
+    auto cached = getCached(path);
+    if (cached) return cached;
+
+    auto enginePtr = getGlobalEngine();
+    if (!enginePtr) return nullptr;
+
     auto data = JniUtils::readFile(path);
     if (data.empty()) return nullptr;
 
-    auto* instance = new WasmModule();
-    if (!instance->initCommon()) { delete instance; return nullptr; }
-
-    LOGI("AOT Deserialize... size=%zu", data.size());
-    
-    // 反序列化
-    wasmtime_error_t* err = wasmtime_module_deserialize(instance->engine, data.data(), data.size(), &instance->module);
+    wasmtime_module_t* raw_module = nullptr;
+    // 使用 enginePtr.get() 获取裸指针
+    wasmtime_error_t* err = wasmtime_module_deserialize(enginePtr.get(), data.data(), data.size(), &raw_module);
     if (err) {
-        wasm_byte_vec_t msg;
-        wasmtime_error_message(err, &msg);
-        LOGE("Deserialize failed: %s", msg.data);
-        wasm_byte_vec_delete(&msg);
-        wasmtime_error_delete(err);
-        delete instance;
+        wasm_byte_vec_t msg; wasmtime_error_message(err, &msg);
+        LOGE("AOT Error: %s", msg.data);
+        wasm_byte_vec_delete(&msg); wasmtime_error_delete(err);
         return nullptr;
     }
 
-    LOGI("AOT Success. Time: %lld ms", (current_ms() - start));
-    return instance;
+    // 封装成 shared_ptr
+    WasmModule::ModulePtr modulePtr(raw_module, delete_module_internal);
+    putCached(path, modulePtr);
+    return modulePtr;
 }
 
-WasmModule* WasmModule::loadFromSource(const std::vector<uint8_t>& source) {
-    if (source.empty()) return nullptr;
+WasmModule::ModulePtr WasmModule::loadFromSourcePath(const std::string& path) {
+    if (!JniUtils::fileExists(path)) return nullptr;
 
-    auto start = current_ms();
-    auto* instance = new WasmModule();
-    if (!instance->initCommon()) { delete instance; return nullptr; }
+    auto cached = getCached(path);
+    if (cached) return cached;
 
-    LOGI("JIT Compiling... size=%zu", source.size());
+    auto enginePtr = getGlobalEngine();
+    if (!enginePtr) return nullptr;
 
-    // 编译源码
-    wasmtime_error_t* err = wasmtime_module_new(instance->engine, source.data(), source.size(), &instance->module);
-    if (err) {
-        wasm_byte_vec_t msg;
-        wasmtime_error_message(err, &msg);
-        LOGE("Compile failed: %s", msg.data);
-        wasm_byte_vec_delete(&msg);
-        wasmtime_error_delete(err);
-        delete instance;
-        return nullptr;
-    }
-
-    LOGI("JIT Success. Time: %lld ms", (current_ms() - start));
-    return instance;
-}
-
-WasmModule* WasmModule::loadFromSourcePath(const std::string& path) {
-    if (!JniUtils::fileExists(path)) {
-        LOGE("Source file not found: %s", path.c_str());
-        return nullptr;
-    }
-
-    auto start = current_ms();
-    
-    // 1. C++ 直接读取文件，不经过 Java Heap
     auto data = JniUtils::readFile(path);
     if (data.empty()) return nullptr;
 
-    auto* instance = new WasmModule();
-    if (!instance->initCommon()) { delete instance; return nullptr; }
-
-    LOGI("JIT Compiling from path... size=%zu", data.size());
-
-    // 2. 编译
-    wasmtime_error_t* err = wasmtime_module_new(instance->engine, data.data(), data.size(), &instance->module);
+    wasmtime_module_t* raw_module = nullptr;
+    wasmtime_error_t* err = wasmtime_module_new(enginePtr.get(), data.data(), data.size(), &raw_module);
     if (err) {
-        wasm_byte_vec_t msg;
-        wasmtime_error_message(err, &msg);
-        LOGE("Compile failed: %s", msg.data);
-        wasm_byte_vec_delete(&msg);
-        wasmtime_error_delete(err);
-        delete instance;
+        wasm_byte_vec_t msg; wasmtime_error_message(err, &msg);
+        LOGE("JIT Error: %s", msg.data);
+        wasm_byte_vec_delete(&msg); wasmtime_error_delete(err);
         return nullptr;
     }
 
-    LOGI("JIT (Path) Success. Time: %lld ms", (current_ms() - start));
-    return instance;
+    WasmModule::ModulePtr modulePtr(raw_module, delete_module_internal);
+    putCached(path, modulePtr);
+    return modulePtr;
 }
 
-bool WasmModule::saveCacheToPath(const std::string& path) {
+WasmModule::ModulePtr WasmModule::loadFromSource(const std::vector<uint8_t>& source) {
+    auto enginePtr = getGlobalEngine();
+    if (!enginePtr || source.empty()) return nullptr;
+
+    wasmtime_module_t* raw_module = nullptr;
+    wasmtime_module_new(enginePtr.get(), source.data(), source.size(), &raw_module);
+    
+    if (raw_module) {
+        return WasmModule::ModulePtr(raw_module, delete_module_internal);
+    }
+    return nullptr;
+}
+
+void WasmModule::removeCache(const std::string& path) {
+    std::lock_guard<std::mutex> lock(g_module_cache_mutex);
+    g_module_cache.erase(path); 
+}
+
+void WasmModule::freeAllResources() {
+    // 1. 清空 Map (引用计数 -1，但如果有 Session 正在用，Module 不会被 delete)
+    {
+        std::lock_guard<std::mutex> lock(g_module_cache_mutex);
+        g_module_cache.clear(); 
+    }
+    
+    // 2. 释放全局 Engine 引用 (引用计数 -1，同上)
+    {
+        std::lock_guard<std::mutex> lock(g_engine_mutex);
+        if (g_engine) {
+            LOGI("Releasing global engine reference. (Current Refs: %ld)", g_engine.use_count());
+            g_engine.reset();
+        }
+    }
+    LOGI("All resources flagged for release");
+}
+
+bool WasmModule::saveCacheToPath(ModulePtr module, const std::string& path) {
     if (!module) return false;
-
-    LOGI("Serializing module...");
     wasm_byte_vec_t serialized;
-    wasmtime_error_t* err = wasmtime_module_serialize(module, &serialized);
-
+    // 使用 module.get() 获取裸指针进行序列化
+    wasmtime_error_t* err = wasmtime_module_serialize(module.get(), &serialized);
     if (err) {
-        wasm_byte_vec_t msg;
-        wasmtime_error_message(err, &msg);
-        LOGE("Serialize failed: %s", msg.data);
-        wasm_byte_vec_delete(&msg);
-        wasmtime_error_delete(err);
-        return false;
+        wasmtime_error_delete(err); return false;
     }
-
-    // 转换为 vector 并写入
     std::vector<uint8_t> data(serialized.data, serialized.data + serialized.size);
     wasm_byte_vec_delete(&serialized);
-
-    bool success = JniUtils::writeFile(path, data);
-    LOGI("Cache saved to %s (size: %zu, success: %d)", path.c_str(), data.size(), success);
-    return success;
-}
-
-std::string WasmModule::call(const std::string& action, const std::string& json) {
-    WasmExecutor exec(this, action, json);
-    return exec.run();
+    return JniUtils::writeFile(path, data);
 }

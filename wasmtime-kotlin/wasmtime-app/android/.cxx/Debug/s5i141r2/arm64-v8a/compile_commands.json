@@ -16,6 +16,11 @@
 },
 {
   "directory": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a",
+  "command": "C:\\Users\\CrowF\\AppData\\Local\\Android\\Sdk\\ndk\\27.0.12077973\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=aarch64-none-linux-android23 --sysroot=C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -IC:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/platforms/android/arm64-v8a/include -IC:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -o CMakeFiles\\wasmtime_core.dir\\C_\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-cpp\\src\\WasmSession.cpp.o -c C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-cpp\\src\\WasmSession.cpp",
+  "file": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-cpp\\src\\WasmSession.cpp"
+},
+{
+  "directory": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a",
   "command": "C:\\Users\\CrowF\\AppData\\Local\\Android\\Sdk\\ndk\\27.0.12077973\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=aarch64-none-linux-android23 --sysroot=C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -IC:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/platforms/android/arm64-v8a/include -IC:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -o CMakeFiles\\wasmtime_core.dir\\C_\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-cpp\\src\\WasmExecutor.cpp.o -c C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-cpp\\src\\WasmExecutor.cpp",
   "file": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-cpp\\src\\WasmExecutor.cpp"
 },
