@@ -1,60 +1,79 @@
 #include <jni.h>
-#include <android/log.h>
+#include <string>
 #include <vector>
+#include "WasmModule.h"
 
-// 引入核心逻辑
-#include "WasmtimeCore.h"
+extern "C" {
 
-#define TAG "KotlinWasm"
-
-// ============================================================================
-// Android 特有日志回调
-// ============================================================================
-void android_logger(const std::string& msg) {
-    __android_log_print(ANDROID_LOG_INFO, TAG, "%s", msg.c_str());
+// 1. 尝试从文件路径加载 (AOT)
+// 返回: handle 指针 (long), 0 表示失败
+JNIEXPORT jlong JNICALL
+Java_crow_wasmtime_wasmline_WasmEngine_nativeInitPath(JNIEnv *env, jobject thiz, jstring pathStr) {
+    const char* path = env->GetStringUTFChars(pathStr, nullptr);
+    WasmModule* module = WasmModule::loadFromPath(path);
+    env->ReleaseStringUTFChars(pathStr, path);
+    return reinterpret_cast<jlong>(module);
 }
 
-// ============================================================================
-// JNI 接口实现
-// ============================================================================
-extern "C" JNIEXPORT jint JNICALL
-Java_crow_wasmtime_wasmline_MainActivity_runWasmAdd(JNIEnv *env, jobject thiz, jbyteArray wasmBytes, jboolean enableLogs) {
-    
-    // 1. 转换 Java 字节数组到 C++ vector
-    jsize len = env->GetArrayLength(wasmBytes);
-    jbyte *bytes = env->GetByteArrayElements(wasmBytes, nullptr);
-    if (!bytes) return -1;
+// 2. 从内存字节加载 (JIT)
+// 返回: handle 指针
+JNIEXPORT jlong JNICALL
+Java_crow_wasmtime_wasmline_WasmEngine_nativeInitBytes(JNIEnv *env, jobject thiz, jbyteArray bytes) {
+    if (!bytes) return 0;
+    jsize len = env->GetArrayLength(bytes);
+    jbyte* data = env->GetByteArrayElements(bytes, nullptr);
 
-    std::vector<uint8_t> wasm_data(bytes, bytes + len);
-    env->ReleaseByteArrayElements(wasmBytes, bytes, JNI_ABORT);
+    std::vector<uint8_t> vec(data, data + len);
+    env->ReleaseByteArrayElements(bytes, data, JNI_ABORT);
 
-    // 2. 配置 WasmtimeCore (针对 Android 的“安全模式”配置)
-    WasmConfig config;
-    
-    // Kotlin/Wasm 必须项
-    config.enableGc = true;
-    config.enableExceptionHandling = true;
-    config.enableFunctionReferences = true;
-    
-    // Android 必须项 (防止 SIGILL)
-    config.enableSimd = false;              // 关闭 SIMD
-    config.enableSignalsBasedTraps = false; // 关闭信号 Trap，改用显式检查
-    config.enableCraneliftOpt = false;      // 关闭 JIT 优化
-
-    // 日志配置
-    config.enableWasiOutput = enableLogs;
-
-    // 3. 实例化 Core 并运行
-    WasmtimeCore core(config);
-    
-    // 注册 Android 日志回调
-    if (enableLogs) {
-        core.setLogCallback(android_logger);
-    }
-
-    // 4. 执行业务逻辑
-    // 这里演示传入 1 + 2
-    int32_t result = core.runAddFunction(wasm_data, 1, 2);
-
-    return result;
+    WasmModule* module = WasmModule::loadFromSource(vec);
+    return reinterpret_cast<jlong>(module);
 }
+
+// 从文件路径加载源码进行 JIT 编译
+JNIEXPORT jlong JNICALL
+Java_crow_wasmtime_wasmline_WasmEngine_nativeInitSourcePath(JNIEnv *env, jobject thiz, jstring pathStr) {
+    const char* path = env->GetStringUTFChars(pathStr, nullptr);
+    WasmModule* module = WasmModule::loadFromSourcePath(path);
+    env->ReleaseStringUTFChars(pathStr, path);
+    return reinterpret_cast<jlong>(module);
+}
+
+// 3. 将当前模块序列化并保存到路径 (C++ 直接写文件)
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmtime_wasmline_WasmEngine_nativeSaveCache(JNIEnv *env, jobject thiz, jlong handle, jstring pathStr) {
+    auto* module = reinterpret_cast<WasmModule*>(handle);
+    if (!module) return false;
+
+    const char* path = env->GetStringUTFChars(pathStr, nullptr);
+    bool success = module->saveCacheToPath(path);
+    env->ReleaseStringUTFChars(pathStr, path);
+    return success;
+}
+
+// 4. 执行调用
+JNIEXPORT jstring JNICALL
+Java_crow_wasmtime_wasmline_WasmEngine_nativeCall(JNIEnv *env, jobject thiz, jlong handle, jstring action, jstring json) {
+    auto* module = reinterpret_cast<WasmModule*>(handle);
+    if (!module) return env->NewStringUTF("{\"error\": \"Invalid Handle\"}");
+
+    const char* a = env->GetStringUTFChars(action, nullptr);
+    const char* j = env->GetStringUTFChars(json, nullptr);
+
+    // 执行
+    std::string result = module->call(a ? a : "", j ? j : "");
+
+    if (a) env->ReleaseStringUTFChars(action, a);
+    if (j) env->ReleaseStringUTFChars(json, j);
+
+    return env->NewStringUTF(result.c_str());
+}
+
+// 5. 释放资源
+JNIEXPORT void JNICALL
+Java_crow_wasmtime_wasmline_WasmEngine_nativeRelease(JNIEnv *env, jobject thiz, jlong handle) {
+    auto* module = reinterpret_cast<WasmModule*>(handle);
+    if (module) delete module;
+}
+
+} // extern C

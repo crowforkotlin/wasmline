@@ -1,5 +1,16 @@
 # ninja log v5
-0	449	1764277342326750342	CMakeFiles/wasmtime_core.dir/Users/crowforkotlin/kotlin/wasmline/WasmtimeCore.cpp.o	8ada7487fa829d37
-0	451	1764277342328216735	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	2969da87c355b3da
-451	494	1764277342377221000	libwasmtime_core.a	8e635c6226d2eff7
-494	658	1764277342515866193	/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	aa01e9f9f983452c
+7	861	7860169017861635	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmConfig.cpp.o	6e29201795dbff82
+3	963	7860169018882545	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/JniUtils.cpp.o	82f3d871c44125eb
+8	932	7860169018572203	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	db47dc6dc2786d4b
+5	960	7860169018852543	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmModule.cpp.o	cfd6de8b9d82d983
+964	1019	7860169019332950	libwasmtime_core.a	9059a4fef3622853
+1	961	7860169018862542	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmExecutor.cpp.o	c1425ea7607cbf99
+1019	1287	7860169021920752	C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	1b7b7e7109324cac
+30	1909	7860178053397749	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmModule.cpp.o	cfd6de8b9d82d983
+32	1912	7860178053292705	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	db47dc6dc2786d4b
+20	1950	7860178053718540	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmExecutor.cpp.o	c1425ea7607cbf99
+1950	2068	7860178054814463	libwasmtime_core.a	9059a4fef3622853
+2068	2401	7860178058037706	C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	1b7b7e7109324cac
+42	2125	7860199177134978	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmModule.cpp.o	cfd6de8b9d82d983
+2127	2281	7860199178562765	libwasmtime_core.a	9059a4fef3622853
+2281	2817	7860199183618238	C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	1b7b7e7109324cac
