@@ -9,24 +9,15 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import crow.wasmtime.WasmModule
+import crow.wasmtime.WasmRuntime
 import crow.wasmtime.app.android.R
 import crow.wasmtime.app.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-
-val baseJson = Json {
-    prettyPrint = true
-    isLenient = true
-}
-
-@Serializable
-data class Common(
-    val id: Int,
-    val datas: List<String>,
-)
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,39 +32,56 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
+        WasmRuntime.init()
         binding.load.setOnClickListener {
             binding.content.text = "Loading..."
-            load()
+            runWasm()
         }
     }
 
 
-    private fun load() {
+    private fun runWasm() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val start = System.currentTimeMillis()
-                // 1. 初始化 (全自动：有缓存读缓存，没缓存编译并存缓存)
-                // 确保 assets 里放的是 plugin.wasm (源码)
-                val engine = WasmEngine.loadFromAssets(
-                    context = applicationContext,
-                    assetName = "plugin.wasm",
-                    cacheName = "plugin.cwasm"
-                )
+                // 准备文件：将 assets 里的 plugin.wasm 拷贝到 cache 目录
+                // 因为我们的 C++ 层现在只接受文件路径，防止 OOM
+                val wasmFile = File(cacheDir, "plugin.wasm")
+                val cacheFile = File(cacheDir, "plugin.cwasm") // 编译后的缓存文件
 
-                // 2. 调用
-                val result = engine.call("getUser", "{\"id\": 123}")
-                "Result: $result".info()
+                // 模拟拷贝 (如果文件不存在)
+                "wasm file ${wasmFile.exists()}".info()
+                if (!wasmFile.exists()) {
+                    assets.open("plugin.wasm").use { input ->
+                        FileOutputStream(wasmFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+
+                val start = System.currentTimeMillis()
+
+                // 2. 加载模块
+                // 第一次运行会编译源码并生成 cwasm
+                // 第二次运行直接加载 cwasm，速度极快
+                val module = WasmModule.load(wasmFile, cacheFile)
+
+                // 3. 执行调用
+                val result = module.call("getUser", "{\"id\": 1001}")
 
                 withContext(Dispatchers.Main) {
-                    binding.content.text = "$result\n\n${System.currentTimeMillis() - start} MS"
+                    binding.content.text = "Result: $result\nTime: ${System.currentTimeMillis() - start}ms"
                 }
-                // 3. 释放
-                engine.close()
+
+                // 4. (可选) 释放模块
+                // module.release()
 
             } catch (e: Exception) {
                 e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    binding.content.text = "Error: ${e.message}"
+                }
             }
         }
     }
+
 }

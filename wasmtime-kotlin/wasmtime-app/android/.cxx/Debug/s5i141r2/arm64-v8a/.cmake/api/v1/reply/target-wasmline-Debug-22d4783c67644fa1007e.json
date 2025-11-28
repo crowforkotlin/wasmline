@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so"
+			"path" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so"
 		}
 	],
 	"backtrace" : 1,
@@ -26,13 +26,13 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 36,
+				"line" : 35,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 39,
+				"line" : 38,
 				"parent" : 0
 			},
 			{
@@ -68,11 +68,11 @@
 			[
 				{
 					"backtrace" : 3,
-					"path" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/platforms/android/arm64-v8a/include"
+					"path" : "/Users/crowforkotlin/kotlin/wasmline/platforms/android/arm64-v8a/include"
 				},
 				{
 					"backtrace" : 4,
-					"path" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/include"
+					"path" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-cpp/include"
 				}
 			],
 			"language" : "CXX",
@@ -90,7 +90,7 @@
 			],
 			"sysroot" : 
 			{
-				"path" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+				"path" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot"
 			}
 		}
 	],
@@ -117,7 +117,7 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\platforms\\android\\arm64-v8a\\lib\\libwasmtime.a",
+				"fragment" : "/Users/crowforkotlin/kotlin/wasmline/platforms/android/arm64-v8a/lib/libwasmtime.a",
 				"role" : "libraries"
 			},
 			{
@@ -143,7 +143,7 @@
 		"language" : "CXX",
 		"sysroot" : 
 		{
-			"path" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+			"path" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot"
 		}
 	},
 	"name" : "wasmline",

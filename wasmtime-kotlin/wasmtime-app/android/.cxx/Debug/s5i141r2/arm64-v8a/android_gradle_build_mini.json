@@ -1,32 +1,32 @@
 {
   "buildFiles": [
-    "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\src\\androidMain\\cpp\\CMakeLists.txt"
+    "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt"
   ],
   "cleanCommandsComponents": [
     [
-      "D:\\software\\cache\\android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/bin/ninja",
       "-C",
-      "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\.cxx\\Debug\\s5i141r2\\arm64-v8a",
+      "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a",
       "clean"
     ]
   ],
   "buildTargetsCommandComponents": [
-    "D:\\software\\cache\\android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/bin/ninja",
     "-C",
-    "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\.cxx\\Debug\\s5i141r2\\arm64-v8a",
+    "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a",
     "{LIST_OF_TARGETS_TO_BUILD}"
   ],
   "libraries": {
     "wasmtime_core::@6890427a1f51a3e7e1df": {
       "artifactName": "wasmtime_core",
       "abi": "arm64-v8a",
-      "output": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\.cxx\\Debug\\s5i141r2\\arm64-v8a\\libwasmtime_core.a",
+      "output": "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/libwasmtime_core.a",
       "runtimeFiles": []
     },
     "wasmline::@6890427a1f51a3e7e1df": {
       "artifactName": "wasmline",
       "abi": "arm64-v8a",
-      "output": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\build\\intermediates\\cxx\\Debug\\s5i141r2\\obj\\arm64-v8a\\libwasmline.so",
+      "output": "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so",
       "runtimeFiles": []
     }
   }

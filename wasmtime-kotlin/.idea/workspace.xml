@@ -17,72 +17,51 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":bug: wasmedge 0.14.0 only support ..">
-      <change afterPath="$PROJECT_DIR$/.idea/artifacts/core_wasm_wasi_0_0_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/deviceManager.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/main.cwasm" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/WasmEngine.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-core/core/build.gradle.kts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Core.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../WasmtimeCore.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../WasmtimeCore.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/JniUtils.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmCommon.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmConfig.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmExecutor.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmModule.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/JniUtils.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmConfig.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmExecutor.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmModule.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/project.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/query/client-agp/cache-v2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/query/client-agp/cmakeFiles-v1" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/query/client-agp/codemodel-v2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cache-v2-b3025dd47814be4bc391.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-c8f857bdfc6685746a66.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-a5cf54aef855432be309.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/directory-.-Debug-f5ebdc15457944623624.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/index-2025-11-27T21-02-21-0866.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmline-Debug-1fa115a80a88c31bcd07.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmtime_core-Debug-44a512b0fb50a002c15a.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeDetermineCompilerABI_C.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeDetermineCompilerABI_CXX.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CompilerIdC/CMakeCCompilerId.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CompilerIdCXX/CMakeCXXCompilerId.o" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/cmake.check_cache" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/additional_project_files.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/configure_fingerprint.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/prefab_config.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/hash_key.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/add.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/add.wasm" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/add2.wasm" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/add3.wasm" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/add4.wasm" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/add4.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cache-v2-1c5ad87acd72e654f56d.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-8223bc9713f906c82e36.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-2459c75b9cae70ca4230.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/directory-.-Debug-d0094a50bb2071803777.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/index-2025-11-28T07-08-53-0169.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmline-Debug-2ad8bca9ed538eed22ea.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmtime_core-Debug-2661970c4f7e51a93dc9.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCCompiler.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeCXXCompiler.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CMakeSystem.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8-dirty/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/TipsExt.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/TipsExt.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/WasmEngine.kt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/wasmtime-core/plugin/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -92,7 +71,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[DeviceId(pluginId=PhysicalDevice, isTemplate=false, identifier=serial=87d500c6)]" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[DeviceId(pluginId=Default, isTemplate=false, identifier=serial=192.168.0.231:5555;connection=7118f43b)]" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
@@ -142,7 +121,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$/.." value="2" />
+        <entry key="$PROJECT_DIR$/.." value="test" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -183,7 +162,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "Android App.MainActivity.executor": "Android Profiler Group#1",
+    "Android App.MainActivity.executor": "Run",
     "Android App.wasmedge-app.android.executor": "Run",
     "Android App.wasmtime-app.android.executor": "Run",
     "ApkExportedModule": "WasmLine.wasmtime-app.android",
@@ -237,7 +216,7 @@
     "cidr.known.project.marker": "true",
     "com.developerphil.adbidea.selecteddevices": "87d500c6",
     "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "main2",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/assets",
     "project.structure.last.edited": "Modules",
@@ -300,186 +279,9 @@
     </option>
   </component>
   <component name="RunManager" selected="Android App.MainActivity">
-    <configuration default="true" type="AppleRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" IS_LOCATION_SIMULATION_SUPPORTED="false" IS_LOCATION_SIMULATION_ALLOWED="true" APPLICATION_LANGUAGE="IDELaunchSchemeLanguageUseSystemLanguage" APPLICATION_REGION="" DEVELOPMENT_TEAM="${TEAM_ID}" MAKE_ACTIVE="TRUE" SHOULD_DEBUG_EXTENSIONS="false">
-      <embedded_app_extension_list />
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="MainActivity" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false" temporary="true">
-      <module name="WasmLine.wasmtime-app.android" />
-      <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
-      <option name="DEPLOY" value="true" />
-      <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
-      <option name="DEPLOY_AS_INSTANT" value="false" />
-      <option name="ARTIFACT_NAME" value="" />
-      <option name="PM_INSTALL_OPTIONS" value="" />
-      <option name="ALL_USERS" value="false" />
-      <option name="ALWAYS_INSTALL_WITH_PM" value="false" />
-      <option name="ALLOW_ASSUME_VERIFIED" value="false" />
-      <option name="CLEAR_APP_STORAGE" value="false" />
-      <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
-      <option name="ACTIVITY_EXTRA_FLAGS" value="" />
-      <option name="MODE" value="specific_activity" />
-      <option name="RESTORE_ENABLED" value="false" />
-      <option name="RESTORE_FILE" value="" />
-      <option name="RESTORE_FRESH_INSTALL_ONLY" value="false" />
-      <option name="CLEAR_LOGCAT" value="false" />
-      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="false" />
-      <option name="TARGET_SELECTION_MODE" value="DEVICE_AND_SNAPSHOT_COMBO_BOX" />
-      <option name="SELECTED_CLOUD_MATRIX_CONFIGURATION_ID" value="-1" />
-      <option name="SELECTED_CLOUD_MATRIX_PROJECT_ID" value="" />
-      <option name="DEBUGGER_TYPE" value="Auto" />
-      <Auto>
-        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
-        <option name="SHOW_STATIC_VARS" value="true" />
-        <option name="WORKING_DIR" value="" />
-        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
-        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
-        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
-        <option name="DEBUG_SANDBOX_SDK" value="false" />
-      </Auto>
-      <Hybrid>
-        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
-        <option name="SHOW_STATIC_VARS" value="true" />
-        <option name="WORKING_DIR" value="" />
-        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
-        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
-        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
-        <option name="DEBUG_SANDBOX_SDK" value="false" />
-      </Hybrid>
-      <Java>
-        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
-        <option name="DEBUG_SANDBOX_SDK" value="false" />
-      </Java>
-      <Native>
-        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
-        <option name="SHOW_STATIC_VARS" value="true" />
-        <option name="WORKING_DIR" value="" />
-        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
-        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
-        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
-        <option name="DEBUG_SANDBOX_SDK" value="false" />
-      </Native>
-      <Profilers>
-        <option name="ADVANCED_PROFILING_ENABLED" value="false" />
-        <option name="STARTUP_PROFILING_ENABLED" value="false" />
-        <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
-        <option name="STARTUP_CPU_PROFILING_CONFIGURATION_NAME" value="Java/Kotlin Method Sample (legacy)" />
-        <option name="STARTUP_NATIVE_MEMORY_PROFILING_ENABLED" value="false" />
-        <option name="NATIVE_MEMORY_SAMPLE_RATE_BYTES" value="2048" />
-      </Profilers>
-      <option name="DEEP_LINK" value="" />
-      <option name="ACTIVITY" value="" />
-      <option name="ACTIVITY_CLASS" value="crow.wasmtime.wasmline.MainActivity" />
-      <option name="SEARCH_ACTIVITY_IN_GLOBAL_SCOPE" value="false" />
-      <option name="SKIP_ACTIVITY_VALIDATION" value="false" />
-      <method v="2">
-        <option name="Android.Gradle.BeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration default="true" type="DAPConfiguration" factoryName="DAPConfiguration">
       <option name="workingDirectory" value="$PROJECT_DIR$/.." />
       <envs />
-      <method v="2" />
-    </configuration>
-    <configuration name="wasmtime-kotlin [wasmCopy]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list>
-            <option value="wasmCopy" />
-          </list>
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
-      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-      <DebugAllEnabled>false</DebugAllEnabled>
-      <RunAsTest>false</RunAsTest>
-      <method v="2" />
-    </configuration>
-    <configuration name="wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" value="" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list>
-            <option value="wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
-          </list>
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
-      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-      <DebugAllEnabled>false</DebugAllEnabled>
-      <RunAsTest>false</RunAsTest>
-      <method v="2" />
-    </configuration>
-    <configuration name="wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" value="" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list>
-            <option value="wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize" />
-          </list>
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
-      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-      <DebugAllEnabled>false</DebugAllEnabled>
-      <RunAsTest>false</RunAsTest>
-      <method v="2" />
-    </configuration>
-    <configuration name="wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" value="" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list>
-            <option value="wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
-          </list>
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
-      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-      <DebugAllEnabled>false</DebugAllEnabled>
-      <RunAsTest>false</RunAsTest>
-      <method v="2" />
-    </configuration>
-    <configuration default="true" type="JetRunConfigurationType">
-      <module name="wazero-kotlin" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
-      <module name="wazero-kotlin" />
-      <option name="filePath" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
@@ -584,6 +386,177 @@
       <option name="USE_PATTERN" value="false" />
       <method v="2" />
     </configuration>
+    <configuration name="MainActivity" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false" temporary="true">
+      <module name="WasmLine.wasmtime-app.android" />
+      <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
+      <option name="DEPLOY" value="true" />
+      <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
+      <option name="DEPLOY_AS_INSTANT" value="false" />
+      <option name="ARTIFACT_NAME" value="" />
+      <option name="PM_INSTALL_OPTIONS" value="" />
+      <option name="ALL_USERS" value="false" />
+      <option name="ALWAYS_INSTALL_WITH_PM" value="false" />
+      <option name="ALLOW_ASSUME_VERIFIED" value="false" />
+      <option name="CLEAR_APP_STORAGE" value="false" />
+      <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
+      <option name="ACTIVITY_EXTRA_FLAGS" value="" />
+      <option name="MODE" value="specific_activity" />
+      <option name="RESTORE_ENABLED" value="false" />
+      <option name="RESTORE_FILE" value="" />
+      <option name="RESTORE_FRESH_INSTALL_ONLY" value="false" />
+      <option name="CLEAR_LOGCAT" value="false" />
+      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="false" />
+      <option name="TARGET_SELECTION_MODE" value="DEVICE_AND_SNAPSHOT_COMBO_BOX" />
+      <option name="SELECTED_CLOUD_MATRIX_CONFIGURATION_ID" value="-1" />
+      <option name="SELECTED_CLOUD_MATRIX_PROJECT_ID" value="" />
+      <option name="DEBUGGER_TYPE" value="Auto" />
+      <Auto>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Auto>
+      <Hybrid>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Hybrid>
+      <Java>
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Java>
+      <Native>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Native>
+      <Profilers>
+        <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_CONFIGURATION_NAME" value="Java/Kotlin Method Sample (legacy)" />
+        <option name="STARTUP_NATIVE_MEMORY_PROFILING_ENABLED" value="false" />
+        <option name="NATIVE_MEMORY_SAMPLE_RATE_BYTES" value="2048" />
+      </Profilers>
+      <option name="DEEP_LINK" value="" />
+      <option name="ACTIVITY" value="" />
+      <option name="ACTIVITY_CLASS" value="crow.wasmtime.wasmline.MainActivity" />
+      <option name="SEARCH_ACTIVITY_IN_GLOBAL_SCOPE" value="false" />
+      <option name="SKIP_ACTIVITY_VALIDATION" value="false" />
+      <method v="2">
+        <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="wasmtime-kotlin [wasmCopy]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="wasmCopy" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration name="wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration name="wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration name="wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="wazero-kotlin" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="wazero-kotlin" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Android App.MainActivity" />
       <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" />
@@ -594,8 +567,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Android App.MainActivity" />
-        <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" />
         <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" />
+        <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" />
         <item itemvalue="Gradle.wasmtime-kotlin [wasmCopy]" />
         <item itemvalue="Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" />
       </list>
@@ -684,6 +657,19 @@
           <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>
           <line>382</line>
           <option name="timeStamp" value="23" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="kotlin-line">
+          <url>file://$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt</url>
+          <line>53</line>
+          <properties>
+            <option name="lambda-ordinal" value="-1" />
+          </properties>
+          <option name="timeStamp" value="24" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="kotlin-line">
+          <url>file://$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt</url>
+          <line>52</line>
+          <option name="timeStamp" value="26" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

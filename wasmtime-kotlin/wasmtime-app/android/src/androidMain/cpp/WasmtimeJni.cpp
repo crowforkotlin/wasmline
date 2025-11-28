@@ -1,79 +1,116 @@
 #include <jni.h>
 #include <string>
-#include <vector>
-#include "WasmModule.h"
+#include "WasmManager.h"
+#include "WasmSession.h"
+#include "FileUtils.h"
+#include "WasmLog.h"
+
+using namespace crow;
 
 extern "C" {
 
-// 1. 尝试从文件路径加载 (AOT)
-// 返回: handle 指针 (long), 0 表示失败
-JNIEXPORT jlong JNICALL
-Java_crow_wasmtime_wasmline_WasmEngine_nativeInitPath(JNIEnv *env, jobject thiz, jstring pathStr) {
-    const char* path = env->GetStringUTFChars(pathStr, nullptr);
-    WasmModule* module = WasmModule::loadFromPath(path);
-    env->ReleaseStringUTFChars(pathStr, path);
-    return reinterpret_cast<jlong>(module);
+JNIEXPORT void JNICALL
+Java_crow_wasmtime_WasmRuntime_nativeInit(JNIEnv *env, jobject thiz) {
+    WasmManager::getInstance().initEngine();
 }
 
-// 2. 从内存字节加载 (JIT)
-// 返回: handle 指针
-JNIEXPORT jlong JNICALL
-Java_crow_wasmtime_wasmline_WasmEngine_nativeInitBytes(JNIEnv *env, jobject thiz, jbyteArray bytes) {
-    if (!bytes) return 0;
-    jsize len = env->GetArrayLength(bytes);
-    jbyte* data = env->GetByteArrayElements(bytes, nullptr);
-
-    std::vector<uint8_t> vec(data, data + len);
-    env->ReleaseByteArrayElements(bytes, data, JNI_ABORT);
-
-    WasmModule* module = WasmModule::loadFromSource(vec);
-    return reinterpret_cast<jlong>(module);
+JNIEXPORT void JNICALL
+Java_crow_wasmtime_WasmRuntime_nativeRelease(JNIEnv *env, jobject thiz) {
+    WasmManager::getInstance().releaseEngine();
 }
 
-// 从文件路径加载源码进行 JIT 编译
-JNIEXPORT jlong JNICALL
-Java_crow_wasmtime_wasmline_WasmEngine_nativeInitSourcePath(JNIEnv *env, jobject thiz, jstring pathStr) {
-    const char* path = env->GetStringUTFChars(pathStr, nullptr);
-    WasmModule* module = WasmModule::loadFromSourcePath(path);
-    env->ReleaseStringUTFChars(pathStr, path);
-    return reinterpret_cast<jlong>(module);
-}
-
-// 3. 将当前模块序列化并保存到路径 (C++ 直接写文件)
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmtime_wasmline_WasmEngine_nativeSaveCache(JNIEnv *env, jobject thiz, jlong handle, jstring pathStr) {
-    auto* module = reinterpret_cast<WasmModule*>(handle);
-    if (!module) return false;
-
+Java_crow_wasmtime_WasmModule_nativeLoadSource(JNIEnv *env, jobject thiz, jstring keyStr, jstring pathStr) {
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
-    bool success = module->saveCacheToPath(path);
+
+    auto data = FileUtils::readFile(path);
+    bool success = false;
+
+    if (!data.empty()) {
+        auto* mod = WasmManager::getInstance().loadModule(key, data, true);
+        success = (mod != nullptr);
+    } else {
+        LOGE("Failed to read file: %s", path);
+    }
+
+    env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
     return success;
 }
 
-// 4. 执行调用
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmtime_WasmModule_nativeLoadCache(JNIEnv *env, jobject thiz, jstring keyStr, jstring pathStr) {
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
+    const char* path = env->GetStringUTFChars(pathStr, nullptr);
+
+    auto data = FileUtils::readFile(path);
+    bool success = false;
+
+    if (!data.empty()) {
+        auto* mod = WasmManager::getInstance().loadModule(key, data, false);
+        success = (mod != nullptr);
+    }
+
+    env->ReleaseStringUTFChars(keyStr, key);
+    env->ReleaseStringUTFChars(pathStr, path);
+    return success;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmtime_WasmModule_nativeSaveCache(JNIEnv *env, jobject thiz, jstring keyStr, jstring outPathStr) {
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
+    const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
+    bool success = false;
+
+    // 获取的已经是 wasmtime_module_t*
+    auto* module = WasmManager::getInstance().getModule(key);
+    if (module) {
+        wasm_byte_vec_t serialized;
+        // [修复] 参数类型匹配了
+        wasmtime_error_t* err = wasmtime_module_serialize(module, &serialized);
+        if (!err) {
+            std::vector<uint8_t> data(serialized.data, serialized.data + serialized.size);
+            success = FileUtils::writeFile(outPath, data);
+            wasm_byte_vec_delete(&serialized);
+        } else {
+            wasmtime_error_delete(err);
+        }
+    }
+
+    env->ReleaseStringUTFChars(keyStr, key);
+    env->ReleaseStringUTFChars(outPathStr, outPath);
+    return success;
+}
+
+JNIEXPORT void JNICALL
+Java_crow_wasmtime_WasmModule_nativeRelease(JNIEnv *env, jobject thiz, jstring keyStr) {
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
+    WasmManager::getInstance().releaseModule(key);
+    env->ReleaseStringUTFChars(keyStr, key);
+}
+
 JNIEXPORT jstring JNICALL
-Java_crow_wasmtime_wasmline_WasmEngine_nativeCall(JNIEnv *env, jobject thiz, jlong handle, jstring action, jstring json) {
-    auto* module = reinterpret_cast<WasmModule*>(handle);
-    if (!module) return env->NewStringUTF("{\"error\": \"Invalid Handle\"}");
+Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jobject thiz, jstring keyStr, jstring action, jstring json) {
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
+    const char* act = env->GetStringUTFChars(action, nullptr);
+    const char* jsn = env->GetStringUTFChars(json, nullptr);
 
-    const char* a = env->GetStringUTFChars(action, nullptr);
-    const char* j = env->GetStringUTFChars(json, nullptr);
+    std::string result = "{\"error\":\"Module not found\"}";
 
-    // 执行
-    std::string result = module->call(a ? a : "", j ? j : "");
+    auto* module = WasmManager::getInstance().getModule(key);
+    if (module) {
+        // [修复] 构造函数参数匹配
+        WasmSession session(WasmManager::getInstance().getEngine(), module);
+        session.registerHostFunctions();
+        result = session.call(act, jsn);
+    }
 
-    if (a) env->ReleaseStringUTFChars(action, a);
-    if (j) env->ReleaseStringUTFChars(json, j);
+    env->ReleaseStringUTFChars(keyStr, key);
+    env->ReleaseStringUTFChars(action, act);
+    env->ReleaseStringUTFChars(json, jsn);
 
     return env->NewStringUTF(result.c_str());
 }
 
-// 5. 释放资源
-JNIEXPORT void JNICALL
-Java_crow_wasmtime_wasmline_WasmEngine_nativeRelease(JNIEnv *env, jobject thiz, jlong handle) {
-    auto* module = reinterpret_cast<WasmModule*>(handle);
-    if (module) delete module;
-}
-
-} // extern C
+} // extern "C"
