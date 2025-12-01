@@ -4,16 +4,30 @@ package crow.wasmtime.wasmline
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
+
+val baseJson = Json {
+    prettyPrint = true
+    isLenient = true
+    println("JSON INIT")
+}
 
 @Serializable
 data class User(val id: Int, val name: String)
+
+var data = 1
 
 // 用户只需要在一个地方初始化路由
 fun initApp() {
     WasmRouter.register("getUser") { jsonArgs ->
         // 纯粹的业务逻辑
-        val user = User(1, "Crow Optimized")
-        Json.encodeToString(user)
+        val start = Clock.System.now().toEpochMilliseconds()
+        val user = User(1, "Crow Optimized \t $data")
+        data = (0..100000).random()
+        val result =  "123123123\t$data"
+        val end  = Clock.System.now().toEpochMilliseconds()
+        println("SPEND TIME : ${end - start} MS")
+        result
     }
 
     WasmRouter.register("add") {
@@ -41,4 +55,7 @@ fun initApp() {
 @WasmExport
 fun run_entry() { RunWasmEngineEntry() }
 
-fun main() { initApp() }
+fun main() {
+    println("INIT MAIN")
+
+    initApp() }
