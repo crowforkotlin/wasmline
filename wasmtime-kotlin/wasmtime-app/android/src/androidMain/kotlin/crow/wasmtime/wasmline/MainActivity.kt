@@ -70,7 +70,9 @@ class MainActivity : AppCompatActivity() {
                     val module = WasmModule.load(wasmFile, cacheFile)
 
                     // 3. 执行调用
-                    val result = module.call("getUser", "{\"id\": 1001}")
+                    val star = System.currentTimeMillis()
+                    val result = module.call("getUser", "{\"id\": 1001}${(0..100000).toList().map { it.toString() }}")
+                "spend time --------> ${System.currentTimeMillis() - star}".info()
 
                     withContext(Dispatchers.Main) {
                         binding.content.text = "Result: $result\nTime: ${System.currentTimeMillis() - start}ms"

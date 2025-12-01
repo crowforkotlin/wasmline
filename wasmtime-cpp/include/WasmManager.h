@@ -5,6 +5,8 @@
 #include <shared_mutex>
 #include "wasm.h"
 #include "wasmtime.h"
+// 必须包含 Session 头文件以便管理指针
+#include "WasmSession.h" 
 
 namespace crow {
 
@@ -15,21 +17,16 @@ namespace crow {
         void initEngine();
         void releaseEngine();
 
-        /**
-         * 智能加载模块 (核心优化)
-         * 逻辑：Check Cache -> (Miss) -> Read File -> Compile/Deserialize -> Cache
-         * 
-         * @param key 模块唯一标识
-         * @param filePath 文件路径 (仅在缓存未命中时读取)
-         * @param isJit true=源码编译(.wasm), false=AOT加载(.cwasm)
-         */
+        // 加载模块（保持不变）
         wasmtime_module_t* getOrLoadModule(const std::string& key, const std::string& filePath, bool isJit);
-
-        // 获取已缓存的模块
         wasmtime_module_t* getModule(const std::string& key);
-
-        // 释放模块
         void releaseModule(const std::string& key);
+
+        // [新增] 获取或创建缓存的 Session
+        WasmSession* getOrCreateSession(const std::string& key);
+
+        // [新增] 释放指定 Session (可选)
+        void releaseSession(const std::string& key);
 
         wasm_engine_t* getEngine() const;
 
@@ -39,7 +36,12 @@ namespace crow {
 
         wasm_engine_t* engine = nullptr;
         std::unordered_map<std::string, wasmtime_module_t*> moduleCache;
-        mutable std::shared_mutex cacheMutex; // 读写锁
+        
+        // [新增] Session 缓存：Key 与 ModuleKey 保持一致
+        std::unordered_map<std::string, WasmSession*> sessionCache;
+
+        mutable std::shared_mutex cacheMutex; // 保护 moduleCache
+        mutable std::shared_mutex sessionMutex; // 保护 sessionCache
 
         wasm_config_t* createConfig();
     };

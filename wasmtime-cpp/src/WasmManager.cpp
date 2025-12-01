@@ -1,42 +1,27 @@
 #include "WasmManager.h"
 #include "WasmLog.h"
-#include "FileUtils.h" // 必须引用文件工具
-#include "WasmTimer.h" // 引用计时器
-#include <vector>
+#include "FileUtils.h"
 
 namespace crow {
 
+    // ... (getInstance, createConfig 等保持不变) ...
     WasmManager& WasmManager::getInstance() {
         static WasmManager instance;
         return instance;
     }
-
-    WasmManager::~WasmManager() {
-        releaseEngine();
-    }
+    
+    WasmManager::~WasmManager() { releaseEngine(); }
 
     wasm_config_t* WasmManager::createConfig() {
         wasm_config_t* conf = wasm_config_new();
-
-        // 1. 开启高级特性
         wasmtime_config_wasm_gc_set(conf, true);
         wasmtime_config_wasm_function_references_set(conf, true);
         wasmtime_config_wasm_exceptions_set(conf, true);
-
-        // 2. Android 兼容性配置 (至关重要)
-        // 关闭 SIMD: 防止指令集不兼容
         wasmtime_config_wasm_simd_set(conf, false);
         wasmtime_config_wasm_relaxed_simd_set(conf, false);
-
-        // 关闭信号 Trap: 这一步决定了必须在本地编译，不能用编译的文件
         wasmtime_config_signals_based_traps_set(conf, false);
-
-        // 内存页保护设为 0: 适配 Android 虚拟内存机制
         wasmtime_config_memory_guard_size_set(conf, 0);
-
-        // 限制栈大小 (512KB)
         wasmtime_config_max_wasm_stack_set(conf, 512 * 1024);
-
         return conf;
     }
 
@@ -50,6 +35,16 @@ namespace crow {
     }
 
     void WasmManager::releaseEngine() {
+        // 1. 先清空所有 Session
+        {
+            std::unique_lock<std::shared_mutex> lock(sessionMutex);
+            for (auto& kv : sessionCache) {
+                delete kv.second; // 触发 Session 析构
+            }
+            sessionCache.clear();
+        }
+
+        // 2. 再清空 Modules 和 Engine
         std::unique_lock<std::shared_mutex> lock(cacheMutex);
         for (auto& kv : moduleCache) {
             wasmtime_module_delete(kv.second);
@@ -61,65 +56,35 @@ namespace crow {
             LOGI("Wasm Engine Released.");
         }
     }
-    
-    // 核心优化：懒加载 + 线程安全
+
     wasmtime_module_t* WasmManager::getOrLoadModule(const std::string& key, const std::string& filePath, bool isJit) {
-        // [阶段1] 快速路径：读锁检查 (无 IO)
         {
             std::shared_lock<std::shared_mutex> lock(cacheMutex);
-            if (!engine) {
-                LOGE("Engine not initialized!");
-                return nullptr;
-            }
+            if (!engine) return nullptr;
             auto it = moduleCache.find(key);
-            if (it != moduleCache.end()) {
-                // LOGI("Cache Hit: %s", key.c_str()); 
-                return it->second; // 缓存命中，直接返回，耗时极低
-            }
+            if (it != moduleCache.end()) return it->second;
         }
 
-        // [阶段2] 慢速路径：写锁加载 (IO + 编译)
         std::unique_lock<std::shared_mutex> lock(cacheMutex);
-        
         if (!engine) return nullptr;
+        if (moduleCache.find(key) != moduleCache.end()) return moduleCache[key];
 
-        // Double Check: 防止在等待锁的过程中，其他线程已经加载了
-        if (moduleCache.find(key) != moduleCache.end()) {
-            return moduleCache[key];
-        }
-
-        LOGI("Cache Miss. Loading from disk: %s", filePath.c_str());
-        
-        // 读取文件 (耗时操作)
+        LOGI("Cache Miss. Loading: %s", filePath.c_str());
         auto data = FileUtils::readFile(filePath);
-        if (data.empty()) {
-            LOGE("File read failed or empty: %s", filePath.c_str());
-            return nullptr;
-        }
+        if (data.empty()) return nullptr;
 
         wasmtime_module_t* module = nullptr;
         wasmtime_error_t* error = nullptr;
-
-        // 编译或反序列化 (耗时操作)
         if (isJit) {
             error = wasmtime_module_new(engine, data.data(), data.size(), &module);
         } else {
             error = wasmtime_module_deserialize(engine, data.data(), data.size(), &module);
         }
 
-        // 释放文件内存，data在此处析构，节省内存
-        // (module 已经创建在 engine 内部了)
-        
         if (error) {
-            wasm_byte_vec_t msg;
-            wasmtime_error_message(error, &msg);
-            LOGE("Load Module Failed: %s", msg.data);
-            wasm_byte_vec_delete(&msg);
             wasmtime_error_delete(error);
             return nullptr;
         }
-
-        // 存入缓存
         moduleCache[key] = module;
         return module;
     }
@@ -127,27 +92,78 @@ namespace crow {
     wasmtime_module_t* WasmManager::getModule(const std::string& key) {
         std::shared_lock<std::shared_mutex> lock(cacheMutex);
         auto it = moduleCache.find(key);
-        if (it != moduleCache.end()) {
-            return it->second;
+        return (it != moduleCache.end()) ? it->second : nullptr;
+    }
+
+    // [新增] 获取 Session，如果没有则创建
+    WasmSession* WasmManager::getOrCreateSession(const std::string& key) {
+        // 1. 尝试从缓存获取 (读锁)
+        {
+            std::shared_lock<std::shared_mutex> lock(sessionMutex);
+            auto it = sessionCache.find(key);
+            if (it != sessionCache.end()) {
+                WasmSession* value = it->second;
+                if (value != nullptr) {
+                    LOGI("[wasmtime] 2. get session (Ptr): Found object at address: %p", (void*)value);
+                } else {
+                    LOGI("[wasmtime] 2. get session (Ptr): Found nullptr in cache for key!");
+                }
+                return value;
+            }
         }
-        return nullptr;
+
+        // 2. 获取对应的 Module (需要先加载好)
+        auto* module = getModule(key);
+        if (!module) {
+            LOGE("Cannot create session: Module %s not found", key.c_str());
+            return nullptr;
+        } else {
+            LOGI("[wasmtime] 1. GET module cache (Ptr): address: %p", (void*)module);
+        }
+
+        // 3. 创建新 Session (写锁)
+        std::unique_lock<std::shared_mutex> lock(sessionMutex);
+        // 双重检查
+        if (sessionCache.find(key) != sessionCache.end()) {
+            LOGI("[wasmtime] 3. Create sessions and cache.");
+            return sessionCache[key];
+        }
+
+        // 创建堆对象
+        auto* session = new WasmSession(engine, module, key);
+        // 初始化 (在此处初始化，确保只做一次)
+        if (!session->initialize()) {
+            delete session;
+            return nullptr;
+        }
+
+        sessionCache[key] = session;
+        return session;
+    }
+
+    // [新增] 释放 Session
+    void WasmManager::releaseSession(const std::string& key) {
+        std::unique_lock<std::shared_mutex> lock(sessionMutex);
+        auto it = sessionCache.find(key);
+        if (it != sessionCache.end()) {
+            delete it->second; // 析构 WasmSession
+            sessionCache.erase(it);
+            LOGI("Session Released: %s", key.c_str());
+        }
     }
 
     void WasmManager::releaseModule(const std::string& key) {
+        // [关键] 释放模块前，必须先释放依赖该模块的 Session
+        releaseSession(key);
+
         std::unique_lock<std::shared_mutex> lock(cacheMutex);
         auto it = moduleCache.find(key);
         if (it != moduleCache.end()) {
-            // Wasmtime 内部引用计数机制：
-            // 即使这里调用了 delete，如果还有 Instance (Session) 正在使用它，
-            // 真正的内存释放会推迟到 Instance 销毁后。
-            // 所以这里直接 delete 是安全的，Manager 不再持有它即可。
             wasmtime_module_delete(it->second);
             moduleCache.erase(it);
             LOGI("Module Released: %s", key.c_str());
         }
     }
 
-    wasm_engine_t* WasmManager::getEngine() const {
-        return engine;
-    }
+    wasm_engine_t* WasmManager::getEngine() const { return engine; }
 }
