@@ -6,3 +6,9 @@
 5	146	7863432585826844	libwasmtime_core.a	356d6bc36006ebb9
 7	952	7863432594101769	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	db47dc6dc2786d4b
 953	1331	7863432597681091	C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	1b7b7e7109324cac
+18	1036	7863470742730864	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/FileUtils.cpp.o	f8e6d691fe2f7dd8
+21	1038	7863470742810849	CMakeFiles/wasmline.dir/WasmtimeJni.cpp.o	db47dc6dc2786d4b
+1	1080	7863470743155969	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmSession.cpp.o	a6f8276f644fc5e5
+14	1122	7863470743566043	CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmManager.cpp.o	40a9fc9c98eef07
+1122	1264	7863470744896445	libwasmtime_core.a	356d6bc36006ebb9
+1265	2277	7863470754776266	C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a/libwasmline.so	1b7b7e7109324cac

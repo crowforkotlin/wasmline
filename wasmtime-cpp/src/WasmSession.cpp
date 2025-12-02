@@ -9,6 +9,8 @@ namespace crow {
         if (size > 0 && buffer) {
             std::string msg((const char*)buffer, size > 1024 ? 1024 : size);
             LOGI("[WASI] %s", msg.c_str());
+        } else {
+            LOGI("[WASI] logcat failure!");
         }
         return size;
     }

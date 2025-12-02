@@ -17,51 +17,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":test: test...">
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/Data.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Data.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmRouter.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmSession.h" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmSession.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/project.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle/libs.versions.toml" beforeDir="false" afterPath="$PROJECT_DIR$/gradle/libs.versions.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cache-v2-5691d2f014108a5aec90.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-4c2e2ce43b7b84ab2cee.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-1b5873aef31ab3934505.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/directory-.-Debug-f5ebdc15457944623624.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/index-2025-12-01T16-49-20-0072.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmline-Debug-22d4783c67644fa1007e.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.cmake/api/v1/reply/target-wasmtime_core-Debug-19666aed262c2a624921.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeCache.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/CMakeOutput.log" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/TargetDirectories.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/CMakeFiles/rules.ninja" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/android_gradle_build_mini.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build.ninja" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/build_file_index.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/cmake_install.cmake" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/compile_commands.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/metadata_generation_command.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/symbol_folder_index.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/tools/debug/arm64-v8a/compile_commands.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmModule.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmModule.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Core.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Core.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/plugin/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -122,7 +80,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$/.." value="test" />
+        <entry key="$PROJECT_DIR$/.." value="maintest" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -161,79 +119,80 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Android App.MainActivity.executor&quot;: &quot;Run&quot;,
-    &quot;Android App.wasmedge-app.android.executor&quot;: &quot;Run&quot;,
-    &quot;Android App.wasmtime-app.android.executor&quot;: &quot;Run&quot;,
-    &quot;ApkExportedModule&quot;: &quot;WasmLine.wasmtime-app.android&quot;,
-    &quot;ExportApk.ApkPathForWasmLine.wasmtime-app.android&quot;: &quot;C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android&quot;,
-    &quot;Gradle.Build TEST.executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.Build wazero-kotlin.executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmCopy].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [app:run].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.AppKt (1).executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.AppKt (2).executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.AppKt.executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.GraalKt.executor&quot;: &quot;Debug&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;com.developerphil.adbidea.selecteddevices&quot;: &quot;87d500c6&quot;,
-    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/assets&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.17&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
-    &quot;show.do.not.copy.http.proxy.settings.to.gradle&quot;: &quot;false&quot;,
-    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;,
-    &quot;structure.view.defaults.are.configured&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Android App.MainActivity.executor": "Run",
+    "Android App.wasmedge-app.android.executor": "Run",
+    "Android App.wasmtime-app.android.executor": "Run",
+    "ApkExportedModule": "WasmLine.wasmtime-app.android",
+    "ExportApk.ApkPathForWasmLine.wasmtime-app.android": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android",
+    "Gradle.Build TEST.executor": "Run",
+    "Gradle.Build wazero-kotlin.executor": "Run",
+    "Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor": "Run",
+    "Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor": "Run",
+    "Gradle.wasmtime-kotlin [clean].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmCopy].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+    "Gradle.wazero-kotlin [app:run].executor": "Run",
+    "Gradle.wazero-kotlin [clean].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor": "Run",
+    "Kotlin.AppKt (1).executor": "Run",
+    "Kotlin.AppKt (2).executor": "Run",
+    "Kotlin.AppKt.executor": "Run",
+    "Kotlin.GraalKt.executor": "Debug",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "com.developerphil.adbidea.selecteddevices": "87d500c6",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/assets",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.17",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "preferences.keymap",
+    "show.do.not.copy.http.proxy.settings.to.gradle": "false",
+    "show.migrate.to.gradle.popup": "false",
+    "structure.view.defaults.are.configured": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;ExportApk.BuildVariants&quot;: [
-      &quot;release&quot;
+  "keyToStringList": {
+    "ExportApk.BuildVariants": [
+      "release"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\CrowF\Desktop\wasmtime-kotlin-wasi\wasmtime-kotlin\wasmtime-app\android\src\androidMain\assets" />
@@ -598,7 +557,39 @@
       <option name="project" value="LOCAL" />
       <updated>1764155356895</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary=":test: test...">
+      <option name="closed" value="true" />
+      <created>1764643523640</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1764643523640</updated>
+    </task>
+    <task id="LOCAL-00003" summary=":test: test...">
+      <option name="closed" value="true" />
+      <created>1764643695082</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1764643695082</updated>
+    </task>
+    <task id="LOCAL-00004" summary=":test: test...">
+      <option name="closed" value="true" />
+      <created>1764643709666</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1764643709666</updated>
+    </task>
+    <task id="LOCAL-00005" summary=":test: test...">
+      <option name="closed" value="true" />
+      <created>1764643738331</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1764643738331</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -626,7 +617,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value=":bug: wasmedge 0.14.0 only support .." />
-    <option name="LAST_COMMIT_MESSAGE" value=":bug: wasmedge 0.14.0 only support .." />
+    <MESSAGE value=":test: test..." />
+    <option name="LAST_COMMIT_MESSAGE" value=":test: test..." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -638,14 +630,6 @@
             <option name="WATCH_EXIT" value="false" />
           </properties>
           <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="kotlin-function">
-          <url>file://$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmModule.kt</url>
-          <line>16</line>
-          <properties class="crow.wasmtime.WasmModule$Companion" method="load">
-            <option name="WATCH_EXIT" value="false" />
-          </properties>
-          <option name="timeStamp" value="27" />
         </line-breakpoint>
         <breakpoint enabled="true" type="OCSymbolicBreakpointType">
           <properties>
