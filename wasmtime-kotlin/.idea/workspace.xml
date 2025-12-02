@@ -16,16 +16,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":test: test...">
-      <change afterPath="$PROJECT_DIR$/wasmtime-core/Script.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_deps" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a/.ninja_log" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.cwasm" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Data.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Data.kt" afterDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":art: performance &amp; struct" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -602,7 +593,23 @@
       <option name="project" value="LOCAL" />
       <updated>1764644048676</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary=":art: performance &amp; struct">
+      <option name="closed" value="true" />
+      <created>1764670295398</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1764670295398</updated>
+    </task>
+    <task id="LOCAL-00008" summary=":art: performance &amp; struct">
+      <option name="closed" value="true" />
+      <created>1764670344628</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1764670344628</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -631,7 +638,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value=":bug: wasmedge 0.14.0 only support .." />
     <MESSAGE value=":test: test..." />
-    <option name="LAST_COMMIT_MESSAGE" value=":test: test..." />
+    <MESSAGE value=":art: performance &amp; struct" />
+    <option name="LAST_COMMIT_MESSAGE" value=":art: performance &amp; struct" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
