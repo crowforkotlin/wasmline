@@ -45,13 +45,19 @@ Java_crow_wasmtime_WasmModule_nativeSaveCache(JNIEnv *env, jclass thiz, jstring 
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
     bool success = false;
+    // 1. 获取 Module
     auto* module = WasmManager::getInstance().getModule(key);
     if (module) {
         wasm_byte_vec_t serialized;
+        // 2. 序列化 (这一步本身就会分配内存)
         wasmtime_error_t* err = wasmtime_module_serialize(module, &serialized);
+
         if (!err) {
-            std::vector<uint8_t> data(serialized.data, serialized.data + serialized.size);
-            success = FileUtils::writeFile(outPath, data);
+            // [优化] 直接传入指针和长度，避免 std::vector 的二次深拷贝
+            // FileUtils::writeFile 需要支持 (const char*, size_t) 或 (uint8_t*, size_t)
+            success = FileUtils::writeFile(outPath, (const uint8_t*)serialized.data, serialized.size);
+
+            // 3. 立即释放序列化的内存
             wasm_byte_vec_delete(&serialized);
         } else {
             wasmtime_error_delete(err);

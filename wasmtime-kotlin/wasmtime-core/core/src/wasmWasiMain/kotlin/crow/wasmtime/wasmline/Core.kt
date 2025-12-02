@@ -85,9 +85,12 @@ internal object HostBridge {
                 // 指针运算 + 读取字节
                 bytes[i] = (pointer + i).loadByte()
             }
-            val datas = ProtoBuf.decodeFromByteArray<Data>(bytes)
-            println("spend time 22222 -> ${Clock.System.now().toEpochMilliseconds() - start} \t ${datas}")
-            return Json.encodeToString(datas)
+            println("size is : ${bytes.size}")
+            runCatching {
+                val datas = ProtoBuf.decodeFromByteArray<Data>(bytes)
+                println("spend time 22222 -> ${Clock.System.now().toEpochMilliseconds() - start} \t ${datas}")
+            }.onFailure { println("error is : ${it.message}") }
+            return "123"
         }
     }
 

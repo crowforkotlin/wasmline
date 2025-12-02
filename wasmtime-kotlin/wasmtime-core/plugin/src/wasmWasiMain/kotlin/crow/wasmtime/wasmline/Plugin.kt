@@ -9,7 +9,6 @@ import kotlin.time.Clock
 val baseJson = Json {
     prettyPrint = true
     isLenient = true
-    println("JSON INIT")
 }
 
 @Serializable
@@ -55,7 +54,4 @@ fun initApp() {
 @WasmExport
 fun run_entry() { RunWasmEngineEntry() }
 
-fun main() {
-    println("INIT MAIN")
-
-    initApp() }
+fun main() { initApp() }

@@ -76,12 +76,12 @@ class MainActivity : AppCompatActivity() {
                     // 3. 执行调用
                     val star = System.currentTimeMillis()
 
-                    val datas = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
-                    val result = module.call("getUser", datas)
+//                    val datas = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
+//                    val result = module.call("getUser", datas)
                     "spend time --------> ${System.currentTimeMillis() - star}".info()
 
                     withContext(Dispatchers.Main) {
-                        binding.content.text = "Result: $result\nTime: ${System.currentTimeMillis() - start}ms"
+//                        binding.content.text = "Result: $result\nTime: ${System.currentTimeMillis() - start}ms"
                     }
 
                                 // 4. (可选) 释放模块
