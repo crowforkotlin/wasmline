@@ -1,4 +1,5 @@
 @file:SuppressLint("SetTextI18n")
+@file:OptIn(ExperimentalSerializationApi::class)
 
 package crow.wasmtime.wasmline
 
@@ -17,6 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.system.measureTimeMillis
@@ -71,8 +75,10 @@ class MainActivity : AppCompatActivity() {
 
                     // 3. 执行调用
                     val star = System.currentTimeMillis()
-                    val result = module.call("getUser", "{\"id\": 1001}${(0..100000).toList().map { it.toString() }}")
-                "spend time --------> ${System.currentTimeMillis() - star}".info()
+
+                    val datas = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
+                    val result = module.call("getUser", datas)
+                    "spend time --------> ${System.currentTimeMillis() - star}".info()
 
                     withContext(Dispatchers.Main) {
                         binding.content.text = "Result: $result\nTime: ${System.currentTimeMillis() - start}ms"

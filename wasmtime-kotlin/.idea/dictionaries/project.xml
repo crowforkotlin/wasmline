@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>cwasm</w>
+      <w>thiz</w>
       <w>wasmline</w>
       <w>wasmtime</w>
     </words>

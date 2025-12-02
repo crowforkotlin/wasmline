@@ -17,14 +17,17 @@ namespace crow {
         bool initialize();
 
         // [修改] 执行调用：只负责传参和运行 run_entry
-        std::string call(const char* action, size_t actionLen, const char* json, size_t jsonLen);
+        std::string callJson(const char* action, size_t actionLen, const char* json, size_t jsonLen);
+
+        // [新增] 专用于二进制/Protobuf 调用，不返回默认的 "{}"
+        std::string callProtobuf(const char* action, size_t actionLen, const char* data, size_t dataLen);
 
         // 数据区 (Host Functions 读写)
         const char* actionPtr = nullptr;
         size_t actionSize = 0;
 
-        const char* jsonPtr = nullptr;
-        size_t jsonSize = 0;
+        const char* inputPtr = nullptr;
+        size_t inputSize = 0;
 
         std::string outputResult;
 
@@ -46,6 +49,9 @@ namespace crow {
         bool hasMemory = false;
 
         void registerHostFunctions();
+
+        // [新增] 核心私有实现
+        std::string internalCall(const char* act, size_t actLen, const char* in, size_t inLen);
 
         // Host Functions Callbacks
         static wasm_trap_t* host_get_action_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);

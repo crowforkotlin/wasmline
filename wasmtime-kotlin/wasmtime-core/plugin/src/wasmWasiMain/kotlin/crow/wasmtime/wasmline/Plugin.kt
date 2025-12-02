@@ -27,7 +27,7 @@ fun initApp() {
         val result =  "123123123\t$data"
         val end  = Clock.System.now().toEpochMilliseconds()
         println("SPEND TIME : ${end - start} MS")
-        result
+        jsonArgs
     }
 
     WasmRouter.register("add") {

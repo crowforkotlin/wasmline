@@ -24,6 +24,7 @@ kotlin {
         wasmWasiMain.dependencies {
             implementation("com.squareup.okio:okio-wasm-wasi:3.16.4")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-wasm-wasi:1.9.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf-wasm-wasi:1.9.0")
             implementation("org.jetbrains.kotlinx:atomicfu-wasm-wasi:0.30.0-beta")
             implementation("org.jetbrains.kotlin:kotlin-stdlib-wasm-wasi:2.3.0-RC")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-wasm-wasi:1.10.2")

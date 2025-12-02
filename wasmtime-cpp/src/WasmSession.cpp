@@ -120,48 +120,66 @@ namespace crow {
         define("host_read_from_memory", host_read_from_memory, {WASM_I32, WASM_I32}, {});
     }
 
-    std::string WasmSession::call(const char* act, size_t actLen, const char* jsn, size_t jsnLen) {
-//        auto start = std::chrono::high_resolution_clock::now();
-//        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
-//        LOGI("[wasmtime] native call spend time : %lld ms", duration);
-        std::lock_guard<std::mutex> lock(sessionMutex); // 关键：执行时加锁，防止数据竞争
-        
-        if (!isInitialized) return "{\"error\":\"Session not initialized\"}";
+    // [实现] JSON 调用
+    std::string WasmSession::callJson(const char* act, size_t actLen, const char* json, size_t jsonLen) {
+        std::string res = internalCall(act, actLen, json, jsonLen);
+        // JSON 特有逻辑：如果是空的，返回空JSON对象
+        return res.empty() ? "{}" : res;
+    }
 
-        // 重置数据
-        // Zero Copy: 仅保存指针引用
+    // [实现] Protobuf 调用
+    std::string WasmSession::callProtobuf(const char* act, size_t actLen, const char* data, size_t dataLen) {
+        // Protobuf 特有逻辑：直接返回原始数据（可能为空）
+        return internalCall(act, actLen, data, dataLen);
+    }
+
+    // [核心] 通用内部调用实现
+    std::string WasmSession::internalCall(const char* act, size_t actLen, const char* in, size_t inLen) {
+        std::lock_guard<std::mutex> lock(sessionMutex);
+
+        if (!isInitialized) return "";
+
+        // 1. 设置通用指针
         actionPtr = act;
         actionSize = actLen;
-        jsonPtr = jsn;
-        jsonSize = jsnLen;
-        outputResult = "";
+        inputPtr = in;      // 指向 JSON 字符串 或 Protobuf 二进制流
+        inputSize = inLen;
 
+        outputResult.clear();
+
+        // 2. 执行 Wasm
         wasmtime_extern_t item;
         wasm_trap_t* trap = nullptr;
-        wasmtime_error_t* error = nullptr;
-        // 直接调用 run_entry，不再实例化
+
         if (wasmtime_instance_export_get(context, &instance, "run_entry", 9, &item)) {
-            error = wasmtime_func_call(context, &item.of.func, nullptr, 0, nullptr, 0, &trap);
+            // run_entry 不需要参数，它会反向调用 host_get_input_size 等函数
+            wasmtime_error_t* error = wasmtime_func_call(context, &item.of.func, nullptr, 0, nullptr, 0, &trap);
+
             if (error || trap) {
                 if(trap) {
                     wasm_byte_vec_t msg;
                     wasm_trap_message(trap, &msg);
-                    LOGE("[]Execution Trap: %s", msg.data);
+                    LOGE("Execution Trap: %s", msg.data);
                     wasm_byte_vec_delete(&msg);
                     wasm_trap_delete(trap);
                 }
                 if(error) wasmtime_error_delete(error);
-                return "{\"error\":\"Execution Error\"}";
+
+                // 出错清理指针
+                actionPtr = nullptr;
+                inputPtr = nullptr;
+                return "";
             }
         } else {
-            return "{\"error\":\"No run_entry export\"}";
+            LOGE("run_entry export not found");
+            return "";
         }
 
-        // 调用结束，重置指针防止野指针（虽然 session 是受控的，但好习惯）
+        // 3. 清理指针 (防止悬垂引用)
         actionPtr = nullptr;
-        jsonPtr = nullptr;
+        inputPtr = nullptr;
 
-        return outputResult.empty() ? "{}" : outputResult;
+        return outputResult;
     }
 
     // Host Functions 实现不变，因为通过 getUserData 获取 this 指针
@@ -179,7 +197,7 @@ namespace crow {
     wasm_trap_t* WasmSession::host_get_json_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
         auto* self = get_session(caller);
         results[0].kind = WASMTIME_I32;
-        results[0].of.i32 = (int32_t)self->jsonSize;
+        results[0].of.i32 = (int32_t)self->inputSize;
         return nullptr;
     }
 
@@ -187,8 +205,8 @@ namespace crow {
         auto* self = get_session(caller);
         int32_t type = args[0].of.i32;
         int32_t index = args[1].of.i32;
-        const char* ptr = (type == 0) ? self->actionPtr : self->jsonPtr;
-        size_t size = (type == 0) ? self->actionSize : self->jsonSize;
+        const char* ptr = (type == 0) ? self->actionPtr : self->inputPtr;
+        size_t size = (type == 0) ? self->actionSize : self->inputSize;
         if (index < 0 || index >= size) {
             return wasmtime_trap_new("Index OOB", 9);
         }
@@ -215,8 +233,8 @@ namespace crow {
         int32_t len = args[2].of.i32;
 
         // 获取数据源
-        const char* srcData = (type == 0) ? self->actionPtr : self->jsonPtr;
-        size_t maxLen = (type == 0) ? self->actionSize : self->jsonSize;
+        const char* srcData = (type == 0) ? self->actionPtr : self->inputPtr;
+        size_t maxLen = (type == 0) ? self->actionSize : self->inputSize;
         
         if (len < 0) return nullptr; // 简单的参数防御
         if ((size_t)len > maxLen) len = (int32_t)maxLen;
