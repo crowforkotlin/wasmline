@@ -51,37 +51,40 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
 
+                    val datas = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
                     // 准备文件：将 assets 里的 plugin.wasm 拷贝到 cache 目录
                     // 因为我们的 C++ 层现在只接受文件路径，防止 OOM
                     val wasmFile = File(cacheDir, "plugin.wasm")
                     val cacheFile = File(cacheDir, "plugin.cwasm") // 编译后的缓存文件
 
                     // 模拟拷贝 (如果文件不存在)
-                    "wasm file ${wasmFile.exists()}".info()
-                    if (!wasmFile.exists()) {
-                        assets.open("plugin.wasm").use { input ->
-                            FileOutputStream(wasmFile).use { output ->
+                    val targetFile = wasmFile
+                    "wasm file ${wasmFile.exists()} \t ${targetFile.name}".info()
+                    if (!targetFile.exists()) {
+                        assets.open(targetFile.name).use { input ->
+                            FileOutputStream(targetFile).use { output ->
                                 input.copyTo(output)
                             }
                         }
                     }
 
-                    val start = System.currentTimeMillis()
+                    var start = System.currentTimeMillis()
 
                     // 2. 加载模块
                     // 第一次运行会编译源码并生成 cwasm
                     // 第二次运行直接加载 cwasm，速度极快
                     val module = WasmModule.load(wasmFile, cacheFile)
+                    "spend time load module --------> ${System.currentTimeMillis() - start}".info()
 
                     // 3. 执行调用
-                    val star = System.currentTimeMillis()
+                    start = System.currentTimeMillis()
 
-//                    val datas = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
-//                    val result = module.call("getUser", datas)
-                    "spend time --------> ${System.currentTimeMillis() - star}".info()
+
+                    val result = module.call("getUser", datas)
+                    "spend time call function --------> ${System.currentTimeMillis() - start}".info()
 
                     withContext(Dispatchers.Main) {
-//                        binding.content.text = "Result: $result\nTime: ${System.currentTimeMillis() - start}ms"
+                        binding.content.text = "Result: $result\nTime: ${System.currentTimeMillis() - start}ms"
                     }
 
                                 // 4. (可选) 释放模块

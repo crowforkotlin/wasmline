@@ -115,7 +115,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmManager.cpp",
+			"path" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmRuntime.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{

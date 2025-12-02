@@ -1,30 +1,35 @@
+/**
+ * JNI Native Bridge for Wasmtime Integration.
+ *
+ * Date: 2025-12-02
+ * Author: crowforkotlin
+ */
+
 #include <jni.h>
 #include <string>
-#include "WasmManager.h"
-#include "WasmSession.h"
-#include "FileUtils.h"
-#include "WasmLog.h"
-
-#pragma clang diagnostic push
-using namespace crow;
+#include "WasmRuntime.h"
+#include "WasmFileUtils.h"
+#include "WasmLogger.h"
 
 extern "C" {
 
 JNIEXPORT void JNICALL
 Java_crow_wasmtime_WasmRuntime_nativeInit(JNIEnv *env, jobject thiz) {
-    WasmManager::getInstance().initEngine();
+    WasmRuntime::getInstance().initEngine();
 }
 
 JNIEXPORT void JNICALL
 Java_crow_wasmtime_WasmRuntime_nativeRelease(JNIEnv *env, jobject thiz) {
-    WasmManager::getInstance().releaseEngine();
+    WasmRuntime::getInstance().releaseEngine();
 }
 
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmtime_WasmModule_nativeLoadSource(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
-    auto* mod = WasmManager::getInstance().getOrLoadModule(key, path, true);
+    
+    auto* mod = WasmRuntime::getInstance().loadModule(key, path, true); // true = JIT/Source
+    
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
     return (mod != nullptr);
@@ -34,7 +39,9 @@ JNIEXPORT jboolean JNICALL
 Java_crow_wasmtime_WasmModule_nativeLoadCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
-    auto* mod = WasmManager::getInstance().getOrLoadModule(key, path, false);
+    
+    auto* mod = WasmRuntime::getInstance().loadModule(key, path, false); // false = Cache
+    
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
     return (mod != nullptr);
@@ -45,124 +52,64 @@ Java_crow_wasmtime_WasmModule_nativeSaveCache(JNIEnv *env, jclass thiz, jstring 
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
     bool success = false;
-    // 1. 获取 Module
-    auto* module = WasmManager::getInstance().getModule(key);
+
+    auto* module = WasmRuntime::getInstance().getModule(key);
     if (module) {
         wasm_byte_vec_t serialized;
-        // 2. 序列化 (这一步本身就会分配内存)
         wasmtime_error_t* err = wasmtime_module_serialize(module, &serialized);
 
         if (!err) {
-            // [优化] 直接传入指针和长度，避免 std::vector 的二次深拷贝
-            // FileUtils::writeFile 需要支持 (const char*, size_t) 或 (uint8_t*, size_t)
-            success = FileUtils::writeFile(outPath, (const uint8_t*)serialized.data, serialized.size);
-
-            // 3. 立即释放序列化的内存
+            // Write directly using pointer to avoid copying to vector
+            success = Utils::writeFile(outPath, reinterpret_cast<const uint8_t*>(serialized.data), serialized.size);
             wasm_byte_vec_delete(&serialized);
         } else {
             wasmtime_error_delete(err);
         }
     }
+    
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(outPathStr, outPath);
     return success;
 }
 
-// [修改] 释放 Session 和 Module
 JNIEXPORT void JNICALL
 Java_crow_wasmtime_WasmModule_nativeRelease(JNIEnv *env, jclass thiz, jstring keyStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    WasmManager::getInstance().releaseModule(key); // 内部会自动释放 Session
+    WasmRuntime::getInstance().releaseModule(key);
     env->ReleaseStringUTFChars(keyStr, key);
 }
 
-// [新增] 单独释放 Session (如果你只想重置状态但不卸载模块)
-JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmModule_nativeReleaseSession(JNIEnv *env, jclass thiz, jstring keyStr) {
-    const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    WasmManager::getInstance().releaseSession(key);
-    env->ReleaseStringUTFChars(keyStr, key);
-}
-
-JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmModule_nativeReleaseEngine(JNIEnv * env, jclass thiz) {
-    WasmManager::getInstance().releaseEngine();
-}
-
-// [核心优化] Native Call
-JNIEXPORT jstring JNICALL
-Java_crow_wasmtime_WasmModule_nativeJsonCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring action, jstring json) {
-    // 1. 获取指针
-    const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    const char* act = env->GetStringUTFChars(action, nullptr);
-    const char* jsn = env->GetStringUTFChars(json, nullptr);
-
-    // 2. 获取长度 (这是 O(1) 操作，比 strlen 快，直接从 JVM 元数据拿)
-    jsize actLen = env->GetStringUTFLength(action);
-    jsize jsnLen = env->GetStringUTFLength(json);
-
-    std::string result;
-
-    {
-        // 1. 从缓存获取 Session (如果第一次调用，会自动初始化)
-        WasmSession* session = WasmManager::getInstance().getOrCreateSession(key);
-        if (session) {
-            // 3. 传入指针和长度，零拷贝！
-            result = session->callJson(act, (size_t)actLen, jsn, (size_t)jsnLen);
-        } else {
-            result = "{\"error\":\"Session creation failed (Module not found?)\"}";
-        }
-    }
-    env->ReleaseStringUTFChars(keyStr, key);
-    env->ReleaseStringUTFChars(action, act);
-    env->ReleaseStringUTFChars(json, jsn);
-
-    return env->NewStringUTF(result.c_str());
-}
-
-
-// [核心优化] Native Call
+// Unified call for both JSON and Protobuf (bytes)
+// Action is passed as string, Input is passed as byte array
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmtime_WasmModule_nativeProtobufCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring action, jbyteArray bytes) {
-    // 1. 获取 Key 和 Action 字符串
+Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    const char* act = env->GetStringUTFChars(action, nullptr);
+    const char* action = env->GetStringUTFChars(actionStr, nullptr);
+    jsize actionLen = env->GetStringUTFLength(actionStr);
 
-    // 性能优化：直接从 JVM 获取长度，复杂度 O(1)，避免 strlen 的 O(N)
-    jsize actLen = env->GetStringUTFLength(action);
+    jbyte* dataPtr = env->GetByteArrayElements(inputBytes, nullptr);
+    jsize dataLen = env->GetArrayLength(inputBytes);
 
-    // 2. 获取二进制数据 (Protobuf)
-    // 性能优化：获取原始指针，可能产生 pinning 避免复制
-    jbyte* dataPtr = env->GetByteArrayElements(bytes, nullptr);
-    jsize dataLen = env->GetArrayLength(bytes);
-
-    std::string result;
+    std::string resultData;
     jbyteArray retArr = nullptr;
 
-    {
-        // 3. 执行调用
-        WasmSession* session = WasmManager::getInstance().getOrCreateSession(key);
-        if (session) {
-            // 注意：这里调用的是 callProtobuf (需要你在 WasmSession 中新增，见下文)
-            // 将 jbyte* (signed char*) 强转为 char* 传递给 C++
-            result = session->callProtobuf(act, (size_t)actLen, (const char*)dataPtr, (size_t)dataLen);
-        } else {
-            // Session 不存在，返回空或错误处理
-            result = "";
-        }
+    WasmSession* session = WasmRuntime::getInstance().getSession(key);
+    if (session) {
+        // Zero-copy passing of pointers
+        resultData = session->call(action, (size_t)actionLen, (const char*)dataPtr, (size_t)dataLen);
+    } else {
+        LOGE("Session not found for call: %s", key);
     }
 
-    // 4. 释放资源
-    // 性能优化：使用 JNI_ABORT，告诉 JVM 我们没有修改 dataPtr 的内容，不需要回写到 Java 堆，节省一次内存拷贝
-    env->ReleaseByteArrayElements(bytes, dataPtr, JNI_ABORT);
-    env->ReleaseStringUTFChars(action, act);
+    // Release JNI resources. JNI_ABORT avoids writing back to Java array if not modified
+    env->ReleaseByteArrayElements(inputBytes, dataPtr, JNI_ABORT);
+    env->ReleaseStringUTFChars(actionStr, action);
     env->ReleaseStringUTFChars(keyStr, key);
 
-    // 5. 构造返回结果
-    if (!result.empty()) {
-        retArr = env->NewByteArray((jsize)result.size());
-        // 内存拷贝：C++ std::string -> Java byte[]
-        env->SetByteArrayRegion(retArr, 0, (jsize)result.size(), (const jbyte*)result.data());
+    // Convert result back to Java byte array
+    if (!resultData.empty()) {
+        retArr = env->NewByteArray((jsize)resultData.size());
+        env->SetByteArrayRegion(retArr, 0, (jsize)resultData.size(), (const jbyte*)resultData.data());
     } else {
         retArr = env->NewByteArray(0);
     }
@@ -170,7 +117,4 @@ Java_crow_wasmtime_WasmModule_nativeProtobufCall(JNIEnv *env, jclass thiz, jstri
     return retArr;
 }
 
-
-
 } // extern "C"
-#pragma clang diagnostic pop

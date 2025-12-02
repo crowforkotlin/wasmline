@@ -46,8 +46,8 @@ class WasmModule(private val moduleKey: String) {
         @JvmStatic private external fun nativeLoadCache(key: String, path: String): Boolean
         @JvmStatic private external fun nativeSaveCache(key: String, path: String): Boolean
         @JvmStatic private external fun nativeRelease(key: String)
-        @JvmStatic private external fun nativeJsonCall(key: String, action: String, json: String): String
-        @JvmStatic private external fun nativeProtobufCall(key: String, action: String, protobufBytes: ByteArray): ByteArray
+        @JvmStatic private external fun nativeCall(key: String, action: String, json: String): String
+        @JvmStatic private external fun nativeCall(key: String, action: String, protobufBytes: ByteArray): ByteArray
     }
 
     /**
@@ -55,10 +55,10 @@ class WasmModule(private val moduleKey: String) {
      * 支持并发调用，底层会自动创建独立的 Session
      */
     suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) {
-        nativeJsonCall(moduleKey, action, json)
+        nativeCall(moduleKey, action, json)
     }
     suspend fun call(action: String, protobufBytes: ByteArray) = withContext(Dispatchers.Default) {
-        nativeProtobufCall(moduleKey, action, protobufBytes)
+        nativeCall(moduleKey, action, protobufBytes)
     }
 
     /**

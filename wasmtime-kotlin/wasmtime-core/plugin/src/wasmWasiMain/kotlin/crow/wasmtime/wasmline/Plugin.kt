@@ -28,7 +28,6 @@ fun initApp() {
         println("SPEND TIME : ${end - start} MS")
         jsonArgs
     }
-
     WasmRouter.register("add") {
         "{\"result\": 999}"
     }
@@ -43,12 +42,7 @@ fun initApp() {
         }
         "{AAA}"
     }
-    WasmRouter.register("B") {
-        repeat(10000) {
-
-        }
-        "{BBB}"
-    }
+    WasmRouter.register("B") { "{BBBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BB}" }
 }
 
 @WasmExport
