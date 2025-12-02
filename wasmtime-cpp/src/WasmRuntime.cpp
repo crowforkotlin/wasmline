@@ -96,8 +96,13 @@ wasmtime_module_t* WasmRuntime::loadModule(const std::string& key, const std::st
     wasmtime_module_t* module = nullptr;
     wasmtime_error_t* error = nullptr;
 
-
-
+    if (isJit) {
+        // 源码编译 (.wasm)
+        error = wasmtime_module_new(engine, data.data(), data.size(), &module);
+    } else {
+        // 缓存加载 (.cwasm)
+        error = wasmtime_module_deserialize(engine, data.data(), data.size(), &module);
+    }
 
     if (error) {
         wasm_byte_vec_t msg;

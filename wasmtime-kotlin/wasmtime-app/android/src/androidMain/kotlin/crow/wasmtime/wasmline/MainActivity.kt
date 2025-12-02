@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity() {
 
                     // 模拟拷贝 (如果文件不存在)
                     val targetFile = wasmFile
-                    "wasm file ${wasmFile.exists()} \t ${targetFile.name}".info()
+                    "wasm file ${wasmFile.exists()} \t ${wasmFile.absolutePath} \t ${targetFile.name}".info()
                     if (!targetFile.exists()) {
                         assets.open(targetFile.name).use { input ->
                             FileOutputStream(targetFile).use { output ->
