@@ -3,10 +3,11 @@
 
 # Ignore Gradle build output directory
 build
-*/.cxx/
-*/build/
-*/release/
-*/debug/
-*/.kotlin/
+wasmtime-app/android/.cxx/
+**/.cxx/
+**/build/
+**/release/
+**/debug/
+**/.kotlin/
 
 local.properties
