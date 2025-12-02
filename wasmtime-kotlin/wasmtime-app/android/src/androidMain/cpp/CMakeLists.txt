@@ -27,7 +27,7 @@ include_directories(${ROOT_DIR}/wasmtime-cpp/include)
 # 编译为静态库，供 JNI 复用
 add_library(wasmtime_core STATIC
         ${ROOT_DIR}/wasmtime-cpp/src/FileUtils.cpp
-        ${ROOT_DIR}/wasmtime-cpp/src/WasmManager.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmRuntime.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/WasmSession.cpp
 )
 

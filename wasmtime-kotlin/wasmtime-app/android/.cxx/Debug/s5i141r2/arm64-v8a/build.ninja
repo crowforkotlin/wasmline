@@ -58,8 +58,8 @@ build CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/w
   TARGET_COMPILE_PDB = CMakeFiles\wasmtime_core.dir\wasmtime_core.pdb
   TARGET_PDB = libwasmtime_core.pdb
 
-build CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmManager.cpp.o: CXX_COMPILER__wasmtime_core_Debug C$:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmManager.cpp || cmake_object_order_depends_target_wasmtime_core
-  DEP_FILE = CMakeFiles\wasmtime_core.dir\C_\Users\CrowF\Desktop\wasmtime-kotlin-wasi\wasmtime-cpp\src\WasmManager.cpp.o.d
+build CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmRuntime.cpp.o: CXX_COMPILER__wasmtime_core_Debug C$:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmRuntime.cpp || cmake_object_order_depends_target_wasmtime_core
+  DEP_FILE = CMakeFiles\wasmtime_core.dir\C_\Users\CrowF\Desktop\wasmtime-kotlin-wasi\wasmtime-cpp\src\WasmRuntime.cpp.o.d
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC
   INCLUDES = -IC:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/platforms/android/arm64-v8a/include -IC:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/include
   OBJECT_DIR = CMakeFiles\wasmtime_core.dir
@@ -84,7 +84,7 @@ build CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/w
 #############################################
 # Link the static library libwasmtime_core.a
 
-build libwasmtime_core.a: CXX_STATIC_LIBRARY_LINKER__wasmtime_core_Debug CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/FileUtils.cpp.o CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmManager.cpp.o CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmSession.cpp.o
+build libwasmtime_core.a: CXX_STATIC_LIBRARY_LINKER__wasmtime_core_Debug CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/FileUtils.cpp.o CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmRuntime.cpp.o CMakeFiles/wasmtime_core.dir/C_/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-cpp/src/WasmSession.cpp.o
   LANGUAGE_COMPILE_FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info
   OBJECT_DIR = CMakeFiles\wasmtime_core.dir
   POST_BUILD = cd .

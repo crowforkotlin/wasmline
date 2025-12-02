@@ -12,18 +12,13 @@ import kotlin.time.Clock
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
+private const val TYPE_HOST_ACTION = 0
+private const val TYPE_HOST_INPUT = 1
+
 // --- 1. 底层 Import (全部 private/internal，对外隐藏) ---
-@WasmImport("env", "host_get_action_size")
-external fun host_get_action_size(): Int
-
-@WasmImport("env", "host_get_json_size")
-external fun host_get_json_size(): Int
-
-@WasmImport("env", "host_read_input_byte")
-external fun host_read_input_byte(type: Int, index: Int): Int
-
-@WasmImport("env", "host_write_result_byte")
-external fun host_write_result_byte(byte: Int)
+// type: 0=Action, 1=Input
+@WasmImport("env", "host_get_size")
+external fun host_get_size(type: Int): Int
 
 // [新接口] 告诉 Host：把 type 类型的数据拷贝到 ptr 这个地址，长度为 len
 @WasmImport("env", "host_copy_to_memory")
@@ -36,18 +31,19 @@ external fun host_read_from_memory(ptr: Int, len: Int)
 // --- 2. 内部桥接工具 ---
 internal object HostBridge {
     fun getAction(): String {
-        val size = host_get_action_size()
+        val size = host_get_size(type = TYPE_HOST_ACTION)
         if (size == 0) return ""
-        return readStringFromHost(0, size)
+        return readStringFromHost(type = TYPE_HOST_ACTION, size)
     }
 
     fun getJson(): String {
-        val size = host_get_json_size()
+        val size = host_get_size(type = TYPE_HOST_INPUT)
         if (size == 0) return ""
-        return readStringFromHost(1, size)
+        return readStringFromHost(TYPE_HOST_INPUT, size)
     }
 
-    /*private fun readString(type: Int, size: Int): String {
+/*
+    private fun readString(type: Int, size: Int): String {
         val bytes = ByteArray(size)
         for (i in 0 until size) {
             bytes[i] = host_read_input_byte(type, i).toByte()
@@ -60,7 +56,8 @@ internal object HostBridge {
         for (b in bytes) {
             host_write_result_byte(b.toInt())
         }
-    }*/
+    }
+*/
 
     /**
      * 核心优化：批量读取

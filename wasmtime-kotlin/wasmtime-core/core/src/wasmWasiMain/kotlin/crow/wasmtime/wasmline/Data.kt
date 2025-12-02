@@ -7,4 +7,5 @@ data class Data(
     val id: Long,
     val name: String,
     val key: String
-)
+) {
+}
