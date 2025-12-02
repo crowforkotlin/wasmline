@@ -12,10 +12,10 @@ build/
 
 # Ignore Gradle build output directory
 build
-*/.cxx/
-*/build/
-*/release/
-*/debug/
-*/.kotlin/
+**/.cxx/
+**/build/
+**/release/
+**/debug/
+**/.kotlin/
 
 local.properties

@@ -4,10 +4,10 @@
 # Ignore Gradle build output directory
 build
 wasmtime-app/android/.cxx/
-*/.cxx/
-*/build/
-*/release/
-*/debug/
-*/.kotlin/
+**/.cxx/
+**/build/
+**/release/
+**/debug/
+**/.kotlin/
 
 local.properties
