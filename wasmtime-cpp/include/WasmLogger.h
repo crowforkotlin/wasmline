@@ -1,22 +1,37 @@
 /**
- * Log macros for Android platform.
+ * Simple Logger Interface.
  *
- * Date: 2025-12-02
- * Author: crowforkotlin
+ * Logic:
+ * 1. If DISABLE_WASM_LOGS is defined -> Logs are STRIPPED (Compiler removes them).
+ * 2. If NDEBUG (Release) is defined  -> Logs are STRIPPED.
+ * 3. Otherwise (Debug)               -> Logs are ACTIVE.
+ *
+ * 2025-12-02
+ * @author crowforkotlin / crowforkotlin@gmail.com
  */
 
 #pragma once
-#include <android/log.h>
 
-#define LOG_TAG "WasmNative"
-
-// Release builds usually disable logs unless forced
-#if !defined(NDEBUG) || defined(FORCE_ENABLE_LOGS)
-    #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-    #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-    #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+// Logic to determine if logs should be compiled
+#if defined(DISABLE_WASM_LOGS) || defined(NDEBUG)
+#define WASM_LOGS_ENABLED 0
 #else
-    #define LOGI(...) do {} while(0)
-    #define LOGE(...) do {} while(0)
-    #define LOGW(...) do {} while(0)
+#define WASM_LOGS_ENABLED 1
+#endif
+
+// =============================================================
+
+#if WASM_LOGS_ENABLED
+
+void NativeLogI(const char* fmt, ...);
+void NativeLogE(const char* fmt, ...);
+
+#define LOGI(...) NativeLogI(__VA_ARGS__)
+#define LOGE(...) NativeLogE(__VA_ARGS__)
+
+#else
+
+#define LOGI(...) do {} while(0)
+#define LOGE(...) do {} while(0)
+
 #endif

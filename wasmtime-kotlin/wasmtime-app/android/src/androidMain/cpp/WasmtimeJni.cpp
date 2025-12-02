@@ -81,7 +81,7 @@ Java_crow_wasmtime_WasmModule_nativeRelease(JNIEnv *env, jclass thiz, jstring ke
 
 // Unified call for both JSON and Protobuf (bytes)
 // Action is passed as string, Input is passed as byte array
-JNIEXPORT jbyteArray JNICALL
+JNIEXPORT jobject JNICALL
 Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* action = env->GetStringUTFChars(actionStr, nullptr);
@@ -98,7 +98,7 @@ Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keySt
         // Zero-copy passing of pointers
         resultData = session->call(action, (size_t)actionLen, (const char*)dataPtr, (size_t)dataLen);
     } else {
-        LOGE("Session not found for call: %s", key);
+        LOGE("[wasmtime] Jni (nativeCall) --> Session not found for call: %s", key);
     }
 
     // Release JNI resources. JNI_ABORT avoids writing back to Java array if not modified
