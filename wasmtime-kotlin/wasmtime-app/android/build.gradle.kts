@@ -13,6 +13,8 @@ androidApplication {
         api(libs.androidx.activity.ktx)
         api(libs.androidx.material)
         api(libs.kotlinx.serialization.json)
+        api(libs.kotlinx.serialization.protobuf)
+
     }
 }
 

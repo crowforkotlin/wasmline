@@ -14,13 +14,38 @@ namespace crow {
 
     wasm_config_t* WasmManager::createConfig() {
         wasm_config_t* conf = wasm_config_new();
+        // 1. 开启 Wasm GC (垃圾回收) 支持
+        // Kotlin/Wasm 编译产物依赖 Wasm GC 标准，如果不开启，无法加载模块。
         wasmtime_config_wasm_gc_set(conf, true);
+
+        // 2. 开启函数引用 (Function References)
+        // 这是 Wasm GC 的前置依赖，允许将函数作为值传递（Typed Function References）。
         wasmtime_config_wasm_function_references_set(conf, true);
+
+        // 3. 开启异常处理 (Exception Handling)
+        // 允许 Wasm 内部抛出和捕获异常（try-catch），Kotlin 的异常机制依赖此项。
         wasmtime_config_wasm_exceptions_set(conf, true);
+
+        // 4. 关闭 SIMD (单指令多数据流)
+        // 如果 Wasm 模块没用到向量运算优化，关掉可以略微减小编译开销。
+        // 这里的 relaxed_simd 是 SIMD 的扩展。 simd在android上必须关闭
         wasmtime_config_wasm_simd_set(conf, false);
         wasmtime_config_wasm_relaxed_simd_set(conf, false);
+
+        // 5. 【关键】关闭基于信号的 Trap (崩溃) 捕获
+        // 默认情况下，Wasmtime 利用 OS 的信号 (SIGSEGV/SIGBUS) 来检测内存越界，速度快但需要注册信号处理器。
+        // 在 Android 上，JVM (ART) 也有自己的信号处理器，两者极易冲突导致 Crash (Fault address 错误)。
+        // 设置为 false 后，Wasmtime 会在生成的机器码中插入显式的 if-check 来检查边界，更安全但稍慢一点点。
         wasmtime_config_signals_based_traps_set(conf, false);
+
+        // 6. 【关键】设置内存保护区大小为 0
+        // 通常 Wasmtime 会在每个实例内存末尾保留巨大的虚拟内存（Guard Pages，通常 4GB）来配合信号机制捕获越界。
+        // 既然上面关闭了 signals_based_traps，就不需要这个保护区了。
+        // 设置为 0 可以极大减少【虚拟内存 (VSS)】的占用，避免 32位设备或资源受限设备 OOM。
         wasmtime_config_memory_guard_size_set(conf, 0);
+
+        // 7. 限制 Wasm 栈大小为 512KB
+        // 防止递归过深导致宿主进程栈溢出崩溃。
         wasmtime_config_max_wasm_stack_set(conf, 512 * 1024);
         return conf;
     }

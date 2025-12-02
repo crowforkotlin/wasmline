@@ -23,7 +23,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973"
+			"value" : "C:\\Users\\CrowF\\AppData\\Local\\Android\\Sdk\\ndk\\27.0.12077973"
 		},
 		{
 			"name" : "ANDROID_PLATFORM",
@@ -51,7 +51,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-addr2line"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-addr2line.exe"
 		},
 		{
 			"name" : "CMAKE_ANDROID_ARCH_ABI",
@@ -75,7 +75,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973"
+			"value" : "C:\\Users\\CrowF\\AppData\\Local\\Android\\Sdk\\ndk\\27.0.12077973"
 		},
 		{
 			"name" : "CMAKE_AR",
@@ -91,7 +91,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ar.exe"
 		},
 		{
 			"name" : "CMAKE_ASM_FLAGS",
@@ -151,7 +151,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a"
+			"value" : "c:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -199,7 +199,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/bin/cmake"
+			"value" : "D:/software/cache/android/Sdk/cmake/3.22.1/bin/cmake.exe"
 		},
 		{
 			"name" : "CMAKE_CPACK_COMMAND",
@@ -211,7 +211,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/bin/cpack"
+			"value" : "D:/software/cache/android/Sdk/cmake/3.22.1/bin/cpack.exe"
 		},
 		{
 			"name" : "CMAKE_CTEST_COMMAND",
@@ -223,7 +223,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/bin/ctest"
+			"value" : "D:/software/cache/android/Sdk/cmake/3.22.1/bin/ctest.exe"
 		},
 		{
 			"name" : "CMAKE_CXX_COMPILER_AR",
@@ -239,7 +239,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ar.exe"
 		},
 		{
 			"name" : "CMAKE_CXX_COMPILER_RANLIB",
@@ -255,7 +255,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ranlib.exe"
 		},
 		{
 			"name" : "CMAKE_CXX_FLAGS",
@@ -367,7 +367,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ar.exe"
 		},
 		{
 			"name" : "CMAKE_C_COMPILER_RANLIB",
@@ -383,7 +383,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ranlib.exe"
 		},
 		{
 			"name" : "CMAKE_C_FLAGS",
@@ -495,19 +495,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-dlltool"
-		},
-		{
-			"name" : "CMAKE_EDIT_COMMAND",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "Path to cache edit program executable."
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/bin/ccmake"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-dlltool.exe"
 		},
 		{
 			"name" : "CMAKE_EXECUTABLE_FORMAT",
@@ -683,7 +671,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp"
+			"value" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -695,7 +683,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "/usr/local"
+			"value" : "C:/Program Files (x86)/WasmLine"
 		},
 		{
 			"name" : "CMAKE_INSTALL_SO_NO_EXE",
@@ -719,7 +707,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a"
+			"value" : "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\build\\intermediates\\cxx\\Debug\\s5i141r2\\obj\\arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_LINKER",
@@ -735,7 +723,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/ld.lld.exe"
 		},
 		{
 			"name" : "CMAKE_MAKE_PROGRAM",
@@ -747,7 +735,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/bin/ninja"
+			"value" : "D:\\software\\cache\\android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe"
 		},
 		{
 			"name" : "CMAKE_MODULE_LINKER_FLAGS",
@@ -843,7 +831,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-nm"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-nm.exe"
 		},
 		{
 			"name" : "CMAKE_NUMBER_OF_MAKEFILES",
@@ -871,7 +859,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-objcopy"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-objcopy.exe"
 		},
 		{
 			"name" : "CMAKE_OBJDUMP",
@@ -887,7 +875,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-objdump"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-objdump.exe"
 		},
 		{
 			"name" : "CMAKE_PLATFORM_INFO_INITIALIZED",
@@ -951,7 +939,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ranlib.exe"
 		},
 		{
 			"name" : "CMAKE_READELF",
@@ -967,7 +955,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-readelf"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-readelf.exe"
 		},
 		{
 			"name" : "CMAKE_ROOT",
@@ -979,7 +967,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22"
+			"value" : "D:/software/cache/android/Sdk/cmake/3.22.1/share/cmake-3.22"
 		},
 		{
 			"name" : "CMAKE_RUNTIME_OUTPUT_DIRECTORY",
@@ -991,7 +979,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/build/intermediates/cxx/Debug/s5i141r2/obj/arm64-v8a"
+			"value" : "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\build\\intermediates\\cxx\\Debug\\s5i141r2\\obj\\arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_SHARED_LINKER_FLAGS",
@@ -1199,7 +1187,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip"
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-strip.exe"
 		},
 		{
 			"name" : "CMAKE_SYSTEM_NAME",
@@ -1231,23 +1219,11 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "The CMake toolchain file"
 				}
 			],
-			"type" : "UNINITIALIZED",
-			"value" : "/Users/crowforkotlin/Library/Android/sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake"
-		},
-		{
-			"name" : "CMAKE_UNAME",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "uname command"
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : "/usr/bin/uname"
+			"type" : "FILEPATH",
+			"value" : "C:/Users/CrowF/AppData/Local/Android/Sdk/ndk/27.0.12077973/build/cmake/android.toolchain.cmake"
 		},
 		{
 			"name" : "CMAKE_VERBOSE_MAKEFILE",
@@ -1275,7 +1251,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a"
+			"value" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/.cxx/Debug/s5i141r2/arm64-v8a"
 		},
 		{
 			"name" : "WasmLine_IS_TOP_LEVEL",
@@ -1299,7 +1275,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/crowforkotlin/kotlin/wasmline/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp"
+			"value" : "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp"
 		}
 	],
 	"kind" : "cache",

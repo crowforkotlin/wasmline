@@ -5,6 +5,7 @@
 #include "FileUtils.h"
 #include "WasmLog.h"
 
+#pragma clang diagnostic push
 using namespace crow;
 
 extern "C" {
@@ -44,13 +45,19 @@ Java_crow_wasmtime_WasmModule_nativeSaveCache(JNIEnv *env, jclass thiz, jstring 
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
     bool success = false;
+    // 1. 获取 Module
     auto* module = WasmManager::getInstance().getModule(key);
     if (module) {
         wasm_byte_vec_t serialized;
+        // 2. 序列化 (这一步本身就会分配内存)
         wasmtime_error_t* err = wasmtime_module_serialize(module, &serialized);
+
         if (!err) {
-            std::vector<uint8_t> data(serialized.data, serialized.data + serialized.size);
-            success = FileUtils::writeFile(outPath, data);
+            // [优化] 直接传入指针和长度，避免 std::vector 的二次深拷贝
+            // FileUtils::writeFile 需要支持 (const char*, size_t) 或 (uint8_t*, size_t)
+            success = FileUtils::writeFile(outPath, (const uint8_t*)serialized.data, serialized.size);
+
+            // 3. 立即释放序列化的内存
             wasm_byte_vec_delete(&serialized);
         } else {
             wasmtime_error_delete(err);
@@ -84,7 +91,7 @@ Java_crow_wasmtime_WasmModule_nativeReleaseEngine(JNIEnv * env, jclass thiz) {
 
 // [核心优化] Native Call
 JNIEXPORT jstring JNICALL
-Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring action, jstring json) {
+Java_crow_wasmtime_WasmModule_nativeJsonCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring action, jstring json) {
     // 1. 获取指针
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* act = env->GetStringUTFChars(action, nullptr);
@@ -101,7 +108,7 @@ Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keySt
         WasmSession* session = WasmManager::getInstance().getOrCreateSession(key);
         if (session) {
             // 3. 传入指针和长度，零拷贝！
-            result = session->call(act, (size_t)actLen, jsn, (size_t)jsnLen);
+            result = session->callJson(act, (size_t)actLen, jsn, (size_t)jsnLen);
         } else {
             result = "{\"error\":\"Session creation failed (Module not found?)\"}";
         }
@@ -113,4 +120,57 @@ Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keySt
     return env->NewStringUTF(result.c_str());
 }
 
+
+// [核心优化] Native Call
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmtime_WasmModule_nativeProtobufCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring action, jbyteArray bytes) {
+    // 1. 获取 Key 和 Action 字符串
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
+    const char* act = env->GetStringUTFChars(action, nullptr);
+
+    // 性能优化：直接从 JVM 获取长度，复杂度 O(1)，避免 strlen 的 O(N)
+    jsize actLen = env->GetStringUTFLength(action);
+
+    // 2. 获取二进制数据 (Protobuf)
+    // 性能优化：获取原始指针，可能产生 pinning 避免复制
+    jbyte* dataPtr = env->GetByteArrayElements(bytes, nullptr);
+    jsize dataLen = env->GetArrayLength(bytes);
+
+    std::string result;
+    jbyteArray retArr = nullptr;
+
+    {
+        // 3. 执行调用
+        WasmSession* session = WasmManager::getInstance().getOrCreateSession(key);
+        if (session) {
+            // 注意：这里调用的是 callProtobuf (需要你在 WasmSession 中新增，见下文)
+            // 将 jbyte* (signed char*) 强转为 char* 传递给 C++
+            result = session->callProtobuf(act, (size_t)actLen, (const char*)dataPtr, (size_t)dataLen);
+        } else {
+            // Session 不存在，返回空或错误处理
+            result = "";
+        }
+    }
+
+    // 4. 释放资源
+    // 性能优化：使用 JNI_ABORT，告诉 JVM 我们没有修改 dataPtr 的内容，不需要回写到 Java 堆，节省一次内存拷贝
+    env->ReleaseByteArrayElements(bytes, dataPtr, JNI_ABORT);
+    env->ReleaseStringUTFChars(action, act);
+    env->ReleaseStringUTFChars(keyStr, key);
+
+    // 5. 构造返回结果
+    if (!result.empty()) {
+        retArr = env->NewByteArray((jsize)result.size());
+        // 内存拷贝：C++ std::string -> Java byte[]
+        env->SetByteArrayRegion(retArr, 0, (jsize)result.size(), (const jbyte*)result.data());
+    } else {
+        retArr = env->NewByteArray(0);
+    }
+
+    return retArr;
+}
+
+
+
 } // extern "C"
+#pragma clang diagnostic pop

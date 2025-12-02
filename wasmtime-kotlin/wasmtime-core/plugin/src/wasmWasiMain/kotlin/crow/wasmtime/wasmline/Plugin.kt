@@ -9,7 +9,6 @@ import kotlin.time.Clock
 val baseJson = Json {
     prettyPrint = true
     isLenient = true
-    println("JSON INIT")
 }
 
 @Serializable
@@ -27,7 +26,7 @@ fun initApp() {
         val result =  "123123123\t$data"
         val end  = Clock.System.now().toEpochMilliseconds()
         println("SPEND TIME : ${end - start} MS")
-        result
+        jsonArgs
     }
 
     WasmRouter.register("add") {
@@ -55,7 +54,4 @@ fun initApp() {
 @WasmExport
 fun run_entry() { RunWasmEngineEntry() }
 
-fun main() {
-    println("INIT MAIN")
-
-    initApp() }
+fun main() { initApp() }

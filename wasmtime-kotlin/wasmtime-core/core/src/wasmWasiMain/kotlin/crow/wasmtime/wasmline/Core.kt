@@ -3,6 +3,9 @@
 
 package crow.wasmtime.wasmline
 
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.protobuf.ProtoBuf
 import okio.Buffer
 import okio.use
 import kotlin.time.Clock
@@ -82,10 +85,12 @@ internal object HostBridge {
                 // 指针运算 + 读取字节
                 bytes[i] = (pointer + i).loadByte()
             }
-            val string = bytes.decodeToString()
-            println("spend time 22222 -> ${Clock.System.now().toEpochMilliseconds() - start}")
-
-            return string
+            println("size is : ${bytes.size}")
+            runCatching {
+                val datas = ProtoBuf.decodeFromByteArray<Data>(bytes)
+                println("spend time 22222 -> ${Clock.System.now().toEpochMilliseconds() - start} \t ${datas}")
+            }.onFailure { println("error is : ${it.message}") }
+            return "123"
         }
     }
 
@@ -112,21 +117,6 @@ internal object HostBridge {
     }
 }
 
-// --- 3. 路由注册中心 ---
-object WasmRouter {
-    private val handlers = mutableMapOf<String, (String) -> String>()
-
-    // 对外暴露的注册接口
-    fun register(action: String, handler: (String) -> String) {
-        handlers[action] = handler
-    }
-
-    // 内部调用
-    internal fun dispatch(action: String, args: String): String {
-        val handler = handlers[action]
-        return handler?.invoke(args) ?: """{"error": "No handler for action '$action'"}"""
-    }
-}
 
 // --- 4. 统一入口 (SDK 负责导出) ---
 fun RunWasmEngineEntry() {
