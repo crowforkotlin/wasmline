@@ -16,12 +16,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":tada: Add Cpp Samples&#10;:tada: Split architecture">
-      <change beforePath="$PROJECT_DIR$/../docs/images/android_sample_result.png" beforeDir="false" afterPath="$PROJECT_DIR$/../docs/images/android_sample_result.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../docs/images/macos_sample_result.png" beforeDir="false" afterPath="$PROJECT_DIR$/../docs/images/macos_sample_result.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmModule.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmModule.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":doc: README.md" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -655,7 +650,47 @@
       <option name="project" value="LOCAL" />
       <updated>1764778378249</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary=":tada: Add Cpp Samples&#10;:tada: Split architecture">
+      <option name="closed" value="true" />
+      <created>1764779096218</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1764779096218</updated>
+    </task>
+    <task id="LOCAL-00015" summary=":docs: images">
+      <option name="closed" value="true" />
+      <created>1764779229693</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1764779229693</updated>
+    </task>
+    <task id="LOCAL-00016" summary=":docs: README.md">
+      <option name="closed" value="true" />
+      <created>1764779312932</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1764779312932</updated>
+    </task>
+    <task id="LOCAL-00017" summary=":docs: README.md">
+      <option name="closed" value="true" />
+      <created>1764779716240</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1764779716240</updated>
+    </task>
+    <task id="LOCAL-00018" summary=":doc: README.md">
+      <option name="closed" value="true" />
+      <created>1764782851618</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1764782851618</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -687,7 +722,10 @@
     <MESSAGE value=":art: performance &amp; struct" />
     <MESSAGE value=":art: optimize" />
     <MESSAGE value=":tada: Add Cpp Samples&#10;:tada: Split architecture" />
-    <option name="LAST_COMMIT_MESSAGE" value=":tada: Add Cpp Samples&#10;:tada: Split architecture" />
+    <MESSAGE value=":docs: images" />
+    <MESSAGE value=":docs: README.md" />
+    <MESSAGE value=":doc: README.md" />
+    <option name="LAST_COMMIT_MESSAGE" value=":doc: README.md" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
