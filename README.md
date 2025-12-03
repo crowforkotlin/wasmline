@@ -1,8 +1,9 @@
 # WasmLine
-- support (Windows、MacOS、Android)
+- Support (Windows、MacOS、Android)
 
 # PreBuild
-- init platforms
+- Init platforms library
+
 `sh ./scripts/init.sh`
 
 # Samples
