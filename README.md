@@ -9,8 +9,8 @@
 `sh ./scripts/samples/run.sh`
 <table>
 	<tr>
-		<td align="center"><img src="docs/images/android_sample_result.png"></td>
-		<td align="center"><img src="docs/images/macos_sample_result.png"></td>
+		<td align="center"><img src="docs/images/android_sample.png"></td>
+		<td align="center"><img src="docs/images/macos_sample.png"></td>
 	</tr>
     <tr>
 		<td align="center">android</td>
