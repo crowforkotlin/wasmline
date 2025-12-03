@@ -9,7 +9,7 @@
 > WasmLine is designed to provide compatibility across several platforms: **Windows**, **Ubuntu**, **MacOS**, and **Android**. It is fundamentally built upon **Kotlin Multiplatform**, while also supporting the use of **any programming language** for developing Wasi-compliant plugins.
 
 ### ✨ Features Support (Future Exploration)
--   **iOS** (Requires research and testing)
+-   **IOS** (Requires research and testing, Using Kotlin Native)
 -   **Web**
 
 ### ⚠️ Important Runtime Note (Kotlin/Wasi)

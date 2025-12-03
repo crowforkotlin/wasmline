@@ -9,7 +9,7 @@
 > WasmLine 旨在提供跨多个平台的兼容性：**Windows**、**Ubuntu**、**MacOS** 和 **Android**。它以 **Kotlin Multiplatform** 为基础构建，同时支持使用**任何编程语言**来开发 Wasi 兼容的插件。
 
 ### ✨ 功能支持 (未来探索)
--   **iOS** (需要研究和测试)
+-   **IOS** (需要研究和测试, 计划使用Kotlin Native)
 -   **Web**
 
 ### ⚠️ 重要运行时说明 (Kotlin/Wasi)
