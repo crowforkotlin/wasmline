@@ -157,7 +157,7 @@ bool WasmSession::initialize() {
 
 /**
  * Executes a specific action in the Wasm module.
- * Sets up context pointers, invokes the "run_entry" exported function, and returns the result.
+ * Sets up context pointers, invokes the "App" exported function, and returns the result.
  *
  * @param action Action identifier string
  * @param actionLen Length of the action string
@@ -183,7 +183,7 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
     wasm_trap_t* trap = nullptr;
 
     // 2. Call the "run_entry" function exported by Kotlin/Wasm
-    if (wasmtime_instance_export_get(context, &instance, "run_entry", 9, &run_entry)) {
+    if (wasmtime_instance_export_get(context, &instance, "WasmEntry", 9, &run_entry)) {
         wasmtime_error_t* error = wasmtime_func_call(context, &run_entry.of.func, nullptr, 0, nullptr, 0, &trap);
         
         // 3. Handle errors or traps
@@ -191,7 +191,7 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
             if (trap) {
                 wasm_byte_vec_t msg;
                 wasm_trap_message(trap, &msg);
-                LOGE("Runtime Trap: %s", msg.data);
+                LOGE("[wasmtime] Session -> Runtime Trap: %s", msg.data);
                 wasm_byte_vec_delete(&msg);
                 wasm_trap_delete(trap);
             }
@@ -203,7 +203,7 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
             return "";
         }
     } else {
-        LOGE("Export 'run_entry' not found.");
+        LOGE("[wasmtime] Session --> Export 'WasmEntry' not found.");
     }
 
     // 4. Reset pointers
@@ -344,3 +344,4 @@ wasm_trap_t* WasmSession::host_read_from_memory(void* env, wasmtime_caller_t* ca
     }
     return nullptr;
 }
+

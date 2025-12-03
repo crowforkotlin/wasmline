@@ -17,14 +17,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":art: optimize">
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmLine.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/FileUtils.cpp" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../WasmtimeSample.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/build.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/configure.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/env.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/run.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmRuntime.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmRuntime.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmModule.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmRuntime.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Core.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Data.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -245,7 +254,7 @@
       <command value="./gradlew wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
     </option>
   </component>
-  <component name="RunManager" selected="Android App.MainActivity">
+  <component name="RunManager" selected="Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]">
     <configuration default="true" type="DAPConfiguration" factoryName="DAPConfiguration">
       <option name="workingDirectory" value="$PROJECT_DIR$/.." />
       <envs />
@@ -627,7 +636,23 @@
       <option name="project" value="LOCAL" />
       <updated>1764670759681</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary=":art: optimize">
+      <option name="closed" value="true" />
+      <created>1764771658673</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1764771658673</updated>
+    </task>
+    <task id="LOCAL-00011" summary=":art: optimize">
+      <option name="closed" value="true" />
+      <created>1764771674641</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1764771674641</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -657,7 +682,8 @@
     <MESSAGE value=":bug: wasmedge 0.14.0 only support .." />
     <MESSAGE value=":test: test..." />
     <MESSAGE value=":art: performance &amp; struct" />
-    <option name="LAST_COMMIT_MESSAGE" value=":art: performance &amp; struct" />
+    <MESSAGE value=":art: optimize" />
+    <option name="LAST_COMMIT_MESSAGE" value=":art: optimize" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

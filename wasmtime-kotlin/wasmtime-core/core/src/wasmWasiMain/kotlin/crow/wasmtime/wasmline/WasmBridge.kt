@@ -3,11 +3,6 @@
 
 package crow.wasmtime.wasmline
 
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.protobuf.ProtoBuf
-import okio.Buffer
-import okio.use
 import kotlin.time.Clock
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
@@ -29,7 +24,7 @@ external fun host_copy_to_memory(type: Int, ptr: Int, len: Int)
 external fun host_read_from_memory(ptr: Int, len: Int)
 
 // --- 2. 内部桥接工具 ---
-internal object HostBridge {
+internal object WasmBridge {
     fun getAction(): String {
         val size = host_get_size(type = TYPE_HOST_ACTION)
         if (size == 0) return ""
@@ -82,12 +77,7 @@ internal object HostBridge {
                 // 指针运算 + 读取字节
                 bytes[i] = (pointer + i).loadByte()
             }
-            println("size is : ${bytes.size}")
-            runCatching {
-                val datas = ProtoBuf.decodeFromByteArray<Data>(bytes)
-                println("spend time 22222 -> ${Clock.System.now().toEpochMilliseconds() - start} \t ${datas}")
-            }.onFailure { println("error is : ${it.message}") }
-            return "123"
+            return "bytes ${bytes.size}"
         }
     }
 
@@ -113,24 +103,3 @@ internal object HostBridge {
         }
     }
 }
-
-
-// --- 4. 统一入口 (SDK 负责导出) ---
-fun RunWasmEngineEntry() {
-    // 1. 自动拉取参数
-    val action = HostBridge.getAction()
-    val args = HostBridge.getJson()
-    println("action is : $action \t arg is : $args")
-
-    // 2. 自动捕获异常并分发
-    val result = try {
-        WasmRouter.dispatch(action, args)
-    } catch (e: Exception) {
-        """{"error": "Wasm Panic: ${e.message}"}"""
-    }
-
-    // 3. 自动回传
-    HostBridge.sendResult(result)
-}
-
-fun main() { println("[Wasm SDK] Initialized.") }

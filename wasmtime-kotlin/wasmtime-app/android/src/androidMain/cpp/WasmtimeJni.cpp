@@ -1,72 +1,63 @@
 /**
- * JNI Native Bridge for Wasmtime Integration.
+ * WasmtimeJni.cpp
+ * JNI Bridge for Wasmtime Integration.
+ * Forwards Java calls to WasmApi.
  *
- * Date: 2025-12-02
- * Author: crowforkotlin
+ * 2025-12-03
+ * @author crowforkotlin
  */
 
 #include <jni.h>
 #include <string>
-#include "WasmRuntime.h"
-#include "WasmFileUtils.h"
+#include "WasmApi.h"
+#include "WasmFileUtils.h" // Needed for Utils if not encapsulated
 #include "WasmLogger.h"
 
 extern "C" {
 
 JNIEXPORT void JNICALL
 Java_crow_wasmtime_WasmLine_nativeInit(JNIEnv *env, jclass thiz) {
-    WasmRuntime::getInstance().initEngine();
+    WasmApi::initEngine();
 }
 
 JNIEXPORT void JNICALL
 Java_crow_wasmtime_WasmLine_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
-    WasmRuntime::getInstance().releaseEngine();
+    WasmApi::releaseEngine();
 }
 
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmtime_WasmLine_nativeLoadSource(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
-    
-    auto* mod = WasmRuntime::getInstance().loadModule(key, path, true); // true = JIT/Source
-    
+
+    // Call API Facade -> JIT Loading (true)
+    bool success = WasmApi::loadModule(key, path, true);
+
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
-    return (mod != nullptr);
+    return success;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmtime_WasmLine_nativeLoadCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
-    
-    auto* mod = WasmRuntime::getInstance().loadModule(key, path, false); // false = Cache
-    
+
+    // Call API Facade -> Cache Loading (false)
+    bool success = WasmApi::loadModule(key, path, false);
+
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
-    return (mod != nullptr);
+    return success;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmtime_WasmLine_nativeSaveCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring outPathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
-    bool success = false;
 
-    auto* module = WasmRuntime::getInstance().getModule(key);
-    if (module) {
-        wasm_byte_vec_t serialized;
-        wasmtime_error_t* err = wasmtime_module_serialize(module, &serialized);
+    bool success = WasmApi::saveModuleCache(key, outPath);
 
-        if (!err) {
-            // Write directly using pointer to avoid copying to vector
-            success = Utils::writeFile(outPath, reinterpret_cast<const uint8_t*>(serialized.data), serialized.size);
-            wasm_byte_vec_delete(&serialized);
-        } else {
-            wasmtime_error_delete(err);
-        }
-    }
-    
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(outPathStr, outPath);
     return success;
@@ -75,12 +66,10 @@ Java_crow_wasmtime_WasmLine_nativeSaveCache(JNIEnv *env, jclass thiz, jstring ke
 JNIEXPORT void JNICALL
 Java_crow_wasmtime_WasmLine_nativeReleaseModule(JNIEnv *env, jclass thiz, jstring keyStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    WasmRuntime::getInstance().releaseModule(key);
+    WasmApi::releaseModule(key);
     env->ReleaseStringUTFChars(keyStr, key);
 }
 
-// Unified call for both JSON and Protobuf (bytes)
-// Action is passed as string, Input is passed as byte array
 JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmtime_WasmLine_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
@@ -90,31 +79,22 @@ Java_crow_wasmtime_WasmLine_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr,
     jbyte* dataPtr = env->GetByteArrayElements(inputBytes, nullptr);
     jsize dataLen = env->GetArrayLength(inputBytes);
 
-    std::string resultData;
-    jbyteArray retArr = nullptr;
+    // Perform call via API
+    std::string resultData = WasmApi::call(key, action, std::string((const char*)dataPtr, dataLen));
 
-    WasmSession* session = WasmRuntime::getInstance().getSession(key);
-    if (session) {
-        // Zero-copy passing of pointers
-        resultData = session->call(action, (size_t)actionLen, (const char*)dataPtr, (size_t)dataLen);
-    } else {
-        LOGE("[wasmtime] Jni (nativeCall) --> Session not found for call: %s", key);
-    }
-
-    // Release JNI resources. JNI_ABORT avoids writing back to Java array if not modified
+    // Cleanup input
     env->ReleaseByteArrayElements(inputBytes, dataPtr, JNI_ABORT);
     env->ReleaseStringUTFChars(actionStr, action);
     env->ReleaseStringUTFChars(keyStr, key);
 
-    // Convert result back to Java byte array
+    // Return result
     if (!resultData.empty()) {
-        retArr = env->NewByteArray((jsize)resultData.size());
+        jbyteArray retArr = env->NewByteArray((jsize)resultData.size());
         env->SetByteArrayRegion(retArr, 0, (jsize)resultData.size(), (const jbyte*)resultData.data());
+        return retArr;
     } else {
-        retArr = env->NewByteArray(0);
+        return env->NewByteArray(0);
     }
-
-    return retArr;
 }
 
 } // extern "C"
