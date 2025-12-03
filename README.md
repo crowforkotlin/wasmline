@@ -1,5 +1,13 @@
 # WasmLine
 - Support (Windows、MacOS、Android)
+<table>
+	<tr>
+		<td align="center"><img src="docs/images/architecture.png"></td>
+	</tr>
+    <tr>
+		<td align="center">Architecture</td>
+	</tr>
+</table>
 
 # PreBuild
 - Init platforms library
@@ -14,8 +22,8 @@
 		<td align="center"><img src="docs/images/macos_sample.png"></td>
 	</tr>
     <tr>
-		<td align="center">android</td>
-		<td align="center">macos</td>
+		<td align="center">Android</td>
+		<td align="center">Macos</td>
 	</tr>
 </table>
 
