@@ -30,6 +30,7 @@ wasmtime_module_t* WasmModule::load(const std::string& key, const std::string& f
         std::shared_lock<std::shared_mutex> lock(cacheMutex);
         auto it = moduleCache.find(key);
         if (it != moduleCache.end()) {
+            LOGE("[Wasmtime] WasmModule --> Get module from memory Cache");
             return it->second;
         }
     }
@@ -62,11 +63,11 @@ wasmtime_module_t* WasmModule::load(const std::string& key, const std::string& f
 
     if (isJit) {
         // Compile from Source (.wasm)
-        LOGI("[Wasmtime] WasmModule --> Compiling source for %s...", key.c_str());
+        LOGI("[Wasmtime] WasmModule --> Jit Compiling source for %s...", key.c_str());
         error = wasmtime_module_new(engine, data.data(), data.size(), &module);
     } else {
         // Deserialize from Binary (.cwasm)
-        LOGI("[Wasmtime] WasmModule --> Loading cache for %s...", key.c_str());
+        LOGI("[Wasmtime] WasmModule --> Aot deserialize for %s...", key.c_str());
         error = wasmtime_module_deserialize(engine, data.data(), data.size(), &module);
     }
 
