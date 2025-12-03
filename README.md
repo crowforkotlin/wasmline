@@ -1,3 +1,7 @@
+[中文文档](README_zh.md) | [English](README.md)
+
+---
+
 # WasmLine
 
 ## 🚀 WasmLine Support & Key Findings

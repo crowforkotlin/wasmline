@@ -16,9 +16,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":docs: README.md">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":doc: README.md" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -684,7 +682,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764779716240</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary=":doc: README.md">
+      <option name="closed" value="true" />
+      <created>1764782851618</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1764782851618</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -718,7 +724,8 @@
     <MESSAGE value=":tada: Add Cpp Samples&#10;:tada: Split architecture" />
     <MESSAGE value=":docs: images" />
     <MESSAGE value=":docs: README.md" />
-    <option name="LAST_COMMIT_MESSAGE" value=":docs: README.md" />
+    <MESSAGE value=":doc: README.md" />
+    <option name="LAST_COMMIT_MESSAGE" value=":doc: README.md" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
