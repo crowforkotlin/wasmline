@@ -45,6 +45,7 @@ fun initApp() {
     WasmRouter.register("B") { "{BBBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BBB}BB}" }
 }
 
+
 @WasmExport
 fun run_entry() { RunWasmEngineEntry() }
 

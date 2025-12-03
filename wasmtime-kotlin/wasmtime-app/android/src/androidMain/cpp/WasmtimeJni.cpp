@@ -14,17 +14,17 @@
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmRuntime_nativeInit(JNIEnv *env, jobject thiz) {
+Java_crow_wasmtime_WasmLine_nativeInit(JNIEnv *env, jclass thiz) {
     WasmRuntime::getInstance().initEngine();
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmRuntime_nativeRelease(JNIEnv *env, jobject thiz) {
+Java_crow_wasmtime_WasmLine_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
     WasmRuntime::getInstance().releaseEngine();
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmtime_WasmModule_nativeLoadSource(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+Java_crow_wasmtime_WasmLine_nativeLoadSource(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
     
@@ -36,7 +36,7 @@ Java_crow_wasmtime_WasmModule_nativeLoadSource(JNIEnv *env, jclass thiz, jstring
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmtime_WasmModule_nativeLoadCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+Java_crow_wasmtime_WasmLine_nativeLoadCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* path = env->GetStringUTFChars(pathStr, nullptr);
     
@@ -48,7 +48,7 @@ Java_crow_wasmtime_WasmModule_nativeLoadCache(JNIEnv *env, jclass thiz, jstring 
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmtime_WasmModule_nativeSaveCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring outPathStr) {
+Java_crow_wasmtime_WasmLine_nativeSaveCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring outPathStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
     bool success = false;
@@ -73,7 +73,7 @@ Java_crow_wasmtime_WasmModule_nativeSaveCache(JNIEnv *env, jclass thiz, jstring 
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmModule_nativeRelease(JNIEnv *env, jclass thiz, jstring keyStr) {
+Java_crow_wasmtime_WasmLine_nativeReleaseModule(JNIEnv *env, jclass thiz, jstring keyStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     WasmRuntime::getInstance().releaseModule(key);
     env->ReleaseStringUTFChars(keyStr, key);
@@ -82,7 +82,7 @@ Java_crow_wasmtime_WasmModule_nativeRelease(JNIEnv *env, jclass thiz, jstring ke
 // Unified call for both JSON and Protobuf (bytes)
 // Action is passed as string, Input is passed as byte array
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
+Java_crow_wasmtime_WasmLine_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* action = env->GetStringUTFChars(actionStr, nullptr);
     jsize actionLen = env->GetStringUTFLength(actionStr);
@@ -98,7 +98,7 @@ Java_crow_wasmtime_WasmModule_nativeCall(JNIEnv *env, jclass thiz, jstring keySt
         // Zero-copy passing of pointers
         resultData = session->call(action, (size_t)actionLen, (const char*)dataPtr, (size_t)dataLen);
     } else {
-        LOGE("Session not found for call: %s", key);
+        LOGE("[wasmtime] Jni (nativeCall) --> Session not found for call: %s", key);
     }
 
     // Release JNI resources. JNI_ABORT avoids writing back to Java array if not modified

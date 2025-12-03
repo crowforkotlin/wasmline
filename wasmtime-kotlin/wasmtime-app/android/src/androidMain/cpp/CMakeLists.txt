@@ -26,7 +26,8 @@ include_directories(${ROOT_DIR}/wasmtime-cpp/include)
 
 # 编译为静态库，供 JNI 复用
 add_library(wasmtime_core STATIC
-        ${ROOT_DIR}/wasmtime-cpp/src/FileUtils.cpp
+        WasmLogger.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmFileUtils.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/WasmRuntime.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/WasmSession.cpp
 )
@@ -43,3 +44,6 @@ target_link_libraries(
         m
         dl
 )
+
+# 强制关闭所有日志 (无论是 Debug 还是 Release)
+# add_compile_definitions(DISABLE_WASM_LOGS)
