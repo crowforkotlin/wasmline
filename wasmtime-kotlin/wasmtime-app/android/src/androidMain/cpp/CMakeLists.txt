@@ -28,7 +28,10 @@ include_directories(${ROOT_DIR}/wasmtime-cpp/include)
 add_library(wasmtime_core STATIC
         WasmLogger.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/WasmFileUtils.cpp
-        ${ROOT_DIR}/wasmtime-cpp/src/WasmRuntime.cpp
+#        ${ROOT_DIR}/wasmtime-cpp/src/WasmRuntime.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmApi.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmEngine.cpp
+        ${ROOT_DIR}/wasmtime-cpp/src/WasmModule.cpp
         ${ROOT_DIR}/wasmtime-cpp/src/WasmSession.cpp
 )
 

@@ -63,11 +63,11 @@ class MainActivity : AppCompatActivity() {
                     }
                 var start = System.currentTimeMillis()
                 val module = WasmLine.load(wasmFile, cacheFile)
-                "[android] MainActivity --> spend time load module --------> ${System.currentTimeMillis() - start}".info()
+                "[android] MainActivity --> spend time load module --------> ${System.currentTimeMillis() - start} ms".info()
                 start = System.currentTimeMillis()
                 val result = module.call("getUser", data)
                 val duration = System.currentTimeMillis() - start
-                "[android] MainActivity --> spend time call function --------> $duration".info()
+                "[android] MainActivity --> spend time call function --------> $duration ms.".info()
                 withContext(Dispatchers.Main) { binding.content.text = "Result: $result\n call function duration : ${duration} ms" }
                 // 4. (可选) 释放模块
                 // module.release()

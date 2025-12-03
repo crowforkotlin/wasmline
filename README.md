@@ -1,5 +1,24 @@
 # WasmLine
+- support (Windows、MacOS、Android)
 
+# PreBuild
+- init platforms
+`sh ./scripts/init.sh`
+
+# Samples
+`sh ./scripts/samples/run.sh`
+<table>
+	<tr>
+		<td align="center"><img src="docs/images/android_sample_result.png"></td>
+		<td align="center"><img src="docs/images/macos_sample_result.png"></td>
+	</tr>
+    <tr>
+		<td align="center">android</td>
+		<td align="center">macos</td>
+	</tr>
+</table>
+
+# compile cwasm (AOT Mode)
 ```
 wasmtime compile plugin.wasm -o plugin.cwasm \
     --target aarch64-linux-android \

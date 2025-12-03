@@ -28,7 +28,7 @@
 static ptrdiff_t wasi_log_writer(void* data, const unsigned char* buffer, size_t size) {
     if (size > 0 && buffer) {
         std::string msg(reinterpret_cast<const char*>(buffer), size > 1024 ? 1024 : size);
-        LOGI("[wasmtime] Wasi logger -> %s", msg.c_str());
+        LOGI("[Wasmtime-Wasi] logger -> %s", msg.c_str());
     }
     return size;
 }
@@ -58,7 +58,7 @@ WasmSession::WasmSession(wasm_engine_t* eng, wasmtime_module_t* mod, std::string
 WasmSession::~WasmSession() {
     if (linker) wasmtime_linker_delete(linker);
     if (store) wasmtime_store_delete(store);
-    LOGI("[wasmtime] Session Destroyed: %s", key.c_str());
+    LOGI("[Wasmtime] Session Destroyed: %s", key.c_str());
 }
 
 /**
@@ -90,14 +90,14 @@ bool WasmSession::initialize() {
     wasi_config_set_stdout_custom(wasi, wasi_log_writer, nullptr, nullptr);
     wasi_config_set_stderr_custom(wasi, wasi_log_writer, nullptr, nullptr);
     wasmtime_context_set_wasi(context, wasi);
-    LOGI("[wasmtime] Session --> 1. Setup wasi success.");
+    LOGI("[Wasmtime] Session --> 1. Setup wasi success.");
     
     // =========================================================================================
     // STEP 2: Register Host Functions
     // =========================================================================================
     // Injects custom C++ functions into the Linker so the Wasm module can import and call them.
     registerHostFunctions();
-    LOGI("[wasmtime] Session --> 2. Register host functions success.");
+    LOGI("[Wasmtime] Session --> 2. Register host functions success.");
     
     // =========================================================================================
     // STEP 3: Instantiate Module
@@ -108,7 +108,7 @@ bool WasmSession::initialize() {
     if (error) {
         wasm_byte_vec_t msg;
         wasmtime_error_message(error, &msg);
-        LOGE("[wasmtime] Session --> 3. Instantiate linker error: %s", msg.data);
+        LOGE("[Wasmtime] Session --> 3. Instantiate linker error: %s", msg.data);
         wasm_byte_vec_delete(&msg);
         wasmtime_error_delete(error);
         return false;
@@ -116,12 +116,12 @@ bool WasmSession::initialize() {
     if (trap) {
         wasm_byte_vec_t msg;
         wasm_trap_message(trap, &msg);
-        LOGE("[wasmtime] Session --> 3. Instantiate linker trap: %s", msg.data);
+        LOGE("[Wasmtime] Session --> 3. Instantiate linker trap: %s", msg.data);
         wasm_byte_vec_delete(&msg);
         wasm_trap_delete(trap);
         return false;
     }
-    LOGI("[wasmtime] Session --> 3. Instantiate linker success.");
+    LOGI("[Wasmtime] Session --> 3. Instantiate linker success.");
     
     // =========================================================================================
     // STEP 4: Export Memory
@@ -129,11 +129,11 @@ bool WasmSession::initialize() {
     // Retrieves the handle to the Wasm linear memory to allow direct Read/Write from C++.
     wasmtime_extern_t mem_ext;
     if (wasmtime_instance_export_get(context, &instance, "memory", 6, &mem_ext) && mem_ext.kind == WASMTIME_EXTERN_MEMORY) {
-        LOGI("[wasmtime] Session --> 4. Export memory success.");
+        LOGI("[Wasmtime] Session --> 4. Export memory success.");
         memory = mem_ext.of.memory;
         hasMemory = true;
     } else {
-        LOGE("[wasmtime] Session --> 4. Failed to export 'memory'. Copy functions will fail.");
+        LOGE("[Wasmtime] Session --> 4. Failed to export 'memory'. Copy functions will fail.");
         hasMemory = false;
         return false;
     }
@@ -151,13 +151,13 @@ bool WasmSession::initialize() {
     }
 
     isInitialized = true;
-    LOGI("[wasmtime] Session --> 5. Initialized success: %s", key.c_str());
+    LOGI("[Wasmtime] Session --> 5. Initialized success: %s", key.c_str());
     return true;
 }
 
 /**
  * Executes a specific action in the Wasm module.
- * Sets up context pointers, invokes the "run_entry" exported function, and returns the result.
+ * Sets up context pointers, invokes the "App" exported function, and returns the result.
  *
  * @param action Action identifier string
  * @param actionLen Length of the action string
@@ -183,7 +183,7 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
     wasm_trap_t* trap = nullptr;
 
     // 2. Call the "run_entry" function exported by Kotlin/Wasm
-    if (wasmtime_instance_export_get(context, &instance, "run_entry", 9, &run_entry)) {
+    if (wasmtime_instance_export_get(context, &instance, "WasmEntry", 9, &run_entry)) {
         wasmtime_error_t* error = wasmtime_func_call(context, &run_entry.of.func, nullptr, 0, nullptr, 0, &trap);
         
         // 3. Handle errors or traps
@@ -191,7 +191,7 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
             if (trap) {
                 wasm_byte_vec_t msg;
                 wasm_trap_message(trap, &msg);
-                LOGE("Runtime Trap: %s", msg.data);
+                LOGE("[Wasmtime] Session -> Runtime Trap: %s", msg.data);
                 wasm_byte_vec_delete(&msg);
                 wasm_trap_delete(trap);
             }
@@ -203,7 +203,7 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
             return "";
         }
     } else {
-        LOGE("Export 'run_entry' not found.");
+        LOGE("[Wasmtime] Session --> Export 'WasmEntry' not found.");
     }
 
     // 4. Reset pointers
@@ -344,3 +344,4 @@ wasm_trap_t* WasmSession::host_read_from_memory(void* env, wasmtime_caller_t* ca
     }
     return nullptr;
 }
+

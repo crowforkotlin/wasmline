@@ -5,7 +5,7 @@ set -e
 
 # Import environment variables
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
-    source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+    source "$(dirname "${BASH_SOURCE[0]}")/context.sh"
 fi
 
 echo "[shell configured.sh] --> -----------------------------"
