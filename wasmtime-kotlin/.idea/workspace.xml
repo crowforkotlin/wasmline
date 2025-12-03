@@ -16,24 +16,22 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":art: optimize">
-      <change afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../CMakeLists.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../WasmtimeSample.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../script/build.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../script/configure.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../script/env.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../script/run.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmRuntime.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmRuntime.cpp" beforeDir="false" />
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":tada: Add Cpp Samples&#10;:tada: Split architecture">
+      <change beforePath="$PROJECT_DIR$/../README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/init.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/sample/build.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/sample/configure.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/sample/context.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../script/sample/run.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmApi.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmApi.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmEngine.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmEngine.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmModule.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmModule.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/project.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Core.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Data.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -254,7 +252,7 @@
       <command value="./gradlew wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
     </option>
   </component>
-  <component name="RunManager" selected="Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]">
+  <component name="RunManager" selected="Android App.MainActivity">
     <configuration default="true" type="DAPConfiguration" factoryName="DAPConfiguration">
       <option name="workingDirectory" value="$PROJECT_DIR$/.." />
       <envs />
@@ -652,7 +650,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764771674641</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary=":tada: Add Cpp Samples&#10;:tada: Split architecture">
+      <option name="closed" value="true" />
+      <created>1764776901326</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1764776901326</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -683,7 +689,8 @@
     <MESSAGE value=":test: test..." />
     <MESSAGE value=":art: performance &amp; struct" />
     <MESSAGE value=":art: optimize" />
-    <option name="LAST_COMMIT_MESSAGE" value=":art: optimize" />
+    <MESSAGE value=":tada: Add Cpp Samples&#10;:tada: Split architecture" />
+    <option name="LAST_COMMIT_MESSAGE" value=":tada: Add Cpp Samples&#10;:tada: Split architecture" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

@@ -77,7 +77,7 @@ internal object WasmBridge {
                 // 指针运算 + 读取字节
                 bytes[i] = (pointer + i).loadByte()
             }
-            return "bytes ${bytes.size}"
+            return "bytes size ${bytes.size}"
         }
     }
 

@@ -66,9 +66,9 @@ void WasmEngine::init() {
         // Create the engine with the configuration
         engine = wasm_engine_new_with_config(conf);
         if (engine) {
-            LOGI("WasmEngine: Initialized successfully.");
+            LOGI("[Wasmtime] WasmEngine --> Initialized successfully.");
         } else {
-            LOGE("WasmEngine: Failed to initialize.");
+            LOGE("[Wasmtime] WasmEngine --> Failed to initialize.");
         }
     }
 }
@@ -80,7 +80,7 @@ void WasmEngine::release() {
         // Free the engine memory
         wasm_engine_delete(engine);
         engine = nullptr;
-        LOGI("WasmEngine: Released.");
+        LOGI("[Wasmtime] WasmEngine --> Released.");
     }
 }
 

@@ -64,7 +64,7 @@ void WasmApi::releaseModule(const std::string& key) {
 std::string WasmApi::call(const std::string& key, const std::string& action, const std::string& data) {
     WasmSession* session = getOrCreateSession(key);
     if (!session) {
-        LOGE("WasmApi: Call failed, session could not be created for %s", key.c_str());
+        LOGE("[Wasmtime] WasmApi --> Call failed, session could not be created for %s", key.c_str());
         return "";
     }
     // Delegate the execution to the Session object
@@ -91,7 +91,7 @@ WasmSession* WasmApi::getOrCreateSession(const std::string& key) {
     wasmtime_module_t* module = WasmModule::getInstance().get(key);
 
     if (!engine || !module) {
-        LOGE("WasmApi: Cannot create session. Engine or Module is null for %s", key.c_str());
+        LOGE("[Wasmtime] WasmApi --> Cannot create session. Engine or Module is null for %s", key.c_str());
         return nullptr;
     }
 
@@ -101,7 +101,7 @@ WasmSession* WasmApi::getOrCreateSession(const std::string& key) {
     // Initialize Session (Register hosts, WASI, Instance)
     // Note: session->initialize() is thread-safe internally
     if (!session->initialize()) {
-        LOGE("WasmApi: Failed to initialize session for %s", key.c_str());
+        LOGE("[Wasmtime] WasmApi --> Failed to initialize session for %s", key.c_str());
         delete session;
         return nullptr;
     }
