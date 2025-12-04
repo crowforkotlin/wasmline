@@ -28,7 +28,7 @@ cd "$BUILD_DIR"
 
 # Run CMake to generate Makefiles
 echo "[shell configured.sh] --> Running CMake..."
-cmake ..
+cmake -G "MinGW Makefiles" ..
 
 # --- DONE ---
 
