@@ -3,10 +3,14 @@
 # Exit on any error
 set -e
 
+
+
 # Import environment variables
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
-    source "$(dirname "${BASH_SOURCE[0]}")/context.sh"
+    source "$(dirname $(dirname $(dirname "${BASH_SOURCE[0]}")))/context.sh"
 fi
+
+BUILD_DIR="$SAMPLE_ROOT/cpp/build"
 
 echo "[shell build.sh] --> -------------------------------"
 

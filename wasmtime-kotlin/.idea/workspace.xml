@@ -16,12 +16,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":art: performance &amp; struct">
-      <change beforePath="$PROJECT_DIR$/../samples/cpp/WasmtimeSample.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../samples/cpp/WasmtimeSample.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../scripts/sample/configure.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../scripts/sample/configure.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../scripts/sample/run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../scripts/sample/run.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":wrench: run on windows" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -30,7 +25,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[DeviceId(pluginId=LocalEmulator, isTemplate=false, identifier=path=C:\Users\CrowF\AppData\Local\Android\Sdk\.android\avd\Avd35.avd)]" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[DeviceId(pluginId=Default, isTemplate=false, identifier=serial=192.168.137.112:7862;connection=21ddac9a)]" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
@@ -695,7 +690,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764782851618</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary=":wrench: run on windows">
+      <option name="closed" value="true" />
+      <created>1764820460439</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1764820460439</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -730,7 +733,8 @@
     <MESSAGE value=":docs: images" />
     <MESSAGE value=":docs: README.md" />
     <MESSAGE value=":doc: README.md" />
-    <option name="LAST_COMMIT_MESSAGE" value=":doc: README.md" />
+    <MESSAGE value=":wrench: run on windows" />
+    <option name="LAST_COMMIT_MESSAGE" value=":wrench: run on windows" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

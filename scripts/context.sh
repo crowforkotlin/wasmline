@@ -6,19 +6,16 @@ set -e
 # --- Check and Import env.sh ---
 # Use BASH_SOURCE[0] to ensure the path is correct even when sourced.
 
-
 echo "[shell context.sh] --> -----------------------------"
 
-# 1. Get the absolute path of the current script's directory (e.g., 'script/')
-ENV_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# 2. Get the Project Root Directory (Assuming env.sh is in 'script/', the parent is the root)
-PROJECT_ROOT="$(dirname $(dirname "$ENV_SCRIPT_DIR"))/samples/cpp"
+export SCRIPT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export PROJECT_ROOT="$(dirname "$SCRIPT_ROOT")"
+export SAMPLE_ROOT="${PROJECT_ROOT}/samples"
+export WASM_ROOT="${PROJECT_ROOT}/wasm"
+export PLATFORMS_ROOT="${PROJECT_ROOT}/platforms"
 
 # 3. Export variables for subsequent use
 export ENV_SOURCED_MARKER="true"
-export PROJECT_ROOT
-export BUILD_DIR="$PROJECT_ROOT/build"
 
 # 4. [Crucial] Automatically switch the current working directory to the Project Root
 if [ "$PWD" != "$PROJECT_ROOT" ]; then

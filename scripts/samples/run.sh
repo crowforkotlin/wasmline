@@ -6,12 +6,23 @@ set -e
 
 # Import environment variables
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
-    source "$(dirname "${BASH_SOURCE[0]}")/context.sh"
+    source "$(dirname $(dirname "${BASH_SOURCE[0]}"))/context.sh"
 fi
-echo $ENV_SCRIPT_DIR
-sh ${ENV_SCRIPT_DIR}/configure.sh
-sh ${ENV_SCRIPT_DIR}/build.sh
-cd ${PROJECT_ROOT}/build
+# ================================= C++ =================================
+echo """
+==============================================================
+==============================================================
+==============================================================
+> C++
+==============================================================
+==============================================================
+==============================================================
+"""
+
+
+sh ${SCRIPT_ROOT}/samples/cpp/configure.sh
+sh ${SCRIPT_ROOT}/samples/cpp/build.sh
+cd ${SAMPLE_ROOT}/cpp/build
 
 echo "[shell run.sh] --> -----------------------------"
 # 'uname' 命令可以获取操作系统的名称。

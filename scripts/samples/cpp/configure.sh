@@ -5,8 +5,10 @@ set -e
 
 # Import environment variables
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
-    source "$(dirname "${BASH_SOURCE[0]}")/context.sh"
+    source "$(dirname $(dirname $(dirname "${BASH_SOURCE[0]}")))/context.sh"
 fi
+
+BUILD_DIR="$SAMPLE_ROOT/cpp/build"
 
 echo "[shell configured.sh] --> -----------------------------"
 
@@ -22,6 +24,7 @@ fi
 # --- CONFIGURATION ---
 
 # Create and enter the build directory
+echo $BUILD_DIR
 echo "[shell configured.sh] --> Creating build directory: $BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
