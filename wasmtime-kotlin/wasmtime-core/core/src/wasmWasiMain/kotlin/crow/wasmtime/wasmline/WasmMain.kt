@@ -16,6 +16,9 @@ fun WasmEntryInitialize() {
         """{"error": "Wasm Panic: ${exception.message}"}"""
     }
 
+    val logMsg = "Wasm received: $args"
+    WasmBridge.callHost("host_log", logMsg.encodeToByteArray())
+
     // 3. 自动回传
     WasmBridge.sendResult(result)
 }

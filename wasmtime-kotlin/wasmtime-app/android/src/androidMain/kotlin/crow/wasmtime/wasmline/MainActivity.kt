@@ -5,11 +5,14 @@ package crow.wasmtime.wasmline
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
+import android.util.Log.d
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import crow.wasmtime.HostDispatcher
 import crow.wasmtime.WasmLine
 import crow.wasmtime.app.android.R
 import crow.wasmtime.app.android.databinding.ActivityMainBinding
@@ -41,6 +44,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun init() {
         "[android] MainActivity --> Init wasmtime coast ${measureTimeMillis { WasmLine.init() }} ms".info()
+
+        // 1. 注册 Dispatcher
         binding.load.setOnClickListener {
             binding.content.text = "Loading..."
             runWasm()
@@ -63,6 +68,17 @@ class MainActivity : AppCompatActivity() {
                     }
                 var start = System.currentTimeMillis()
                 val module = WasmLine.load(wasmFile, cacheFile)
+
+                module.registerDispatcher(object : HostDispatcher {
+                    override fun dispatch(action: String, payload: ByteArray): ByteArray {
+                        if (action == "host_log") {
+                            "[android] MainActivity --> Log from Wasm: ${String(payload)}".info()
+                            return ByteArray(0)
+                        }
+                        return ByteArray(0)
+                    }
+                })
+
                 "[android] MainActivity --> spend time load module --------> ${System.currentTimeMillis() - start} ms".info()
                 start = System.currentTimeMillis()
                 val result = module.call("getUser", data)

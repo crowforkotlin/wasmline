@@ -12,6 +12,7 @@
 #include "WasmApi.h"
 #include "WasmFileUtils.h" // Needed for Utils if not encapsulated
 #include "WasmLogger.h"
+#include "AndroidHostHandler.h"
 
 extern "C" {
 
@@ -96,5 +97,19 @@ Java_crow_wasmtime_WasmLine_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr,
         return env->NewByteArray(0);
     }
 }
+
+
+// [新增] 注册分发器
+JNIEXPORT void JNICALL
+Java_crow_wasmtime_WasmLine_nativeRegisterDispatcher(JNIEnv *env, jclass thiz, jstring keyStr, jobject jDispatcher) {
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
+
+    // 创建 Android 实现并注入 Core
+    auto handler = std::make_unique<AndroidHostHandler>(env, jDispatcher);
+    WasmApi::registerHostHandler(key, std::move(handler));
+
+    env->ReleaseStringUTFChars(keyStr, key);
+}
+
 
 } // extern "C"

@@ -54,6 +54,8 @@ public:
      */
     static std::string call(const std::string& key, const std::string& action, const std::string& data);
 
+    static void registerHostHandler(const std::string& key, std::unique_ptr<WasmHostHandler> handler);
+
 private:
     /**
      * Internal helper to get or create a session.

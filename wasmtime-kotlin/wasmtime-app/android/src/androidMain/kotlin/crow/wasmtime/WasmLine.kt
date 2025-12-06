@@ -54,6 +54,7 @@ class WasmLine(private val moduleKey: String) {
         fun release() { nativeReleaseEngine() }
 
         // JNI Methods
+        @JvmStatic private external fun nativeRegisterDispatcher(key: String, dispatcher: HostDispatcher)
         @JvmStatic private external fun nativeLoadSource(key: String, path: String): Boolean
         @JvmStatic private external fun nativeLoadCache(key: String, path: String): Boolean
         @JvmStatic private external fun nativeSaveCache(key: String, path: String): Boolean
@@ -69,6 +70,9 @@ class WasmLine(private val moduleKey: String) {
      */
     suspend fun call(action: String, protobufBytes: ByteArray) = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, protobufBytes) }
     // suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, json) }
+
+    fun registerDispatcher(dispatcher: HostDispatcher) { nativeRegisterDispatcher(moduleKey, dispatcher) }
+
 
     /**
      * 释放当前模块

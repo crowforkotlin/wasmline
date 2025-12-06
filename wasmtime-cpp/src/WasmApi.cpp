@@ -60,6 +60,12 @@ void WasmApi::releaseModule(const std::string& key) {
     WasmModule::getInstance().release(key);
 }
 
+// 增加注册方法
+void WasmApi::registerHostHandler(const std::string& key, std::unique_ptr<WasmHostHandler> handler) {
+    WasmSession* session = getOrCreateSession(key);
+    if (session) session->setHostHandler(std::move(handler));
+}
+
 // Core execution logic
 std::string WasmApi::call(const std::string& key, const std::string& action, const std::string& data) {
     WasmSession* session = getOrCreateSession(key);
