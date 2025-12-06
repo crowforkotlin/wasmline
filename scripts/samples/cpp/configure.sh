@@ -29,9 +29,18 @@ echo "[shell configured.sh] --> Creating build directory: $BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
+OS_NAME=$(uname -s)
+ARCH_NAME=$(uname -m)
+
 # Run CMake to generate Makefiles
 echo "[shell configured.sh] --> Running CMake..."
-cmake -G "MinGW Makefiles" ..
+
+
+if [[ "$OS_NAME" == "Darwin" ]]; then
+    cmake ..
+else 
+    cmake -G "MinGW Makefiles" ..
+fi
 
 # --- DONE ---
 
