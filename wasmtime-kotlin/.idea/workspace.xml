@@ -16,23 +16,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":wrench: run on windows">
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/HostDispatcher.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmApi.h" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmApi.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmSession.h" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmSession.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmApi.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmApi.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/assets/plugin.wasm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmLine.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmLine.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" afterDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":sparkles: Wasm (Client) --&gt; Host" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -714,7 +698,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764820460439</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary=":sparkles: Wasm (Client) --&gt; Host">
+      <option name="closed" value="true" />
+      <created>1765002758532</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1765002758532</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -750,7 +742,8 @@
     <MESSAGE value=":docs: README.md" />
     <MESSAGE value=":doc: README.md" />
     <MESSAGE value=":wrench: run on windows" />
-    <option name="LAST_COMMIT_MESSAGE" value=":wrench: run on windows" />
+    <MESSAGE value=":sparkles: Wasm (Client) --&gt; Host" />
+    <option name="LAST_COMMIT_MESSAGE" value=":sparkles: Wasm (Client) --&gt; Host" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
