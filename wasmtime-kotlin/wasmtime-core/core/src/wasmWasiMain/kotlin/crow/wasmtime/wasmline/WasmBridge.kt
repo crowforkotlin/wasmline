@@ -23,8 +23,17 @@ external fun host_copy_to_memory(type: Int, ptr: Int, len: Int)
 @WasmImport("env", "host_read_from_memory")
 external fun host_read_from_memory(ptr: Int, len: Int)
 
+// --- Import ---
+@WasmImport("env", "host_invoke_outbound")
+external fun host_invoke_outbound(aPtr: Int, aLen: Int, pPtr: Int, pLen: Int): Int
+
+@WasmImport("env", "host_copy_outbound_result")
+external fun host_copy_outbound_result(ptr: Int)
+
+
 // --- 2. 内部桥接工具 ---
 internal object WasmBridge {
+
     fun getAction(): String {
         val size = host_get_size(type = TYPE_HOST_ACTION)
         if (size == 0) return ""
@@ -36,23 +45,6 @@ internal object WasmBridge {
         if (size == 0) return ""
         return readStringFromHost(TYPE_HOST_INPUT, size)
     }
-
-/*
-    private fun readString(type: Int, size: Int): String {
-        val bytes = ByteArray(size)
-        for (i in 0 until size) {
-            bytes[i] = host_read_input_byte(type, i).toByte()
-        }
-        return bytes.decodeToString()
-    }
-
-    fun sendResult(result: String) {
-        val bytes = result.encodeToByteArray()
-        for (b in bytes) {
-            host_write_result_byte(b.toInt())
-        }
-    }
-*/
 
     /**
      * 核心优化：批量读取
@@ -101,5 +93,50 @@ internal object WasmBridge {
             // C. 告诉 Host 地址和长度，让它 memcpy 拿走
             host_read_from_memory(pointer.address.toInt(), size)
         }
+    }
+
+    /**
+     * Wasm 呼叫 Host
+     * @param action 方法名
+     * @param payload 参数数据
+     * @return Host 返回的结果
+     */
+    fun callHost(action: String, payload: ByteArray): ByteArray {
+        val actionBytes = action.encodeToByteArray()
+
+        // 开启内存作用域：在此块内分配的内存，块结束后会自动释放
+        // 这就是 Wasm 的内存管理方式，无需手动 free
+        withScopedMemoryAllocator { allocator ->
+
+            // 1. [Alloc] 申请内存放 Action
+            val aPtr = allocator.allocate(actionBytes.size)
+            for (i in actionBytes.indices) (aPtr + i).storeByte(actionBytes[i])
+
+            // 2. [Alloc] 申请内存放 Payload
+            val pPtr = allocator.allocate(payload.size)
+            for (i in payload.indices) (pPtr + i).storeByte(payload[i])
+
+            // 3. [Push] 调用 Host，获取结果长度
+            // C++ 会在这里执行 JNI -> Java，并暂存结果
+            val resLen = host_invoke_outbound(
+                aPtr.address.toInt(), actionBytes.size,
+                pPtr.address.toInt(), payload.size
+            )
+
+            // 如果结果为空，直接返回
+            if (resLen <= 0) return ByteArray(0)
+
+            // 4. [Alloc] 申请结果内存
+            val resPtr = allocator.allocate(resLen)
+
+            // 5. [Pull] 把结果从 C++ 暂存区拉过来
+            host_copy_outbound_result(resPtr.address.toInt())
+
+            // 6. [Copy] 转为 Kotlin 对象
+            val result = ByteArray(resLen)
+            for (i in 0 until resLen) result[i] = (resPtr + i).loadByte()
+
+            return result
+        } // 离开作用域，aPtr, pPtr, resPtr 指向的内存被“释放”（复用）
     }
 }
