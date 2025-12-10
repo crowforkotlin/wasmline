@@ -89,7 +89,19 @@ bool WasmSession::initialize() {
     wasi_config_inherit_env(wasi);
     wasi_config_set_stdout_custom(wasi, wasi_log_writer, nullptr, nullptr);
     wasi_config_set_stderr_custom(wasi, wasi_log_writer, nullptr, nullptr);
-    wasmtime_context_set_wasi(context, wasi);
+    wasmtime_error_t* wasiErr = wasmtime_context_set_wasi(context, wasi);
+    if (wasiErr)
+    {
+        // 1. 提取错误信息字符串
+        wasm_byte_vec_t error_msg;
+        wasmtime_error_message(wasiErr, &error_msg);
+        LOGE("[Wasmtime] Session --> 1. Setup wasi failure: %s", error_msg.data);
+        wasm_byte_vec_delete(&error_msg); // 释放字符串内存
+        wasmtime_error_delete(wasiErr);   // 释放错误对象内存
+        wasi_config_delete(wasi);         // 关键：失败时必须手动释放 config
+        return false;
+    }
+    
     LOGI("[Wasmtime] Session --> 1. Setup wasi success.");
     
     // =========================================================================================

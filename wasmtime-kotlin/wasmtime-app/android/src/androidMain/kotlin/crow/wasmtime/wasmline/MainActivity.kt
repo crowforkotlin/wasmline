@@ -10,7 +10,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import crow.wasmtime.WasmLine
+import crow.wasmtime.Wasmline
+import crow.wasmtime.WasmlineLoadState
 import crow.wasmtime.app.android.R
 import crow.wasmtime.app.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun init() {
-        "[android] MainActivity --> Init wasmtime coast ${measureTimeMillis { WasmLine.init() }} ms".info()
+        "[Wasmline] Init wasmtime spend ${measureTimeMillis { Wasmline.init() }} ms".info()
         binding.load.setOnClickListener {
             binding.content.text = "Loading..."
             runWasm()
@@ -50,10 +51,12 @@ class MainActivity : AppCompatActivity() {
     private fun runWasm() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                "==============================================".info()
                 val data = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
                 val wasmFile = File(cacheDir, "plugin.wasm")
                 val cacheFile = File(cacheDir, "plugin.cwasm")
-                "[android] MainActivity --> wasm file : ${wasmFile.name} \t ${wasmFile.exists()} \t ${wasmFile.absolutePath} \t ${wasmFile.name}".info()
+                "[Android] Wasm file : ${wasmFile.name}    ||    wasm file exits : ${wasmFile.exists()}    ||    wasm file path :  ${wasmFile.absolutePath}".info()
+                "[Android] Cwasm cache file : ${cacheFile.name}    ||    cache file exits : ${cacheFile.exists()}    ||    cache file path :  ${cacheFile.absolutePath}".info()
                 if (!wasmFile.exists()) {
                     assets.open(wasmFile.name).use { input ->
                         FileOutputStream(wasmFile).use { output ->
@@ -61,16 +64,26 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
-                var start = System.currentTimeMillis()
-                val module = WasmLine.load(wasmFile, cacheFile)
-                "[android] MainActivity --> spend time load module --------> ${System.currentTimeMillis() - start} ms".info()
-                start = System.currentTimeMillis()
-                val result = module.call("getUser", data)
-                val duration = System.currentTimeMillis() - start
-                "[android] MainActivity --> spend time call function --------> $duration ms.".info()
-                withContext(Dispatchers.Main) { binding.content.text = "Result: $result\n call function duration : ${duration} ms" }
-                // 4. (可选) 释放模块
-                // module.release()
+                var startMs = System.currentTimeMillis()
+                when(val loadState = Wasmline.load(wasmFile, cacheFile)) {
+                    is WasmlineLoadState.Failure -> { loadState.cause.info() }
+                    is WasmlineLoadState.Success -> {
+                        if (loadState.code == WasmlineLoadState.CODE_SUCCESS_JIT) {
+                            "[Wasmline] Load jit success, spend ${System.currentTimeMillis() - startMs}  ms".info()
+                        } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
+                            "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
+                        }
+                        loadState.wasmLine
+//                start = System.currentTimeMillis()
+//                val result = module.call("getUser", data)
+//                val duration = System.currentTimeMillis() - start
+//                "[android] MainActivity --> spend time call function --------> $duration ms.".info()
+//                withContext(Dispatchers.Main) { binding.content.text = "Result: $result\n call function duration : ${duration} ms" }
+                        // 4. (可选) 释放模块
+//                 module.release()
+
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
