@@ -7,72 +7,61 @@
  * @author crowforkotlin
  */
 
-#include <jni.h>
-#include <string>
-#include "WasmApi.h"
-#include "WasmFileUtils.h" // Needed for Utils if not encapsulated
-#include "WasmLogger.h"
-#include "AndroidHostHandler.h"
+
+#include "WasmtimeJni.h"
 
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmLine_nativeInit(JNIEnv *env, jclass thiz) {
+Java_crow_wasmtime_Wasmline_nativeInit(JNIEnv *env, jclass thiz) {
     WasmApi::initEngine();
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmLine_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
+Java_crow_wasmtime_Wasmline_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
     WasmApi::releaseEngine();
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmtime_WasmLine_nativeLoadSource(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    const char* path = env->GetStringUTFChars(pathStr, nullptr);
-
-    // Call API Facade -> JIT Loading (true)
-    bool success = WasmApi::loadModule(key, path, true);
-
-    env->ReleaseStringUTFChars(keyStr, key);
-    env->ReleaseStringUTFChars(pathStr, path);
-    return success;
+Java_crow_wasmtime_Wasmline_nativeLoadJit(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+    return loadModuleCommon(env, keyStr, pathStr, true, false);
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmtime_WasmLine_nativeLoadCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    const char* path = env->GetStringUTFChars(pathStr, nullptr);
-
-    // Call API Facade -> Cache Loading (false)
-    bool success = WasmApi::loadModule(key, path, false);
-
-    env->ReleaseStringUTFChars(keyStr, key);
-    env->ReleaseStringUTFChars(pathStr, path);
-    return success;
+Java_crow_wasmtime_Wasmline_nativeLoadJitUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+    return loadModuleCommon(env, keyStr, pathStr, true, true);
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmtime_WasmLine_nativeSaveCache(JNIEnv *env, jclass thiz, jstring keyStr, jstring outPathStr) {
-    const char* key = env->GetStringUTFChars(keyStr, nullptr);
-    const char* outPath = env->GetStringUTFChars(outPathStr, nullptr);
+Java_crow_wasmtime_Wasmline_nativeLoadAot(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+    return loadModuleCommon(env, keyStr, pathStr, false, false);
+}
 
-    bool success = WasmApi::saveModuleCache(key, outPath);
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmtime_Wasmline_nativeLoadAotUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+    return loadModuleCommon(env, keyStr, pathStr, false, true);
+}
 
-    env->ReleaseStringUTFChars(keyStr, key);
-    env->ReleaseStringUTFChars(outPathStr, outPath);
-    return success;
+
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmtime_Wasmline_nativeSaveCache(JNIEnv* env, jclass thiz, jstring keyStr, jstring outPathStr) {
+    return saveCacheCommon(env, keyStr, outPathStr, false);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmtime_Wasmline_nativeSaveCacheUnsafe(JNIEnv* env, jclass thiz, jstring keyStr, jstring outPathStr) {
+    return saveCacheCommon(env, keyStr, outPathStr, true);
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmLine_nativeReleaseModule(JNIEnv *env, jclass thiz, jstring keyStr) {
+Java_crow_wasmtime_Wasmline_nativeReleaseModule(JNIEnv *env, jclass thiz, jstring keyStr) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     WasmApi::releaseModule(key);
     env->ReleaseStringUTFChars(keyStr, key);
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmtime_WasmLine_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
+Java_crow_wasmtime_Wasmline_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* action = env->GetStringUTFChars(actionStr, nullptr);
     jsize actionLen = env->GetStringUTFLength(actionStr);
@@ -97,19 +86,5 @@ Java_crow_wasmtime_WasmLine_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr,
         return env->NewByteArray(0);
     }
 }
-
-
-// [新增] 注册分发器
-JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmLine_nativeRegisterDispatcher(JNIEnv *env, jclass thiz, jstring keyStr, jobject jDispatcher) {
-    const char* key = env->GetStringUTFChars(keyStr, nullptr);
-
-    // 创建 Android 实现并注入 Core
-    auto handler = std::make_unique<AndroidHostHandler>(env, jDispatcher);
-    WasmApi::registerHostHandler(key, std::move(handler));
-
-    env->ReleaseStringUTFChars(keyStr, key);
-}
-
 
 } // extern "C"

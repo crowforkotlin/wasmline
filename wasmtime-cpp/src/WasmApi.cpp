@@ -42,8 +42,17 @@ bool WasmApi::loadModule(const std::string& key, const std::string& path, bool i
     return (mod != nullptr);
 }
 
+bool WasmApi::loadModuleUnsafe(const std::string& key, const std::string& path, bool isJit) {
+    auto* mod = WasmModule::getInstance().loadUnsafe(key, path, isJit);
+    return (mod != nullptr);
+}
+
 bool WasmApi::saveModuleCache(const std::string& key, const std::string& path) {
     return WasmModule::getInstance().serialize(key, path);
+}
+
+bool WasmApi::saveModuleCacheUnsafe(const std::string& key, const std::string& path) {
+    return WasmModule::getInstance().serializeUnsafe(key, path);
 }
 
 void WasmApi::releaseModule(const std::string& key) {
