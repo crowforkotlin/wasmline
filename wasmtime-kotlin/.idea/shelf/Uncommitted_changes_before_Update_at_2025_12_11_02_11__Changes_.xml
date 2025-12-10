@@ -1,0 +1,9 @@
+<changelist name="Uncommitted_changes_before_Update_at_2025_12_11_02_11_[Changes]" date="1765390278546" recycled="false" toDelete="true">
+  <option name="PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_11_[Changes]/shelved.patch" />
+  <option name="DESCRIPTION" value="Uncommitted changes before Update at 2025/12/11 02:11 [Changes]" />
+  <binary>
+    <option name="BEFORE_PATH" value="wasmtime-app/android/src/androidMain/assets/plugin.wasm" />
+    <option name="AFTER_PATH" value="wasmtime-app/android/src/androidMain/assets/plugin.wasm" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_11_[Changes]/plugin.wasm" />
+  </binary>
+</changelist>
