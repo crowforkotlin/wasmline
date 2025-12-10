@@ -53,6 +53,7 @@ endif()
 
 include_directories(${CORE_INC_DIR})
 include_directories("${WASMTIME_HOME}/include")
+include_directories("${WASMTIME_HOME}/include/extensions")
 
 # =============================================================
 # 3. 源文件与目标
@@ -64,7 +65,7 @@ set(SOURCE_FILES
     ${CORE_SRC_DIR}/WasmModule.cpp
     ${CORE_SRC_DIR}/WasmSession.cpp
     ${CORE_SRC_DIR}/WasmApi.cpp
-    ${CORE_SRC_DIR}/WasmFileUtils.cpp
+    ${CORE_SRC_DIR}/extensions/FileUtils.cpp
 )
 
 add_executable(WasmtimeSample ${SOURCE_FILES})
