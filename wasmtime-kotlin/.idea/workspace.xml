@@ -16,24 +16,9 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment=":wrench: run on windows">
-      <change afterPath="$PROJECT_DIR$/.idea/markdown.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmlineLoadState.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.vscode/settings.json" beforeDir="false" afterPath="$PROJECT_DIR$/../.vscode/settings.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../samples/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../samples/cpp/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../samples/go/GoBridge.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../samples/go/GoBridge.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmApi.h" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmApi.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmFileUtils.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmModule.h" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/include/WasmModule.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmApi.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmApi.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmFileUtils.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmModule.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmModule.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmtime-cpp/src/WasmSession.cpp" afterDir="false" />
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Adjust thread safety and optimize Wasmline structure">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmLine.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/Wasmline.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/settings.gradle.kts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -716,7 +701,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764820460439</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="Adjust thread safety and optimize Wasmline structure">
+      <option name="closed" value="true" />
+      <created>1765389970553</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1765389970553</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -752,7 +745,8 @@
     <MESSAGE value=":docs: README.md" />
     <MESSAGE value=":doc: README.md" />
     <MESSAGE value=":wrench: run on windows" />
-    <option name="LAST_COMMIT_MESSAGE" value=":wrench: run on windows" />
+    <MESSAGE value="Adjust thread safety and optimize Wasmline structure" />
+    <option name="LAST_COMMIT_MESSAGE" value="Adjust thread safety and optimize Wasmline structure" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
