@@ -9,7 +9,7 @@
 #include "../../wasmtime-cpp/src/WasmEngine.cpp"
 #include "../../wasmtime-cpp/src/WasmModule.cpp"
 #include "../../wasmtime-cpp/src/WasmSession.cpp"
-#include "../../wasmtime-cpp/src/WasmFileUtils.cpp"
+#include "../../wasmtime-cpp/src/extensions/FileUtils.cpp"
 
 // 包含 C 接口定义
 #include "GoBridge.h"

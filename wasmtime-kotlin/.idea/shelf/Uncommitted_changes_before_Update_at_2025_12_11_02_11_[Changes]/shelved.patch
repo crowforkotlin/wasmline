@@ -1,0 +1,1049 @@
+Index: wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/Wasmline.kt
+===================================================================
+diff --git a/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/Wasmline.kt b/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/Wasmline.kt
+deleted file mode 100644
+--- a/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/Wasmline.kt	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ /dev/null	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
+@@ -1,99 +0,0 @@
+-package crow.wasmtime
+-
+-import java.io.File
+-import kotlinx.coroutines.Dispatchers
+-import kotlinx.coroutines.withContext
+-
+-class Wasmline(private val moduleKey: String) {
+-
+-    companion object Companion {
+-
+-        init { System.loadLibrary("wasmline") }
+-
+-        /**
+-         * 加载模块
+-         * @param file .wasm (源码) 或 .cwasm (缓存)
+-         */
+-        suspend fun load(file: File, cacheFile: File? = null, threadSafe: Boolean = false): WasmlineLoadState = withContext(Dispatchers.IO) {
+-            var isSuccess: Boolean
+-            val key: String = file.absolutePath
+-
+-            // 1. Use aot to load cache file (.cwasm)
+-            if (cacheFile?.exists() == true) {
+-                isSuccess = if (threadSafe) {
+-                    nativeLoadAot(key = key, path = cacheFile.absolutePath)
+-                } else {
+-                    nativeLoadAotUnsafe(key = key, path = cacheFile.absolutePath)
+-                }
+-                if (isSuccess) {
+-                    return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_AOT, wasmLine = Wasmline(moduleKey = key))
+-                }  else {
+-                    cacheFile.delete()
+-                }
+-            }
+-
+-            // 2. wasm file not exits
+-            if (!file.exists()) {
+-                return@withContext WasmlineLoadState.Failure(code = WasmlineLoadState.CODE_FAILURE, cause = "[Wasmline] Load failure, file not found: ${file.absolutePath}")
+-            }
+-
+-            // 3. Use jit to load file (.wasm)
+-            isSuccess = if (threadSafe) {
+-                nativeLoadJit(key = key, path = file.absolutePath)
+-            } else {
+-                nativeLoadJitUnsafe(key = key, path = file.absolutePath)
+-            }
+-            if (!isSuccess) {
+-                return@withContext WasmlineLoadState.Failure(code = WasmlineLoadState.CODE_FAILURE, cause = "[Wasmline] Load failure, because native load return false, file path is :  ${file.absolutePath}")
+-            }
+-
+-            // 4. jit compile success, cache (.cwasm) on local storage
+-            if (cacheFile != null) {
+-                if (threadSafe) {
+-                    nativeSaveCache(key = key, path = cacheFile.absolutePath)
+-                } else {
+-                    nativeSaveCacheUnsafe(key = key, path = cacheFile.absolutePath)
+-                }
+-            }
+-
+-            return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_JIT, wasmLine = Wasmline(moduleKey = key))
+-        }
+-
+-        /**
+-         * 初始化全局 Engine。
+-         * 建议在 Application onCreate 中调用。
+-         */
+-        fun init() { nativeInit() }
+-
+-        /**
+-         * 释放全局 Engine 和所有缓存的 Module。
+-         * 建议在确定不再使用 Wasm 时调用，或者 Activity onDestroy。
+-         */
+-        fun release() { nativeReleaseEngine() }
+-
+-        // JNI Methods
+-        @JvmStatic private external fun nativeLoadJit(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeLoadJitUnsafe(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeLoadAot(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeLoadAotUnsafe(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeSaveCache(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeSaveCacheUnsafe(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeReleaseModule(key: String)
+-        @JvmStatic private external fun nativeCall(key: String, action: String, protobufBytes: ByteArray): ByteArray
+-        @JvmStatic private external fun nativeInit()
+-        @JvmStatic private external fun nativeReleaseEngine()
+-    }
+-
+-    /**
+-     * 执行 Wasm 函数
+-     * 支持并发调用，底层会自动创建独立的 Session
+-     */
+-    suspend fun call(action: String, protobufBytes: ByteArray) = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, protobufBytes) }
+-    // suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, json) }
+-
+-    /**
+-     * 释放当前模块
+-     * 不会影响 Engine，但会释放此模块占用的内存
+-     */
+-    fun release() { nativeReleaseModule(moduleKey) }
+-}
+\ No newline at end of file
+Index: .idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21__Changes_.xml
+===================================================================
+diff --git a/.idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21__Changes_.xml b/.idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21__Changes_.xml
+deleted file mode 100644
+--- a/.idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21__Changes_.xml	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ /dev/null	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
+@@ -1,4 +0,0 @@
+-<changelist name="Uncommitted_changes_before_Update_at_2025_11_28_9_21_[Changes]" date="1764292876038" recycled="true" deleted="true">
+-  <option name="PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21_[Changes]/shelved.patch" />
+-  <option name="DESCRIPTION" value="Uncommitted changes before Update at 2025/11/28 9:21 [Changes]" />
+-</changelist>
+\ No newline at end of file
+Index: .idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21_[Changes]/shelved.patch
+===================================================================
+diff --git a/.idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21_[Changes]/shelved.patch b/.idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21_[Changes]/shelved.patch
+deleted file mode 100644
+--- a/.idea/shelf/Uncommitted_changes_before_Update_at_2025_11_28_9_21_[Changes]/shelved.patch	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ /dev/null	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
+@@ -1,140 +0,0 @@
+-Index: .idea/workspace.xml
+-IDEA additional info:
+-Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+-<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"AndroidLayouts\">\r\n    <shared>\r\n      <config />\r\n    </shared>\r\n  </component>\r\n  <component name=\"AutoImportSettings\">\r\n    <option name=\"autoReloadType\" value=\"NONE\" />\r\n  </component>\r\n  <component name=\"ChangeListManager\">\r\n    <list default=\"true\" id=\"7556e9b0-033b-43ca-b4c0-45f49d5ae8ee\" name=\"Changes\" comment=\":bug: wasmedge 0.14.0 only support ..\" />\r\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\r\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\r\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\r\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\r\n  </component>\r\n  <component name=\"ClangdSettings\">\r\n    <option name=\"formatViaClangd\" value=\"false\" />\r\n  </component>\r\n  <component name=\"ExecutionTargetManager\" SELECTED_TARGET=\"device_and_snapshot_combo_box_target[DeviceId(pluginId=LocalEmulator, isTemplate=false, identifier=path=C:\\Users\\CrowF\\AppData\\Local\\Android\\Sdk\\.android\\avd\\Avd35.avd)]\" />\r\n  <component name=\"ExternalProjectsData\">\r\n    <projectState path=\"$PROJECT_DIR$\">\r\n      <ProjectState />\r\n    </projectState>\r\n  </component>\r\n  <component name=\"ExternalProjectsManager\">\r\n    <system id=\"GRADLE\">\r\n      <state>\r\n        <task path=\"$PROJECT_DIR$\">\r\n          <activation />\r\n        </task>\r\n        <task path=\"$PROJECT_DIR$/wazero-core/wazero-plugin\">\r\n          <activation />\r\n        </task>\r\n        <task path=\"$PROJECT_DIR$/wazero-library\">\r\n          <activation />\r\n        </task>\r\n        <projects_view>\r\n          <tree_state>\r\n            <expand>\r\n              <path>\r\n                <item name=\"\" type=\"6a2764b6:ExternalProjectsStructure$RootNode\" />\r\n                <item name=\"WasmLine\" type=\"f1a62948:ProjectNode\" />\r\n              </path>\r\n            </expand>\r\n            <select />\r\n          </tree_state>\r\n        </projects_view>\r\n      </state>\r\n    </system>\r\n  </component>\r\n  <component name=\"FileTemplateManagerImpl\">\r\n    <option name=\"RECENT_TEMPLATES\">\r\n      <list>\r\n        <option value=\"Kotlin File\" />\r\n        <option value=\"Kotlin Class\" />\r\n      </list>\r\n    </option>\r\n  </component>\r\n  <component name=\"GenerateSignedApkSettings\">\r\n    <option name=\"KEY_STORE_PATH\" value=\"C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmline.jks\" />\r\n    <option name=\"KEY_ALIAS\" value=\"123456\" />\r\n    <option name=\"REMEMBER_PASSWORDS\" value=\"true\" />\r\n    <option name=\"BUILD_TARGET_KEY\" value=\"apk\" />\r\n  </component>\r\n  <component name=\"Git.Settings\">\r\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$/..\" />\r\n  </component>\r\n  <component name=\"GitHubPullRequestSearchHistory\">{\r\n  &quot;lastFilter&quot;: {\r\n    &quot;state&quot;: &quot;OPEN&quot;,\r\n    &quot;assignee&quot;: &quot;crowforkotlin&quot;\r\n  }\r\n}</component>\r\n  <component name=\"GithubPullRequestsUISettings\">{\r\n  &quot;selectedUrlAndAccountId&quot;: {\r\n    &quot;url&quot;: &quot;https://github.com/crowforkotlin/wasmedge-kotlin-wasi.git&quot;,\r\n    &quot;accountId&quot;: &quot;52ff4013-64e8-4bab-b7fa-98a6529a4b2d&quot;\r\n  }\r\n}</component>\r\n  <component name=\"ProjectColorInfo\">{\r\n  &quot;associatedIndex&quot;: 3\r\n}</component>\r\n  <component name=\"ProjectId\" id=\"35bODluUgP5b66JuBSt703AWoCh\" />\r\n  <component name=\"ProjectLevelVcsManager\">\r\n    <ConfirmationsSetting value=\"2\" id=\"Add\" />\r\n  </component>\r\n  <component name=\"ProjectViewState\">\r\n    <option name=\"showLibraryContents\" value=\"true\" />\r\n  </component>\r\n  <component name=\"PropertiesComponent\"><![CDATA[{\r\n  \"keyToString\": {\r\n    \"Android App.MainActivity.executor\": \"Run\",\r\n    \"Android App.wasmedge-app.android.executor\": \"Run\",\r\n    \"Android App.wasmtime-app.android.executor\": \"Run\",\r\n    \"ApkExportedModule\": \"WasmLine.wasmtime-app.android\",\r\n    \"ExportApk.ApkPathForWasmLine.wasmtime-app.android\": \"C:\\\\Users\\\\CrowF\\\\Desktop\\\\wasmtime-kotlin-wasi\\\\wasmtime-kotlin\\\\wasmtime-app\\\\android\",\r\n    \"Gradle.Build TEST.executor\": \"Run\",\r\n    \"Gradle.Build wazero-kotlin.executor\": \"Run\",\r\n    \"Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\r\n    \"Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor\": \"Run\",\r\n    \"Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [app:run].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [clean].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor\": \"Run\",\r\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor\": \"Run\",\r\n    \"Kotlin.AppKt (1).executor\": \"Run\",\r\n    \"Kotlin.AppKt (2).executor\": \"Run\",\r\n    \"Kotlin.AppKt.executor\": \"Run\",\r\n    \"Kotlin.GraalKt.executor\": \"Debug\",\r\n    \"ModuleVcsDetector.initialDetectionPerformed\": \"true\",\r\n    \"RunOnceActivity.ShowReadmeOnStart\": \"true\",\r\n    \"RunOnceActivity.cidr.known.project.marker\": \"true\",\r\n    \"RunOnceActivity.git.unshallow\": \"true\",\r\n    \"RunOnceActivity.readMode.enableVisualFormatting\": \"true\",\r\n    \"SHARE_PROJECT_CONFIGURATION_FILES\": \"true\",\r\n    \"cf.first.check.clang-format\": \"false\",\r\n    \"cidr.known.project.marker\": \"true\",\r\n    \"com.developerphil.adbidea.selecteddevices\": \"87d500c6\",\r\n    \"dart.analysis.tool.window.visible\": \"false\",\r\n    \"git-widget-placeholder\": \"main\",\r\n    \"last_opened_file_path\": \"C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin\",\r\n    \"project.structure.last.edited\": \"Project\",\r\n    \"project.structure.proportion\": \"0.17\",\r\n    \"project.structure.side.proportion\": \"0.2\",\r\n    \"settings.editor.selected.configurable\": \"reference.settingsdialog.project.gradle\",\r\n    \"show.do.not.copy.http.proxy.settings.to.gradle\": \"false\",\r\n    \"show.migrate.to.gradle.popup\": \"false\"\r\n  },\r\n  \"keyToStringList\": {\r\n    \"ExportApk.BuildVariants\": [\r\n      \"release\"\r\n    ]\r\n  }\r\n}]]></component>\r\n  <component name=\"RecentsManager\">\r\n    <key name=\"CopyFile.RECENT_KEYS\">\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\cpp\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\lib\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\assets\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\application\\src\\main\\resources\" />\r\n    </key>\r\n    <key name=\"MoveFile.RECENT_KEYS\">\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\cpp\\lib\\arm64-v8a\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\cpp\\include\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\" />\r\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\" />\r\n    </key>\r\n    <key name=\"CopyKotlinDeclarationDialog.RECENTS_KEY\">\r\n      <recent name=\"crow.wasmedge.wasmline\" />\r\n      <recent name=\"com.bridge.wasmline\" />\r\n    </key>\r\n    <key name=\"K2MoveDeclarationsDialog.RECENT_PACKAGE_KEY\">\r\n      <recent name=\"crow.wasmtime.wasmline\" />\r\n      <recent name=\"crow.wazero.wasmline\" />\r\n    </key>\r\n  </component>\r\n  <component name=\"RunAnythingCache\">\r\n    <option name=\"myCommands\">\r\n      <command value=\"./gradlew app:run\" />\r\n      <command value=\"./gradlew clean\" />\r\n      <command value=\"./gradlew wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs\" />\r\n      <command value=\"./gradlew wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup\" />\r\n      <command value=\"./gradlew wazero-core:wazero-plugin:kotlinWasmBinaryenSetup\" />\r\n      <command value=\"./gradlew :wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync\" />\r\n      <command value=\"./gradlew wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync\" />\r\n      <command value=\"./gradlew wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs\" />\r\n      <command value=\"./gradlew wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize\" />\r\n      <command value=\"./gradlew wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\r\n      <command value=\"./gradlew wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\r\n      <command value=\"./gradlew wasmtime-app:android:configureCMakeDebug\" />\r\n      <command value=\"./gradlew :wasmtime-app:android:buildCMakeDebug\" />\r\n      <command value=\"./gradlew :wasmtime-app:android:buildCMakeDebug --info\" />\r\n    </option>\r\n  </component>\r\n  <component name=\"RunManager\" selected=\"Gradle.wasmtime-kotlin [:wasmtime-app:android:assembleRelease]\">\r\n    <configuration name=\"MainActivity\" type=\"AndroidRunConfigurationType\" factoryName=\"Android App\" activateToolWindowBeforeRun=\"false\" temporary=\"true\">\r\n      <module name=\"WasmLine.wasmtime-app.android\" />\r\n      <option name=\"ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION\" value=\"1\" />\r\n      <option name=\"DEPLOY\" value=\"true\" />\r\n      <option name=\"DEPLOY_APK_FROM_BUNDLE\" value=\"false\" />\r\n      <option name=\"DEPLOY_AS_INSTANT\" value=\"false\" />\r\n      <option name=\"ARTIFACT_NAME\" value=\"\" />\r\n      <option name=\"PM_INSTALL_OPTIONS\" value=\"\" />\r\n      <option name=\"ALL_USERS\" value=\"false\" />\r\n      <option name=\"ALWAYS_INSTALL_WITH_PM\" value=\"false\" />\r\n      <option name=\"ALLOW_ASSUME_VERIFIED\" value=\"false\" />\r\n      <option name=\"CLEAR_APP_STORAGE\" value=\"false\" />\r\n      <option name=\"DYNAMIC_FEATURES_DISABLED_LIST\" value=\"\" />\r\n      <option name=\"ACTIVITY_EXTRA_FLAGS\" value=\"\" />\r\n      <option name=\"MODE\" value=\"specific_activity\" />\r\n      <option name=\"RESTORE_ENABLED\" value=\"false\" />\r\n      <option name=\"RESTORE_FILE\" value=\"\" />\r\n      <option name=\"RESTORE_FRESH_INSTALL_ONLY\" value=\"false\" />\r\n      <option name=\"CLEAR_LOGCAT\" value=\"false\" />\r\n      <option name=\"SHOW_LOGCAT_AUTOMATICALLY\" value=\"false\" />\r\n      <option name=\"TARGET_SELECTION_MODE\" value=\"DEVICE_AND_SNAPSHOT_COMBO_BOX\" />\r\n      <option name=\"SELECTED_CLOUD_MATRIX_CONFIGURATION_ID\" value=\"-1\" />\r\n      <option name=\"SELECTED_CLOUD_MATRIX_PROJECT_ID\" value=\"\" />\r\n      <option name=\"DEBUGGER_TYPE\" value=\"Auto\" />\r\n      <Auto>\r\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\r\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\r\n        <option name=\"WORKING_DIR\" value=\"\" />\r\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\r\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Auto>\r\n      <Hybrid>\r\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\r\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\r\n        <option name=\"WORKING_DIR\" value=\"\" />\r\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\r\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Hybrid>\r\n      <Java>\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Java>\r\n      <Native>\r\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\r\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\r\n        <option name=\"WORKING_DIR\" value=\"\" />\r\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\r\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Native>\r\n      <Profilers>\r\n        <option name=\"ADVANCED_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"STARTUP_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"STARTUP_CPU_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"STARTUP_CPU_PROFILING_CONFIGURATION_NAME\" value=\"Java/Kotlin Method Sample (legacy)\" />\r\n        <option name=\"STARTUP_NATIVE_MEMORY_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"NATIVE_MEMORY_SAMPLE_RATE_BYTES\" value=\"2048\" />\r\n      </Profilers>\r\n      <option name=\"DEEP_LINK\" value=\"\" />\r\n      <option name=\"ACTIVITY\" value=\"\" />\r\n      <option name=\"ACTIVITY_CLASS\" value=\"crow.wasmtime.wasmline.MainActivity\" />\r\n      <option name=\"SEARCH_ACTIVITY_IN_GLOBAL_SCOPE\" value=\"false\" />\r\n      <option name=\"SKIP_ACTIVITY_VALIDATION\" value=\"false\" />\r\n      <method v=\"2\">\r\n        <option name=\"Android.Gradle.BeforeRunTask\" enabled=\"true\" />\r\n      </method>\r\n    </configuration>\r\n    <configuration name=\"wasmtime-app.android\" type=\"AndroidRunConfigurationType\" factoryName=\"Android App\" activateToolWindowBeforeRun=\"false\">\r\n      <module name=\"WasmLine.wasmtime-app.android\" />\r\n      <option name=\"ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION\" value=\"1\" />\r\n      <option name=\"DEPLOY\" value=\"true\" />\r\n      <option name=\"DEPLOY_APK_FROM_BUNDLE\" value=\"false\" />\r\n      <option name=\"DEPLOY_AS_INSTANT\" value=\"false\" />\r\n      <option name=\"ARTIFACT_NAME\" value=\"\" />\r\n      <option name=\"PM_INSTALL_OPTIONS\" value=\"\" />\r\n      <option name=\"ALL_USERS\" value=\"false\" />\r\n      <option name=\"ALWAYS_INSTALL_WITH_PM\" value=\"false\" />\r\n      <option name=\"ALLOW_ASSUME_VERIFIED\" value=\"false\" />\r\n      <option name=\"CLEAR_APP_STORAGE\" value=\"false\" />\r\n      <option name=\"DYNAMIC_FEATURES_DISABLED_LIST\" value=\"\" />\r\n      <option name=\"ACTIVITY_EXTRA_FLAGS\" value=\"\" />\r\n      <option name=\"MODE\" value=\"default_activity\" />\r\n      <option name=\"RESTORE_ENABLED\" value=\"false\" />\r\n      <option name=\"RESTORE_FILE\" value=\"\" />\r\n      <option name=\"RESTORE_FRESH_INSTALL_ONLY\" value=\"false\" />\r\n      <option name=\"CLEAR_LOGCAT\" value=\"false\" />\r\n      <option name=\"SHOW_LOGCAT_AUTOMATICALLY\" value=\"false\" />\r\n      <option name=\"TARGET_SELECTION_MODE\" value=\"DEVICE_AND_SNAPSHOT_COMBO_BOX\" />\r\n      <option name=\"SELECTED_CLOUD_MATRIX_CONFIGURATION_ID\" value=\"-1\" />\r\n      <option name=\"SELECTED_CLOUD_MATRIX_PROJECT_ID\" value=\"\" />\r\n      <option name=\"DEBUGGER_TYPE\" value=\"Auto\" />\r\n      <Auto>\r\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\r\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\r\n        <option name=\"WORKING_DIR\" value=\"\" />\r\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\r\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Auto>\r\n      <Hybrid>\r\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\r\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\r\n        <option name=\"WORKING_DIR\" value=\"\" />\r\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\r\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Hybrid>\r\n      <Java>\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Java>\r\n      <Native>\r\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\r\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\r\n        <option name=\"WORKING_DIR\" value=\"\" />\r\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\r\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\r\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\r\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\r\n      </Native>\r\n      <Profilers>\r\n        <option name=\"ADVANCED_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"STARTUP_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"STARTUP_CPU_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"STARTUP_CPU_PROFILING_CONFIGURATION_NAME\" value=\"Java/Kotlin Method Sample (legacy)\" />\r\n        <option name=\"STARTUP_NATIVE_MEMORY_PROFILING_ENABLED\" value=\"false\" />\r\n        <option name=\"NATIVE_MEMORY_SAMPLE_RATE_BYTES\" value=\"2048\" />\r\n      </Profilers>\r\n      <option name=\"DEEP_LINK\" value=\"\" />\r\n      <option name=\"ACTIVITY\" value=\"\" />\r\n      <option name=\"ACTIVITY_CLASS\" value=\"\" />\r\n      <option name=\"SEARCH_ACTIVITY_IN_GLOBAL_SCOPE\" value=\"false\" />\r\n      <option name=\"SKIP_ACTIVITY_VALIDATION\" value=\"false\" />\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration name=\"wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\r\n      <ExternalSystemSettings>\r\n        <option name=\"executionName\" />\r\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\r\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\r\n        <option name=\"scriptParameters\" value=\"\" />\r\n        <option name=\"taskDescriptions\">\r\n          <list />\r\n        </option>\r\n        <option name=\"taskNames\">\r\n          <list>\r\n            <option value=\"wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\r\n          </list>\r\n        </option>\r\n        <option name=\"vmOptions\" />\r\n      </ExternalSystemSettings>\r\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\r\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\r\n      <DebugAllEnabled>false</DebugAllEnabled>\r\n      <RunAsTest>false</RunAsTest>\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration name=\"wasmtime-kotlin [:wasmtime-app:android:assembleRelease]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\r\n      <ExternalSystemSettings>\r\n        <option name=\"executionName\" />\r\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\r\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\r\n        <option name=\"scriptParameters\" value=\"\" />\r\n        <option name=\"taskDescriptions\">\r\n          <list />\r\n        </option>\r\n        <option name=\"taskNames\">\r\n          <list>\r\n            <option value=\":wasmtime-app:android:assembleRelease\" />\r\n          </list>\r\n        </option>\r\n        <option name=\"vmOptions\" />\r\n      </ExternalSystemSettings>\r\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\r\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\r\n      <DebugAllEnabled>false</DebugAllEnabled>\r\n      <RunAsTest>false</RunAsTest>\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration name=\"wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\r\n      <ExternalSystemSettings>\r\n        <option name=\"executionName\" />\r\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\r\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\r\n        <option name=\"scriptParameters\" value=\"\" />\r\n        <option name=\"taskDescriptions\">\r\n          <list />\r\n        </option>\r\n        <option name=\"taskNames\">\r\n          <list>\r\n            <option value=\":wasmtime-app:android:buildCMakeDebug\" />\r\n          </list>\r\n        </option>\r\n        <option name=\"vmOptions\" />\r\n      </ExternalSystemSettings>\r\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\r\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\r\n      <DebugAllEnabled>false</DebugAllEnabled>\r\n      <RunAsTest>false</RunAsTest>\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration name=\"wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\r\n      <ExternalSystemSettings>\r\n        <option name=\"executionName\" />\r\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\r\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\r\n        <option name=\"scriptParameters\" value=\"\" />\r\n        <option name=\"taskDescriptions\">\r\n          <list />\r\n        </option>\r\n        <option name=\"taskNames\">\r\n          <list>\r\n            <option value=\"wasmtime-app:android:configureCMakeDebug\" />\r\n          </list>\r\n        </option>\r\n        <option name=\"vmOptions\" />\r\n      </ExternalSystemSettings>\r\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\r\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\r\n      <DebugAllEnabled>false</DebugAllEnabled>\r\n      <RunAsTest>false</RunAsTest>\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration name=\"AppKt\" type=\"JetRunConfigurationType\" temporary=\"true\" nameIsGenerated=\"true\">\r\n      <option name=\"MAIN_CLASS_NAME\" value=\"org.example.AppKt\" />\r\n      <module name=\"wazero-kotlin.app.main\" />\r\n      <method v=\"2\">\r\n        <option name=\"Make\" enabled=\"true\" />\r\n      </method>\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"JetRunConfigurationType\">\r\n      <module name=\"wazero-kotlin\" />\r\n      <method v=\"2\">\r\n        <option name=\"Make\" enabled=\"true\" />\r\n      </method>\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"KotlinStandaloneScriptRunConfigurationType\">\r\n      <module name=\"wazero-kotlin\" />\r\n      <option name=\"filePath\" />\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"PythonConfigurationType\" factoryName=\"Python\">\r\n      <module name=\"wazero-kotlin\" />\r\n      <option name=\"ENV_FILES\" value=\"\" />\r\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\r\n      <option name=\"PARENT_ENVS\" value=\"true\" />\r\n      <envs>\r\n        <env name=\"PYTHONUNBUFFERED\" value=\"1\" />\r\n      </envs>\r\n      <option name=\"SDK_HOME\" value=\"\" />\r\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\r\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\r\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\r\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\r\n      <option name=\"SCRIPT_NAME\" value=\"\" />\r\n      <option name=\"PARAMETERS\" value=\"\" />\r\n      <option name=\"SHOW_COMMAND_LINE\" value=\"false\" />\r\n      <option name=\"EMULATE_TERMINAL\" value=\"false\" />\r\n      <option name=\"MODULE_MODE\" value=\"false\" />\r\n      <option name=\"REDIRECT_INPUT\" value=\"false\" />\r\n      <option name=\"INPUT_FILE\" value=\"\" />\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"Tox\" factoryName=\"Tox\">\r\n      <module name=\"wazero-kotlin\" />\r\n      <option name=\"ENV_FILES\" value=\"\" />\r\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\r\n      <option name=\"PARENT_ENVS\" value=\"true\" />\r\n      <option name=\"SDK_HOME\" value=\"\" />\r\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\r\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\r\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\r\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"tests\" factoryName=\"Autodetect\">\r\n      <module name=\"wazero-kotlin\" />\r\n      <option name=\"ENV_FILES\" value=\"\" />\r\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\r\n      <option name=\"PARENT_ENVS\" value=\"true\" />\r\n      <option name=\"SDK_HOME\" value=\"\" />\r\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\r\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\r\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\r\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\r\n      <option name=\"_new_additionalArguments\" value=\"&quot;&quot;\" />\r\n      <option name=\"_new_target\" value=\"&quot;&quot;\" />\r\n      <option name=\"_new_targetType\" value=\"&quot;PATH&quot;\" />\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"tests\" factoryName=\"Doctests\">\r\n      <module name=\"wazero-kotlin\" />\r\n      <option name=\"ENV_FILES\" value=\"\" />\r\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\r\n      <option name=\"PARENT_ENVS\" value=\"true\" />\r\n      <option name=\"SDK_HOME\" value=\"\" />\r\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\r\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\r\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\r\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\r\n      <option name=\"SCRIPT_NAME\" value=\"\" />\r\n      <option name=\"CLASS_NAME\" value=\"\" />\r\n      <option name=\"METHOD_NAME\" value=\"\" />\r\n      <option name=\"FOLDER_NAME\" value=\"\" />\r\n      <option name=\"TEST_TYPE\" value=\"TEST_SCRIPT\" />\r\n      <option name=\"PATTERN\" value=\"\" />\r\n      <option name=\"USE_PATTERN\" value=\"false\" />\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <list>\r\n      <item itemvalue=\"Android App.wasmtime-app.android\" />\r\n      <item itemvalue=\"Android App.MainActivity\" />\r\n      <item itemvalue=\"Gradle.wasmtime-kotlin [:wasmtime-app:android:assembleRelease]\" />\r\n      <item itemvalue=\"Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug]\" />\r\n      <item itemvalue=\"Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug]\" />\r\n      <item itemvalue=\"Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" />\r\n      <item itemvalue=\"Kotlin.AppKt\" />\r\n    </list>\r\n    <recent_temporary>\r\n      <list>\r\n        <item itemvalue=\"Gradle.wasmtime-kotlin [:wasmtime-app:android:assembleRelease]\" />\r\n        <item itemvalue=\"Android App.MainActivity\" />\r\n        <item itemvalue=\"Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug]\" />\r\n        <item itemvalue=\"Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug]\" />\r\n        <item itemvalue=\"Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" />\r\n      </list>\r\n    </recent_temporary>\r\n  </component>\r\n  <component name=\"TaskManager\">\r\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\r\n      <changelist id=\"7556e9b0-033b-43ca-b4c0-45f49d5ae8ee\" name=\"Changes\" comment=\"\" />\r\n      <created>1763375187217</created>\r\n      <option name=\"number\" value=\"Default\" />\r\n      <option name=\"presentableId\" value=\"Default\" />\r\n      <updated>1763375187217</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00001\" summary=\":bug: wasmedge 0.14.0 only support ..\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1764155356895</created>\r\n      <option name=\"number\" value=\"00001\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00001\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1764155356895</updated>\r\n    </task>\r\n    <option name=\"localTasksCounter\" value=\"2\" />\r\n    <servers />\r\n  </component>\r\n  <component name=\"Vcs.Log.Tabs.Properties\">\r\n    <option name=\"TAB_STATES\">\r\n      <map>\r\n        <entry key=\"MAIN\">\r\n          <value>\r\n            <State />\r\n          </value>\r\n        </entry>\r\n      </map>\r\n    </option>\r\n  </component>\r\n  <component name=\"VcsManagerConfiguration\">\r\n    <MESSAGE value=\":bug: wasmedge 0.14.0 only support ..\" />\r\n    <option name=\"LAST_COMMIT_MESSAGE\" value=\":bug: wasmedge 0.14.0 only support ..\" />\r\n  </component>\r\n  <component name=\"XDebuggerManager\">\r\n    <breakpoint-manager>\r\n      <breakpoints>\r\n        <line-breakpoint enabled=\"true\" type=\"kotlin-function\">\r\n          <url>file://$PROJECT_DIR$/wazero-app/application/src/main/kotlin/crow/wazero/wasmline/App.kt</url>\r\n          <line>89</line>\r\n          <properties>\r\n            <option name=\"WATCH_EXIT\" value=\"false\" />\r\n          </properties>\r\n          <option name=\"timeStamp\" value=\"1\" />\r\n        </line-breakpoint>\r\n        <breakpoint enabled=\"true\" type=\"OCSymbolicBreakpointType\">\r\n          <properties>\r\n            <option name=\"moduleName\" value=\"libart.so\" />\r\n            <option name=\"symbolPattern\" value=\"art_sigbus_fault\" />\r\n          </properties>\r\n          <option name=\"timeStamp\" value=\"6\" />\r\n        </breakpoint>\r\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\r\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\r\n          <line>379</line>\r\n          <option name=\"timeStamp\" value=\"20\" />\r\n        </line-breakpoint>\r\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\r\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\r\n          <line>380</line>\r\n          <option name=\"timeStamp\" value=\"21\" />\r\n        </line-breakpoint>\r\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\r\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\r\n          <line>381</line>\r\n          <option name=\"timeStamp\" value=\"22\" />\r\n        </line-breakpoint>\r\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\r\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\r\n          <line>382</line>\r\n          <option name=\"timeStamp\" value=\"23\" />\r\n        </line-breakpoint>\r\n      </breakpoints>\r\n    </breakpoint-manager>\r\n  </component>\r\n  <component name=\"play_dynamic_filters_status\">\r\n    <option name=\"appIdToCheckInfo\">\r\n      <map>\r\n        <entry key=\"com.crow.mordecaix\">\r\n          <value>\r\n            <CheckInfo lastCheckTimestamp=\"1764148028909\" />\r\n          </value>\r\n        </entry>\r\n        <entry key=\"com.crow.mordecaix.test\">\r\n          <value>\r\n            <CheckInfo lastCheckTimestamp=\"1764148028909\" />\r\n          </value>\r\n        </entry>\r\n        <entry key=\"crow.wasmedge.library.android.test\">\r\n          <value>\r\n            <CheckInfo lastCheckTimestamp=\"1764148959136\" />\r\n          </value>\r\n        </entry>\r\n        <entry key=\"crow.wasmedge.wasmline\">\r\n          <value>\r\n            <CheckInfo lastCheckTimestamp=\"1764148915759\" />\r\n          </value>\r\n        </entry>\r\n        <entry key=\"crow.wasmedge.wasmline.test\">\r\n          <value>\r\n            <CheckInfo lastCheckTimestamp=\"1764148915758\" />\r\n          </value>\r\n        </entry>\r\n        <entry key=\"crow.wasmtime.wasmline\">\r\n          <value>\r\n            <CheckInfo lastCheckTimestamp=\"1764225554412\" />\r\n          </value>\r\n        </entry>\r\n        <entry key=\"crow.wasmtime.wasmline.test\">\r\n          <value>\r\n            <CheckInfo lastCheckTimestamp=\"1764225554412\" />\r\n          </value>\r\n        </entry>\r\n      </map>\r\n    </option>\r\n  </component>\r\n</project>
+-Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+-<+>UTF-8
+-===================================================================
+-diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+---- a/.idea/workspace.xml	(revision 56668c69bc9c105df1499b0abaa9048b4731be41)
+-+++ b/.idea/workspace.xml	(date 1764292766433)
+-@@ -89,69 +89,69 @@
+-   <component name="ProjectViewState">
+-     <option name="showLibraryContents" value="true" />
+-   </component>
+--  <component name="PropertiesComponent"><![CDATA[{
+--  "keyToString": {
+--    "Android App.MainActivity.executor": "Run",
+--    "Android App.wasmedge-app.android.executor": "Run",
+--    "Android App.wasmtime-app.android.executor": "Run",
+--    "ApkExportedModule": "WasmLine.wasmtime-app.android",
+--    "ExportApk.ApkPathForWasmLine.wasmtime-app.android": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android",
+--    "Gradle.Build TEST.executor": "Run",
+--    "Gradle.Build wazero-kotlin.executor": "Run",
+--    "Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+--    "Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor": "Run",
+--    "Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor": "Run",
+--    "Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+--    "Gradle.wazero-kotlin [app:run].executor": "Run",
+--    "Gradle.wazero-kotlin [clean].executor": "Run",
+--    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+--    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+--    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+--    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+--    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+--    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+--    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor": "Run",
+--    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor": "Run",
+--    "Kotlin.AppKt (1).executor": "Run",
+--    "Kotlin.AppKt (2).executor": "Run",
+--    "Kotlin.AppKt.executor": "Run",
+--    "Kotlin.GraalKt.executor": "Debug",
+--    "ModuleVcsDetector.initialDetectionPerformed": "true",
+--    "RunOnceActivity.ShowReadmeOnStart": "true",
+--    "RunOnceActivity.cidr.known.project.marker": "true",
+--    "RunOnceActivity.git.unshallow": "true",
+--    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+--    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+--    "cf.first.check.clang-format": "false",
+--    "cidr.known.project.marker": "true",
+--    "com.developerphil.adbidea.selecteddevices": "87d500c6",
+--    "dart.analysis.tool.window.visible": "false",
+--    "git-widget-placeholder": "main",
+--    "last_opened_file_path": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin",
+--    "project.structure.last.edited": "Project",
+--    "project.structure.proportion": "0.17",
+--    "project.structure.side.proportion": "0.2",
+--    "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle",
+--    "show.do.not.copy.http.proxy.settings.to.gradle": "false",
+--    "show.migrate.to.gradle.popup": "false"
+-+  <component name="PropertiesComponent">{
+-+  &quot;keyToString&quot;: {
+-+    &quot;Android App.MainActivity.executor&quot;: &quot;Run&quot;,
+-+    &quot;Android App.wasmedge-app.android.executor&quot;: &quot;Run&quot;,
+-+    &quot;Android App.wasmtime-app.android.executor&quot;: &quot;Run&quot;,
+-+    &quot;ApkExportedModule&quot;: &quot;WasmLine.wasmtime-app.android&quot;,
+-+    &quot;ExportApk.ApkPathForWasmLine.wasmtime-app.android&quot;: &quot;C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android&quot;,
+-+    &quot;Gradle.Build TEST.executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.Build wazero-kotlin.executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [app:run].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [clean].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor&quot;: &quot;Run&quot;,
+-+    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor&quot;: &quot;Run&quot;,
+-+    &quot;Kotlin.AppKt (1).executor&quot;: &quot;Run&quot;,
+-+    &quot;Kotlin.AppKt (2).executor&quot;: &quot;Run&quot;,
+-+    &quot;Kotlin.AppKt.executor&quot;: &quot;Run&quot;,
+-+    &quot;Kotlin.GraalKt.executor&quot;: &quot;Debug&quot;,
+-+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+-+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+-+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+-+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+-+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+-+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+-+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+-+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+-+    &quot;com.developerphil.adbidea.selecteddevices&quot;: &quot;87d500c6&quot;,
+-+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+-+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+-+    &quot;last_opened_file_path&quot;: &quot;C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin&quot;,
+-+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+-+    &quot;project.structure.proportion&quot;: &quot;0.17&quot;,
+-+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+-+    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settingsdialog.project.gradle&quot;,
+-+    &quot;show.do.not.copy.http.proxy.settings.to.gradle&quot;: &quot;false&quot;,
+-+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
+-   },
+--  "keyToStringList": {
+--    "ExportApk.BuildVariants": [
+--      "release"
+-+  &quot;keyToStringList&quot;: {
+-+    &quot;ExportApk.BuildVariants&quot;: [
+-+      &quot;release&quot;
+-     ]
+-   }
+--}]]></component>
+-+}</component>
+-   <component name="RecentsManager">
+-     <key name="CopyFile.RECENT_KEYS">
+-       <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin\wasmedge-app\android\src\androidMain\cpp" />
+Index: wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.cpp b/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.cpp
+new file mode 100644
+--- /dev/null	(date 1765390032147)
++++ b/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.cpp	(date 1765390032147)
+@@ -0,0 +1,59 @@
++#include "AndroidHostHandler.h"
++#include "WasmLogger.h"
++
++AndroidHostHandler::AndroidHostHandler(JNIEnv* env, jobject dispatcher) {
++    env->GetJavaVM(&jvm);
++    // 1. 锁定对象，防止 GC
++    javaDispatcherRef = env->NewGlobalRef(dispatcher);
++
++    // 2. 缓存 MethodID
++    jclass cls = env->GetObjectClass(dispatcher);
++    dispatchMethodId = env->GetMethodID(cls, "dispatch", "(Ljava/lang/String;[B)[B");
++    env->DeleteLocalRef(cls);
++}
++
++AndroidHostHandler::~AndroidHostHandler() {
++    // 析构时释放引用
++    JNIEnv* env = nullptr;
++    bool attached = false;
++    if (jvm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
++        jvm->AttachCurrentThread(&env, nullptr);
++        attached = true;
++    }
++
++    if (javaDispatcherRef) {
++        env->DeleteGlobalRef(javaDispatcherRef);
++    }
++
++    if (attached) jvm->DetachCurrentThread();
++}
++
++std::string AndroidHostHandler::invoke(const std::string& action, const std::string& payload) {
++    JNIEnv* env = nullptr;
++    if (jvm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
++        // 理论上不会发生，因为 invoke 是在 WasmSession::call 线程调用的
++        return "";
++    }
++
++    jstring jAction = env->NewStringUTF(action.c_str());
++    jbyteArray jPayload = env->NewByteArray(payload.size());
++    env->SetByteArrayRegion(jPayload, 0, payload.size(), (const jbyte*)payload.data());
++
++    // 调用 Java
++    jobject jResult = env->CallObjectMethod(javaDispatcherRef, dispatchMethodId, jAction, jPayload);
++
++    std::string resultStr;
++    if (jResult) {
++        jbyteArray jResArr = (jbyteArray)jResult;
++        jsize len = env->GetArrayLength(jResArr);
++        jbyte* body = env->GetByteArrayElements(jResArr, nullptr);
++        resultStr.assign((char*)body, len);
++        env->ReleaseByteArrayElements(jResArr, body, JNI_ABORT);
++    }
++
++    env->DeleteLocalRef(jAction);
++    env->DeleteLocalRef(jPayload);
++    env->DeleteLocalRef(jResult);
++
++    return resultStr;
++}
+\ No newline at end of file
+Index: ../wasmtime-cpp/src/WasmOutboundChannel.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/../wasmtime-cpp/src/WasmOutboundChannel.cpp b/../wasmtime-cpp/src/WasmOutboundChannel.cpp
+new file mode 100644
+--- /dev/null	(date 1765390032145)
++++ b/../wasmtime-cpp/src/WasmOutboundChannel.cpp	(date 1765390032145)
+@@ -0,0 +1,55 @@
++#include "WasmOutboundChannel.h"
++
++WasmOutboundChannel::WasmOutboundChannel(JNIEnv* env, jobject dispatcher) {
++    env->GetJavaVM(&jvm);
++    // 1. 创建全局引用，锁定 Java 对象生命周期
++    javaDispatcherRef = env->NewGlobalRef(dispatcher);
++    
++    // 2. 缓存 MethodID: dispatch(String, byte[]): byte[]
++    jclass cls = env->GetObjectClass(dispatcher);
++    dispatchMethodId = env->GetMethodID(cls, "dispatch", "(Ljava/lang/String;[B)[B");
++    env->DeleteLocalRef(cls);
++}
++
++WasmOutboundChannel::~WasmOutboundChannel() {
++    // 析构时释放全局引用
++    JNIEnv* env = nullptr;
++    bool attached = false;
++    if (jvm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
++        jvm->AttachCurrentThread(&env, nullptr);
++        attached = true;
++    }
++
++    if (javaDispatcherRef) {
++        env->DeleteGlobalRef(javaDispatcherRef);
++    }
++
++    if (attached) jvm->DetachCurrentThread();
++}
++
++std::string WasmOutboundChannel::call(JNIEnv* env, const std::string& action, const std::string& payload) {
++    if (!javaDispatcherRef || !dispatchMethodId) return "";
++
++    // 构造参数
++    jstring jAction = env->NewStringUTF(action.c_str());
++    jbyteArray jPayload = env->NewByteArray(payload.size());
++    env->SetByteArrayRegion(jPayload, 0, payload.size(), (const jbyte*)payload.data());
++
++    // 调用 Java
++    jobject jResult = env->CallObjectMethod(javaDispatcherRef, dispatchMethodId, jAction, jPayload);
++
++    // 处理返回值 (深拷贝到 C++ string)
++    std::string resultStr;
++    if (jResult) {
++        jbyteArray jResArr = (jbyteArray)jResult;
++        jsize len = env->GetArrayLength(jResArr);
++        jbyte* body = env->GetByteArrayElements(jResArr, nullptr);
++        resultStr.assign((char*)body, len);
++        env->ReleaseByteArrayElements(jResArr, body, JNI_ABORT);
++    }
++
++    env->DeleteLocalRef(jAction);
++    env->DeleteLocalRef(jPayload);
++    env->DeleteLocalRef(jResult);
++    return resultStr;
++}
+\ No newline at end of file
+Index: wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>@file:Suppress(\"FunctionName\", \"unused\")\n\npackage crow.wasmtime.wasmline\n\nfun WasmEntryInitialize() {\n    // 1. 自动拉取参数\n    val action = WasmBridge.getAction()\n    val args = WasmBridge.getJson()\n    println(\"[WasmKotlin] Core --> Receive action is : $action \\t arg is : ${if (args.length > 32) \"${args.take(n = 32)}......\" else args}\")\n\n    // 2. 自动捕获异常并分发\n    val result = try {\n        WasmRouter.dispatch(action, args)\n    } catch (exception: Exception) {\n        println(\"[WasmKotlin] Core --> Exception message : ${exception.message}\")\n        \"\"\"{\"error\": \"Wasm Panic: ${exception.message}\"}\"\"\"\n    }\n\n    // 3. 自动回传\n    WasmBridge.sendResult(result)\n}\n\nfun main() { println(\"[Wasm SDK] Initialized.\") }
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt b/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt
+--- a/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ b/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt	(date 1765390032150)
+@@ -16,6 +16,9 @@
+         """{"error": "Wasm Panic: ${exception.message}"}"""
+     }
+ 
++    val logMsg = "Wasm received: $args"
++    WasmBridge.callHost("host_log", logMsg.encodeToByteArray())
++
+     // 3. 自动回传
+     WasmBridge.sendResult(result)
+ }
+Index: wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>@file:OptIn(ExperimentalWasmInterop::class, UnsafeWasmMemoryApi::class)\n@file:Suppress(\"FunctionName\")\n\npackage crow.wasmtime.wasmline\n\nimport kotlin.time.Clock\nimport kotlin.wasm.unsafe.UnsafeWasmMemoryApi\nimport kotlin.wasm.unsafe.withScopedMemoryAllocator\n\nprivate const val TYPE_HOST_ACTION = 0\nprivate const val TYPE_HOST_INPUT = 1\n\n// --- 1. 底层 Import (全部 private/internal，对外隐藏) ---\n// type: 0=Action, 1=Input\n@WasmImport(\"env\", \"host_get_size\")\nexternal fun host_get_size(type: Int): Int\n\n// [新接口] 告诉 Host：把 type 类型的数据拷贝到 ptr 这个地址，长度为 len\n@WasmImport(\"env\", \"host_copy_to_memory\")\nexternal fun host_copy_to_memory(type: Int, ptr: Int, len: Int)\n\n// [新接口] 告诉 Host：从 ptr 这个地址读取 len 长度的数据作为结果\n@WasmImport(\"env\", \"host_read_from_memory\")\nexternal fun host_read_from_memory(ptr: Int, len: Int)\n\n// --- 2. 内部桥接工具 ---\ninternal object WasmBridge {\n    fun getAction(): String {\n        val size = host_get_size(type = TYPE_HOST_ACTION)\n        if (size == 0) return \"\"\n        return readStringFromHost(type = TYPE_HOST_ACTION, size)\n    }\n\n    fun getJson(): String {\n        val size = host_get_size(type = TYPE_HOST_INPUT)\n        if (size == 0) return \"\"\n        return readStringFromHost(TYPE_HOST_INPUT, size)\n    }\n\n/*\n    private fun readString(type: Int, size: Int): String {\n        val bytes = ByteArray(size)\n        for (i in 0 until size) {\n            bytes[i] = host_read_input_byte(type, i).toByte()\n        }\n        return bytes.decodeToString()\n    }\n\n    fun sendResult(result: String) {\n        val bytes = result.encodeToByteArray()\n        for (b in bytes) {\n            host_write_result_byte(b.toInt())\n        }\n    }\n*/\n\n    /**\n     * 核心优化：批量读取\n     * 1. 在 Wasm 线性内存申请 buffer\n     * 2. 让 C++ memcpy 数据进来\n     * 3. 在 Wasm 内部循环拷贝到 ByteArray (极快，无 Host Call 开销)\n     */\n    private fun readStringFromHost(type: Int, size: Int): String {\n        // 使用 Scoped Allocator，代码块结束自动释放内存，无泄漏风险\n        withScopedMemoryAllocator { allocator ->\n            // A. 申请内存 (返回的是 unsafe Pointer)\n            val pointer = allocator.allocate(size)\n\n            // B. 传入地址 (Int)，让 C++ 直接 memcpy\n            host_copy_to_memory(type, pointer.address.toInt(), size)\n\n            // C. 将数据从 Unsafe 内存搬运到 Kotlin 安全内存 (ByteArray)\n            // 注意：这个循环是在 Wasm 虚拟机内部执行的，是纯计算指令，非常快\n            val start = Clock.System.now().toEpochMilliseconds()\n            val bytes = ByteArray(size)\n            for (i in 0 until size) {\n                // 指针运算 + 读取字节\n                bytes[i] = (pointer + i).loadByte()\n            }\n            return \"bytes size ${bytes.size}\"\n        }\n    }\n\n    /**\n     * 核心优化：批量写入\n     */\n    fun sendResult(result: String) {\n        if (result.isEmpty()) return\n        val bytes = result.encodeToByteArray()\n        val size = bytes.size\n\n        withScopedMemoryAllocator { allocator ->\n            // A. 申请内存\n            val pointer = allocator.allocate(size)\n\n            // B. 将 Kotlin ByteArray 搬运到 Unsafe 内存\n            for (i in 0 until size) {\n                (pointer + i).storeByte(bytes[i])\n            }\n\n            // C. 告诉 Host 地址和长度，让它 memcpy 拿走\n            host_read_from_memory(pointer.address.toInt(), size)\n        }\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt b/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt
+--- a/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ b/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt	(date 1765390032149)
+@@ -23,8 +23,17 @@
+ @WasmImport("env", "host_read_from_memory")
+ external fun host_read_from_memory(ptr: Int, len: Int)
+ 
++// --- Import ---
++@WasmImport("env", "host_invoke_outbound")
++external fun host_invoke_outbound(aPtr: Int, aLen: Int, pPtr: Int, pLen: Int): Int
++
++@WasmImport("env", "host_copy_outbound_result")
++external fun host_copy_outbound_result(ptr: Int)
++
++
+ // --- 2. 内部桥接工具 ---
+ internal object WasmBridge {
++
+     fun getAction(): String {
+         val size = host_get_size(type = TYPE_HOST_ACTION)
+         if (size == 0) return ""
+@@ -37,23 +46,6 @@
+         return readStringFromHost(TYPE_HOST_INPUT, size)
+     }
+ 
+-/*
+-    private fun readString(type: Int, size: Int): String {
+-        val bytes = ByteArray(size)
+-        for (i in 0 until size) {
+-            bytes[i] = host_read_input_byte(type, i).toByte()
+-        }
+-        return bytes.decodeToString()
+-    }
+-
+-    fun sendResult(result: String) {
+-        val bytes = result.encodeToByteArray()
+-        for (b in bytes) {
+-            host_write_result_byte(b.toInt())
+-        }
+-    }
+-*/
+-
+     /**
+      * 核心优化：批量读取
+      * 1. 在 Wasm 线性内存申请 buffer
+@@ -102,4 +94,49 @@
+             host_read_from_memory(pointer.address.toInt(), size)
+         }
+     }
++
++    /**
++     * Wasm 呼叫 Host
++     * @param action 方法名
++     * @param payload 参数数据
++     * @return Host 返回的结果
++     */
++    fun callHost(action: String, payload: ByteArray): ByteArray {
++        val actionBytes = action.encodeToByteArray()
++
++        // 开启内存作用域：在此块内分配的内存，块结束后会自动释放
++        // 这就是 Wasm 的内存管理方式，无需手动 free
++        withScopedMemoryAllocator { allocator ->
++
++            // 1. [Alloc] 申请内存放 Action
++            val aPtr = allocator.allocate(actionBytes.size)
++            for (i in actionBytes.indices) (aPtr + i).storeByte(actionBytes[i])
++
++            // 2. [Alloc] 申请内存放 Payload
++            val pPtr = allocator.allocate(payload.size)
++            for (i in payload.indices) (pPtr + i).storeByte(payload[i])
++
++            // 3. [Push] 调用 Host，获取结果长度
++            // C++ 会在这里执行 JNI -> Java，并暂存结果
++            val resLen = host_invoke_outbound(
++                aPtr.address.toInt(), actionBytes.size,
++                pPtr.address.toInt(), payload.size
++            )
++
++            // 如果结果为空，直接返回
++            if (resLen <= 0) return ByteArray(0)
++
++            // 4. [Alloc] 申请结果内存
++            val resPtr = allocator.allocate(resLen)
++
++            // 5. [Pull] 把结果从 C++ 暂存区拉过来
++            host_copy_outbound_result(resPtr.address.toInt())
++
++            // 6. [Copy] 转为 Kotlin 对象
++            val result = ByteArray(resLen)
++            for (i in 0 until resLen) result[i] = (resPtr + i).loadByte()
++
++            return result
++        } // 离开作用域，aPtr, pPtr, resPtr 指向的内存被“释放”（复用）
++    }
+ }
+\ No newline at end of file
+Index: ../wasmtime-cpp/include/WasmSession.h
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/**\n * Manages a single Wasm instance execution environment.\n * Handles WASI configuration, memory mapping, and host function callbacks.\n *\n * Date: 2025-12-02\n * Author: crowforkotlin\n */\n\n#pragma once\n#include <string>\n#include <mutex>\n#include \"wasmtime.h\"\n\nclass WasmSession {\npublic:\n    WasmSession(wasm_engine_t* engine, wasmtime_module_t* module, std::string key);\n    ~WasmSession();\n\n    // Initializes the session (Linker, WASI, Instance). Thread-safe.\n    bool initialize();\n\n    // Executes a specific action with binary input/output\n    // json/protobuf are treated simply as byte arrays here\n    std::string call(const char* action, size_t actionLen, const char* input, size_t inputLen);\n\npublic:\n    // Temporary storage pointers for current execution context (accessed by Host Functions)\n    const char* currentActionPtr = nullptr;\n    size_t currentActionLen = 0;\n    const char* currentInputPtr = nullptr;\n    size_t currentInputLen = 0;\n    std::string currentOutputBuffer;\n\nprivate:\n    std::string key;\n    wasm_engine_t* engine;\n    wasmtime_module_t* module;\n\n    wasmtime_store_t* store = nullptr;\n    wasmtime_context_t* context = nullptr;\n    wasmtime_linker_t* linker = nullptr;\n    wasmtime_instance_t instance;\n    wasmtime_memory_t memory;\n\n    bool isInitialized = false;\n    bool hasMemory = false;\n    std::mutex sessionMutex;\n\n    void registerHostFunctions();\n    \n    // Static Host Callbacks\n    static wasm_trap_t* host_get_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);\n    static wasm_trap_t* host_copy_to_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);\n    static wasm_trap_t* host_read_from_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);\n};
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/../wasmtime-cpp/include/WasmSession.h b/../wasmtime-cpp/include/WasmSession.h
+--- a/../wasmtime-cpp/include/WasmSession.h	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ b/../wasmtime-cpp/include/WasmSession.h	(date 1765390032145)
+@@ -9,36 +9,41 @@
+ #pragma once
+ #include <string>
+ #include <mutex>
++#include "WasmHostHandler.h"
+ #include "wasmtime.h"
++#include <functional>
+ 
+ class WasmSession {
+ public:
+-    WasmSession(wasm_engine_t* engine, wasmtime_module_t* module, std::string key);
++    WasmSession(wasm_engine_t *engine, wasmtime_module_t *module, std::string key);
++
+     ~WasmSession();
+ 
+     // Initializes the session (Linker, WASI, Instance). Thread-safe.
+     bool initialize();
+ 
+-    // Executes a specific action with binary input/output
+-    // json/protobuf are treated simply as byte arrays here
+-    std::string call(const char* action, size_t actionLen, const char* input, size_t inputLen);
+-
+ public:
+     // Temporary storage pointers for current execution context (accessed by Host Functions)
+-    const char* currentActionPtr = nullptr;
++    const char *currentActionPtr = nullptr;
+     size_t currentActionLen = 0;
+-    const char* currentInputPtr = nullptr;
++    const char *currentInputPtr = nullptr;
+     size_t currentInputLen = 0;
+     std::string currentOutputBuffer;
+ 
++    // Inbound Call (Host -> Wasm)
++    std::string call(const char *action, size_t actionLen, const char *input, size_t inputLen);
++
++    // 注入 Host 处理器
++    void setHostHandler(std::unique_ptr<WasmHostHandler> handler);
++
+ private:
+     std::string key;
+-    wasm_engine_t* engine;
+-    wasmtime_module_t* module;
++    wasm_engine_t *engine;
++    wasmtime_module_t *module;
+ 
+-    wasmtime_store_t* store = nullptr;
+-    wasmtime_context_t* context = nullptr;
+-    wasmtime_linker_t* linker = nullptr;
++    wasmtime_store_t *store = nullptr;
++    wasmtime_context_t *context = nullptr;
++    wasmtime_linker_t *linker = nullptr;
+     wasmtime_instance_t instance;
+     wasmtime_memory_t memory;
+ 
+@@ -46,10 +51,23 @@
+     bool hasMemory = false;
+     std::mutex sessionMutex;
+ 
++    // [新增] Host 处理器
++    std::unique_ptr<WasmHostHandler> hostHandler;
++
++    // [新增] Outbound 结果暂存 (Push-Pull 模式)
++    std::string currentHostInvokeResult;
++
++
+     void registerHostFunctions();
+-    
++
+     // Static Host Callbacks
+-    static wasm_trap_t* host_get_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);
+-    static wasm_trap_t* host_copy_to_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);
+-    static wasm_trap_t* host_read_from_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);
++    static wasm_trap_t *host_get_size(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults);
++
++    static wasm_trap_t *host_copy_to_memory(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults);
++
++    static wasm_trap_t *host_read_from_memory(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults);
++
++    // Outbound Host Functions
++    static wasm_trap_t* host_invoke_outbound(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);
++    static wasm_trap_t* host_copy_outbound_result(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults);
+ };
+\ No newline at end of file
+Index: wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.h
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.h b/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.h
+new file mode 100644
+--- /dev/null	(date 1765390032147)
++++ b/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.h	(date 1765390032147)
+@@ -0,0 +1,16 @@
++#pragma once
++#include <jni.h>
++#include "WasmHostHandler.h"
++
++class AndroidHostHandler : public WasmHostHandler {
++public:
++    AndroidHostHandler(JNIEnv* env, jobject dispatcher);
++    ~AndroidHostHandler() override;
++
++    std::string invoke(const std::string& action, const std::string& payload) override;
++
++private:
++    JavaVM* jvm;
++    jobject javaDispatcherRef; // GlobalRef
++    jmethodID dispatchMethodId;
++};
+\ No newline at end of file
+Index: ../wasmtime-cpp/src/WasmSession.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/**\n * WasmSession Implementation.\n * Manages the Wasm instance lifecycle, WASI configuration, memory mapping,\n * and registration of host functions.\n *\n * 2025-12-02\n * @author crowforkotlin / crowforkotlin@gmail.com\n */\n\n#include \"WasmSession.h\"\n#include \"WasmLogger.h\"\n#include <cstring>\n#include <vector>\n\n/**\n * Log callback for WASI.\n * Captures stdout/stderr from the Wasm module and redirects it to the Native Logger (e.g., Logcat).\n * Truncates messages to 1024 bytes to prevent buffer overflow.\n *\n * @param data User data pointer (unused)\n * @param buffer Log content buffer\n * @param size Log content length\n * @return Bytes processed\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nstatic ptrdiff_t wasi_log_writer(void* data, const unsigned char* buffer, size_t size) {\n    if (size > 0 && buffer) {\n        std::string msg(reinterpret_cast<const char*>(buffer), size > 1024 ? 1024 : size);\n        LOGI(\"[Wasmtime-Wasi] logger -> %s\", msg.c_str());\n    }\n    return size;\n}\n\n/**\n * Constructor.\n * Initializes the Wasmtime Engine, Store, Context, and Linker.\n * Sets 'this' as user_data in the store to retrieve the session instance in callbacks.\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nWasmSession::WasmSession(wasm_engine_t* eng, wasmtime_module_t* mod, std::string k)\n    : engine(eng), module(mod), key(std::move(k)) {\n    store = wasmtime_store_new(engine, this, nullptr);\n    context = wasmtime_store_context(store);\n    linker = wasmtime_linker_new(engine);\n}\n\n/**\n * Destructor.\n * Releases resources associated with the Linker and Store.\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nWasmSession::~WasmSession() {\n    if (linker) wasmtime_linker_delete(linker);\n    if (store) wasmtime_store_delete(store);\n    LOGI(\"[Wasmtime] Session Destroyed: %s\", key.c_str());\n}\n\n/**\n * Initializes the Wasm Session (Core Logic).\n * 1. Configures WASI (Standard Library support).\n * 2. Registers Host Functions.\n * 3. Instantiates the Module.\n * 4. Exports Memory.\n * 5. Runs the _initialize function (Reactor Model).\n *\n * Note: This method is thread-safe and ensures initialization runs only once.\n *\n * 2025-12-02\n * @author crowforkotlin\n * @return true if initialization succeeds, false otherwise.\n */\nbool WasmSession::initialize() {\n    std::lock_guard<std::mutex> lock(sessionMutex);\n    if (isInitialized) return true;\n\n    // =========================================================================================\n    // STEP 1: Setup WASI (WebAssembly System Interface)\n    // =========================================================================================\n    // Defines the \"Standard Library\" for the Wasm environment.\n    // Redirects Wasm stdout/stderr to our custom logger.\n    wasmtime_linker_define_wasi(linker);\n    wasi_config_t* wasi = wasi_config_new();\n    wasi_config_inherit_env(wasi);\n    wasi_config_set_stdout_custom(wasi, wasi_log_writer, nullptr, nullptr);\n    wasi_config_set_stderr_custom(wasi, wasi_log_writer, nullptr, nullptr);\n    wasmtime_error_t* wasiErr = wasmtime_context_set_wasi(context, wasi);\n    if (wasiErr)\n    {\n        // 1. 提取错误信息字符串\n        wasm_byte_vec_t error_msg;\n        wasmtime_error_message(wasiErr, &error_msg);\n        LOGE(\"[Wasmtime] Session --> 1. Setup wasi failure: %s\", error_msg.data);\n        wasm_byte_vec_delete(&error_msg); // 释放字符串内存\n        wasmtime_error_delete(wasiErr);   // 释放错误对象内存\n        wasi_config_delete(wasi);         // 关键：失败时必须手动释放 config\n        return false;\n    }\n    \n    LOGI(\"[Wasmtime] Session --> 1. Setup wasi success.\");\n    \n    // =========================================================================================\n    // STEP 2: Register Host Functions\n    // =========================================================================================\n    // Injects custom C++ functions into the Linker so the Wasm module can import and call them.\n    registerHostFunctions();\n    LOGI(\"[Wasmtime] Session --> 2. Register host functions success.\");\n    \n    // =========================================================================================\n    // STEP 3: Instantiate Module\n    // =========================================================================================\n    // Links the module with dependencies, allocates memory, and runs the start function.\n    wasm_trap_t* trap = nullptr;\n    wasmtime_error_t* error = wasmtime_linker_instantiate(linker, context, module, &instance, &trap);\n    if (error) {\n        wasm_byte_vec_t msg;\n        wasmtime_error_message(error, &msg);\n        LOGE(\"[Wasmtime] Session --> 3. Instantiate linker error: %s\", msg.data);\n        wasm_byte_vec_delete(&msg);\n        wasmtime_error_delete(error);\n        return false;\n    }\n    if (trap) {\n        wasm_byte_vec_t msg;\n        wasm_trap_message(trap, &msg);\n        LOGE(\"[Wasmtime] Session --> 3. Instantiate linker trap: %s\", msg.data);\n        wasm_byte_vec_delete(&msg);\n        wasm_trap_delete(trap);\n        return false;\n    }\n    LOGI(\"[Wasmtime] Session --> 3. Instantiate linker success.\");\n    \n    // =========================================================================================\n    // STEP 4: Export Memory\n    // =========================================================================================\n    // Retrieves the handle to the Wasm linear memory to allow direct Read/Write from C++.\n    wasmtime_extern_t mem_ext;\n    if (wasmtime_instance_export_get(context, &instance, \"memory\", 6, &mem_ext) && mem_ext.kind == WASMTIME_EXTERN_MEMORY) {\n        LOGI(\"[Wasmtime] Session --> 4. Export memory success.\");\n        memory = mem_ext.of.memory;\n        hasMemory = true;\n    } else {\n        LOGE(\"[Wasmtime] Session --> 4. Failed to export 'memory'. Copy functions will fail.\");\n        hasMemory = false;\n        return false;\n    }\n\n    // =========================================================================================\n    // STEP 5: Run _initialize (WASI Reactor Model)\n    // =========================================================================================\n    // Executes the initialization function (like a constructor or static block) for the Wasm module.\n    wasmtime_extern_t init_func;\n    if (wasmtime_instance_export_get(context, &instance, \"_initialize\", 11, &init_func)) {\n        wasmtime_func_call(context, &init_func.of.func, nullptr, 0, nullptr, 0, &trap);\n        if (trap) {\n            wasm_trap_delete(trap);\n        } \n    }\n\n    isInitialized = true;\n    LOGI(\"[Wasmtime] Session --> 5. Initialized success: %s\", key.c_str());\n    return true;\n}\n\n/**\n * Executes a specific action in the Wasm module.\n * Sets up context pointers, invokes the \"App\" exported function, and returns the result.\n *\n * @param action Action identifier string\n * @param actionLen Length of the action string\n * @param input Input binary data\n * @param inputLen Length of the input data\n * @return The output string/data from Wasm\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nstd::string WasmSession::call(const char* action, size_t actionLen, const char* input, size_t inputLen) {\n    std::lock_guard<std::mutex> lock(sessionMutex);\n    if (!isInitialized) return \"\";\n\n    // 1. Set context pointers for Host Functions to access\n    currentActionPtr = action;\n    currentActionLen = actionLen;\n    currentInputPtr = input;\n    currentInputLen = inputLen;\n    currentOutputBuffer.clear();\n\n    wasmtime_extern_t run_entry;\n    wasm_trap_t* trap = nullptr;\n\n    // 2. Call the \"run_entry\" function exported by Kotlin/Wasm\n    if (wasmtime_instance_export_get(context, &instance, \"WasmEntry\", 9, &run_entry)) {\n        wasmtime_error_t* error = wasmtime_func_call(context, &run_entry.of.func, nullptr, 0, nullptr, 0, &trap);\n        \n        // 3. Handle errors or traps\n        if (error || trap) {\n            if (trap) {\n                wasm_byte_vec_t msg;\n                wasm_trap_message(trap, &msg);\n                LOGE(\"[Wasmtime] Session -> Runtime Trap: %s\", msg.data);\n                wasm_byte_vec_delete(&msg);\n                wasm_trap_delete(trap);\n            }\n            if (error) wasmtime_error_delete(error);\n            \n            // Clear pointers to prevent dangling references\n            currentActionPtr = nullptr;\n            currentInputPtr = nullptr;\n            return \"\";\n        }\n    } else {\n        LOGE(\"[Wasmtime] Session --> Export 'WasmEntry' not found.\");\n    }\n\n    // 4. Reset pointers\n    currentActionPtr = nullptr;\n    currentInputPtr = nullptr;\n\n    return currentOutputBuffer;\n}\n\n/**\n * Registers all Host Functions to the Linker.\n * \n * Performance Optimization:\n * Uses stack-allocated arrays (p_arr[4]) instead of std::vector to avoid heap allocations.\n * This ensures maximum performance for functions with a fixed small number of parameters.\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nvoid WasmSession::registerHostFunctions() {\n\n    // Helper Lambda for fast registration using stack memory\n    auto define = [&](\n        const char* name, wasmtime_func_callback_t cb, \n        std::initializer_list<wasm_valkind_t> params, \n        std::initializer_list<wasm_valkind_t> results\n    ) {\n        // Stack allocation for parameters (Max 4 is sufficient)\n        wasm_valtype_t* p_arr[4];\n        wasm_valtype_t* r_arr[4];\n        \n        int i = 0;\n        for (auto k : params) if (i < 4) p_arr[i++] = wasm_valtype_new(k);\n        int j = 0;\n        for (auto k : results) if (j < 4) r_arr[j++] = wasm_valtype_new(k);\n        \n        // Construct the vectors required by C API\n        wasm_valtype_vec_t p_vec, r_vec;\n        wasm_valtype_vec_new(&p_vec, params.size(), p_arr);\n        wasm_valtype_vec_new(&r_vec, results.size(), r_arr);\n        \n        // Create function type and define it in the linker\n        wasm_functype_t* ty = wasm_functype_new(&p_vec, &r_vec);\n        wasmtime_linker_define_func(linker, \"env\", 3, name, strlen(name), ty, cb, nullptr, nullptr);\n        \n        // Clean up function type (valtypes are handled internally by wasmtime)\n        wasm_functype_delete(ty);\n    };\n\n    // Register specific host functions\n    define(\"host_get_size\", host_get_size, {WASM_I32}, {WASM_I32}); \n    define(\"host_copy_to_memory\", host_copy_to_memory, {WASM_I32, WASM_I32, WASM_I32}, {}); \n    define(\"host_read_from_memory\", host_read_from_memory, {WASM_I32, WASM_I32}, {});\n}\n\n/**\n * Helper to retrieve the WasmSession instance from the caller context.\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nstatic WasmSession* get_session(wasmtime_caller_t* caller) {\n    return reinterpret_cast<WasmSession*>(wasmtime_context_get_data(wasmtime_caller_context(caller)));\n}\n\n/**\n * Host Function: host_get_size\n * Called by Wasm to get the size of the input data provided by the Host.\n * Arg 0: Type (0=Action, 1=Input)\n * Return 0: Length of data (int32)\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nwasm_trap_t* WasmSession::host_get_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {\n    auto* self = get_session(caller);\n    int32_t type = args[0].of.i32; // 0: Action, 1: Input\n    results[0].kind = WASMTIME_I32;\n    results[0].of.i32 = (int32_t)(type == 0 ? self->currentActionLen : self->currentInputLen);\n    return nullptr;\n}\n\n/**\n * Host Function: host_copy_to_memory\n * Called by Wasm to copy data from Host to Wasm Linear Memory.\n * \n * Arg 0: Source Type (0=Action, 1=Input)\n * Arg 1: Destination Address (Wasm Memory Pointer)\n * Arg 2: Length to copy\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nwasm_trap_t* WasmSession::host_copy_to_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {\n    WasmSession* self = get_session(caller);\n    if (!self->hasMemory) return wasmtime_trap_new(\"Memory not available\", 20);\n\n    int32_t type = args[0].of.i32;    // Source type\n    int32_t wasmPtr = args[1].of.i32; // Destination Ptr\n    int32_t len = args[2].of.i32;     // Length\n\n    const char* srcData = (type == 0) ? self->currentActionPtr : self->currentInputPtr;\n    size_t maxLen = (type == 0) ? self->currentActionLen : self->currentInputLen;\n\n    // Safety: Clamp length to avoid reading past Host buffer\n    if (len < 0 || static_cast<size_t>(len) > maxLen) len = (int32_t)maxLen;\n    \n    // Perform copy using raw memory pointer\n    // Note: Ideally, check (wasmPtr + len) against memory bounds here as well\n    uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);\n    if (rawMemory && srcData && len > 0) {\n        memcpy(rawMemory + wasmPtr, srcData, len);\n    }\n    return nullptr;\n}\n\n/**\n * Host Function: host_read_from_memory\n * Called by Wasm to copy data (results) from Wasm Linear Memory back to Host.\n *\n * Arg 0: Source Address (Wasm Memory Pointer)\n * Arg 1: Length to copy\n *\n * 2025-12-02\n * @author crowforkotlin\n */\nwasm_trap_t* WasmSession::host_read_from_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {\n    auto* self = get_session(caller);\n    if (!self->hasMemory) return wasmtime_trap_new(\"Memory not available\", 20);\n\n    int32_t wasmPtr = args[0].of.i32;\n    int32_t len = args[1].of.i32;\n\n    uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);\n    if (rawMemory && len > 0) {\n        // Append Wasm memory data to C++ output string buffer\n        self->currentOutputBuffer.append(reinterpret_cast<char*>(rawMemory + wasmPtr), len);\n    }\n    return nullptr;\n}\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/../wasmtime-cpp/src/WasmSession.cpp b/../wasmtime-cpp/src/WasmSession.cpp
+--- a/../wasmtime-cpp/src/WasmSession.cpp	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ b/../wasmtime-cpp/src/WasmSession.cpp	(date 1765390032145)
+@@ -9,6 +9,7 @@
+ 
+ #include "WasmSession.h"
+ #include "WasmLogger.h"
++#include "WasmHostHandler.h"
+ #include <cstring>
+ #include <vector>
+ 
+@@ -167,6 +168,13 @@
+     return true;
+ }
+ 
++// [注入 Handler]
++void WasmSession::setHostHandler(std::unique_ptr<WasmHostHandler> handler) {
++    std::lock_guard<std::mutex> lock(sessionMutex);
++    this->hostHandler = std::move(handler);
++}
++
++
+ /**
+  * Executes a specific action in the Wasm module.
+  * Sets up context pointers, invokes the "App" exported function, and returns the result.
+@@ -190,6 +198,7 @@
+     currentInputPtr = input;
+     currentInputLen = inputLen;
+     currentOutputBuffer.clear();
++    currentHostInvokeResult.clear();
+ 
+     wasmtime_extern_t run_entry;
+     wasm_trap_t* trap = nullptr;
+@@ -222,6 +231,9 @@
+     currentActionPtr = nullptr;
+     currentInputPtr = nullptr;
+ 
++    currentHostInvokeResult.clear();
++    currentHostInvokeResult.shrink_to_fit();
++
+     return currentOutputBuffer;
+ }
+ 
+@@ -269,6 +281,10 @@
+     define("host_get_size", host_get_size, {WASM_I32}, {WASM_I32}); 
+     define("host_copy_to_memory", host_copy_to_memory, {WASM_I32, WASM_I32, WASM_I32}, {}); 
+     define("host_read_from_memory", host_read_from_memory, {WASM_I32, WASM_I32}, {});
++
++    // Register Outbound
++    define("host_invoke_outbound", host_invoke_outbound, {WASM_I32, WASM_I32, WASM_I32, WASM_I32}, {WASM_I32});
++    define("host_copy_outbound_result", host_copy_outbound_result, {WASM_I32}, {});
+ }
+ 
+ /**
+@@ -357,3 +373,44 @@
+     return nullptr;
+ }
+ 
++// [实现] Wasm -> Host (Push Request)
++wasm_trap_t* WasmSession::host_invoke_outbound(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
++    WasmSession* self = get_session(caller);
++    auto* ctx = wasmtime_caller_context(caller);
++    uint8_t* mem = wasmtime_memory_data(ctx, &self->memory);
++
++    // 1. 从 Wasm 内存读取请求
++    int32_t aPtr = args[0].of.i32; int32_t aLen = args[1].of.i32;
++    int32_t pPtr = args[2].of.i32; int32_t pLen = args[3].of.i32;
++
++    std::string action((char*)(mem + aPtr), aLen);
++    std::string payload((char*)(mem + pPtr), pLen);
++
++    // 2. 调用 Host 回调
++    if (self->hostHandler) {
++        // [关键] 执行结果被 Deep Copy 到了 currentHostInvokeResult 中暂存
++        self->currentHostInvokeResult = self->hostHandler->invoke(action, payload);
++    } else {
++        self->currentHostInvokeResult = "";
++    }
++
++    // 3. 告诉 Wasm 结果有多大
++    results[0].kind = WASMTIME_I32;
++    results[0].of.i32 = (int32_t)self->currentHostInvokeResult.size();
++    return nullptr;
++}
++
++// [实现] Wasm -> Host (Pull Result)
++wasm_trap_t* WasmSession::host_copy_outbound_result(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
++    WasmSession* self = get_session(caller);
++    uint8_t* mem = wasmtime_memory_data(self->context, &self->memory);
++    int32_t ptr = args[0].of.i32;
++
++    // [关键] 把暂存的结果拷贝到 Wasm 指定的内存地址
++    if (!self->currentHostInvokeResult.empty()) {
++        memcpy(mem + ptr, self->currentHostInvokeResult.data(), self->currentHostInvokeResult.size());
++    }
++    self->currentHostInvokeResult.clear();
++    self->currentHostInvokeResult.shrink_to_fit();
++    return nullptr;
++}
+\ No newline at end of file
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"AndroidLayouts\">\n    <shared>\n      <config />\n    </shared>\n    <layouts>\n      <layout url=\"file://$PROJECT_DIR$/wasmtime-app/android/src/androidMain/res/layout/activity_main.xml\">\n        <config>\n          <theme>@style/Theme.AndroidSampleTest</theme>\n        </config>\n      </layout>\n    </layouts>\n  </component>\n  <component name=\"AutoImportSettings\">\n    <option name=\"autoReloadType\" value=\"NONE\" />\n  </component>\n  <component name=\"ChangeListManager\">\n    <list default=\"true\" id=\"7556e9b0-033b-43ca-b4c0-45f49d5ae8ee\" name=\"Changes\" comment=\"Adjust thread safety and optimize Wasmline structure\">\n      <change beforePath=\"$PROJECT_DIR$/.idea/workspace.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/workspace.xml\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/settings.gradle.kts\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/settings.gradle.kts\" afterDir=\"false\" />\n    </list>\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\n  </component>\n  <component name=\"ClangdSettings\">\n    <option name=\"formatViaClangd\" value=\"false\" />\n  </component>\n  <component name=\"ExecutionTargetManager\" SELECTED_TARGET=\"device_and_snapshot_combo_box_target[DeviceId(pluginId=Default, isTemplate=false, identifier=serial=192.168.0.231:5555;connection=4a17fa5b)]\" />\n  <component name=\"ExternalProjectsData\">\n    <projectState path=\"$PROJECT_DIR$\">\n      <ProjectState />\n    </projectState>\n  </component>\n  <component name=\"ExternalProjectsManager\">\n    <system id=\"GRADLE\">\n      <state>\n        <task path=\"$PROJECT_DIR$\">\n          <activation />\n        </task>\n        <task path=\"$PROJECT_DIR$/wazero-core/wazero-plugin\">\n          <activation />\n        </task>\n        <task path=\"$PROJECT_DIR$/wazero-library\">\n          <activation />\n        </task>\n        <projects_view>\n          <tree_state>\n            <expand>\n              <path>\n                <item name=\"\" type=\"6a2764b6:ExternalProjectsStructure$RootNode\" />\n                <item name=\"WasmLine\" type=\"f1a62948:ProjectNode\" />\n              </path>\n            </expand>\n            <select />\n          </tree_state>\n        </projects_view>\n      </state>\n    </system>\n  </component>\n  <component name=\"FileTemplateManagerImpl\">\n    <option name=\"RECENT_TEMPLATES\">\n      <list>\n        <option value=\"Kotlin File\" />\n        <option value=\"Kotlin Class\" />\n        <option value=\"Kotlin Object\" />\n        <option value=\"Kotlin Data Class\" />\n      </list>\n    </option>\n  </component>\n  <component name=\"GenerateSignedApkSettings\">\n    <option name=\"KEY_STORE_PATH\" value=\"C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmline.jks\" />\n    <option name=\"KEY_ALIAS\" value=\"123456\" />\n    <option name=\"REMEMBER_PASSWORDS\" value=\"true\" />\n    <option name=\"BUILD_TARGET_KEY\" value=\"apk\" />\n  </component>\n  <component name=\"Git.Settings\">\n    <option name=\"RECENT_BRANCH_BY_REPOSITORY\">\n      <map>\n        <entry key=\"$PROJECT_DIR$/..\" value=\"main\" />\n      </map>\n    </option>\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$/..\" />\n    <option name=\"RESET_MODE\" value=\"HARD\" />\n  </component>\n  <component name=\"GitHubPullRequestSearchHistory\">{\n  &quot;lastFilter&quot;: {\n    &quot;state&quot;: &quot;OPEN&quot;,\n    &quot;assignee&quot;: &quot;crowforkotlin&quot;\n  }\n}</component>\n  <component name=\"GithubPullRequestsUISettings\"><![CDATA[{\n  \"selectedUrlAndAccountId\": {\n    \"url\": \"https://github.com/crowforkotlin/wasmline.git\",\n    \"accountId\": \"acd0df7e-7f05-4632-88d7-49f71836c888\"\n  }\n}]]></component>\n  <component name=\"GradleScriptDefinitionsStorage\" workingDir=\"$PROJECT_DIR$\" gradleHome=\"$USER_HOME$/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13\" javaHome=\"/Library/Java/JavaVirtualMachines/jdk-17.0.1.jdk/Contents/Home\" gradleVersion=\"8.13\">\n    <option name=\"jvmArguments\">\n      <list>\n        <option value=\"-Dhttp.proxyHost=127.0.0.1\" />\n        <option value=\"-Dhttp.proxyPort=7890\" />\n        <option value=\"-Dhttps.proxyHost=127.0.0.1\" />\n        <option value=\"-Dhttps.proxyPort=7890\" />\n        <option value=\"-Didea.compose.hot-reload=true\" />\n        <option value=\"-Didea.compose.hot-reload.version=2\" />\n      </list>\n    </option>\n  </component>\n  <component name=\"ProjectColorInfo\">{\n  &quot;associatedIndex&quot;: 3\n}</component>\n  <component name=\"ProjectId\" id=\"35bODluUgP5b66JuBSt703AWoCh\" />\n  <component name=\"ProjectLevelVcsManager\">\n    <ConfirmationsSetting value=\"2\" id=\"Add\" />\n  </component>\n  <component name=\"ProjectViewState\">\n    <option name=\"showLibraryContents\" value=\"true\" />\n  </component>\n  <component name=\"PropertiesComponent\"><![CDATA[{\n  \"keyToString\": {\n    \"ASKED_MARK_IGNORED_FILES_AS_EXCLUDED\": \"true\",\n    \"Android App.MainActivity.executor\": \"Android Profiler Group#1\",\n    \"Android App.wasmedge-app.android.executor\": \"Run\",\n    \"Android App.wasmtime-app.android.executor\": \"Run\",\n    \"ApkExportedModule\": \"WasmLine.wasmtime-app.android\",\n    \"ExportApk.ApkPathForWasmLine.wasmtime-app.android\": \"C:\\\\Users\\\\CrowF\\\\Desktop\\\\wasmtime-kotlin-wasi\\\\wasmtime-kotlin\\\\wasmtime-app\\\\android\",\n    \"Gradle.Build TEST.executor\": \"Run\",\n    \"Gradle.Build wazero-kotlin.executor\": \"Run\",\n    \"Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [clean].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [wasmCopy].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\n    \"Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [app:run].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [clean].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor\": \"Run\",\n    \"Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor\": \"Run\",\n    \"Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor\": \"Run\",\n    \"Kotlin.AppKt (1).executor\": \"Run\",\n    \"Kotlin.AppKt (2).executor\": \"Run\",\n    \"Kotlin.AppKt.executor\": \"Run\",\n    \"Kotlin.GraalKt.executor\": \"Debug\",\n    \"ModuleVcsDetector.initialDetectionPerformed\": \"true\",\n    \"RunOnceActivity.ShowReadmeOnStart\": \"true\",\n    \"RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252\": \"true\",\n    \"RunOnceActivity.cidr.known.project.marker\": \"true\",\n    \"RunOnceActivity.git.unshallow\": \"true\",\n    \"RunOnceActivity.readMode.enableVisualFormatting\": \"true\",\n    \"SHARE_PROJECT_CONFIGURATION_FILES\": \"true\",\n    \"cf.first.check.clang-format\": \"false\",\n    \"cidr.known.project.marker\": \"true\",\n    \"com.developerphil.adbidea.selecteddevices\": \"87d500c6\",\n    \"dart.analysis.tool.window.visible\": \"false\",\n    \"git-widget-placeholder\": \"main\",\n    \"kotlin-language-version-configured\": \"true\",\n    \"last_opened_file_path\": \"C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/assets\",\n    \"project.structure.last.edited\": \"Modules\",\n    \"project.structure.proportion\": \"0.17\",\n    \"project.structure.side.proportion\": \"0.2\",\n    \"settings.editor.selected.configurable\": \"preferences.editor\",\n    \"show.do.not.copy.http.proxy.settings.to.gradle\": \"false\",\n    \"show.migrate.to.gradle.popup\": \"false\",\n    \"structure.view.defaults.are.configured\": \"true\"\n  },\n  \"keyToStringList\": {\n    \"ExportApk.BuildVariants\": [\n      \"release\"\n    ]\n  }\n}]]></component>\n  <component name=\"RecentsManager\">\n    <key name=\"CopyFile.RECENT_KEYS\">\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android\\src\\androidMain\\assets\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-core\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\cpp\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\lib\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\assets\" />\n    </key>\n    <key name=\"MoveFile.RECENT_KEYS\">\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\cpp\\lib\\arm64-v8a\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\\cpp\\include\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\\androidMain\" />\n      <recent name=\"C:\\Users\\CrowF\\Desktop\\wasmedge-kotlin-wasi\\wasmedge-kotlin\\wasmedge-app\\android\\src\" />\n    </key>\n    <key name=\"CopyKotlinDeclarationDialog.RECENTS_KEY\">\n      <recent name=\"crow.wasmedge.wasmline\" />\n      <recent name=\"com.bridge.wasmline\" />\n    </key>\n    <key name=\"K2MoveDeclarationsDialog.RECENT_PACKAGE_KEY\">\n      <recent name=\"crow.wasmtime.wasmline\" />\n      <recent name=\"crow.wazero.wasmline\" />\n    </key>\n  </component>\n  <component name=\"RunAnythingCache\">\n    <option name=\"myCommands\">\n      <command value=\"./gradlew app:run\" />\n      <command value=\"./gradlew wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs\" />\n      <command value=\"./gradlew wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup\" />\n      <command value=\"./gradlew wazero-core:wazero-plugin:kotlinWasmBinaryenSetup\" />\n      <command value=\"./gradlew :wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync\" />\n      <command value=\"./gradlew wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync\" />\n      <command value=\"./gradlew wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs\" />\n      <command value=\"./gradlew wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize\" />\n      <command value=\"./gradlew wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\n      <command value=\"./gradlew wasmtime-app:android:configureCMakeDebug\" />\n      <command value=\"./gradlew :wasmtime-app:android:buildCMakeDebug\" />\n      <command value=\"./gradlew :wasmtime-app:android:buildCMakeDebug --info\" />\n      <command value=\"./gradlew :wasmtime-build-logic:clean\" />\n      <command value=\"./gradlew clean\" />\n      <command value=\"./gradlew wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\n      <command value=\"./gradlew wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\n      <command value=\"./gradlew wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize\" />\n      <command value=\"./gradlew wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\n    </option>\n  </component>\n  <component name=\"RunManager\" selected=\"Android App.MainActivity\">\n    <configuration default=\"true\" type=\"DAPConfiguration\" factoryName=\"DAPConfiguration\">\n      <option name=\"workingDirectory\" value=\"$PROJECT_DIR$/..\" />\n      <envs />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"PythonConfigurationType\" factoryName=\"Python\">\n      <module name=\"wazero-kotlin\" />\n      <option name=\"ENV_FILES\" value=\"\" />\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\n      <option name=\"PARENT_ENVS\" value=\"true\" />\n      <envs>\n        <env name=\"PYTHONUNBUFFERED\" value=\"1\" />\n      </envs>\n      <option name=\"SDK_HOME\" value=\"\" />\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\n      <option name=\"SCRIPT_NAME\" value=\"\" />\n      <option name=\"PARAMETERS\" value=\"\" />\n      <option name=\"SHOW_COMMAND_LINE\" value=\"false\" />\n      <option name=\"EMULATE_TERMINAL\" value=\"false\" />\n      <option name=\"MODULE_MODE\" value=\"false\" />\n      <option name=\"REDIRECT_INPUT\" value=\"false\" />\n      <option name=\"INPUT_FILE\" value=\"\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"Tox\" factoryName=\"Tox\">\n      <module name=\"wazero-kotlin\" />\n      <option name=\"ENV_FILES\" value=\"\" />\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\n      <option name=\"PARENT_ENVS\" value=\"true\" />\n      <option name=\"SDK_HOME\" value=\"\" />\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"ZIGBRAINS_BUILD\" factoryName=\"ZIGBRAINS_BUILD\">\n      <ZigBrainsOption name=\"workingDirectory\" value=\"C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\" />\n      <envs />\n      <ZigBrainsOption name=\"buildSteps\" value=\"\" />\n      <ZigBrainsOption name=\"compilerArgs\" value=\"\" />\n      <ZigBrainsOption name=\"debugBuildSteps\" value=\"\" />\n      <ZigBrainsOption name=\"debugCompilerArgs\" value=\"\" />\n      <ZigBrainsOption name=\"exePath\" value=\"\" />\n      <ZigBrainsOption name=\"exeArgs\" value=\"\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"ZIGBRAINS_RUN\" factoryName=\"ZIGBRAINS_RUN\">\n      <ZigBrainsOption name=\"workingDirectory\" value=\"C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\" />\n      <envs />\n      <ZigBrainsOption name=\"filePath\" value=\"\" />\n      <ZigBrainsNestedOption name=\"optimization\">\n        <ZigBrainsOption name=\"level\" value=\"Debug\" />\n        <ZigBrainsOption name=\"forced\" value=\"false\" />\n      </ZigBrainsNestedOption>\n      <ZigBrainsOption name=\"compilerArgs\" value=\"\" />\n      <ZigBrainsOption name=\"exeArgs\" value=\"\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"ZIGBRAINS_TEST\" factoryName=\"ZIGBRAINS_TEST\">\n      <ZigBrainsOption name=\"workingDirectory\" value=\"C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\" />\n      <envs />\n      <ZigBrainsOption name=\"filePath\" value=\"\" />\n      <ZigBrainsNestedOption name=\"optimization\">\n        <ZigBrainsOption name=\"level\" value=\"Debug\" />\n        <ZigBrainsOption name=\"forced\" value=\"false\" />\n      </ZigBrainsNestedOption>\n      <ZigBrainsOption name=\"compilerArgs\" value=\"\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"tests\" factoryName=\"Autodetect\">\n      <module name=\"wazero-kotlin\" />\n      <option name=\"ENV_FILES\" value=\"\" />\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\n      <option name=\"PARENT_ENVS\" value=\"true\" />\n      <option name=\"SDK_HOME\" value=\"\" />\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\n      <option name=\"_new_additionalArguments\" value=\"&quot;&quot;\" />\n      <option name=\"_new_target\" value=\"&quot;&quot;\" />\n      <option name=\"_new_targetType\" value=\"&quot;PATH&quot;\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"tests\" factoryName=\"Doctests\">\n      <module name=\"wazero-kotlin\" />\n      <option name=\"ENV_FILES\" value=\"\" />\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\n      <option name=\"PARENT_ENVS\" value=\"true\" />\n      <option name=\"SDK_HOME\" value=\"\" />\n      <option name=\"WORKING_DIRECTORY\" value=\"\" />\n      <option name=\"IS_MODULE_SDK\" value=\"false\" />\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\n      <option name=\"SCRIPT_NAME\" value=\"\" />\n      <option name=\"CLASS_NAME\" value=\"\" />\n      <option name=\"METHOD_NAME\" value=\"\" />\n      <option name=\"FOLDER_NAME\" value=\"\" />\n      <option name=\"TEST_TYPE\" value=\"TEST_SCRIPT\" />\n      <option name=\"PATTERN\" value=\"\" />\n      <option name=\"USE_PATTERN\" value=\"false\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration name=\"MainActivity\" type=\"AndroidRunConfigurationType\" factoryName=\"Android App\" activateToolWindowBeforeRun=\"false\" temporary=\"true\">\n      <module name=\"WasmLine.wasmtime-app.android\" />\n      <option name=\"ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION\" value=\"1\" />\n      <option name=\"DEPLOY\" value=\"true\" />\n      <option name=\"DEPLOY_APK_FROM_BUNDLE\" value=\"false\" />\n      <option name=\"DEPLOY_AS_INSTANT\" value=\"false\" />\n      <option name=\"ARTIFACT_NAME\" value=\"\" />\n      <option name=\"PM_INSTALL_OPTIONS\" value=\"\" />\n      <option name=\"ALL_USERS\" value=\"false\" />\n      <option name=\"ALWAYS_INSTALL_WITH_PM\" value=\"false\" />\n      <option name=\"ALLOW_ASSUME_VERIFIED\" value=\"false\" />\n      <option name=\"CLEAR_APP_STORAGE\" value=\"false\" />\n      <option name=\"DYNAMIC_FEATURES_DISABLED_LIST\" value=\"\" />\n      <option name=\"ACTIVITY_EXTRA_FLAGS\" value=\"\" />\n      <option name=\"MODE\" value=\"specific_activity\" />\n      <option name=\"RESTORE_ENABLED\" value=\"false\" />\n      <option name=\"RESTORE_FILE\" value=\"\" />\n      <option name=\"RESTORE_FRESH_INSTALL_ONLY\" value=\"false\" />\n      <option name=\"CLEAR_LOGCAT\" value=\"true\" />\n      <option name=\"SHOW_LOGCAT_AUTOMATICALLY\" value=\"false\" />\n      <option name=\"TARGET_SELECTION_MODE\" value=\"DEVICE_AND_SNAPSHOT_COMBO_BOX\" />\n      <option name=\"SELECTED_CLOUD_MATRIX_CONFIGURATION_ID\" value=\"-1\" />\n      <option name=\"SELECTED_CLOUD_MATRIX_PROJECT_ID\" value=\"\" />\n      <option name=\"DEBUGGER_TYPE\" value=\"Auto\" />\n      <Auto>\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\n        <option name=\"WORKING_DIR\" value=\"\" />\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\n      </Auto>\n      <Hybrid>\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\n        <option name=\"WORKING_DIR\" value=\"\" />\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\n      </Hybrid>\n      <Java>\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\n      </Java>\n      <Native>\n        <option name=\"USE_JAVA_AWARE_DEBUGGER\" value=\"false\" />\n        <option name=\"SHOW_STATIC_VARS\" value=\"true\" />\n        <option name=\"WORKING_DIR\" value=\"\" />\n        <option name=\"TARGET_LOGGING_CHANNELS\" value=\"lldb process:gdb-remote packets\" />\n        <option name=\"SHOW_OPTIMIZED_WARNING\" value=\"true\" />\n        <option name=\"ATTACH_ON_WAIT_FOR_DEBUGGER\" value=\"false\" />\n        <option name=\"DEBUG_SANDBOX_SDK\" value=\"false\" />\n      </Native>\n      <Profilers>\n        <option name=\"ADVANCED_PROFILING_ENABLED\" value=\"false\" />\n        <option name=\"STARTUP_PROFILING_ENABLED\" value=\"false\" />\n        <option name=\"STARTUP_CPU_PROFILING_ENABLED\" value=\"false\" />\n        <option name=\"STARTUP_CPU_PROFILING_CONFIGURATION_NAME\" value=\"Java/Kotlin Method Sample (legacy)\" />\n        <option name=\"STARTUP_NATIVE_MEMORY_PROFILING_ENABLED\" value=\"false\" />\n        <option name=\"NATIVE_MEMORY_SAMPLE_RATE_BYTES\" value=\"2048\" />\n      </Profilers>\n      <option name=\"DEEP_LINK\" value=\"\" />\n      <option name=\"ACTIVITY\" value=\"\" />\n      <option name=\"ACTIVITY_CLASS\" value=\"crow.wasmtime.wasmline.MainActivity\" />\n      <option name=\"SEARCH_ACTIVITY_IN_GLOBAL_SCOPE\" value=\"false\" />\n      <option name=\"SKIP_ACTIVITY_VALIDATION\" value=\"false\" />\n      <method v=\"2\">\n        <option name=\"Android.Gradle.BeforeRunTask\" enabled=\"true\" />\n      </method>\n    </configuration>\n    <configuration default=\"true\" type=\"AppleRunConfiguration\" factoryName=\"Application\" REDIRECT_INPUT=\"false\" ELEVATE=\"false\" USE_EXTERNAL_CONSOLE=\"false\" EMULATE_TERMINAL=\"false\" PASS_PARENT_ENVS_2=\"true\" IS_LOCATION_SIMULATION_SUPPORTED=\"false\" IS_LOCATION_SIMULATION_ALLOWED=\"true\" APPLICATION_LANGUAGE=\"IDELaunchSchemeLanguageUseSystemLanguage\" APPLICATION_REGION=\"\" DEVELOPMENT_TEAM=\"${TEAM_ID}\" MAKE_ACTIVE=\"TRUE\" SHOULD_DEBUG_EXTENSIONS=\"false\">\n      <embedded_app_extension_list />\n      <method v=\"2\">\n        <option name=\"com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask\" enabled=\"true\" />\n      </method>\n    </configuration>\n    <configuration name=\"wasmtime-kotlin [wasmCopy]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\n      <ExternalSystemSettings>\n        <option name=\"executionName\" />\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\n        <option name=\"scriptParameters\" />\n        <option name=\"taskDescriptions\">\n          <list />\n        </option>\n        <option name=\"taskNames\">\n          <list>\n            <option value=\"wasmCopy\" />\n          </list>\n        </option>\n        <option name=\"vmOptions\" />\n      </ExternalSystemSettings>\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\n      <DebugAllEnabled>false</DebugAllEnabled>\n      <RunAsTest>false</RunAsTest>\n      <method v=\"2\" />\n    </configuration>\n    <configuration name=\"wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\n      <ExternalSystemSettings>\n        <option name=\"executionName\" />\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\n        <option name=\"scriptParameters\" value=\"\" />\n        <option name=\"taskDescriptions\">\n          <list />\n        </option>\n        <option name=\"taskNames\">\n          <list>\n            <option value=\"wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\n          </list>\n        </option>\n        <option name=\"vmOptions\" />\n      </ExternalSystemSettings>\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\n      <DebugAllEnabled>false</DebugAllEnabled>\n      <RunAsTest>false</RunAsTest>\n      <method v=\"2\" />\n    </configuration>\n    <configuration name=\"wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\n      <ExternalSystemSettings>\n        <option name=\"executionName\" />\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\n        <option name=\"scriptParameters\" value=\"\" />\n        <option name=\"taskDescriptions\">\n          <list />\n        </option>\n        <option name=\"taskNames\">\n          <list>\n            <option value=\"wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize\" />\n          </list>\n        </option>\n        <option name=\"vmOptions\" />\n      </ExternalSystemSettings>\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\n      <DebugAllEnabled>false</DebugAllEnabled>\n      <RunAsTest>false</RunAsTest>\n      <method v=\"2\" />\n    </configuration>\n    <configuration name=\"wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\n      <ExternalSystemSettings>\n        <option name=\"executionName\" />\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\n        <option name=\"scriptParameters\" value=\"\" />\n        <option name=\"taskDescriptions\">\n          <list />\n        </option>\n        <option name=\"taskNames\">\n          <list>\n            <option value=\"wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize\" />\n          </list>\n        </option>\n        <option name=\"vmOptions\" />\n      </ExternalSystemSettings>\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\n      <DebugAllEnabled>false</DebugAllEnabled>\n      <RunAsTest>false</RunAsTest>\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"JetRunConfigurationType\">\n      <module name=\"wazero-kotlin\" />\n      <method v=\"2\">\n        <option name=\"Make\" enabled=\"true\" />\n      </method>\n    </configuration>\n    <configuration default=\"true\" type=\"KotlinStandaloneScriptRunConfigurationType\">\n      <module name=\"wazero-kotlin\" />\n      <option name=\"filePath\" />\n      <method v=\"2\" />\n    </configuration>\n    <list>\n      <item itemvalue=\"Android App.MainActivity\" />\n      <item itemvalue=\"Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]\" />\n      <item itemvalue=\"Gradle.wasmtime-kotlin [wasmCopy]\" />\n      <item itemvalue=\"Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" />\n      <item itemvalue=\"Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" />\n    </list>\n    <recent_temporary>\n      <list>\n        <item itemvalue=\"Android App.MainActivity\" />\n        <item itemvalue=\"Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" />\n        <item itemvalue=\"Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]\" />\n        <item itemvalue=\"Gradle.wasmtime-kotlin [wasmCopy]\" />\n        <item itemvalue=\"Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]\" />\n      </list>\n    </recent_temporary>\n  </component>\n  <component name=\"TaskManager\">\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\n      <changelist id=\"7556e9b0-033b-43ca-b4c0-45f49d5ae8ee\" name=\"Changes\" comment=\"\" />\n      <created>1763375187217</created>\n      <option name=\"number\" value=\"Default\" />\n      <option name=\"presentableId\" value=\"Default\" />\n      <updated>1763375187217</updated>\n    </task>\n    <task id=\"LOCAL-00001\" summary=\":bug: wasmedge 0.14.0 only support ..\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764155356895</created>\n      <option name=\"number\" value=\"00001\" />\n      <option name=\"presentableId\" value=\"LOCAL-00001\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764155356895</updated>\n    </task>\n    <task id=\"LOCAL-00002\" summary=\":test: test...\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764643523640</created>\n      <option name=\"number\" value=\"00002\" />\n      <option name=\"presentableId\" value=\"LOCAL-00002\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764643523640</updated>\n    </task>\n    <task id=\"LOCAL-00003\" summary=\":test: test...\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764643695082</created>\n      <option name=\"number\" value=\"00003\" />\n      <option name=\"presentableId\" value=\"LOCAL-00003\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764643695082</updated>\n    </task>\n    <task id=\"LOCAL-00004\" summary=\":test: test...\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764643709666</created>\n      <option name=\"number\" value=\"00004\" />\n      <option name=\"presentableId\" value=\"LOCAL-00004\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764643709666</updated>\n    </task>\n    <task id=\"LOCAL-00005\" summary=\":test: test...\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764643738331</created>\n      <option name=\"number\" value=\"00005\" />\n      <option name=\"presentableId\" value=\"LOCAL-00005\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764643738331</updated>\n    </task>\n    <task id=\"LOCAL-00006\" summary=\":test: test...\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764644048676</created>\n      <option name=\"number\" value=\"00006\" />\n      <option name=\"presentableId\" value=\"LOCAL-00006\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764644048676</updated>\n    </task>\n    <task id=\"LOCAL-00007\" summary=\":art: performance &amp; struct\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764670295398</created>\n      <option name=\"number\" value=\"00007\" />\n      <option name=\"presentableId\" value=\"LOCAL-00007\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764670295398</updated>\n    </task>\n    <task id=\"LOCAL-00008\" summary=\":art: performance &amp; struct\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764670344628</created>\n      <option name=\"number\" value=\"00008\" />\n      <option name=\"presentableId\" value=\"LOCAL-00008\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764670344628</updated>\n    </task>\n    <task id=\"LOCAL-00009\" summary=\":art: performance &amp; struct\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764670759681</created>\n      <option name=\"number\" value=\"00009\" />\n      <option name=\"presentableId\" value=\"LOCAL-00009\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764670759681</updated>\n    </task>\n    <task id=\"LOCAL-00010\" summary=\":art: optimize\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764771658673</created>\n      <option name=\"number\" value=\"00010\" />\n      <option name=\"presentableId\" value=\"LOCAL-00010\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764771658673</updated>\n    </task>\n    <task id=\"LOCAL-00011\" summary=\":art: optimize\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764771674641</created>\n      <option name=\"number\" value=\"00011\" />\n      <option name=\"presentableId\" value=\"LOCAL-00011\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764771674641</updated>\n    </task>\n    <task id=\"LOCAL-00012\" summary=\":tada: Add Cpp Samples&#10;:tada: Split architecture\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764776901326</created>\n      <option name=\"number\" value=\"00012\" />\n      <option name=\"presentableId\" value=\"LOCAL-00012\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764776901326</updated>\n    </task>\n    <task id=\"LOCAL-00013\" summary=\":tada: Add Cpp Samples&#10;:tada: Split architecture\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764778378249</created>\n      <option name=\"number\" value=\"00013\" />\n      <option name=\"presentableId\" value=\"LOCAL-00013\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764778378249</updated>\n    </task>\n    <task id=\"LOCAL-00014\" summary=\":tada: Add Cpp Samples&#10;:tada: Split architecture\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764779096218</created>\n      <option name=\"number\" value=\"00014\" />\n      <option name=\"presentableId\" value=\"LOCAL-00014\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764779096218</updated>\n    </task>\n    <task id=\"LOCAL-00015\" summary=\":docs: images\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764779229693</created>\n      <option name=\"number\" value=\"00015\" />\n      <option name=\"presentableId\" value=\"LOCAL-00015\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764779229693</updated>\n    </task>\n    <task id=\"LOCAL-00016\" summary=\":docs: README.md\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764779312932</created>\n      <option name=\"number\" value=\"00016\" />\n      <option name=\"presentableId\" value=\"LOCAL-00016\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764779312932</updated>\n    </task>\n    <task id=\"LOCAL-00017\" summary=\":docs: README.md\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764779716240</created>\n      <option name=\"number\" value=\"00017\" />\n      <option name=\"presentableId\" value=\"LOCAL-00017\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764779716240</updated>\n    </task>\n    <task id=\"LOCAL-00018\" summary=\":doc: README.md\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764782851618</created>\n      <option name=\"number\" value=\"00018\" />\n      <option name=\"presentableId\" value=\"LOCAL-00018\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764782851618</updated>\n    </task>\n    <task id=\"LOCAL-00019\" summary=\":wrench: run on windows\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1764820460439</created>\n      <option name=\"number\" value=\"00019\" />\n      <option name=\"presentableId\" value=\"LOCAL-00019\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1764820460439</updated>\n    </task>\n    <task id=\"LOCAL-00020\" summary=\"Adjust thread safety and optimize Wasmline structure\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1765389970553</created>\n      <option name=\"number\" value=\"00020\" />\n      <option name=\"presentableId\" value=\"LOCAL-00020\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1765389970553</updated>\n    </task>\n    <option name=\"localTasksCounter\" value=\"21\" />\n    <servers />\n  </component>\n  <component name=\"Vcs.Log.Tabs.Properties\">\n    <option name=\"TAB_STATES\">\n      <map>\n        <entry key=\"MAIN\">\n          <value>\n            <State>\n              <option name=\"FILTERS\">\n                <map>\n                  <entry key=\"branch\">\n                    <value>\n                      <list>\n                        <option value=\"main\" />\n                      </list>\n                    </value>\n                  </entry>\n                </map>\n              </option>\n            </State>\n          </value>\n        </entry>\n      </map>\n    </option>\n  </component>\n  <component name=\"VcsManagerConfiguration\">\n    <MESSAGE value=\":bug: wasmedge 0.14.0 only support ..\" />\n    <MESSAGE value=\":test: test...\" />\n    <MESSAGE value=\":art: performance &amp; struct\" />\n    <MESSAGE value=\":art: optimize\" />\n    <MESSAGE value=\":tada: Add Cpp Samples&#10;:tada: Split architecture\" />\n    <MESSAGE value=\":docs: images\" />\n    <MESSAGE value=\":docs: README.md\" />\n    <MESSAGE value=\":doc: README.md\" />\n    <MESSAGE value=\":wrench: run on windows\" />\n    <MESSAGE value=\"Adjust thread safety and optimize Wasmline structure\" />\n    <option name=\"LAST_COMMIT_MESSAGE\" value=\"Adjust thread safety and optimize Wasmline structure\" />\n  </component>\n  <component name=\"XDebuggerManager\">\n    <breakpoint-manager>\n      <breakpoints>\n        <line-breakpoint enabled=\"true\" type=\"kotlin-function\">\n          <url>file://$PROJECT_DIR$/wazero-app/application/src/main/kotlin/crow/wazero/wasmline/App.kt</url>\n          <line>89</line>\n          <properties>\n            <option name=\"WATCH_EXIT\" value=\"false\" />\n          </properties>\n          <option name=\"timeStamp\" value=\"1\" />\n        </line-breakpoint>\n        <breakpoint enabled=\"true\" type=\"OCSymbolicBreakpointType\">\n          <properties>\n            <option name=\"moduleName\" value=\"libart.so\" />\n            <option name=\"symbolPattern\" value=\"art_sigbus_fault\" />\n          </properties>\n          <option name=\"timeStamp\" value=\"6\" />\n        </breakpoint>\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\n          <line>379</line>\n          <option name=\"timeStamp\" value=\"20\" />\n        </line-breakpoint>\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\n          <line>380</line>\n          <option name=\"timeStamp\" value=\"21\" />\n        </line-breakpoint>\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\n          <line>381</line>\n          <option name=\"timeStamp\" value=\"22\" />\n        </line-breakpoint>\n        <line-breakpoint enabled=\"true\" type=\"java-line\">\n          <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>\n          <line>382</line>\n          <option name=\"timeStamp\" value=\"23\" />\n        </line-breakpoint>\n      </breakpoints>\n    </breakpoint-manager>\n  </component>\n  <component name=\"play_dynamic_filters_status\">\n    <option name=\"appIdToCheckInfo\">\n      <map>\n        <entry key=\"com.crow.mordecaix\">\n          <value>\n            <CheckInfo lastCheckTimestamp=\"1764148028909\" />\n          </value>\n        </entry>\n        <entry key=\"com.crow.mordecaix.test\">\n          <value>\n            <CheckInfo lastCheckTimestamp=\"1764148028909\" />\n          </value>\n        </entry>\n        <entry key=\"crow.wasmedge.library.android.test\">\n          <value>\n            <CheckInfo lastCheckTimestamp=\"1764148959136\" />\n          </value>\n        </entry>\n        <entry key=\"crow.wasmedge.wasmline\">\n          <value>\n            <CheckInfo lastCheckTimestamp=\"1764148915759\" />\n          </value>\n        </entry>\n        <entry key=\"crow.wasmedge.wasmline.test\">\n          <value>\n            <CheckInfo lastCheckTimestamp=\"1764148915758\" />\n          </value>\n        </entry>\n        <entry key=\"crow.wasmtime.wasmline\">\n          <value>\n            <CheckInfo lastCheckTimestamp=\"1764314712384\" />\n          </value>\n        </entry>\n        <entry key=\"crow.wasmtime.wasmline.test\">\n          <value>\n            <CheckInfo lastCheckTimestamp=\"1764314712385\" />\n          </value>\n        </entry>\n      </map>\n    </option>\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ b/.idea/workspace.xml	(date 1765390101205)
+@@ -91,12 +91,12 @@
+     &quot;assignee&quot;: &quot;crowforkotlin&quot;
+   }
+ }</component>
+-  <component name="GithubPullRequestsUISettings"><![CDATA[{
+-  "selectedUrlAndAccountId": {
+-    "url": "https://github.com/crowforkotlin/wasmline.git",
+-    "accountId": "acd0df7e-7f05-4632-88d7-49f71836c888"
++  <component name="GithubPullRequestsUISettings">{
++  &quot;selectedUrlAndAccountId&quot;: {
++    &quot;url&quot;: &quot;https://github.com/crowforkotlin/wasmline.git&quot;,
++    &quot;accountId&quot;: &quot;acd0df7e-7f05-4632-88d7-49f71836c888&quot;
+   }
+-}]]></component>
++}</component>
+   <component name="GradleScriptDefinitionsStorage" workingDir="$PROJECT_DIR$" gradleHome="$USER_HOME$/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13" javaHome="/Library/Java/JavaVirtualMachines/jdk-17.0.1.jdk/Contents/Home" gradleVersion="8.13">
+     <option name="jvmArguments">
+       <list>
+@@ -119,80 +119,80 @@
+   <component name="ProjectViewState">
+     <option name="showLibraryContents" value="true" />
+   </component>
+-  <component name="PropertiesComponent"><![CDATA[{
+-  "keyToString": {
+-    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+-    "Android App.MainActivity.executor": "Android Profiler Group#1",
+-    "Android App.wasmedge-app.android.executor": "Run",
+-    "Android App.wasmtime-app.android.executor": "Run",
+-    "ApkExportedModule": "WasmLine.wasmtime-app.android",
+-    "ExportApk.ApkPathForWasmLine.wasmtime-app.android": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android",
+-    "Gradle.Build TEST.executor": "Run",
+-    "Gradle.Build wazero-kotlin.executor": "Run",
+-    "Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+-    "Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor": "Run",
+-    "Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor": "Run",
+-    "Gradle.wasmtime-kotlin [clean].executor": "Run",
+-    "Gradle.wasmtime-kotlin [wasmCopy].executor": "Run",
+-    "Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+-    "Gradle.wasmtime-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+-    "Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor": "Run",
+-    "Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+-    "Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+-    "Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+-    "Gradle.wazero-kotlin [app:run].executor": "Run",
+-    "Gradle.wazero-kotlin [clean].executor": "Run",
+-    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+-    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+-    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+-    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+-    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+-    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+-    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor": "Run",
+-    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor": "Run",
+-    "Kotlin.AppKt (1).executor": "Run",
+-    "Kotlin.AppKt (2).executor": "Run",
+-    "Kotlin.AppKt.executor": "Run",
+-    "Kotlin.GraalKt.executor": "Debug",
+-    "ModuleVcsDetector.initialDetectionPerformed": "true",
+-    "RunOnceActivity.ShowReadmeOnStart": "true",
+-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+-    "RunOnceActivity.cidr.known.project.marker": "true",
+-    "RunOnceActivity.git.unshallow": "true",
+-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+-    "cf.first.check.clang-format": "false",
+-    "cidr.known.project.marker": "true",
+-    "com.developerphil.adbidea.selecteddevices": "87d500c6",
+-    "dart.analysis.tool.window.visible": "false",
+-    "git-widget-placeholder": "main",
+-    "kotlin-language-version-configured": "true",
+-    "last_opened_file_path": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/assets",
+-    "project.structure.last.edited": "Modules",
+-    "project.structure.proportion": "0.17",
+-    "project.structure.side.proportion": "0.2",
+-    "settings.editor.selected.configurable": "preferences.editor",
+-    "show.do.not.copy.http.proxy.settings.to.gradle": "false",
+-    "show.migrate.to.gradle.popup": "false",
+-    "structure.view.defaults.are.configured": "true"
++  <component name="PropertiesComponent">{
++  &quot;keyToString&quot;: {
++    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
++    &quot;Android App.MainActivity.executor&quot;: &quot;Android Profiler Group#1&quot;,
++    &quot;Android App.wasmedge-app.android.executor&quot;: &quot;Run&quot;,
++    &quot;Android App.wasmtime-app.android.executor&quot;: &quot;Run&quot;,
++    &quot;ApkExportedModule&quot;: &quot;WasmLine.wasmtime-app.android&quot;,
++    &quot;ExportApk.ApkPathForWasmLine.wasmtime-app.android&quot;: &quot;C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android&quot;,
++    &quot;Gradle.Build TEST.executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.Build wazero-kotlin.executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [clean].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [wasmCopy].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [app:run].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [clean].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor&quot;: &quot;Run&quot;,
++    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor&quot;: &quot;Run&quot;,
++    &quot;Kotlin.AppKt (1).executor&quot;: &quot;Run&quot;,
++    &quot;Kotlin.AppKt (2).executor&quot;: &quot;Run&quot;,
++    &quot;Kotlin.AppKt.executor&quot;: &quot;Run&quot;,
++    &quot;Kotlin.GraalKt.executor&quot;: &quot;Debug&quot;,
++    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
++    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
++    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
++    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
++    &quot;com.developerphil.adbidea.selecteddevices&quot;: &quot;87d500c6&quot;,
++    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
++    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
++    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
++    &quot;last_opened_file_path&quot;: &quot;C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi/wasmtime-kotlin/wasmtime-app/android/src/androidMain/assets&quot;,
++    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
++    &quot;project.structure.proportion&quot;: &quot;0.17&quot;,
++    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
++    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.editor&quot;,
++    &quot;show.do.not.copy.http.proxy.settings.to.gradle&quot;: &quot;false&quot;,
++    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;,
++    &quot;structure.view.defaults.are.configured&quot;: &quot;true&quot;
+   },
+-  "keyToStringList": {
+-    "ExportApk.BuildVariants": [
+-      "release"
++  &quot;keyToStringList&quot;: {
++    &quot;ExportApk.BuildVariants&quot;: [
++      &quot;release&quot;
+     ]
+   }
+-}]]></component>
++}</component>
+   <component name="RecentsManager">
+     <key name="CopyFile.RECENT_KEYS">
+       <recent name="C:\Users\CrowF\Desktop\wasmtime-kotlin-wasi\wasmtime-kotlin\wasmtime-app\android\src\androidMain\assets" />
+Index: wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/HostDispatcher.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/HostDispatcher.kt b/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/HostDispatcher.kt
+new file mode 100644
+--- /dev/null	(date 1765390032148)
++++ b/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/HostDispatcher.kt	(date 1765390032148)
+@@ -0,0 +1,6 @@
++package crow.wasmtime
++
++// 分发器接口
++interface HostDispatcher {
++    fun dispatch(action: String, payload: ByteArray): ByteArray
++}
+\ No newline at end of file
+Index: ../wasmtime-cpp/include/WasmApi.h
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/**\n * WasmApi.h\n * Unified API Facade for Wasm operations.\n * Acts as a bridge between JNI and the underlying Engine/Module/Session components.\n * Manages the lifecycle of WasmSession instances.\n *\n * 2025-12-03\n * @author crowforkotlin\n */\n\n#pragma once\n\n#include <string>\n#include <vector>\n#include <unordered_map>\n#include <shared_mutex>\n#include \"WasmSession.h\"\n\nclass WasmApi {\npublic:\n    /**\n     * Initializes the Global Engine.\n     */\n    static void initEngine();\n\n    /**\n     * Releases the Global Engine and all resources.\n     */\n    static void releaseEngine();\n\n    /**\n     * Loads a module via WasmModule.\n     */\n    static bool loadModule(const std::string& key, const std::string& path, bool isJit);\n\n    /**\n     * Loads a module via WasmModule. (Not thread-safe.)\n     */\n    static bool loadModuleUnsafe(const std::string& key, const std::string& path, bool isJit);\n\n    /**\n     * Saves a cached module to disk.\n     */\n    static bool saveModuleCache(const std::string& key, const std::string& path);\n\n    /**\n     * Saves a cached module to disk.\n     */\n    static bool saveModuleCacheUnsafe(const std::string& key, const std::string& path);\n\n    /**\n     * Releases a module and its associated sessions.\n     */\n    static void releaseModule(const std::string& key);\n\n    /**\n     * Executes a function call on a specific module.\n     * Manages Session creation and caching internally.\n     *\n     * @param key Module identifier\n     * @param action Action name\n     * @param data Input binary data\n     * @return Output binary data\n     */\n    static std::string call(const std::string& key, const std::string& action, const std::string& data);\n\nprivate:\n    /**\n     * Internal helper to get or create a session.\n     * Thread-safe.\n     */\n    static WasmSession* getOrCreateSession(const std::string& key);\n\n    // Map to cache active sessions: Key -> Session*\n    // Note: WasmApi manages sessions, while WasmModule manages modules.\n    static std::unordered_map<std::string, WasmSession*> sessionCache;\n    \n    // Mutex for session cache safety\n    static std::shared_mutex sessionMutex;\n};
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/../wasmtime-cpp/include/WasmApi.h b/../wasmtime-cpp/include/WasmApi.h
+--- a/../wasmtime-cpp/include/WasmApi.h	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ b/../wasmtime-cpp/include/WasmApi.h	(date 1765390032144)
+@@ -64,6 +64,8 @@
+      */
+     static std::string call(const std::string& key, const std::string& action, const std::string& data);
+ 
++    static void registerHostHandler(const std::string& key, std::unique_ptr<WasmHostHandler> handler);
++
+ private:
+     /**
+      * Internal helper to get or create a session.
+Index: ../wasmtime-cpp/src/WasmApi.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/**\n * WasmApi.cpp\n * Implementation of the Wasm API Facade.\n * Coordinates calls between Engine, Module, and Session.\n *\n * 2025-12-03\n * @author crowforkotlin\n */\n\n#include \"WasmApi.h\"\n#include \"WasmEngine.h\"\n#include \"WasmModule.h\"\n#include \"WasmLogger.h\"\n\n// Static member initialization\nstd::unordered_map<std::string, WasmSession*> WasmApi::sessionCache;\nstd::shared_mutex WasmApi::sessionMutex;\n\nvoid WasmApi::initEngine() {\n    WasmEngine::getInstance().init();\n}\n\nvoid WasmApi::releaseEngine() {\n    // 1. Release all sessions first\n    {\n        std::unique_lock<std::shared_mutex> lock(sessionMutex);\n        for (auto& pair : sessionCache) {\n            delete pair.second;\n        }\n        sessionCache.clear();\n    }\n\n    // 2. Release all modules\n    WasmModule::getInstance().clear();\n\n    // 3. Release engine\n    WasmEngine::getInstance().release();\n}\n\nbool WasmApi::loadModule(const std::string& key, const std::string& path, bool isJit) {\n    auto* mod = WasmModule::getInstance().load(key, path, isJit);\n    return (mod != nullptr);\n}\n\nbool WasmApi::loadModuleUnsafe(const std::string& key, const std::string& path, bool isJit) {\n    auto* mod = WasmModule::getInstance().loadUnsafe(key, path, isJit);\n    return (mod != nullptr);\n}\n\nbool WasmApi::saveModuleCache(const std::string& key, const std::string& path) {\n    return WasmModule::getInstance().serialize(key, path);\n}\n\nbool WasmApi::saveModuleCacheUnsafe(const std::string& key, const std::string& path) {\n    return WasmModule::getInstance().serializeUnsafe(key, path);\n}\n\nvoid WasmApi::releaseModule(const std::string& key) {\n    // 1. Remove associated session if exists\n    {\n        std::unique_lock<std::shared_mutex> lock(sessionMutex);\n        auto it = sessionCache.find(key);\n        if (it != sessionCache.end()) {\n            delete it->second;\n            sessionCache.erase(it);\n        }\n    }\n    // 2. Release module from Module Manager\n    WasmModule::getInstance().release(key);\n}\n\n// Core execution logic\nstd::string WasmApi::call(const std::string& key, const std::string& action, const std::string& data) {\n    WasmSession* session = getOrCreateSession(key);\n    if (!session) {\n        LOGE(\"[Wasmtime] WasmApi --> Call failed, session could not be created for %s\", key.c_str());\n        return \"\";\n    }\n    // Delegate the execution to the Session object\n    return session->call(action.c_str(), action.size(), data.c_str(), data.size());\n}\n\n// Helper: Session Management\nWasmSession* WasmApi::getOrCreateSession(const std::string& key) {\n    // 1. Fast Path: Check cache (Read Lock)\n    {\n        std::shared_lock<std::shared_mutex> lock(sessionMutex);\n        auto it = sessionCache.find(key);\n        if (it != sessionCache.end()) return it->second;\n    }\n\n    // 2. Create Path: Acquire Write Lock\n    std::unique_lock<std::shared_mutex> lock(sessionMutex);\n    \n    // Double check\n    if (sessionCache.count(key)) return sessionCache[key];\n\n    // Get prerequisites\n    wasm_engine_t* engine = WasmEngine::getInstance().getEngine();\n    wasmtime_module_t* module = WasmModule::getInstance().get(key);\n\n    if (!engine || !module) {\n        LOGE(\"[Wasmtime] WasmApi --> Cannot create session. Engine or Module is null for %s\", key.c_str());\n        return nullptr;\n    }\n\n    // Create new Session\n    auto* session = new WasmSession(engine, module, key);\n    \n    // Initialize Session (Register hosts, WASI, Instance)\n    // Note: session->initialize() is thread-safe internally\n    if (!session->initialize()) {\n        LOGE(\"[Wasmtime] WasmApi --> Failed to initialize session for %s\", key.c_str());\n        delete session;\n        return nullptr;\n    }\n\n    sessionCache[key] = session;\n    return session;\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/../wasmtime-cpp/src/WasmApi.cpp b/../wasmtime-cpp/src/WasmApi.cpp
+--- a/../wasmtime-cpp/src/WasmApi.cpp	(revision 65f9224fde0bef3c2e9a0f23173ed532d5f78b42)
++++ b/../wasmtime-cpp/src/WasmApi.cpp	(date 1765390032145)
+@@ -69,6 +69,12 @@
+     WasmModule::getInstance().release(key);
+ }
+ 
++// 增加注册方法
++void WasmApi::registerHostHandler(const std::string& key, std::unique_ptr<WasmHostHandler> handler) {
++    WasmSession* session = getOrCreateSession(key);
++    if (session) session->setHostHandler(std::move(handler));
++}
++
+ // Core execution logic
+ std::string WasmApi::call(const std::string& key, const std::string& action, const std::string& data) {
+     WasmSession* session = getOrCreateSession(key);
+Index: ../wasmtime-cpp/include/WasmHostHandler.h
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/../wasmtime-cpp/include/WasmHostHandler.h b/../wasmtime-cpp/include/WasmHostHandler.h
+new file mode 100644
+--- /dev/null	(date 1765390032144)
++++ b/../wasmtime-cpp/include/WasmHostHandler.h	(date 1765390032144)
+@@ -0,0 +1,19 @@
++#pragma once
++#include <string>
++
++/**
++ * 纯虚接口，代表宿主环境（Host）的处理能力。
++ * WasmSession 通过此接口与外部通信，不关心外部是 Android(JNI), iOS(ObjC), 还是其他 C++ 模块。
++ */
++class WasmHostHandler {
++public:
++    virtual ~WasmHostHandler() = default;
++
++    /**
++     * 发送请求给 Host
++     * @param action 方法名
++     * @param payload 参数数据
++     * @return Host 执行后的结果数据
++     */
++    virtual std::string invoke(const std::string& action, const std::string& payload) = 0;
++};
+\ No newline at end of file
+Index: ../wasmtime-cpp/include/WasmOutboundChannel.h
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/../wasmtime-cpp/include/WasmOutboundChannel.h b/../wasmtime-cpp/include/WasmOutboundChannel.h
+new file mode 100644
+--- /dev/null	(date 1765390032144)
++++ b/../wasmtime-cpp/include/WasmOutboundChannel.h	(date 1765390032144)
+@@ -0,0 +1,17 @@
++#pragma once
++#include <jni.h>
++#include <string>
++
++class WasmOutboundChannel {
++public:
++    WasmOutboundChannel(JNIEnv* env, jobject dispatcher);
++    ~WasmOutboundChannel();
++
++    // 调用 Java 分发器
++    std::string call(JNIEnv* env, const std::string& action, const std::string& payload);
++
++private:
++    JavaVM* jvm;
++    jobject javaDispatcherRef; // 全局引用
++    jmethodID dispatchMethodId;
++};
+\ No newline at end of file

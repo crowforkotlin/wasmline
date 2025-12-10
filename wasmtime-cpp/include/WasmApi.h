@@ -34,9 +34,19 @@ public:
     static bool loadModule(const std::string& key, const std::string& path, bool isJit);
 
     /**
+     * Loads a module via WasmModule. (Not thread-safe.)
+     */
+    static bool loadModuleUnsafe(const std::string& key, const std::string& path, bool isJit);
+
+    /**
      * Saves a cached module to disk.
      */
     static bool saveModuleCache(const std::string& key, const std::string& path);
+
+    /**
+     * Saves a cached module to disk.
+     */
+    static bool saveModuleCacheUnsafe(const std::string& key, const std::string& path);
 
     /**
      * Releases a module and its associated sessions.

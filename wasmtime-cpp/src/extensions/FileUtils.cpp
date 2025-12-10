@@ -5,7 +5,7 @@
  * Author: crowforkotlin
  */
 
-#include "WasmFileUtils.h"
+#include "FileUtils.h"
 #include <fstream>
 #include <sys/stat.h>
 
