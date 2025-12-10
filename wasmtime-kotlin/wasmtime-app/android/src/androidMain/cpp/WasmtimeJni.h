@@ -4,6 +4,7 @@
 #include "WasmLogger.h"
 #include "WasmApi.h"
 #include "extensions/FileUtils.h"
+#include "AndroidHostHandler.h"
 
 static jboolean saveCacheCommon(JNIEnv *env, jstring keyStr, jstring outPathStr, bool unsafe) {
     const char *key = env->GetStringUTFChars(keyStr, nullptr);
