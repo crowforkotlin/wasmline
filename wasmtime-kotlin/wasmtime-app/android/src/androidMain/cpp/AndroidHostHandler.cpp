@@ -28,10 +28,10 @@ AndroidHostHandler::~AndroidHostHandler() {
     if (attached) jvm->DetachCurrentThread();
 }
 
-std::string AndroidHostHandler::invoke(const std::string& action, const std::string& payload) {
+std::string AndroidHostHandler::onOutboundInvoke(const std::string& action, const std::string& payload) {
     JNIEnv* env = nullptr;
     if (jvm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
-        // 理论上不会发生，因为 invoke 是在 WasmSession::call 线程调用的
+        // 理论上不会发生，因为 onOutboundInvoke 是在 WasmSession::invokeInbound 线程调用的
         return "";
     }
 

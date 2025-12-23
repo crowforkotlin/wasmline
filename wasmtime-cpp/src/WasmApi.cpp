@@ -70,20 +70,20 @@ void WasmApi::releaseModule(const std::string& key) {
 }
 
 // 增加注册方法
-void WasmApi::registerHostHandler(const std::string& key, std::unique_ptr<WasmHostHandler> handler) {
+void WasmApi::setOutboundHandler(const std::string& key, std::unique_ptr<WasmOutboundHandler> handler) {
     WasmSession* session = getOrCreateSession(key);
-    if (session) session->setHostHandler(std::move(handler));
+    if (session) session->setOutboundHandler(std::move(handler));
 }
 
 // Core execution logic
-std::string WasmApi::call(const std::string& key, const std::string& action, const std::string& data) {
+std::string WasmApi::invokeInbound(const std::string& key, const std::string& action, const std::string& data) {
     WasmSession* session = getOrCreateSession(key);
     if (!session) {
         LOGE("[Wasmtime] WasmApi --> Call failed, session could not be created for %s", key.c_str());
         return "";
     }
     // Delegate the execution to the Session object
-    return session->call(action.c_str(), action.size(), data.c_str(), data.size());
+    return session->invokeInbound(action.c_str(), action.size(), data.c_str(), data.size());
 }
 
 // Helper: Session Management

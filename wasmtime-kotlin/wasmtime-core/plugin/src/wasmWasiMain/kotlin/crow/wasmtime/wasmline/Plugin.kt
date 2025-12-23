@@ -6,7 +6,10 @@ package crow.wasmtime.wasmline
 // 用户只需要在一个地方初始化路由
 fun initApp() {
     WasmRouter.register("getUser") { jsonArgs -> jsonArgs }
-    WasmRouter.register("add") { "{\"result\": 999}" }
+    WasmRouter.register("add") {
+
+        "{\"result\": 999}"
+    }
 }
 
 
