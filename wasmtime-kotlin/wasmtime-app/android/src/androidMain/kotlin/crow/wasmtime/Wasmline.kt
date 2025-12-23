@@ -1,5 +1,6 @@
 package crow.wasmtime
 
+import android.R.attr.action
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,31 +15,49 @@ class Wasmline(private val moduleKey: String) {
          * 加载模块
          * @param file .wasm (源码) 或 .cwasm (缓存)
          */
-        suspend fun load(file: File, cacheFile: File? = null): Wasmline = withContext(Dispatchers.IO) {
-            val key = file.absolutePath
+        suspend fun load(file: File, cacheFile: File? = null, threadSafe: Boolean = false): WasmlineLoadState = withContext(Dispatchers.IO) {
+            var isSuccess: Boolean
+            val key: String = file.absolutePath
 
-            // 1. 如果有缓存文件，先尝试加载缓存 (AOT)
-            if (cacheFile != null && cacheFile.exists()) {
-                if (nativeLoadCache(key, cacheFile.absolutePath)) {
-                    return@withContext Wasmline(key)
+            // 1. Use aot to load cache file (.cwasm)
+            if (cacheFile?.exists() == true) {
+                isSuccess = if (threadSafe) {
+                    nativeLoadAot(key = key, path = cacheFile.absolutePath)
+                } else {
+                    nativeLoadAotUnsafe(key = key, path = cacheFile.absolutePath)
                 }
-                // 缓存加载失败，删除坏文件
-                cacheFile.delete()
+                if (isSuccess) {
+                    return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_AOT, wasmLine = Wasmline(moduleKey = key))
+                }  else {
+                    cacheFile.delete()
+                }
             }
 
-            // 2. 加载源码 (JIT)
-            if (!file.exists()) throw RuntimeException("Source file not found: $key")
-
-            if (!nativeLoadSource(key, file.absolutePath)) {
-                throw RuntimeException("Failed to load source: $key")
+            // 2. wasm file not exits
+            if (!file.exists()) {
+                return@withContext WasmlineLoadState.Failure(code = WasmlineLoadState.CODE_FAILURE, cause = "[Wasmline] Load failure, file not found: ${file.absolutePath}")
             }
 
-            // 3. 编译成功后，如果指定了缓存路径，保存下来
+            // 3. Use jit to load file (.wasm)
+            isSuccess = if (threadSafe) {
+                nativeLoadJit(key = key, path = file.absolutePath)
+            } else {
+                nativeLoadJitUnsafe(key = key, path = file.absolutePath)
+            }
+            if (!isSuccess) {
+                return@withContext WasmlineLoadState.Failure(code = WasmlineLoadState.CODE_FAILURE, cause = "[Wasmline] Load failure, because native load return false, file path is :  ${file.absolutePath}")
+            }
+
+            // 4. jit compile success, cache (.cwasm) on local storage
             if (cacheFile != null) {
-                nativeSaveCache(key, cacheFile.absolutePath)
+                if (threadSafe) {
+                    nativeSaveCache(key = key, path = cacheFile.absolutePath)
+                } else {
+                    nativeSaveCacheUnsafe(key = key, path = cacheFile.absolutePath)
+                }
             }
 
-            return@withContext Wasmline(key)
+            return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_JIT, wasmLine = Wasmline(moduleKey = key))
         }
 
         /**
@@ -54,25 +73,27 @@ class Wasmline(private val moduleKey: String) {
         fun release() { nativeReleaseEngine() }
 
         // JNI Methods
-        @JvmStatic private external fun nativeRegisterDispatcher(key: String, dispatcher: HostDispatcher)
-        @JvmStatic private external fun nativeLoadSource(key: String, path: String): Boolean
-        @JvmStatic private external fun nativeLoadCache(key: String, path: String): Boolean
+        @JvmStatic private external fun nativeLoadJit(key: String, path: String): Boolean
+        @JvmStatic private external fun nativeLoadJitUnsafe(key: String, path: String): Boolean
+        @JvmStatic private external fun nativeLoadAot(key: String, path: String): Boolean
+        @JvmStatic private external fun nativeLoadAotUnsafe(key: String, path: String): Boolean
         @JvmStatic private external fun nativeSaveCache(key: String, path: String): Boolean
+        @JvmStatic private external fun nativeSaveCacheUnsafe(key: String, path: String): Boolean
         @JvmStatic private external fun nativeReleaseModule(key: String)
-        @JvmStatic private external fun nativeCall(key: String, action: String, protobufBytes: ByteArray): ByteArray
+        @JvmStatic private external fun nativeSetOutboundHandler(key: String, dispatcher: HostDispatcher)
+        @JvmStatic private external fun nativeInvokeInbound(key: String, action: String, protobufBytes: ByteArray): ByteArray
         @JvmStatic private external fun nativeInit()
         @JvmStatic private external fun nativeReleaseEngine()
     }
+
+    suspend fun setOutbound(dispatcher: HostDispatcher) = withContext(Dispatchers.Default) { nativeSetOutboundHandler(moduleKey, dispatcher) }
 
     /**
      * 执行 Wasm 函数
      * 支持并发调用，底层会自动创建独立的 Session
      */
-    suspend fun call(action: String, protobufBytes: ByteArray) = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, protobufBytes) }
+    suspend fun call(action: String, protobufBytes: ByteArray) = withContext(Dispatchers.Default) { nativeInvokeInbound(moduleKey, action, protobufBytes) }
     // suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, json) }
-
-    fun registerDispatcher(dispatcher: HostDispatcher) { nativeRegisterDispatcher(moduleKey, dispatcher) }
-
 
     /**
      * 释放当前模块

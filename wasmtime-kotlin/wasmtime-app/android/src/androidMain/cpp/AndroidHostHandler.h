@@ -1,13 +1,13 @@
 #pragma once
 #include <jni.h>
-#include "WasmHostHandler.h"
+#include "WasmOutboundHandler.h"
 
-class AndroidHostHandler : public WasmHostHandler {
+class AndroidHostHandler : public WasmOutboundHandler {
 public:
     AndroidHostHandler(JNIEnv* env, jobject dispatcher);
     ~AndroidHostHandler() override;
 
-    std::string invoke(const std::string& action, const std::string& payload) override;
+    std::string onOutboundInvoke(const std::string& action, const std::string& payload) override;
 
 private:
     JavaVM* jvm;

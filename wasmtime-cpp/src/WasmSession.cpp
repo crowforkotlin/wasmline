@@ -9,7 +9,7 @@
 
 #include "WasmSession.h"
 #include "WasmLogger.h"
-#include "WasmHostHandler.h"
+#include "WasmOutboundHandler.h"
 #include <cstring>
 #include <vector>
 
@@ -108,7 +108,7 @@ bool WasmSession::initialize() {
     // =========================================================================================
     // STEP 2: Register Host Functions
     // =========================================================================================
-    // Injects custom C++ functions into the Linker so the Wasm module can import and call them.
+    // Injects custom C++ functions into the Linker so the Wasm module can import and invokeInbound them.
     registerHostFunctions();
     LOGI("[Wasmtime] Session --> 2. Register host functions success.");
     
@@ -169,9 +169,9 @@ bool WasmSession::initialize() {
 }
 
 // [注入 Handler]
-void WasmSession::setHostHandler(std::unique_ptr<WasmHostHandler> handler) {
+void WasmSession::setOutboundHandler(std::unique_ptr<WasmOutboundHandler> handler) {
     std::lock_guard<std::mutex> lock(sessionMutex);
-    this->hostHandler = std::move(handler);
+    this->outbound.handler = std::move(handler);
 }
 
 
@@ -181,24 +181,23 @@ void WasmSession::setHostHandler(std::unique_ptr<WasmHostHandler> handler) {
  *
  * @param action Action identifier string
  * @param actionLen Length of the action string
- * @param input Input binary data
- * @param inputLen Length of the input data
+ * @param data Input binary data
+ * @param dataLen Length of the data data
  * @return The output string/data from Wasm
  *
  * 2025-12-02
  * @author crowforkotlin
  */
-std::string WasmSession::call(const char* action, size_t actionLen, const char* input, size_t inputLen) {
+std::string WasmSession::invokeInbound(const char* action, size_t actionLen, const char* data, size_t dataLen) {
     std::lock_guard<std::mutex> lock(sessionMutex);
     if (!isInitialized) return "";
 
     // 1. Set context pointers for Host Functions to access
-    currentActionPtr = action;
-    currentActionLen = actionLen;
-    currentInputPtr = input;
-    currentInputLen = inputLen;
-    currentOutputBuffer.clear();
-    currentHostInvokeResult.clear();
+    inbound.actionPtr = action;
+    inbound.actionLen = actionLen;
+    inbound.dataPtr = data;
+    inbound.dataLen = dataLen;
+    inbound .responseBuffer.clear();
 
     wasmtime_extern_t run_entry;
     wasm_trap_t* trap = nullptr;
@@ -219,8 +218,8 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
             if (error) wasmtime_error_delete(error);
             
             // Clear pointers to prevent dangling references
-            currentActionPtr = nullptr;
-            currentInputPtr = nullptr;
+            inbound .actionPtr = nullptr;
+            inbound .dataPtr = nullptr;
             return "";
         }
     } else {
@@ -228,15 +227,14 @@ std::string WasmSession::call(const char* action, size_t actionLen, const char* 
     }
 
     // 4. Reset pointers
-    currentActionPtr = nullptr;
-    currentInputPtr = nullptr;
+    inbound.actionPtr = nullptr;
+    inbound.dataPtr = nullptr;
 
-    currentHostInvokeResult.clear();
-    currentHostInvokeResult.shrink_to_fit();
+    inbound .responseBuffer.clear();
+    inbound .responseBuffer.shrink_to_fit();
 
-    return currentOutputBuffer;
+    return inbound.responseBuffer;
 }
-
 /**
  * Registers all Host Functions to the Linker.
  * 
@@ -278,13 +276,13 @@ void WasmSession::registerHostFunctions() {
     };
 
     // Register specific host functions
-    define("host_get_size", host_get_size, {WASM_I32}, {WASM_I32}); 
-    define("host_copy_to_memory", host_copy_to_memory, {WASM_I32, WASM_I32, WASM_I32}, {}); 
-    define("host_read_from_memory", host_read_from_memory, {WASM_I32, WASM_I32}, {});
+    define("bridge_inbound_get_size", bridge_inbound_get_size, {WASM_I32}, {WASM_I32});
+    define("bridge_inbound_copy_params", bridge_inbound_copy_params, {WASM_I32, WASM_I32, WASM_I32}, {});
+    define("bridge_inbound_set_response", bridge_inbound_set_response, {WASM_I32, WASM_I32}, {});
 
     // Register Outbound
-    define("host_invoke_outbound", host_invoke_outbound, {WASM_I32, WASM_I32, WASM_I32, WASM_I32}, {WASM_I32});
-    define("host_copy_outbound_result", host_copy_outbound_result, {WASM_I32}, {});
+    define("bridge_outbound_call_host", bridge_outbound_call_host, {WASM_I32, WASM_I32, WASM_I32, WASM_I32}, {WASM_I32});
+    define("bridge_outbound_get_response", bridge_outbound_get_response, {WASM_I32}, {});
 }
 
 /**
@@ -298,7 +296,7 @@ static WasmSession* get_session(wasmtime_caller_t* caller) {
 }
 
 /**
- * Host Function: host_get_size
+ * Host Function: bridge_inbound_get_size
  * Called by Wasm to get the size of the input data provided by the Host.
  * Arg 0: Type (0=Action, 1=Input)
  * Return 0: Length of data (int32)
@@ -306,16 +304,16 @@ static WasmSession* get_session(wasmtime_caller_t* caller) {
  * 2025-12-02
  * @author crowforkotlin
  */
-wasm_trap_t* WasmSession::host_get_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
+wasm_trap_t* WasmSession::bridge_inbound_get_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
     auto* self = get_session(caller);
     int32_t type = args[0].of.i32; // 0: Action, 1: Input
     results[0].kind = WASMTIME_I32;
-    results[0].of.i32 = (int32_t)(type == 0 ? self->currentActionLen : self->currentInputLen);
+    results[0].of.i32 = (int32_t)(type == 0 ? self->inbound.actionLen : self->inbound.dataLen);
     return nullptr;
 }
 
 /**
- * Host Function: host_copy_to_memory
+ * Host Function: bridge_inbound_copy_params
  * Called by Wasm to copy data from Host to Wasm Linear Memory.
  * 
  * Arg 0: Source Type (0=Action, 1=Input)
@@ -325,7 +323,7 @@ wasm_trap_t* WasmSession::host_get_size(void* env, wasmtime_caller_t* caller, co
  * 2025-12-02
  * @author crowforkotlin
  */
-wasm_trap_t* WasmSession::host_copy_to_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
+wasm_trap_t* WasmSession::bridge_inbound_copy_params(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
     WasmSession* self = get_session(caller);
     if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
 
@@ -333,8 +331,8 @@ wasm_trap_t* WasmSession::host_copy_to_memory(void* env, wasmtime_caller_t* call
     int32_t wasmPtr = args[1].of.i32; // Destination Ptr
     int32_t len = args[2].of.i32;     // Length
 
-    const char* srcData = (type == 0) ? self->currentActionPtr : self->currentInputPtr;
-    size_t maxLen = (type == 0) ? self->currentActionLen : self->currentInputLen;
+    const char* srcData = (type == 0) ? self->inbound.actionPtr : self->inbound.dataPtr;
+    size_t maxLen = (type == 0) ? self->inbound.actionLen : self->inbound.dataLen;
 
     // Safety: Clamp length to avoid reading past Host buffer
     if (len < 0 || static_cast<size_t>(len) > maxLen) len = (int32_t)maxLen;
@@ -349,7 +347,7 @@ wasm_trap_t* WasmSession::host_copy_to_memory(void* env, wasmtime_caller_t* call
 }
 
 /**
- * Host Function: host_read_from_memory
+ * Host Function: bridge_inbound_set_response
  * Called by Wasm to copy data (results) from Wasm Linear Memory back to Host.
  *
  * Arg 0: Source Address (Wasm Memory Pointer)
@@ -358,7 +356,7 @@ wasm_trap_t* WasmSession::host_copy_to_memory(void* env, wasmtime_caller_t* call
  * 2025-12-02
  * @author crowforkotlin
  */
-wasm_trap_t* WasmSession::host_read_from_memory(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
+wasm_trap_t* WasmSession::bridge_inbound_set_response(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
     auto* self = get_session(caller);
     if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
 
@@ -368,18 +366,18 @@ wasm_trap_t* WasmSession::host_read_from_memory(void* env, wasmtime_caller_t* ca
     uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);
     if (rawMemory && len > 0) {
         // Append Wasm memory data to C++ output string buffer
-        self->currentOutputBuffer.append(reinterpret_cast<char*>(rawMemory + wasmPtr), len);
+        self->inbound.responseBuffer.append(reinterpret_cast<char*>(rawMemory + wasmPtr), len);
     }
     return nullptr;
 }
 
 // [实现] Wasm -> Host (Push Request)
-wasm_trap_t* WasmSession::host_invoke_outbound(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
+wasm_trap_t* WasmSession::bridge_outbound_call_host(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
     WasmSession* self = get_session(caller);
     auto* ctx = wasmtime_caller_context(caller);
     uint8_t* mem = wasmtime_memory_data(ctx, &self->memory);
 
-    // 1. 从 Wasm 内存读取请求
+    // 1. 从 Wasm 内存中提取 action 和 payload
     int32_t aPtr = args[0].of.i32; int32_t aLen = args[1].of.i32;
     int32_t pPtr = args[2].of.i32; int32_t pLen = args[3].of.i32;
 
@@ -387,30 +385,27 @@ wasm_trap_t* WasmSession::host_invoke_outbound(void* env, wasmtime_caller_t* cal
     std::string payload((char*)(mem + pPtr), pLen);
 
     // 2. 调用 Host 回调
-    if (self->hostHandler) {
-        // [关键] 执行结果被 Deep Copy 到了 currentHostInvokeResult 中暂存
-        self->currentHostInvokeResult = self->hostHandler->invoke(action, payload);
-    } else {
-        self->currentHostInvokeResult = "";
+    if (self->outbound.handler) {
+        self->outbound.responseBuffer = self->outbound.handler->onOutboundInvoke(action, payload);
     }
 
-    // 3. 告诉 Wasm 结果有多大
+    // 3. 告知 Wasm 返回值的大小，以便它分配内存进行下一次 Pull
     results[0].kind = WASMTIME_I32;
-    results[0].of.i32 = (int32_t)self->currentHostInvokeResult.size();
+    results[0].of.i32 = (int32_t)self->outbound.responseBuffer.size();
     return nullptr;
 }
 
 // [实现] Wasm -> Host (Pull Result)
-wasm_trap_t* WasmSession::host_copy_outbound_result(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
+wasm_trap_t* WasmSession::bridge_outbound_get_response(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs, wasmtime_val_t* results, size_t nresults) {
     WasmSession* self = get_session(caller);
     uint8_t* mem = wasmtime_memory_data(self->context, &self->memory);
     int32_t ptr = args[0].of.i32;
 
     // [关键] 把暂存的结果拷贝到 Wasm 指定的内存地址
-    if (!self->currentHostInvokeResult.empty()) {
-        memcpy(mem + ptr, self->currentHostInvokeResult.data(), self->currentHostInvokeResult.size());
+    if (!self->outbound.responseBuffer.empty()) {
+        memcpy(mem + ptr, self->outbound.responseBuffer.data(), self->outbound.responseBuffer.size());
     }
-    self->currentHostInvokeResult.clear();
-    self->currentHostInvokeResult.shrink_to_fit();
+    self->outbound.responseBuffer.clear();
+    self->outbound.responseBuffer.shrink_to_fit();
     return nullptr;
 }

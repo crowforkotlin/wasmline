@@ -3,18 +3,22 @@
 
 package crow.wasmtime.wasmline
 
+import android.R.attr.duration
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log.e
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import crow.wasmtime.HostDispatcher
 import crow.wasmtime.Wasmline
 import crow.wasmtime.WasmlineLoadState
 import crow.wasmtime.app.android.R
 import crow.wasmtime.app.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.invoke
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -41,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun init() {
-        "[Wasmline] Init wasmtime spend ${measureTimeMillis { Wasmline.init() }} ms".info()
+        "[Android] Init wasmtime spend ${measureTimeMillis { Wasmline.init() }} ms".info()
         binding.load.setOnClickListener {
             binding.content.text = "Loading..."
             runWasm()
@@ -73,15 +77,19 @@ class MainActivity : AppCompatActivity() {
                         } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
                             "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
                         }
-                        loadState.wasmLine
-//                start = System.currentTimeMillis()
-//                val result = module.call("getUser", data)
-//                val duration = System.currentTimeMillis() - start
-//                "[android] MainActivity --> spend time call function --------> $duration ms.".info()
-//                withContext(Dispatchers.Main) { binding.content.text = "Result: $result\n call function duration : ${duration} ms" }
-                        // 4. (可选) 释放模块
-//                 module.release()
-
+                        val module = loadState.wasmLine
+                        startMs = System.currentTimeMillis()
+                        module.setOutbound(dispatcher = object : HostDispatcher {
+                            override fun dispatch(action: String, payload: ByteArray): ByteArray {
+                                "[Android] receive wasm action is : $action \t payload is $payload".info()
+                                return byteArrayOf()
+                            }
+                        })
+                        val result = module.call("getUser", data)
+                        val duration = System.currentTimeMillis() - startMs
+                        "[Android] MainActivity --> spend time invokeInbound function --------> $duration ms.".info()
+                        withContext(Dispatchers.Main) { binding.content.text = "Result: $result\n invokeInbound function duration : ${duration} ms" }
+                        module.release()
                     }
                 }
             } catch (e: Exception) {

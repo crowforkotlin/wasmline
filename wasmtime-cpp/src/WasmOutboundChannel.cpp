@@ -1,6 +1,6 @@
-#include "WasmOutboundChannel.h"
+#include "WasmOutboundHandler.h"
 
-WasmOutboundChannel::WasmOutboundChannel(JNIEnv* env, jobject dispatcher) {
+WasmOutboundHandler::WasmOutboundHandler(JNIEnv* env, jobject dispatcher) {
     env->GetJavaVM(&jvm);
     // 1. 创建全局引用，锁定 Java 对象生命周期
     javaDispatcherRef = env->NewGlobalRef(dispatcher);
@@ -11,7 +11,7 @@ WasmOutboundChannel::WasmOutboundChannel(JNIEnv* env, jobject dispatcher) {
     env->DeleteLocalRef(cls);
 }
 
-WasmOutboundChannel::~WasmOutboundChannel() {
+WasmOutboundHandler::~WasmOutboundHandler() {
     // 析构时释放全局引用
     JNIEnv* env = nullptr;
     bool attached = false;
@@ -27,7 +27,7 @@ WasmOutboundChannel::~WasmOutboundChannel() {
     if (attached) jvm->DetachCurrentThread();
 }
 
-std::string WasmOutboundChannel::call(JNIEnv* env, const std::string& action, const std::string& payload) {
+std::string WasmOutboundHandler::call(JNIEnv* env, const std::string& action, const std::string& payload) {
     if (!javaDispatcherRef || !dispatchMethodId) return "";
 
     // 构造参数

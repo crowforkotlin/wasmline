@@ -10,38 +10,43 @@ import kotlin.wasm.unsafe.withScopedMemoryAllocator
 private const val TYPE_HOST_ACTION = 0
 private const val TYPE_HOST_INPUT = 1
 
+/*
+* Import Inbound
+* */
 // --- 1. 底层 Import (全部 private/internal，对外隐藏) ---
 // type: 0=Action, 1=Input
-@WasmImport("env", "host_get_size")
-external fun host_get_size(type: Int): Int
+@WasmImport("env", "bridge_inbound_get_size")
+external fun bridge_inbound_get_size(type: Int): Int
 
-// [新接口] 告诉 Host：把 type 类型的数据拷贝到 ptr 这个地址，长度为 len
-@WasmImport("env", "host_copy_to_memory")
-external fun host_copy_to_memory(type: Int, ptr: Int, len: Int)
+// 告诉 Host：把 type 类型的数据拷贝到 ptr 这个地址，长度为 len
+@WasmImport("env", "bridge_inbound_copy_params")
+external fun bridge_inbound_copy_params(type: Int, ptr: Int, len: Int)
 
-// [新接口] 告诉 Host：从 ptr 这个地址读取 len 长度的数据作为结果
-@WasmImport("env", "host_read_from_memory")
-external fun host_read_from_memory(ptr: Int, len: Int)
+// 告诉 Host：从 ptr 这个地址读取 len 长度的数据作为结果
+@WasmImport("env", "bridge_inbound_set_response")
+external fun bridge_inbound_set_response(ptr: Int, len: Int)
 
-// --- Import ---
-@WasmImport("env", "host_invoke_outbound")
-external fun host_invoke_outbound(aPtr: Int, aLen: Int, pPtr: Int, pLen: Int): Int
+/*
+* Import Outbound
+* */
+@WasmImport("env", "bridge_outbound_call_host")
+external fun bridge_outbound_call_host(aPtr: Int, aLen: Int, pPtr: Int, pLen: Int): Int
 
-@WasmImport("env", "host_copy_outbound_result")
-external fun host_copy_outbound_result(ptr: Int)
+@WasmImport("env", "bridge_outbound_get_response")
+external fun bridge_outbound_get_response(ptr: Int)
 
 
 // --- 2. 内部桥接工具 ---
 internal object WasmBridge {
 
     fun getAction(): String {
-        val size = host_get_size(type = TYPE_HOST_ACTION)
+        val size = bridge_inbound_get_size(type = TYPE_HOST_ACTION)
         if (size == 0) return ""
         return readStringFromHost(type = TYPE_HOST_ACTION, size)
     }
 
     fun getJson(): String {
-        val size = host_get_size(type = TYPE_HOST_INPUT)
+        val size = bridge_inbound_get_size(type = TYPE_HOST_INPUT)
         if (size == 0) return ""
         return readStringFromHost(TYPE_HOST_INPUT, size)
     }
@@ -59,7 +64,7 @@ internal object WasmBridge {
             val pointer = allocator.allocate(size)
 
             // B. 传入地址 (Int)，让 C++ 直接 memcpy
-            host_copy_to_memory(type, pointer.address.toInt(), size)
+            bridge_inbound_copy_params(type, pointer.address.toInt(), size)
 
             // C. 将数据从 Unsafe 内存搬运到 Kotlin 安全内存 (ByteArray)
             // 注意：这个循环是在 Wasm 虚拟机内部执行的，是纯计算指令，非常快
@@ -91,7 +96,7 @@ internal object WasmBridge {
             }
 
             // C. 告诉 Host 地址和长度，让它 memcpy 拿走
-            host_read_from_memory(pointer.address.toInt(), size)
+            bridge_inbound_set_response(pointer.address.toInt(), size)
         }
     }
 
@@ -118,7 +123,7 @@ internal object WasmBridge {
 
             // 3. [Push] 调用 Host，获取结果长度
             // C++ 会在这里执行 JNI -> Java，并暂存结果
-            val resLen = host_invoke_outbound(
+            val resLen = bridge_outbound_call_host(
                 aPtr.address.toInt(), actionBytes.size,
                 pPtr.address.toInt(), payload.size
             )
@@ -130,7 +135,7 @@ internal object WasmBridge {
             val resPtr = allocator.allocate(resLen)
 
             // 5. [Pull] 把结果从 C++ 暂存区拉过来
-            host_copy_outbound_result(resPtr.address.toInt())
+            bridge_outbound_get_response(resPtr.address.toInt())
 
             // 6. [Copy] 转为 Kotlin 对象
             val result = ByteArray(resLen)

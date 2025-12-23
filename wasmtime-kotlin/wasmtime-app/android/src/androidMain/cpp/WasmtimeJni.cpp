@@ -61,7 +61,7 @@ Java_crow_wasmtime_Wasmline_nativeReleaseModule(JNIEnv *env, jclass thiz, jstrin
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmtime_Wasmline_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
+Java_crow_wasmtime_Wasmline_nativeInvokeInbound(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     const char* action = env->GetStringUTFChars(actionStr, nullptr);
     jsize actionLen = env->GetStringUTFLength(actionStr);
@@ -69,8 +69,8 @@ Java_crow_wasmtime_Wasmline_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr,
     jbyte* dataPtr = env->GetByteArrayElements(inputBytes, nullptr);
     jsize dataLen = env->GetArrayLength(inputBytes);
 
-    // Perform call via API
-    std::string resultData = WasmApi::call(key, action, std::string((const char*)dataPtr, dataLen));
+    // Perform invokeInbound via API
+    std::string resultData = WasmApi::invokeInbound(key, action, std::string((const char *) dataPtr, dataLen));
 
     // Cleanup input
     env->ReleaseByteArrayElements(inputBytes, dataPtr, JNI_ABORT);
@@ -86,17 +86,20 @@ Java_crow_wasmtime_Wasmline_nativeCall(JNIEnv *env, jclass thiz, jstring keyStr,
         return env->NewByteArray(0);
     }
 }
+
 // [新增] 注册分发器
+
 JNIEXPORT void JNICALL
-Java_crow_wasmtime_WasmLine_nativeRegisterDispatcher(JNIEnv *env, jclass thiz, jstring keyStr, jobject jDispatcher) {
-const char* key = env->GetStringUTFChars(keyStr, nullptr);
+Java_crow_wasmtime_Wasmline_nativeSetOutboundHandler(JNIEnv *env, jclass thiz, jstring keyStr, jobject jDispatcher) {
+    const char* key = env->GetStringUTFChars(keyStr, nullptr);
 
-// 创建 Android 实现并注入 Core
-auto handler = std::make_unique<AndroidHostHandler>(env, jDispatcher);
-WasmApi::registerHostHandler(key, std::move(handler));
+    // 创建 Android 实现并注入 Core
+    auto handler = std::make_unique<AndroidHostHandler>(env, jDispatcher); WasmApi::setOutboundHandler(key, std::move(handler));
 
-env->ReleaseStringUTFChars(keyStr, key);
+    env->ReleaseStringUTFChars(keyStr, key);
 }
+
+
 
 
 } // extern "C"

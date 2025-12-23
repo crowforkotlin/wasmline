@@ -54,7 +54,7 @@ public:
     static void releaseModule(const std::string& key);
 
     /**
-     * Executes a function call on a specific module.
+     * Executes a function invokeInbound on a specific module.
      * Manages Session creation and caching internally.
      *
      * @param key Module identifier
@@ -62,9 +62,9 @@ public:
      * @param data Input binary data
      * @return Output binary data
      */
-    static std::string call(const std::string& key, const std::string& action, const std::string& data);
+    static std::string invokeInbound(const std::string& key, const std::string& action, const std::string& data);
 
-    static void registerHostHandler(const std::string& key, std::unique_ptr<WasmHostHandler> handler);
+    static void setOutboundHandler(const std::string& key, std::unique_ptr<WasmOutboundHandler> handler);
 
 private:
     /**
