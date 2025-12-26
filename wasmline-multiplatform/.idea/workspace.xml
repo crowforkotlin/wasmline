@@ -16,7 +16,9 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Restructure the code and delete files.&#10;Rename crow.wasmtime.wasmline -&gt; com.mordecai.wasmline&#10;Rename wasmtime-xxx -&gt; wasmline-xxx&#10;Rename wasmline-core file name&#10;Delete wasmline-core useless file" />
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Restructure the code and delete files.&#10;Rename crow.wasmtime.wasmline -&gt; com.mordecai.wasmline&#10;Rename wasmtime-xxx -&gt; wasmline-xxx&#10;Rename wasmline-core file name&#10;Delete wasmline-core useless file">
+      <change beforePath="$PROJECT_DIR$/../wasmline-core/src/Session.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmline-core/src/Session.cpp" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -865,7 +867,15 @@
       <option name="project" value="LOCAL" />
       <updated>1766743815784</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="Restructure the code and delete files.&#10;Rename crow.wasmtime.wasmline -&gt; com.mordecai.wasmline&#10;Rename wasmtime-xxx -&gt; wasmline-xxx&#10;Rename wasmline-core file name&#10;Delete wasmline-core useless file">
+      <option name="closed" value="true" />
+      <created>1766743945692</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1766743945692</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

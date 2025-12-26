@@ -168,7 +168,15 @@ namespace wasmline {
         return true;
     }
 
-    // [注入 Handler]
+    /**
+     * Injects the Outbound Handler.
+     * Sets the handler responsible for processing requests from Wasm to Host.
+     *
+     * @param handler The handler instance
+     *
+     * 2025-12-26
+     * @author crowforkotlin
+     */
     void Session::setOutboundHandler(std::unique_ptr<OutboundHandler> handler) {
         std::lock_guard<std::mutex> lock(sessionMutex);
         this->outbound.handler = std::move(handler);
@@ -372,7 +380,20 @@ namespace wasmline {
         return nullptr;
     }
 
-    // [实现] Wasm -> Host (Push Request)
+    /**
+     * Host Function: bridge_outbound_call_host
+     * Called by Wasm to invoke a Host function (Push Request).
+     * Extracts action and payload from Wasm memory and delegates to the OutboundHandler.
+     *
+     * Arg 0: Action String Pointer (Wasm Memory Address)
+     * Arg 1: Action String Length
+     * Arg 2: Payload Data Pointer (Wasm Memory Address)
+     * Arg 3: Payload Data Length
+     * Return: Length of the Host response data (int32)
+     *
+     * 2025-12-26
+     * @author crowforkotlin
+     */
     wasm_trap_t *Session::bridge_outbound_call_host(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults) {
         Session *self = get_session(caller);
         auto *ctx = wasmtime_caller_context(caller);
@@ -398,7 +419,16 @@ namespace wasmline {
         return nullptr;
     }
 
-    // [实现] Wasm -> Host (Pull Result)
+    /**
+     * Host Function: bridge_outbound_get_response
+     * Called by Wasm to retrieve the result of the last Host invocation (Pull Result).
+     * Copies the buffered response data into Wasm memory.
+     *
+     * Arg 0: Destination Address (Wasm Memory Pointer)
+     *
+     * 2025-12-26
+     * @author crowforkotlin
+     */
     wasm_trap_t *Session::bridge_outbound_get_response(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults) {
         Session *self = get_session(caller);
         uint8_t *mem = wasmtime_memory_data(self->context, &self->memory);
