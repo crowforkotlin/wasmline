@@ -4,7 +4,135 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="65050e88-389a-4ba2-95b2-2ba12f5463d0" name="Changes" comment="" />
+    <list default="true" id="65050e88-389a-4ba2-95b2-2ba12f5463d0" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/WasmApi.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/WasmEngine.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/WasmLogger.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/WasmModule.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/WasmOutboundHandler.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/WasmSession.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/channel/WasmInboundChannel.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/channel/WasmOutboundChannel.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/extensions/Concurrency.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/include/extensions/FileUtils.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/src/WasmApi.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/src/WasmEngine.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/src/WasmModule.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/src/WasmOutboundChannel.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/src/WasmSession.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-cpp/src/extensions/FileUtils.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.gitattributes" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/.name" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/AndroidProjectSystem.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/artifacts/core_wasm_wasi_0_0_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/artifacts/plugin_wasm_wasi_0_0_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/artifacts/wasmtime_plugin_wasm_wasi_0_0_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/caches/deviceStreaming.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/compiler.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/copilot.data.migration.agent.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/deploymentTargetSelector.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/deviceManager.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/dictionaries/project.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/gradle.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/kotlinc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/markdown.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/migrations.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/runConfigurations.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_11_[Changes]/plugin.wasm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_11_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_11__Changes_.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_12_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_12_[Changes]1/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_12__Changes_.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/shelf/Uncommitted_changes_before_Update_at_2025_12_11_02_12__Changes_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/wasmtime-kotlin.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/.idea/workspace.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/gradle.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/gradle/libs.versions.toml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/gradle/wrapper/gradle-wrapper.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/gradlew" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/gradlew.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/settings.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmline.jks" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/AndroidManifest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/AndroidHostHandler.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/WasmLogger.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/WasmtimeJni.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/mrakdown.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/script/build.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/script/configure.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/cpp/script/env.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/HostDispatcher.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/Wasmline.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/WasmlineLoadState.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/Data.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/MainActivity.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/kotlin/crow/wasmtime/wasmline/TipsExt.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/drawable-v24/ic_launcher_foreground.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/drawable/ic_launcher_background.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/layout/activity_main.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-anydpi-v26/ic_launcher.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-anydpi-v26/ic_launcher_round.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-hdpi/ic_launcher.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-hdpi/ic_launcher_round.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-mdpi/ic_launcher.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-mdpi/ic_launcher_round.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-xhdpi/ic_launcher.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-xhdpi/ic_launcher_round.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-xxhdpi/ic_launcher.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-xxhdpi/ic_launcher_round.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-xxxhdpi/ic_launcher.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/mipmap-xxxhdpi/ic_launcher_round.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/values-night/themes.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/values/colors.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/values/strings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/values/themes.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/xml/backup_rules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/android/src/androidMain/res/xml/data_extraction_rules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-app/application/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/.kotlin/errors/errors-1757657551470.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/.kotlin/errors/errors-1757921667939.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/.kotlin/errors/errors-1761033519019.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/extensions/AndroidExtension.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/extensions/ApplicationExtension.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/base/app.base.android.compose.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/base/app.base.android.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/base/app.base.application.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/base/app.base.compose.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/base/app.base.library.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/base/app.base.multiplatform.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/base/app.base.multiplatform.js.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/gradle/function/app.function.android.compose.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/app/src/main/kotlin/utils/Dependencies.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/base/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/base/src/main/kotlin/Config.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/base/src/main/kotlin/KotlinMultiplatformExt.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-build-logic/settings.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/Script.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/common/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/core/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmRouter.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/host/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/plugin/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-library/android/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmtime-kotlin/wasmtime-library/android/src/androidMain/AndroidManifest.xml" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -16,18 +144,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "crowforkotlin"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;crowforkotlin&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/crowforkotlin/wasmline.git",
-    "accountId": "52ff4013-64e8-4bab-b7fa-98a6529a4b2d"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/crowforkotlin/wasmline.git&quot;,
+    &quot;accountId&quot;: &quot;52ff4013-64e8-4bab-b7fa-98a6529a4b2d&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 8
 }</component>
@@ -35,22 +163,22 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "main",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi",
-    "show.migrate.to.gradle.popup": "false"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/CrowF/Desktop/wasmtime-kotlin-wasi&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
-}]]></component>
+}</component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="65050e88-389a-4ba2-95b2-2ba12f5463d0" name="Changes" comment="" />
