@@ -1,4 +1,4 @@
-rootProject.name = "Wasmline"
+rootProject.name = "wasmline"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("wasmline-build-logic")
