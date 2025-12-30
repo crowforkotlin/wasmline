@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
                                 return byteArrayOf()
                             }
                         })
+                        module.call("init", data)
                         val result = module.call("getUser", data)
                         val duration = System.currentTimeMillis() - startMs
                         "[Android] MainActivity --> spend time invokeInbound function --------> $duration ms.".info()

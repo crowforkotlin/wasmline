@@ -23,6 +23,7 @@ kotlin {
     sourceSets {
         wasmWasiMain.dependencies {
             implementation(projects.wasmlineCore.core)
+            implementation("org.jetbrains.kotlin:kotlin-reflect:2.3.0-RC")
             implementation("com.squareup.okio:okio-wasm-wasi:3.16.4")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-wasm-wasi:1.9.0")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf-wasm-wasi:1.9.0")

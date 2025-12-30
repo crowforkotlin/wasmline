@@ -3,6 +3,8 @@
 package crow.wasmtime.wasmline
 
 fun WasmEntryInitialize() {
+
+
     // 1. 自动拉取参数
     val action = WasmBridge.getAction()
     val args = WasmBridge.getJson()
