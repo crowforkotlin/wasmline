@@ -1,4 +1,6 @@
-rootProject.name = "wasmline"
+import org.gradle.kotlin.dsl.provider.gradleKotlinDslJarsOf
+
+rootProject.name = "wasmline-multiplatform"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("wasmline-build-logic")
@@ -12,6 +14,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://packages.jetbrains.team/maven/p/kpm/public/") {
+            mavenContent {
+                includeGroup("org.jetbrains.jewel")
+            }
+        }
     }
 }
 
@@ -47,6 +54,6 @@ fun includeModule(topName: String, file: File) {
 
 
 
-includeModule(topName = "wasmline-app", file = file("wasmline-app"))
-includeModule(topName = "wasmline-core", file = file("wasmline-core"))
+includeModule(topName = "wasmline-sample", file = file("wasmline-sample"))
+includeModule(topName = "wasmline", file = file("wasmline"))
 //includeModule(topName = "wasmline-library", file = file("wasmline-library"))

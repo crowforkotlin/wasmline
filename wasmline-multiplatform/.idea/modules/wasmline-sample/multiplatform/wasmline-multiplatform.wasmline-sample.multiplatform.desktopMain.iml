@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="AdditionalModuleElements">
+    <content url="file://$MODULE_DIR$/../../../../wasmline-sample/multiplatform/src/desktopMain" dumb="true">
+      <sourceFolder url="file://$MODULE_DIR$/../../../../wasmline-sample/multiplatform/src/desktopMain/kotlin" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../wasmline-sample/multiplatform/src/desktopMain/resources" type="java-resource" />
+    </content>
+  </component>
+</module>
