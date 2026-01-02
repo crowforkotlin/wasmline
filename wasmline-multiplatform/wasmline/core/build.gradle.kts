@@ -40,6 +40,11 @@ kotlin {
 
     applyDefaultHierarchyTemplate()
 
+    compilerOptions {
+        // actual scope is unstable, cancel compilation warning [https://youtrack.jetbrains.com/issue/KT-61573]
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     sourceSets {
 
         val commonMain by getting {
