@@ -11,3 +11,4 @@ wasmtime-app/android/.cxx/
 **/.kotlin/
 
 local.properties
+**/.DS_Store

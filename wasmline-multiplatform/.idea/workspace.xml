@@ -16,7 +16,12 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support." />
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support.">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wasmline/core/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline/core/build.gradle.kts" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -226,7 +231,7 @@
     "project.structure.last.edited": "Modules",
     "project.structure.proportion": "0.17",
     "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default",
     "show.do.not.copy.http.proxy.settings.to.gradle": "false",
     "show.migrate.to.gradle.popup": "false",
     "structure.view.defaults.are.configured": "true"
@@ -1204,17 +1209,9 @@
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="kotlin-function">
-          <url>file://$PROJECT_DIR$/wasmline-sample/multiplatform/src/desktopMain/kotlin/Main.kt</url>
-          <line>27</line>
-          <properties method="main">
-            <option name="WATCH_EXIT" value="false" />
-          </properties>
-          <option name="timeStamp" value="24" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="kotlin-function">
           <url>file://$PROJECT_DIR$/wasmline/core/src/jvmMain/kotlin/crow/mordecai/wasmline/common/extensions/NativeLoaderExt.jvm.kt</url>
           <line>9</line>
-          <properties method="loadNativeLibrary">
+          <properties>
             <option name="WATCH_EXIT" value="false" />
           </properties>
           <option name="timeStamp" value="25" />
@@ -1245,6 +1242,19 @@
           <url>jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.graalvm.wasm/wasm-language/25.0.0/2eea1a93a6869b9ed0aebd1acdec7590b35b5ed4/wasm-language-25.0.0-sources.jar!/org/graalvm/wasm/BinaryParser.java</url>
           <line>382</line>
           <option name="timeStamp" value="23" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="kotlin-line">
+          <url>file://$PROJECT_DIR$/wasmline-sample/multiplatform/src/desktopMain/kotlin/Main.kt</url>
+          <line>55</line>
+          <option name="timeStamp" value="26" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="kotlin-line">
+          <url>file://$PROJECT_DIR$/wasmline-sample/multiplatform/src/desktopMain/kotlin/Main.kt</url>
+          <line>27</line>
+          <properties>
+            <option name="lambda-ordinal" value="-1" />
+          </properties>
+          <option name="timeStamp" value="27" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
