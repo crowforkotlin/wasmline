@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/wasmline-sample/multiplatform/wasmline-multiplatform.wasmline-sample.multiplatform.desktopMain.iml" filepath="$PROJECT_DIR$/.idea/modules/wasmline-sample/multiplatform/wasmline-multiplatform.wasmline-sample.multiplatform.desktopMain.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/wasmline-sample/multiplatform/wasmline-multiplatform.wasmline-sample.multiplatform.main.iml" filepath="$PROJECT_DIR$/.idea/modules/wasmline-sample/multiplatform/wasmline-multiplatform.wasmline-sample.multiplatform.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/wasmline/core/wasmline-multiplatform.wasmline.core.jniMain.iml" filepath="$PROJECT_DIR$/.idea/modules/wasmline/core/wasmline-multiplatform.wasmline.core.jniMain.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/wasmline/core/wasmline-multiplatform.wasmline.core.jvmMain.iml" filepath="$PROJECT_DIR$/.idea/modules/wasmline/core/wasmline-multiplatform.wasmline.core.jvmMain.iml" />
+    </modules>
+  </component>
+</project>

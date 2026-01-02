@@ -20,26 +20,27 @@
         </compositeConfiguration>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="D:\program\gradle\gradle-8.7" />
-        <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
+        <option name="gradleJvm" value="jbr-17 (2)" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/wasmline-app" />
-            <option value="$PROJECT_DIR$/wasmline-app/android" />
-            <option value="$PROJECT_DIR$/wasmline-app/application" />
+            <option value="$PROJECT_DIR$/wasmline" />
             <option value="$PROJECT_DIR$/wasmline-build-logic" />
             <option value="$PROJECT_DIR$/wasmline-build-logic/app" />
             <option value="$PROJECT_DIR$/wasmline-build-logic/base" />
             <option value="$PROJECT_DIR$/wasmline-build-logic/shared" />
-            <option value="$PROJECT_DIR$/wasmline-core" />
-            <option value="$PROJECT_DIR$/wasmline-core/common" />
-            <option value="$PROJECT_DIR$/wasmline-core/core" />
-            <option value="$PROJECT_DIR$/wasmline-core/host" />
-            <option value="$PROJECT_DIR$/wasmline-core/plugin" />
+            <option value="$PROJECT_DIR$/wasmline-sample" />
+            <option value="$PROJECT_DIR$/wasmline-sample/android" />
+            <option value="$PROJECT_DIR$/wasmline-sample/application" />
+            <option value="$PROJECT_DIR$/wasmline-sample/multiplatform" />
+            <option value="$PROJECT_DIR$/wasmline/common" />
+            <option value="$PROJECT_DIR$/wasmline/core" />
+            <option value="$PROJECT_DIR$/wasmline/host" />
+            <option value="$PROJECT_DIR$/wasmline/plugin" />
           </set>
         </option>
       </GradleProjectSettings>
     </option>
+    <option name="parallelModelFetch" value="true" />
   </component>
 </project>

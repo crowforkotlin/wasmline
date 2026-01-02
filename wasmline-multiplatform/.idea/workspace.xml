@@ -5,9 +5,9 @@
       <config />
     </shared>
     <layouts>
-      <layout url="file://$PROJECT_DIR$/wasmtime-app/android/src/androidMain/res/layout/activity_main.xml">
+      <layout url="file://$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/layout/activity_main.xml">
         <config>
-          <theme>@style/Theme.AndroidSampleTest</theme>
+          <theme>@style/App.Theme</theme>
         </config>
       </layout>
     </layouts>
@@ -16,17 +16,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Restructure the code and delete files.&#10;Rename crow.wasmtime.wasmline -&gt; com.mordecai.wasmline&#10;Rename wasmtime-xxx -&gt; wasmline-xxx&#10;Rename wasmline-core file name&#10;Delete wasmline-core useless file">
-      <change beforePath="$PROJECT_DIR$/.idea/artifacts/core_wasm_wasi_0_0_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/artifacts/core_wasm_wasi_0_0_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/artifacts/plugin_wasm_wasi_0_0_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/artifacts/plugin_wasm_wasi_0_0_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/assets/plugin.wasm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/plugin/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-core/plugin/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" afterDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -35,7 +25,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[DeviceId(pluginId=Default, isTemplate=false, identifier=serial=192.168.137.162:5555;connection=8eee4457)]" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[Default::serial=192.168.0.231:5555;connection=3ea8de39]" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
@@ -58,7 +48,42 @@
             <expand>
               <path>
                 <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
-                <item name="Wasmline" type="f1a62948:ProjectNode" />
+                <item name="wasmline-multiplatform" type="f1a62948:ProjectNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="wasmline-multiplatform" type="f1a62948:ProjectNode" />
+                <item name="wasmline-multiplatform" type="2d1252cf:ModuleNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="wasmline-multiplatform" type="f1a62948:ProjectNode" />
+                <item name="wasmline-multiplatform" type="2d1252cf:ModuleNode" />
+                <item name="wasmline" type="2d1252cf:ModuleNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="wasmline-multiplatform" type="f1a62948:ProjectNode" />
+                <item name="wasmline-multiplatform" type="2d1252cf:ModuleNode" />
+                <item name="wasmline" type="2d1252cf:ModuleNode" />
+                <item name="core" type="2d1252cf:ModuleNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="wasmline-multiplatform" type="f1a62948:ProjectNode" />
+                <item name="wasmline-multiplatform" type="2d1252cf:ModuleNode" />
+                <item name="wasmline" type="2d1252cf:ModuleNode" />
+                <item name="core" type="2d1252cf:ModuleNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="wasmline-multiplatform" type="f1a62948:ProjectNode" />
+                <item name="wasmline-multiplatform" type="2d1252cf:ModuleNode" />
+                <item name="wasmline" type="2d1252cf:ModuleNode" />
+                <item name="core" type="2d1252cf:ModuleNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+                <item name="build" type="c8890929:TasksNode$1" />
               </path>
             </expand>
             <select />
@@ -70,10 +95,10 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Kotlin File" />
         <option value="Kotlin Object" />
         <option value="Kotlin Data Class" />
         <option value="Kotlin Class" />
+        <option value="Kotlin File" />
       </list>
     </option>
   </component>
@@ -100,11 +125,11 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/crowforkotlin/wasmline&quot;,
-    &quot;accountId&quot;: &quot;52ff4013-64e8-4bab-b7fa-98a6529a4b2d&quot;
+    &quot;url&quot;: &quot;https://github.com/crowforkotlin/wasmline.git&quot;,
+    &quot;accountId&quot;: &quot;acd0df7e-7f05-4632-88d7-49f71836c888&quot;
   }
 }</component>
-  <component name="GradleScriptDefinitionsStorage" workingDir="$PROJECT_DIR$" gradleHome="C:\Users\CrowF\.gradle\wrapper\dists\gradle-8.13-bin\5xuhj0ry160q40clulazy9h7d\gradle-8.13" javaHome="D:\program\jdk-17.0.1" gradleVersion="8.13">
+  <component name="GradleScriptDefinitionsStorage" workingDir="$PROJECT_DIR$" gradleHome="$USER_HOME$/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13" javaHome="$USER_HOME$/WuYa/Code/Tools/jbrsdk-17.0.12-osx-aarch64-b1000.54/Contents/Home" gradleVersion="8.13">
     <option name="jvmArguments">
       <list>
         <option value="-Dhttp.proxyHost=127.0.0.1" />
@@ -124,106 +149,118 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
-    &quot;Android App.MainActivity.executor&quot;: &quot;Run&quot;,
-    &quot;Android App.wasmedge-app.android.executor&quot;: &quot;Run&quot;,
-    &quot;Android App.wasmline-app.android.executor&quot;: &quot;Run&quot;,
-    &quot;Android App.wasmtime-app.android.executor&quot;: &quot;Run&quot;,
-    &quot;ApkExportedModule&quot;: &quot;Wasmline.wasmtime-app.android&quot;,
-    &quot;ExportApk.ApkPathForWasmLine.wasmtime-app.android&quot;: &quot;C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android&quot;,
-    &quot;ExportApk.ApkPathForWasmline.wasmtime-app.android&quot;: &quot;C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android&quot;,
-    &quot;Gradle.Build TEST.executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.Build wazero-kotlin.executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmline-multiplatform [wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [:wasmtime-app:android:assembleDebug].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmCopy].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [app:run].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor&quot;: &quot;Run&quot;,
-    &quot;Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.AppKt (1).executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.AppKt (2).executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.AppKt.executor&quot;: &quot;Run&quot;,
-    &quot;Kotlin.GraalKt.executor&quot;: &quot;Debug&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;com.developerphil.adbidea.selecteddevices&quot;: &quot;87d500c6&quot;,
-    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/fish/wasmline/wasmline-multiplatform/wasmline-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.17&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;terminal&quot;,
-    &quot;show.do.not.copy.http.proxy.settings.to.gradle&quot;: &quot;false&quot;,
-    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;,
-    &quot;structure.view.defaults.are.configured&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Android App.MainActivity.executor": "Run",
+    "Android App.wasmedge-app.android.executor": "Run",
+    "Android App.wasmline-app.android.executor": "Run",
+    "Android App.wasmline-sample.multiplatform.executor": "Run",
+    "Android App.wasmtime-app.android.executor": "Run",
+    "ApkExportedModule": "Wasmline.wasmtime-app.android",
+    "ExportApk.ApkPathForWasmLine.wasmtime-app.android": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android",
+    "ExportApk.ApkPathForWasmline.wasmtime-app.android": "C:\\Users\\CrowF\\Desktop\\wasmtime-kotlin-wasi\\wasmtime-kotlin\\wasmtime-app\\android",
+    "Gradle.Build TEST.executor": "Run",
+    "Gradle.Build wazero-kotlin.executor": "Run",
+    "Gradle.wasmedge-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmline-multiplatform [:wasmline-core:plugin:build].executor": "Run",
+    "Gradle.wasmline-multiplatform [:wasmline:core:androidNativeArm64Klib].executor": "Run",
+    "Gradle.wasmline-multiplatform [:wasmline:core:assemble].executor": "Run",
+    "Gradle.wasmline-multiplatform [clean].executor": "Run",
+    "Gradle.wasmline-multiplatform [wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmline-multiplatform [wasmline-core:plugin:compileProductionLibraryKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmline-multiplatform [wasmline:core:androidMain: assembleRelease].executor": "Run",
+    "Gradle.wasmline-multiplatform [wasmline:core:androidMainKlibrary].executor": "Run",
+    "Gradle.wasmline-sample [desktop].executor": "Run",
+    "Gradle.wasmtime-kotlin [:wasmtime-app:android:assembleDebug].executor": "Run",
+    "Gradle.wasmtime-kotlin [:wasmtime-app:android:buildCMakeDebug].executor": "Run",
+    "Gradle.wasmtime-kotlin [:wasmtime-build-logic:clean].executor": "Run",
+    "Gradle.wasmtime-kotlin [clean].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmCopy].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmtime-app:android:configureCMakeDebug].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wazero-kotlin [:wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+    "Gradle.wazero-kotlin [app:run].executor": "Run",
+    "Gradle.wazero-kotlin [clean].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin: :wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionExecutableKotlinWasmWasiOptimize].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:kotlinWasmBinaryenSetup].executor": "Run",
+    "Gradle.wazero-kotlin [wazero-core:wazero-plugin:wasmJsProductionLibraryCompileSync].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [allMetadataJar].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [build].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJsOptimize].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileDevelopmentLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJsOptimize].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileProductionLibraryKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [compileTestKotlinWasmJs].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [kotlinWasmBinaryenSetup].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsDevelopmentLibraryCompileSync].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsJar].executor": "Run",
+    "Gradle.wazero-kotlin:wazero-core:wazero-plugin [wasmJsMainClasses].executor": "Run",
+    "Kotlin.AppKt (1).executor": "Run",
+    "Kotlin.AppKt (2).executor": "Run",
+    "Kotlin.AppKt.executor": "Run",
+    "Kotlin.GraalKt.executor": "Debug",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "com.developerphil.adbidea.selecteddevices": "87d500c6",
+    "dart.analysis.tool.window.visible": "false",
+    "external.system.has.shared.sources": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline/core/src/jvmMain/resources/jni/aarch64",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.17",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle",
+    "show.do.not.copy.http.proxy.settings.to.gradle": "false",
+    "show.migrate.to.gradle.popup": "false",
+    "structure.view.defaults.are.configured": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;ExportApk.BuildVariants&quot;: [
-      &quot;debug&quot;
+  "keyToStringList": {
+    "ExportApk.BuildVariants": [
+      "debug"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\fish\wasmline\wasmline-multiplatform\wasmline-core\plugin\src\wasmWasiMain\kotlin\crow\wasmtime\wasmline" />
-      <recent name="C:\Users\CrowF\Desktop\wasmtime-kotlin-wasi\wasmtime-kotlin\wasmtime-app\android\src\androidMain\assets" />
-      <recent name="C:\Users\CrowF\Desktop\wasmtime-kotlin-wasi\wasmtime-kotlin\wasmtime-core" />
-      <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin\wasmedge-app\android\src\androidMain\cpp" />
-      <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin\wasmedge-app\android\src\androidMain\lib" />
+      <recent name="$PROJECT_DIR$/wasmline/core/src/jvmMain/resources/jni/aarch64" />
+      <recent name="$PROJECT_DIR$/wasmline/core/src/hostMain/kotlin/crow/mordecai/wasmline/common" />
+      <recent name="$PROJECT_DIR$/wasmline/core/src/hostMain/kotlin" />
+      <recent name="$PROJECT_DIR$/wasmline/core/src/jniMain/kotlin/crow/mordecai/wasmline/extensions" />
+      <recent name="$PROJECT_DIR$/wasmline/core/src/commonMain/kotlin" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/wasmline/core/src/commonMain/kotlin" />
+      <recent name="$PROJECT_DIR$/wasmline-sample/multiplatform/src/desktopMain/resources" />
       <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin\wasmedge-app\android\src\androidMain\cpp\lib\arm64-v8a" />
       <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin" />
       <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin\wasmedge-app\android\src\androidMain\cpp\include" />
-      <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin\wasmedge-app\android\src\androidMain" />
-      <recent name="C:\Users\CrowF\Desktop\wasmedge-kotlin-wasi\wasmedge-kotlin\wasmedge-app\android\src" />
     </key>
     <key name="CopyKotlinDeclarationDialog.RECENTS_KEY">
       <recent name="crow.wasmedge.wasmline" />
       <recent name="com.bridge.wasmline" />
     </key>
     <key name="K2MoveDeclarationsDialog.RECENT_PACKAGE_KEY">
-      <recent name="crow.mordecai.wasmline" />
+      <recent name="crow.mordecai.wasmline.common.extensions" />
+      <recent name="crow.mordecai.wasmline.extensions" />
       <recent name="crow.wasmtime.wasmline" />
+      <recent name="crow.mordecai.wasmline" />
       <recent name="crow.wazero.wasmline" />
     </key>
   </component>
@@ -242,16 +279,19 @@
       <command value="./gradlew :wasmtime-app:android:buildCMakeDebug" />
       <command value="./gradlew :wasmtime-app:android:buildCMakeDebug --info" />
       <command value="./gradlew :wasmtime-build-logic:clean" />
-      <command value="./gradlew clean" />
       <command value="./gradlew wasmedge-core:wasmedge-plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
       <command value="./gradlew wasmedge-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
       <command value="./gradlew wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize" />
       <command value="./gradlew wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
       <command value="./gradlew :wasmtime-app:android:assembleDebug" />
       <command value="./gradlew wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
+      <command value="./gradlew clean" />
+      <command value="./gradlew wasmline-core:plugin:compileProductionLibraryKotlinWasmWasiOptimize" />
+      <command value="./gradlew wasmline:core:androidMainKlibrary" />
+      <command value="./gradlew wasmline:core:androidMain: assembleRelease" />
     </option>
   </component>
-  <component name="RunManager" selected="Android App.wasmline-app.android">
+  <component name="RunManager" selected="Gradle.wasmline-sample [desktop]">
     <configuration default="true" type="DAPConfiguration" factoryName="DAPConfiguration">
       <option name="workingDirectory" value="$PROJECT_DIR$/.." />
       <envs />
@@ -359,8 +399,8 @@
       <option name="USE_PATTERN" value="false" />
       <method v="2" />
     </configuration>
-    <configuration name="MainActivity" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false" temporary="true">
-      <module name="WasmLine.wasmtime-app.android" />
+    <configuration name="wasmline-app.android" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
+      <module name="wasmline-multiplatform.wasmline-app.android" />
       <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
       <option name="DEPLOY" value="true" />
       <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
@@ -373,7 +413,7 @@
       <option name="CLEAR_APP_STORAGE" value="false" />
       <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
       <option name="ACTIVITY_EXTRA_FLAGS" value="" />
-      <option name="MODE" value="specific_activity" />
+      <option name="MODE" value="default_activity" />
       <option name="RESTORE_ENABLED" value="false" />
       <option name="RESTORE_FILE" value="" />
       <option name="RESTORE_FRESH_INSTALL_ONLY" value="false" />
@@ -424,15 +464,159 @@
       </Profilers>
       <option name="DEEP_LINK" value="" />
       <option name="ACTIVITY" value="" />
-      <option name="ACTIVITY_CLASS" value="crow.wasmtime.wasmline.MainActivity" />
+      <option name="ACTIVITY_CLASS" value="" />
       <option name="SEARCH_ACTIVITY_IN_GLOBAL_SCOPE" value="false" />
       <option name="SKIP_ACTIVITY_VALIDATION" value="false" />
       <method v="2">
         <option name="Android.Gradle.BeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="wasmline-app.android" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
-      <module name="Wasmline.wasmline-app.android" />
+    <configuration name="wasmline-core.core" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
+      <module name="wasmline.wasmline-core.core" />
+      <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
+      <option name="DEPLOY" value="true" />
+      <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
+      <option name="DEPLOY_AS_INSTANT" value="false" />
+      <option name="ARTIFACT_NAME" value="" />
+      <option name="PM_INSTALL_OPTIONS" value="" />
+      <option name="ALL_USERS" value="false" />
+      <option name="ALWAYS_INSTALL_WITH_PM" value="false" />
+      <option name="ALLOW_ASSUME_VERIFIED" value="false" />
+      <option name="CLEAR_APP_STORAGE" value="false" />
+      <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
+      <option name="ACTIVITY_EXTRA_FLAGS" value="" />
+      <option name="MODE" value="default_activity" />
+      <option name="RESTORE_ENABLED" value="false" />
+      <option name="RESTORE_FILE" value="" />
+      <option name="RESTORE_FRESH_INSTALL_ONLY" value="false" />
+      <option name="CLEAR_LOGCAT" value="false" />
+      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="false" />
+      <option name="TARGET_SELECTION_MODE" value="DEVICE_AND_SNAPSHOT_COMBO_BOX" />
+      <option name="SELECTED_CLOUD_MATRIX_CONFIGURATION_ID" value="-1" />
+      <option name="SELECTED_CLOUD_MATRIX_PROJECT_ID" value="" />
+      <option name="DEBUGGER_TYPE" value="Auto" />
+      <Auto>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Auto>
+      <Hybrid>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Hybrid>
+      <Java>
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Java>
+      <Native>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Native>
+      <Profilers>
+        <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_CONFIGURATION_NAME" value="Java/Kotlin Method Sample (legacy)" />
+        <option name="STARTUP_NATIVE_MEMORY_PROFILING_ENABLED" value="false" />
+        <option name="NATIVE_MEMORY_SAMPLE_RATE_BYTES" value="2048" />
+      </Profilers>
+      <option name="DEEP_LINK" value="" />
+      <option name="ACTIVITY" value="" />
+      <option name="ACTIVITY_CLASS" value="" />
+      <option name="SEARCH_ACTIVITY_IN_GLOBAL_SCOPE" value="false" />
+      <option name="SKIP_ACTIVITY_VALIDATION" value="false" />
+      <method v="2">
+        <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="wasmline-sample.android" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
+      <module name="wasmline-multiplatform.wasmline-sample.android" />
+      <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
+      <option name="DEPLOY" value="true" />
+      <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
+      <option name="DEPLOY_AS_INSTANT" value="false" />
+      <option name="ARTIFACT_NAME" value="" />
+      <option name="PM_INSTALL_OPTIONS" value="" />
+      <option name="ALL_USERS" value="false" />
+      <option name="ALWAYS_INSTALL_WITH_PM" value="false" />
+      <option name="ALLOW_ASSUME_VERIFIED" value="false" />
+      <option name="CLEAR_APP_STORAGE" value="false" />
+      <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
+      <option name="ACTIVITY_EXTRA_FLAGS" value="" />
+      <option name="MODE" value="default_activity" />
+      <option name="RESTORE_ENABLED" value="false" />
+      <option name="RESTORE_FILE" value="" />
+      <option name="RESTORE_FRESH_INSTALL_ONLY" value="false" />
+      <option name="CLEAR_LOGCAT" value="false" />
+      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="false" />
+      <option name="TARGET_SELECTION_MODE" value="DEVICE_AND_SNAPSHOT_COMBO_BOX" />
+      <option name="SELECTED_CLOUD_MATRIX_CONFIGURATION_ID" value="-1" />
+      <option name="SELECTED_CLOUD_MATRIX_PROJECT_ID" value="" />
+      <option name="DEBUGGER_TYPE" value="Auto" />
+      <Auto>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Auto>
+      <Hybrid>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Hybrid>
+      <Java>
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Java>
+      <Native>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Native>
+      <Profilers>
+        <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_CONFIGURATION_NAME" value="Java/Kotlin Method Sample (legacy)" />
+        <option name="STARTUP_NATIVE_MEMORY_PROFILING_ENABLED" value="false" />
+        <option name="NATIVE_MEMORY_SAMPLE_RATE_BYTES" value="2048" />
+      </Profilers>
+      <option name="DEEP_LINK" value="" />
+      <option name="ACTIVITY" value="" />
+      <option name="ACTIVITY_CLASS" value="" />
+      <option name="SEARCH_ACTIVITY_IN_GLOBAL_SCOPE" value="false" />
+      <option name="SKIP_ACTIVITY_VALIDATION" value="false" />
+      <method v="2">
+        <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="wasmline-sample.multiplatform" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
+      <module name="wasmline-multiplatform.wasmline-sample.multiplatform" />
       <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
       <option name="DEPLOY" value="true" />
       <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
@@ -575,51 +759,65 @@
         <option name="Android.Gradle.BeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="wasmline-multiplatform [wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+    <configuration name="wasmline-multiplatform [:wasmline:core:androidNativeArm64Klib]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" value="" />
+        <option name="scriptParameters" />
         <option name="taskDescriptions">
           <list />
         </option>
         <option name="taskNames">
           <list>
-            <option value="wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
+            <option value=":wasmline:core:androidNativeArm64Klib" />
           </list>
         </option>
         <option name="vmOptions" />
       </ExternalSystemSettings>
       <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
       <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <EXTENSION ID="com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension">
+        <com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>false</com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>
+        <android.execution.deploysToLocalDevice>false</android.execution.deploysToLocalDevice>
+      </EXTENSION>
       <DebugAllEnabled>false</DebugAllEnabled>
       <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
       <method v="2" />
     </configuration>
-    <configuration name="wasmtime-kotlin [:wasmtime-app:android:assembleDebug]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+    <configuration name="wasmline-multiplatform [:wasmline:core:assemble]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" value="" />
+        <option name="scriptParameters" />
         <option name="taskDescriptions">
           <list />
         </option>
         <option name="taskNames">
           <list>
-            <option value=":wasmtime-app:android:assembleDebug" />
+            <option value=":wasmline:core:assemble" />
           </list>
         </option>
         <option name="vmOptions" />
       </ExternalSystemSettings>
       <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
       <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <EXTENSION ID="com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension">
+        <com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>false</com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>
+        <android.execution.deploysToLocalDevice>false</android.execution.deploysToLocalDevice>
+      </EXTENSION>
       <DebugAllEnabled>false</DebugAllEnabled>
       <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
       <method v="2" />
     </configuration>
-    <configuration name="wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+    <configuration name="wasmline-multiplatform [wasmline:core:androidMainKlibrary]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
@@ -630,18 +828,25 @@
         </option>
         <option name="taskNames">
           <list>
-            <option value="wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize" />
+            <option value="wasmline:core:androidMainKlibrary" />
           </list>
         </option>
         <option name="vmOptions" />
       </ExternalSystemSettings>
       <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
       <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <EXTENSION ID="com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension">
+        <com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>false</com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>
+        <android.execution.deploysToLocalDevice>false</android.execution.deploysToLocalDevice>
+      </EXTENSION>
       <DebugAllEnabled>false</DebugAllEnabled>
       <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
       <method v="2" />
     </configuration>
-    <configuration name="wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+    <configuration name="wasmline-multiplatform [wasmline:core:androidMain: assembleRelease]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
@@ -652,15 +857,52 @@
         </option>
         <option name="taskNames">
           <list>
-            <option value="wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize" />
+            <option value="wasmline:core:androidMain:" />
+            <option value="assembleRelease" />
           </list>
         </option>
         <option name="vmOptions" />
       </ExternalSystemSettings>
       <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
       <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <EXTENSION ID="com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension">
+        <com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>false</com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>
+        <android.execution.deploysToLocalDevice>false</android.execution.deploysToLocalDevice>
+      </EXTENSION>
       <DebugAllEnabled>false</DebugAllEnabled>
       <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
+    <configuration name="wasmline-sample [desktop]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/wasmline-sample/multiplatform" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="-DmainClass=MainKt --quiet" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="desktopRun" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <EXTENSION ID="com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension">
+        <com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>false</com.android.tools.idea.testartifacts.testsuite.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW>
+        <android.execution.deploysToLocalDevice>false</android.execution.deploysToLocalDevice>
+      </EXTENSION>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
       <method v="2" />
     </configuration>
     <configuration default="true" type="JetRunConfigurationType">
@@ -675,21 +917,24 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Android App.wasmline-core.core" />
+      <item itemvalue="Android App.wasmline-sample.android" />
+      <item itemvalue="Android App.wasmline-sample.multiplatform" />
       <item itemvalue="Android App.wasmline-app.android" />
       <item itemvalue="Android App.wasmtime-app.android" />
-      <item itemvalue="Android App.MainActivity" />
-      <item itemvalue="Gradle.wasmline-multiplatform [wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" />
-      <item itemvalue="Gradle.wasmtime-kotlin [:wasmtime-app:android:assembleDebug]" />
-      <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" />
-      <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" />
+      <item itemvalue="Gradle.wasmline-sample [desktop]" />
+      <item itemvalue="Gradle.wasmline-multiplatform [:wasmline:core:androidNativeArm64Klib]" />
+      <item itemvalue="Gradle.wasmline-multiplatform [:wasmline:core:assemble]" />
+      <item itemvalue="Gradle.wasmline-multiplatform [wasmline:core:androidMain: assembleRelease]" />
+      <item itemvalue="Gradle.wasmline-multiplatform [wasmline:core:androidMainKlibrary]" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Gradle.wasmline-multiplatform [wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" />
-        <item itemvalue="Gradle.wasmtime-kotlin [:wasmtime-app:android:assembleDebug]" />
-        <item itemvalue="Android App.MainActivity" />
-        <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize]" />
-        <item itemvalue="Gradle.wasmtime-kotlin [wasmtime-core:core:compileProductionExecutableKotlinWasmWasiOptimize]" />
+        <item itemvalue="Gradle.wasmline-sample [desktop]" />
+        <item itemvalue="Gradle.wasmline-multiplatform [:wasmline:core:assemble]" />
+        <item itemvalue="Gradle.wasmline-multiplatform [wasmline:core:androidMain: assembleRelease]" />
+        <item itemvalue="Gradle.wasmline-multiplatform [wasmline:core:androidMainKlibrary]" />
+        <item itemvalue="Gradle.wasmline-multiplatform [:wasmline:core:androidNativeArm64Klib]" />
       </list>
     </recent_temporary>
   </component>
@@ -885,7 +1130,23 @@
       <option name="project" value="LOCAL" />
       <updated>1766743945692</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="Rename Project">
+      <option name="closed" value="true" />
+      <created>1767116662292</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1767116662292</updated>
+    </task>
+    <task id="LOCAL-00025" summary="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support.">
+      <option name="closed" value="true" />
+      <created>1767362934298</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1767362934298</updated>
+    </task>
+    <option name="localTasksCounter" value="26" />
     <servers />
   </component>
   <component name="UnknownFeatures">
@@ -927,7 +1188,9 @@
     <MESSAGE value=":sparkles: Wasm (Client) --&gt; Host" />
     <MESSAGE value=":white_check_mark: Some content has been refactored; bidirectional RPC has been implemented." />
     <MESSAGE value="Restructure the code and delete files.&#10;Rename crow.wasmtime.wasmline -&gt; com.mordecai.wasmline&#10;Rename wasmtime-xxx -&gt; wasmline-xxx&#10;Rename wasmline-core file name&#10;Delete wasmline-core useless file" />
-    <option name="LAST_COMMIT_MESSAGE" value="Restructure the code and delete files.&#10;Rename crow.wasmtime.wasmline -&gt; com.mordecai.wasmline&#10;Rename wasmtime-xxx -&gt; wasmline-xxx&#10;Rename wasmline-core file name&#10;Delete wasmline-core useless file" />
+    <MESSAGE value="Rename Project" />
+    <MESSAGE value="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support." />
+    <option name="LAST_COMMIT_MESSAGE" value="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -939,6 +1202,22 @@
             <option name="WATCH_EXIT" value="false" />
           </properties>
           <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="kotlin-function">
+          <url>file://$PROJECT_DIR$/wasmline-sample/multiplatform/src/desktopMain/kotlin/Main.kt</url>
+          <line>27</line>
+          <properties method="main">
+            <option name="WATCH_EXIT" value="false" />
+          </properties>
+          <option name="timeStamp" value="24" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="kotlin-function">
+          <url>file://$PROJECT_DIR$/wasmline/core/src/jvmMain/kotlin/crow/mordecai/wasmline/common/extensions/NativeLoaderExt.jvm.kt</url>
+          <line>9</line>
+          <properties method="loadNativeLibrary">
+            <option name="WATCH_EXIT" value="false" />
+          </properties>
+          <option name="timeStamp" value="25" />
         </line-breakpoint>
         <breakpoint enabled="true" type="OCSymbolicBreakpointType">
           <properties>
@@ -998,14 +1277,19 @@
             <CheckInfo lastCheckTimestamp="1764148915758" />
           </value>
         </entry>
+        <entry key="crow.wasmtime.core.core.test">
+          <value>
+            <CheckInfo lastCheckTimestamp="1767353519884" />
+          </value>
+        </entry>
         <entry key="crow.wasmtime.wasmline">
           <value>
-            <CheckInfo lastCheckTimestamp="1766743820568" />
+            <CheckInfo lastCheckTimestamp="1767353343318" />
           </value>
         </entry>
         <entry key="crow.wasmtime.wasmline.test">
           <value>
-            <CheckInfo lastCheckTimestamp="1766743820568" />
+            <CheckInfo lastCheckTimestamp="1767353343318" />
           </value>
         </entry>
       </map>

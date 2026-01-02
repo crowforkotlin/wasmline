@@ -9,6 +9,7 @@
 
 #include "Session.h"
 #include "Logger.h"
+#include "Consts.h"
 #include "OutboundHandler.h"
 #include <cstring>
 #include <vector>
@@ -211,7 +212,7 @@ namespace wasmline {
         wasm_trap_t *trap = nullptr;
 
         // 2. Call the "run_entry" function exported by Kotlin/Wasm
-        if (wasmtime_instance_export_get(context, &instance, "WasmEntry", 9, &run_entry)) {
+        if (wasmtime_instance_export_get(context, &instance, kInitWasmline.data(), kInitWasmline.size(), &run_entry)) {
             wasmtime_error_t *error = wasmtime_func_call(context, &run_entry.of.func, nullptr, 0, nullptr, 0, &trap);
 
             // 3. Handle errors or traps
@@ -219,11 +220,13 @@ namespace wasmline {
                 if (trap) {
                     wasm_byte_vec_t msg;
                     wasm_trap_message(trap, &msg);
-                    LOGE("[Wasmtime] Session -> Runtime Trap: %s", msg.data);
+                    LOGE("[Wasmtime] Session -> Wasm runtime trap: %s", msg.data);
                     wasm_byte_vec_delete(&msg);
                     wasm_trap_delete(trap);
                 }
-                if (error) wasmtime_error_delete(error);
+                if (error) {
+                    wasmtime_error_delete(error);
+                }
 
                 // Clear pointers to prevent dangling references
                 inbound.actionPtr = nullptr;
@@ -231,7 +234,10 @@ namespace wasmline {
                 return "";
             }
         } else {
-            LOGE("[Wasmtime] Session --> Export 'WasmEntry' not found.");
+            LOGE(R"([Wasmtime] Session --> Wasm export get '%s' not found.)", wasmline::kInitWasmline.data());
+            inbound.actionPtr = nullptr;
+            inbound.dataPtr = nullptr;
+            return "";
         }
 
         // 4. Reset pointers
