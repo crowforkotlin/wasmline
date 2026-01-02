@@ -16,134 +16,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Rename Project">
-      <change afterPath="$PROJECT_DIR$/../wasmline-core/include/Consts.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../wasmline-core/include/ErrorDefs.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/artifacts/core_jvm_0_0_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/artifacts/multiplatform_desktop_0_0_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/artifacts/multiplatform_js_0_0_1.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules/wasmline-sample/multiplatform/wasmline-multiplatform.wasmline-sample.multiplatform.desktopMain.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules/wasmline-sample/multiplatform/wasmline-multiplatform.wasmline-sample.multiplatform.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules/wasmline-sample/multiplatform/wasmline-multiplatform.wasmline-sample.multiplatform.main.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules/wasmline/core/wasmline-multiplatform.wasmline.core.jniMain.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules/wasmline/core/wasmline-multiplatform.wasmline.core.jvmMain.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/AndroidManifest.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/assets/plugin.wasm" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/kotlin/crow/mordecai/wasmline/MainActivity.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/kotlin/crow/mordecai/wasmline/MainApplication.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/kotlin/crow/mordecai/wasmline/extensions/LogcatExt.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/drawable-v24/ic_launcher_foreground.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/drawable/ic_launcher_background.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-anydpi-v26/ic_launcher.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-anydpi-v26/ic_launcher_round.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-hdpi/ic_launcher.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-hdpi/ic_launcher_round.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-mdpi/ic_launcher.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-mdpi/ic_launcher_round.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-xhdpi/ic_launcher.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-xhdpi/ic_launcher_round.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-xxhdpi/ic_launcher.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-xxhdpi/ic_launcher_round.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-xxxhdpi/ic_launcher.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/mipmap-xxxhdpi/ic_launcher_round.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/values/colors.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/values/strings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/values/themes.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/xml/backup_rules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/androidMain/res/xml/data_extraction_rules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/commonMain/kotlin/App.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/desktopMain/kotlin/Main.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline-sample/multiplatform/src/desktopMain/resources/favicon.ico" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/build.gradle.kts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/AndroidHostHandler.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/AndroidHostHandler.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/WasmLogger.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/WasmlineJni.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/WasmlineJni.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/script/build.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/script/configure.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/cpp/script/env.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/kotlin/crow/mordecai/wasmline/common/extensions/LogcatExt.android.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/androidMain/kotlin/crow/mordecai/wasmline/common/extensions/NativeLoaderExt.android.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/commonMain/kotlin/crow/mordecai/wasmline/common/extensions/LogcatExt.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/hostMain/kotlin/crow/mordecai/wasmline/Wasmline.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/hostMain/kotlin/crow/mordecai/wasmline/WasmlineHostDispatcher.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/hostMain/kotlin/crow/mordecai/wasmline/WasmlineLoadState.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/hostMain/kotlin/crow/mordecai/wasmline/common/extensions/NativeLoaderExt.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/jniMain/kotlin/crow/mordecai/wasmline/Wasmline.jni.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/jvmMain/kotlin/crow/mordecai/wasmline/common/extensions/LogcatExt.jvm.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/core/src/jvmMain/kotlin/crow/mordecai/wasmline/common/extensions/NativeLoaderExt.jvm.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/plugin/build.gradle.kts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Main.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wasmline/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../wasmline-core/src/Session.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../wasmline-core/src/Session.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/artifacts/core_wasm_wasi_0_0_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/artifacts/core_wasm_wasi_0_0_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/artifacts/plugin_wasm_wasi_0_0_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/artifacts/plugin_wasm_wasi_0_0_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dictionaries/project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dictionaries/project.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/kotlinc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/kotlinc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle/libs.versions.toml" beforeDir="false" afterPath="$PROJECT_DIR$/gradle/libs.versions.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/settings.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/AndroidManifest.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/assets/plugin.wasm" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/AndroidHostHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/AndroidHostHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/AndroidHostHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/AndroidHostHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/WasmLogger.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/WasmLogger.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/WasmlineJni.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/WasmlineJni.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/WasmlineJni.h" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/WasmlineJni.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/script/build.sh" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/script/build.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/script/configure.sh" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/script/configure.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/cpp/script/env.sh" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/cpp/script/env.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/Data.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/kotlin/crow/mordecai/wasmline/Data.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/HostDispatcher.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/kotlin/crow/mordecai/wasmline/HostDispatcher.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/kotlin/crow/mordecai/wasmline/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/TipsExt.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/kotlin/crow/mordecai/wasmline/TipsExt.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/Wasmline.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/kotlin/crow/mordecai/wasmline/Wasmline.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/kotlin/crow/mordecai/wasmline/WasmlineLoadState.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/kotlin/crow/mordecai/wasmline/WasmlineLoadState.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/drawable-v24/ic_launcher_foreground.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/drawable-v24/ic_launcher_foreground.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/drawable/ic_launcher_background.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/drawable/ic_launcher_background.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/layout/activity_main.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/layout/activity_main.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-anydpi-v26/ic_launcher.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-anydpi-v26/ic_launcher.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-anydpi-v26/ic_launcher_round.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-anydpi-v26/ic_launcher_round.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-hdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-hdpi/ic_launcher.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-hdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-hdpi/ic_launcher_round.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-mdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-mdpi/ic_launcher.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-mdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-mdpi/ic_launcher_round.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-xhdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-xhdpi/ic_launcher.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-xhdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-xhdpi/ic_launcher_round.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-xxhdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-xxhdpi/ic_launcher.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-xxhdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-xxhdpi/ic_launcher_round.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-xxxhdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-xxxhdpi/ic_launcher.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/mipmap-xxxhdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/mipmap-xxxhdpi/ic_launcher_round.webp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/values-night/themes.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/values-night/themes.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/values/colors.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/values/colors.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/values/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/values/strings.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/values/themes.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/values/themes.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/xml/backup_rules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/xml/backup_rules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/android/src/androidMain/res/xml/data_extraction_rules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/android/src/androidMain/res/xml/data_extraction_rules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-app/application/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline-sample/application/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/Script.md" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline/Script.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/common/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline/common/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/core/build.gradle.kts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmBridge.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmMain.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmRouter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline/core/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/WasmRouter.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/host/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/wasmline/host/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/plugin/build.gradle.kts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/wasmline-core/plugin/src/wasmWasiMain/kotlin/crow/wasmtime/wasmline/Plugin.kt" beforeDir="false" />
-    </list>
+    <list default="true" id="7556e9b0-033b-43ca-b4c0-45f49d5ae8ee" name="Changes" comment="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -1265,7 +1138,15 @@
       <option name="project" value="LOCAL" />
       <updated>1767116662292</updated>
     </task>
-    <option name="localTasksCounter" value="25" />
+    <task id="LOCAL-00025" summary="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support.">
+      <option name="closed" value="true" />
+      <created>1767362934298</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1767362934298</updated>
+    </task>
+    <option name="localTasksCounter" value="26" />
     <servers />
   </component>
   <component name="UnknownFeatures">
@@ -1308,7 +1189,8 @@
     <MESSAGE value=":white_check_mark: Some content has been refactored; bidirectional RPC has been implemented." />
     <MESSAGE value="Restructure the code and delete files.&#10;Rename crow.wasmtime.wasmline -&gt; com.mordecai.wasmline&#10;Rename wasmtime-xxx -&gt; wasmline-xxx&#10;Rename wasmline-core file name&#10;Delete wasmline-core useless file" />
     <MESSAGE value="Rename Project" />
-    <option name="LAST_COMMIT_MESSAGE" value="Rename Project" />
+    <MESSAGE value="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support." />
+    <option name="LAST_COMMIT_MESSAGE" value="Improve the architecture&#10;It is necessary to introduce middleware for building JNI and provide desktop support." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
