@@ -1,8 +1,8 @@
 <component name="ArtifactManager">
   <artifact type="jar" name="plugin-wasm-wasi-0.0.1">
-    <output-path>$PROJECT_DIR$/wasmline/plugin/build/libs</output-path>
+    <output-path>$PROJECT_DIR$/wasmline-sample/plugin/build/libs</output-path>
     <root id="archive" name="plugin-wasm-wasi-0.0.1.jar">
-      <element id="module-output" name="wasmline-multiplatform.wasmline.plugin.wasmWasiMain" />
+      <element id="module-output" name="wasmline-multiplatform.wasmline-sample.plugin.wasmWasiMain" />
     </root>
   </artifact>
 </component>

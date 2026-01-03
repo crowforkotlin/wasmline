@@ -1,17 +1,19 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package crow.wasmtime.wasmline
 
+import kotlinx.serialization.ExperimentalSerializationApi
+
 // --- 3. 路由注册中心 ---
+
+fun interface Callback { fun callback(params: ByteArray?) : ByteArray? }
 object WasmRouter {
-    private val handlers = mutableMapOf<String, (String) -> String>()
+    private val handlers = mutableMapOf<String, Callback>()
 
-    // 对外暴露的注册接口
-    fun register(action: String, handler: (String) -> String) {
-        handlers[action] = handler
-    }
+    fun register(action: String, callback: Callback) { handlers[action] = callback }
 
-    // 内部调用
-    internal fun dispatch(action: String, args: String): String {
+    internal fun dispatch(action: String?, args: ByteArray?): ByteArray? {
         val handler = handlers[action]
-        return handler?.invoke(args) ?: """{"error": "No handler for action '$action'"}"""
+        return handler?.callback(args)
     }
 }

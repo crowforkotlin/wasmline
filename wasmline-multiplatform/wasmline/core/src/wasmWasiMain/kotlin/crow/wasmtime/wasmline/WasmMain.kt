@@ -1,26 +1,19 @@
-@file:Suppress("FunctionName", "unused")
+@file:Suppress("FunctionName", "unused", "OPT_IN_USAGE")
 
 package crow.wasmtime.wasmline
 
-fun WasmEntryInitialize() {
+import crow.mordecai.wasmline.extensions.info
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.protobuf.ProtoBuf
 
-    // 1. 自动拉取参数
-    val action = WasmBridge.getAction()
-    val args = WasmBridge.getJson()
-    println("[WasmKotlin] Core --> Receive action is : $action \t arg is : ${if (args.length > 32) "${args.take(n = 32)}......" else args}")
+fun WasmlineInitialize(actionLen: Int, inputLen: Int) {
 
-    // 2. 自动捕获异常并分发
-    val result = try {
-        WasmRouter.dispatch(action, args)
-    } catch (exception: Exception) {
-        println("[WasmKotlin] Core --> Exception message : ${exception.message}")
-        """{"error": "Wasm Panic: ${exception.message}"}"""
-    }
+    val action = if (actionLen > 0) WasmBridge.readBytesFromHost(0, actionLen).decodeToString() else null
+    val args = if (inputLen > 0) WasmBridge.readBytesFromHost(1, inputLen) else null
 
-    val logMsg = "Wasm received: $args"
-    WasmBridge.callHost("host_log", logMsg.encodeToByteArray())
+     println("[WasmKotlin] Receive action: $action, size: $inputLen")
 
-    // 3. 自动回传
+    val result: ByteArray = try { WasmRouter.dispatch(action, args) ?: return } catch (e: Throwable) { ProtoBuf.encodeToByteArray(value = Error(message = (e.message ?: return))) }
     WasmBridge.sendResult(result)
 }
 

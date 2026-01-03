@@ -33,6 +33,7 @@
             <option value="$PROJECT_DIR$/wasmline-sample/android" />
             <option value="$PROJECT_DIR$/wasmline-sample/application" />
             <option value="$PROJECT_DIR$/wasmline-sample/multiplatform" />
+            <option value="$PROJECT_DIR$/wasmline-sample/plugin" />
             <option value="$PROJECT_DIR$/wasmline/common" />
             <option value="$PROJECT_DIR$/wasmline/core" />
             <option value="$PROJECT_DIR$/wasmline/host" />

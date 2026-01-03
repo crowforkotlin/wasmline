@@ -10,14 +10,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun App(onClick: () -> Unit) {
+fun App(
+    value : String,
+    onClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 10.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Value", modifier = Modifier.align(Alignment.CenterHorizontally))
+        Text(text = value, modifier = Modifier.align(Alignment.CenterHorizontally))
         Button(
             onClick = { onClick() },
             modifier = Modifier

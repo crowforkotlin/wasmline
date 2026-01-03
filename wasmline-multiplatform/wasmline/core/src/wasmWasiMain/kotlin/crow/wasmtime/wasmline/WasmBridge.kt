@@ -1,9 +1,12 @@
-@file:OptIn(ExperimentalWasmInterop::class, UnsafeWasmMemoryApi::class)
+@file:OptIn(
+    ExperimentalWasmInterop::class, UnsafeWasmMemoryApi::class,
+    ExperimentalSerializationApi::class
+)
 @file:Suppress("FunctionName")
 
 package crow.wasmtime.wasmline
 
-import kotlin.time.Clock
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
@@ -13,11 +16,6 @@ private const val TYPE_HOST_INPUT = 1
 /*
 * Import Inbound
 * */
-// --- 1. 底层 Import (全部 private/internal，对外隐藏) ---
-// type: 0=Action, 1=Input
-@WasmImport("env", "bridge_inbound_get_size")
-external fun bridge_inbound_get_size(type: Int): Int
-
 // 告诉 Host：把 type 类型的数据拷贝到 ptr 这个地址，长度为 len
 @WasmImport("env", "bridge_inbound_copy_params")
 external fun bridge_inbound_copy_params(type: Int, ptr: Int, len: Int)
@@ -30,7 +28,11 @@ external fun bridge_inbound_set_response(ptr: Int, len: Int)
 * Import Outbound
 * */
 @WasmImport("env", "bridge_outbound_call_host")
-external fun bridge_outbound_call_host(aPtr: Int, aLen: Int, pPtr: Int, pLen: Int): Int
+external fun bridge_outbound_call_host(
+    aPtr: Int, aLen: Int,
+    pPtr: Int, pLen: Int,
+    outPtr: Int, outLen: Int
+): Int
 
 @WasmImport("env", "bridge_outbound_get_response")
 external fun bridge_outbound_get_response(ptr: Int)
@@ -39,17 +41,7 @@ external fun bridge_outbound_get_response(ptr: Int)
 // --- 2. 内部桥接工具 ---
 internal object WasmBridge {
 
-    fun getAction(): String {
-        val size = bridge_inbound_get_size(type = TYPE_HOST_ACTION)
-        if (size == 0) return ""
-        return readStringFromHost(type = TYPE_HOST_ACTION, size)
-    }
-
-    fun getJson(): String {
-        val size = bridge_inbound_get_size(type = TYPE_HOST_INPUT)
-        if (size == 0) return ""
-        return readStringFromHost(TYPE_HOST_INPUT, size)
-    }
+    private const val PRE_ALLOC_SIZE = 1024
 
     /**
      * 核心优化：批量读取
@@ -57,45 +49,27 @@ internal object WasmBridge {
      * 2. 让 C++ memcpy 数据进来
      * 3. 在 Wasm 内部循环拷贝到 ByteArray (极快，无 Host Call 开销)
      */
-    private fun readStringFromHost(type: Int, size: Int): String {
-        // 使用 Scoped Allocator，代码块结束自动释放内存，无泄漏风险
+    fun readBytesFromHost(type: Int, size: Int): ByteArray {
+        // ScopedAllocator allocates or reuses Pages on the stack, which is very fast and has no GC pressure.
         withScopedMemoryAllocator { allocator ->
-            // A. 申请内存 (返回的是 unsafe Pointer)
             val pointer = allocator.allocate(size)
-
-            // B. 传入地址 (Int)，让 C++ 直接 memcpy
             bridge_inbound_copy_params(type, pointer.address.toInt(), size)
-
-            // C. 将数据从 Unsafe 内存搬运到 Kotlin 安全内存 (ByteArray)
-            // 注意：这个循环是在 Wasm 虚拟机内部执行的，是纯计算指令，非常快
-            val start = Clock.System.now().toEpochMilliseconds()
             val bytes = ByteArray(size)
             for (i in 0 until size) {
-                // 指针运算 + 读取字节
                 bytes[i] = (pointer + i).loadByte()
             }
-            return "bytes size ${bytes.size}"
+            return bytes
         }
     }
 
     /**
      * 核心优化：批量写入
      */
-    fun sendResult(result: String) {
-        if (result.isEmpty()) return
-        val bytes = result.encodeToByteArray()
-        val size = bytes.size
-
+    fun  sendResult(result: ByteArray) {
         withScopedMemoryAllocator { allocator ->
-            // A. 申请内存
+            val size = result.size
             val pointer = allocator.allocate(size)
-
-            // B. 将 Kotlin ByteArray 搬运到 Unsafe 内存
-            for (i in 0 until size) {
-                (pointer + i).storeByte(bytes[i])
-            }
-
-            // C. 告诉 Host 地址和长度，让它 memcpy 拿走
+            for (i in 0 until size) { (pointer + i).storeByte(result[i]) }
             bridge_inbound_set_response(pointer.address.toInt(), size)
         }
     }
@@ -109,39 +83,56 @@ internal object WasmBridge {
     fun callHost(action: String, payload: ByteArray): ByteArray {
         val actionBytes = action.encodeToByteArray()
 
-        // 开启内存作用域：在此块内分配的内存，块结束后会自动释放
-        // 这就是 Wasm 的内存管理方式，无需手动 free
         withScopedMemoryAllocator { allocator ->
-
-            // 1. [Alloc] 申请内存放 Action
+            // 1. 准备输入参数
             val aPtr = allocator.allocate(actionBytes.size)
             for (i in actionBytes.indices) (aPtr + i).storeByte(actionBytes[i])
 
-            // 2. [Alloc] 申请内存放 Payload
             val pPtr = allocator.allocate(payload.size)
             for (i in payload.indices) (pPtr + i).storeByte(payload[i])
 
-            // 3. [Push] 调用 Host，获取结果长度
-            // C++ 会在这里执行 JNI -> Java，并暂存结果
-            val resLen = bridge_outbound_call_host(
+            // 2. [关键] 准备接收结果的“草稿纸” (Fast Path Buffer)
+            val tempResultPtr = allocator.allocate(PRE_ALLOC_SIZE)
+
+            // 3. 调用 Host，传入草稿纸地址
+            val resultStatus = bridge_outbound_call_host(
                 aPtr.address.toInt(), actionBytes.size,
-                pPtr.address.toInt(), payload.size
+                pPtr.address.toInt(), payload.size,
+                tempResultPtr.address.toInt(), PRE_ALLOC_SIZE
             )
 
-            // 如果结果为空，直接返回
-            if (resLen <= 0) return ByteArray(0)
+            // 4. 分支判断
+            if (resultStatus >= 0) {
+                // === Fast Path ===
+                // 结果已经写入 tempResultPtr，长度为 resultStatus
+                // 我们只需要转成 ByteArray，无需再次 Host Call
+                val realLen = resultStatus
+                if (realLen == 0) return ByteArray(0)
 
-            // 4. [Alloc] 申请结果内存
-            val resPtr = allocator.allocate(resLen)
+                val result = ByteArray(realLen)
+                for (i in 0 until realLen) {
+                    result[i] = (tempResultPtr + i).loadByte()
+                }
+                return result
 
-            // 5. [Pull] 把结果从 C++ 暂存区拉过来
-            bridge_outbound_get_response(resPtr.address.toInt())
+            } else {
+                // === Slow Path ===
+                // 结果太长了，草稿纸放不下。
+                // resultStatus 是负数，绝对值是需要的真实长度。
+                val neededSize = -resultStatus
 
-            // 6. [Copy] 转为 Kotlin 对象
-            val result = ByteArray(resLen)
-            for (i in 0 until resLen) result[i] = (resPtr + i).loadByte()
+                // 重新申请足够大的内存
+                val finalResPtr = allocator.allocate(neededSize)
 
-            return result
-        } // 离开作用域，aPtr, pPtr, resPtr 指向的内存被“释放”（复用）
+                // 发起第二次调用，把暂存的数据拉过来
+                bridge_outbound_get_response(finalResPtr.address.toInt())
+
+                val result = ByteArray(neededSize)
+                for (i in 0 until neededSize) {
+                    result[i] = (finalResPtr + i).loadByte()
+                }
+                return result
+            }
+        }
     }
 }

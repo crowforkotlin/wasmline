@@ -33,7 +33,7 @@ expect class Wasmline(moduleKey: String) {
      * 执行 Wasm 函数
      * 支持并发调用，底层会自动创建独立的 Session
      */
-    suspend fun call(action: String, protobufBytes: ByteArray): ByteArray
+    suspend fun call(action: String, inputBytes: ByteArray): ByteArray
 
     /**
      * 释放当前模块

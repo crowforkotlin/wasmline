@@ -1,7 +1,6 @@
 @file:Suppress("OPT_IN_USAGE")
 
 
-import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import kotlin.text.replace
 
 plugins {

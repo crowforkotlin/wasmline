@@ -10,13 +10,21 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import crow.wasmtime.app.android.R
-import crow.wasmtime.app.android.databinding.ActivityMainBinding
+import crow.mordecai.wasmline.extensions.Data
+import crow.mordecai.wasmline.extensions.info
+import crow.wasmtime.sample.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
 import java.io.FileOutputStream
@@ -25,12 +33,14 @@ import kotlin.system.measureTimeMillis
 class MainActivity : AppCompatActivity() {
 
     private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+    private val baseJson = Json { isLenient = true; prettyPrint = true; }
+    private val baseProtobuf = ProtoBuf { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(binding.root)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
@@ -63,7 +73,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 var startMs = System.currentTimeMillis()
-                when(val loadState = Wasmline.load(wasmFile, cacheFile)) {
+                when(val loadState = Wasmline.load(wasmFile.absolutePath, cacheFile.absolutePath)) {
                     is WasmlineLoadState.Failure -> { loadState.cause.info() }
                     is WasmlineLoadState.Success -> {
                         if (loadState.code == WasmlineLoadState.CODE_SUCCESS_JIT) {
@@ -73,18 +83,15 @@ class MainActivity : AppCompatActivity() {
                         }
                         val module = loadState.wasmLine
                         startMs = System.currentTimeMillis()
-                        module.setOutbound(dispatcher = object : HostDispatcher {
-                            override fun dispatch(action: String, payload: ByteArray): ByteArray {
-                                "[Android] receive wasm action is : $action \t payload is $payload".info()
-                                return byteArrayOf()
-                            }
+                        module.setOutbound(dispatcher = { action, payload ->
+                            "[Android] receive wasm action is : $action \t payload is $payload".info()
+                            byteArrayOf()
                         })
 //                        module.call("init", data)
-                        val result = module.call("getUser", data)
+                        val result = module.call("add", data)
                         val duration = System.currentTimeMillis() - startMs
                         "[Android] MainActivity --> spend time invokeInbound function --------> $duration ms.".info()
-                        withContext(Dispatchers.Main) { binding.content.text = "Result: $result\n invokeInbound function duration : ${duration} ms" }
-                        module.release()
+                        withContext(Dispatchers.Main) { binding.content.text = "Result : \n\n${baseJson.encodeToString(ProtoBuf.decodeFromByteArray<Data>(result))}\n\ncall function duration : $duration ms" }
                     }
                 }
             } catch (e: Exception) {
