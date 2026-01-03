@@ -4,6 +4,8 @@
 
 # WasmLine
 
+- 支持 Android、Desktop(Mac, Windows, Linux)
+
 ## 🚀 WasmLine 支持与主要发现
 
 > WasmLine 旨在提供跨多个平台的兼容性：**Windows**、**Ubuntu**、**MacOS** 和 **Android**。它以 **Kotlin Multiplatform** 为基础构建，同时支持使用**任何编程语言**来开发 Wasi 兼容的插件。
@@ -80,6 +82,14 @@ sh ./scripts/samples/run.sh
     <tr>
 		<td align="center">Android</td>
 		<td align="center">Macos</td>
+	</tr>
+</table>
+<table>
+	<tr>
+		<td align="center"><img src="docs/images/compose_desktop_mac.png"></td>
+	</tr>
+    <tr>
+		<td align="center">compose_desktop_mac</td>
 	</tr>
 </table>
 
