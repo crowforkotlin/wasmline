@@ -213,7 +213,12 @@ namespace wasmline {
 
         // 2. Call the "run_entry" function exported by Kotlin/Wasm
         if (wasmtime_instance_export_get(context, &instance, kInitWasmline.data(), kInitWasmline.size(), &run_entry)) {
-            wasmtime_error_t *error = wasmtime_func_call(context, &run_entry.of.func, nullptr, 0, nullptr, 0, &trap);
+            wasmtime_val_t args[2];
+            args[0].kind = WASMTIME_I32;
+            args[0].of.i32 = (int32_t)actionLen;
+            args[1].kind = WASMTIME_I32;
+            args[1].of.i32 = (int32_t)dataLen;
+            wasmtime_error_t *error = wasmtime_func_call(context, &run_entry.of.func, args, 2, nullptr, 0, &trap);
 
             // 3. Handle errors or traps
             if (error || trap) {
@@ -225,6 +230,10 @@ namespace wasmline {
                     wasm_trap_delete(trap);
                 }
                 if (error) {
+                    wasm_byte_vec_t error_msg;
+                    wasmtime_error_message(error, &error_msg);
+                    LOGE("[Wasmtime] Session -> Wasm function call error: %s", error_msg.data);
+                    wasm_byte_vec_delete(&error_msg);
                     wasmtime_error_delete(error);
                 }
 
@@ -244,10 +253,10 @@ namespace wasmline {
         inbound.actionPtr = nullptr;
         inbound.dataPtr = nullptr;
 
+        std::string result = std::move(inbound.responseBuffer);
         inbound.responseBuffer.clear();
-        inbound.responseBuffer.shrink_to_fit();
-
-        return inbound.responseBuffer;
+         inbound.responseBuffer.shrink_to_fit();
+        return result;
     }
 
     /**
@@ -395,7 +404,9 @@ namespace wasmline {
      * Arg 1: Action String Length
      * Arg 2: Payload Data Pointer (Wasm Memory Address)
      * Arg 3: Payload Data Length
-     * Return: Length of the Host response data (int32)
+     * Return:
+     *   >= 0: Number of bytes actually written (Fast Path, success)
+     *   < 0 : Insufficient buffer space; the absolute value of the return value is the total length required (Slow Path).
      *
      * 2025-12-26
      * @author crowforkotlin
@@ -404,24 +415,50 @@ namespace wasmline {
         Session *self = get_session(caller);
         auto *ctx = wasmtime_caller_context(caller);
         uint8_t *mem = wasmtime_memory_data(ctx, &self->memory);
+        size_t mem_size = wasmtime_memory_size(ctx, &self->memory);
 
-        // 1. 从 Wasm 内存中提取 action 和 payload
+        // 1. extract input pointers
         int32_t aPtr = args[0].of.i32;
         int32_t aLen = args[1].of.i32;
         int32_t pPtr = args[2].of.i32;
         int32_t pLen = args[3].of.i32;
 
-        std::string action((char *) (mem + aPtr), aLen);
-        std::string payload((char *) (mem + pPtr), pLen);
+        // 2. extract output pre allocated area
+        int32_t outPtr = args[4].of.i32;
+        int32_t outCap = args[5].of.i32;
 
-        // 2. 调用 Host 回调
+        // [Optimization] Use string_view to point directly to Wasm memory, ZERO COPY
+        // Note: Wasm memory may expand during the host call, causing the pointer to become invalid, but it is safe during the synchronous execution of this function.
+        std::string_view action(reinterpret_cast<char *>(mem + aPtr), aLen);
+        std::string_view payload(reinterpret_cast<char *>(mem + pPtr), pLen);
+
+        // 3. execute business logic
+        std::string resultData;
         if (self->outbound.handler) {
-            self->outbound.responseBuffer = self->outbound.handler->onOutboundInvoke(action, payload);
+            // handler receives string_view
+            resultData = self->outbound.handler->onOutboundInvoke(action, payload);
         }
 
-        // 3. 告知 Wasm 返回值的大小，以便它分配内存进行下一次 Pull
+        int32_t resultSize = (int32_t)resultData.size();
+
+        // 4. fast path
+        if (resultSize <= outCap) {
+            if (resultSize > 0) {
+                // 这里 mem 指针需要重新获取吗？不需要，除非 onOutboundInvoke 内部导致了 Wasm 内存增长
+                // 为安全起见，再次获取 mem 指针是一个好习惯，虽有微小开销
+                uint8_t *current_mem = wasmtime_memory_data(ctx, &self->memory);
+                memcpy(current_mem + outPtr, resultData.data(), resultSize);
+            }
+            self->outbound.responseBuffer.clear();
+            results[0].of.i32 = resultSize;
+        }
+            // 5. slow path
+        else {
+            // Move, avoid copying
+            self->outbound.responseBuffer = std::move(resultData);
+            results[0].of.i32 = -resultSize;
+        }
         results[0].kind = WASMTIME_I32;
-        results[0].of.i32 = (int32_t) self->outbound.responseBuffer.size();
         return nullptr;
     }
 

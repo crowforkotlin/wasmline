@@ -1,5 +1,5 @@
 /**
- * Api.cpp
+ * Api.native
  * Implementation of the Wasm API Facade.
  * Coordinates calls between Engine, Module, and Session.
  *
@@ -77,14 +77,14 @@ namespace wasmline {
     }
 
     // Core execution logic
-    std::string Api::invokeInbound(const std::string &key, const std::string &action, const std::string &data) {
+    std::string Api::invokeInbound(const std::string &key, const char* action, size_t actionLen, const char* data, size_t dataLen) {
         Session *session = getOrCreateSession(key);
         if (!session) {
             LOGE("[Wasmtime] Api --> Call failed, session could not be created for %s", key.c_str());
             return "";
         }
         // Delegate the execution to the Session object
-        return session->invokeInbound(action.c_str(), action.size(), data.c_str(), data.size());
+        return session->invokeInbound(action, actionLen, data, dataLen);
     }
 
     // Helper: Session Management

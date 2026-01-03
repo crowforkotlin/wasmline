@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace wasmline {
     /**
@@ -17,6 +18,6 @@ namespace wasmline {
          * @param payload 参数数据
          * @return Host 执行后的结果数据
          */
-        virtual std::string onOutboundInvoke(const std::string &action, const std::string &payload) = 0;
+        virtual std::string onOutboundInvoke(std::string_view action, std::string_view payload) = 0;
     };
 }

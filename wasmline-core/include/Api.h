@@ -63,7 +63,7 @@ namespace wasmline {
          * @param data Input binary data
          * @return Output binary data
          */
-        static std::string invokeInbound(const std::string& key, const std::string& action, const std::string& data);
+        static std::string invokeInbound(const std::string &key, const char* action, size_t actionLen, const char* data, size_t dataLen);
 
         static void setOutboundHandler(const std::string& key, std::unique_ptr<OutboundHandler> handler);
 

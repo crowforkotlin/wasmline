@@ -1,5 +1,5 @@
 /**
- * Module.cpp
+ * Module.native
  * Implementation of Module.
  * Handles the complexities of file I/O, compilation, and thread-safe caching.
  *

@@ -11,39 +11,29 @@ androidApplication {
         versionCode = 1,
         versionName = "1.0.0-release",
     ) {
-        api(libs.androidx.core.ktx)
-        api(libs.androidx.activity.ktx)
-        api(libs.androidx.material)
-        api(libs.kotlinx.serialization.json)
-        api(libs.kotlinx.serialization.protobuf)
 
     }
 }
 
-android {
-
-    defaultConfig {
-        externalNativeBuild {
-            cmake {
-                cppFlags("")
-                abiFilters("arm64-v8a")
-            }
-        }
-    }
-    externalNativeBuild {
-        cmake {
-            path = file("src/androidMain/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
+dependencies {
+    api(libs.androidx.core.ktx)
+    api(libs.androidx.activity.ktx)
+    api(libs.androidx.material)
+    api(libs.kotlinx.serialization.json)
+    api(libs.kotlinx.serialization.protobuf)
+    api(projects.wasmline.core)
 }
 
 afterEvaluate {
     tasks.named<com.android.build.gradle.tasks.MergeSourceSetFolders>("mergeDebugAssets") {
-        dependsOn(rootProject.tasks.findByPath("wasmline-core:plugin:wasmCopy"))
+        dependsOn(rootProject.tasks.findByPath("wasmline-sample:plugin:copyWasmArtifacts"))
     }
-    tasks.named("assembleDebug") {
-        rootProject.tasks.findByPath("wasmline-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize")?.also { task -> dependsOn(task) }
-        rootProject.tasks.findByPath("wasmline-core:plugin:compileProductionLibraryKotlinWasmWasiOptimize")?.also { task -> dependsOn(task) }
+    afterEvaluate {
+        tasks.findByName("assembleDebug")?.apply {
+            rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionExecutableKotlinWasmWasiOptimize")
+                ?.also { task -> dependsOn(task) }
+            rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize")
+                ?.also { task -> dependsOn(task) }
+        }
     }
 }

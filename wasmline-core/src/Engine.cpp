@@ -1,5 +1,5 @@
 /**
- * Engine.cpp
+ * Engine.native
  * Implementation of the Wasmtime Engine Manager.
  * Contains critical Android-specific configurations.
  *

@@ -2,7 +2,7 @@
 
 package crow.mordecai.wasmline
 
-import crow.mordecai.wasmline.common.extensions.loadNativeLibrary
+import crow.mordecai.wasmline.extensions.loadNativeLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -20,7 +20,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
         actual suspend fun load(filepath: String, cacheFilepath: String?, threadSafe: Boolean): WasmlineLoadState = withContext(Dispatchers.IO) {
             var isSuccess: Boolean
             val file = File(filepath)
-            val cacheFile = File(cacheFilepath)
+            val cacheFile = if (cacheFilepath == null) null else File(cacheFilepath)
             val key: String = file.absolutePath
 
             // 1. Use aot to load cache file (.cwasm)
@@ -96,7 +96,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
      * 执行 Wasm 函数
      * 支持并发调用，底层会自动创建独立的 Session
      */
-    actual suspend fun call(action: String, protobufBytes: ByteArray) = withContext(Dispatchers.Default) { nativeInvokeInbound(moduleKey, action, protobufBytes) }
+    actual suspend fun call(action: String, inputBytes: ByteArray) : ByteArray = withContext(Dispatchers.Default) { nativeInvokeInbound(moduleKey, action, inputBytes) }
     // suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, json) }
 
     /**
