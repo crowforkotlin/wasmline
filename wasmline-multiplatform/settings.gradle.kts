@@ -56,4 +56,3 @@ fun includeModule(topName: String, file: File) {
 
 includeModule(topName = "wasmline-sample", file = file("wasmline-sample"))
 includeModule(topName = "wasmline", file = file("wasmline"))
-//includeModule(topName = "wasmline-library", file = file("wasmline-library"))
