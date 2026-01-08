@@ -1,5 +1,5 @@
 platforms/
-build/
+
 *.o
 *.a
 *.so
@@ -7,16 +7,20 @@ build/
 *.exe
 *.bin
 
-# Ignore Gradle project-specific cache directory
-.gradle
-
-# Ignore Gradle build output directory
-build
 **/.cxx/
 **/build/
 **/release/
 **/debug/
 **/.kotlin/
-**/.DS_Store
-.DS_Store
-local.properties
+**/.DS_Store/
+**/.zig-cache/
+**/.gradle/
+**/build/
+**/release/
+**/debug/
+**/.idea/
+**/.vscode/
+
+**/local.properties
+**/*.cwasm
+**/*.wasm

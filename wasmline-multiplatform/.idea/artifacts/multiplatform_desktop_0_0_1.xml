@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="multiplatform-desktop-0.0.1">
-    <output-path>$PROJECT_DIR$/wasmline-sample/multiplatform/build/libs</output-path>
-    <root id="archive" name="multiplatform-desktop-0.0.1.jar">
-      <element id="module-output" name="wasmline-multiplatform.wasmline-sample.multiplatform.desktopMain" />
-    </root>
-  </artifact>
-</component>
