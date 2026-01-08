@@ -1,22 +1,12 @@
-import { RootProvider } from 'fumadocs-ui/provider/next';
+// src/app/layout.tsx
 import './global.css';
-import { Inter } from 'next/font/google';
+import type { ReactNode } from 'react';
 
-const inter = Inter({
-  subsets: ['latin'],
-});
-
-export default function Layout({ children }: LayoutProps<'/'>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={inter.className} suppressHydrationWarning>
-      <body className="flex flex-col min-h-screen">
-        <RootProvider
-          search={{
-            options: {
-              type: 'static', // 关键：告诉前端使用静态搜索模式
-            },
-          }}>{children}</RootProvider>
-      </body>
+    // 这里的 lang 也可以保留 defaults，具体的由 middleware 和内层 layout 控制
+    <html lang="zh" suppressHydrationWarning>
+      <body>{children}</body>
     </html>
   );
 }

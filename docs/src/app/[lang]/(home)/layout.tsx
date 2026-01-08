@@ -5,9 +5,9 @@ import { PageTransition } from '@/components/page-transition';
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <HomeLayout {...baseOptions()}>
-        <PageTransition>
+      <PageTransition>
         {children}
-    </PageTransition>
-      </HomeLayout>
+      </PageTransition>
+    </HomeLayout>
   );
 }
