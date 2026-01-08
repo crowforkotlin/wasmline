@@ -1,7 +1,8 @@
 import { source } from '@/lib/source';
 import { createFromSource } from 'fumadocs-core/search/server';
 
-export const { GET } = createFromSource(source, {
-  // https://docs.orama.com/docs/orama-js/supported-languages
-  language: 'english',
-});
+// 强制静态生成
+export const revalidate = false;
+
+// 使用 staticGET 处理静态导出
+export const { staticGET: GET } = createFromSource(source);
