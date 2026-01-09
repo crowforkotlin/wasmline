@@ -26,9 +26,33 @@ kotlin {
     linuxX64()
     macosX64()
     macosArm64()
-    iosArm64()
     iosX64()
-    iosSimulatorArm64()
+    // 1. 定义路径 (保持不变)
+    val iosBuildDir = project.file("build/ios")
+    val wasmtimeLibDir = project.file("../../../platforms/ios/lib")
+    val nativeHeaderDir = project.file("src/iosMain/native")
+    val wasmtimeHeaderDir = project.file("../../../platforms/ios/include")
+
+    val configureCInterop = { target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget ->
+        target.compilations.getByName("main") {
+            val wasmline by cinterops.creating {
+                defFile(project.file("src/nativeInterop/cinterop/wasmline.def"))
+
+                // 2. 这里的 includeDirs 建议保留！
+                // 为什么？因为 cinterop 工具在读取 .def 的 headers = WasmlineNative.h 这一行时，
+                // 它需要第一时间找到这个 .h 文件。
+                // 虽然 .def 里写了 compilerOpts -I，但有时候为了保险，告诉 Gradle 入口在哪里更好。
+                // 这一行是为了让 "headers = ..." 能生效
+                includeDirs(project.file("src/iosMain/native"))
+            }
+        }
+    }
+
+    // 应用到 iOS Targets (根据你的项目实际开启的 Target)
+    iosArm64 { configureCInterop(this) }
+    iosSimulatorArm64 { configureCInterop(this)
+
+    }
     tvosArm64()
     tvosSimulatorArm64()
     tvosX64()
@@ -62,16 +86,17 @@ kotlin {
             }
         }
 
-        val hostMain by creating { dependsOn(commonMain) }
-        val jniMain by creating { dependsOn(other =hostMain) }
+        val hostMain by creating { dependsOn(other = commonMain) }
+        val jniMain by creating { dependsOn(other = hostMain) }
 
         val nativeMain by getting { dependsOn(other = hostMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
-        val androidNativeArm64Main by getting { dependsOn(nativeMain) }
-        val androidNativeArm32Main by getting { dependsOn(nativeMain) }
-        val androidNativeX64Main by getting { dependsOn(nativeMain) }
-        val androidNativeX86Main by getting { dependsOn(nativeMain) }
+
+
+        val iosSimulatorArm64Main by getting {  }
+        val iosArm64Main by getting {  }
+
     }
 }
 

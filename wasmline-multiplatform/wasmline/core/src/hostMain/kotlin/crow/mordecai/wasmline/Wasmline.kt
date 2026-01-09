@@ -1,4 +1,3 @@
-@file:Suppress("KotlinNoActualForExpect")
 
 package crow.mordecai.wasmline
 

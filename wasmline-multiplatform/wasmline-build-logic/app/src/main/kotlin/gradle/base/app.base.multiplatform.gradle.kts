@@ -10,7 +10,7 @@ kotlin {
 
     jvm("desktop")
 
-    /*listOf(
+    listOf(
         iosX64(),
         iosArm64(),
         iosSimulatorArm64()
@@ -19,7 +19,7 @@ kotlin {
             baseName = Config.getBaseName(project)
             isStatic = true
         }
-    }*/
+    }
 
     androidTarget {
         compilerOptions {
