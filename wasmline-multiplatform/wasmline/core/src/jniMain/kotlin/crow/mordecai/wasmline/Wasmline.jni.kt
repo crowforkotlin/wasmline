@@ -7,6 +7,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+fun testAAA() {
+
+}
+
 actual class Wasmline actual constructor(val moduleKey: String) {
 
     actual companion object {
@@ -15,7 +19,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
 
         /**
          * 加载模块
-         * @param file .wasm (源码) 或 .cwasm (缓存)
+         * @param filepath .wasm (源码路径) 或 .cwasm (缓存路径)
          */
         actual suspend fun load(filepath: String, cacheFilepath: String?, threadSafe: Boolean): WasmlineLoadState = withContext(Dispatchers.IO) {
             var isSuccess: Boolean
@@ -31,7 +35,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
                     nativeLoadAotUnsafe(key = key, path = cacheFile.absolutePath)
                 }
                 if (isSuccess) {
-                    return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_AOT, wasmLine = Wasmline(moduleKey = key))
+                    return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_AOT, wasmline = Wasmline(moduleKey = key))
                 }  else {
                     cacheFile.delete()
                 }
@@ -61,7 +65,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
                 }
             }
 
-            return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_JIT, wasmLine = Wasmline(moduleKey = key))
+            return@withContext WasmlineLoadState.Success(code = WasmlineLoadState.CODE_SUCCESS_JIT, wasmline = Wasmline(moduleKey = key))
         }
 
         /**

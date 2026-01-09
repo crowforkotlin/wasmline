@@ -20,6 +20,7 @@ kotlin {
 
     sourceSets {
         wasmWasiMain.dependencies {
+            implementation(projects.wasmlineSample.common)
             implementation(projects.wasmline.core)
             implementation(libs.okio.core)
             implementation(libs.kotlinx.serialization.json)

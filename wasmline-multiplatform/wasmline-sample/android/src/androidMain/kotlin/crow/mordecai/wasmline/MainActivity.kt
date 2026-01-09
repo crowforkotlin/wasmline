@@ -14,17 +14,12 @@ import crow.mordecai.wasmline.extensions.Data
 import crow.mordecai.wasmline.extensions.info
 import crow.wasmtime.sample.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
 import java.io.FileOutputStream
@@ -81,7 +76,7 @@ class MainActivity : AppCompatActivity() {
                         } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
                             "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
                         }
-                        val module = loadState.wasmLine
+                        val module = loadState.wasmline
                         startMs = System.currentTimeMillis()
                         module.setOutbound(dispatcher = { action, payload ->
                             "[Android] receive wasm action is : $action \t payload is $payload".info()
