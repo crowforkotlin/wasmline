@@ -4,7 +4,7 @@
 )
 @file:Suppress("FunctionName")
 
-package crow.wasmtime.wasmline
+package crow.mordecai.wasmline
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
