@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalWasmInterop::class)
 
-package crow.wasmtime.wasmline
+package crow.mordecai.wasmline
 
 fun main() {
 

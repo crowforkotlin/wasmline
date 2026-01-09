@@ -1,8 +1,7 @@
 @file:Suppress("FunctionName", "unused", "OPT_IN_USAGE")
 
-package crow.wasmtime.wasmline
+package crow.mordecai.wasmline
 
-import crow.mordecai.wasmline.extensions.info
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.protobuf.ProtoBuf
 

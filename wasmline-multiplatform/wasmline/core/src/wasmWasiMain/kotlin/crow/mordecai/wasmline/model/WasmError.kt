@@ -1,4 +1,4 @@
-package crow.wasmtime.wasmline.model
+package crow.mordecai.wasmline.model
 
 import kotlinx.serialization.Serializable
 

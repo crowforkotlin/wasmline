@@ -12,7 +12,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import crow.mordecai.wasmline.extensions.Data
 import crow.mordecai.wasmline.extensions.info
-import crow.wasmtime.sample.android.databinding.ActivityMainBinding
+import crow.mordecai.sample.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
