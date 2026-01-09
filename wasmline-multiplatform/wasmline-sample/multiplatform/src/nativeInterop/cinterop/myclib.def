@@ -1,0 +1,18 @@
+# 告诉 cinterop 只有这个头文件需要生成绑定
+headers = myclib.h
+
+# 告诉编译器去哪里找头文件 (可以是相对路径)
+# 这里用了 gradle 变量占位符，后面会在 build.gradle 里配
+compilerOpts = -Isrc/nativeInterop/c
+
+# 定义生成的 Kotlin 包名
+package = crow.mordecai.wasmline.native.c
+
+# 【关键】如果是纯源码集成，可以在这里直接把 C 源码编译进去
+# 也可以配置 staticLibraries 链接 .a 库
+# 这里演示最简单的：直接让 Kotlin Native 编译器把 C 源码一起编译了
+---
+// 下面这部分会被直接追加到生成的桩代码末尾，或者用于简单的 C 实现
+// 但通常我们通过 linkerOpts 或 Gradle 配置源文件。
+// 比较现代的做法是在 build.gradle.kts 里指定 C 源码
+#include "myclib.c"
