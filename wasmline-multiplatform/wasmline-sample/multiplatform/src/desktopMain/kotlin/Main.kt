@@ -12,17 +12,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.useResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
 import crow.mordecai.wasmline.Wasmline
 import crow.mordecai.wasmline.WasmlineLoadState
 import crow.mordecai.wasmline.extensions.info
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromByteArray
@@ -32,7 +28,6 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.InternalResourceApi
 import org.jetbrains.compose.resources.getResourceUri
-import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.readResourceBytes
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -74,7 +69,7 @@ fun main() = application {
                         } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
                             "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
                         }
-                        val module = loadState.wasmLine
+                        val module = loadState.wasmline
                         startMs = System.currentTimeMillis()
                         module.setOutbound(dispatcher = { action, payload ->
                             "[Android] receive wasm action is : $action \t payload is $payload".info()

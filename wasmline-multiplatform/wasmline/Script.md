@@ -1,3 +1,5 @@
 # Script
 
-`./gradlew wasmtime-core:plugin:compileProductionExecutableKotlinWasmWasiOptimize`
+```shell
+./gradlew wasmline-sample:plugin:compileProductionExecutableKotlinWasmWasiOptimize
+```

@@ -35,7 +35,7 @@ junit = "4.13.2"
 
 # https://github.com/JetBrains/kotlin
 #kotlin = "2.3.0"
-kotlin = "2.3.0"
+kotlin = "2.3.20-Beta1"
 
 # https://github.com/google/ksp
 ksp = "2.3.4"
