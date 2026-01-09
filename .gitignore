@@ -6,6 +6,7 @@ platforms/
 *.dylib
 *.exe
 *.bin
+*.DS_Store
 
 **/.cxx/
 **/build/
