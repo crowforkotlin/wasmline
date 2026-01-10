@@ -13,7 +13,6 @@ platforms/
 **/release/
 **/debug/
 **/.kotlin/
-**/.DS_Store/
 **/.zig-cache/
 **/.gradle/
 **/build/
@@ -25,3 +24,4 @@ platforms/
 **/local.properties
 **/*.cwasm
 **/*.wasm
+**/.DS_Stor
