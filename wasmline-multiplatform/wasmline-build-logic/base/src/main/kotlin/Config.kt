@@ -5,9 +5,9 @@ import org.gradle.api.Project
 
 object Config {
 
-  const val Group = "crow.wasmtime"
+  const val Group = "crow.mordecai"
   const val ApplicationId = "${Group}.wasmline"
-  const val ApplicationName = "WasmLine"
+  const val ApplicationName = "wasmline"
 
   /**
    * mordecaix-test/
