@@ -73,14 +73,10 @@ kotlin {
     val configureCInterop = { target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget ->
         target.compilations.getByName("main") {
             val myclib by cinterops.creating {
-                // 指定 def 文件
                 defFile(project.file("src/nativeInterop/cinterop/myclib.def"))
-                // 指定头文件和源码所在的目录
                 includeDirs(project.file("src/nativeInterop/c"))
             }
         }
-        // 【注意】 把之前那个 target.binaries.all { linkerOpts(...) } 删掉
-        // 我们改用 def 文件里的 #include "myclib.c" 来解决编译问题
     }
 
     iosArm64 { configureCInterop(this) }

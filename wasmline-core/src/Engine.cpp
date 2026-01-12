@@ -53,8 +53,24 @@ namespace wasmline {
         // Set max stack size (512KB is usually sufficient for mobile logic)
         wasmtime_config_max_wasm_stack_set(conf, 512 * 1024);
 
+        /*// 自动判断是 64位 还是 32位 系统
+        // Android/iOS 绝大多数是 Little Endian (小端序)
+        const char* target_triple = (sizeof(void*) == 8) ? "pulley64" : "pulley32";
+
+        wasmtime_error_t *error = wasmtime_config_target_set(conf, target_triple);
+        if (error) {
+            wasm_byte_vec_t msg;
+            wasmtime_error_message(error, &msg);
+            LOGE("[Wasmtime] Engine --> Failed to set Pulley target to %s: %s", target_triple, msg.data);
+            wasm_byte_vec_delete(&msg);
+            wasmtime_error_delete(error);
+            // 注意：如果这里失败了，通常意味着 libwasmtime.so 编译时没有开启 pulley feature
+        } else {
+            LOGI("[Wasmtime] Engine --> Configured for Pulley Interpreter (%s)", target_triple);
+        }*/
+
         // Compiler Optimization Strategy: Optimize for Speed and Binary Size
-        wasmtime_config_cranelift_opt_level_set(conf, WASMTIME_OPT_LEVEL_SPEED_AND_SIZE);
+        wasmtime_config_cranelift_opt_level_set(conf, WASMTIME_OPT_LEVEL_NONE);
         wasmtime_config_cranelift_debug_verifier_set(conf, false);
 
         return conf;

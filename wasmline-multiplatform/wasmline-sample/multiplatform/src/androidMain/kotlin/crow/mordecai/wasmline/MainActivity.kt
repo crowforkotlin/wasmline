@@ -44,9 +44,9 @@ class MainActivity : BaseActivity() {
 
 
 suspend fun loadWasm(context: Context): Wasmline? {
-    val wasmFilename = "plugin.wasm"
+    val wasmFilename = "plugin.32.cwasm"
     val wasmFile = File(context.cacheDir, wasmFilename)
-    val cwasmFile = File(context.cacheDir, "plugin.cwasm")
+    val cwasmFile = File(context.cacheDir, "plugin.32.cwasm")
     if (!wasmFile.exists()) {
         withContext(Dispatchers.IO) {
             context.assets.open(wasmFilename).use { input ->
@@ -80,12 +80,14 @@ fun AndroidApp() {
             val wasmlineCall = {
                 wasmline?.also { wl ->
                     scope.launch {
+                        val start = System.currentTimeMillis()
                         val callResult = wl.call(action = "timeSync", inputBytes = toProtoBytes(value = PlatformBean(
                             platform = "Android",
                             content = "${Build.VERSION.SDK_INT}",
                             timeStr = SimpleDateFormat( "yyyy/MM/dd HH:mm:ss", Locale.getDefault()).format(Date(System.currentTimeMillis())),
                             timeMs = System.currentTimeMillis()
                         )))
+                        "spend time --> ${System.currentTimeMillis() - start} ms".info()
                         val bean = toProtoBean<PlatformBean>(bytes = callResult)
                         value = toJsonString(value = bean)
                     }
