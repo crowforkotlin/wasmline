@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun App(
@@ -20,7 +21,7 @@ fun App(
             .padding(horizontal = 10.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = value, modifier = Modifier.align(Alignment.CenterHorizontally))
+        Text(text = value, modifier = Modifier.align(Alignment.CenterHorizontally), fontSize = 18.sp)
         Button(
             onClick = { onClick() },
             modifier = Modifier

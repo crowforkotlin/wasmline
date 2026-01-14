@@ -10,7 +10,7 @@ IOS_SRC="src/iosMain/native"
 INCLUDE_DIRS="-I$PROJECT_ROOT/wasmline-core/include \
               -I$PROJECT_ROOT/wasmline-core/include/extensions \
               -I$IOS_SRC \
-              -I$PROJECT_ROOT/platforms/ios/include"
+              -I$PROJECT_ROOT/platforms/ios/arm64/include"
 
 BUILD_DIR="build/ios"
 mkdir -p $BUILD_DIR

@@ -7,7 +7,7 @@
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 source "${CURRENT_DIR}/context.sh" || exit 1
 
-REPO="bytecodealliance/wasmtime"
+REPO="crowforkotlin/wasmtime"
 ERROR_FLAG_FILE="${TEMP_WORK_DIR}/.has_error"
 MAX_CONCURRENT=3  # Default concurrency limit
 

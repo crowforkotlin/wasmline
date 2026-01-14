@@ -1,18 +1,2 @@
-package = crow.mordecai.wasmline.native
+package = crow.mordecai.wasmline.native.c
 headers = WasmlineNative.h
-
-# 1. 链接参数
-linkerOpts = -lc++
-
-# 2. 静态库名称 (自动找 libxxx.a)
-staticLibraries = libwasmline_core_ios libwasmtime
-
-# 3. 库文件搜索路径 (关键！)
-# 这里我们尝试使用相对路径。
-# 如果编译报错，说明 Kotlin 版本对相对路径的处理基准不同，通常是相对于 def 文件的。
-# 假设 def 在 src/nativeInterop/cinterop/
-libraryPaths = build/ios ../../../build/ios ../../../platforms/ios/lib ../../../../../../platforms/ios/lib
-
-# 4. 编译器参数 (头文件搜索)
-# 为了让 def 文件自包含，也可以在这里写 -I
-compilerOpts = -I../../iosMain/native -I../../../../../platforms/ios/include

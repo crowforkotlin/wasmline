@@ -53,13 +53,20 @@ namespace wasmline {
         wasmtime_module_t *module = nullptr;
         wasmtime_error_t *error = nullptr;
 
-        if (isJit) {
+        if (data.size() > 4 && data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F') {
+            LOGI("[Wasmtime] Detected ELF header. Using DESERIALIZE for %s", filePath.c_str());
+            error = wasmtime_module_deserialize(engine, (uint8_t*)data.data(), data.size(), &module);
+        } else {
+            LOGI("[Wasmtime] Detected Wasm header. Using NEW (JIT) for %s", filePath.c_str());
+            error = wasmtime_module_new(engine, (uint8_t*)data.data(), data.size(), &module);
+        }
+        /*if (isJit) {
             LOGI("[Wasmtime] Module --> Jit Compiling for %s...", filePath.c_str());
             error = wasmtime_module_new(engine, data.data(), data.size(), &module);
         } else {
             LOGI("[Wasmtime] Module --> Aot Deserializing for %s...", filePath.c_str());
             error = wasmtime_module_deserialize(engine, data.data(), data.size(), &module);
-        }
+        }*/
 
         // 4. Error Handling
         if (error) {
