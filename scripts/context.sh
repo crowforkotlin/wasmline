@@ -1,26 +1,28 @@
 #!/bin/bash
 
-# Exit on any error
-set -e
+# ==============================================================================
+# Global Context & Environment Setup
+# ==============================================================================
 
-# --- Check and Import env.sh ---
-# Use BASH_SOURCE[0] to ensure the path is correct even when sourced.
+if [ -n "$ENV_SOURCED_MARKER" ]; then return 0; fi
 
-echo "[shell context.sh] --> -----------------------------"
+# --- Path Resolution ---
+CURRENT_SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+SCRIPT_DIR="$( cd "$( dirname "$CURRENT_SCRIPT_PATH" )" && pwd )"
 
-export SCRIPT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export PROJECT_ROOT="$(dirname "$SCRIPT_ROOT")"
-export SAMPLE_ROOT="${PROJECT_ROOT}/samples"
-export WASM_ROOT="${PROJECT_ROOT}/wasm"
+# --- Import Style ---
+STYLE_FILE="${SCRIPT_DIR}/style.sh"
+if [ -f "$STYLE_FILE" ]; then source "$STYLE_FILE"; else echo "Error: style.sh missing"; exit 1; fi
+
+# --- Project Structure ---
+export PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 export PLATFORMS_ROOT="${PROJECT_ROOT}/platforms"
+export TEMP_WORK_DIR="${PLATFORMS_ROOT}/.temp_work"
 
-# 3. Export variables for subsequent use
-export ENV_SOURCED_MARKER="true"
-
-# 4. [Crucial] Automatically switch the current working directory to the Project Root
+# --- Environment ---
 if [ "$PWD" != "$PROJECT_ROOT" ]; then
-    echo "[shell context.sh] --> Switching to Project Root: $PROJECT_ROOT"
-    cd "$PROJECT_ROOT" || exit 1
+    cd "$PROJECT_ROOT" || { log_error "Cannot switch to project root"; exit 1; }
 fi
 
-echo "[shell context.sh] --> Context Config Success!"
+export ENV_SOURCED_MARKER="true"
+log_info "Context loaded. Root: ${PROJECT_ROOT}"

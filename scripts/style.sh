@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# ==============================================================================
+# UI Styles & Logging Module (Enhanced)
+# ==============================================================================
+
+if [ -n "$STYLE_SOURCED_MARKER" ]; then return 0; fi
+export STYLE_SOURCED_MARKER="true"
+
+# --- 1. Colors (High Intensity) ---
+export RED='\033[1;31m'
+export GREEN='\033[1;32m'
+export YELLOW='\033[1;33m'
+export BLUE='\033[1;34m'
+export MAGENTA='\033[1;35m'
+export CYAN='\033[1;36m'
+export WHITE='\033[1;37m'
+export GRAY='\033[1;30m'
+export NC='\033[0m'
+
+# --- 2. Cursor Control (Crucial for Dashboard) ---
+cursor_hide() { printf "\033[?25l"; }
+cursor_show() { printf "\033[?25h"; }
+cursor_up()   { printf "\033[%dA" "$1"; } # Move cursor up N lines
+clear_line()  { printf "\033[2K\r"; }     # Clear current line
+
+# --- 3. Format Utilities ---
+# Convert bytes to human readable (KB, MB)
+format_size() {
+    local bytes=$1
+    if [ $bytes -lt 1024 ]; then
+        echo "${bytes}B"
+    elif [ $bytes -lt 1048576 ]; then
+        echo "$(( (bytes + 512) / 1024 ))KB"
+    else
+        # Simulate float by multiplying then string manipulation
+        local mb=$(( bytes * 100 / 1048576 ))
+        echo "$(( mb / 100 )).$(( mb % 100 ))MB"
+    fi
+}
+
+# Draw a mini bar: [####--]
+get_progress_bar_str() {
+    local percent=$1
+    local width=15
+    local filled=$((percent * width / 100))
+    local empty=$((width - filled))
+    local bar_filled=$(printf "%0.s#" $(seq 1 $filled))
+    local bar_empty=$(printf "%0.s-" $(seq 1 $empty))
+    echo "${BLUE}[${GREEN}${bar_filled}${GRAY}${bar_empty}${BLUE}]${NC}"
+}
+
+# --- 4. Logging ---
+log_header() {
+    echo -e "${CYAN}=================================================${NC}"
+    echo -e "      $1       "
+    echo -e "${CYAN}=================================================${NC}"
+}
+log_info() { echo -e "${MAGENTA}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[OK]${NC}   $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERR]${NC}  $1"; }
+
+log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
+log_detail() { echo -e "       ${GRAY}└─ $1${NC}"; }
