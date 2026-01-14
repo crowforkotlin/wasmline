@@ -16,8 +16,8 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = Config.getBaseName(project)
             isStatic = true
+            baseName = Config.getBaseName(project)
         }
     }
 
@@ -25,14 +25,6 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
-    }
-
-    js {
-        browser {
-            testTask { enabled = false }
-            commonWebpackConfig { showProgress = true }
-        }
-        binaries.executable()
     }
 
     sourceSets {

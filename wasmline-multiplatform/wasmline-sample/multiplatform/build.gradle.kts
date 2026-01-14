@@ -19,9 +19,7 @@ composeApplication {
     config(
         versionCode = 1,
         versionName = "1.0.0",
-        desktopMainClass = "MainKt",
-        jsModuleName = Config.ApplicationName,
-        jsOutputFileName = "${Config.ApplicationName}.js",
+        desktopMainClass = "MainKt"
     )
 }
 
@@ -29,6 +27,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                api(projects.wasmline.core)
+                api(projects.wasmlineSample.common)
                 implementation(compose.material3)
                 implementation(compose.components.resources)
                 implementation(compose.runtime)
@@ -48,39 +48,18 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
-                implementation(projects.wasmlineSample.common)
-                implementation(projects.wasmline.core)
                 implementation(libs.androidx.activity.compose)
             }
         }
         val desktopMain by getting {
             dependencies {
-                implementation(projects.wasmlineSample.common)
-                implementation(projects.wasmline.core)
                 implementation(compose.desktop.currentOs)
-                implementation(libs.kotlinx.serialization.protobuf)
-                implementation(libs.kotlinx.serialization.json)
                 implementation(libs.jetbrains.jewel.decorated)
                 implementation(libs.conveyor)
             }
         }
-        val iosSimulatorArm64Main by getting {
-            dependencies {
-                implementation(projects.wasmline.core)
-            }
-        }
+        val iosSimulatorArm64Main by getting { }
     }
-    val configureCInterop = { target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget ->
-        target.compilations.getByName("main") {
-            val myclib by cinterops.creating {
-                defFile(project.file("src/nativeInterop/cinterop/myclib.def"))
-                includeDirs(project.file("src/nativeInterop/c"))
-            }
-        }
-    }
-
-    iosArm64 { configureCInterop(this) }
-    iosSimulatorArm64 { configureCInterop(this) }
 }
 
 compose.desktop { }

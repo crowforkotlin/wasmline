@@ -6,8 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DF9942A12F17EA45002565A0 /* core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DF9942A02F17EA45002565A0 /* core.framework */; };
+		DF9942A22F17EA45002565A0 /* core.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DF9942A02F17EA45002565A0 /* core.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		DF9942AE2F18152D002565A0 /* plugin.cwasm in Resources */ = {isa = PBXBuildFile; fileRef = DF9942AD2F18152D002565A0 /* plugin.cwasm */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		DF99429F2F17E8A2002565A0 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				DF9942A22F17EA45002565A0 /* core.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		D8F84E2CFC11F7E7321906E0 /* wasmline.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = wasmline.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DF9942A02F17EA45002565A0 /* core.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = core.framework; path = ../wasmline/core/build/bin/iosSimulatorArm64/debugFramework/core.framework; sourceTree = "<group>"; };
+		DF9942AD2F18152D002565A0 /* plugin.cwasm */ = {isa = PBXFileReference; lastKnownFileType = file; path = plugin.cwasm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -41,6 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DF9942A12F17EA45002565A0 /* core.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -58,10 +81,20 @@
 		61B3113FDCF7D72DE269DDE5 = {
 			isa = PBXGroup;
 			children = (
+				DF9942AD2F18152D002565A0 /* plugin.cwasm */,
 				9DC644EB24D5BD7F080260FE /* Configuration */,
 				DB09F76FD598AEA002E059A7 /* iosApp */,
+				DF99429B2F17E8A2002565A0 /* Frameworks */,
 				375966EEDC6A099956372450 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		DF99429B2F17E8A2002565A0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DF9942A02F17EA45002565A0 /* core.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -75,6 +108,7 @@
 				FB5733FF60DE4E60ECDE7D7F /* Sources */,
 				8E9904AE4FEF26B82E60ACC3 /* Frameworks */,
 				4D967E8F1936948F2058293E /* Resources */,
+				DF99429F2F17E8A2002565A0 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -129,6 +163,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DF9942AE2F18152D002565A0 /* plugin.cwasm in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +271,10 @@
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = "${TEAM_ID}";
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline-sample/multiplatform/build/bin/iosSimulatorArm64/debugFramework",
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline/core/build/bin/iosSimulatorArm64/debugFramework",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -249,6 +288,10 @@
 				);
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline-sample/multiplatform/build/bin/iosSimulatorArm64/debugFramework",
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline/core/build/bin/iosSimulatorArm64/debugFramework",
+				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -264,6 +307,10 @@
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = "${TEAM_ID}";
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline-sample/multiplatform/build/bin/iosSimulatorArm64/debugFramework",
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline/core/build/bin/iosSimulatorArm64/debugFramework",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -277,6 +324,10 @@
 				);
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline-sample/multiplatform/build/bin/iosSimulatorArm64/debugFramework",
+					"/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline/core/build/bin/iosSimulatorArm64/debugFramework",
+				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
