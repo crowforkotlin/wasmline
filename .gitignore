@@ -7,6 +7,9 @@ platforms/
 *.exe
 *.bin
 *.DS_Store
+*.dll
+*.pdb
+*.lib
 
 **/.cxx/
 **/build/
@@ -24,4 +27,13 @@ platforms/
 **/local.properties
 **/*.cwasm
 **/*.wasm
+**/*.lib
+**/*.dll
+**/*.pdb
+**/*.a
+**/*.so
+**/*.o
+**/*.dylib
+**/*.exe
+**/*.bin
 **/.DS_Stor

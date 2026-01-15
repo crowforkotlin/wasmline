@@ -7,6 +7,16 @@
  * @author crowforkotlin
  */
 
+/*
+ * Fix zig build on windows error, because rust-produced static library (wasmtime) 
+ * requires floating-point initialization symbol, which is often missing in 
+ * non-MSVC environments (like zig's gnu target).
+ */
+#if defined(_WIN32) || defined(_WIN64)
+extern "C" {
+    int _fltused = 0;
+}
+#endif
 
 #include "WasmlineJni.h"
 
