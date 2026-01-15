@@ -8,7 +8,7 @@ const ROOT_OFFSET = "../../..";
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSmall });
 
     // 1. 获取项目根目录
     const build_root_path = b.build_root.path.?;
@@ -42,8 +42,15 @@ pub fn build(b: *std.Build) !void {
         }),
         .linkage = .dynamic,
     });
-
-    const cpp_flags = &.{"-std=c++17"};
+    lib.want_lto = true;
+    lib.bundle_compiler_rt = true; // 包含编译器运行时
+    lib.root_module.strip = true; // 关键：剔除所有符号表，显著减小体积
+    const cpp_flags = &.{
+        "-std=c++17",
+        "-DLIBWASM_STATIC", // 控制核心 wasm.h
+        "-DWASI_API_EXTERN=", // 强制将 WASI 导出宏定义为空 (最关键)
+        "-DWASM_API_EXTERN=", // 备份方案：直接强制清核心导出宏
+    };
 
     // ========================================================================
     // 4. 添加源码
@@ -102,13 +109,22 @@ pub fn build(b: *std.Build) !void {
     };
     lib.addObjectFile(.{ .cwd_relative = lib_path });
 
-    if (target.result.os.tag != .windows) {
+    // --- 关键修改开始 ---
+    if (target.result.os.tag == .windows) {
+        const mingw_lib = if (std.process.getEnvVarOwned(b.allocator, "MINGW_PATH")) |path|
+            b.pathJoin(&.{ path, "x86_64-w64-mingw32/lib" })
+        else |_|
+            "C:/mingw64/x86_64-w64-mingw32/lib";
+        lib.addLibraryPath(.{ .cwd_relative = mingw_lib });
+        lib.linkSystemLibrary("bcrypt"); // 加密 API (Wasmtime 生成随机数/种子必需)
+        lib.linkSystemLibrary("userenv"); // 用户环境库 (处理用户配置、环境变量)
+        lib.linkSystemLibrary("ole32"); // COM 组件库 (某些内存分配或跨组件调用可能需要)
+        lib.linkSystemLibrary("uuid"); // UUID 库 (处理唯一标识符)
+    } else {
         lib.linkSystemLibrary("m");
         lib.linkSystemLibrary("dl");
         lib.linkSystemLibrary("pthread");
-    }
-
-    // ========================================================================
+    } // ========================================================================
     // 7. 安装产物 (Output)
     // ========================================================================
 
@@ -143,28 +159,12 @@ pub fn build(b: *std.Build) !void {
 // ============================================================================
 
 fn autoDetectJavaHome(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
-    if (b.option([]const u8, "java-home", "Override JAVA_HOME")) |path| {
-        return path;
-    }
+    if (b.option([]const u8, "java-home", "Override JAVA_HOME")) |path| return path;
     if (target.result.os.tag == .macos) {
-        const result = std.process.Child.run(.{
-            .allocator = b.allocator, .argv = &.{"/usr/libexec/java_home"},
-        }) catch return error.JavaHomeNotFound;
+        const result = try std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{"/usr/libexec/java_home"} });
         return std.mem.trim(u8, result.stdout, " \n\r");
     }
-    if (target.result.os.tag == .linux) {
-        const common_paths: []const []const u8 = &.{
-            "/usr/lib/jvm/default-java",
-            "/usr/lib/jvm/java-17-openjdk-amd64",
-            "/usr/lib/jvm/java-11-openjdk-amd64",
-        };
-        for (common_paths) |path| {
-            std.fs.cwd().access(path, .{}) catch continue;
-            return path;
-        }
-    }
-    if (std.posix.getenv("JAVA_HOME")) |h| return h;
-    return error.JavaHomeNotFound;
+    if (std.process.getEnvVarOwned(b.allocator, "JAVA_HOME")) |path| return path else |_| return error.JavaHomeNotFound;
 }
 
 // 这个函数仅用于【寻找 Input 依赖】，保持原来的逻辑不动，以免找不到 platforms 里的库
@@ -172,21 +172,36 @@ fn getPlatformSubdir(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u
     const t = target.result;
     if (t.abi == .android) {
         const arch = switch (t.cpu.arch) {
-            .aarch64 => "arm64-v8a", .x86_64 => "x86_64", .arm => "armeabi-v7a", else => return error.UnsupportedArch,
+            .aarch64 => "arm64-v8a",
+            .x86_64 => "x86_64",
+            .arm => "armeabi-v7a",
+            else => return error.UnsupportedArch,
         };
         return b.fmt("android/{s}", .{arch});
     }
     switch (t.os.tag) {
         .macos => {
-            const arch = switch (t.cpu.arch) { .aarch64 => "aarch64", .x86_64 => "x86_64", else => return error.UnsupportedArch };
+            const arch = switch (t.cpu.arch) {
+                .aarch64 => "aarch64",
+                .x86_64 => "x86_64",
+                else => return error.UnsupportedArch,
+            };
             return b.fmt("mac/{s}", .{arch});
         },
         .windows => {
-            const arch = switch (t.cpu.arch) { .x86_64 => "x64", .aarch64 => "arm64", else => return error.UnsupportedArch };
+            const arch = switch (t.cpu.arch) {
+                .x86_64 => "x64",
+                .aarch64 => "arm64",
+                else => return error.UnsupportedArch,
+            };
             return b.fmt("windows/{s}", .{arch});
         },
         .linux => {
-            const arch = switch (t.cpu.arch) { .x86_64 => "x86_64", .aarch64 => "aarch64", else => return error.UnsupportedArch };
+            const arch = switch (t.cpu.arch) {
+                .x86_64 => "x86_64",
+                .aarch64 => "aarch64",
+                else => return error.UnsupportedArch,
+            };
             return b.fmt("linux/{s}", .{arch});
         },
         else => return error.UnsupportedOs,
