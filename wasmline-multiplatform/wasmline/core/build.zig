@@ -44,25 +44,25 @@ pub fn build(b: *std.Build) !void {
     });
     lib.bundle_compiler_rt = true; // 包含编译器运行时
     const is_release = optimize != .Debug;
-    lib.root_module.strip = is_release; // 剔除所有符号表，显著减小体积
-    if (target.result.os.tag == .windows) {
-        lib.want_lto = true;
-        lib.use_lld = true;
-    }
-
     if (is_release) {
-        // 1. 死代码消除 (Dead Code Elimination)
-        // macOS -> -dead_strip
-        // Linux -> --gc-sections
-        // Windows -> /OPT:REF
+        // 剔除所有符号表，显著减小体积
+        lib.root_module.strip = is_release;
+
+        // 自动移除未使用的代码段 (对应 -dead_strip / --gc-sections)
         lib.link_gc_sections = true;
 
-        // 2. 丢弃局部符号
-        // macOS -> -x
-        lib.discard_local_symbols = true;
-        // 3. 将函数和数据放入独立段 (辅助 gc_sections 工作)
+        // 自动将每个函数/数据放入独立段 (配合上面选项实现精确删除)
         lib.link_function_sections = true;
         lib.link_data_sections = true;
+
+        // 丢弃局部符号 (对应 macOS 的 -x)
+        lib.discard_local_symbols = true;
+    }
+
+    // 启用 LTO 全局优化并强制使用 LLD 链接器，以跨模块剔除冗余代码并深度压缩 Windows DLL 体积。
+    if (target.result.os.tag == .windows and is_release) {
+        lib.want_lto = true;
+        lib.use_lld = true;
     }
 
     // 基础参数 (所有模式通用)
