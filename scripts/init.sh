@@ -20,7 +20,7 @@ setup_proxy() {
         log_success "Proxy: $p"
     else
         log_info "Direct connection."
-        echo -e "${YELLOW} [TIP] If slow, use: bash $0 127.0.0.1:7890${NC}"
+        printf "${YELLOW}[TIP] If slow, use: bash $0 127.0.0.1:7890${NC}"
     fi
 }
 
@@ -35,41 +35,52 @@ get_time_ms() {
 
 select_target() {
     echo ""
-    log_header "Platform Selection"
-    echo -e "Select target platform:"
-    echo -e "  ${WHITE}1)${NC} Android ${GRAY}(aarch64)${NC}"
-    echo -e "  ${WHITE}2)${NC} macOS   ${GRAY}(aarch64/x64)${NC}"
-    echo -e "  ${WHITE}3)${NC} Linux   ${GRAY}(aarch64/x64)${NC}"
-    echo -e "  ${WHITE}4)${NC} Windows ${GRAY}(x64)${NC}"
-    echo -e "  ${WHITE}5)${NC} iOS     ${GRAY}(if available)${NC}"
-    echo -e "  ${WHITE}a)${NC} All Platforms"
-    echo ""
+    log_header "Platform & Architecture Selection"
+    printf "Select specific target:\n"
+    
+    # 根据提供的文件列表拆分选项
+    printf "  ${WHITE}1)${NC} Android ${GRAY}(aarch64)${NC}\n"
+    printf "  ${WHITE}2)${NC} iOS Device ${GRAY}(aarch64)${NC}\n"
+    printf "  ${WHITE}3)${NC} iOS Simulator ${GRAY}(aarch64)${NC}\n"
+    printf "  ${WHITE}4)${NC} Linux ${GRAY}(aarch64)${NC}\n"
+    printf "  ${WHITE}5)${NC} Linux ${GRAY}(x86_64)${NC}\n"
+    printf "  ${WHITE}6)${NC} macOS ${GRAY}(aarch64)${NC}\n"
+    printf "  ${WHITE}7)${NC} macOS ${GRAY}(x86_64)${NC}\n"
+    printf "  ${WHITE}8)${NC} Windows ${GRAY}(x86_64)${NC}\n"
+    printf "  ${WHITE}a)${NC} All Platforms\n"
+    printf "\n"
 
     local valid=false
     while [ "$valid" = false ]; do
-        read -p "$(echo -e "${CYAN}Choice [1-5, a]: ${NC}")" c
+        printf "${CYAN}Choice [1-8, a]: ${NC}"
+        read c
         case "$c" in
-            1) USER_FILTER="android"; valid=true ;;
-            2) USER_FILTER="macos";   valid=true ;;
-            3) USER_FILTER="linux";   valid=true ;;
-            4) USER_FILTER="windows"; valid=true ;;
-            5) USER_FILTER="ios";     valid=true ;;
-            a|A) USER_FILTER="all";   valid=true ;;
-            *) echo -e "${RED}Invalid input.${NC}" ;;
+            # 这里的标识符将用于后续的文件名匹配
+            1) USER_FILTER="aarch64-android"; valid=true ;;
+            2) USER_FILTER="aarch64-ios-c-api"; valid=true ;; # 特殊处理：需排除 sim
+            3) USER_FILTER="aarch64-ios-sim"; valid=true ;;
+            4) USER_FILTER="aarch64-linux";   valid=true ;;
+            5) USER_FILTER="x86_64-linux";    valid=true ;;
+            6) USER_FILTER="aarch64-macos";   valid=true ;;
+            7) USER_FILTER="x86_64-macos";    valid=true ;;
+            8) USER_FILTER="x86_64-windows";  valid=true ;;
+            a|A) USER_FILTER="all";           valid=true ;;
+            *) printf "${RED}Invalid input.${NC}\n" ;;
         esac
     done
+    
     local d_name=$USER_FILTER
     [ "$USER_FILTER" == "all" ] && d_name="All Platforms"
-    log_success "Target: ${WHITE}${d_name}${NC}"
+    log_success "Target Filter: ${WHITE}${d_name}${NC}"
 }
 
 # [NEW] Configure Concurrency
 configure_settings() {
     echo ""
     log_header "Download Settings"
-    echo -e "Set max concurrent downloads (Default: ${WHITE}3${NC}):"
-    read -p "$(echo -e "${CYAN}Count > ${NC}")" input_limit
-
+    printf "Set max concurrent downloads (Default: ${WHITE}3${NC}):\n"
+    printf "${CYAN}Count > ${NC}"
+    read input_limit
     # Validate integer input > 0
     if [[ "$input_limit" =~ ^[1-9][0-9]*$ ]]; then
         MAX_CONCURRENT=$input_limit
@@ -144,15 +155,39 @@ count=0
 # Dispatch Probes
 for url in $D_URLS; do
     fname=$(basename "$url")
-    if [ "$USER_FILTER" != "all" ] && [[ "$fname" != *"$USER_FILTER"* ]]; then continue; fi
+    
+    # --- 过滤器逻辑 (Filter Logic) ---
+    if [ "$USER_FILTER" != "all" ]; then
+        # 特殊处理 iOS：因为 'aarch64-ios-c-api' 字符串同时也存在于 sim 的文件名中
+        # 如果用户选了 iOS Device (2)，我们需要排除带 'sim' 的文件
+        if [ "$USER_FILTER" == "aarch64-ios-c-api" ]; then
+             if [[ "$fname" != *"$USER_FILTER"* ]] || [[ "$fname" == *"sim"* ]]; then continue; fi
+        else
+             # 常规匹配
+             if [[ "$fname" != *"$USER_FILTER"* ]]; then continue; fi
+        fi
+    fi
 
+    # --- 路径映射逻辑 (Path Mapping) ---
+    # 根据文件名特征，精确拆分到不同目录
     plat=""
     case "$fname" in
-        *android*) plat="android/arm64-v8a" ;;
-        *linux-c-api*)   plat="linux/aarch64" ;;
-        *macos*)   plat="mac/aarch64" ;;
-        *windows*)  plat="windows/x64" ;;
-        *ios*)      plat="ios/arm64" ;;
+        *aarch64-android*)      plat="android/arm64-v8a" ;;
+        
+        # iOS 拆分
+        *aarch64-ios-sim*)      plat="ios/simulator-arm64" ;;
+        *aarch64-ios-c-api*)    plat="ios/arm64" ;; 
+        
+        # Linux 拆分
+        *aarch64-linux*)        plat="linux/aarch64" ;;
+        *x86_64-linux*)         plat="linux/x64" ;;
+        
+        # macOS 拆分
+        *aarch64-macos*)        plat="mac/aarch64" ;;
+        *x86_64-macos*)         plat="mac/x64" ;;
+        
+        # Windows
+        *x86_64-windows*)       plat="windows/x64" ;;
     esac
 
     if [ -n "$plat" ]; then
@@ -180,7 +215,7 @@ if [ "$count" -eq 0 ]; then echo ""; log_warn "No assets found."; exit 0; fi
 cursor_hide
 while true; do
     done_count=$(ls -1 "${TEMP_WORK_DIR}"/.size_* 2>/dev/null | wc -l)
-    echo -ne "   > Probing sizes: ${WHITE}[${done_count}/${count}]${NC}\r"
+    printf "%b" "   > Probing sizes: ${WHITE}[${done_count}/${count}]${NC}\r"
     if [ "$done_count" -ge "$count" ]; then break; fi
     sleep 0.05
 done
@@ -284,11 +319,11 @@ while [ "$completed_jobs" -lt "$count" ]; do
         FRAME_BUF+="${pad_plat} ${bar} ${WHITE}${perc}%${NC} | ${status_txt}\033[K\n"
     done
 
-    echo -ne "$FRAME_BUF"
+    printf "%b" "$FRAME_BUF"
 
     if [ "$completed_jobs" -lt "$count" ]; then
         cursor_up "$count"
-        if [[ "$OSTYPE" == "darwin"* ]]; then sleep 0.03; else sleep 0.03; fi
+        sleep 0.05
     fi
 done
 

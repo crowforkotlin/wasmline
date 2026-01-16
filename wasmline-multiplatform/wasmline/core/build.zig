@@ -42,16 +42,36 @@ pub fn build(b: *std.Build) !void {
         }),
         .linkage = .dynamic,
     });
-    lib.want_lto = true;
     lib.bundle_compiler_rt = true; // 包含编译器运行时
-    lib.root_module.strip = true; // 关键：剔除所有符号表，显著减小体积
+    const is_release = optimize != .Debug;
+    lib.root_module.strip = is_release; // 剔除所有符号表，显著减小体积
+    if (target.result.os.tag == .windows) {
+        lib.want_lto = true;
+        lib.use_lld = true;
+    }
+
+    if (is_release) {
+        // 1. 死代码消除 (Dead Code Elimination)
+        // macOS -> -dead_strip
+        // Linux -> --gc-sections
+        // Windows -> /OPT:REF
+        lib.link_gc_sections = true;
+
+        // 2. 丢弃局部符号
+        // macOS -> -x
+        lib.discard_local_symbols = true;
+        // 3. 将函数和数据放入独立段 (辅助 gc_sections 工作)
+        lib.link_function_sections = true;
+        lib.link_data_sections = true;
+    }
+
+    // 基础参数 (所有模式通用)
     const cpp_flags = &.{
         "-std=c++17",
         "-DLIBWASM_STATIC", // 控制核心 wasm.h
         "-DWASI_API_EXTERN=", // 强制将 WASI 导出宏定义为空 (最关键)
         "-DWASM_API_EXTERN=", // 备份方案：直接强制清核心导出宏
     };
-
     // ========================================================================
     // 4. 添加源码
     // ========================================================================
