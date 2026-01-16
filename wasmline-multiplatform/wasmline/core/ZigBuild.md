@@ -1,5 +1,7 @@
 # Zig Build Instructions
 
+- Zig Version : 0.15.1
+
 ## General Build
 **Release (Small size):**
 ```shell
