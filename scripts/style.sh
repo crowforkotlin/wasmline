@@ -52,14 +52,14 @@ get_progress_bar_str() {
 
 # --- 4. Logging ---
 log_header() {
-    echo -e "${CYAN}=================================================${NC}"
-    echo -e "      $1       "
-    echo -e "${CYAN}=================================================${NC}"
+    printf "${CYAN}=================================================${NC}\n"
+    printf "      %b       \n" "$1"
+    printf "${CYAN}=================================================${NC}\n"
 }
-log_info() { echo -e "${MAGENTA}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[OK]${NC}   $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERR]${NC}  $1"; }
+log_info()    { printf "${MAGENTA}[INFO]${NC} %b\n" "$1"; }
+log_success() { printf "${GREEN}[OK]${NC}   %b\n" "$1"; }
+log_warn()    { printf "${YELLOW}[WARN]${NC} %b\n" "$1"; }
+log_error()   { printf "${RED}[ERR]${NC}  %b\n" "$1"; }
 
-log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
-log_detail() { echo -e "       ${GRAY}└─ $1${NC}"; }
+log_step()    { printf "${BLUE}[STEP]${NC} %b\n" "$1"; }
+log_detail()  { printf "       ${GRAY}└─ %b${NC}\n" "$1"; }
