@@ -13,14 +13,13 @@
 #pragma once
 
 // Logic to determine if logs should be compiled
-#if defined(DISABLE_WASM_LOGS) || defined(NDEBUG)
+#if defined(DISABLE_WASM_LOGS)
 #define WASM_LOGS_ENABLED 0
 #else
 #define WASM_LOGS_ENABLED 1
 #endif
 
 // =============================================================
-
 #if WASM_LOGS_ENABLED
 
 namespace wasmline {

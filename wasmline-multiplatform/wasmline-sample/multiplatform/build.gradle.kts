@@ -1,4 +1,9 @@
-@file:Suppress("unused")
+@file:Suppress("unused", "UnstableApiUsage")
+
+import com.android.build.gradle.internal.crash.afterEvaluate
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.jvm.toolchain.JvmVendorSpec
+
 
 plugins {
     id("app.base.application")
@@ -10,7 +15,8 @@ plugins {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
+        vendor.set(JvmVendorSpec.JETBRAINS)
     }
 }
 
@@ -19,11 +25,15 @@ composeApplication {
     config(
         versionCode = 1,
         versionName = "1.0.0",
-        desktopMainClass = "MainKt"
+        desktopMainClass = "crow.mordecai.wasmline.sample.MainKt"
     )
 }
 
 kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+        vendor.set(JvmVendorSpec.JETBRAINS)
+    }
     sourceSets {
         val commonMain by getting {
             dependencies {

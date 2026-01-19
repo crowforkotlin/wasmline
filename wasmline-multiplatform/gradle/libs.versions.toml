@@ -227,7 +227,7 @@ jetbrains-compose-material3-adaptive-layout = { module = "org.jetbrains.compose.
 jetbrains-compose-material3-adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version = "1.2.0-alpha03" }
 jetbrains-androidx-navigation = { module = "org.jetbrains.androidx.navigation:navigation-compose", version = "2.9.0-beta03" }
 jetbrains-browser = { module = "org.jetbrains.kotlinx:kotlinx-browser", version.ref = "kotlinx-browser" }
-jetbrains-jewel-decorated = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window-243", version = "0.26.2" }
+jetbrains-jewel-decorated = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version = "0.33.0-253.29795" }
 
 flatlaf = { module = "com.formdev:flatlaf", version.ref = "flatlaf" }
 

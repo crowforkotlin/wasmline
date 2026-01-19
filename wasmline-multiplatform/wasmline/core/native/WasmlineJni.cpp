@@ -19,7 +19,9 @@ extern "C" {
 #endif
 
 #include "WasmlineJni.h"
-
+#include <sstream>
+#include <iomanip>
+#include "Logger.h"
 extern "C" {
 
 JNIEXPORT void JNICALL
@@ -87,6 +89,20 @@ Java_crow_mordecai_wasmline_Wasmline_nativeInvokeInbound(JNIEnv *env, jclass thi
     env->ReleaseByteArrayElements(inputBytes, dataPtr, JNI_ABORT);
     env->ReleaseStringUTFChars(actionStr, action);
     env->ReleaseStringUTFChars(keyStr, key);
+
+
+    // 在这里打印 C++ 侧获取到的原始数据
+    size_t size = resultData.size();
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < size; ++i) {
+        // 强制转换为 unsigned int 避免打印出 ffffff6b 这种情况
+        ss << std::setw(2) << (static_cast<unsigned int>(resultData[i]) & 0xFF);
+    }
+    std::string hexStr = ss.str();
+
+    wasmline::NativeLogI("\n[JNI DEBUG] Result Size: %zu\n", size);
+    wasmline::NativeLogI("[JNI DEBUG] Result Hex : %s\n\n", hexStr.c_str());
 
     // Return result
     if (!resultData.empty()) {

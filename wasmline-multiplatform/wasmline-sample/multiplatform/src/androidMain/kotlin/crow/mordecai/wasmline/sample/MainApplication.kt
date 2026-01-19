@@ -1,6 +1,7 @@
-package crow.mordecai.wasmline
+package crow.mordecai.wasmline.sample
 
 import android.app.Application
+import crow.mordecai.wasmline.Wasmline
 
 /**
  * ● 
@@ -12,6 +13,6 @@ import android.app.Application
 class MainApplication: Application() {
     override fun onCreate() {
         super.onCreate()
-        Wasmline.init()
+        Wasmline.Companion.init()
     }
 }

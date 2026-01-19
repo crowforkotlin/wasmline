@@ -1,7 +1,6 @@
-package crow.mordecai.wasmline
+package crow.mordecai.wasmline.sample
 
 import android.graphics.Color
-import android.icu.util.UniversalTimeScale
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
