@@ -11,9 +11,12 @@ plugins {
     alias(libs.plugins.conveyor) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.buildconfig) apply false
 }
+
+
 
 allprojects {
     group = "crow.mordecai.wasmline"
-    version = "1.0.0"
+    version = project.property("VERSION_NAME") as String
 }
