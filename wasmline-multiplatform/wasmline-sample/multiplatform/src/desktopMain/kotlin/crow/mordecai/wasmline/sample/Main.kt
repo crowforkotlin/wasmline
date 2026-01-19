@@ -1,5 +1,7 @@
 @file:OptIn(InternalResourceApi::class, ExperimentalSerializationApi::class)
 
+package crow.mordecai.wasmline.sample
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,9 +20,9 @@ import androidx.compose.ui.window.application
 import crow.mordecai.wasmline.Wasmline
 import crow.mordecai.wasmline.WasmlineLoadState
 import crow.mordecai.wasmline.extensions.info
+import crow.wasmline.sample.bean.PlatformBean
 import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.Json
@@ -43,46 +45,19 @@ import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.styling.TitleBarColors
 import org.jetbrains.jewel.window.styling.TitleBarStyle
 import java.awt.Dimension
-@Serializable
-data class Data(
-    val id: Long,
-    val name: String,
-    val key: String
-)
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 private val baseJson = Json { prettyPrint = true; isLenient = true; }
 @OptIn(ExperimentalResourceApi::class)
 fun main() = application {
     Wasmline.init()
-    var value by remember { mutableStateOf("Value") }
-    val scope = rememberCoroutineScope()
+    println("init")
     AppWindows {
-        App(value) {
-            scope.launch {
-                println("launch")
-                val data = ProtoBuf.encodeToByteArray(Data(1024, "desktop","key"))
-                var startMs = System.currentTimeMillis()
-                when(val loadState = Wasmline.load(getResourceUri("plugin.wasm").removePrefix("file:"), null, false)) {
-                    is WasmlineLoadState.Failure -> { loadState.cause.info() }
-                    is WasmlineLoadState.Success -> {
-                        if (loadState.code == WasmlineLoadState.CODE_SUCCESS_JIT) {
-                            "[Wasmline] Load jit success, spend ${System.currentTimeMillis() - startMs}  ms".info()
-                        } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
-                            "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
-                        }
-                        val module = loadState.wasmline
-                        startMs = System.currentTimeMillis()
-                        module.setOutbound(dispatcher = { action, payload ->
-                            "[Android] receive wasm action is : $action \t payload is $payload".info()
-                            byteArrayOf()
-                        })
-//                        module.call("init", data)
-                        val result = module.call("add", data)
-                        val duration = System.currentTimeMillis() - startMs
-                        value = "Result : \n\n${baseJson.encodeToString(ProtoBuf.decodeFromByteArray<Data>(result))}\n\ncall function duration : $duration ms"
-                    }
-                }
-            }
-        }
+        App(
+            wasmPath = getResourceUri("plugin.pwasm").removePrefix("file:"),
+        )
     }
 }
 

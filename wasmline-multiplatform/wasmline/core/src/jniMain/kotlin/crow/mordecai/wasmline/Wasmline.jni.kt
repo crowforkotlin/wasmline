@@ -100,7 +100,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
      * 执行 Wasm 函数
      * 支持并发调用，底层会自动创建独立的 Session
      */
-    actual suspend fun call(action: String, inputBytes: ByteArray) : ByteArray = withContext(Dispatchers.Default) { nativeInvokeInbound(moduleKey, action, inputBytes) }
+    actual suspend fun call(action: String, inputBytes: ByteArray) : ByteArray = nativeInvokeInbound(moduleKey, action, inputBytes)
     // suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, json) }
 
     /**

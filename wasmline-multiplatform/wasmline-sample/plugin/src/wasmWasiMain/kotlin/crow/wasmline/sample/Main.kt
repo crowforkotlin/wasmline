@@ -25,6 +25,12 @@ fun main() {
             content = "hello from kotlin wasm.",
             timeStr = "${Clock.System.now()}",
             timeMs = Clock.System.now().toEpochMilliseconds()
-        ))
+        ).also {
+
+            println("wasi wasm plugin return bean is : $it")
+        }).also {   56
+            println("wasi wasm plugin return bean to byte size is : ${it.size}")
+            println("wasi wasm plugin return bean hex string is : ${it.toHexString()}")
+        }
     }
 }
