@@ -145,14 +145,3 @@ android {
         }
     }
 }
-
-tasks.register<Copy>("wasmCopy") {
-    val assetsDir = rootProject.file("${projects.wasmlineSample.android.path.replace(":","/")}/src/androidMain/assets")
-    File(assetsDir, "plugin.wasm").deleteOnExit()
-    from(file("build/compileSync/wasmWasi/main/productionExecutable/optimized"))
-    include("*.wasm")
-    rename { "plugin.wasm" }
-    into(assetsDir)
-}
-tasks.findByName("compileProductionExecutableKotlinWasmWasiOptimize")?.finalizedBy("wasmCopy")
-tasks.findByName("compileProductionLibraryKotlinWasmWasiOptimize")?.finalizedBy("wasmCopy")

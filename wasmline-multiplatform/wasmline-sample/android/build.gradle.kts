@@ -23,17 +23,3 @@ dependencies {
     api(libs.kotlinx.serialization.protobuf)
     api(projects.wasmline.core)
 }
-
-afterEvaluate {
-    tasks.named<com.android.build.gradle.tasks.MergeSourceSetFolders>("mergeDebugAssets") {
-        dependsOn(rootProject.tasks.findByPath("wasmline-sample:plugin:copyWasmArtifacts"))
-    }
-    afterEvaluate {
-        tasks.findByName("assembleDebug")?.apply {
-            rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionExecutableKotlinWasmWasiOptimize")
-                ?.also { task -> dependsOn(task) }
-            rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize")
-                ?.also { task -> dependsOn(task) }
-        }
-    }
-}
