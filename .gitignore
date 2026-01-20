@@ -10,6 +10,10 @@ platforms/
 *.dll
 *.pdb
 *.lib
+*.pwasm
+*.cwasm
+*.wasm
+*.db
 
 **/.cxx/
 **/build/
@@ -23,6 +27,7 @@ platforms/
 **/debug/
 **/.idea/
 **/.vscode/
+**/.cache/
 
 **/local.properties
 **/*.cwasm
@@ -37,3 +42,8 @@ platforms/
 **/*.exe
 **/*.bin
 **/.DS_Stor
+**/compile_commands.json
+**/*.pwasm
+**/*.db
+**/*.cwasm
+**/*.wasm
