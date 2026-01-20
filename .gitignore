@@ -14,6 +14,7 @@ platforms/
 *.cwasm
 *.wasm
 *.db
+*.tar.xz
 
 **/.cxx/
 **/build/
@@ -47,3 +48,4 @@ platforms/
 **/*.db
 **/*.cwasm
 **/*.wasm
+**/*.tar.xz
