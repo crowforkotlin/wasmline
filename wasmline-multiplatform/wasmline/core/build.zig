@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const zcc = @import("compile_commands");
 
 // ============================================================================
 // 1. Constants & Configuration
@@ -9,9 +10,9 @@ const ROOT_OFFSET = "../../..";
 // Must explicitly specify type as slice to allow iteration in loops
 const CPP_FLAGS: []const []const u8 = &.{
     "-std=c++17",
-    "-DLIBWASM_STATIC",     // Control core wasm.h
-    "-DWASI_API_EXTERN=",   // Force WASI export macro to empty
-    "-DWASM_API_EXTERN=",   // Backup: Force Core export macro to empty
+    "-DLIBWASM_STATIC", // Control core wasm.h
+    "-DWASI_API_EXTERN=", // Force WASI export macro to empty
+    "-DWASM_API_EXTERN=", // Backup: Force Core export macro to empty
 };
 
 const EXTERNAL_SOURCES: []const []const u8 = &.{
@@ -61,6 +62,13 @@ pub fn build(b: *std.Build) !void {
 
     // 8. Install Artifacts (Output)
     try installArtifacts(b, lib, target);
+
+    // 9. Integrate compilation database generation (for editor tooling like clangd/marksman)
+    var compile_steps_to_include = std.ArrayList(*std.Build.Step.Compile){};
+    try compile_steps_to_include.append(b.allocator, lib);
+    const cdb_internal_step = zcc.createStep(b, "generate_compile_commands_internal", compile_steps_to_include.items);
+    b.step("cdb", "Generate compile_commands.json for editor integration.").dependOn(cdb_internal_step);
+    b.getInstallStep().dependOn(cdb_internal_step);
 }
 
 // ============================================================================
@@ -168,16 +176,15 @@ fn linkDependencies(b: *std.Build, lib: *std.Build.Step.Compile, wasmtime_dir: [
                 \\- https://github.com/niXman/mingw-builds-binaries/releases
                 \\- https://github.com/mstorsjo/llvm-mingw/releases
                 \\
-                , .{}
-            );
+            , .{});
             return error.MingwPathNotFound;
         };
         const mingw_lib = b.pathJoin(&.{ mingw_path, "x86_64-w64-mingw32/lib" });
         lib.addLibraryPath(.{ .cwd_relative = mingw_lib });
-        lib.linkSystemLibrary("bcrypt");  // Encryption API (Required for RNG)
+        lib.linkSystemLibrary("bcrypt"); // Encryption API (Required for RNG)
         lib.linkSystemLibrary("userenv"); // User Environment (Env vars)
-        lib.linkSystemLibrary("ole32");   // COM Library
-        lib.linkSystemLibrary("uuid");    // UUID Library
+        lib.linkSystemLibrary("ole32"); // COM Library
+        lib.linkSystemLibrary("uuid"); // UUID Library
     } else {
         lib.linkSystemLibrary("m");
         lib.linkSystemLibrary("dl");
@@ -194,12 +201,11 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
             .arm => "armeabi-v7a",
             else => "unknown",
         }
-    else
-        switch (target.result.cpu.arch) {
-            .aarch64 => "jni/aarch64",
-            .x86_64 => "jni/amd64",
-            else => b.fmt("jni/{s}", .{@tagName(target.result.cpu.arch)}),
-        };
+    else switch (target.result.cpu.arch) {
+        .aarch64 => "jni/aarch64",
+        .x86_64 => "jni/amd64",
+        else => b.fmt("jni/{s}", .{@tagName(target.result.cpu.arch)}),
+    };
 
     std.debug.print("[Config] Output Dir:    zig-out/{s}\n", .{install_subdir});
 
@@ -210,11 +216,7 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
     };
     const final_name = b.fmt("libwasmline{s}", .{ext});
 
-    const install_action = b.addInstallFileWithDir(
-        lib.getEmittedBin(),
-        .{ .custom = install_subdir },
-        final_name
-    );
+    const install_action = b.addInstallFileWithDir(lib.getEmittedBin(), .{ .custom = install_subdir }, final_name);
 
     const lib_dir_path = b.getInstallPath(.prefix, "lib");
     const deleteLib = b.addRemoveDirTree(.{ .cwd_relative = lib_dir_path });
