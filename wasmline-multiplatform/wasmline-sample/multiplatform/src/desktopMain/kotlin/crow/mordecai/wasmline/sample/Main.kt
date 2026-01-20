@@ -45,6 +45,7 @@ import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.styling.TitleBarColors
 import org.jetbrains.jewel.window.styling.TitleBarStyle
 import java.awt.Dimension
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -53,10 +54,11 @@ private val baseJson = Json { prettyPrint = true; isLenient = true; }
 @OptIn(ExperimentalResourceApi::class)
 fun main() = application {
     Wasmline.init()
-    println("init")
+    val wasmFile = extractResourceToTemp("plugin.pwasm")
+    println("Wasm extracted to: ${wasmFile.absolutePath}")
     AppWindows {
         App(
-            wasmPath = getResourceUri("plugin.pwasm").removePrefix("file:"),
+            wasmPath = wasmFile.absolutePath,
         )
     }
 }
@@ -103,4 +105,22 @@ fun DecoratedWindowScope.DesktopTitleBar(
             textAlign = TextAlign.Center,
         )
     }
+}
+
+
+/**
+ * 将 Compose 资源或 ClassLoader 资源提取到临时文件
+ */
+@OptIn(ExperimentalResourceApi::class)
+fun extractResourceToTemp(resourcePath: String): File {
+    val tempFile = File.createTempFile("wasmline_plugin", ".pwasm")
+    tempFile.deleteOnExit() // 程序退出时自动删除
+    val stream = Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
+        ?: error("Resource not found: $resourcePath")
+    stream.use { input ->
+        tempFile.outputStream().use { output ->
+            input.copyTo(output)
+        }
+    }
+    return tempFile
 }
