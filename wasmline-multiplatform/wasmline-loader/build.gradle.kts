@@ -20,7 +20,7 @@ buildConfig {
 }
 
 dependencies {
-    implementation(projects.wasmline.core)
+    implementation(projects.wasmline)
 
     implementation(libs.clikt)
     implementation(libs.kotlinx.serialization.json)

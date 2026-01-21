@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.org.jdom.Namespace.getNamespace
-
 plugins {
   `kotlin-dsl`
 }

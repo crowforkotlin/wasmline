@@ -27,5 +27,4 @@ rootProject.name = "wasmedge-build-logic"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 include("base")
-include("shared")
 include("app")

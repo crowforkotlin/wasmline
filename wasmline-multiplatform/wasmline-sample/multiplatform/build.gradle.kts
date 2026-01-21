@@ -37,7 +37,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(projects.wasmline.core)
+                api(projects.wasmline)
                 api(projects.wasmlineSample.common)
                 implementation(compose.material3)
                 implementation(compose.components.resources)
