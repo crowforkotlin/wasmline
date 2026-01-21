@@ -73,24 +73,3 @@ kotlin {
 }
 
 compose.desktop { }
-
-
-afterEvaluate {
-
-    rootProject.tasks.findByPath("wasmline-sample:multiplatform:mergeDebugAssets")
-        ?.dependsOn(rootProject.tasks.findByPath("wasmline-sample:plugin:copyWasmArtifacts"))
-    tasks.findByName("assembleDebug")?.apply {
-        rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionExecutableKotlinWasmWasiOptimize")
-            ?.also { task -> dependsOn(task) }
-        rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize")
-            ?.also { task -> dependsOn(task) }
-    }
-
-
-    tasks.findByName("desktopRun")?.apply {
-        rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionExecutableKotlinWasmWasiOptimize")
-            ?.also { task -> dependsOn(task) }
-        rootProject.tasks.findByPath("wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize")
-            ?.also { task -> dependsOn(task) }
-    }
-}
