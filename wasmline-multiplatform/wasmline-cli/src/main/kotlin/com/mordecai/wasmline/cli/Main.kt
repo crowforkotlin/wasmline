@@ -9,10 +9,12 @@ import crow.mordecai.wasmline.cli.BuildConfig
 
 fun main(vararg args: String) {
     printHeader("wasmline command line")
+
     NoOpCliktCommand(name = "wasmline")
         .subcommands(
             commands = arrayOf(
-                Compile()
+                Compile(),
+                Download(),
             )
         )
         .versionOption(version = BuildConfig.VERSION)

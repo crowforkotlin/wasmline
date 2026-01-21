@@ -1,5 +1,8 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
 
+import org.gradle.kotlin.dsl.invoke
+
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
@@ -71,15 +74,11 @@ kotlin {
     tvosSimulatorArm64()
     tvosX64()
 
-    wasmWasi {
-        nodejs()
-        binaries.library()
-    }
+    wasmWasi { binaries.library() }
 
     applyDefaultHierarchyTemplate()
 
     compilerOptions {
-        // actual scope is unstable, cancel compilation warning [https://youtrack.jetbrains.com/issue/KT-61573]
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
@@ -88,29 +87,39 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation(libs.kotlinx.coroutines)
-            }
-        }
-        val wasmWasiMain by getting {
-            dependencies {
-                implementation(libs.okio.core)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.serialization.protobuf)
-                implementation(libs.kotlinx.atomicfu)
-                implementation(libs.kotlin.stdlib)
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
 
-        val hostMain by creating { dependsOn(other = commonMain) }
+        val hostMain by creating {
+            dependsOn(other = commonMain)
+        }
+        val hostTest by creating {
+            dependsOn(other = commonTest)
+        }
         val jniMain by creating { dependsOn(other = hostMain) }
 
         val nativeMain by getting { dependsOn(other = hostMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
 
-
         val iosSimulatorArm64Main by getting {  }
         val iosArm64Main by getting {  }
 
+        val wasmWasiMain by getting {
+            dependencies {
+                implementation(libs.okio.core)
+                implementation(libs.kotlinx.atomicfu)
+                implementation(libs.kotlin.stdlib)
+            }
+        }
     }
 }
 

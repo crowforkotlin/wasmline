@@ -9,7 +9,7 @@ import com.github.ajalt.clikt.core.CliktCommand
  * @author crowforkotlin
  * @formatter:on
  */
-class Compile : CliktCommand(name="compile") {
+class Download : CliktCommand(name="download") {
     override fun run() {
         println("compile")
     }
