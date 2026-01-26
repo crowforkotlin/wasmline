@@ -1,9 +1,14 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage", "SpellCheckingInspection")
 
+import com.android.build.api.dsl.androidLibrary
+import com.android.build.gradle.internal.cxx.gradle.generator.externalNativeBuildIsActive
+import com.android.kotlin.multiplatform.ide.models.serialization.androidSourceSetKey
+
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.library.kmp)
 }
 
 java {
@@ -14,19 +19,19 @@ java {
 
 kotlin {
 
-
     jvm()
-    androidTarget()
-    androidNativeArm64()
-    androidNativeArm32()
-    androidNativeX64()
-    androidNativeX86()
-
     mingwX64()
     linuxX64()
-    macosX64()
     macosArm64()
-
+    androidLibrary {
+        namespace = "crow.mordecai.wasmline"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+    wasmWasi {
+        nodejs()
+        binaries.library()
+    }
     apply {
         val iosBuildDir = project.file("build/ios")
         val wasmtimeLibDir = project.file("../../../platforms/ios/arm64/lib")
@@ -35,7 +40,7 @@ kotlin {
         val configureCInterop = { target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget ->
             target.compilations.getByName("main") {
                 val wasmline by cinterops.creating {
-                    defFile(project.file("src/nativeInterop/cinterop/wasmline.def"))
+                    defFile(project.file("src/iosMain/native/cinterop/wasmline.def"))
                     includeDirs(nativeHeaderDir)
                     includeDirs(wasmtimeHeaderDir)
                     compilerOpts("-I${nativeHeaderDir.absolutePath}", "-I${wasmtimeHeaderDir.absolutePath}")
@@ -49,7 +54,7 @@ kotlin {
                 }
             }
         }
-        listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
+        listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
             configureCInterop(target)
             target.binaries.framework {
                 isStatic = false
@@ -67,20 +72,9 @@ kotlin {
         }
     }
 
-    tvosArm64()
-    tvosSimulatorArm64()
-    tvosX64()
+    compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
 
-    wasmWasi { binaries.library() }
-
-
-    compilerOptions {
-        freeCompilerArgs.add("-Xexpect-actual-classes")
-    }
-
-    applyDefaultHierarchyTemplate()
     sourceSets {
-
 
         val commonMain by getting {
             dependencies {
@@ -89,24 +83,13 @@ kotlin {
                 implementation(libs.kotlinx.serialization.protobuf)
             }
         }
-
         val hostMain by creating { dependsOn(other = commonMain) }
         val jniMain by creating { dependsOn(other = hostMain) }
-        val nativeMain by getting { dependsOn(other = hostMain) }
+        val iosMain by creating { dependsOn(other = commonMain) }
+        val iosArm64Main by getting { dependsOn(other = iosMain) }
+        val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
-
-        val iosSimulatorArm64Main by getting {  }
-        val iosArm64Main by getting {  }
-
-        val wasmWasiMain by getting {
-            dependencies {
-                implementation(libs.okio.core)
-                implementation(libs.kotlinx.atomicfu)
-                implementation(libs.kotlin.stdlib)
-            }
-        }
-
 
         val commonTest by getting {
             dependencies {
@@ -115,41 +98,7 @@ kotlin {
             }
         }
         val hostTest by creating { dependsOn(other = commonTest) }
-        val jniTest by creating { dependsOn(other = hostTest) }
-        val androidInstrumentedTest by getting { dependsOn(other = hostTest) }
-        val nativeTest by getting { dependsOn(other = hostTest) }
         val jvmTest by getting { dependsOn(other = hostTest) }
-    }
-}
-
-android {
-    namespace = "crow.mordecai.wasmline"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
-
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    defaultConfig {
-        externalNativeBuild {
-            cmake {
-                cppFlags("")
-                abiFilters("arm64-v8a")
-            }
-        }
-    }
-    externalNativeBuild {
-        cmake {
-            path = file("src/androidMain/CMakeLists.txt")
-            version = "3.22.1"
-        }
+//        val androidInstrumentedTest by getting { dependsOn(other = hostTest) }
     }
 }

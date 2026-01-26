@@ -29,7 +29,7 @@ include_directories(${ROOT_DIR}/wasmline-core/include/extensions)
 # 编译为静态库，供 JNI 复用
 add_library(wasmline_core STATIC
         native/AndroidLogger.cpp
-        ../jniMain/native/JniHostHandler.cpp
+        ${ROOT_DIR}/wasmline-multiplatform/wasmline/src/jniMain/native/JniHostHandler.cpp
         ${ROOT_DIR}/wasmline-core/src/extensions/FileUtils.cpp
         ${ROOT_DIR}/wasmline-core/src/Api.cpp
         ${ROOT_DIR}/wasmline-core/src/Engine.cpp
@@ -38,7 +38,7 @@ add_library(wasmline_core STATIC
 )
 
 # 编译为共享库
-add_library(wasmline SHARED ../../native/WasmlineJni.cpp)
+add_library(wasmline SHARED ${ROOT_DIR}/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.cpp)
 
 # Math & Dynamic linker
 target_link_libraries(

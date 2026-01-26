@@ -15,6 +15,7 @@ java {
 kotlin {
 
     wasmWasi {
+        nodejs()
         binaries.library()
     }
 

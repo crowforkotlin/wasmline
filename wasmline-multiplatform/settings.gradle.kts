@@ -54,7 +54,8 @@ fun includeModule(topName: String, file: File) {
 
 
 
-include(":wasmline")
-includeModule(topName = "wasmline-cli", file = file("wasmline-cli"))
 includeModule(topName = "wasmline-sample", file = file("wasmline-sample"))
-//includeModule(topName = "wasmline", file = file("wasmline"))
+includeModule(topName = "wasmline", file = file("wasmline"))
+include(":wasmline-cli")
+include(":wasmline-android")
+include(":wasmline-loader")

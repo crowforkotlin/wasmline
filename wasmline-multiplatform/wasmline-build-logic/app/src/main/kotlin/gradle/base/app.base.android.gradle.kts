@@ -1,5 +1,4 @@
 import extensions.AndroidExtension
-import libsEx
 import kotlin.jvm.java
 
 plugins { id("com.android.application") }

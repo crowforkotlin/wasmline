@@ -32,7 +32,7 @@ echo "Compiling object files..."
 
 OBJECTS=""
 
-for src in "${SOURCES[@]}"; do
+for shared in "${SOURCES[@]}"; do
     filename=$(basename "$src")
     objname="${filename%.*}.o"
     output="$BUILD_DIR/$objname"

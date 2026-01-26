@@ -34,6 +34,6 @@ zig build -p src/jvmMain/resources
 **Build for Windows:**
 
 ```shell
-zig build -Dtarget=x86_64-windows-gnu --release=small -p src/jvmMain/resources 
+zig build -Dtarget=x86_64-windows-gnu --release=small -p shared/jvmMain/resources 
 ```
 

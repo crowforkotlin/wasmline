@@ -1,8 +1,7 @@
 @file:Suppress("OPT_IN_USAGE")
 
 plugins {
-    id("app.base.library")
-    id("app.base.multiplatform")
+    id("app.base.multiplatform.library")
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -13,7 +12,10 @@ java {
 }
 
 kotlin {
-    wasmWasi { binaries.library() }
+    wasmWasi {
+        nodejs()
+        binaries.library()
+    }
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.protobuf)
