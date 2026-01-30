@@ -85,7 +85,7 @@ kotlin {
         }
         val hostMain by creating { dependsOn(other = commonMain) }
         val jniMain by creating { dependsOn(other = hostMain) }
-        val iosMain by creating { dependsOn(other = commonMain) }
+        val iosMain by creating { dependsOn(other = hostMain) }
         val iosArm64Main by getting { dependsOn(other = iosMain) }
         val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
         val jvmMain by getting { dependsOn(other = jniMain)

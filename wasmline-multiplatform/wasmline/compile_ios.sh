@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 1. 基础路径 (往上跳3级回到根目录)
-PROJECT_ROOT="../../.."
+PROJECT_ROOT="../.."
 CORE_SRC="$PROJECT_ROOT/wasmline-core/src"
 IOS_SRC="src/iosMain/native"
 
@@ -32,7 +32,7 @@ echo "Compiling object files..."
 
 OBJECTS=""
 
-for shared in "${SOURCES[@]}"; do
+for src in "${SOURCES[@]}"; do
     filename=$(basename "$src")
     objname="${filename%.*}.o"
     output="$BUILD_DIR/$objname"

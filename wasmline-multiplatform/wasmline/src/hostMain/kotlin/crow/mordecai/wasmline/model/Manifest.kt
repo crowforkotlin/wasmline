@@ -54,7 +54,6 @@ data class SignedManifestEnvelope(
  * @property version Semantic version (e.g., "1.2.0").
  * @property versionCode Integer version for updates.
  * @property minWasmlineSdkVersion API compatibility check.
- * @property targetCompilerVersion ABI compatibility check.
  * @property displayName display name (e.g., "Super Image Filter").
  * @property author Developer name.
  * @property description Short summary.
@@ -75,17 +74,16 @@ data class WasmlineManifest(
     @property:ProtoNumber(3) val versionCode: Long,
 
     @property:ProtoNumber(4) val minWasmlineSdkVersion: String,
-    @property:ProtoNumber(5) val targetCompilerVersion: String,
 
-    @property:ProtoNumber(6) val displayName: String? = null,
-    @property:ProtoNumber(7) val author: String? = null,
-    @property:ProtoNumber(8) val description: String? = null,
-    @property:ProtoNumber(9) val iconUrl: String? = null,
-    @property:ProtoNumber(10) val homePageUrl: String? = null,
+    @property:ProtoNumber(5) val displayName: String? = null,
+    @property:ProtoNumber(6) val author: String? = null,
+    @property:ProtoNumber(7) val description: String? = null,
+    @property:ProtoNumber(8) val iconUrl: String? = null,
+    @property:ProtoNumber(9) val homePageUrl: String? = null,
 
-    @property:ProtoNumber(11) val buildTimestamp: Long,
-    @property:ProtoNumber(12) val metadata: Map<String, String> = emptyMap(),
-    @property:ProtoNumber(13) val artifacts: List<WasmlineArtifact>
+    @property:ProtoNumber(10) val buildTimestamp: Long,
+    @property:ProtoNumber(11) val metadata: Map<String, String> = emptyMap(),
+    @property:ProtoNumber(12) val artifacts: List<WasmlineArtifact>
 )
 
 /**
@@ -93,8 +91,8 @@ data class WasmlineManifest(
  *
  * @property type The type of the artifact (CWASM, PWASM, WASM).
  * @property url Relative path (./lib.cwasm) or CDN address.
- * @property sizeBytes File size in bytes.
  * @property sha256 File integrity hash (Hex string).
+ *  * @property targetCompilerVersion ABI compatibility check.
  * @property targetCpu Target CPU architecture (e.g., "arm64", "x64"). Specific to AOT.
  * @property targetOs Target Operating System (e.g., "android", "linux", "ios").
  * @property is64Bit Flag for 64-bit architecture, primarily used for Pulley/Interpreter distinction.
@@ -107,10 +105,10 @@ data class WasmlineManifest(
 data class WasmlineArtifact(
     @property:ProtoNumber(1) val type: WasmlineArtifactType,
     @property:ProtoNumber(2) val url: String,
-    @property:ProtoNumber(3) val sizeBytes: Long,
-    @property:ProtoNumber(4) val sha256: String,
-    @property:ProtoNumber(5) val targetCpu: String? = null,
-    @property:ProtoNumber(6) val targetOs: String? = null,
+    @property:ProtoNumber(3) val sha256: String,
+    @property:ProtoNumber(4) val targetCpu: String? = null,
+    @property:ProtoNumber(5) val targetOs: String? = null,
+    @property:ProtoNumber(6) val targetCompilerVersion: String? = null,
     @property:ProtoNumber(7) val is64Bit: Boolean = true
 )
 

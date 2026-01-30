@@ -1,9 +1,18 @@
+package crow.mordecai.wasmline
+
 import crow.mordecai.wasmline.extensions.printHeader
 import crow.mordecai.wasmline.model.SignedManifestEnvelope
 import crow.mordecai.wasmline.model.WasmlineArtifact
 import crow.mordecai.wasmline.model.WasmlineArtifactType
 import crow.mordecai.wasmline.model.WasmlineManifest
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
+import java.security.KeyPairGenerator
+import java.security.Signature
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ManifestTest {
 
@@ -23,7 +32,6 @@ class ManifestTest {
             version = "1.0.0",
             versionCode = 100,
             minWasmlineSdkVersion = "0.9.0",
-            targetCompilerVersion = "wasmtime-17.0",
             buildTimestamp = System.currentTimeMillis(),
 
             // New Display Fields
@@ -38,15 +46,15 @@ class ManifestTest {
                 WasmlineArtifact(
                     type = WasmlineArtifactType.CWASM,
                     url = "lib.cwasm",
-                    sizeBytes = 1024,
                     sha256 = "deadbeef12345678",
+                    targetCompilerVersion = "wasmtime-17.0",
                     targetCpu = "arm64",
                     targetOs = "android"
                 ),
                 WasmlineArtifact(
                     type = WasmlineArtifactType.PWASM,
                     url = "lib.pwasm",
-                    sizeBytes = 2048,
+                    targetCompilerVersion = "wasmtime-17.0",
                     sha256 = "cafebabe87654321",
                     is64Bit = true
                 )
