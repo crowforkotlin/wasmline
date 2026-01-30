@@ -1,4 +1,3 @@
-#pragma once
 #include "Logger.h"
 
 #if WASM_LOGS_ENABLED

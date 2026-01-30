@@ -88,8 +88,15 @@ kotlin {
         val iosMain by creating { dependsOn(other = commonMain) }
         val iosArm64Main by getting { dependsOn(other = iosMain) }
         val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
-        val jvmMain by getting { dependsOn(other = jniMain) }
-        val androidMain by getting { dependsOn(other = jniMain) }
+        val jvmMain by getting { dependsOn(other = jniMain)
+
+        }
+        val androidMain by getting {
+            dependsOn(other = jniMain)
+            dependencies {
+                implementation(projects.wasmlineAndroid)
+            }
+        }
 
         val commonTest by getting {
             dependencies {

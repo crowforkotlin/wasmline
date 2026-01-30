@@ -4,7 +4,6 @@ plugins {
     id("app.base.android")
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.android.application)
 }
 
 dependencies {
