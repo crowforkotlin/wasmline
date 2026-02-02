@@ -16,11 +16,11 @@ const CPP_FLAGS: []const []const u8 = &.{
 };
 
 const EXTERNAL_SOURCES: []const []const u8 = &.{
-    "shared/extensions/FileUtils.cpp",
-    "shared/Api.cpp",
-    "shared/Engine.cpp",
-    "shared/Module.cpp",
-    "shared/Session.cpp",
+    "src/extensions/FileUtils.cpp",
+    "src/Api.cpp",
+    "src/Engine.cpp",
+    "src/Module.cpp",
+    "src/Session.cpp",
 };
 
 // ============================================================================
@@ -116,11 +116,11 @@ fn configureOptimization(lib: *std.Build.Step.Compile, target: std.Build.Resolve
 
 fn addSourceFiles(b: *std.Build, lib: *std.Build.Step.Compile, core_dir: []const u8) !void {
     // Native JNI
-    lib.addCSourceFile(.{ .file = b.path("native/WasmlineJni.cpp"), .flags = CPP_FLAGS });
+    lib.addCSourceFile(.{ .file = b.path("src/jniMain/native/WasmlineJni.cpp"), .flags = CPP_FLAGS });
 
     // Desktop Adapter (ConsoleLogger, JniHostHandler)
-    lib.addCSourceFile(.{ .file = b.path("shared/jvmMain/native/ConsoleLogger.cpp"), .flags = CPP_FLAGS });
-    lib.addCSourceFile(.{ .file = b.path("shared/jniMain/native/JniHostHandler.cpp"), .flags = CPP_FLAGS });
+    lib.addCSourceFile(.{ .file = b.path("src/jvmMain/native/ConsoleLogger.cpp"), .flags = CPP_FLAGS });
+    lib.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniHostHandler.cpp"), .flags = CPP_FLAGS });
 
     // External Core Sources
     for (EXTERNAL_SOURCES) |src| {
@@ -137,9 +137,9 @@ fn addIncludePaths(
     java_home: []const u8,
     target: std.Build.ResolvedTarget,
 ) void {
-    lib.addIncludePath(b.path("native"));
-    lib.addIncludePath(b.path("shared/jniMain/native"));
-    lib.addIncludePath(b.path("shared/jvmMain/native")); // ConsoleLogger might be here
+    lib.addIncludePath(b.path("src/jniMain/native"));
+    lib.addIncludePath(b.path("src/jniMain/native"));
+    lib.addIncludePath(b.path("src/jvmMain/native")); // ConsoleLogger might be here
 
     lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include" }) });
     lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include/extensions" }) });

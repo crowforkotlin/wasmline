@@ -4,7 +4,7 @@
 #include "Logger.h"
 #include "Api.h"
 #include "extensions/FileUtils.h"
-#include "../src/jniMain/native/JniHostHandler.h"
+#include "JniHostHandler.h"
 
 static jboolean saveCacheCommon(JNIEnv *env, jstring keyStr, jstring outPathStr, bool unsafe) {
     const char *key = env->GetStringUTFChars(keyStr, nullptr);
