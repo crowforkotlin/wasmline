@@ -156,13 +156,18 @@ fn addIncludePaths(
 }
 
 fn linkDependencies(b: *std.Build, lib: *std.Build.Step.Compile, wasmtime_dir: []const u8, target: std.Build.ResolvedTarget) !void {
-    const lib_name = if (target.result.os.tag == .windows) "wasmtime.lib" else "libwasmtime.a";
-    const lib_path = b.pathJoin(&.{ wasmtime_dir, "lib", lib_name });
+    const lib_name = if (target.result.os.tag == .windows) blk: {
+        if (target.result.abi == .gnu) break :blk "libwasmtime.a";
+        break :blk "wasmtime.lib";
+    } else "libwasmtime.a";
 
+    const lib_path = b.pathJoin(&.{ wasmtime_dir, "lib", lib_name });
+    std.debug.print("[Debug] Checking library path: {s}\n", .{lib_path});
     std.fs.cwd().access(lib_path, .{}) catch {
         std.debug.print("Error: Library file not found at {s}\n", .{lib_path});
         return error.FileNotFound;
     };
+
     lib.addObjectFile(.{ .cwd_relative = lib_path });
 
     if (target.result.os.tag == .windows) {
