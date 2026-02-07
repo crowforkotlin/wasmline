@@ -73,7 +73,7 @@ kotlin {
     }
 
     compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
-
+    applyDefaultHierarchyTemplate()
     sourceSets {
 
         val commonMain by getting {
@@ -85,12 +85,13 @@ kotlin {
         }
         val hostMain by creating { dependsOn(other = commonMain) }
         val jniMain by creating { dependsOn(other = hostMain) }
-        val iosMain by creating { dependsOn(other = hostMain) }
+        val iosMain by getting { dependsOn(other = hostMain) }
         val iosArm64Main by getting { dependsOn(other = iosMain) }
-        val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
-        val jvmMain by getting { dependsOn(other = jniMain)
-
-        }
+        val macosArm64Main by getting { dependsOn(hostMain) }
+        val jvmMain by getting { dependsOn(other = jniMain) }
+        val linuxX64Main by getting { dependsOn(jvmMain) }
+        val mingwX64Main by getting { dependsOn(jvmMain) }
+        val iosSimulatorArm64Main by getting { dependsOn(other = jvmMain) }
         val androidMain by getting {
             dependsOn(other = jniMain)
             dependencies {
@@ -107,6 +108,7 @@ kotlin {
         }
         val hostTest by creating { dependsOn(other = commonTest) }
         val jvmTest by getting { dependsOn(other = hostTest) }
+        val iosTest by getting { dependsOn(other = hostTest) }
 //        val androidInstrumentedTest by getting { dependsOn(other = hostTest) }
     }
 }

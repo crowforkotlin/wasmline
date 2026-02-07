@@ -1,4 +1,4 @@
-package crow.mordecai.wasmline.exensions
+package crow.mordecai.wasmline.extensions
 
 private const val CYAN = "\u001B[36m"
 private const val NC = "\u001B[0m"

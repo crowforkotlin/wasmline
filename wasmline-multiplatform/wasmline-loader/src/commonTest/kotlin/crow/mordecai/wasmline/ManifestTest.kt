@@ -1,6 +1,7 @@
 package crow.mordecai.wasmline
 
-import crow.mordecai.wasmline.exensions.printHeader
+import com.mordecai.wasmline.loader.internal.crypto.Ed25519
+import com.mordecai.wasmline.loader.internal.crypto.KeyPair
 import crow.mordecai.wasmline.extensions.printHeader
 import crow.mordecai.wasmline.model.SignedManifestEnvelope
 import crow.mordecai.wasmline.model.WasmlineArtifact
@@ -14,6 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 class ManifestTest {
 
@@ -33,7 +35,7 @@ class ManifestTest {
             version = "1.0.0",
             versionCode = 100,
             minWasmlineSdkVersion = "0.9.0",
-            buildTimestamp = System.currentTimeMillis(),
+            buildTimestamp = Clock.System.now().toEpochMilliseconds(),
 
             // New Display Fields
             displayName = "Wasmline Demo Plugin",

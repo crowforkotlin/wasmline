@@ -35,16 +35,12 @@ kotlin {
             freeCompilerArgs
         }
     }
+
+    applyDefaultHierarchyTemplate()
     sourceSets {
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(projects.wasmline)
-            }
-        }
         val commonMain by getting {
             dependencies {
+                api(projects.wasmline)
                 implementation(libs.kotlinx.coroutines)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.serialization.protobuf)
@@ -55,9 +51,16 @@ kotlin {
         val androidMain by getting { dependsOn(other = jniMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
         
-        val iosMain by creating { dependsOn(other = commonMain) }
+        val iosMain by getting { dependsOn(other = commonMain) }
         val iosArm64Main by getting { dependsOn(other = iosMain) }
         val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
     }
 }
 
