@@ -1,5 +1,6 @@
 package crow.mordecai.wasmline
 
+import crow.mordecai.wasmline.exensions.printHeader
 import crow.mordecai.wasmline.extensions.printHeader
 import crow.mordecai.wasmline.model.SignedManifestEnvelope
 import crow.mordecai.wasmline.model.WasmlineArtifact
@@ -96,38 +97,49 @@ class ManifestTest {
 
         val manifest = createTestManifest()
 
-        // 2. Deployment Phase: Serialize and Sign
-        val payloadBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
+        // 2. Signing Phase:
+        // We must sign the serialized bytes of the manifest to ensure data integrity.
+        val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
 
         val signer = Signature.getInstance("Ed25519")
         signer.initSign(privateKey)
-        signer.update(payloadBytes)
+        signer.update(manifestBytes)
         val signatureBytes = signer.sign()
 
-        // 3. Wrap in Envelope
+        // 3. Deployment Phase: Wrap into Envelope
+        // The Envelope now contains the structured object, not raw bytes.
         val envelope = SignedManifestEnvelope(
-            payload = payloadBytes,
-            signature = signatureBytes
+            signature = signatureBytes,
+            manifest = manifest,
+            algorithm = "Ed25519"
         )
+
+        // Final serialization of the entire envelope for storage/transmission
         val finalOutputBytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
 
-        println("Manifest Protobuf Size: ${payloadBytes.size} bytes")
+        println("Manifest Protobuf Size: ${manifestBytes.size} bytes")
         println("Final Envelope Size: ${finalOutputBytes.size} bytes")
 
         // 4. Runtime Phase: Host Verification
-        val receivedEnvelope = ProtoBuf.Default.decodeFromByteArray(SignedManifestEnvelope.serializer(), finalOutputBytes)
+        // Decode the entire envelope first
+        val receivedEnvelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), finalOutputBytes)
 
-        val verifier = Signature.getInstance("Ed25519")
-        verifier.initVerify(publicKey) // Verify using the MATCHING public key
-        verifier.update(receivedEnvelope.payload)
+        // To verify the signature, we need to re-serialize the manifest object back to bytes.
+        // Important: Ensure the serializer configuration is identical to the one used during signing.
+        val receivedManifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), receivedEnvelope.manifest)
+
+        val verifier = Signature.getInstance(receivedEnvelope.algorithm)
+        verifier.initVerify(publicKey)
+        verifier.update(receivedManifestBytes)
         val isVerified = verifier.verify(receivedEnvelope.signature)
 
         // 5. Assertions
         println("Signature Valid: $isVerified")
-        assertTrue(isVerified, "Signature should be valid for correct key pair")
+        assertTrue(isVerified, "Signature must be valid when verified with the matching public key")
 
-        val runtimeManifest = ProtoBuf.Default.decodeFromByteArray(WasmlineManifest.serializer(), receivedEnvelope.payload)
-        assertEquals(manifest.pluginId, runtimeManifest.pluginId)
+        // Verify content integrity
+        assertEquals(manifest.pluginId, receivedEnvelope.manifest.pluginId)
+        assertEquals(manifest.versionCode, receivedEnvelope.manifest.versionCode)
     }
 
     @Test
@@ -135,43 +147,37 @@ class ManifestTest {
         printHeader("Test: Signature Failure (Key Mismatch)")
 
         val manifest = createTestManifest()
-        val payloadBytes = ProtoBuf.Default.encodeToByteArray(WasmlineManifest.serializer(), manifest)
 
-        // 1. Generate KeyPair A (The Authorized Publisher)
-        val kpg = KeyPairGenerator.getInstance("Ed25519")
-        val keyPairPublisher = kpg.generateKeyPair()
+        // 1. Publisher signs the manifest
+        val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
+        val keyPairPublisher = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
 
-        // 2. Generate KeyPair B (The Host or Attacker with wrong keys)
-        val keyPairWrong = kpg.generateKeyPair()
-
-        println("Publisher Public Key HashCode : ${keyPairPublisher.public.hashCode()}")
-        println("Wrong Public Key HashCode:     ${keyPairWrong.public.hashCode()}")
-
-        // 3. Sign using Publisher's Private Key (A)
         val signer = Signature.getInstance("Ed25519")
         signer.initSign(keyPairPublisher.private)
-        signer.update(payloadBytes)
+        signer.update(manifestBytes)
         val signatureBytes = signer.sign()
 
-        // 4. Wrap in Envelope
+        // 2. Wrap into Envelope
         val envelope = SignedManifestEnvelope(
-            payload = payloadBytes,
-            signature = signatureBytes
+            signature = signatureBytes,
+            manifest = manifest
         )
-        val finalOutputBytes = ProtoBuf.Default.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
+        val envelopeBytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
 
-        // 5. Simulate Host loading the file
-        val receivedEnvelope = ProtoBuf.Default.decodeFromByteArray(SignedManifestEnvelope.serializer(), finalOutputBytes)
+        // 3. Attacker/Wrong Host attempts verification with a different key
+        val keyPairWrong = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+        val receivedEnvelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), envelopeBytes)
 
-        // 6. Verify using the WRONG Public Key (B)
-        // Scenario: Host has an old or different public key than the one used to sign.
+        // Re-serialize for verification
+        val receivedManifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), receivedEnvelope.manifest)
+
         val verifier = Signature.getInstance("Ed25519")
         verifier.initVerify(keyPairWrong.public)
-        verifier.update(receivedEnvelope.payload)
+        verifier.update(receivedManifestBytes)
         val isVerified = verifier.verify(receivedEnvelope.signature)
 
-        // 7. Assertions
+        // 4. Assertions
         println("Verification Result with wrong key: $isVerified")
-        assertFalse(isVerified, "Signature verification MUST fail when public key does not match private key")
+        assertFalse(isVerified, "Signature verification must fail when public key mismatch occurs")
     }
 }

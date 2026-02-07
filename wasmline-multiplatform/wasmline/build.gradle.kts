@@ -102,6 +102,7 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
+                implementation(projects.wasmline)
             }
         }
         val hostTest by creating { dependsOn(other = commonTest) }

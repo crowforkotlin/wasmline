@@ -11,7 +11,7 @@ import kotlinx.serialization.protobuf.ProtoNumber
  * Structure of the deployment envelope in binary format.
  * Contains the encrypted signature and the serialized Manifest data.
  *
- * @property payload The serialized byte stream of WasmlineManifest (Protobuf or JSON bytes).
+ * @property manifest The serialized byte stream of WasmlineManifest (Protobuf or JSON bytes).
  * @property signature The Ed25519 signature of the payload.
  * @property algorithm The signature algorithm used, enabling future rotation. Defaults to "Ed25519".
  * @property publicKeyId Optional identifier specifying which public key to use for verification (multi-key scenarios).
@@ -22,8 +22,8 @@ import kotlinx.serialization.protobuf.ProtoNumber
  */
 @Serializable
 data class SignedManifestEnvelope(
-    @property:ProtoNumber(1) val payload: ByteArray,
-    @property:ProtoNumber(2) val signature: ByteArray,
+    @property:ProtoNumber(1) val signature: ByteArray,
+    @property:ProtoNumber(2) val manifest: WasmlineManifest,
     @property:ProtoNumber(3) val algorithm: String = "Ed25519",
     @property:ProtoNumber(4) val publicKeyId: String? = null
 ) {
@@ -31,15 +31,15 @@ data class SignedManifestEnvelope(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
         other as SignedManifestEnvelope
-        if (!payload.contentEquals(other.payload)) return false
         if (!signature.contentEquals(other.signature)) return false
+        if (manifest != other.manifest) return false
         if (algorithm != other.algorithm) return false
         if (publicKeyId != other.publicKeyId) return false
         return true
     }
     override fun hashCode(): Int {
-        var result = payload.contentHashCode()
-        result = 31 * result + signature.contentHashCode()
+        var result = signature.contentHashCode()
+        result = 31 * result + manifest.hashCode()
         result = 31 * result + algorithm.hashCode()
         result = 31 * result + (publicKeyId?.hashCode() ?: 0)
         return result
