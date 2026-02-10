@@ -15,7 +15,11 @@
  */
 @file:Suppress("SpellCheckingInspection")
 
-package com.mordecai.wasmline.loader.internal.crypto
+package com.mordecai.wasmline.loader.internal
+
+import com.mordecai.wasmline.loader.internal.crypto.Ed25519
+import com.mordecai.wasmline.loader.internal.crypto.SignatureAlgorithm
+import com.mordecai.wasmline.loader.internal.crypto.SignatureAlgorithmId
 
 internal const val MANIFEST_FILE_NAME = "manifest.wasmline.json"
 
@@ -24,11 +28,11 @@ internal fun getApplicationManifestFileName(applicationName: String) = "$applica
 /** ECDSA P-256. https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm */
 internal expect val ecdsaP256: SignatureAlgorithm
 
+internal expect val systemEpochMsClock: () -> Long
+
 internal fun SignatureAlgorithmId.get(): SignatureAlgorithm {
   return when (this) {
     SignatureAlgorithmId.Ed25519 -> Ed25519
     SignatureAlgorithmId.EcdsaP256 -> ecdsaP256
   }
 }
-
-internal expect val systemEpochMsClock: () -> Long

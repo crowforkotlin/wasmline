@@ -21,10 +21,12 @@ buildConfig {
 
 dependencies {
     implementation(projects.wasmline)
+    implementation(projects.wasmlineLoader)
 
     implementation(libs.clikt)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.protobuf)
+    implementation(libs.okio.core)
 
     testImplementation(libs.kotlin.test)
 }

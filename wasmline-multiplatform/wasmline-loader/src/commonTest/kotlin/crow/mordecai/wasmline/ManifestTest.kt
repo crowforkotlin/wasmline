@@ -1,7 +1,9 @@
 package crow.mordecai.wasmline
 
 import com.mordecai.wasmline.loader.internal.crypto.Ed25519
+import com.mordecai.wasmline.loader.internal.crypto.Ed25519Constants
 import com.mordecai.wasmline.loader.internal.crypto.KeyPair
+import com.mordecai.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.mordecai.wasmline.extensions.printHeader
 import crow.mordecai.wasmline.model.SignedManifestEnvelope
 import crow.mordecai.wasmline.model.WasmlineArtifact
@@ -91,6 +93,8 @@ class ManifestTest {
     fun `test Protobuf signing and verification is success`() {
         printHeader("Test: Protobuf & Ed25519 Valid Signature")
 
+
+
         // 1. Setup Environment: Generate valid Ed25519 KeyPair
         val kpg = KeyPairGenerator.getInstance("Ed25519")
         val keyPair = kpg.generateKeyPair()
@@ -167,6 +171,7 @@ class ManifestTest {
         val envelopeBytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
 
         // 3. Attacker/Wrong Host attempts verification with a different key
+        com.mordecai.wasmline.loader.internal.crypto.generateKeyPair()
         val keyPairWrong = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val receivedEnvelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), envelopeBytes)
 

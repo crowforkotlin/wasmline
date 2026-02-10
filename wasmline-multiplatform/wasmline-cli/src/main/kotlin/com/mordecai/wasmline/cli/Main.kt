@@ -15,6 +15,7 @@ fun main(vararg args: String) {
             commands = arrayOf(
                 Compile(),
                 Download(),
+                GenerateKeyPair(),
             )
         )
         .versionOption(version = BuildConfig.VERSION)

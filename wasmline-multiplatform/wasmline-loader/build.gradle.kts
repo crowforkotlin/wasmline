@@ -1,6 +1,7 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
 
 import com.android.build.api.dsl.androidLibrary
+import org.jetbrains.kotlin.tooling.core.closure
 
 
 plugins {
@@ -18,9 +19,6 @@ java {
 
 kotlin {
     jvm()
-    mingwX64()
-    linuxX64()
-    macosArm64()
     androidLibrary {
         namespace = "crow.mordecai.wasmline"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
