@@ -1,23 +1,189 @@
 ---
-title: Wasmline Project
-description: A high-performance WebAssembly documentation framework based on Fumadocs.
+title: WasmLine Overview
+description: A Kotlin Multiplatform WebAssembly (WASI) plugin framework powered by Wasmtime
 ---
 
-## Introduction
+# WasmLine
 
-Welcome to the **Wasmline** documentation. This project is dedicated to providing a seamless experience for developers working with WebAssembly and Next.js.
+A **Kotlin Multiplatform** plugin framework powered by [Wasmtime](https://wasmtime.dev/), enabling **WebAssembly (WASI)** plugin loading and execution across Android, iOS, Desktop (macOS / Windows / Linux), and Web.
 
-### Key Features
+Plugins can be developed in **any language** that compiles to WASI — Kotlin, Rust, C/C++, Go, AssemblyScript, and more.
 
-- **Blazing Fast**: Powered by Next.js 15 and Turbopack.
-- **MDX Support**: Write your docs in Markdown with the power of React components.
-- **Search Built-in**: Local search functionality out of the box.
-- **Tailwind CSS**: Fully customizable styling.
+---
 
-### Getting Started
+## Platform Support
 
-To run this project locally, follow these steps:
+| Platform | Architecture | Runtime | Status |
+|----------|-------------|---------|--------|
+| Android  | arm64-v8a   | Wasmtime (JNI) | :white_check_mark: Supported |
+| iOS      | arm64       | Wasmtime (C Interop) | :white_check_mark: Supported |
+| macOS    | arm64       | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
+| Linux    | x86_64      | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
+| Windows  | x86_64      | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
+| Web      | wasm32-wasi | Kotlin/Wasi | :construction: Planned |
 
-1. **Clone the repository**:
-   ```bash
-   git clone [https://github.com/your-username/wasmline.git](https://github.com/your-username/wasmline.git)
+---
+
+## Architecture
+
+![WasmLine Architecture](/images/architecture.png)
+
+### Module Structure
+
+```
+wasmline-multiplatform/
+├── wasmline/              # Core runtime — WASM module loading & execution
+├── wasmline-loader/       # Crypto & manifest — Ed25519/ECDSA-P256 signing, manifest serialization
+├── wasmline-cli/          # CLI toolchain — build, compile, manifest, download, key generation
+├── wasmline-android/      # Android native bindings (CMake / JNI C++)
+├── wasmline-sample/       # Sample applications (plugin, Android, Desktop, Multiplatform Compose)
+└── wasmline-build-logic/  # Gradle convention plugins
+```
+
+**Dependency flow**: `wasmline-cli` → `wasmline-loader` → `wasmline` (core)
+
+### Key Technologies
+
+- **Kotlin Multiplatform** with custom source set hierarchy
+- **Wasmtime 41.0.1** as the underlying WASM runtime, with platform-specific native bindings (JNI via Zig, C Interop for iOS)
+- **kotlinx.serialization** for both JSON and Protobuf formats
+- **Ed25519** digital signatures for mandatory manifest signing and verification
+- **Clikt** for CLI command-line interface
+- **AOT compilation** — `.wasm` → `.cwasm` (platform-specific) / `.pwasm` (Pulley portable bytecode)
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **JDK 21** or later
+- **Zig 0.15.1** (for native library builds only)
+
+<Steps>
+  <Step>
+    ### Initialize Environment
+
+    ```bash
+    sh ./scripts/init.sh
+    ```
+  </Step>
+
+  <Step>
+    ### Build the Project
+
+    All Gradle commands run from the `wasmline-multiplatform/` directory:
+
+    ```bash title="build.sh"
+    # Build everything
+    ./gradlew build
+
+    # Run loader tests
+    ./gradlew :wasmline-loader:jvmTest
+
+    # Run CLI tests
+    ./gradlew :wasmline-cli:test
+
+    # Compile WASM plugin sample
+    ./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+    ```
+  </Step>
+
+  <Step>
+    ### Native Build (Zig)
+
+    Outputs JNI native libraries for the host platform:
+
+    ```bash
+    # From the wasmline/ directory
+    zig build --release=small -p src/jvmMain/resources    # release
+    zig build -p src/jvmMain/resources                     # debug
+    ```
+  </Step>
+</Steps>
+
+---
+
+## CLI Toolchain
+
+WasmLine provides a CLI for the full plugin build pipeline. All commands run via Gradle:
+
+```bash
+./gradlew :wasmline-cli:run --args="<command> [options]"
+```
+
+| Command | Description |
+|---------|-------------|
+| `download` | Download Wasmtime releases for target platforms |
+| `generate-key-pair` | Generate Ed25519 key pairs for manifest signing |
+| `compile` | Compile `.wasm` to platform-specific AOT artifacts (`.cwasm` / `.pwasm`) |
+| `manifest` | Generate a signed manifest (`.wlm`) from compile output |
+| `build` | Full pipeline: compile → manifest → zip packaging |
+
+### Example: Full Build Pipeline
+
+```bash title="pipeline.sh"
+# 1. Download Wasmtime
+./gradlew :wasmline-cli:run --args="download -v v41.0.1"
+
+# 2. Generate signing keys
+./gradlew :wasmline-cli:run --args="generate-key-pair --save"
+
+# 3. Build plugin (compile → sign → package)
+./gradlew :wasmline-cli:run --args="build -i plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos --key build/wasmline/keys/ed25519_private.key"
+```
+
+### Build Output
+
+```
+build/wasmline/
+├── output/{name}-{version}/
+│   ├── manifest.wlm                # Signed manifest (Protobuf)
+│   ├── {name}-pulley64.pwasm       # Pulley portable bytecode
+│   ├── {name}-aarch64-android.cwasm
+│   ├── {name}-aarch64-macos.cwasm
+│   ├── {name}-aarch64-ios.cwasm
+│   ├── {name}-x86_64-linux.cwasm
+│   ├── {name}-x86_64-windows.cwasm
+│   └── debug/
+│       ├── compile-result.json
+│       └── manifest.json           # Human-readable manifest
+├── dist/
+│   └── {name}-{version}.zip        # Distributable package
+└── keys/
+    ├── ed25519_private.key
+    └── ed25519_public.key
+```
+
+---
+
+## Samples
+
+<Tabs items={['Android', 'Compose Desktop']}>
+  <Tab value="Android">
+    ![Android](/images/android_sample.png)
+  </Tab>
+  <Tab value="Compose Desktop">
+    ![Compose Desktop](/images/compose_desktop_mac.png)
+  </Tab>
+</Tabs>
+
+---
+
+## Kotlin/Wasi Compatibility
+
+![Kotlin/Wasi Runtime Support Status](/images/kotlin_support.png)
+
+<Callout type="warn" title="Kotlin/Wasi Runtime Requirement">
+  WasmLine requires **Kotlin 2.3.20-Beta1** or later for reliable Kotlin/Wasi support. Earlier versions and other runtimes may throw errors or lack support for required Wasm features (GC, function references, exception handling).
+</Callout>
+
+---
+
+## Resources
+
+<Cards>
+  <Card href="https://github.com/crowforkotlin/wasm-kotlin-exploration" title="Wasm/Kotlin Exploration" description="Wasm + Kotlin research and test cases" />
+  <Card href="https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/" title="Wasmtime on Android (JNI)" description="Embedding Wasmtime on Android via JNI" />
+  <Card href="https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91%A8%E5%BA%86/" title="Wasm vs. Wasi Deep Dive" description="Differences between Wasm and Wasi, and their lifecycles" />
+</Cards>

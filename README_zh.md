@@ -12,12 +12,12 @@
 
 | 平台 | 架构 | 运行时 | 状态 |
 |------|------|--------|------|
-| Android | arm64-v8a | Wasmtime (JNI/Zig) | 已支持 |
-| iOS | arm64 | Wasmtime (C Interop) | 已支持 |
-| macOS | arm64 | Wasmtime (JNI/Zig) | 已支持 |
-| Linux | x86_64 | Wasmtime (JNI/Zig) | 已支持 |
-| Windows | x86_64 | Wasmtime (JNI/Zig) | 已支持 |
-| Web | wasm32-wasi | Kotlin/Wasi | 计划中 |
+| Android | arm64-v8a | Wasmtime (JNI) | :white_check_mark: 已支持 |
+| iOS | arm64 | Wasmtime (C Interop) | :white_check_mark: 已支持 |
+| macOS | arm64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
+| Linux | x86_64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
+| Windows | x86_64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
+| Web | wasm32-wasi | Kotlin/Wasi | :construction: 计划中 |
 
 ## 架构
 
@@ -151,27 +151,13 @@ build/wasmline/
 
 ## 示例
 
-运行所有示例应用：
-
-```bash
-sh ./scripts/samples/run.sh
-```
-
 <table>
   <tr>
     <td align="center"><img src="docs/public/images/android_sample.png" alt="Android 示例"></td>
-    <td align="center"><img src="docs/public/images/macos_sample.png" alt="macOS 示例"></td>
-  </tr>
-  <tr>
-    <td align="center">Android</td>
-    <td align="center">macOS（原生）</td>
-  </tr>
-</table>
-<table>
-  <tr>
     <td align="center"><img src="docs/public/images/compose_desktop_mac.png" alt="Compose Desktop"></td>
   </tr>
   <tr>
+    <td align="center">Android</td>
     <td align="center">Compose Desktop (macOS)</td>
   </tr>
 </table>

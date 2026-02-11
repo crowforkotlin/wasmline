@@ -12,12 +12,12 @@ Plugins can be developed in **any language** that compiles to WASI — Kotlin, R
 
 | Platform | Architecture | Runtime | Status |
 |----------|-------------|---------|--------|
-| Android  | arm64-v8a   | Wasmtime (JNI/Zig) | Supported |
-| iOS      | arm64       | Wasmtime (C Interop) | Supported |
-| macOS    | arm64       | Wasmtime (JNI/Zig) | Supported |
-| Linux    | x86_64      | Wasmtime (JNI/Zig) | Supported |
-| Windows  | x86_64      | Wasmtime (JNI/Zig) | Supported |
-| Web      | wasm32-wasi | Kotlin/Wasi | Planned |
+| Android  | arm64-v8a   | Wasmtime (JNI) | :white_check_mark: Supported |
+| iOS      | arm64       | Wasmtime (C Interop) | :white_check_mark: Supported |
+| macOS    | arm64       | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
+| Linux    | x86_64      | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
+| Windows  | x86_64      | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
+| Web      | wasm32-wasi | Kotlin/Wasi | :construction: Planned |
 
 ## Architecture
 
@@ -151,27 +151,13 @@ See [`wasmline-cli/`](wasmline-multiplatform/wasmline-cli/) for per-command docu
 
 ## Samples
 
-Run all sample applications:
-
-```bash
-sh ./scripts/samples/run.sh
-```
-
 <table>
   <tr>
     <td align="center"><img src="docs/public/images/android_sample.png" alt="Android Sample"></td>
-    <td align="center"><img src="docs/public/images/macos_sample.png" alt="macOS Sample"></td>
-  </tr>
-  <tr>
-    <td align="center">Android</td>
-    <td align="center">macOS (Native)</td>
-  </tr>
-</table>
-<table>
-  <tr>
     <td align="center"><img src="docs/public/images/compose_desktop_mac.png" alt="Compose Desktop"></td>
   </tr>
   <tr>
+    <td align="center">Android</td>
     <td align="center">Compose Desktop (macOS)</td>
   </tr>
 </table>
