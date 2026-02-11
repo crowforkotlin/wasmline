@@ -21,7 +21,7 @@ import com.mordecai.wasmline.loader.internal.crypto.Ed25519
 import com.mordecai.wasmline.loader.internal.crypto.SignatureAlgorithm
 import com.mordecai.wasmline.loader.internal.crypto.SignatureAlgorithmId
 
-internal const val MANIFEST_FILE_NAME = "manifest.wasmline.json"
+internal const val MANIFEST_FILE_NAME = "manifest.wlm"
 
 internal fun getApplicationManifestFileName(applicationName: String) = "$applicationName.$MANIFEST_FILE_NAME"
 
