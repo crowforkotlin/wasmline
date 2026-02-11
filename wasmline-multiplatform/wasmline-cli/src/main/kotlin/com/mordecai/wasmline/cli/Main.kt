@@ -13,7 +13,9 @@ fun main(vararg args: String) {
     NoOpCliktCommand(name = "wasmline")
         .subcommands(
             commands = arrayOf(
+                Build(),
                 Compile(),
+                Manifest(),
                 Download(),
                 GenerateKeyPair(),
             )

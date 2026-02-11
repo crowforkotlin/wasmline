@@ -23,9 +23,9 @@ import kotlinx.serialization.protobuf.ProtoNumber
 @Serializable
 data class SignedManifestEnvelope(
     @property:ProtoNumber(1) val signature: ByteArray,
-    @property:ProtoNumber(2) val manifest: WasmlineManifest,
-    @property:ProtoNumber(3) val algorithm: String = "Ed25519",
-    @property:ProtoNumber(4) val publicKeyId: String? = null
+    @property:ProtoNumber(2) val algorithm: String = "Ed25519",
+    @property:ProtoNumber(3) val publicKeyId: String? = null,
+    @property:ProtoNumber(4) val manifest: WasmlineManifest
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -53,7 +53,7 @@ data class SignedManifestEnvelope(
  * @property pluginId Unique identifier (e.g., "com.mordecai.filter").
  * @property version Semantic version (e.g., "1.2.0").
  * @property versionCode Integer version for updates.
- * @property minWasmlineSdkVersion API compatibility check.
+ * @property minSdkVersion API compatibility check.
  * @property displayName display name (e.g., "Super Image Filter").
  * @property author Developer name.
  * @property description Short summary.
@@ -72,9 +72,7 @@ data class WasmlineManifest(
     @property:ProtoNumber(1) val pluginId: String,
     @property:ProtoNumber(2) val version: String,
     @property:ProtoNumber(3) val versionCode: Long,
-
-    @property:ProtoNumber(4) val minWasmlineSdkVersion: String,
-
+    @property:ProtoNumber(4) val minSdkVersion: String,
     @property:ProtoNumber(5) val displayName: String? = null,
     @property:ProtoNumber(6) val author: String? = null,
     @property:ProtoNumber(7) val description: String? = null,

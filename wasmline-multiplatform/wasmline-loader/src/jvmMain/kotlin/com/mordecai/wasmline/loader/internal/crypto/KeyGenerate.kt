@@ -15,7 +15,6 @@ import okio.ByteString.Companion.toByteString
 internal fun generateEd25519KeyPair(): KeyPair {
     val secretSeed = ByteArray(Field25519.FIELD_LEN)
     _root_ide_package_.com.mordecai.wasmline.loader.internal.secureRandom().nextBytes(secretSeed)
-
     return newKeyPairFromSeed(secretSeed.toByteString())
 }
 

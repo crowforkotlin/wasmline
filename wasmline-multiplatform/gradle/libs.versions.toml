@@ -56,7 +56,7 @@ buildconfig = "6.0.7"
 koin = "4.1.1"
 
 # https://github.com/ktorio/ktor
-ktor = "3.3.3"
+ktor = "3.4.0"
 
 # https://github.com/adrielcafe/voyager
 voyager = "1.1.0-beta03"
@@ -127,6 +127,9 @@ slf4j = "2.0.17"
 
 # https://github.com/ajalt/clikt
 clikt = "5.1.0"
+
+compress-apache-common = "1.28.0"
+compress-tukaani-xz = "1.11"
 
 [libraries]
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
@@ -209,6 +212,7 @@ koin-compose-viewmodel-navigation = { module = "io.insert-koin:koin-compose-view
 coil = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
@@ -265,12 +269,18 @@ sonner = { module = "io.github.dokar3:sonner", version.ref = "sonner" }
 # mac package
 conveyor = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref= "conveyor-control" }
 
+# tar, gz
+compress-apache-common = { module = "org.apache.commons:commons-compress", version.ref = "compress-apache-common"}
+compress-tukaani-xz = { module = "org.tukaani:xz", version.ref = "compress-tukaani-xz"}
+
 gradle-ksp-plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
 gradle-compose-plugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "compose-plugin" }
 gradle-compose-compiler-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 gradle-kotlinx-serialization-plugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
 gradle-android-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 gradle-kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
