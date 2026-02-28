@@ -1,4 +1,7 @@
-plugins { id("app.base.library") }
+plugins {
+    id("app.base.library")
+    alias(libs.plugins.maven.publish)
+}
 
 android {
     defaultConfig {

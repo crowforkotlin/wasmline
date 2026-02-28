@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.maven.publish)
-    application
 }
 
 java {
@@ -17,9 +16,8 @@ java {
 
 buildConfig {
     useKotlinOutput { internalVisibility = true }
-    packageName("crow.mordecai.wasmline.cli")
-    buildConfigField("String", "VERSION", "\"${version}\"")
-    buildConfigField("String", "WASMTIME_VERSION", "\"${extra["wasmtime_version"]}\"")
+    packageName("crow.mordecai.wasmline.kotlin")
+    buildConfigField("String", "KOTLIN_PLUGIN_ID", "\"${libs.plugins.wasmline.kotlin.get()}\"")
 }
 
 dependencies {
@@ -40,5 +38,3 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
 }
-
-application { mainClass = "com.mordecai.wasmline.cli.MainKt" }

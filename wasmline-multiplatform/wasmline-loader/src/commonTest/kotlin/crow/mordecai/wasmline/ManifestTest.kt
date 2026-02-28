@@ -2,7 +2,7 @@
 
 package crow.mordecai.wasmline
 
-import com.mordecai.wasmline.loader.internal.crypto.Ed25519
+import crow.mordecai.wasmline.loader.internal.crypto.Ed25519
 import crow.mordecai.wasmline.extensions.Keys
 import crow.mordecai.wasmline.extensions.printHeader
 import crow.mordecai.wasmline.model.SignedManifestEnvelope

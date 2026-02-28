@@ -8,6 +8,7 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        mavenLocal()
     }
 }
 dependencyResolutionManagement {
@@ -56,6 +57,8 @@ fun includeModule(topName: String, file: File) {
 
 includeModule(topName = "wasmline-sample", file = file("wasmline-sample"))
 includeModule(topName = "wasmline", file = file("wasmline"))
+include(":wasmline-gradle-plugin")
+include(":wasmline-kotlin-plugin")
 include(":wasmline-cli")
 include(":wasmline-android")
 include(":wasmline-loader")

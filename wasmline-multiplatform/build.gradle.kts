@@ -1,3 +1,5 @@
+import com.vanniktech.maven.publish.MavenPublishBaseExtension
+
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
@@ -13,11 +15,45 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.buildconfig) apply false
+    alias(libs.plugins.maven.publish) apply false
+//    alias(libs.plugins.wasmline) apply false
 }
 
 
 
 allprojects {
-    group = "crow.mordecai.wasmline"
+    group = "com.mordecai.wasmline"
     version = project.property("VERSION_NAME") as String
+
+
+    pluginManager.withPlugin("com.vanniktech.maven.publish") {
+        configure<MavenPublishBaseExtension> {
+            publishToMavenCentral(automaticRelease = true)
+            signAllPublications()
+            pom {
+                description.set("Wasmline")
+                name.set("Wasmline")
+                url.set("https://github.com/crowforkotlin/wasmline/")
+                licenses {
+                    license {
+                        name.set("The Apache Software License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                        distribution.set("repo")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("crowforkotlin")
+                        name.set("wuya")
+                        email.set("crowforkotlin@gmail.com")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/crowforkotlin/wasmline/")
+                    connection.set("scm:git:https://github.com/crowforkotlin/wasmline.git")
+                    developerConnection.set("scm:git:ssh://git@github.com:crowforkotlin/wasmline.git")
+                }
+            }
+        }
+    }
 }

@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.android.library.kmp)
+    alias(libs.plugins.maven.publish)
 }
 
 java {
@@ -87,11 +88,11 @@ kotlin {
         val jniMain by creating { dependsOn(other = hostMain) }
         val iosMain by getting { dependsOn(other = hostMain) }
         val iosArm64Main by getting { dependsOn(other = iosMain) }
+        val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
         val macosArm64Main by getting { dependsOn(hostMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
-        val linuxX64Main by getting { dependsOn(jvmMain) }
-        val mingwX64Main by getting { dependsOn(jvmMain) }
-        val iosSimulatorArm64Main by getting { dependsOn(other = jvmMain) }
+//        val linuxX64Main by getting { dependsOn(jvmMain) }
+//        val mingwX64Main by getting { dependsOn(jvmMain) }
         val androidMain by getting {
             dependsOn(other = jniMain)
             dependencies {

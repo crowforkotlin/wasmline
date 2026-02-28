@@ -18,7 +18,7 @@
 package crow.mordecai.wasmline.cli
 
 import com.github.ajalt.clikt.core.parse
-import com.mordecai.wasmline.cli.GenerateKeyPair
+import crow.mordecai.wasmline.cli.GenerateKeyPair
 import okio.Buffer
 import org.junit.Test
 import java.io.PrintStream

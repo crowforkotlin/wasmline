@@ -131,6 +131,8 @@ clikt = "5.1.0"
 compress-apache-common = "1.28.0"
 compress-tukaani-xz = "1.11"
 
+maven-publish = "0.36.0"
+
 [libraries]
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 
@@ -279,6 +281,7 @@ gradle-compose-compiler-plugin = { module = "org.jetbrains.kotlin:compose-compil
 gradle-kotlinx-serialization-plugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
 gradle-android-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 gradle-kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+gradle-kotlin-plugin-api = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin-api", version.ref = "kotlin" }
 
 
 
@@ -305,3 +308,9 @@ zipline = { id = "io.github.crowforkotlin.zipline", version.ref = "zipline" }
 
 conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+
+java-gradle-plugin = { id = "java-gradle-plugin" }
+
+maven-publish = { id = "com.vanniktech.maven.publish.base", version.ref = "maven-publish" }
+wasmline = { id = "com.mordecai.wasmline", version = "1.0.0" }
+wasmline-kotlin = { id = "com.mordecai.wasmline.kotlin" }
