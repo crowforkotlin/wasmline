@@ -1,4 +1,4 @@
-package crow.mordecai.wasmline.sample.extensions
+package crow.wasmline.sample.extensions
 
 import crow.wasmline.sample.bean.PlatformBean
 import kotlin.time.Clock

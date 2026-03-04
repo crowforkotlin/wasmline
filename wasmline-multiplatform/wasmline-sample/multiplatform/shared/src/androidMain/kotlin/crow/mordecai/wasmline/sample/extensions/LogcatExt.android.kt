@@ -1,4 +1,4 @@
-package crow.mordecai.wasmline.sample.extensions
+package crow.wasmline.sample.extensions
 
 import android.util.Log
 

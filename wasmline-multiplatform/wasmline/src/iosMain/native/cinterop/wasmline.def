@@ -1,2 +1,2 @@
-package = crow.mordecai.wasmline.native.c
+package = crow.wasmline.native.c
 headers = WasmlineNative.h

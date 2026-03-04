@@ -312,5 +312,6 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 java-gradle-plugin = { id = "java-gradle-plugin" }
 
 maven-publish = { id = "com.vanniktech.maven.publish.base", version.ref = "maven-publish" }
-wasmline = { id = "com.mordecai.wasmline", version = "1.0.0" }
-wasmline-kotlin = { id = "com.mordecai.wasmline.kotlin" }
+wasmline = { id = "crow.wasmline", version = "1.0.0" }
+wasmline-kotlin = { id = "crow.wasmline.kotlin" }
+wasmline-gradle = { id = "crow.wasmline.gradle.plugin", version = "1.0.0" }

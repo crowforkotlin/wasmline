@@ -31,7 +31,7 @@ KEY_FILE="build/wasmline/keys/ed25519_private.key"
 HEX_KEY="10829ee4b2894f74647aa109ff82ff549a176e28d64632b69f1c8d5a5225023b"
 
 # Plugin metadata (used by: build, manifest)
-PLUGIN_ID="com.mordecai.${NAME}"
+PLUGIN_ID="crow.wasmline.${NAME}"
 AUTHOR="Crow"
 DISPLAY_NAME="Upgrade loader"
 DESCRIPTION="A upgrade loader plugin"

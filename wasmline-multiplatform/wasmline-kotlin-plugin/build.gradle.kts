@@ -16,7 +16,7 @@ java {
 
 buildConfig {
     useKotlinOutput { internalVisibility = true }
-    packageName("crow.mordecai.wasmline.kotlin")
+    packageName("crow.wasmline.kotlin")
     buildConfigField("String", "KOTLIN_PLUGIN_ID", "\"${libs.plugins.wasmline.kotlin.get()}\"")
 }
 

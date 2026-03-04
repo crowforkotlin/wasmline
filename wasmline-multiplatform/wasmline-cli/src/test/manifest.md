@@ -9,7 +9,7 @@
 ## generate manifest with full metadata
 
 ```shell
-./gradlew :wasmline-cli:run --args="manifest -d build/wasmline/output/manga-1.2.0 --plugin-id com.mordecai.manga --version 1.2.0 --version-code 120 --display-name 'Manga Reader' --author Crow --description 'A manga reader plugin' --key ed25519_private.key"
+./gradlew :wasmline-cli:run --args="manifest -d build/wasmline/output/manga-1.2.0 --plugin-id crow.wasmline.manga --version 1.2.0 --version-code 120 --display-name 'Manga Reader' --author Crow --description 'A manga reader plugin' --key ed25519_private.key"
 ```
 
 ## generate manifest with hex string key

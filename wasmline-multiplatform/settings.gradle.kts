@@ -1,11 +1,17 @@
-import org.gradle.kotlin.dsl.provider.gradleKotlinDslJarsOf
+@file:Suppress("UnstableApiUsage")
 
 rootProject.name = "wasmline-multiplatform"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("wasmline-build-logic")
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("androidx.*")
+                includeGroupByRegex("com\\.google.*")
+            }
+        }
         mavenCentral()
         gradlePluginPortal()
         mavenLocal()
@@ -13,7 +19,13 @@ pluginManagement {
 }
 dependencyResolutionManagement {
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("androidx.*")
+                includeGroupByRegex("com\\.google.*")
+            }
+        }
         mavenCentral()
         maven("https://packages.jetbrains.team/maven/p/kpm/public/") {
             mavenContent {

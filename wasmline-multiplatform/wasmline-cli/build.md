@@ -15,7 +15,7 @@
 ## build with full manifest metadata
 
 ```shell
-./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin --version 1.2.0 --version-code 120 --plugin-id com.mordecai.plugin --display-name 'Upgrade loader' --author Crow --description 'A upgrade loader plugin' --key build/wasmline/keys/ed25519_private.key"
+./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin --version 1.2.0 --version-code 120 --plugin-id crow.wasmline.plugin --display-name 'Upgrade loader' --author Crow --description 'A upgrade loader plugin' --key build/wasmline/keys/ed25519_private.key"
 ```
 
 ## build with hex string key instead of file

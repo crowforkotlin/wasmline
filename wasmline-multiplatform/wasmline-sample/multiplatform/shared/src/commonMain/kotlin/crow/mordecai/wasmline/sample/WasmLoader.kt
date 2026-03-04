@@ -1,17 +1,16 @@
-package crow.mordecai.wasmline.sample
+package crow.wasmline.sample
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import crow.mordecai.wasmline.Wasmline
-import crow.mordecai.wasmline.onFailure
-import crow.mordecai.wasmline.onSuccess
-import crow.mordecai.wasmline.sample.extensions.getPlatformBean
-import crow.mordecai.wasmline.sample.extensions.info
+import crow.wasmline.Wasmline
+import crow.wasmline.onFailure
+import crow.wasmline.onSuccess
+import crow.wasmline.sample.extensions.getPlatformBean
+import crow.wasmline.sample.extensions.info
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.baseProtobuf
 import crow.wasmline.sample.extensions.toJsonString
-import crow.wasmline.sample.extensions.toProtoBean
 import crow.wasmline.sample.extensions.toProtoBytes
 import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.measureTime

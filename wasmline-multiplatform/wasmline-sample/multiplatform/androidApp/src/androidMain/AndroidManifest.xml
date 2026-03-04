@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:name="crow.mordecai.wasmline.sample.MainApplication"
+        android:name="crow.wasmline.sample.MainApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/App.Theme">
         <activity
-            android:name="crow.mordecai.wasmline.sample.MainActivity"
+            android:name="crow.wasmline.sample.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

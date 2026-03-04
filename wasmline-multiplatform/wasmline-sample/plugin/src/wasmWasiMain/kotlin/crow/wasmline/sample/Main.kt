@@ -6,8 +6,8 @@ package crow.wasmline.sample
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toProtoBean
 import crow.wasmline.sample.extensions.toProtoBytes
-import crow.mordecai.wasmline.WasmRouter
-import crow.mordecai.wasmline.WasmlineInitialize
+import crow.wasmline.WasmRouter
+import crow.wasmline.WasmlineInitialize
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.time.Clock
 

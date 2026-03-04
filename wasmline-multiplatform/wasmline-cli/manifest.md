@@ -9,7 +9,7 @@
 ## generate manifest with full metadata
 
 ```shell
-./gradlew :wasmline-cli:run --args="manifest -d build/wasmline/output/plugin-1.2.0 --plugin-id com.mordecai.plugin --version 1.2.0 --version-code 120 --display-name 'Upgrade loader' --author Crow --description 'A upgrade loader plugin' --key build/wasmline/keys/ed25519_private.key"
+./gradlew :wasmline-cli:run --args="manifest -d build/wasmline/output/plugin-1.2.0 --plugin-id crow.wasmline.plugin --version 1.2.0 --version-code 120 --display-name 'Upgrade loader' --author Crow --description 'A upgrade loader plugin' --key build/wasmline/keys/ed25519_private.key"
 ```
 
 ## generate manifest with hex string key

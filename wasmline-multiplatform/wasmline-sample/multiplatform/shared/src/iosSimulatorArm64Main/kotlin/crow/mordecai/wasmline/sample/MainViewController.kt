@@ -1,4 +1,4 @@
-package crow.mordecai.wasmline.sample
+package crow.wasmline.sample
 
 import androidx.compose.material.MaterialTheme
 import androidx.compose.ui.window.ComposeUIViewController

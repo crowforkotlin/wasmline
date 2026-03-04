@@ -21,7 +21,7 @@ java {
 kotlin {
     jvm()
     androidLibrary {
-        namespace = "crow.mordecai.wasmline"
+        namespace = "crow.wasmline"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }

@@ -1,4 +1,4 @@
-package crow.mordecai.wasmline.sample
+package crow.wasmline.sample
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import crow.mordecai.wasmline.Wasmline
 import crow.wasmline.sample.extensions.toJsonString
 import kotlinx.coroutines.launch
 

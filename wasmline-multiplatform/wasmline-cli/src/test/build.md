@@ -15,7 +15,7 @@
 ## build with full manifest metadata
 
 ```shell
-./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n manga --version 1.2.0 --version-code 120 --plugin-id com.mordecai.manga --display-name 'Manga Reader' --author Crow --description 'A manga reader plugin' --key ed25519_private.key"
+./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n manga --version 1.2.0 --version-code 120 --plugin-id crow.wasmline.manga --display-name 'Manga Reader' --author Crow --description 'A manga reader plugin' --key ed25519_private.key"
 ```
 
 ## build with hex string key instead of file

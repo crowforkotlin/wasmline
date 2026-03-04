@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AndroidSampleTest">
         <activity
-            android:name="crow.mordecai.wasmline.MainActivity"
+            android:name="crow.wasmline.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -19,13 +19,9 @@ java {
 }
 
 kotlin {
-
     jvm()
-    mingwX64()
-    linuxX64()
-    macosArm64()
     androidLibrary {
-        namespace = "crow.mordecai.wasmline"
+        namespace = "crow.wasmline"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
@@ -59,7 +55,7 @@ kotlin {
             configureCInterop(target)
             target.binaries.framework {
                 isStatic = false
-                freeCompilerArgs += listOf("-Xbinary=bundleId=crow.mordecai.wasmline")
+                freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
                 val coreLibAbsPath = iosBuildDir.resolve("libwasmline_core_ios.a").absolutePath
                 val wasmtimeLibAbsPath = wasmtimeLibDir.resolve("libwasmtime.a").absolutePath
                 linkerOpts(
@@ -89,8 +85,8 @@ kotlin {
         val iosMain by getting { dependsOn(other = hostMain) }
         val iosArm64Main by getting { dependsOn(other = iosMain) }
         val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
-        val macosArm64Main by getting { dependsOn(hostMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
+//        val macosArm64Main by getting { dependsOn(hostMain) }
 //        val linuxX64Main by getting { dependsOn(jvmMain) }
 //        val mingwX64Main by getting { dependsOn(jvmMain) }
         val androidMain by getting {

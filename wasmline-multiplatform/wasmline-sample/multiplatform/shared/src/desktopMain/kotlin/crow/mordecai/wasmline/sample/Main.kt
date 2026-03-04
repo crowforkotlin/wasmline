@@ -1,6 +1,6 @@
 @file:OptIn(InternalResourceApi::class, ExperimentalSerializationApi::class)
 
-package crow.mordecai.wasmline.sample
+package crow.wasmline.sample
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -9,7 +9,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.decodeToImageBitmap
@@ -17,19 +16,11 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
-import crow.mordecai.wasmline.Wasmline
-import crow.mordecai.wasmline.WasmlineLoadState
-import crow.mordecai.wasmline.extensions.info
-import crow.wasmline.sample.bean.PlatformBean
-import kotlinx.coroutines.launch
+import crow.wasmline.Wasmline
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.InternalResourceApi
-import org.jetbrains.compose.resources.getResourceUri
 import org.jetbrains.compose.resources.readResourceBytes
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -46,9 +37,6 @@ import org.jetbrains.jewel.window.styling.TitleBarColors
 import org.jetbrains.jewel.window.styling.TitleBarStyle
 import java.awt.Dimension
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 private val baseJson = Json { prettyPrint = true; isLenient = true; }
 @OptIn(ExperimentalResourceApi::class)

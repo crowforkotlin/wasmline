@@ -7,7 +7,7 @@ plugins {
 }
 
 compose.desktop {
-    application.mainClass = "crow.mordecai.wasmline.sample.MainKt"
+    application.mainClass = "crow.wasmline.sample.MainKt"
 }
 
 dependencies {

@@ -17,7 +17,7 @@ java {
 
 buildConfig {
     useKotlinOutput { internalVisibility = true }
-    packageName("crow.mordecai.wasmline.cli")
+    packageName("crow.wasmline.cli")
     buildConfigField("String", "VERSION", "\"${version}\"")
     buildConfigField("String", "WASMTIME_VERSION", "\"${extra["wasmtime_version"]}\"")
 }
@@ -41,4 +41,4 @@ dependencies {
     testImplementation(libs.kotlin.test)
 }
 
-application { mainClass = "com.mordecai.wasmline.cli.MainKt" }
+application { mainClass = "crow.wasmline.cli.MainKt" }

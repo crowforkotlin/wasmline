@@ -5,7 +5,7 @@ import org.gradle.api.Project
 
 object Config {
 
-  const val Group = "crow.mordecai"
+  const val Group = "crow"
   const val ApplicationId = "${Group}.wasmline"
   const val ApplicationName = "wasmline"
 
@@ -34,7 +34,7 @@ object Config {
    * └── android/
    * 取模块分割'-'后的最后一个昵称
    *
-   * getNamespace... => $GROUP$namespace => com.mordecaix.test.compose、com.mordecaix.test.android
+   * getNamespace... => $GROUP$namespace => crow.wasmline.test.compose、crow.wasmline.test.android
    *
    * time: 2025-09-12 11:50:11 上午 星期五
    * @author:crow

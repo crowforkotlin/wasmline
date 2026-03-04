@@ -22,7 +22,7 @@ plugins {
 
 
 allprojects {
-    group = "com.mordecai.wasmline"
+    group = "crow.wasmline"
     version = project.property("VERSION_NAME") as String
 
 

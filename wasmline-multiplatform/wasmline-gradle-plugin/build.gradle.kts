@@ -17,8 +17,16 @@ java {
 
 buildConfig {
     useKotlinOutput { internalVisibility = true }
-    packageName("crow.mordecai.wasmline.gradle")
+    packageName("crow.wasmline.gradle")
     val compilerPlugin = projects.wasmlineKotlinPlugin
+    println("""
+        ---------------------------------
+        group is : ${compilerPlugin.group}
+        name is : ${compilerPlugin.name}
+        version is : ${compilerPlugin.version}
+        id is : ${libs.plugins.wasmline.kotlin.get()}
+        ---------------------------------
+    """.trimIndent())
     buildConfigField("String", "KOTLIN_PLUGIN_ID", "\"${libs.plugins.wasmline.kotlin.get()}\"")
     buildConfigField("String", "KOTLIN_PLUGIN_GROUP", "\"${compilerPlugin.group}\"")
     buildConfigField("String", "KOTLIN_PLUGIN_NAME", "\"${compilerPlugin.name}\"")
@@ -50,10 +58,10 @@ dependencies {
 gradlePlugin {
     plugins {
         create("wasmline") {
-            id = "crow.mordecai.wasmline"
+            id = "crow.wasmline"
             displayName = "wasmline"
             description = "wasmline desc"
-            implementationClass = "com.mordecai.wasmline.WasmlinePlugin"
+            implementationClass = "crow.wasmline.WasmlinePlugin"
         }
     }
 }
