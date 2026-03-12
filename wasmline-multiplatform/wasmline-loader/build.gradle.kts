@@ -25,19 +25,16 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
-
-    if (HostManager.hostIsMac) {
-        listOf(
-            iosArm64(),
-            iosSimulatorArm64()
-        ).forEach { target ->
-            target.binaries.framework {
-                isStatic = false
-                freeCompilerArgs
-            }
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { target ->
+        target.binaries.framework {
+            isStatic = false
+            freeCompilerArgs
         }
     }
-
+    applyDefaultHierarchyTemplate()
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -51,8 +48,6 @@ kotlin {
         val jniMain by creating { dependsOn(other = commonMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
-        
-
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)

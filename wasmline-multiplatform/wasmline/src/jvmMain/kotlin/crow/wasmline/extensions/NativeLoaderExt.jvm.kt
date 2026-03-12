@@ -23,8 +23,6 @@ actual fun loadNativeLibrary() {
     val nativeLibraryFile: Path
     try {
         nativeLibraryFile = Files.createTempFile("quickjs", null)
-
-        // File-based deleteOnExit() uses a special internal shutdown hook that always runs last.
         nativeLibraryFile.toFile().deleteOnExit()
         nativeLibraryUrl.openStream().use { nativeLibrary -> Files.copy(nativeLibrary, nativeLibraryFile, REPLACE_EXISTING) }
     } catch (e: IOException) {

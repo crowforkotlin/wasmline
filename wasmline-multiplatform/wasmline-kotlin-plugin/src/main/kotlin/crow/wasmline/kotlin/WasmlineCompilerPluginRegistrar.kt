@@ -15,6 +15,7 @@
  */
 package crow.wasmline.kotlin
 
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -30,5 +31,7 @@ class WasmlineCompilerPluginRegistrar : CompilerPluginRegistrar() {
             CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
             MessageCollector.NONE,
         )
+        println("解析到编译器插件 --> PRINTLN ")
+        messageCollector.report(CompilerMessageSeverity.INFO, "解析到编译器插件 --> INFO ")
     }
 }

@@ -5,6 +5,7 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("wasmline-build-logic")
     repositories {
+        mavenLocal()
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
@@ -14,11 +15,11 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
-        mavenLocal()
     }
 }
 dependencyResolutionManagement {
     repositories {
+        mavenLocal()
         google {
             content {
                 includeGroupByRegex("com\\.android.*")

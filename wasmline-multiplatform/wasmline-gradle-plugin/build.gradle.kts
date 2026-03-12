@@ -1,5 +1,10 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
 
+import com.vanniktech.maven.publish.GradlePlugin
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.MavenPublishBaseExtension
+
+
 plugins {
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.java.gradle.plugin)
@@ -66,4 +71,12 @@ gradlePlugin {
             implementationClass = "crow.wasmline.WasmlinePlugin"
         }
     }
+}
+
+configure<MavenPublishBaseExtension> {
+    configure(
+        platform = GradlePlugin(
+            javadocJar = JavadocJar.Empty()
+        )
+    )
 }
