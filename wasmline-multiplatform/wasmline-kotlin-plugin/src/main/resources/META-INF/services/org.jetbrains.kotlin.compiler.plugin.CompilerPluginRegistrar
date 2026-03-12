@@ -1,1 +1,1 @@
-app.cash.zipline.kotlin.ZiplineCompilerPluginRegistrar
+crow.wasmline.kotlin.WasmlineCompilerPluginRegistrar

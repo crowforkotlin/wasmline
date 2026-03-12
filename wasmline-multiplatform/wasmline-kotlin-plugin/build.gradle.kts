@@ -21,6 +21,10 @@ buildConfig {
 }
 
 dependencies {
+
+    compileOnly(kotlin("compiler-embeddable"))
+    compileOnly(kotlin("stdlib"))
+
     implementation(projects.wasmline)
     implementation(projects.wasmlineLoader)
 
