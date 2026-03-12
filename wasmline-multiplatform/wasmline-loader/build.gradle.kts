@@ -1,7 +1,7 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
 
 import com.android.build.api.dsl.androidLibrary
-import org.jetbrains.kotlin.tooling.core.closure
+import org.jetbrains.kotlin.konan.target.HostManager
 
 
 plugins {
@@ -25,17 +25,19 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { target ->
-        target.binaries.framework {
-            isStatic = false
-            freeCompilerArgs
+
+    if (HostManager.hostIsMac) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { target ->
+            target.binaries.framework {
+                isStatic = false
+                freeCompilerArgs
+            }
         }
     }
 
-    applyDefaultHierarchyTemplate()
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -50,9 +52,6 @@ kotlin {
         val androidMain by getting { dependsOn(other = jniMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
         
-        val iosMain by getting { dependsOn(other = commonMain) }
-        val iosArm64Main by getting { dependsOn(other = iosMain) }
-        val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
 
         val commonTest by getting {
             dependencies {
