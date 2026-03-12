@@ -23,7 +23,7 @@ plugins {
 
 allprojects {
     group = "crow.wasmline"
-    version = project.property("VERSION_NAME") as String
+    version = project.property("wasmline.version") as String
 
 
     pluginManager.withPlugin("com.vanniktech.maven.publish") {

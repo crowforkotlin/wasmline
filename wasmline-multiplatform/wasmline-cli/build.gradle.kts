@@ -19,7 +19,7 @@ buildConfig {
     useKotlinOutput { internalVisibility = true }
     packageName("crow.wasmline.cli")
     buildConfigField("String", "VERSION", "\"${version}\"")
-    buildConfigField("String", "WASMTIME_VERSION", "\"${extra["wasmtime_version"]}\"")
+    buildConfigField("String", "WASMTIME_VERSION", "\"${extra["wasmtime.version"]}\"")
 }
 
 dependencies {
