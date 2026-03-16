@@ -99,6 +99,7 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(projects.wasmline)
             }

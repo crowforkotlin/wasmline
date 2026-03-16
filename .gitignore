@@ -49,3 +49,4 @@ platforms/
 **/*.cwasm
 **/*.wasm
 **/*.tar.xz
+/structs/

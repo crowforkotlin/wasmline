@@ -1,6 +1,6 @@
 @file:OptIn(InternalResourceApi::class, ExperimentalSerializationApi::class)
 
-package crow.wasmline.sample
+package crow.mordecai.wasmline.sample
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
 import crow.wasmline.Wasmline
+import crow.wasmline.sample.App
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi

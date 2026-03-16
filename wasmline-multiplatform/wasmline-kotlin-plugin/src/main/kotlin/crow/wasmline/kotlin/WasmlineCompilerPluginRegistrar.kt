@@ -15,6 +15,7 @@
  */
 package crow.wasmline.kotlin
 
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -31,7 +32,9 @@ class WasmlineCompilerPluginRegistrar : CompilerPluginRegistrar() {
             CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
             MessageCollector.NONE,
         )
-        println("解析到编译器插件 --> PRINTLN ")
-        messageCollector.report(CompilerMessageSeverity.INFO, "解析到编译器插件 --> INFO ")
+        IrGenerationExtension.registerExtension(
+            WasmlineIrGenerationExtension(messageCollector),
+        )
+        messageCollector.report(CompilerMessageSeverity.INFO, "[Wasmline] compiler plugin registered")
     }
 }

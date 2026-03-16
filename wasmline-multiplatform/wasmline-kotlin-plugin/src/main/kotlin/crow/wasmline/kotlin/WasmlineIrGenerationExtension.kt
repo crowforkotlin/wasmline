@@ -1,0 +1,607 @@
+package crow.wasmline.kotlin
+
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
+import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.declarations.buildReceiverParameter
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irExprBody
+import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
+import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classifierOrNull
+import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
+import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.name.Name
+
+internal class WasmlineIrGenerationExtension(
+    private val messageCollector: MessageCollector,
+) : IrGenerationExtension {
+
+    /**
+     * Phase-one validator only.
+     *
+     * Current errors are intentionally conservative so the first generated
+     * Wasmline service pipeline can stabilize around a small subset:
+     * contract discovery -> method identity -> proxy -> adapter -> runtime glue.
+     *
+     * These checks should be relaxed incrementally in later phases rather than
+     * treated as permanent product limitations.
+     */
+
+    override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+        val runtimeSymbols = WasmlineRuntimeSymbols(pluginContext)
+        moduleFragment.files.forEach { file ->
+            val contracts = mutableListOf<IrClass>()
+            scanContainer(file, contracts)
+            contracts.forEach { contract ->
+                if (validateIfServiceContract(contract, file)) {
+                    generateDefinitionSkeleton(contract, file, pluginContext, runtimeSymbols)
+                }
+            }
+        }
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun scanContainer(container: IrDeclarationContainer, contracts: MutableList<IrClass>) {
+        container.declarations.forEach { declaration ->
+            when (declaration) {
+                is IrClass -> {
+                    if (declaration.kind == ClassKind.INTERFACE && declaration.isWasmlineServiceContract()) {
+                        contracts += declaration
+                    }
+                    scanContainer(declaration, contracts)
+                }
+            }
+        }
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun validateIfServiceContract(irClass: IrClass, file: IrFile): Boolean {
+        var isValid = true
+
+        report(
+            file = file,
+            declaration = irClass,
+            severity = CompilerMessageSeverity.INFO,
+            message = "[Wasmline] discovered service contract ${irClass.fqNameWhenAvailable?.asString()}",
+        )
+
+        if (irClass.typeParameters.isNotEmpty()) {
+            isValid = false
+            reportError(file, irClass, "Generic Wasmline service contracts are not supported yet.")
+        }
+
+        val properties = irClass.declarations.filterIsInstance<IrProperty>()
+        properties.forEach { property ->
+            isValid = false
+            reportError(file, property, "Wasmline service properties are not supported yet. Use functions instead.")
+        }
+
+        val functions = irClass.declarations.filterIsInstance<IrSimpleFunction>()
+            .filterNot { it.name.isSpecial }
+            .filterNot { it.isFakeOverride }
+
+        functions.groupBy { it.name }
+            .filterValues { it.size > 1 }
+            .forEach { (name, overloads) ->
+                overloads.forEach { function ->
+                    isValid = false
+                    reportError(
+                        file,
+                        function,
+                        "Overloaded Wasmline service methods are not supported yet. Duplicate method name: ${name.asString()}",
+                    )
+                }
+            }
+
+        functions.forEach { function ->
+            if (!validateFunction(function, file)) {
+                isValid = false
+            }
+        }
+
+        return isValid
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun validateFunction(function: IrSimpleFunction, file: IrFile): Boolean {
+        var isValid = true
+        val regularParameters = function.parameters.filter { it.kind == IrParameterKind.Regular }
+        if (function.visibility != DescriptorVisibilities.PUBLIC) {
+            isValid = false
+            reportError(file, function, "Wasmline service methods must be public.")
+        }
+        if (function.typeParameters.isNotEmpty()) {
+            isValid = false
+            reportError(file, function, "Generic Wasmline service methods are not supported yet.")
+        }
+        if (function.isSuspend) {
+            isValid = false
+            reportError(file, function, "Suspend Wasmline service methods are not supported in phase one.")
+        }
+        if (function.parameters.any { it.kind == IrParameterKind.ExtensionReceiver }) {
+            isValid = false
+            reportError(file, function, "Extension receiver service methods are not supported yet.")
+        }
+
+        regularParameters.forEach { parameter ->
+            if (parameter.defaultValue != null) {
+                isValid = false
+                reportError(file, parameter, "Default arguments are not supported in Wasmline service methods.")
+            }
+            if (parameter.varargElementType != null) {
+                isValid = false
+                reportError(file, parameter, "Vararg parameters are not supported in Wasmline service methods.")
+            }
+            if (parameter.type.isWasmlineServiceType()) {
+                isValid = false
+                reportError(file, parameter, "Passing service contracts as parameters is not supported in phase one.")
+            }
+        }
+
+        if (function.returnType.isWasmlineServiceType()) {
+            isValid = false
+            reportError(file, function, "Returning service contracts is not supported in phase one.")
+        }
+
+        return isValid
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun generateDefinitionSkeleton(
+        contract: IrClass,
+        file: IrFile,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+    ) {
+        val definitionName = runtimeSymbols.definitionObjectName(contract)
+        if (file.declarations.filterIsInstance<IrClass>().any { it.name == definitionName }) return
+
+        val irFactory = pluginContext.irFactory
+        val fqName = contract.fqNameWhenAvailable?.asString() ?: contract.name.asString()
+        val proxyClass = generateProxySkeleton(contract, file, pluginContext, runtimeSymbols, fqName)
+        val proxyConstructor = proxyClass.constructors.single()
+        val adapterClass = generateAdapterSkeleton(contract, file, pluginContext, runtimeSymbols, fqName)
+        val adapterConstructor = adapterClass.constructors.single()
+        val adapterBindFunction = adapterClass.declarations
+            .filterIsInstance<IrSimpleFunction>()
+            .single { it.name.asString() == "bind" }
+
+        val definitionObject = irFactory.buildClass {
+            initDefaults(contract)
+            name = definitionName
+            visibility = DescriptorVisibilities.PUBLIC
+            kind = ClassKind.OBJECT
+        }.apply {
+            parent = file
+            superTypes = listOf(runtimeSymbols.serviceDefinitionType(contract))
+            createThisReceiverParameter()
+        }
+
+        definitionObject.addConstructor {
+            initDefaults(contract)
+            visibility = DescriptorVisibilities.PRIVATE
+        }.apply {
+            irConstructorBody(pluginContext) { statements ->
+                val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
+                statements += irDelegatingConstructorCall(
+                    context = pluginContext,
+                    symbol = anyClass.owner.constructors.single().symbol,
+                )
+                statements += irInstanceInitializerCall(
+                    context = pluginContext,
+                    classSymbol = definitionObject.symbol,
+                )
+            }
+        }
+
+        definitionObject.declarations += irVal(
+            pluginContext = pluginContext,
+            propertyType = runtimeSymbols.contractKClassType(contract),
+            declaringClass = definitionObject,
+            propertyName = Name.identifier("contract"),
+            overriddenProperty = runtimeSymbols.serviceDefinitionContractProperty,
+        ) {
+            irExprBody(irKClass(contract))
+        }
+
+        definitionObject.declarations += irVal(
+            pluginContext = pluginContext,
+            propertyType = runtimeSymbols.serviceIdClass.owner.defaultType,
+            declaringClass = definitionObject,
+            propertyName = Name.identifier("serviceId"),
+            overriddenProperty = runtimeSymbols.serviceDefinitionServiceIdProperty,
+        ) {
+            irExprBody(
+                irCallConstructor(runtimeSymbols.serviceIdConstructor, emptyList()).apply {
+                    arguments[0] = irString(fqName)
+                },
+            )
+        }
+
+        definitionObject.declarations += generateLinkStub(contract, definitionObject, pluginContext, runtimeSymbols, proxyConstructor)
+        definitionObject.declarations += generateBindStub(
+            contract,
+            definitionObject,
+            pluginContext,
+            runtimeSymbols,
+            adapterConstructor,
+            adapterBindFunction,
+        )
+        file.declarations += definitionObject
+
+        report(
+            file = file,
+            declaration = contract,
+            severity = CompilerMessageSeverity.INFO,
+            message = "[Wasmline] generated definition skeleton ${definitionName.asString()} for $fqName " +
+                "(planned proxy=${runtimeSymbols.proxyClassName(contract).asString()}, adapter=${runtimeSymbols.adapterClassName(contract).asString()})",
+        )
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun generateProxySkeleton(
+        contract: IrClass,
+        file: IrFile,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+        fqName: String,
+    ): IrClass {
+        val proxyName = runtimeSymbols.proxyClassName(contract)
+        file.declarations.filterIsInstance<IrClass>().firstOrNull { it.name == proxyName }?.let { return it }
+
+        val proxyClass = pluginContext.irFactory.buildClass {
+            initDefaults(contract)
+            name = proxyName
+            visibility = DescriptorVisibilities.PUBLIC
+            modality = Modality.FINAL
+            kind = ClassKind.CLASS
+        }.apply {
+            parent = file
+            superTypes = listOf(contract.defaultType)
+            createThisReceiverParameter()
+        }
+
+        proxyClass.addConstructor {
+            initDefaults(contract)
+            visibility = DescriptorVisibilities.PUBLIC
+        }.apply {
+            addValueParameter("endpoint", runtimeSymbols.endpointClass.owner.defaultType)
+            irConstructorBody(pluginContext) { statements ->
+                val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
+                statements += irDelegatingConstructorCall(
+                    context = pluginContext,
+                    symbol = anyClass.owner.constructors.single().symbol,
+                )
+                statements += irInstanceInitializerCall(
+                    context = pluginContext,
+                    classSymbol = proxyClass.symbol,
+                )
+            }
+        }
+
+        contract.declarations
+            .filterIsInstance<IrSimpleFunction>()
+            .filterNot { it.name.isSpecial }
+            .filterNot { it.isFakeOverride }
+            .forEach { contractFunction ->
+                proxyClass.declarations += generateProxyMethodStub(
+                    proxyClass = proxyClass,
+                    contractFunction = contractFunction,
+                    pluginContext = pluginContext,
+                    runtimeSymbols = runtimeSymbols,
+                    fqName = fqName,
+                )
+            }
+
+        file.declarations += proxyClass
+        return proxyClass
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun generateAdapterSkeleton(
+        contract: IrClass,
+        file: IrFile,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+        fqName: String,
+    ): IrClass {
+        val adapterName = runtimeSymbols.adapterClassName(contract)
+        file.declarations.filterIsInstance<IrClass>().firstOrNull { it.name == adapterName }?.let { return it }
+
+        val adapterClass = pluginContext.irFactory.buildClass {
+            initDefaults(contract)
+            name = adapterName
+            visibility = DescriptorVisibilities.PUBLIC
+            modality = Modality.FINAL
+            kind = ClassKind.CLASS
+        }.apply {
+            parent = file
+            superTypes = listOf(pluginContext.irBuiltIns.anyType)
+            createThisReceiverParameter()
+        }
+
+        adapterClass.addConstructor {
+            initDefaults(contract)
+            visibility = DescriptorVisibilities.PUBLIC
+        }.apply {
+            addValueParameter("implementation", contract.defaultType)
+            irConstructorBody(pluginContext) { statements ->
+                val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
+                statements += irDelegatingConstructorCall(
+                    context = pluginContext,
+                    symbol = anyClass.owner.constructors.single().symbol,
+                )
+                statements += irInstanceInitializerCall(
+                    context = pluginContext,
+                    classSymbol = adapterClass.symbol,
+                )
+            }
+        }
+
+        adapterClass.declarations += pluginContext.irFactory.createSimpleFunction(
+            startOffset = contract.startOffset,
+            endOffset = contract.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            name = Name.identifier("bind"),
+            visibility = DescriptorVisibilities.PUBLIC,
+            isInline = false,
+            isExpect = false,
+            returnType = pluginContext.irBuiltIns.unitType,
+            modality = Modality.FINAL,
+            symbol = IrSimpleFunctionSymbolImpl(),
+            isTailrec = false,
+            isSuspend = false,
+            isOperator = false,
+            isInfix = false,
+            isExternal = false,
+            containerSource = null,
+            isFakeOverride = false,
+        ).apply {
+            parent = adapterClass
+            parameters += buildReceiverParameter {
+                type = adapterClass.defaultType
+            }
+            addValueParameter("scope", runtimeSymbols.bindingScopeClass.owner.defaultType)
+            irFunctionBody(
+                context = pluginContext,
+                scopeOwnerSymbol = symbol,
+            ) {
+                +irInvoke(
+                    null,
+                    runtimeSymbols.kotlinErrorFunction,
+                    irString("Wasmline adapter method generation is not implemented yet for $fqName."),
+                )
+            }
+        }
+
+        file.declarations += adapterClass
+        return adapterClass
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun generateProxyMethodStub(
+        proxyClass: IrClass,
+        contractFunction: IrSimpleFunction,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+        fqName: String,
+    ): IrSimpleFunction {
+        return pluginContext.irFactory.createSimpleFunction(
+            startOffset = contractFunction.startOffset,
+            endOffset = contractFunction.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            name = contractFunction.name,
+            visibility = DescriptorVisibilities.PUBLIC,
+            isInline = false,
+            isExpect = false,
+            returnType = contractFunction.returnType,
+            modality = Modality.FINAL,
+            symbol = IrSimpleFunctionSymbolImpl(),
+            isTailrec = false,
+            isSuspend = false,
+            isOperator = contractFunction.isOperator,
+            isInfix = contractFunction.isInfix,
+            isExternal = false,
+            containerSource = null,
+            isFakeOverride = false,
+        ).apply {
+            parent = proxyClass
+            overriddenSymbols = listOf(contractFunction.symbol)
+            parameters += buildReceiverParameter {
+                type = proxyClass.defaultType
+            }
+            contractFunction.parameters
+                .filter { it.kind == IrParameterKind.Regular }
+                .forEach { parameter ->
+                    addValueParameter(parameter.name.asString(), parameter.type)
+                }
+            irFunctionBody(
+                context = pluginContext,
+                scopeOwnerSymbol = symbol,
+            ) {
+                +irReturn(
+                    value = irInvoke(
+                        null,
+                        runtimeSymbols.kotlinErrorFunction,
+                        irString("Wasmline proxy method generation is not implemented yet for $fqName.${contractFunction.name.asString()}()."),
+                    ),
+                    returnTargetSymbol = symbol,
+                )
+            }
+        }
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun generateLinkStub(
+        contract: IrClass,
+        definitionObject: IrClass,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+        proxyConstructor: org.jetbrains.kotlin.ir.declarations.IrConstructor,
+    ): IrSimpleFunction {
+        return pluginContext.irFactory.createSimpleFunction(
+            startOffset = contract.startOffset,
+            endOffset = contract.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            name = Name.identifier("link"),
+            visibility = DescriptorVisibilities.PUBLIC,
+            isInline = false,
+            isExpect = false,
+            returnType = contract.defaultType,
+            modality = Modality.FINAL,
+            symbol = IrSimpleFunctionSymbolImpl(),
+            isTailrec = false,
+            isSuspend = false,
+            isOperator = false,
+            isInfix = false,
+            isExternal = false,
+            containerSource = null,
+            isFakeOverride = false,
+        ).apply {
+            parent = definitionObject
+            overriddenSymbols = listOf(runtimeSymbols.serviceDefinitionLinkFunction)
+            parameters += buildReceiverParameter {
+                type = definitionObject.defaultType
+            }
+            val endpointParameter = addValueParameter("endpoint", runtimeSymbols.endpointClass.owner.defaultType)
+            irFunctionBody(
+                context = pluginContext,
+                scopeOwnerSymbol = symbol,
+            ) {
+                +irReturn(
+                    value = irCallConstructor(proxyConstructor.symbol, emptyList()).apply {
+                        arguments[0] = irGet(endpointParameter)
+                    },
+                    returnTargetSymbol = symbol,
+                )
+            }
+        }
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun generateBindStub(
+        contract: IrClass,
+        definitionObject: IrClass,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+        adapterConstructor: org.jetbrains.kotlin.ir.declarations.IrConstructor,
+        adapterBindFunction: IrSimpleFunction,
+    ): IrSimpleFunction {
+        return pluginContext.irFactory.createSimpleFunction(
+            startOffset = contract.startOffset,
+            endOffset = contract.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            name = Name.identifier("bind"),
+            visibility = DescriptorVisibilities.PUBLIC,
+            isInline = false,
+            isExpect = false,
+            returnType = pluginContext.irBuiltIns.unitType,
+            modality = Modality.FINAL,
+            symbol = IrSimpleFunctionSymbolImpl(),
+            isTailrec = false,
+            isSuspend = false,
+            isOperator = false,
+            isInfix = false,
+            isExternal = false,
+            containerSource = null,
+            isFakeOverride = false,
+        ).apply {
+            parent = definitionObject
+            overriddenSymbols = listOf(runtimeSymbols.serviceDefinitionBindFunction)
+            parameters += buildReceiverParameter {
+                type = definitionObject.defaultType
+            }
+            val implementationParameter = addValueParameter("implementation", contract.defaultType)
+            val scopeParameter = addValueParameter("scope", runtimeSymbols.bindingScopeClass.owner.defaultType)
+            irFunctionBody(
+                context = pluginContext,
+                scopeOwnerSymbol = symbol,
+            ) {
+                val adapter = irCallConstructor(adapterConstructor.symbol, emptyList()).apply {
+                    arguments[0] = irGet(implementationParameter)
+                }
+                +irInvoke(
+                    adapter,
+                    adapterBindFunction.symbol,
+                    irGet(scopeParameter),
+                )
+            }
+        }
+    }
+
+    private fun reportError(file: IrFile, declaration: IrDeclaration, message: String) {
+        report(file, declaration, CompilerMessageSeverity.ERROR, message)
+    }
+
+    private fun report(
+        file: IrFile,
+        declaration: IrDeclaration,
+        severity: CompilerMessageSeverity,
+        message: String,
+    ) {
+        val sourceRange = file.fileEntry.getSourceRangeInfo(
+            beginOffset = declaration.startOffset,
+            endOffset = declaration.endOffset,
+        )
+        messageCollector.report(
+            severity,
+            message,
+            CompilerMessageLocationWithRange.create(
+                path = sourceRange.filePath,
+                lineStart = sourceRange.startLineNumber + 1,
+                columnStart = sourceRange.startColumnNumber + 1,
+                lineEnd = sourceRange.endLineNumber + 1,
+                columnEnd = sourceRange.endColumnNumber + 1,
+                lineContent = null,
+            ),
+        )
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun IrClass.isWasmlineServiceContract(
+        visited: MutableSet<IrClassSymbol> = mutableSetOf(),
+    ): Boolean {
+        if (!visited.add(symbol)) return false
+        return superTypes.any { superType ->
+            val superClassSymbol = superType.classifierOrNull as? IrClassSymbol ?: return@any false
+            val superClass = superClassSymbol.owner
+            val superFqName = superClass.fqNameWhenAvailable?.asString()
+            superFqName == WASMLINE_SERVICE_FQ_NAME || (superClass.kind == ClassKind.INTERFACE && superClass.isWasmlineServiceContract(visited))
+        }
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    private fun IrType.isWasmlineServiceType(): Boolean {
+        val classSymbol = classifierOrNull as? IrClassSymbol ?: return false
+        return classSymbol.owner.isWasmlineServiceContract()
+    }
+
+    private companion object {
+        const val WASMLINE_SERVICE_FQ_NAME = "crow.wasmline.WasmlineService"
+    }
+}
+
