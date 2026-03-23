@@ -4,173 +4,201 @@
 
 # Wasmline
 
-Wasmline 是一个构建在 [Wasmtime](https://wasmtime.dev/) 之上的 **Kotlin Multiplatform 插件框架**。
-它关注三件事：加载 **WASI 插件**、面向多平台打包分发插件，以及在当前低层 `action + ByteArray` 通道之上逐步演进出由 Kotlin 编译器插件生成的 typed service 层。
+基于 [Wasmtime](https://wasmtime.dev/) 的 **Kotlin Multiplatform** 插件框架，支持在 Android、iOS、Desktop（macOS / Windows / Linux）以及未来的 Web 环境中加载、打包并执行 **WebAssembly (WASI)** 插件。
 
-## Wasmline 在做什么
+插件可以用**任何**能编译到 WASI 的语言编写 —— Kotlin、Rust、C/C++、Go、AssemblyScript 等。
 
-当前仓库主要包含三层：
+## 平台支持
 
-- **运行时与原生桥接层** —— 负责加载模块、管理 session、在 host 与 plugin 之间搬运字节数据
-- **打包与分发层** —— 负责编译、签名、描述和分发插件产物
-- **编译器与 Gradle 工具层** —— 负责生成 typed glue 并改善 Kotlin 开发体验
+| 平台 | 架构 | 运行时 | 状态 |
+|------|------|--------|------|
+| Android | arm64-v8a | Wasmtime (JNI) | :white_check_mark: 已支持 |
+| iOS | arm64 | Wasmtime (C Interop) | :white_check_mark: 已支持 |
+| macOS | arm64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
+| Linux | x86_64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
+| Windows | x86_64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
+| Web | wasm32-wasi | Kotlin/Wasi | :construction: 计划中 |
 
-## 当前状态
+## 架构
 
-### 已可用或已进入可验证阶段
+![Wasmline 架构图](docs/public/images/architecture.png)
 
-- 基于 Wasmtime 的 JVM / Android / iOS 等目标运行时集成
-- 基于 `action: String` 与 `payload: ByteArray` 的低层 host ↔ plugin RPC
-- CLI 下载、编译、manifest、签名、打包流水线
-- 示例应用与示例插件
-- Kotlin IR 编译器插件的 phase-one 生成能力，当前已能生成：
-  - `*_WasmlineDefinition`
-  - `*_WasmlineProxy`
-  - `*_WasmlineAdapter`
+_Wasmline 架构总览_
 
-### 仍在推进中的部分
-
-- 建立在 runtime transport 之上的完整 typed service round-trip
-- 更完整的 adapter 绑定逻辑
-- 更丰富的编译器诊断与 IR 测试覆盖
-
-## 这个仓库适合谁看
-
-### 如果你想**使用 Wasmline**
-
-建议先看：
-
-- `wasmline-multiplatform/wasmline/` —— runtime API
-- `wasmline-multiplatform/wasmline-loader/` —— manifest、签名、校验
-- `wasmline-multiplatform/wasmline-cli/` —— 构建流水线命令
-- `wasmline-multiplatform/wasmline-sample/` —— host 与 plugin 示例工程
-
-### 如果你想**开发 Wasmline 本身**
-
-建议先看：
-
-- `wasmline-core/` —— 面向 Wasmtime 的原生核心
-- `wasmline-multiplatform/wasmline/` —— Kotlin runtime SPI 与公共 API
-- `wasmline-multiplatform/wasmline-kotlin-plugin/` —— Kotlin 编译器插件
-- `wasmline-multiplatform/wasmline-gradle-plugin/` —— Gradle 集成
-- `structs/wasmline-ir-design.md` —— 稳定的 IR 架构 / 设计说明
-- `structs/ir.md` —— 当前 IR 工作记录与下一步计划
-
-## 仓库结构总览
+### 模块结构
 
 ```text
-wasmline/
-├── docs/                         # 文档站点源码
-├── platforms/                    # 预构建平台产物
-├── scripts/                      # 初始化与辅助脚本
-├── structs/                      # 设计文档与工作记录
-├── wasmline-core/                # Wasmtime 原生桥接层 (C/C++)
-├── wasmline-ci/                  # CI 辅助脚本
-└── wasmline-multiplatform/
-    ├── wasmline/                 # runtime API 与 transport 抽象
-    ├── wasmline-loader/          # manifest + crypto + verification
-    ├── wasmline-cli/             # 命令行构建流水线
-    ├── wasmline-kotlin-plugin/   # Kotlin 编译器插件（IR 为主）
-    ├── wasmline-gradle-plugin/   # Gradle 插件接线
-    ├── wasmline-sample/          # 示例插件与宿主应用
-    └── wasmline-build-logic/     # 共享 Gradle 约定
+wasmline-multiplatform/
+├── wasmline/              # 核心运行时 — WASM 模块加载与执行
+├── wasmline-loader/       # 加密与清单 — Ed25519/ECDSA-P256 签名、清单序列化
+├── wasmline-cli/          # CLI 工具链 — 构建、编译、清单生成、下载、密钥生成
+├── wasmline-android/      # Android 原生绑定 (CMake / JNI C++)
+├── wasmline-kotlin-plugin/# Kotlin 编译器插件 — 面向 IR 的 typed glue 生成
+├── wasmline-gradle-plugin/# Kotlin 插件与工具链的 Gradle 接入
+├── wasmline-sample/       # 示例应用 (plugin、Android、Desktop、Multiplatform Compose)
+└── wasmline-build-logic/  # 共享 Gradle 约定插件
 ```
 
-## 架构快照
+**依赖关系**：`wasmline-cli` → `wasmline-loader` → `wasmline` (core)
 
-从整体上看，Wasmline 正在朝着下面这套分层演进：
+### 核心技术
 
-1. **Transport 层**
-   - 低层 `invoke(action, payload)` 风格通信
-   - host → plugin 与 plugin → host 的消息流
-2. **Runtime 层**
-   - endpoint、session、module 生命周期、binding scope、dispatch
-3. **Typed service 层**
-   - `WasmlineService` contract
-   - 生成的 definition / proxy / adapter glue
-4. **工具层**
-   - Gradle plugin、compiler plugin、CLI、test fixture、snapshot
-
-更完整的设计讨论见 `structs/wasmline-ir-design.md`。
+- **Kotlin Multiplatform** 自定义源集层级
+- **Wasmtime 41.0.1** 作为底层 WASM 运行时
+- **kotlinx.serialization** 用于 JSON 与 Protobuf payload
+- **Ed25519 / ECDSA-P256** 用于 manifest 签名与校验
+- **Clikt** 提供 CLI 体验
+- **AOT 编译** —— `.wasm` → `.cwasm` / `.pwasm`
+- **Kotlin compiler plugin（IR phase one）** 生成 `Definition / Proxy / Adapter` glue
 
 ## 快速开始
 
 ### 环境要求
 
-- JDK 21+
-- Zig 0.15.1+（用于原生 / JNI 构建）
-- 按需初始化本地 Wasmtime 相关产物
+- **JDK 21** 或更高版本
+- **Zig 0.15.1**（用于原生库构建）
+- 构建 AOT 产物时需要本地准备好 Wasmtime toolchain
 
-### 初始化本地依赖
+### 初始化
+
+初始化所需的平台资源：
 
 ```zsh
 sh ./scripts/init.sh
 ```
 
-### 常规 Gradle 入口
+### 构建
 
-所有 Gradle 命令都从 `wasmline-multiplatform/` 目录执行：
+所有 Gradle 命令在 `wasmline-multiplatform/` 目录下运行：
 
 ```zsh
 cd wasmline-multiplatform
+
+# 构建全部
 ./gradlew build
-```
 
-### 常用命令
-
-```zsh
-cd wasmline-multiplatform
-
+# 运行 loader 测试（manifest、加密、校验等）
 ./gradlew :wasmline-loader:jvmTest
+
+# 运行 CLI 测试
 ./gradlew :wasmline-cli:test
+
+# 编译 WASM 插件示例
 ./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+
+# 运行 compiler-plugin 的 IR box 测试
 ./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
 ```
 
-## CLI 流水线概览
+### 原生构建 (Zig)
 
-Wasmline CLI 通过 Gradle 暴露：
+输出当前主机平台的 JNI 原生库：
+
+```zsh
+cd wasmline-multiplatform/wasmline
+
+zig build --release=small -p src/jvmMain/resources
+zig build -p src/jvmMain/resources
+```
+
+## CLI 工具链
+
+Wasmline 提供完整的插件构建流水线 CLI，所有命令通过 Gradle 运行：
 
 ```zsh
 cd wasmline-multiplatform
 ./gradlew :wasmline-cli:run --args="<command> [options]"
 ```
 
-主要命令：
+| 命令 | 描述 |
+|------|------|
+| `download` | 下载目标平台的 Wasmtime 发行版 |
+| `generate-key-pair` | 生成签名密钥对 |
+| `compile` | 将 `.wasm` 编译为 AOT 产物（`.cwasm` / `.pwasm`） |
+| `manifest` | 从编译结果生成已签名的 manifest（`.wlm`） |
+| `build` | 完整流水线：compile → manifest → zip 打包 |
 
-- `download` —— 下载 Wasmtime 发行版
-- `generate-key-pair` —— 生成签名密钥
-- `compile` —— 构建 AOT 插件产物
-- `manifest` —— 生成已签名插件元数据
-- `build` —— 执行完整打包流水线
+### 示例：完整构建流程
 
-更细的命令说明见 `wasmline-multiplatform/wasmline-cli/`。
+```zsh
+cd wasmline-multiplatform
 
-## Compiler plugin 与 IR 测试
+# 1. 下载 Wasmtime
+./gradlew :wasmline-cli:run --args="download -v v41.0.1"
 
-当前 Kotlin compiler plugin 主要聚焦 **IR-only generation**。
+# 2. 生成签名密钥
+./gradlew :wasmline-cli:run --args="generate-key-pair --save"
 
-建议入口：
+# 3. 构建插件（编译 → 签名 → 打包）
+./gradlew :wasmline-cli:run --args="build -i plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos --key build/wasmline/keys/ed25519_private.key"
+```
 
-- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
-- `wasmline-multiplatform/wasmline-kotlin-plugin/test-fixtures/crow/wasmline/kotlin/GenerateTests.kt`
-- `structs/wasmline-ir-design.md`
-- `structs/ir.md`
+### 构建产物
 
-当前 box 测试主要验证：
+```text
+build/wasmline/
+├── output/{name}-{version}/
+│   ├── manifest.wlm                # 已签名清单（Protobuf）
+│   ├── {name}-pulley64.pwasm       # Pulley 跨平台字节码
+│   ├── {name}-aarch64-android.cwasm
+│   ├── {name}-aarch64-macos.cwasm
+│   ├── {name}-aarch64-ios.cwasm
+│   ├── {name}-x86_64-linux.cwasm
+│   ├── {name}-x86_64-windows.cwasm
+│   └── debug/
+│       ├── compile-result.json
+│       └── manifest.json           # 可读 manifest
+├── dist/
+│   └── {name}-{version}.zip        # 可分发包
+└── keys/
+    ├── ed25519_private.key
+    └── ed25519_public.key
+```
 
-- contract discovery
-- phase-one validation
-- 生成的 `Definition / Proxy / Adapter` skeleton
-- 已提交 fixture 的 FIR / IR snapshot
+详见 `wasmline-multiplatform/wasmline-cli` 中各命令的说明。
 
-## 文档索引
+## 示例
 
-- `README.md` / `README_zh.md` —— 仓库级入口文档
-- `docs/` —— 文档站点源码
-- `structs/wasmline-ir-design.md` —— 稳定架构与设计说明
-- `structs/ir.md` —— 当前状态、交接记录与下一步任务
+![Android 示例](docs/public/images/android_sample.png)
 
-## License
+_Android 示例_
 
-详见 `LICENSE`。
+![Compose Desktop 示例](docs/public/images/compose_desktop_mac.png)
+
+_Compose Desktop (macOS)_
+
+示例代码位于 `wasmline-multiplatform/wasmline-sample`，包括：
+
+- WASI plugin 示例
+- Android host 示例
+- desktop 示例
+- multiplatform shared 示例
+
+## Kotlin/Wasi 兼容性
+
+![Kotlin/Wasi 支持情况](docs/public/images/kotlin_support.png)
+
+_Kotlin/Wasi 运行时支持状态_
+
+Wasmline 当前建议使用 **Kotlin 2.3.20-Beta1** 或更高版本，以获得更稳定的 Kotlin/Wasi 支持。更早版本或其他运行时可能缺少 GC、函数引用、异常处理等必要 Wasm 特性，或直接运行失败。
+
+## 开发者入口
+
+如果你正在开发 Wasmline 本身，建议优先看：
+
+- `wasmline-core` —— Wasmtime 原生桥接层
+- `wasmline-multiplatform/wasmline` —— runtime SPI 与公共 API
+- `wasmline-multiplatform/wasmline-kotlin-plugin` —— Kotlin compiler plugin
+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md` —— IR box testData 说明
+- `structs/wasmline-ir-design.md` —— 稳定设计说明
+- `structs/ir.md` —— 当前 IR 工作记录与下一步任务
+
+## 相关资源
+
+- [wasm-kotlin-exploration](https://github.com/crowforkotlin/wasm-kotlin-exploration) — Wasm + Kotlin 研究与测试用例
+- [Wasmtime 在 Android 上 (JNI)](https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/) —— 通过 JNI 将 Wasmtime 嵌入 Android
+- [Wasm 与 Wasi 深度解析](https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91%A8%E5%BA%86/) —— Wasm 与 Wasi 的区别及其生命周期
+
+## 许可证
+
+详见 [LICENSE](LICENSE)。
