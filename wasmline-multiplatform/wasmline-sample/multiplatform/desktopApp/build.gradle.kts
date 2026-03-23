@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.jetbrains.compose.compiler)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.kotlin.jvm)
 }

@@ -1,3 +1,5 @@
+@file:OptIn(UnsafeDuringIrConstructionAPI::class)
+
 package crow.wasmline.kotlin
 
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -15,11 +17,14 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildReceiverParameter
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
+import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
@@ -27,6 +32,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
@@ -50,7 +56,6 @@ internal class WasmlineIrGenerationExtension(
      * These checks should be relaxed incrementally in later phases rather than
      * treated as permanent product limitations.
      */
-
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         val runtimeSymbols = WasmlineRuntimeSymbols(pluginContext)
         moduleFragment.files.forEach { file ->
@@ -64,7 +69,6 @@ internal class WasmlineIrGenerationExtension(
         }
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun scanContainer(container: IrDeclarationContainer, contracts: MutableList<IrClass>) {
         container.declarations.forEach { declaration ->
             when (declaration) {
@@ -78,7 +82,6 @@ internal class WasmlineIrGenerationExtension(
         }
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun validateIfServiceContract(irClass: IrClass, file: IrFile): Boolean {
         var isValid = true
 
@@ -126,7 +129,6 @@ internal class WasmlineIrGenerationExtension(
         return isValid
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun validateFunction(function: IrSimpleFunction, file: IrFile): Boolean {
         var isValid = true
         val regularParameters = function.parameters.filter { it.kind == IrParameterKind.Regular }
@@ -160,17 +162,29 @@ internal class WasmlineIrGenerationExtension(
                 isValid = false
                 reportError(file, parameter, "Passing service contracts as parameters is not supported in phase one.")
             }
+            if (!parameter.type.isPhaseOnePayloadType()) {
+                isValid = false
+                reportError(file, parameter, "Phase-one Wasmline generation currently supports ByteArray parameters only.")
+            }
+        }
+
+        if (regularParameters.size > 1) {
+            isValid = false
+            reportError(file, function, "Phase-one Wasmline generation currently supports at most one regular parameter.")
         }
 
         if (function.returnType.isWasmlineServiceType()) {
             isValid = false
             reportError(file, function, "Returning service contracts is not supported in phase one.")
         }
+        if (!function.returnType.isPhaseOneReturnType()) {
+            isValid = false
+            reportError(file, function, "Phase-one Wasmline generation currently supports ByteArray or Unit returns only.")
+        }
 
         return isValid
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun generateDefinitionSkeleton(
         contract: IrClass,
         file: IrFile,
@@ -262,7 +276,6 @@ internal class WasmlineIrGenerationExtension(
         )
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun generateProxySkeleton(
         contract: IrClass,
         file: IrFile,
@@ -285,11 +298,19 @@ internal class WasmlineIrGenerationExtension(
             createThisReceiverParameter()
         }
 
+        val endpointField = createPrivateField(
+            owner = proxyClass,
+            pluginContext = pluginContext,
+            type = runtimeSymbols.endpointClass.owner.defaultType,
+            name = Name.identifier("endpoint"),
+        )
+        proxyClass.declarations += endpointField
+
         proxyClass.addConstructor {
             initDefaults(contract)
             visibility = DescriptorVisibilities.PUBLIC
         }.apply {
-            addValueParameter("endpoint", runtimeSymbols.endpointClass.owner.defaultType)
+            val endpointParameter = addValueParameter("endpoint", runtimeSymbols.endpointClass.owner.defaultType)
             irConstructorBody(pluginContext) { statements ->
                 val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
                 statements += irDelegatingConstructorCall(
@@ -299,6 +320,11 @@ internal class WasmlineIrGenerationExtension(
                 statements += irInstanceInitializerCall(
                     context = pluginContext,
                     classSymbol = proxyClass.symbol,
+                )
+                statements += irSetField(
+                    receiver = irGet(proxyClass.thisReceiver!!),
+                    field = endpointField,
+                    value = irGet(endpointParameter),
                 )
             }
         }
@@ -310,6 +336,7 @@ internal class WasmlineIrGenerationExtension(
             .forEach { contractFunction ->
                 proxyClass.declarations += generateProxyMethodStub(
                     proxyClass = proxyClass,
+                    endpointField = endpointField,
                     contractFunction = contractFunction,
                     pluginContext = pluginContext,
                     runtimeSymbols = runtimeSymbols,
@@ -321,7 +348,6 @@ internal class WasmlineIrGenerationExtension(
         return proxyClass
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun generateAdapterSkeleton(
         contract: IrClass,
         file: IrFile,
@@ -402,14 +428,15 @@ internal class WasmlineIrGenerationExtension(
         return adapterClass
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun generateProxyMethodStub(
         proxyClass: IrClass,
+        endpointField: IrField,
         contractFunction: IrSimpleFunction,
         pluginContext: IrPluginContext,
         runtimeSymbols: WasmlineRuntimeSymbols,
         fqName: String,
     ): IrSimpleFunction {
+        val action = "$fqName#${contractFunction.id}"
         return pluginContext.irFactory.createSimpleFunction(
             startOffset = contractFunction.startOffset,
             endOffset = contractFunction.endOffset,
@@ -439,23 +466,42 @@ internal class WasmlineIrGenerationExtension(
                 .forEach { parameter ->
                     addValueParameter(parameter.name.asString(), parameter.type)
                 }
+            val regularParameters = parameters.filter { it.kind == IrParameterKind.Regular }
             irFunctionBody(
                 context = pluginContext,
                 scopeOwnerSymbol = symbol,
             ) {
-                +irReturn(
-                    value = irInvoke(
-                        null,
-                        runtimeSymbols.kotlinErrorFunction,
-                        irString("Wasmline proxy method generation is not implemented yet for $fqName.${contractFunction.name.asString()}()."),
-                    ),
-                    returnTargetSymbol = symbol,
+                val dispatchReceiver = parameters.first { it.kind == IrParameterKind.DispatchReceiver }
+                val endpoint = irGetField(
+                    irGet(dispatchReceiver),
+                    endpointField,
                 )
+                val payload = when (regularParameters.size) {
+                    0 -> irInvoke(
+                        null,
+                        runtimeSymbols.emptyPayloadFunction,
+                    )
+
+                    else -> irGet(regularParameters.single())
+                }
+                val invokeCall = irInvoke(
+                    endpoint,
+                    runtimeSymbols.endpointInvokeFunction,
+                    irString(action),
+                    payload,
+                )
+                if (contractFunction.returnType.isUnit()) {
+                    +irImplicitCoercionToUnit(invokeCall)
+                } else {
+                    +irReturn(
+                        value = invokeCall,
+                        returnTargetSymbol = symbol,
+                    )
+                }
             }
         }
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun generateLinkStub(
         contract: IrClass,
         definitionObject: IrClass,
@@ -502,7 +548,6 @@ internal class WasmlineIrGenerationExtension(
         }
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun generateBindStub(
         contract: IrClass,
         definitionObject: IrClass,
@@ -557,6 +602,28 @@ internal class WasmlineIrGenerationExtension(
         report(file, declaration, CompilerMessageSeverity.ERROR, message)
     }
 
+    private fun createPrivateField(
+        owner: IrClass,
+        pluginContext: IrPluginContext,
+        type: IrType,
+        name: Name,
+    ): IrField {
+        return pluginContext.irFactory.createField(
+            startOffset = owner.startOffset,
+            endOffset = owner.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            symbol = IrFieldSymbolImpl(),
+            name = name,
+            type = type,
+            visibility = DescriptorVisibilities.PRIVATE,
+            isFinal = true,
+            isExternal = false,
+            isStatic = false,
+        ).apply {
+            parent = owner
+        }
+    }
+
     private fun report(
         file: IrFile,
         declaration: IrDeclaration,
@@ -594,11 +661,22 @@ internal class WasmlineIrGenerationExtension(
         }
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     private fun IrType.isWasmlineServiceType(): Boolean {
         val classSymbol = classifierOrNull as? IrClassSymbol ?: return false
         return classSymbol.owner.isWasmlineServiceContract()
     }
+
+    private fun IrType.isPhaseOnePayloadType(): Boolean {
+        val classSymbol = classifierOrNull as? IrClassSymbol ?: return false
+        return classSymbol.owner.fqNameWhenAvailable?.asString() == "kotlin.ByteArray"
+    }
+
+    private fun IrType.isUnit(): Boolean {
+        val classSymbol = classifierOrNull as? IrClassSymbol ?: return false
+        return classSymbol.owner.fqNameWhenAvailable?.asString() == "kotlin.Unit"
+    }
+
+    private fun IrType.isPhaseOneReturnType(): Boolean = isUnit() || isPhaseOnePayloadType()
 
     private companion object {
         const val WASMLINE_SERVICE_FQ_NAME = "crow.wasmline.WasmlineService"

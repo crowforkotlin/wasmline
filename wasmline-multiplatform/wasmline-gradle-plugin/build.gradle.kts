@@ -26,10 +26,10 @@ buildConfig {
     val compilerPlugin = projects.wasmlineKotlinPlugin
     println("""
         ---------------------------------
-        group is : ${compilerPlugin.group}
-        name is : ${compilerPlugin.name}
-        version is : ${compilerPlugin.version}
-        id is : ${libs.plugins.wasmline.kotlin.get()}
+        wasmline group is : ${compilerPlugin.group}
+        wasmline name is : ${compilerPlugin.name}
+        wasmline version is : ${compilerPlugin.version}
+        wasmline id is : ${libs.plugins.wasmline.kotlin.get()}
         ---------------------------------
     """.trimIndent())
     buildConfigField("String", "KOTLIN_PLUGIN_ID", "\"${libs.plugins.wasmline.kotlin.get()}\"")

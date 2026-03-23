@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.android.library.kmp) apply false
     alias(libs.plugins.jetbrains.compose) apply false
-    alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.jetbrains.compose.compiler) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.zipline) apply false
     alias(libs.plugins.kotlin.serialization) apply false
@@ -24,7 +24,6 @@ plugins {
 allprojects {
     group = "crow.wasmline"
     version = project.property("wasmline.version") as String
-
 
     pluginManager.withPlugin("com.vanniktech.maven.publish") {
         configure<MavenPublishBaseExtension> {

@@ -1,0 +1,386 @@
+FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
+  CLASS CLASS name:EchoServiceImpl modality:FINAL visibility:private superTypes:[test.box.EchoService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoServiceImpl
+    CONSTRUCTOR visibility:public returnType:test.box.EchoServiceImpl [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoServiceImpl modality:FINAL visibility:private superTypes:[test.box.EchoService]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in test.box.EchoService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in test.box.EchoService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in test.box.EchoService
+    FUN name:echo visibility:public modality:OPEN returnType:kotlin.ByteArray
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoServiceImpl
+      VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
+      overridden:
+        public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService
+      BLOCK_BODY
+        RETURN type=kotlin.Nothing from='public open fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoServiceImpl'
+          GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoServiceImpl.echo' type=kotlin.ByteArray origin=null
+  CLASS CLASS name:EchoService_WasmlineAdapter modality:FINAL visibility:public superTypes:[kotlin.Any]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineAdapter
+    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineAdapter [primary]
+      VALUE_PARAMETER kind:Regular name:implementation index:0 type:test.box.EchoService
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineAdapter modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineAdapter
+      VALUE_PARAMETER kind:Regular name:scope index:1 type:crow.wasmline.WasmlineBindingScope
+      BLOCK_BODY
+        CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+          ARG message: CONST String type=kotlin.String value="Wasmline adapter method generation is not implemented yet for test.box.EchoService."
+  CLASS CLASS name:EchoService_WasmlineProxy modality:FINAL visibility:public superTypes:[test.box.EchoService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineProxy
+    FIELD name:endpoint type:crow.wasmline.WasmlineEndpoint visibility:private [final]
+    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineProxy [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.WasmlineEndpoint
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineProxy modality:FINAL visibility:public superTypes:[test.box.EchoService]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.WasmlineEndpoint visibility:private [final] declared in test.box.EchoService_WasmlineProxy' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineProxy declared in test.box.EchoService_WasmlineProxy' type=test.box.EchoService_WasmlineProxy origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.WasmlineEndpoint declared in test.box.EchoService_WasmlineProxy.<init>' type=crow.wasmline.WasmlineEndpoint origin=null
+    FUN name:echo visibility:public modality:FINAL returnType:kotlin.ByteArray
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineProxy
+      VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
+      overridden:
+        public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService
+      BLOCK_BODY
+        RETURN type=kotlin.ByteArray from='public final fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService_WasmlineProxy'
+          CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+            ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.WasmlineEndpoint visibility:private [final] declared in test.box.EchoService_WasmlineProxy' type=crow.wasmline.WasmlineEndpoint origin=null
+              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineProxy declared in test.box.EchoService_WasmlineProxy.echo' type=test.box.EchoService_WasmlineProxy origin=null
+            ARG action: CONST String type=kotlin.String value="test.box.EchoService#xjRgE7w2"
+            ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoService_WasmlineProxy.echo' type=kotlin.ByteArray origin=null
+  CLASS CLASS name:RecordingEndpoint modality:FINAL visibility:private superTypes:[crow.wasmline.WasmlineEndpoint]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.RecordingEndpoint
+    PROPERTY name:action visibility:public modality:FINAL [var]
+      FIELD PROPERTY_BACKING_FIELD name:action type:kotlin.String? visibility:private
+        EXPRESSION_BODY
+          CONST Null type=kotlin.Nothing? value=null
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-action> visibility:public modality:FINAL returnType:kotlin.String?
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+        correspondingProperty: PROPERTY name:action visibility:public modality:FINAL [var]
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-action> (): kotlin.String? declared in test.box.RecordingEndpoint'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:action type:kotlin.String? visibility:private' type=kotlin.String? origin=null
+              receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<get-action>' type=test.box.RecordingEndpoint origin=null
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<set-action> visibility:public modality:FINAL returnType:kotlin.Unit
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+        VALUE_PARAMETER kind:Regular name:<set-?> index:1 type:kotlin.String?
+        correspondingProperty: PROPERTY name:action visibility:public modality:FINAL [var]
+        BLOCK_BODY
+          SET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:action type:kotlin.String? visibility:private' type=kotlin.Unit origin=null
+            receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<set-action>' type=test.box.RecordingEndpoint origin=null
+            value: GET_VAR '<set-?>: kotlin.String? declared in test.box.RecordingEndpoint.<set-action>' type=kotlin.String? origin=null
+    PROPERTY name:payload visibility:public modality:FINAL [var]
+      FIELD PROPERTY_BACKING_FIELD name:payload type:kotlin.ByteArray? visibility:private
+        EXPRESSION_BODY
+          CONST Null type=kotlin.Nothing? value=null
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-payload> visibility:public modality:FINAL returnType:kotlin.ByteArray?
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+        correspondingProperty: PROPERTY name:payload visibility:public modality:FINAL [var]
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-payload> (): kotlin.ByteArray? declared in test.box.RecordingEndpoint'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:payload type:kotlin.ByteArray? visibility:private' type=kotlin.ByteArray? origin=null
+              receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<get-payload>' type=test.box.RecordingEndpoint origin=null
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<set-payload> visibility:public modality:FINAL returnType:kotlin.Unit
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+        VALUE_PARAMETER kind:Regular name:<set-?> index:1 type:kotlin.ByteArray?
+        correspondingProperty: PROPERTY name:payload visibility:public modality:FINAL [var]
+        BLOCK_BODY
+          SET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:payload type:kotlin.ByteArray? visibility:private' type=kotlin.Unit origin=null
+            receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<set-payload>' type=test.box.RecordingEndpoint origin=null
+            value: GET_VAR '<set-?>: kotlin.ByteArray? declared in test.box.RecordingEndpoint.<set-payload>' type=kotlin.ByteArray? origin=null
+    CONSTRUCTOR visibility:public returnType:test.box.RecordingEndpoint [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:RecordingEndpoint modality:FINAL visibility:private superTypes:[crow.wasmline.WasmlineEndpoint]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.WasmlineEndpoint
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in crow.wasmline.WasmlineEndpoint
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineEndpoint
+    FUN name:invoke visibility:public modality:OPEN returnType:kotlin.ByteArray
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+      overridden:
+        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.WasmlineEndpoint
+      BLOCK_BODY
+        CALL 'public final fun <set-action> (<set-?>: kotlin.String?): kotlin.Unit declared in test.box.RecordingEndpoint' type=kotlin.Unit origin=EQ
+          ARG <this>: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.invoke' type=test.box.RecordingEndpoint origin=null
+          ARG <set-?>: GET_VAR 'action: kotlin.String declared in test.box.RecordingEndpoint.invoke' type=kotlin.String origin=null
+        CALL 'public final fun <set-payload> (<set-?>: kotlin.ByteArray?): kotlin.Unit declared in test.box.RecordingEndpoint' type=kotlin.Unit origin=EQ
+          ARG <this>: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.invoke' type=test.box.RecordingEndpoint origin=null
+          ARG <set-?>: CALL 'public final fun copyOf (<this>: kotlin.ByteArray): kotlin.ByteArray declared in kotlin.collections' type=kotlin.ByteArray origin=null
+            ARG <this>: GET_VAR 'payload: kotlin.ByteArray declared in test.box.RecordingEndpoint.invoke' type=kotlin.ByteArray origin=null
+        RETURN type=kotlin.Nothing from='public open fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.RecordingEndpoint'
+          CALL 'public final fun encodeToByteArray (<this>: kotlin.String): kotlin.ByteArray declared in kotlin.text' type=kotlin.ByteArray origin=null
+            ARG <this>: STRING_CONCATENATION type=kotlin.String
+              CONST String type=kotlin.String value="reply:"
+              CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+                ARG <this>: GET_VAR 'payload: kotlin.ByteArray declared in test.box.RecordingEndpoint.invoke' type=kotlin.ByteArray origin=null
+  CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineService
+    FUN name:echo visibility:public modality:ABSTRACT returnType:kotlin.ByteArray
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService
+      VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
+  CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:public superTypes:[crow.wasmline.WasmlineServiceDefinition<test.box.EchoService>]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineDefinition
+    PROPERTY name:contract visibility:public modality:FINAL [val]
+      overridden:
+        public abstract contract: kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition
+      FIELD PROPERTY_BACKING_FIELD name:contract type:kotlin.reflect.KClass<test.box.EchoService> visibility:private [final]
+        EXPRESSION_BODY
+          CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-contract> visibility:public modality:FINAL returnType:kotlin.reflect.KClass<test.box.EchoService>
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+        correspondingProperty: PROPERTY name:contract visibility:public modality:FINAL [val]
+        overridden:
+          public abstract fun <get-contract> (): kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-contract> (): kotlin.reflect.KClass<test.box.EchoService> declared in test.box.EchoService_WasmlineDefinition'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:contract type:kotlin.reflect.KClass<test.box.EchoService> visibility:private [final]' type=kotlin.reflect.KClass<test.box.EchoService> origin=null
+              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-contract>' type=test.box.EchoService_WasmlineDefinition origin=null
+    PROPERTY name:serviceId visibility:public modality:FINAL [val]
+      overridden:
+        public abstract serviceId: crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition
+      FIELD PROPERTY_BACKING_FIELD name:serviceId type:crow.wasmline.WasmlineServiceId visibility:private [final]
+        EXPRESSION_BODY
+          CONSTRUCTOR_CALL 'public constructor <init> (value: kotlin.String) declared in crow.wasmline.WasmlineServiceId' type=crow.wasmline.WasmlineServiceId origin=null
+            ARG value: CONST String type=kotlin.String value="test.box.EchoService"
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-serviceId> visibility:public modality:FINAL returnType:crow.wasmline.WasmlineServiceId
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+        correspondingProperty: PROPERTY name:serviceId visibility:public modality:FINAL [val]
+        overridden:
+          public abstract fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in test.box.EchoService_WasmlineDefinition'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:serviceId type:crow.wasmline.WasmlineServiceId visibility:private [final]' type=crow.wasmline.WasmlineServiceId origin=null
+              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-serviceId>' type=test.box.EchoService_WasmlineDefinition origin=null
+    CONSTRUCTOR visibility:private returnType:test.box.EchoService_WasmlineDefinition [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:public superTypes:[crow.wasmline.WasmlineServiceDefinition<test.box.EchoService>]' type=kotlin.Unit
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.box.EchoService
+      VALUE_PARAMETER kind:Regular name:scope index:2 type:crow.wasmline.WasmlineBindingScope
+      overridden:
+        public abstract fun bind (implementation: T of crow.wasmline.WasmlineServiceDefinition, scope: crow.wasmline.WasmlineBindingScope): kotlin.Unit declared in crow.wasmline.WasmlineServiceDefinition
+      BLOCK_BODY
+        CALL 'public final fun bind (scope: crow.wasmline.WasmlineBindingScope): kotlin.Unit declared in test.box.EchoService_WasmlineAdapter' type=kotlin.Unit origin=null
+          ARG <this>: CONSTRUCTOR_CALL 'public constructor <init> (implementation: test.box.EchoService) declared in test.box.EchoService_WasmlineAdapter' type=test.box.EchoService_WasmlineAdapter origin=null
+            ARG implementation: GET_VAR 'implementation: test.box.EchoService declared in test.box.EchoService_WasmlineDefinition.bind' type=test.box.EchoService origin=null
+          ARG scope: GET_VAR 'scope: crow.wasmline.WasmlineBindingScope declared in test.box.EchoService_WasmlineDefinition.bind' type=crow.wasmline.WasmlineBindingScope origin=null
+    FUN name:link visibility:public modality:FINAL returnType:test.box.EchoService
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+      VALUE_PARAMETER kind:Regular name:endpoint index:1 type:crow.wasmline.WasmlineEndpoint
+      overridden:
+        public abstract fun link (endpoint: crow.wasmline.WasmlineEndpoint): T of crow.wasmline.WasmlineServiceDefinition declared in crow.wasmline.WasmlineServiceDefinition
+      BLOCK_BODY
+        RETURN type=test.box.EchoService_WasmlineProxy from='public final fun link (endpoint: crow.wasmline.WasmlineEndpoint): test.box.EchoService declared in test.box.EchoService_WasmlineDefinition'
+          CONSTRUCTOR_CALL 'public constructor <init> (endpoint: crow.wasmline.WasmlineEndpoint) declared in test.box.EchoService_WasmlineProxy' type=test.box.EchoService_WasmlineProxy origin=null
+            ARG endpoint: GET_VAR 'endpoint: crow.wasmline.WasmlineEndpoint declared in test.box.EchoService_WasmlineDefinition.link' type=crow.wasmline.WasmlineEndpoint origin=null
+  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+    BLOCK_BODY
+      VAR name:definition type:crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> [val]
+        annotations:
+          Suppress(names = ["UNCHECKED_CAST"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+        TYPE_OP type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=CAST typeOperand=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService>
+          CALL 'public open fun get (p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Field' type=@[FlexibleNullability] kotlin.Any? origin=null
+            ARG <this>: TYPE_OP type=java.lang.reflect.Field origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Field
+              CALL 'public open fun getField (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.reflect.Field? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.reflect.Field? origin=null
+                ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
+                  CALL 'public open fun forName (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.Class<*>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+                    ARG p0: CONST String type=kotlin.String value="test.box.EchoService_WasmlineDefinition"
+                ARG p0: CONST String type=kotlin.String value="INSTANCE"
+            ARG p0: CONST Null type=kotlin.Nothing? value=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public abstract fun <get-contract> (): kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition' type=kotlin.reflect.KClass<test.box.EchoService> origin=GET_PROPERTY
+                ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+              ARG arg1: CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail contract="
+                CALL 'public abstract fun <get-contract> (): kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition' type=kotlin.reflect.KClass<test.box.EchoService> origin=GET_PROPERTY
+                  ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public final fun <get-value> (): kotlin.String declared in crow.wasmline.WasmlineServiceId' type=kotlin.String origin=GET_PROPERTY
+                ARG <this>: CALL 'public abstract fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition' type=crow.wasmline.WasmlineServiceId origin=GET_PROPERTY
+                  ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService"
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail serviceId="
+                CALL 'public final fun <get-value> (): kotlin.String declared in crow.wasmline.WasmlineServiceId' type=kotlin.String origin=GET_PROPERTY
+                  ARG <this>: CALL 'public abstract fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition' type=crow.wasmline.WasmlineServiceId origin=GET_PROPERTY
+                    ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+      VAR name:endpoint type:test.box.RecordingEndpoint [val]
+        CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.RecordingEndpoint' type=test.box.RecordingEndpoint origin=null
+      VAR name:proxy type:test.box.EchoService [val]
+        CALL 'public abstract fun link (endpoint: crow.wasmline.WasmlineEndpoint): T of crow.wasmline.WasmlineServiceDefinition declared in crow.wasmline.WasmlineServiceDefinition' type=test.box.EchoService origin=null
+          ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+          ARG endpoint: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: TYPE_OP type=kotlin.Boolean origin=NOT_INSTANCEOF typeOperand=test.box.EchoService
+            GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail proxyContractType="
+                CALL 'public abstract fun <get-qualifiedName> (): kotlin.String? declared in kotlin.reflect.KClass' type=kotlin.String? origin=GET_PROPERTY
+                  ARG <this>: GET_CLASS type=kotlin.reflect.KClass<out test.box.EchoService>
+                    GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public abstract fun <get-qualifiedName> (): kotlin.String? declared in kotlin.reflect.KClass' type=kotlin.String? origin=GET_PROPERTY
+                ARG <this>: GET_CLASS type=kotlin.reflect.KClass<out test.box.EchoService>
+                  GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService_WasmlineProxy"
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail proxyType="
+                CALL 'public abstract fun <get-qualifiedName> (): kotlin.String? declared in kotlin.reflect.KClass' type=kotlin.String? origin=GET_PROPERTY
+                  ARG <this>: GET_CLASS type=kotlin.reflect.KClass<out test.box.EchoService>
+                    GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+      VAR name:result type:kotlin.String [val]
+        CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+          ARG <this>: CALL 'public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService' type=kotlin.ByteArray origin=null
+            ARG <this>: GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+            ARG payload: CALL 'public final fun encodeToByteArray (<this>: kotlin.String): kotlin.ByteArray declared in kotlin.text' type=kotlin.ByteArray origin=null
+              ARG <this>: CONST String type=kotlin.String value="hello"
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: GET_VAR 'val result: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="reply:hello"
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail result="
+                GET_VAR 'val result: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public final fun <get-action> (): kotlin.String? declared in test.box.RecordingEndpoint' type=kotlin.String? origin=GET_PROPERTY
+                ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService#xjRgE7w2"
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail action="
+                CALL 'public final fun <get-action> (): kotlin.String? declared in test.box.RecordingEndpoint' type=kotlin.String? origin=GET_PROPERTY
+                  ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: BLOCK type=kotlin.String? origin=SAFE_CALL
+                VAR IR_TEMPORARY_VARIABLE name:tmp_0 type:kotlin.ByteArray? [val]
+                  CALL 'public final fun <get-payload> (): kotlin.ByteArray? declared in test.box.RecordingEndpoint' type=kotlin.ByteArray? origin=GET_PROPERTY
+                    ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+                WHEN type=kotlin.String? origin=null
+                  BRANCH
+                    if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                      ARG arg0: GET_VAR 'val tmp_0: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+                      ARG arg1: CONST Null type=kotlin.Nothing? value=null
+                    then: CONST Null type=kotlin.Nothing? value=null
+                  BRANCH
+                    if: CONST Boolean type=kotlin.Boolean value=true
+                    then: CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+                      ARG <this>: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
+                        GET_VAR 'val tmp_0: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+              ARG arg1: CONST String type=kotlin.String value="hello"
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail payload="
+                BLOCK type=kotlin.String? origin=SAFE_CALL
+                  VAR IR_TEMPORARY_VARIABLE name:tmp_1 type:kotlin.ByteArray? [val]
+                    CALL 'public final fun <get-payload> (): kotlin.ByteArray? declared in test.box.RecordingEndpoint' type=kotlin.ByteArray? origin=GET_PROPERTY
+                      ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+                  WHEN type=kotlin.String? origin=null
+                    BRANCH
+                      if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                        ARG arg0: GET_VAR 'val tmp_1: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+                        ARG arg1: CONST Null type=kotlin.Nothing? value=null
+                      then: CONST Null type=kotlin.Nothing? value=null
+                    BRANCH
+                      if: CONST Boolean type=kotlin.Boolean value=true
+                      then: CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+                        ARG <this>: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
+                          GET_VAR 'val tmp_1: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+      VAR name:bindError type:kotlin.String [val]
+        TRY type=kotlin.String
+          try: BLOCK type=kotlin.String origin=null
+            CALL 'public abstract fun bind (implementation: T of crow.wasmline.WasmlineServiceDefinition, scope: crow.wasmline.WasmlineBindingScope): kotlin.Unit declared in crow.wasmline.WasmlineServiceDefinition' type=kotlin.Unit origin=null
+              ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+              ARG implementation: CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.EchoServiceImpl' type=test.box.EchoServiceImpl origin=null
+              ARG scope: CONSTRUCTOR_CALL 'public constructor <init> () declared in crow.wasmline.WasmlineBindingScope' type=crow.wasmline.WasmlineBindingScope origin=null
+            CONST String type=kotlin.String value="NO_ERROR"
+          CATCH parameter=val e: java.lang.IllegalStateException declared in test.box.box
+            VAR CATCH_PARAMETER name:e type:java.lang.IllegalStateException [val]
+            BLOCK type=kotlin.String origin=null
+              CALL 'public final fun orEmpty (<this>: kotlin.String?): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+                ARG <this>: CALL 'public open fun <get-message> (): kotlin.String? declared in java.lang.IllegalStateException' type=kotlin.String? origin=GET_PROPERTY
+                  ARG <this>: GET_VAR 'val e: java.lang.IllegalStateException declared in test.box.box' type=java.lang.IllegalStateException origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: GET_VAR 'val bindError: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="Wasmline adapter method generation is not implemented yet for test.box.EchoService."
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail bindError="
+                GET_VAR 'val bindError: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+        CONST String type=kotlin.String value="OK"

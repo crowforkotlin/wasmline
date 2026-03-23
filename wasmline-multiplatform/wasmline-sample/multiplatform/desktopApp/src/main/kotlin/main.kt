@@ -3,6 +3,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import crow.wasmline.sample.App
+import crow.wasmline.sample.ir.EchoServiceImpl
 import java.awt.Dimension
 
 fun main() = application {
@@ -13,6 +14,7 @@ fun main() = application {
     ) {
         window.minimumSize = Dimension(350, 600)
         App(wasmPath = "test")
+        EchoServiceImpl()
     }
 }
 

@@ -19,6 +19,7 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
+            api(projects.wasmline)
             implementation(libs.kotlinx.serialization.protobuf)
             implementation(libs.kotlinx.serialization.json)
         }

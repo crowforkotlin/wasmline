@@ -33,14 +33,22 @@ internal class WasmlineRuntimeSymbols(
     val serviceDefinitionServiceIdProperty: IrPropertySymbol = requireProperty(serviceDefinitionClass, "serviceId")
     val serviceDefinitionLinkFunction: IrSimpleFunctionSymbol = requireFunction(serviceDefinitionClass, "link")
     val serviceDefinitionBindFunction: IrSimpleFunctionSymbol = requireFunction(serviceDefinitionClass, "bind")
+    val endpointInvokeFunction: IrSimpleFunctionSymbol = requireFunction(endpointClass, "invoke")
 
     val serviceIdConstructor: IrConstructorSymbol = serviceIdClass.owner.declarations
         .filterIsInstance<IrConstructor>()
         .single()
         .symbol
-    val kotlinErrorFunction: IrSimpleFunctionSymbol = pluginContext.referenceFunctions(
-        CallableId(FqName("kotlin"), Name.identifier("error")),
-    ).single()
+    val kotlinErrorFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = "kotlin",
+        functionName = "error",
+        regularParameterCount = 1,
+    )
+    val emptyPayloadFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = RUNTIME_PACKAGE,
+        functionName = "wasmlineEmptyPayload",
+        regularParameterCount = 0,
+    )
 
     fun serviceDefinitionType(contract: IrClass): IrType {
         return serviceDefinitionClass.typeWith(contract.defaultType)
@@ -83,6 +91,18 @@ internal class WasmlineRuntimeSymbols(
                     function.parameters.count { it.kind == IrParameterKind.Regular } <= 2
             }
             .symbol
+    }
+
+    private fun requireTopLevelFunction(
+        packageName: String,
+        functionName: String,
+        regularParameterCount: Int,
+    ): IrSimpleFunctionSymbol {
+        return pluginContext.referenceFunctions(
+            CallableId(FqName(packageName), Name.identifier(functionName)),
+        ).firstOrNull { function ->
+            function.owner.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount
+        } ?: error("Unable to resolve top-level function $packageName.$functionName/$regularParameterCount")
     }
 
     private companion object {

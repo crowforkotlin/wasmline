@@ -56,10 +56,13 @@ import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 import org.jetbrains.kotlin.ir.expressions.IrInstanceInitializerCall
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrReturn
+import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
+import org.jetbrains.kotlin.ir.expressions.IrTypeOperatorCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrDelegatingConstructorCallImplWithShape
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrTypeOperatorCallImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -365,6 +368,19 @@ internal fun IrBuilderWithScope.irKClass(
   )
 }
 
+internal fun IrBuilderWithScope.irImplicitCoercionToUnit(
+  expression: IrExpression,
+): IrTypeOperatorCall {
+  return IrTypeOperatorCallImpl(
+    startOffset = startOffset,
+    endOffset = endOffset,
+    type = context.irBuiltIns.unitType,
+    operator = IrTypeOperator.IMPLICIT_COERCION_TO_UNIT,
+    typeOperand = context.irBuiltIns.unitType,
+    argument = expression,
+  )
+}
+
 fun irBlockBodyBuilder(
   irPluginContext: IrGeneratorContext,
   scopeWithIr: ScopeWithIr,
@@ -444,11 +460,19 @@ fun IrBuilderWithScope.irInvoke(
   typeHint: IrType? = null,
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
+  val requiresDispatchReceiver = callee.owner.parameters.any { it.kind == IrParameterKind.DispatchReceiver }
+  require(!requiresDispatchReceiver || dispatchReceiver != null) {
+    "Function ${callee.owner.name} requires a dispatch receiver."
+  }
   val returnType = typeHint ?: callee.owner.returnType
   val call = irCall(callee, type = returnType)
   call.dispatchReceiver = dispatchReceiver
+  val valueParameters = callee.owner.parameters.filter { it.kind != IrParameterKind.DispatchReceiver }
+  require(args.size <= valueParameters.size) {
+    "Too many value arguments for ${callee.owner.name}: expected at most ${valueParameters.size}, got ${args.size}."
+  }
   for ((index, arg) in args.withIndex()) {
-    call.arguments[callee.owner.parameters[index].indexInParameters] = arg
+    call.arguments[valueParameters[index].indexInParameters] = arg
   }
   return call
 }

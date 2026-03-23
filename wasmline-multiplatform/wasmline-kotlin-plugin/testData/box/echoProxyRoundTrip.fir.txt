@@ -1,0 +1,100 @@
+FILE: echoProxyRoundTrip.kt
+    package test.box
+
+    public abstract interface EchoService : R|crow/wasmline/WasmlineService| {
+        public abstract fun echo(payload: R|kotlin/ByteArray|): R|kotlin/ByteArray|
+
+    }
+    private final class RecordingEndpoint : R|crow/wasmline/WasmlineEndpoint| {
+        public constructor(): R|test/box/RecordingEndpoint| {
+            super<R|kotlin/Any|>()
+        }
+
+        public final var action: R|kotlin/String?| = Null(null)
+            public get(): R|kotlin/String?|
+            public set(value: R|kotlin/String?|): R|kotlin/Unit|
+
+        public final var payload: R|kotlin/ByteArray?| = Null(null)
+            public get(): R|kotlin/ByteArray?|
+            public set(value: R|kotlin/ByteArray?|): R|kotlin/Unit|
+
+        public open override fun invoke(action: R|kotlin/String|, payload: R|kotlin/ByteArray|): R|kotlin/ByteArray| {
+            this@R|test/box/RecordingEndpoint|.R|test/box/RecordingEndpoint.action| = R|<local>/action|
+            this@R|test/box/RecordingEndpoint|.R|test/box/RecordingEndpoint.payload| = R|<local>/payload|.R|kotlin/collections/copyOf|()
+            ^invoke <strcat>(String(reply:), R|<local>/payload|.R|kotlin/text/decodeToString|()).R|kotlin/text/encodeToByteArray|()
+        }
+
+    }
+    private final class EchoServiceImpl : R|test/box/EchoService| {
+        public constructor(): R|test/box/EchoServiceImpl| {
+            super<R|kotlin/Any|>()
+        }
+
+        public open override fun echo(payload: R|kotlin/ByteArray|): R|kotlin/ByteArray| {
+            ^echo R|<local>/payload|
+        }
+
+    }
+    public final fun box(): R|kotlin/String| {
+        @R|kotlin/Suppress|(names = vararg(String(UNCHECKED_CAST))) lval definition: R|crow/wasmline/WasmlineServiceDefinition<test/box/EchoService>| = (Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.box.EchoService_WasmlineDefinition)).R|SubstitutionOverride<java/lang/Class.getField: R|java/lang/reflect/Field!|>|(String(INSTANCE)).R|java/lang/reflect/Field.get|(Null(null)) as R|crow/wasmline/WasmlineServiceDefinition<test/box/EchoService>|)
+        when () {
+            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|, <getClass>(Q|test/box/EchoService|)) ->  {
+                ^box <strcat>(String(Fail contract=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|)
+            }
+        }
+
+        when () {
+            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.serviceId: R|crow/wasmline/WasmlineServiceId|>|.R|crow/wasmline/WasmlineServiceId.value|, String(test.box.EchoService)) ->  {
+                ^box <strcat>(String(Fail serviceId=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.serviceId: R|crow/wasmline/WasmlineServiceId|>|.R|crow/wasmline/WasmlineServiceId.value|)
+            }
+        }
+
+        lval endpoint: R|test/box/RecordingEndpoint| = R|test/box/RecordingEndpoint.RecordingEndpoint|()
+        lval proxy: R|test/box/EchoService| = R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.link: R|test/box/EchoService|>|(R|<local>/endpoint|)
+        when () {
+            (R|<local>/proxy| !is R|test/box/EchoService|) ->  {
+                ^box <strcat>(String(Fail proxyContractType=), <getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|)
+            }
+        }
+
+        when () {
+            !=(<getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|, String(test.box.EchoService_WasmlineProxy)) ->  {
+                ^box <strcat>(String(Fail proxyType=), <getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|)
+            }
+        }
+
+        lval result: R|kotlin/String| = R|<local>/proxy|.R|test/box/EchoService.echo|(String(hello).R|kotlin/text/encodeToByteArray|()).R|kotlin/text/decodeToString|()
+        when () {
+            !=(R|<local>/result|, String(reply:hello)) ->  {
+                ^box <strcat>(String(Fail result=), R|<local>/result|)
+            }
+        }
+
+        when () {
+            !=(R|<local>/endpoint|.R|test/box/RecordingEndpoint.action|, String(test.box.EchoService#xjRgE7w2)) ->  {
+                ^box <strcat>(String(Fail action=), R|<local>/endpoint|.R|test/box/RecordingEndpoint.action|)
+            }
+        }
+
+        when () {
+            !=(R|<local>/endpoint|.R|test/box/RecordingEndpoint.payload|?.{ $subj$.R|kotlin/text/decodeToString|() }, String(hello)) ->  {
+                ^box <strcat>(String(Fail payload=), R|<local>/endpoint|.R|test/box/RecordingEndpoint.payload|?.{ $subj$.R|kotlin/text/decodeToString|() })
+            }
+        }
+
+        lval bindError: R|kotlin/String| = try {
+            R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.bind: R|kotlin/Unit|>|(R|test/box/EchoServiceImpl.EchoServiceImpl|(), R|crow/wasmline/WasmlineBindingScope.WasmlineBindingScope|())
+            String(NO_ERROR)
+        }
+        catch (e: R|{kotlin/IllegalStateException=} java/lang/IllegalStateException|) {
+            R|<local>/e|.R|kotlin/Throwable.message|.R|kotlin/text/orEmpty|()
+        }
+
+        when () {
+            !=(R|<local>/bindError|, String(Wasmline adapter method generation is not implemented yet for test.box.EchoService.)) ->  {
+                ^box <strcat>(String(Fail bindError=), R|<local>/bindError|)
+            }
+        }
+
+        ^box String(OK)
+    }

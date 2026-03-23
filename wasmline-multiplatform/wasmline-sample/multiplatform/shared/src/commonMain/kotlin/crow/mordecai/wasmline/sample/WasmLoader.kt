@@ -12,7 +12,6 @@ import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.baseProtobuf
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.extensions.toProtoBytes
-import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.measureTime
 
 internal class WasmLoader {
