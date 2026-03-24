@@ -39,12 +39,12 @@ class WasmlineServiceRuntimeTest {
 
     @BeforeTest
     fun setUp() {
-        WasmlineServices.register(EchoServiceDefinition)
+        WasmlineServiceRegistry.register(EchoServiceDefinition)
     }
 
     @AfterTest
     fun tearDown() {
-        WasmlineServices.unregister(EchoService::class)
+        WasmlineServiceRegistry.unregister(EchoService::class)
     }
 
     @Test
