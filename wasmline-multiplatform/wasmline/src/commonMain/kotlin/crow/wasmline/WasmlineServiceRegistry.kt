@@ -5,10 +5,10 @@ import kotlin.reflect.KClass
 /**
  * Runtime registry of generated service definitions.
  *
- * Typical callers do not need to touch this directly; use `link<T>()` and
- * `bindServices { ... }` where possible.
+ * This is internal runtime wiring for typed Wasmline services.
+ * Typical callers should stay on `link<T>()` and `bindServices { ... }`.
  */
-object WasmlineServiceRegistry {
+internal object WasmlineServiceRegistry {
     private val definitions = mutableMapOf<KClass<out WasmlineService>, WasmlineServiceDefinition<out WasmlineService>>()
 
     fun register(definition: WasmlineServiceDefinition<out WasmlineService>) {

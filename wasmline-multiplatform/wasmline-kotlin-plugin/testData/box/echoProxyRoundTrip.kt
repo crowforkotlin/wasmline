@@ -27,6 +27,7 @@ private class EchoServiceImpl : EchoService {
 }
 
 fun box(): String {
+
     @Suppress("UNCHECKED_CAST")
     val definition = Class.forName("test.box.EchoService_WasmlineDefinition")
         .getField("INSTANCE")

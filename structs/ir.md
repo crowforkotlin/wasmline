@@ -24,11 +24,12 @@
 
 `wasmline-kotlin-plugin` 已经从“只会注册插件”推进到：
 
-> **可以发现 `WasmlineService` contract、执行 phase-one 校验、生成 `Definition / Proxy / Adapter` skeleton，并通过正式 `testData/box` 运行 FIR/IR snapshot 测试。**
+> **可以发现 `WasmlineService` contract、执行 phase-one 校验、生成 `Definition / Proxy / Adapter` skeleton、收口 typed runtime API，并开始对 `link<T>() / bind(...) / bindAs<T>()` 等入口注入自动 definition 注册逻辑。**
 
 当前主缺口已经收敛为：
 
 - `Adapter.bind()` 的真实绑定逻辑还未完成
+- 自动注册链路虽然已经接入 IR 侧，但仍需要 box / 运行时层面的正式回归验证
 - 正式 box fixture 数量还偏少
 - diagnostics 覆盖仍待补齐
 
@@ -54,8 +55,33 @@
   - `*_WasmlineAdapter`
 - `Proxy` 已经接到 `endpoint.invoke(...)`
 - `Definition.link()` / `Definition.bind()` 已经有基本 glue
+- 已开始对 typed 高层入口做 call-site 级别的 definition 自动注册注入：
+  - `WasmlineEndpoint.link<T>()`
+  - `Wasmline.link<T>()`
+  - `linkHost<T>()`
+  - `WasmlineBindingScope.bind(...)`
+  - `WasmlineBindingScope.bindAs<T>(...)`
 
-### 2.2 生成物观察方式
+### 2.2 typed runtime API 当前状态
+
+近期 runtime 层也做了 API 收口，当前建议按三层理解：
+
+- 用户主 API：
+  - `Wasmline`
+  - `WasmlineService`
+  - `WasmlineEndpoint`
+  - `link<T>()`
+  - `bindServices { ... }`
+  - `WasmlineBindingScope`（高级 / DSL 作用域）
+- 生成代码 / bootstrap 过渡 API：
+  - `WasmlineServiceDefinition`
+  - `registerWasmlineServiceDefinition(...)`
+  - `unregisterWasmlineServiceDefinition(...)`
+  - `wasmlineEmptyPayload()`
+- 内部实现：
+  - `WasmlineServiceRegistry` 已改为 `internal`
+
+### 2.3 生成物观察方式
 
 当前插件是 `IrGenerationExtension`，不是源码生成器。
 
@@ -127,6 +153,29 @@
 - 避免在源代码中直接静态依赖生成声明名
 - 通过 `box(): String` 对可观察行为做断言
 
+### 3.5 runtime API 面已经开始收口
+
+当前已完成的收口动作包括：
+
+- `WasmlineServiceRegistry` 不再作为普通用户 API 暴露，而是改为 `internal`
+- 新增更窄的过渡 bootstrap hook：
+  - `registerWasmlineServiceDefinition(...)`
+  - `unregisterWasmlineServiceDefinition(...)`
+- `WasmlineServiceDefinition`、`WasmlineEndpoint`、`WasmlineBindingScope`、`wasmlineEmptyPayload()` 的注释已重新标注“用户 API / 高级 API / generated SPI”的职责边界
+
+### 3.6 自动注册逻辑已开始接入 IR 入口改写
+
+当前 `WasmlineIrGenerationExtension` 在生成 definition / proxy / adapter 之外，还新增了一层 call-site 改写：
+
+- 当编译器看到 `link<T>()` / `bind(...)` / `bindAs<T>()` / `linkHost<T>()` 等 typed 入口时
+- 会在调用前注入 `registerWasmlineServiceDefinition(...)`
+- 从而尽量让用户不必手动接触 registry 或 definition 注册流程
+
+需要注意：
+
+- 这目前是“按调用点注入”的自动注册，不是“全局模块 bootstrap 已完全稳定”
+- 这条链路当前已通过代码层错误检查，但本轮会话中尚未重新跑完整 box snapshot 回归
+
 ---
 
 ## 4. 当前测试架构状态
@@ -168,7 +217,15 @@
 也就是说，目前 typed service 的“调出去”已经有基础形状，
 但“接进来”的完整接线还没有完成。
 
-### 5.2 正式 fixture 覆盖还不够
+### 5.2 自动注册链路还缺正式回归证明
+
+当前自动注册已经进入 IR 实现，但还没有形成“可以放心视为稳定能力”的证据链，仍缺：
+
+- 新/旧 box fixture 的正式 snapshot 更新
+- 覆盖 `link<T>()`、`bindAs<T>()`、`bind(implementation)` 的更明确 case
+- 不同平台入口（尤其 Host / Wasm 两侧）的行为确认
+
+### 5.3 正式 fixture 覆盖还不够
 
 当前正式 case 只有一个 `echoProxyRoundTrip`，还不够支撑后续演进。
 
@@ -177,9 +234,10 @@
 - zero-arg case
 - `Unit` return case
 - `ByteArray -> ByteArray` 的更小粒度 case
+- 明确覆盖 bind / auto-register 行为的 case
 - 非法 contract 的 diagnostics case
 
-### 5.3 diagnostics 体系还没有展开
+### 5.4 diagnostics 体系还没有展开
 
 phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，例如：
 
@@ -202,16 +260,24 @@ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，�
 - 把本地实现真正接入 `WasmlineBindingScope`
 - 让 `Definition.bind()` 不再只是走到 error stub
 
-### 第二优先级：继续补正式 box case
+### 第二优先级：验证并固化自动注册链路
+
+目标：
+
+- 重新运行并更新 IR / FIR snapshot
+- 明确验证 `link<T>()`、`bindAs<T>()`、`bind(implementation)` 自动注册是否都按预期生效
+- 判断当前“按调用点注入”的策略是否足够，还是要升级为模块级 bootstrap
+
+### 第三优先级：继续补正式 box case
 
 建议顺序：
 
 1. zero-arg case
 2. `Unit` return case
 3. 更聚焦的 `ByteArray -> ByteArray` case
-4. 明确覆盖 bind 行为的 case
+4. 明确覆盖 bind / auto-register 行为的 case
 
-### 第三优先级：补 diagnostics 测试
+### 第四优先级：补 diagnostics 测试
 
 等基础 box case 稳定后，再开始系统化补 validator 的负例测试。
 
@@ -234,4 +300,4 @@ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，�
 
 当前主线已经很明确：
 
-> **继续以正式 `testData/box` 为中心扩展 fixture，优先补齐 `Adapter.bind()` 的真实生成逻辑，再逐步扩大 diagnostics 覆盖。**
+> **继续以正式 `testData/box` 为中心，先验证并固化自动注册链路，再补齐 `Adapter.bind()` 的真实生成逻辑，最后逐步扩大 diagnostics 覆盖。**

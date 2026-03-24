@@ -7,6 +7,7 @@ fun <T : WasmlineService> WasmlineEndpoint.link(contract: KClass<T>): T {
     return WasmlineServiceRegistry.require(contract).link(this)
 }
 
+/** Preferred typed convenience overload for application code. */
 inline fun <reified T : WasmlineService> WasmlineEndpoint.link(): T {
     return link(T::class)
 }

@@ -24,23 +24,35 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetObjectValueImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
+import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 
 internal class WasmlineIrGenerationExtension(
     private val messageCollector: MessageCollector,
@@ -67,6 +79,61 @@ internal class WasmlineIrGenerationExtension(
                 }
             }
         }
+        autoRegisterTypedEntryPoints(moduleFragment, pluginContext, runtimeSymbols)
+    }
+
+    private fun autoRegisterTypedEntryPoints(
+        moduleFragment: IrModuleFragment,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+    ) {
+        val ownerSymbols = ArrayDeque<org.jetbrains.kotlin.ir.symbols.IrSymbol>()
+        moduleFragment.transformChildrenVoid(object : IrElementTransformerVoid() {
+            override fun visitFunction(declaration: IrFunction): IrStatement {
+                ownerSymbols.addLast(declaration.symbol)
+                return try {
+                    super.visitFunction(declaration)
+                } finally {
+                    ownerSymbols.removeLast()
+                }
+            }
+
+            override fun visitConstructor(declaration: IrConstructor): IrStatement {
+                ownerSymbols.addLast(declaration.symbol)
+                return try {
+                    super.visitConstructor(declaration)
+                } finally {
+                    ownerSymbols.removeLast()
+                }
+            }
+
+            override fun visitCall(expression: IrCall): IrExpression {
+                val transformed = super.visitCall(expression)
+                val transformedCall = transformed as? IrCall ?: return transformed
+                val contract = resolveContractForAutoRegistration(transformedCall, runtimeSymbols) ?: return transformedCall
+                val definitionSymbol = runtimeSymbols.definitionObjectSymbol(contract) ?: return transformed
+                val ownerSymbol = ownerSymbols.lastOrNull() ?: return transformed
+                val builder = DeclarationIrBuilder(
+                    generatorContext = pluginContext,
+                    symbol = ownerSymbol,
+                    startOffset = transformedCall.startOffset,
+                    endOffset = transformedCall.endOffset,
+                )
+                return IrBlockImpl(
+                    startOffset = transformedCall.startOffset,
+                    endOffset = transformedCall.endOffset,
+                    type = transformedCall.type,
+                    origin = null,
+                ).apply {
+                    statements += builder.irInvoke(
+                        null,
+                        runtimeSymbols.registerServiceDefinitionFunction,
+                        irGetObject(definitionSymbol),
+                    )
+                    statements += transformedCall
+                }
+            }
+        })
     }
 
     private fun scanContainer(container: IrDeclarationContainer, contracts: MutableList<IrClass>) {
@@ -183,6 +250,83 @@ internal class WasmlineIrGenerationExtension(
         }
 
         return isValid
+    }
+
+    private fun resolveContractForAutoRegistration(
+        call: IrCall,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+    ): IrClass? {
+        return when (call.symbol) {
+            runtimeSymbols.endpointLinkNoArgFunction,
+            runtimeSymbols.hostLinkFunction,
+            runtimeSymbols.linkHostFunction,
+            runtimeSymbols.bindingScopeBindAsFunction,
+            -> call.typeArguments.getOrNull(0)?.asWasmlineServiceContract()
+
+            runtimeSymbols.endpointLinkContractFunction,
+            runtimeSymbols.bindingScopeBindContractFunction,
+            -> call.regularValueArgument(0)?.classLiteralContract()
+
+            runtimeSymbols.bindingScopeBindSingleFunction,
+            -> call.regularValueArgument(0)?.type?.implementedWasmlineServiceContracts()?.singleOrNull()
+
+            else -> null
+        }
+    }
+
+    private fun IrCall.regularValueArgument(index: Int): IrExpression? {
+        val parameter = symbol.owner.parameters
+            .filter { it.kind == IrParameterKind.Regular }
+            .getOrNull(index)
+            ?: return null
+        return arguments[parameter.indexInParameters]
+    }
+
+    private fun irGetObject(symbol: IrClassSymbol): IrExpression {
+        return IrGetObjectValueImpl(
+            startOffset = SYNTHETIC_OFFSET,
+            endOffset = SYNTHETIC_OFFSET,
+            type = symbol.owner.defaultType,
+            symbol = symbol,
+        )
+    }
+
+    private fun IrExpression.classLiteralContract(): IrClass? {
+        return (((this as? IrClassReference)?.symbol) as? IrClassSymbol)?.owner?.asWasmlineServiceContract()
+    }
+
+    private fun IrType.asWasmlineServiceContract(): IrClass? {
+        val classSymbol = classifierOrNull as? IrClassSymbol ?: return null
+        return classSymbol.owner.asWasmlineServiceContract()
+    }
+
+    private fun IrClass.asWasmlineServiceContract(): IrClass? {
+        return takeIf { kind == ClassKind.INTERFACE && isWasmlineServiceContract() }
+    }
+
+    private fun IrType.implementedWasmlineServiceContracts(): Set<IrClass> {
+        val classSymbol = classifierOrNull as? IrClassSymbol ?: return emptySet()
+        return classSymbol.owner.implementedWasmlineServiceContracts()
+    }
+
+    private fun IrClass.implementedWasmlineServiceContracts(): Set<IrClass> {
+        val result = linkedSetOf<IrClass>()
+        collectImplementedWasmlineServiceContracts(result, linkedSetOf())
+        return result
+    }
+
+    private fun IrClass.collectImplementedWasmlineServiceContracts(
+        result: MutableSet<IrClass>,
+        visited: MutableSet<IrClassSymbol>,
+    ) {
+        if (!visited.add(symbol)) return
+        asWasmlineServiceContract()?.let { result += it }
+        superTypes.mapNotNull { it.classifierOrNull as? IrClassSymbol }
+            .forEach { superClass ->
+                val owner = superClass.owner
+                owner.asWasmlineServiceContract()?.let(result::add)
+                owner.collectImplementedWasmlineServiceContracts(result, visited)
+            }
     }
 
     private fun generateDefinitionSkeleton(
@@ -507,7 +651,7 @@ internal class WasmlineIrGenerationExtension(
         definitionObject: IrClass,
         pluginContext: IrPluginContext,
         runtimeSymbols: WasmlineRuntimeSymbols,
-        proxyConstructor: org.jetbrains.kotlin.ir.declarations.IrConstructor,
+        proxyConstructor: IrConstructor,
     ): IrSimpleFunction {
         return pluginContext.irFactory.createSimpleFunction(
             startOffset = contract.startOffset,
@@ -553,7 +697,7 @@ internal class WasmlineIrGenerationExtension(
         definitionObject: IrClass,
         pluginContext: IrPluginContext,
         runtimeSymbols: WasmlineRuntimeSymbols,
-        adapterConstructor: org.jetbrains.kotlin.ir.declarations.IrConstructor,
+        adapterConstructor: IrConstructor,
         adapterBindFunction: IrSimpleFunction,
     ): IrSimpleFunction {
         return pluginContext.irFactory.createSimpleFunction(

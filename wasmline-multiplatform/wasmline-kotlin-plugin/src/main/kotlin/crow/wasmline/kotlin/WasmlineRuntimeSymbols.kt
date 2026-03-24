@@ -2,6 +2,7 @@ package crow.wasmline.kotlin
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -11,9 +12,11 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -49,6 +52,46 @@ internal class WasmlineRuntimeSymbols(
         functionName = "wasmlineEmptyPayload",
         regularParameterCount = 0,
     )
+    val registerServiceDefinitionFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = RUNTIME_PACKAGE,
+        functionName = "registerWasmlineServiceDefinition",
+        regularParameterCount = 1,
+    )
+
+    val endpointLinkNoArgFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
+        functionName = "link",
+        extensionReceiverClassName = "WasmlineEndpoint",
+        regularParameterCount = 0,
+    )
+    val endpointLinkContractFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
+        functionName = "link",
+        extensionReceiverClassName = "WasmlineEndpoint",
+        regularParameterCount = 1,
+    )
+    val bindingScopeBindSingleFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
+        functionName = "bind",
+        extensionReceiverClassName = "WasmlineBindingScope",
+        regularParameterCount = 1,
+    )
+    val bindingScopeBindContractFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
+        functionName = "bind",
+        extensionReceiverClassName = "WasmlineBindingScope",
+        regularParameterCount = 2,
+    )
+    val bindingScopeBindAsFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
+        functionName = "bindAs",
+        extensionReceiverClassName = "WasmlineBindingScope",
+        regularParameterCount = 1,
+    )
+    val hostLinkFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
+        functionName = "link",
+        extensionReceiverClassName = "Wasmline",
+        regularParameterCount = 0,
+    )
+    val linkHostFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
+        callableId = CallableId(FqName(RUNTIME_PACKAGE), Name.identifier("linkHost")),
+        regularParameterCount = 0,
+    )
 
     fun serviceDefinitionType(contract: IrClass): IrType {
         return serviceDefinitionClass.typeWith(contract.defaultType)
@@ -68,6 +111,16 @@ internal class WasmlineRuntimeSymbols(
 
     fun adapterClassName(contract: IrClass): Name {
         return Name.identifier("${contract.name.identifier}_WasmlineAdapter")
+    }
+
+    fun definitionObjectSymbol(contract: IrClass): IrClassSymbol? {
+        val fqName = contract.fqNameWhenAvailable ?: return null
+        return pluginContext.referenceClass(
+            ClassId(
+                fqName.parent(),
+                definitionObjectName(contract),
+            ),
+        )
     }
 
     private fun requireClass(className: String): IrClassSymbol {
@@ -98,11 +151,50 @@ internal class WasmlineRuntimeSymbols(
         functionName: String,
         regularParameterCount: Int,
     ): IrSimpleFunctionSymbol {
-        return pluginContext.referenceFunctions(
+        return referenceTopLevelFunction(
             CallableId(FqName(packageName), Name.identifier(functionName)),
-        ).firstOrNull { function ->
-            function.owner.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount
-        } ?: error("Unable to resolve top-level function $packageName.$functionName/$regularParameterCount")
+            regularParameterCount,
+        ) ?: error("Unable to resolve top-level function $packageName.$functionName/$regularParameterCount")
+    }
+
+    private fun requireTopLevelExtensionFunction(
+        functionName: String,
+        extensionReceiverClassName: String,
+        regularParameterCount: Int,
+    ): IrSimpleFunctionSymbol {
+        return referenceTopLevelExtensionFunction(
+            functionName = functionName,
+            extensionReceiverClassName = extensionReceiverClassName,
+            regularParameterCount = regularParameterCount,
+        ) ?: error(
+            "Unable to resolve top-level extension function $RUNTIME_PACKAGE.$functionName on $RUNTIME_PACKAGE.$extensionReceiverClassName/$regularParameterCount",
+        )
+    }
+
+    private fun referenceTopLevelExtensionFunction(
+        functionName: String,
+        extensionReceiverClassName: String,
+        regularParameterCount: Int,
+    ): IrSimpleFunctionSymbol? {
+        return referenceTopLevelFunction(
+            callableId = CallableId(FqName(RUNTIME_PACKAGE), Name.identifier(functionName)),
+            regularParameterCount = regularParameterCount,
+        ) { function ->
+            ((function.parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == requireClass(extensionReceiverClassName)
+        }
+    }
+
+
+    private fun referenceTopLevelFunction(
+        callableId: CallableId,
+        regularParameterCount: Int,
+        extraFilter: (IrFunction) -> Boolean = { true },
+    ): IrSimpleFunctionSymbol? {
+        return pluginContext.referenceFunctions(callableId)
+            .firstOrNull { function ->
+                function.owner.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount &&
+                    extraFilter(function.owner)
+            }
     }
 
     private companion object {

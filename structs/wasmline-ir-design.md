@@ -26,10 +26,17 @@
 - `WasmlineService` contract 发现
 - phase-one 约束校验
 - `*_WasmlineDefinition` / `*_WasmlineProxy` / `*_WasmlineAdapter` skeleton 生成
+- 对 `link<T>()` / `bind(...)` / `bindAs<T>()` / `linkHost<T>()` 等 typed 入口的 definition 自动注册注入
 - 基于 `testData/box` 的正式 IR box 测试路径
 - `FIR_DUMP` 与 `DUMP_IR` 快照输出
 
-当前仍未完成的重点，是把 adapter 的真实绑定逻辑补齐，并继续扩展更多正式 fixture 与 diagnostics 覆盖。
+同时，runtime API 面也已开始收口：
+
+- `WasmlineServiceRegistry` 已改为内部实现细节，不再作为普通用户 API 公开
+- 公开面更偏向：`Wasmline` / `WasmlineService` / `WasmlineEndpoint` / `link<T>()` / `bindServices { ... }`
+- `WasmlineServiceDefinition` 与 `registerWasmlineServiceDefinition(...)` 更适合作为 generated glue / bootstrap SPI 理解
+
+当前仍未完成的重点，是把 adapter 的真实绑定逻辑补齐，并把自动注册链路通过正式 box / 运行时验证固化下来，再继续扩展更多 fixture 与 diagnostics 覆盖。
 
 这份文档刻意保持在“架构设计”层，而不是直接绑定到某个具体实现细节。它重点回答以下问题：
 
@@ -111,6 +118,18 @@ Wasmline 是一个基于 **Wasmtime** 与 **Kotlin/WASI** 的 Kotlin Multiplatfo
 
 也就是说，**Wasmline 现在已经拥有通用的消息 RPC 通道**，只是目前还不是“面向服务接口”的 typed API。
 
+不过从当前 runtime 代码看，typed API 的外形其实已经开始成型：
+
+- `Wasmline.asEndpoint()`：把 Host 侧模块实例适配成 `WasmlineEndpoint`
+- `Wasmline.link<T>()`：把当前模块连接到远端 typed service
+- `WasmlineEndpoint.link<T>()`：从任意 endpoint 获取 typed proxy
+- `Wasmline.bindServices { ... }`：把 Host 侧本地实现暴露给对端
+- Wasm 侧也已有 `bindServices { ... }` 与 `linkHost<T>()`
+
+因此更准确地说：
+
+> Wasmline 底层 transport 已经稳定存在，而 typed API 正处在“runtime 入口已具备、compiler glue 仍在 phase-one 演进”的阶段。
+
 ---
 
 ### 2.2 Host → Wasm 调用链路
@@ -163,6 +182,12 @@ Wasmline 是一个基于 **Wasmtime** 与 **Kotlin/WASI** 的 Kotlin Multiplatfo
 - 当接口包含数十个方法时，维护成本会迅速上升。
 
 这正是你希望通过 IR 层解决的问题。
+
+需要补一句当前状态：
+
+- 低层 `WasmRouter.register(...)` 仍然是 Wasm 侧真实可用的基础能力；
+- typed service 这一层则已经开始通过 `WasmlineService` + IR 生成物 + definition 注册注入来收口；
+- 只是入站 adapter 的完整替代链路还没有完全补齐。
 
 ---
 
@@ -332,7 +357,7 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
 
 ---
 
-### 4.2 但如果按狭义、工程化的 typed proxy 理解：你现在还没有真正完成 proxy 层
+### 4.2 但如果按狭义、工程化的 typed proxy 理解：现在是“出站 proxy 基本成形，入站 adapter 尚未完成”
 
 如果这里说的 proxy 是指：
 
@@ -340,21 +365,17 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
 > 调用它的方法时，底层自动序列化参数并发到远端；
 > 调用方感觉自己像在调用普通 Kotlin 接口。
 
-那么当前项目**还没有真正实现这种 typed proxy**。
+那么当前项目不能简单说成“完全没有 typed proxy”，因为 phase-one 已经具备：
 
-因为你现在的调用方式依然是：
+- 基于 `WasmlineService` contract 生成 `*_WasmlineProxy`
+- `Definition.link()` 已能返回对应 proxy
+- proxy 方法最终会走到 `WasmlineEndpoint.invoke(action, payload)`
 
-- 手写 action 字符串；
-- 手写参数编码/解码；
-- 手写注册与分发。
+但它仍然不算“整条 typed service 链路已经完成”，因为：
 
-这更接近于：
-
-- 原始 RPC 通道；
-- 消息路由层；
-- 手动 dispatch 层。
-
-而不是完整的 typed proxy 层。
+- `Adapter.bind()` 仍是 stub
+- 入站侧的 payload 解码 / handler 注册 / 返回值编码链路还没有补齐
+- 自动注册刚开始接入，仍需正式回归验证
 
 ---
 
@@ -367,18 +388,20 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
 - 双向 transport；
 - 手动 action router；
 - 基础代理式转发能力；
-- endpoint 间的消息通道。
+- endpoint 间的消息通道；
+- phase-one 的 typed proxy / definition skeleton；
+- `link<T>()` / `bindServices { ... }` 这套高层 runtime 入口；
+- 面向 typed 入口的 definition 自动注册注入起步实现。
 
 #### 还没有完全有：
 
-- 基于接口 contract 的 typed proxy；
 - 基于接口 contract 的 typed adapter；
-- 自动生成的 service registry glue；
-- `link<T>()` 背后的编译期生成体系。
+- 稳定、已被 box 全面证明的自动 bootstrap 体系；
+- 完整覆盖 Host / Plugin 双向导入导出的 typed service 证明链。
 
 所以如果你担心“proxy 这个词是不是说大了”，答案是：
 
-> 现在不是完整的 typed service proxy，但已经具备 proxy-like 的基础通信形态。
+> 现在已经有“能发出去”的 typed proxy 雏形，但“能完整接进来”的 typed adapter 与稳定 bootstrap 仍在补完中。
 
 ---
 
@@ -451,9 +474,13 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
 在你当前项目语境下，可以先这样对应理解：
 
 - `Wasmline`：未来最适合作为 Host 侧 endpoint API；
+- `WasmlineEndpoint`：当前已落地的低层 transport endpoint 抽象；
 - Plugin 侧运行时：未来也可以抽象成一个对等 endpoint；
 - `wasmline.call(...)` / `WasmBridge.callHost(...)`：底层 transport 调用；
 - `WasmRouter.register(...)`：当前是手动 adapter 注册方式；
+- `WasmlineServiceDefinition`：当前更像 generated glue / SPI，而不是普通业务 API；
+- `WasmlineServiceRegistry`：当前已经收口为内部实现，不应再作为普通用户直接操作的对象；
+- `registerWasmlineServiceDefinition(...)`：当前保留为更窄的 bootstrap hook，主要服务生成代码与测试；
 - 未来 IR 生成物：
   - 自动生成 proxy；
   - 自动生成 adapter；
@@ -551,6 +578,38 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
 - explicit contract binding：`bindAs<Contract>(implementation)`
 - remote service access：`link<T>()`
 
+### 7.0.1 当前 API 面的分层建议
+
+基于当前 runtime 代码，API 面更适合按三层理解：
+
+#### 用户主 API
+
+- `Wasmline`
+- `WasmlineService`
+- `WasmlineEndpoint`
+- `link<T>()` / `linkHost<T>()`
+- `bindServices { ... }`
+- `WasmlineBindingScope`（作为 DSL / 高级用法对象暴露）
+
+#### generated glue / bootstrap SPI
+
+- `WasmlineServiceDefinition`
+- `registerWasmlineServiceDefinition(...)`
+- `unregisterWasmlineServiceDefinition(...)`
+- `wasmlineEmptyPayload()`
+
+#### 内部实现
+
+- `WasmlineServiceRegistry`
+
+这个分层的核心目的，是让普通用户心智尽量停留在：
+
+- 定义 `interface XxxService : WasmlineService`
+- `link<T>()` 获取远端 proxy
+- `bindServices { bind(...) }` 暴露本地实现
+
+而不是直接理解 definition / registry / bootstrap 这些 IR 背后的运行时细节。
+
 ### 7.1 核心建议
 
 引入一个 marker interface，例如：
@@ -639,7 +698,7 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
 
 ### 7.5 第一阶段 endpoint API 形状
 
-第一阶段建议把 endpoint 设计成一个非常小的统一接口：
+第一阶段建议把 endpoint 设计成一个非常小的统一接口；而这件事在当前 runtime 中其实已经落地：
 
 ```kotlin
 interface WasmlineEndpoint {
@@ -726,6 +785,14 @@ IR / 编译器插件最适合做的是“类型驱动、重复性高、样板极
 - 该如何构造对应 proxy；
 - 应该注入哪个 transport endpoint。
 
+基于当前实现，这一层已经开始落地，但仍是 phase-one 形态：
+
+- compiler 已能识别 `link<T>()`、`bind(...)`、`bindAs<T>()`、`linkHost<T>()` 这些 typed 入口
+- 并在调用点前注入 `registerWasmlineServiceDefinition(...)`
+- 以此把 generated definition 接到 runtime lookup 体系上
+
+但这还不是“模块级全自动 bootstrap 已经完全稳定”的终态，后续仍需要 box / 运行时验证来确认这条策略是否足够稳。
+
 ---
 
 ### 8.6 生成注册元数据
@@ -739,6 +806,14 @@ IR / 编译器插件最适合做的是“类型驱动、重复性高、样板极
 - 可能的 schema identity。
 
 这样 runtime 就不需要用户手写并维护一堆 action 字符串映射。
+
+当前更精确地说：
+
+- `serviceId` / `methodId` / definition / proxy / adapter 的关联已经开始进入生成物
+- runtime 侧也已有 definition lookup 所需的基础结构
+- 但“最终形态的注册元数据体系”仍未完全定型
+
+也就是说，当前已经不是“完全没有 registry glue”，而是“registry glue 已起步，但 bootstrap 方案仍处在收敛阶段”。
 
 ---
 

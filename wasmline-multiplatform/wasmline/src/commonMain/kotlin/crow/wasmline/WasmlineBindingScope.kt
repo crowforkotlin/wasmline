@@ -6,6 +6,8 @@ import kotlin.reflect.KClass
  * Mutable binding container used to expose local services to an endpoint.
  *
  * Most application code interacts with this through `bindServices { ... }`.
+ * Direct action binding is an advanced escape hatch that sits below the typed
+ * `WasmlineService` layer.
  */
 class WasmlineBindingScope {
     private val handlers = linkedMapOf<String, WasmlineActionHandler>()

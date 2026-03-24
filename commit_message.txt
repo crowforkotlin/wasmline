@@ -1,0 +1,1423 @@
+diff --git a/structs/ir.md b/structs/ir.md
+index e7c6006..2bff9b9 100644
+--- a/structs/ir.md
++++ b/structs/ir.md
+@@ -24,11 +24,12 @@
+ 
+ `wasmline-kotlin-plugin` 已经从“只会注册插件”推进到：
+ 
+-> **可以发现 `WasmlineService` contract、执行 phase-one 校验、生成 `Definition / Proxy / Adapter` skeleton，并通过正式 `testData/box` 运行 FIR/IR snapshot 测试。**
++> **可以发现 `WasmlineService` contract、执行 phase-one 校验、生成 `Definition / Proxy / Adapter` skeleton、收口 typed runtime API，并开始对 `link<T>() / bind(...) / bindAs<T>()` 等入口注入自动 definition 注册逻辑。**
+ 
+ 当前主缺口已经收敛为：
+ 
+ - `Adapter.bind()` 的真实绑定逻辑还未完成
++- 自动注册链路虽然已经接入 IR 侧，但仍需要 box / 运行时层面的正式回归验证
+ - 正式 box fixture 数量还偏少
+ - diagnostics 覆盖仍待补齐
+ 
+@@ -54,8 +55,33 @@
+   - `*_WasmlineAdapter`
+ - `Proxy` 已经接到 `endpoint.invoke(...)`
+ - `Definition.link()` / `Definition.bind()` 已经有基本 glue
+-
+-### 2.2 生成物观察方式
++- 已开始对 typed 高层入口做 call-site 级别的 definition 自动注册注入：
++  - `WasmlineEndpoint.link<T>()`
++  - `Wasmline.link<T>()`
++  - `linkHost<T>()`
++  - `WasmlineBindingScope.bind(...)`
++  - `WasmlineBindingScope.bindAs<T>(...)`
++
++### 2.2 typed runtime API 当前状态
++
++近期 runtime 层也做了 API 收口，当前建议按三层理解：
++
++- 用户主 API：
++  - `Wasmline`
++  - `WasmlineService`
++  - `WasmlineEndpoint`
++  - `link<T>()`
++  - `bindServices { ... }`
++  - `WasmlineBindingScope`（高级 / DSL 作用域）
++- 生成代码 / bootstrap 过渡 API：
++  - `WasmlineServiceDefinition`
++  - `registerWasmlineServiceDefinition(...)`
++  - `unregisterWasmlineServiceDefinition(...)`
++  - `wasmlineEmptyPayload()`
++- 内部实现：
++  - `WasmlineServiceRegistry` 已改为 `internal`
++
++### 2.3 生成物观察方式
+ 
+ 当前插件是 `IrGenerationExtension`，不是源码生成器。
+ 
+@@ -127,6 +153,29 @@
+ - 避免在源代码中直接静态依赖生成声明名
+ - 通过 `box(): String` 对可观察行为做断言
+ 
++### 3.5 runtime API 面已经开始收口
++
++当前已完成的收口动作包括：
++
++- `WasmlineServiceRegistry` 不再作为普通用户 API 暴露，而是改为 `internal`
++- 新增更窄的过渡 bootstrap hook：
++  - `registerWasmlineServiceDefinition(...)`
++  - `unregisterWasmlineServiceDefinition(...)`
++- `WasmlineServiceDefinition`、`WasmlineEndpoint`、`WasmlineBindingScope`、`wasmlineEmptyPayload()` 的注释已重新标注“用户 API / 高级 API / generated SPI”的职责边界
++
++### 3.6 自动注册逻辑已开始接入 IR 入口改写
++
++当前 `WasmlineIrGenerationExtension` 在生成 definition / proxy / adapter 之外，还新增了一层 call-site 改写：
++
++- 当编译器看到 `link<T>()` / `bind(...)` / `bindAs<T>()` / `linkHost<T>()` 等 typed 入口时
++- 会在调用前注入 `registerWasmlineServiceDefinition(...)`
++- 从而尽量让用户不必手动接触 registry 或 definition 注册流程
++
++需要注意：
++
++- 这目前是“按调用点注入”的自动注册，不是“全局模块 bootstrap 已完全稳定”
++- 这条链路当前已通过代码层错误检查，但本轮会话中尚未重新跑完整 box snapshot 回归
++
+ ---
+ 
+ ## 4. 当前测试架构状态
+@@ -168,7 +217,15 @@
+ 也就是说，目前 typed service 的“调出去”已经有基础形状，
+ 但“接进来”的完整接线还没有完成。
+ 
+-### 5.2 正式 fixture 覆盖还不够
++### 5.2 自动注册链路还缺正式回归证明
++
++当前自动注册已经进入 IR 实现，但还没有形成“可以放心视为稳定能力”的证据链，仍缺：
++
++- 新/旧 box fixture 的正式 snapshot 更新
++- 覆盖 `link<T>()`、`bindAs<T>()`、`bind(implementation)` 的更明确 case
++- 不同平台入口（尤其 Host / Wasm 两侧）的行为确认
++
++### 5.3 正式 fixture 覆盖还不够
+ 
+ 当前正式 case 只有一个 `echoProxyRoundTrip`，还不够支撑后续演进。
+ 
+@@ -177,9 +234,10 @@
+ - zero-arg case
+ - `Unit` return case
+ - `ByteArray -> ByteArray` 的更小粒度 case
++- 明确覆盖 bind / auto-register 行为的 case
+ - 非法 contract 的 diagnostics case
+ 
+-### 5.3 diagnostics 体系还没有展开
++### 5.4 diagnostics 体系还没有展开
+ 
+ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，例如：
+ 
+@@ -202,16 +260,24 @@ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，
+ - 把本地实现真正接入 `WasmlineBindingScope`
+ - 让 `Definition.bind()` 不再只是走到 error stub
+ 
+-### 第二优先级：继续补正式 box case
++### 第二优先级：验证并固化自动注册链路
++
++目标：
++
++- 重新运行并更新 IR / FIR snapshot
++- 明确验证 `link<T>()`、`bindAs<T>()`、`bind(implementation)` 自动注册是否都按预期生效
++- 判断当前“按调用点注入”的策略是否足够，还是要升级为模块级 bootstrap
++
++### 第三优先级：继续补正式 box case
+ 
+ 建议顺序：
+ 
+ 1. zero-arg case
+ 2. `Unit` return case
+ 3. 更聚焦的 `ByteArray -> ByteArray` case
+-4. 明确覆盖 bind 行为的 case
++4. 明确覆盖 bind / auto-register 行为的 case
+ 
+-### 第三优先级：补 diagnostics 测试
++### 第四优先级：补 diagnostics 测试
+ 
+ 等基础 box case 稳定后，再开始系统化补 validator 的负例测试。
+ 
+@@ -234,4 +300,4 @@ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，
+ 
+ 当前主线已经很明确：
+ 
+-> **继续以正式 `testData/box` 为中心扩展 fixture，优先补齐 `Adapter.bind()` 的真实生成逻辑，再逐步扩大 diagnostics 覆盖。**
++> **继续以正式 `testData/box` 为中心，先验证并固化自动注册链路，再补齐 `Adapter.bind()` 的真实生成逻辑，最后逐步扩大 diagnostics 覆盖。**
+diff --git a/structs/wasmline-ir-design.md b/structs/wasmline-ir-design.md
+index cc16b11..e278ef1 100644
+--- a/structs/wasmline-ir-design.md
++++ b/structs/wasmline-ir-design.md
+@@ -26,10 +26,17 @@
+ - `WasmlineService` contract 发现
+ - phase-one 约束校验
+ - `*_WasmlineDefinition` / `*_WasmlineProxy` / `*_WasmlineAdapter` skeleton 生成
++- 对 `link<T>()` / `bind(...)` / `bindAs<T>()` / `linkHost<T>()` 等 typed 入口的 definition 自动注册注入
+ - 基于 `testData/box` 的正式 IR box 测试路径
+ - `FIR_DUMP` 与 `DUMP_IR` 快照输出
+ 
+-当前仍未完成的重点，是把 adapter 的真实绑定逻辑补齐，并继续扩展更多正式 fixture 与 diagnostics 覆盖。
++同时，runtime API 面也已开始收口：
++
++- `WasmlineServiceRegistry` 已改为内部实现细节，不再作为普通用户 API 公开
++- 公开面更偏向：`Wasmline` / `WasmlineService` / `WasmlineEndpoint` / `link<T>()` / `bindServices { ... }`
++- `WasmlineServiceDefinition` 与 `registerWasmlineServiceDefinition(...)` 更适合作为 generated glue / bootstrap SPI 理解
++
++当前仍未完成的重点，是把 adapter 的真实绑定逻辑补齐，并把自动注册链路通过正式 box / 运行时验证固化下来，再继续扩展更多 fixture 与 diagnostics 覆盖。
+ 
+ 这份文档刻意保持在“架构设计”层，而不是直接绑定到某个具体实现细节。它重点回答以下问题：
+ 
+@@ -111,6 +118,18 @@ Wasmline 是一个基于 **Wasmtime** 与 **Kotlin/WASI** 的 Kotlin Multiplatfo
+ 
+ 也就是说，**Wasmline 现在已经拥有通用的消息 RPC 通道**，只是目前还不是“面向服务接口”的 typed API。
+ 
++不过从当前 runtime 代码看，typed API 的外形其实已经开始成型：
++
++- `Wasmline.asEndpoint()`：把 Host 侧模块实例适配成 `WasmlineEndpoint`
++- `Wasmline.link<T>()`：把当前模块连接到远端 typed service
++- `WasmlineEndpoint.link<T>()`：从任意 endpoint 获取 typed proxy
++- `Wasmline.bindServices { ... }`：把 Host 侧本地实现暴露给对端
++- Wasm 侧也已有 `bindServices { ... }` 与 `linkHost<T>()`
++
++因此更准确地说：
++
++> Wasmline 底层 transport 已经稳定存在，而 typed API 正处在“runtime 入口已具备、compiler glue 仍在 phase-one 演进”的阶段。
++
+ ---
+ 
+ ### 2.2 Host → Wasm 调用链路
+@@ -164,6 +183,12 @@ Wasmline 是一个基于 **Wasmtime** 与 **Kotlin/WASI** 的 Kotlin Multiplatfo
+ 
+ 这正是你希望通过 IR 层解决的问题。
+ 
++需要补一句当前状态：
++
++- 低层 `WasmRouter.register(...)` 仍然是 Wasm 侧真实可用的基础能力；
++- typed service 这一层则已经开始通过 `WasmlineService` + IR 生成物 + definition 注册注入来收口；
++- 只是入站 adapter 的完整替代链路还没有完全补齐。
++
+ ---
+ 
+ ### 2.5 低层字符串调用是否应该保留
+@@ -332,7 +357,7 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
+ 
+ ---
+ 
+-### 4.2 但如果按狭义、工程化的 typed proxy 理解：你现在还没有真正完成 proxy 层
++### 4.2 但如果按狭义、工程化的 typed proxy 理解：现在是“出站 proxy 基本成形，入站 adapter 尚未完成”
+ 
+ 如果这里说的 proxy 是指：
+ 
+@@ -340,21 +365,17 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
+ > 调用它的方法时，底层自动序列化参数并发到远端；
+ > 调用方感觉自己像在调用普通 Kotlin 接口。
+ 
+-那么当前项目**还没有真正实现这种 typed proxy**。
+-
+-因为你现在的调用方式依然是：
++那么当前项目不能简单说成“完全没有 typed proxy”，因为 phase-one 已经具备：
+ 
+-- 手写 action 字符串；
+-- 手写参数编码/解码；
+-- 手写注册与分发。
++- 基于 `WasmlineService` contract 生成 `*_WasmlineProxy`
++- `Definition.link()` 已能返回对应 proxy
++- proxy 方法最终会走到 `WasmlineEndpoint.invoke(action, payload)`
+ 
+-这更接近于：
++但它仍然不算“整条 typed service 链路已经完成”，因为：
+ 
+-- 原始 RPC 通道；
+-- 消息路由层；
+-- 手动 dispatch 层。
+-
+-而不是完整的 typed proxy 层。
++- `Adapter.bind()` 仍是 stub
++- 入站侧的 payload 解码 / handler 注册 / 返回值编码链路还没有补齐
++- 自动注册刚开始接入，仍需正式回归验证
+ 
+ ---
+ 
+@@ -367,18 +388,20 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
+ - 双向 transport；
+ - 手动 action router；
+ - 基础代理式转发能力；
+-- endpoint 间的消息通道。
++- endpoint 间的消息通道；
++- phase-one 的 typed proxy / definition skeleton；
++- `link<T>()` / `bindServices { ... }` 这套高层 runtime 入口；
++- 面向 typed 入口的 definition 自动注册注入起步实现。
+ 
+ #### 还没有完全有：
+ 
+-- 基于接口 contract 的 typed proxy；
+ - 基于接口 contract 的 typed adapter；
+-- 自动生成的 service registry glue；
+-- `link<T>()` 背后的编译期生成体系。
++- 稳定、已被 box 全面证明的自动 bootstrap 体系；
++- 完整覆盖 Host / Plugin 双向导入导出的 typed service 证明链。
+ 
+ 所以如果你担心“proxy 这个词是不是说大了”，答案是：
+ 
+-> 现在不是完整的 typed service proxy，但已经具备 proxy-like 的基础通信形态。
++> 现在已经有“能发出去”的 typed proxy 雏形，但“能完整接进来”的 typed adapter 与稳定 bootstrap 仍在补完中。
+ 
+ ---
+ 
+@@ -451,9 +474,13 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
+ 在你当前项目语境下，可以先这样对应理解：
+ 
+ - `Wasmline`：未来最适合作为 Host 侧 endpoint API；
++- `WasmlineEndpoint`：当前已落地的低层 transport endpoint 抽象；
+ - Plugin 侧运行时：未来也可以抽象成一个对等 endpoint；
+ - `wasmline.call(...)` / `WasmBridge.callHost(...)`：底层 transport 调用；
+ - `WasmRouter.register(...)`：当前是手动 adapter 注册方式；
++- `WasmlineServiceDefinition`：当前更像 generated glue / SPI，而不是普通业务 API；
++- `WasmlineServiceRegistry`：当前已经收口为内部实现，不应再作为普通用户直接操作的对象；
++- `registerWasmlineServiceDefinition(...)`：当前保留为更窄的 bootstrap hook，主要服务生成代码与测试；
+ - 未来 IR 生成物：
+   - 自动生成 proxy；
+   - 自动生成 adapter；
+@@ -551,6 +578,38 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
+ - explicit contract binding：`bindAs<Contract>(implementation)`
+ - remote service access：`link<T>()`
+ 
++### 7.0.1 当前 API 面的分层建议
++
++基于当前 runtime 代码，API 面更适合按三层理解：
++
++#### 用户主 API
++
++- `Wasmline`
++- `WasmlineService`
++- `WasmlineEndpoint`
++- `link<T>()` / `linkHost<T>()`
++- `bindServices { ... }`
++- `WasmlineBindingScope`（作为 DSL / 高级用法对象暴露）
++
++#### generated glue / bootstrap SPI
++
++- `WasmlineServiceDefinition`
++- `registerWasmlineServiceDefinition(...)`
++- `unregisterWasmlineServiceDefinition(...)`
++- `wasmlineEmptyPayload()`
++
++#### 内部实现
++
++- `WasmlineServiceRegistry`
++
++这个分层的核心目的，是让普通用户心智尽量停留在：
++
++- 定义 `interface XxxService : WasmlineService`
++- `link<T>()` 获取远端 proxy
++- `bindServices { bind(...) }` 暴露本地实现
++
++而不是直接理解 definition / registry / bootstrap 这些 IR 背后的运行时细节。
++
+ ### 7.1 核心建议
+ 
+ 引入一个 marker interface，例如：
+@@ -639,7 +698,7 @@ transport 解决的是“怎么送达”，不是“接口长什么样”。
+ 
+ ### 7.5 第一阶段 endpoint API 形状
+ 
+-第一阶段建议把 endpoint 设计成一个非常小的统一接口：
++第一阶段建议把 endpoint 设计成一个非常小的统一接口；而这件事在当前 runtime 中其实已经落地：
+ 
+ ```kotlin
+ interface WasmlineEndpoint {
+@@ -726,6 +785,14 @@ IR / 编译器插件最适合做的是“类型驱动、重复性高、样板极
+ - 该如何构造对应 proxy；
+ - 应该注入哪个 transport endpoint。
+ 
++基于当前实现，这一层已经开始落地，但仍是 phase-one 形态：
++
++- compiler 已能识别 `link<T>()`、`bind(...)`、`bindAs<T>()`、`linkHost<T>()` 这些 typed 入口
++- 并在调用点前注入 `registerWasmlineServiceDefinition(...)`
++- 以此把 generated definition 接到 runtime lookup 体系上
++
++但这还不是“模块级全自动 bootstrap 已经完全稳定”的终态，后续仍需要 box / 运行时验证来确认这条策略是否足够稳。
++
+ ---
+ 
+ ### 8.6 生成注册元数据
+@@ -740,6 +807,14 @@ IR / 编译器插件最适合做的是“类型驱动、重复性高、样板极
+ 
+ 这样 runtime 就不需要用户手写并维护一堆 action 字符串映射。
+ 
++当前更精确地说：
++
++- `serviceId` / `methodId` / definition / proxy / adapter 的关联已经开始进入生成物
++- runtime 侧也已有 definition lookup 所需的基础结构
++- 但“最终形态的注册元数据体系”仍未完全定型
++
++也就是说，当前已经不是“完全没有 registry glue”，而是“registry glue 已起步，但 bootstrap 方案仍处在收敛阶段”。
++
+ ---
+ 
+ ### 8.7 第一阶段允许的 `WasmlineService` 语法范围
+diff --git a/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt b/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt
+index 0679ac5..8ad05ae 100644
+--- a/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt
++++ b/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt
+@@ -24,23 +24,35 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
+ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+ import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
+ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
++import org.jetbrains.kotlin.ir.declarations.IrConstructor
+ import org.jetbrains.kotlin.ir.declarations.IrField
+ import org.jetbrains.kotlin.ir.declarations.IrFile
++import org.jetbrains.kotlin.ir.declarations.IrFunction
+ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
+ import org.jetbrains.kotlin.ir.declarations.IrProperty
+ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
++import org.jetbrains.kotlin.ir.expressions.IrCall
++import org.jetbrains.kotlin.ir.expressions.IrClassReference
++import org.jetbrains.kotlin.ir.expressions.IrExpression
++import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
++import org.jetbrains.kotlin.ir.expressions.impl.IrGetObjectValueImpl
+ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+ import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
+ import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
+ import org.jetbrains.kotlin.ir.types.IrType
+ import org.jetbrains.kotlin.ir.types.classifierOrNull
++import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+ import org.jetbrains.kotlin.ir.util.constructors
+ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
+ import org.jetbrains.kotlin.ir.util.defaultType
+ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+ import org.jetbrains.kotlin.name.Name
++import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
++import org.jetbrains.kotlin.ir.IrStatement
++import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
++import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
+ 
+ internal class WasmlineIrGenerationExtension(
+     private val messageCollector: MessageCollector,
+@@ -67,6 +79,61 @@ internal class WasmlineIrGenerationExtension(
+                 }
+             }
+         }
++        autoRegisterTypedEntryPoints(moduleFragment, pluginContext, runtimeSymbols)
++    }
++
++    private fun autoRegisterTypedEntryPoints(
++        moduleFragment: IrModuleFragment,
++        pluginContext: IrPluginContext,
++        runtimeSymbols: WasmlineRuntimeSymbols,
++    ) {
++        val ownerSymbols = ArrayDeque<org.jetbrains.kotlin.ir.symbols.IrSymbol>()
++        moduleFragment.transformChildrenVoid(object : IrElementTransformerVoid() {
++            override fun visitFunction(declaration: IrFunction): IrStatement {
++                ownerSymbols.addLast(declaration.symbol)
++                return try {
++                    super.visitFunction(declaration)
++                } finally {
++                    ownerSymbols.removeLast()
++                }
++            }
++
++            override fun visitConstructor(declaration: IrConstructor): IrStatement {
++                ownerSymbols.addLast(declaration.symbol)
++                return try {
++                    super.visitConstructor(declaration)
++                } finally {
++                    ownerSymbols.removeLast()
++                }
++            }
++
++            override fun visitCall(expression: IrCall): IrExpression {
++                val transformed = super.visitCall(expression)
++                val transformedCall = transformed as? IrCall ?: return transformed
++                val contract = resolveContractForAutoRegistration(transformedCall, runtimeSymbols) ?: return transformedCall
++                val definitionSymbol = runtimeSymbols.definitionObjectSymbol(contract) ?: return transformed
++                val ownerSymbol = ownerSymbols.lastOrNull() ?: return transformed
++                val builder = DeclarationIrBuilder(
++                    generatorContext = pluginContext,
++                    symbol = ownerSymbol,
++                    startOffset = transformedCall.startOffset,
++                    endOffset = transformedCall.endOffset,
++                )
++                return IrBlockImpl(
++                    startOffset = transformedCall.startOffset,
++                    endOffset = transformedCall.endOffset,
++                    type = transformedCall.type,
++                    origin = null,
++                ).apply {
++                    statements += builder.irInvoke(
++                        null,
++                        runtimeSymbols.registerServiceDefinitionFunction,
++                        irGetObject(definitionSymbol),
++                    )
++                    statements += transformedCall
++                }
++            }
++        })
+     }
+ 
+     private fun scanContainer(container: IrDeclarationContainer, contracts: MutableList<IrClass>) {
+@@ -185,6 +252,83 @@ internal class WasmlineIrGenerationExtension(
+         return isValid
+     }
+ 
++    private fun resolveContractForAutoRegistration(
++        call: IrCall,
++        runtimeSymbols: WasmlineRuntimeSymbols,
++    ): IrClass? {
++        return when (call.symbol) {
++            runtimeSymbols.endpointLinkNoArgFunction,
++            runtimeSymbols.hostLinkFunction,
++            runtimeSymbols.linkHostFunction,
++            runtimeSymbols.bindingScopeBindAsFunction,
++            -> call.typeArguments.getOrNull(0)?.asWasmlineServiceContract()
++
++            runtimeSymbols.endpointLinkContractFunction,
++            runtimeSymbols.bindingScopeBindContractFunction,
++            -> call.regularValueArgument(0)?.classLiteralContract()
++
++            runtimeSymbols.bindingScopeBindSingleFunction,
++            -> call.regularValueArgument(0)?.type?.implementedWasmlineServiceContracts()?.singleOrNull()
++
++            else -> null
++        }
++    }
++
++    private fun IrCall.regularValueArgument(index: Int): IrExpression? {
++        val parameter = symbol.owner.parameters
++            .filter { it.kind == IrParameterKind.Regular }
++            .getOrNull(index)
++            ?: return null
++        return arguments[parameter.indexInParameters]
++    }
++
++    private fun irGetObject(symbol: IrClassSymbol): IrExpression {
++        return IrGetObjectValueImpl(
++            startOffset = SYNTHETIC_OFFSET,
++            endOffset = SYNTHETIC_OFFSET,
++            type = symbol.owner.defaultType,
++            symbol = symbol,
++        )
++    }
++
++    private fun IrExpression.classLiteralContract(): IrClass? {
++        return (((this as? IrClassReference)?.symbol) as? IrClassSymbol)?.owner?.asWasmlineServiceContract()
++    }
++
++    private fun IrType.asWasmlineServiceContract(): IrClass? {
++        val classSymbol = classifierOrNull as? IrClassSymbol ?: return null
++        return classSymbol.owner.asWasmlineServiceContract()
++    }
++
++    private fun IrClass.asWasmlineServiceContract(): IrClass? {
++        return takeIf { kind == ClassKind.INTERFACE && isWasmlineServiceContract() }
++    }
++
++    private fun IrType.implementedWasmlineServiceContracts(): Set<IrClass> {
++        val classSymbol = classifierOrNull as? IrClassSymbol ?: return emptySet()
++        return classSymbol.owner.implementedWasmlineServiceContracts()
++    }
++
++    private fun IrClass.implementedWasmlineServiceContracts(): Set<IrClass> {
++        val result = linkedSetOf<IrClass>()
++        collectImplementedWasmlineServiceContracts(result, linkedSetOf())
++        return result
++    }
++
++    private fun IrClass.collectImplementedWasmlineServiceContracts(
++        result: MutableSet<IrClass>,
++        visited: MutableSet<IrClassSymbol>,
++    ) {
++        if (!visited.add(symbol)) return
++        asWasmlineServiceContract()?.let { result += it }
++        superTypes.mapNotNull { it.classifierOrNull as? IrClassSymbol }
++            .forEach { superClass ->
++                val owner = superClass.owner
++                owner.asWasmlineServiceContract()?.let(result::add)
++                owner.collectImplementedWasmlineServiceContracts(result, visited)
++            }
++    }
++
+     private fun generateDefinitionSkeleton(
+         contract: IrClass,
+         file: IrFile,
+@@ -507,7 +651,7 @@ internal class WasmlineIrGenerationExtension(
+         definitionObject: IrClass,
+         pluginContext: IrPluginContext,
+         runtimeSymbols: WasmlineRuntimeSymbols,
+-        proxyConstructor: org.jetbrains.kotlin.ir.declarations.IrConstructor,
++        proxyConstructor: IrConstructor,
+     ): IrSimpleFunction {
+         return pluginContext.irFactory.createSimpleFunction(
+             startOffset = contract.startOffset,
+@@ -553,7 +697,7 @@ internal class WasmlineIrGenerationExtension(
+         definitionObject: IrClass,
+         pluginContext: IrPluginContext,
+         runtimeSymbols: WasmlineRuntimeSymbols,
+-        adapterConstructor: org.jetbrains.kotlin.ir.declarations.IrConstructor,
++        adapterConstructor: IrConstructor,
+         adapterBindFunction: IrSimpleFunction,
+     ): IrSimpleFunction {
+         return pluginContext.irFactory.createSimpleFunction(
+diff --git a/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt b/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt
+index 9ca206e..4d70ec6 100644
+--- a/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt
++++ b/wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt
+@@ -2,6 +2,7 @@ package crow.wasmline.kotlin
+ 
+ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+ import org.jetbrains.kotlin.ir.declarations.IrClass
++import org.jetbrains.kotlin.ir.declarations.IrFunction
+ import org.jetbrains.kotlin.ir.declarations.IrConstructor
+ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
+ import org.jetbrains.kotlin.ir.declarations.IrProperty
+@@ -11,9 +12,11 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+ import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+ import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
++import org.jetbrains.kotlin.ir.types.IrSimpleType
+ import org.jetbrains.kotlin.ir.types.IrType
+ import org.jetbrains.kotlin.ir.types.typeWith
+ import org.jetbrains.kotlin.ir.util.defaultType
++import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+ import org.jetbrains.kotlin.name.CallableId
+ import org.jetbrains.kotlin.name.ClassId
+ import org.jetbrains.kotlin.name.FqName
+@@ -49,6 +52,46 @@ internal class WasmlineRuntimeSymbols(
+         functionName = "wasmlineEmptyPayload",
+         regularParameterCount = 0,
+     )
++    val registerServiceDefinitionFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
++        packageName = RUNTIME_PACKAGE,
++        functionName = "registerWasmlineServiceDefinition",
++        regularParameterCount = 1,
++    )
++
++    val endpointLinkNoArgFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
++        functionName = "link",
++        extensionReceiverClassName = "WasmlineEndpoint",
++        regularParameterCount = 0,
++    )
++    val endpointLinkContractFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
++        functionName = "link",
++        extensionReceiverClassName = "WasmlineEndpoint",
++        regularParameterCount = 1,
++    )
++    val bindingScopeBindSingleFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
++        functionName = "bind",
++        extensionReceiverClassName = "WasmlineBindingScope",
++        regularParameterCount = 1,
++    )
++    val bindingScopeBindContractFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
++        functionName = "bind",
++        extensionReceiverClassName = "WasmlineBindingScope",
++        regularParameterCount = 2,
++    )
++    val bindingScopeBindAsFunction: IrSimpleFunctionSymbol = requireTopLevelExtensionFunction(
++        functionName = "bindAs",
++        extensionReceiverClassName = "WasmlineBindingScope",
++        regularParameterCount = 1,
++    )
++    val hostLinkFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
++        functionName = "link",
++        extensionReceiverClassName = "Wasmline",
++        regularParameterCount = 0,
++    )
++    val linkHostFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
++        callableId = CallableId(FqName(RUNTIME_PACKAGE), Name.identifier("linkHost")),
++        regularParameterCount = 0,
++    )
+ 
+     fun serviceDefinitionType(contract: IrClass): IrType {
+         return serviceDefinitionClass.typeWith(contract.defaultType)
+@@ -70,6 +113,16 @@ internal class WasmlineRuntimeSymbols(
+         return Name.identifier("${contract.name.identifier}_WasmlineAdapter")
+     }
+ 
++    fun definitionObjectSymbol(contract: IrClass): IrClassSymbol? {
++        val fqName = contract.fqNameWhenAvailable ?: return null
++        return pluginContext.referenceClass(
++            ClassId(
++                fqName.parent(),
++                definitionObjectName(contract),
++            ),
++        )
++    }
++
+     private fun requireClass(className: String): IrClassSymbol {
+         return pluginContext.referenceClass(
+             ClassId(FqName(RUNTIME_PACKAGE), Name.identifier(className)),
+@@ -98,11 +151,50 @@ internal class WasmlineRuntimeSymbols(
+         functionName: String,
+         regularParameterCount: Int,
+     ): IrSimpleFunctionSymbol {
+-        return pluginContext.referenceFunctions(
++        return referenceTopLevelFunction(
+             CallableId(FqName(packageName), Name.identifier(functionName)),
+-        ).firstOrNull { function ->
+-            function.owner.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount
+-        } ?: error("Unable to resolve top-level function $packageName.$functionName/$regularParameterCount")
++            regularParameterCount,
++        ) ?: error("Unable to resolve top-level function $packageName.$functionName/$regularParameterCount")
++    }
++
++    private fun requireTopLevelExtensionFunction(
++        functionName: String,
++        extensionReceiverClassName: String,
++        regularParameterCount: Int,
++    ): IrSimpleFunctionSymbol {
++        return referenceTopLevelExtensionFunction(
++            functionName = functionName,
++            extensionReceiverClassName = extensionReceiverClassName,
++            regularParameterCount = regularParameterCount,
++        ) ?: error(
++            "Unable to resolve top-level extension function $RUNTIME_PACKAGE.$functionName on $RUNTIME_PACKAGE.$extensionReceiverClassName/$regularParameterCount",
++        )
++    }
++
++    private fun referenceTopLevelExtensionFunction(
++        functionName: String,
++        extensionReceiverClassName: String,
++        regularParameterCount: Int,
++    ): IrSimpleFunctionSymbol? {
++        return referenceTopLevelFunction(
++            callableId = CallableId(FqName(RUNTIME_PACKAGE), Name.identifier(functionName)),
++            regularParameterCount = regularParameterCount,
++        ) { function ->
++            ((function.parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == requireClass(extensionReceiverClassName)
++        }
++    }
++
++
++    private fun referenceTopLevelFunction(
++        callableId: CallableId,
++        regularParameterCount: Int,
++        extraFilter: (IrFunction) -> Boolean = { true },
++    ): IrSimpleFunctionSymbol? {
++        return pluginContext.referenceFunctions(callableId)
++            .firstOrNull { function ->
++                function.owner.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount &&
++                    extraFilter(function.owner)
++            }
+     }
+ 
+     private companion object {
+diff --git a/wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/crow/wasmline/kotlin/runners/JvmBoxTestGenerated.java b/wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/crow/wasmline/kotlin/runners/JvmBoxTestGenerated.java
+index 7adc6bf..0b3b7ec 100644
+--- a/wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/crow/wasmline/kotlin/runners/JvmBoxTestGenerated.java
++++ b/wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/crow/wasmline/kotlin/runners/JvmBoxTestGenerated.java
+@@ -12,17 +12,17 @@ import java.util.regex.Pattern;
+ 
+ /** This class is generated by {@link crow.wasmline.kotlin.GenerateTestsKt}. DO NOT MODIFY MANUALLY */
+ @SuppressWarnings("all")
+-@TestMetadata("/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box")
++@TestMetadata("D:/fish/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box")
+ @TestDataPath("$PROJECT_ROOT")
+ public class JvmBoxTestGenerated extends AbstractJvmBoxTest {
+   @Test
+   public void testAllFilesPresentInBox() {
+-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box"), Pattern.compile("^(.+)\.kt$"), null, true);
++    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("D:/fish/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box"), Pattern.compile("^(.+)\.kt$"), null, true);
+   }
+ 
+   @Test
+   @TestMetadata("echoProxyRoundTrip.kt")
+   public void testEchoProxyRoundTrip() {
+-    runTest("/Users/crowforkotlin/github/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.kt");
++    runTest("D:/fish/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.kt");
+   }
+ }
+diff --git a/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.ir.txt b/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.ir.txt
+deleted file mode 100644
+index e506b7d..0000000
+--- a/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.ir.txt
++++ /dev/null
+@@ -1,386 +0,0 @@
+-FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
+-  CLASS CLASS name:EchoServiceImpl modality:FINAL visibility:private superTypes:[test.box.EchoService]
+-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoServiceImpl
+-    CONSTRUCTOR visibility:public returnType:test.box.EchoServiceImpl [primary]
+-      BLOCK_BODY
+-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoServiceImpl modality:FINAL visibility:private superTypes:[test.box.EchoService]' type=kotlin.Unit
+-    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+-      overridden:
+-        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in test.box.EchoService
+-    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      overridden:
+-        public open fun hashCode (): kotlin.Int declared in test.box.EchoService
+-    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      overridden:
+-        public open fun toString (): kotlin.String declared in test.box.EchoService
+-    FUN name:echo visibility:public modality:OPEN returnType:kotlin.ByteArray
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoServiceImpl
+-      VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
+-      overridden:
+-        public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService
+-      BLOCK_BODY
+-        RETURN type=kotlin.Nothing from='public open fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoServiceImpl'
+-          GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoServiceImpl.echo' type=kotlin.ByteArray origin=null
+-  CLASS CLASS name:EchoService_WasmlineAdapter modality:FINAL visibility:public superTypes:[kotlin.Any]
+-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineAdapter
+-    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineAdapter [primary]
+-      VALUE_PARAMETER kind:Regular name:implementation index:0 type:test.box.EchoService
+-      BLOCK_BODY
+-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineAdapter modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+-    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineAdapter
+-      VALUE_PARAMETER kind:Regular name:scope index:1 type:crow.wasmline.WasmlineBindingScope
+-      BLOCK_BODY
+-        CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+-          ARG message: CONST String type=kotlin.String value="Wasmline adapter method generation is not implemented yet for test.box.EchoService."
+-  CLASS CLASS name:EchoService_WasmlineProxy modality:FINAL visibility:public superTypes:[test.box.EchoService]
+-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineProxy
+-    FIELD name:endpoint type:crow.wasmline.WasmlineEndpoint visibility:private [final]
+-    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineProxy [primary]
+-      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.WasmlineEndpoint
+-      BLOCK_BODY
+-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineProxy modality:FINAL visibility:public superTypes:[test.box.EchoService]' type=kotlin.Unit
+-        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.WasmlineEndpoint visibility:private [final] declared in test.box.EchoService_WasmlineProxy' type=kotlin.Unit origin=null
+-          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineProxy declared in test.box.EchoService_WasmlineProxy' type=test.box.EchoService_WasmlineProxy origin=null
+-          value: GET_VAR 'endpoint: crow.wasmline.WasmlineEndpoint declared in test.box.EchoService_WasmlineProxy.<init>' type=crow.wasmline.WasmlineEndpoint origin=null
+-    FUN name:echo visibility:public modality:FINAL returnType:kotlin.ByteArray
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineProxy
+-      VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
+-      overridden:
+-        public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService
+-      BLOCK_BODY
+-        RETURN type=kotlin.ByteArray from='public final fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService_WasmlineProxy'
+-          CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+-            ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.WasmlineEndpoint visibility:private [final] declared in test.box.EchoService_WasmlineProxy' type=crow.wasmline.WasmlineEndpoint origin=null
+-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineProxy declared in test.box.EchoService_WasmlineProxy.echo' type=test.box.EchoService_WasmlineProxy origin=null
+-            ARG action: CONST String type=kotlin.String value="test.box.EchoService#xjRgE7w2"
+-            ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoService_WasmlineProxy.echo' type=kotlin.ByteArray origin=null
+-  CLASS CLASS name:RecordingEndpoint modality:FINAL visibility:private superTypes:[crow.wasmline.WasmlineEndpoint]
+-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.RecordingEndpoint
+-    PROPERTY name:action visibility:public modality:FINAL [var]
+-      FIELD PROPERTY_BACKING_FIELD name:action type:kotlin.String? visibility:private
+-        EXPRESSION_BODY
+-          CONST Null type=kotlin.Nothing? value=null
+-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-action> visibility:public modality:FINAL returnType:kotlin.String?
+-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+-        correspondingProperty: PROPERTY name:action visibility:public modality:FINAL [var]
+-        BLOCK_BODY
+-          RETURN type=kotlin.Nothing from='public final fun <get-action> (): kotlin.String? declared in test.box.RecordingEndpoint'
+-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:action type:kotlin.String? visibility:private' type=kotlin.String? origin=null
+-              receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<get-action>' type=test.box.RecordingEndpoint origin=null
+-      FUN DEFAULT_PROPERTY_ACCESSOR name:<set-action> visibility:public modality:FINAL returnType:kotlin.Unit
+-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+-        VALUE_PARAMETER kind:Regular name:<set-?> index:1 type:kotlin.String?
+-        correspondingProperty: PROPERTY name:action visibility:public modality:FINAL [var]
+-        BLOCK_BODY
+-          SET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:action type:kotlin.String? visibility:private' type=kotlin.Unit origin=null
+-            receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<set-action>' type=test.box.RecordingEndpoint origin=null
+-            value: GET_VAR '<set-?>: kotlin.String? declared in test.box.RecordingEndpoint.<set-action>' type=kotlin.String? origin=null
+-    PROPERTY name:payload visibility:public modality:FINAL [var]
+-      FIELD PROPERTY_BACKING_FIELD name:payload type:kotlin.ByteArray? visibility:private
+-        EXPRESSION_BODY
+-          CONST Null type=kotlin.Nothing? value=null
+-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-payload> visibility:public modality:FINAL returnType:kotlin.ByteArray?
+-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+-        correspondingProperty: PROPERTY name:payload visibility:public modality:FINAL [var]
+-        BLOCK_BODY
+-          RETURN type=kotlin.Nothing from='public final fun <get-payload> (): kotlin.ByteArray? declared in test.box.RecordingEndpoint'
+-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:payload type:kotlin.ByteArray? visibility:private' type=kotlin.ByteArray? origin=null
+-              receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<get-payload>' type=test.box.RecordingEndpoint origin=null
+-      FUN DEFAULT_PROPERTY_ACCESSOR name:<set-payload> visibility:public modality:FINAL returnType:kotlin.Unit
+-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+-        VALUE_PARAMETER kind:Regular name:<set-?> index:1 type:kotlin.ByteArray?
+-        correspondingProperty: PROPERTY name:payload visibility:public modality:FINAL [var]
+-        BLOCK_BODY
+-          SET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:payload type:kotlin.ByteArray? visibility:private' type=kotlin.Unit origin=null
+-            receiver: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.<set-payload>' type=test.box.RecordingEndpoint origin=null
+-            value: GET_VAR '<set-?>: kotlin.ByteArray? declared in test.box.RecordingEndpoint.<set-payload>' type=kotlin.ByteArray? origin=null
+-    CONSTRUCTOR visibility:public returnType:test.box.RecordingEndpoint [primary]
+-      BLOCK_BODY
+-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:RecordingEndpoint modality:FINAL visibility:private superTypes:[crow.wasmline.WasmlineEndpoint]' type=kotlin.Unit
+-    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+-      overridden:
+-        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.WasmlineEndpoint
+-    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      overridden:
+-        public open fun hashCode (): kotlin.Int declared in crow.wasmline.WasmlineEndpoint
+-    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      overridden:
+-        public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineEndpoint
+-    FUN name:invoke visibility:public modality:OPEN returnType:kotlin.ByteArray
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.RecordingEndpoint
+-      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+-      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+-      overridden:
+-        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.WasmlineEndpoint
+-      BLOCK_BODY
+-        CALL 'public final fun <set-action> (<set-?>: kotlin.String?): kotlin.Unit declared in test.box.RecordingEndpoint' type=kotlin.Unit origin=EQ
+-          ARG <this>: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.invoke' type=test.box.RecordingEndpoint origin=null
+-          ARG <set-?>: GET_VAR 'action: kotlin.String declared in test.box.RecordingEndpoint.invoke' type=kotlin.String origin=null
+-        CALL 'public final fun <set-payload> (<set-?>: kotlin.ByteArray?): kotlin.Unit declared in test.box.RecordingEndpoint' type=kotlin.Unit origin=EQ
+-          ARG <this>: GET_VAR '<this>: test.box.RecordingEndpoint declared in test.box.RecordingEndpoint.invoke' type=test.box.RecordingEndpoint origin=null
+-          ARG <set-?>: CALL 'public final fun copyOf (<this>: kotlin.ByteArray): kotlin.ByteArray declared in kotlin.collections' type=kotlin.ByteArray origin=null
+-            ARG <this>: GET_VAR 'payload: kotlin.ByteArray declared in test.box.RecordingEndpoint.invoke' type=kotlin.ByteArray origin=null
+-        RETURN type=kotlin.Nothing from='public open fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.RecordingEndpoint'
+-          CALL 'public final fun encodeToByteArray (<this>: kotlin.String): kotlin.ByteArray declared in kotlin.text' type=kotlin.ByteArray origin=null
+-            ARG <this>: STRING_CONCATENATION type=kotlin.String
+-              CONST String type=kotlin.String value="reply:"
+-              CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+-                ARG <this>: GET_VAR 'payload: kotlin.ByteArray declared in test.box.RecordingEndpoint.invoke' type=kotlin.ByteArray origin=null
+-  CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
+-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService
+-    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+-      overridden:
+-        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.WasmlineService
+-    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      overridden:
+-        public open fun hashCode (): kotlin.Int declared in crow.wasmline.WasmlineService
+-    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+-      overridden:
+-        public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineService
+-    FUN name:echo visibility:public modality:ABSTRACT returnType:kotlin.ByteArray
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService
+-      VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
+-  CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:public superTypes:[crow.wasmline.WasmlineServiceDefinition<test.box.EchoService>]
+-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineDefinition
+-    PROPERTY name:contract visibility:public modality:FINAL [val]
+-      overridden:
+-        public abstract contract: kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition
+-      FIELD PROPERTY_BACKING_FIELD name:contract type:kotlin.reflect.KClass<test.box.EchoService> visibility:private [final]
+-        EXPRESSION_BODY
+-          CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
+-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-contract> visibility:public modality:FINAL returnType:kotlin.reflect.KClass<test.box.EchoService>
+-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+-        correspondingProperty: PROPERTY name:contract visibility:public modality:FINAL [val]
+-        overridden:
+-          public abstract fun <get-contract> (): kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition
+-        BLOCK_BODY
+-          RETURN type=kotlin.Nothing from='public final fun <get-contract> (): kotlin.reflect.KClass<test.box.EchoService> declared in test.box.EchoService_WasmlineDefinition'
+-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:contract type:kotlin.reflect.KClass<test.box.EchoService> visibility:private [final]' type=kotlin.reflect.KClass<test.box.EchoService> origin=null
+-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-contract>' type=test.box.EchoService_WasmlineDefinition origin=null
+-    PROPERTY name:serviceId visibility:public modality:FINAL [val]
+-      overridden:
+-        public abstract serviceId: crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition
+-      FIELD PROPERTY_BACKING_FIELD name:serviceId type:crow.wasmline.WasmlineServiceId visibility:private [final]
+-        EXPRESSION_BODY
+-          CONSTRUCTOR_CALL 'public constructor <init> (value: kotlin.String) declared in crow.wasmline.WasmlineServiceId' type=crow.wasmline.WasmlineServiceId origin=null
+-            ARG value: CONST String type=kotlin.String value="test.box.EchoService"
+-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-serviceId> visibility:public modality:FINAL returnType:crow.wasmline.WasmlineServiceId
+-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+-        correspondingProperty: PROPERTY name:serviceId visibility:public modality:FINAL [val]
+-        overridden:
+-          public abstract fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition
+-        BLOCK_BODY
+-          RETURN type=kotlin.Nothing from='public final fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in test.box.EchoService_WasmlineDefinition'
+-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:serviceId type:crow.wasmline.WasmlineServiceId visibility:private [final]' type=crow.wasmline.WasmlineServiceId origin=null
+-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-serviceId>' type=test.box.EchoService_WasmlineDefinition origin=null
+-    CONSTRUCTOR visibility:private returnType:test.box.EchoService_WasmlineDefinition [primary]
+-      BLOCK_BODY
+-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:public superTypes:[crow.wasmline.WasmlineServiceDefinition<test.box.EchoService>]' type=kotlin.Unit
+-    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+-      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.box.EchoService
+-      VALUE_PARAMETER kind:Regular name:scope index:2 type:crow.wasmline.WasmlineBindingScope
+-      overridden:
+-        public abstract fun bind (implementation: T of crow.wasmline.WasmlineServiceDefinition, scope: crow.wasmline.WasmlineBindingScope): kotlin.Unit declared in crow.wasmline.WasmlineServiceDefinition
+-      BLOCK_BODY
+-        CALL 'public final fun bind (scope: crow.wasmline.WasmlineBindingScope): kotlin.Unit declared in test.box.EchoService_WasmlineAdapter' type=kotlin.Unit origin=null
+-          ARG <this>: CONSTRUCTOR_CALL 'public constructor <init> (implementation: test.box.EchoService) declared in test.box.EchoService_WasmlineAdapter' type=test.box.EchoService_WasmlineAdapter origin=null
+-            ARG implementation: GET_VAR 'implementation: test.box.EchoService declared in test.box.EchoService_WasmlineDefinition.bind' type=test.box.EchoService origin=null
+-          ARG scope: GET_VAR 'scope: crow.wasmline.WasmlineBindingScope declared in test.box.EchoService_WasmlineDefinition.bind' type=crow.wasmline.WasmlineBindingScope origin=null
+-    FUN name:link visibility:public modality:FINAL returnType:test.box.EchoService
+-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
+-      VALUE_PARAMETER kind:Regular name:endpoint index:1 type:crow.wasmline.WasmlineEndpoint
+-      overridden:
+-        public abstract fun link (endpoint: crow.wasmline.WasmlineEndpoint): T of crow.wasmline.WasmlineServiceDefinition declared in crow.wasmline.WasmlineServiceDefinition
+-      BLOCK_BODY
+-        RETURN type=test.box.EchoService_WasmlineProxy from='public final fun link (endpoint: crow.wasmline.WasmlineEndpoint): test.box.EchoService declared in test.box.EchoService_WasmlineDefinition'
+-          CONSTRUCTOR_CALL 'public constructor <init> (endpoint: crow.wasmline.WasmlineEndpoint) declared in test.box.EchoService_WasmlineProxy' type=test.box.EchoService_WasmlineProxy origin=null
+-            ARG endpoint: GET_VAR 'endpoint: crow.wasmline.WasmlineEndpoint declared in test.box.EchoService_WasmlineDefinition.link' type=crow.wasmline.WasmlineEndpoint origin=null
+-  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+-    BLOCK_BODY
+-      VAR name:definition type:crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> [val]
+-        annotations:
+-          Suppress(names = ["UNCHECKED_CAST"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+-        TYPE_OP type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=CAST typeOperand=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService>
+-          CALL 'public open fun get (p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Field' type=@[FlexibleNullability] kotlin.Any? origin=null
+-            ARG <this>: TYPE_OP type=java.lang.reflect.Field origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Field
+-              CALL 'public open fun getField (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.reflect.Field? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.reflect.Field? origin=null
+-                ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
+-                  CALL 'public open fun forName (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.Class<*>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+-                    ARG p0: CONST String type=kotlin.String value="test.box.EchoService_WasmlineDefinition"
+-                ARG p0: CONST String type=kotlin.String value="INSTANCE"
+-            ARG p0: CONST Null type=kotlin.Nothing? value=null
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+-              ARG arg0: CALL 'public abstract fun <get-contract> (): kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition' type=kotlin.reflect.KClass<test.box.EchoService> origin=GET_PROPERTY
+-                ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+-              ARG arg1: CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail contract="
+-                CALL 'public abstract fun <get-contract> (): kotlin.reflect.KClass<T of crow.wasmline.WasmlineServiceDefinition> declared in crow.wasmline.WasmlineServiceDefinition' type=kotlin.reflect.KClass<test.box.EchoService> origin=GET_PROPERTY
+-                  ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+-              ARG arg0: CALL 'public final fun <get-value> (): kotlin.String declared in crow.wasmline.WasmlineServiceId' type=kotlin.String origin=GET_PROPERTY
+-                ARG <this>: CALL 'public abstract fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition' type=crow.wasmline.WasmlineServiceId origin=GET_PROPERTY
+-                  ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+-              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService"
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail serviceId="
+-                CALL 'public final fun <get-value> (): kotlin.String declared in crow.wasmline.WasmlineServiceId' type=kotlin.String origin=GET_PROPERTY
+-                  ARG <this>: CALL 'public abstract fun <get-serviceId> (): crow.wasmline.WasmlineServiceId declared in crow.wasmline.WasmlineServiceDefinition' type=crow.wasmline.WasmlineServiceId origin=GET_PROPERTY
+-                    ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+-      VAR name:endpoint type:test.box.RecordingEndpoint [val]
+-        CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.RecordingEndpoint' type=test.box.RecordingEndpoint origin=null
+-      VAR name:proxy type:test.box.EchoService [val]
+-        CALL 'public abstract fun link (endpoint: crow.wasmline.WasmlineEndpoint): T of crow.wasmline.WasmlineServiceDefinition declared in crow.wasmline.WasmlineServiceDefinition' type=test.box.EchoService origin=null
+-          ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+-          ARG endpoint: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: TYPE_OP type=kotlin.Boolean origin=NOT_INSTANCEOF typeOperand=test.box.EchoService
+-            GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail proxyContractType="
+-                CALL 'public abstract fun <get-qualifiedName> (): kotlin.String? declared in kotlin.reflect.KClass' type=kotlin.String? origin=GET_PROPERTY
+-                  ARG <this>: GET_CLASS type=kotlin.reflect.KClass<out test.box.EchoService>
+-                    GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+-              ARG arg0: CALL 'public abstract fun <get-qualifiedName> (): kotlin.String? declared in kotlin.reflect.KClass' type=kotlin.String? origin=GET_PROPERTY
+-                ARG <this>: GET_CLASS type=kotlin.reflect.KClass<out test.box.EchoService>
+-                  GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+-              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService_WasmlineProxy"
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail proxyType="
+-                CALL 'public abstract fun <get-qualifiedName> (): kotlin.String? declared in kotlin.reflect.KClass' type=kotlin.String? origin=GET_PROPERTY
+-                  ARG <this>: GET_CLASS type=kotlin.reflect.KClass<out test.box.EchoService>
+-                    GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+-      VAR name:result type:kotlin.String [val]
+-        CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+-          ARG <this>: CALL 'public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService' type=kotlin.ByteArray origin=null
+-            ARG <this>: GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
+-            ARG payload: CALL 'public final fun encodeToByteArray (<this>: kotlin.String): kotlin.ByteArray declared in kotlin.text' type=kotlin.ByteArray origin=null
+-              ARG <this>: CONST String type=kotlin.String value="hello"
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+-              ARG arg0: GET_VAR 'val result: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+-              ARG arg1: CONST String type=kotlin.String value="reply:hello"
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail result="
+-                GET_VAR 'val result: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+-              ARG arg0: CALL 'public final fun <get-action> (): kotlin.String? declared in test.box.RecordingEndpoint' type=kotlin.String? origin=GET_PROPERTY
+-                ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+-              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService#xjRgE7w2"
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail action="
+-                CALL 'public final fun <get-action> (): kotlin.String? declared in test.box.RecordingEndpoint' type=kotlin.String? origin=GET_PROPERTY
+-                  ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+-              ARG arg0: BLOCK type=kotlin.String? origin=SAFE_CALL
+-                VAR IR_TEMPORARY_VARIABLE name:tmp_0 type:kotlin.ByteArray? [val]
+-                  CALL 'public final fun <get-payload> (): kotlin.ByteArray? declared in test.box.RecordingEndpoint' type=kotlin.ByteArray? origin=GET_PROPERTY
+-                    ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+-                WHEN type=kotlin.String? origin=null
+-                  BRANCH
+-                    if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+-                      ARG arg0: GET_VAR 'val tmp_0: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+-                      ARG arg1: CONST Null type=kotlin.Nothing? value=null
+-                    then: CONST Null type=kotlin.Nothing? value=null
+-                  BRANCH
+-                    if: CONST Boolean type=kotlin.Boolean value=true
+-                    then: CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+-                      ARG <this>: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
+-                        GET_VAR 'val tmp_0: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+-              ARG arg1: CONST String type=kotlin.String value="hello"
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail payload="
+-                BLOCK type=kotlin.String? origin=SAFE_CALL
+-                  VAR IR_TEMPORARY_VARIABLE name:tmp_1 type:kotlin.ByteArray? [val]
+-                    CALL 'public final fun <get-payload> (): kotlin.ByteArray? declared in test.box.RecordingEndpoint' type=kotlin.ByteArray? origin=GET_PROPERTY
+-                      ARG <this>: GET_VAR 'val endpoint: test.box.RecordingEndpoint declared in test.box.box' type=test.box.RecordingEndpoint origin=null
+-                  WHEN type=kotlin.String? origin=null
+-                    BRANCH
+-                      if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+-                        ARG arg0: GET_VAR 'val tmp_1: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+-                        ARG arg1: CONST Null type=kotlin.Nothing? value=null
+-                      then: CONST Null type=kotlin.Nothing? value=null
+-                    BRANCH
+-                      if: CONST Boolean type=kotlin.Boolean value=true
+-                      then: CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+-                        ARG <this>: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
+-                          GET_VAR 'val tmp_1: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+-      VAR name:bindError type:kotlin.String [val]
+-        TRY type=kotlin.String
+-          try: BLOCK type=kotlin.String origin=null
+-            CALL 'public abstract fun bind (implementation: T of crow.wasmline.WasmlineServiceDefinition, scope: crow.wasmline.WasmlineBindingScope): kotlin.Unit declared in crow.wasmline.WasmlineServiceDefinition' type=kotlin.Unit origin=null
+-              ARG <this>: GET_VAR 'val definition: crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> declared in test.box.box' type=crow.wasmline.WasmlineServiceDefinition<test.box.EchoService> origin=null
+-              ARG implementation: CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.EchoServiceImpl' type=test.box.EchoServiceImpl origin=null
+-              ARG scope: CONSTRUCTOR_CALL 'public constructor <init> () declared in crow.wasmline.WasmlineBindingScope' type=crow.wasmline.WasmlineBindingScope origin=null
+-            CONST String type=kotlin.String value="NO_ERROR"
+-          CATCH parameter=val e: java.lang.IllegalStateException declared in test.box.box
+-            VAR CATCH_PARAMETER name:e type:java.lang.IllegalStateException [val]
+-            BLOCK type=kotlin.String origin=null
+-              CALL 'public final fun orEmpty (<this>: kotlin.String?): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+-                ARG <this>: CALL 'public open fun <get-message> (): kotlin.String? declared in java.lang.IllegalStateException' type=kotlin.String? origin=GET_PROPERTY
+-                  ARG <this>: GET_VAR 'val e: java.lang.IllegalStateException declared in test.box.box' type=java.lang.IllegalStateException origin=null
+-      WHEN type=kotlin.Unit origin=IF
+-        BRANCH
+-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+-              ARG arg0: GET_VAR 'val bindError: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+-              ARG arg1: CONST String type=kotlin.String value="Wasmline adapter method generation is not implemented yet for test.box.EchoService."
+-          then: BLOCK type=kotlin.Unit origin=null
+-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-              STRING_CONCATENATION type=kotlin.String
+-                CONST String type=kotlin.String value="Fail bindError="
+-                GET_VAR 'val bindError: kotlin.String declared in test.box.box' type=kotlin.String origin=null
+-      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+-        CONST String type=kotlin.String value="OK"
+diff --git a/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.txt b/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.txt
+deleted file mode 100644
+index ce4d6a6..0000000
+--- a/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.txt
++++ /dev/null
+@@ -1,100 +0,0 @@
+-FILE: echoProxyRoundTrip.kt
+-    package test.box
+-
+-    public abstract interface EchoService : R|crow/wasmline/WasmlineService| {
+-        public abstract fun echo(payload: R|kotlin/ByteArray|): R|kotlin/ByteArray|
+-
+-    }
+-    private final class RecordingEndpoint : R|crow/wasmline/WasmlineEndpoint| {
+-        public constructor(): R|test/box/RecordingEndpoint| {
+-            super<R|kotlin/Any|>()
+-        }
+-
+-        public final var action: R|kotlin/String?| = Null(null)
+-            public get(): R|kotlin/String?|
+-            public set(value: R|kotlin/String?|): R|kotlin/Unit|
+-
+-        public final var payload: R|kotlin/ByteArray?| = Null(null)
+-            public get(): R|kotlin/ByteArray?|
+-            public set(value: R|kotlin/ByteArray?|): R|kotlin/Unit|
+-
+-        public open override fun invoke(action: R|kotlin/String|, payload: R|kotlin/ByteArray|): R|kotlin/ByteArray| {
+-            this@R|test/box/RecordingEndpoint|.R|test/box/RecordingEndpoint.action| = R|<local>/action|
+-            this@R|test/box/RecordingEndpoint|.R|test/box/RecordingEndpoint.payload| = R|<local>/payload|.R|kotlin/collections/copyOf|()
+-            ^invoke <strcat>(String(reply:), R|<local>/payload|.R|kotlin/text/decodeToString|()).R|kotlin/text/encodeToByteArray|()
+-        }
+-
+-    }
+-    private final class EchoServiceImpl : R|test/box/EchoService| {
+-        public constructor(): R|test/box/EchoServiceImpl| {
+-            super<R|kotlin/Any|>()
+-        }
+-
+-        public open override fun echo(payload: R|kotlin/ByteArray|): R|kotlin/ByteArray| {
+-            ^echo R|<local>/payload|
+-        }
+-
+-    }
+-    public final fun box(): R|kotlin/String| {
+-        @R|kotlin/Suppress|(names = vararg(String(UNCHECKED_CAST))) lval definition: R|crow/wasmline/WasmlineServiceDefinition<test/box/EchoService>| = (Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.box.EchoService_WasmlineDefinition)).R|SubstitutionOverride<java/lang/Class.getField: R|java/lang/reflect/Field!|>|(String(INSTANCE)).R|java/lang/reflect/Field.get|(Null(null)) as R|crow/wasmline/WasmlineServiceDefinition<test/box/EchoService>|)
+-        when () {
+-            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|, <getClass>(Q|test/box/EchoService|)) ->  {
+-                ^box <strcat>(String(Fail contract=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|)
+-            }
+-        }
+-
+-        when () {
+-            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.serviceId: R|crow/wasmline/WasmlineServiceId|>|.R|crow/wasmline/WasmlineServiceId.value|, String(test.box.EchoService)) ->  {
+-                ^box <strcat>(String(Fail serviceId=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.serviceId: R|crow/wasmline/WasmlineServiceId|>|.R|crow/wasmline/WasmlineServiceId.value|)
+-            }
+-        }
+-
+-        lval endpoint: R|test/box/RecordingEndpoint| = R|test/box/RecordingEndpoint.RecordingEndpoint|()
+-        lval proxy: R|test/box/EchoService| = R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.link: R|test/box/EchoService|>|(R|<local>/endpoint|)
+-        when () {
+-            (R|<local>/proxy| !is R|test/box/EchoService|) ->  {
+-                ^box <strcat>(String(Fail proxyContractType=), <getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|)
+-            }
+-        }
+-
+-        when () {
+-            !=(<getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|, String(test.box.EchoService_WasmlineProxy)) ->  {
+-                ^box <strcat>(String(Fail proxyType=), <getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|)
+-            }
+-        }
+-
+-        lval result: R|kotlin/String| = R|<local>/proxy|.R|test/box/EchoService.echo|(String(hello).R|kotlin/text/encodeToByteArray|()).R|kotlin/text/decodeToString|()
+-        when () {
+-            !=(R|<local>/result|, String(reply:hello)) ->  {
+-                ^box <strcat>(String(Fail result=), R|<local>/result|)
+-            }
+-        }
+-
+-        when () {
+-            !=(R|<local>/endpoint|.R|test/box/RecordingEndpoint.action|, String(test.box.EchoService#xjRgE7w2)) ->  {
+-                ^box <strcat>(String(Fail action=), R|<local>/endpoint|.R|test/box/RecordingEndpoint.action|)
+-            }
+-        }
+-
+-        when () {
+-            !=(R|<local>/endpoint|.R|test/box/RecordingEndpoint.payload|?.{ $subj$.R|kotlin/text/decodeToString|() }, String(hello)) ->  {
+-                ^box <strcat>(String(Fail payload=), R|<local>/endpoint|.R|test/box/RecordingEndpoint.payload|?.{ $subj$.R|kotlin/text/decodeToString|() })
+-            }
+-        }
+-
+-        lval bindError: R|kotlin/String| = try {
+-            R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.bind: R|kotlin/Unit|>|(R|test/box/EchoServiceImpl.EchoServiceImpl|(), R|crow/wasmline/WasmlineBindingScope.WasmlineBindingScope|())
+-            String(NO_ERROR)
+-        }
+-        catch (e: R|{kotlin/IllegalStateException=} java/lang/IllegalStateException|) {
+-            R|<local>/e|.R|kotlin/Throwable.message|.R|kotlin/text/orEmpty|()
+-        }
+-
+-        when () {
+-            !=(R|<local>/bindError|, String(Wasmline adapter method generation is not implemented yet for test.box.EchoService.)) ->  {
+-                ^box <strcat>(String(Fail bindError=), R|<local>/bindError|)
+-            }
+-        }
+-
+-        ^box String(OK)
+-    }
+diff --git a/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.kt b/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.kt
+index 3e1bb82..16cb1fd 100644
+--- a/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.kt
++++ b/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.kt
+@@ -27,6 +27,7 @@ private class EchoServiceImpl : EchoService {
+ }
+ 
+ fun box(): String {
++
+     @Suppress("UNCHECKED_CAST")
+     val definition = Class.forName("test.box.EchoService_WasmlineDefinition")
+         .getField("INSTANCE")
+diff --git a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineBindingScope.kt b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineBindingScope.kt
+index 1f789f0..2b8254a 100644
+--- a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineBindingScope.kt
++++ b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineBindingScope.kt
+@@ -6,6 +6,8 @@ import kotlin.reflect.KClass
+  * Mutable binding container used to expose local services to an endpoint.
+  *
+  * Most application code interacts with this through `bindServices { ... }`.
++ * Direct action binding is an advanced escape hatch that sits below the typed
++ * `WasmlineService` layer.
+  */
+ class WasmlineBindingScope {
+     private val handlers = linkedMapOf<String, WasmlineActionHandler>()
+diff --git a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineEndpoint.kt b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineEndpoint.kt
+index 7023c6e..744e5dd 100644
+--- a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineEndpoint.kt
++++ b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineEndpoint.kt
+@@ -4,6 +4,12 @@ fun interface WasmlineActionHandler {
+     fun handle(payload: ByteArray): ByteArray
+ }
+ 
++/**
++ * Low-level action/payload transport endpoint.
++ *
++ * Typical application code reaches this through higher-level helpers such as
++ * `Wasmline.link<T>()`, `WasmlineEndpoint.link<T>()`, or `bindServices { ... }`.
++ */
+ interface WasmlineEndpoint {
+     fun invoke(action: String, payload: ByteArray): ByteArray
+ }
+diff --git a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineLinking.kt b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineLinking.kt
+index 13b353d..c564476 100644
+--- a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineLinking.kt
++++ b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineLinking.kt
+@@ -7,6 +7,7 @@ fun <T : WasmlineService> WasmlineEndpoint.link(contract: KClass<T>): T {
+     return WasmlineServiceRegistry.require(contract).link(this)
+ }
+ 
++/** Preferred typed convenience overload for application code. */
+ inline fun <reified T : WasmlineService> WasmlineEndpoint.link(): T {
+     return link(T::class)
+ }
+diff --git a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlinePayload.kt b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlinePayload.kt
+index c654323..539a564 100644
+--- a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlinePayload.kt
++++ b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlinePayload.kt
+@@ -2,7 +2,10 @@
+ 
+ package crow.wasmline
+ 
+-/** Public helper used by generated Wasmline IR for zero-argument calls in phase one. */
++/**
++ * Helper used by generated Wasmline IR for zero-argument calls in phase one.
++ * Application code should normally not need to call this directly.
++ */
+ fun wasmlineEmptyPayload(): ByteArray = ByteArray(0)
+ 
+ 
+diff --git a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceDefinition.kt b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceDefinition.kt
+index e1d9f9d..c17d4a2 100644
+--- a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceDefinition.kt
++++ b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceDefinition.kt
+@@ -8,6 +8,9 @@ import kotlin.reflect.KClass
+  * Most application code should use higher-level entry points such as `link<T>()`
+  * and `bindServices { ... }`. This interface mainly exists so IR-generated glue
+  * has a stable runtime contract to implement.
++ *
++ * In other words: this is part of Wasmline's generated-code SPI, not the primary
++ * API that typical application code should build against directly.
+  */
+ interface WasmlineServiceDefinition<T : WasmlineService> {
+     val contract: KClass<T>
+@@ -17,6 +20,6 @@ interface WasmlineServiceDefinition<T : WasmlineService> {
+     fun link(endpoint: WasmlineEndpoint): T
+ 
+     /** Install local handlers for [implementation] into [scope]. */
+-    fun bind(implementation: T, scope: crow.wasmline.WasmlineBindingScope)
++    fun bind(implementation: T, scope: WasmlineBindingScope)
+ }
+ 
+diff --git a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistration.kt b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistration.kt
+new file mode 100644
+index 0000000..4c9418d
+--- /dev/null
++++ b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistration.kt
+@@ -0,0 +1,27 @@
++@file:Suppress("unused")
++
++package crow.wasmline
++
++import kotlin.reflect.KClass
++
++/**
++ * Advanced bootstrap hook for making a generated Wasmline service definition
++ * available to the typed `link<T>()` / `bind(...)` APIs.
++ *
++ * Typical application code should not need this directly; it exists so generated
++ * glue or explicit bootstrap code can install definitions without exposing the
++ * registry object itself.
++ */
++fun registerWasmlineServiceDefinition(definition: WasmlineServiceDefinition<out WasmlineService>) {
++    WasmlineServiceRegistry.register(definition)
++}
++
++/**
++ * Remove a previously installed service definition.
++ *
++ * This is primarily useful for tests and explicit bootstrap teardown.
++ */
++fun unregisterWasmlineServiceDefinition(contract: KClass<out WasmlineService>) {
++    WasmlineServiceRegistry.unregister(contract)
++}
++
+diff --git a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistry.kt b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistry.kt
+index 65af868..64e0145 100644
+--- a/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistry.kt
++++ b/wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistry.kt
+@@ -5,10 +5,10 @@ import kotlin.reflect.KClass
+ /**
+  * Runtime registry of generated service definitions.
+  *
+- * Typical callers do not need to touch this directly; use `link<T>()` and
+- * `bindServices { ... }` where possible.
++ * This is internal runtime wiring for typed Wasmline services.
++ * Typical callers should stay on `link<T>()` and `bindServices { ... }`.
+  */
+-object WasmlineServiceRegistry {
++internal object WasmlineServiceRegistry {
+     private val definitions = mutableMapOf<KClass<out WasmlineService>, WasmlineServiceDefinition<out WasmlineService>>()
+ 
+     fun register(definition: WasmlineServiceDefinition<out WasmlineService>) {
+diff --git a/wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt b/wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt
+index d6eab33..1a325e8 100644
+--- a/wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt
++++ b/wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt
+@@ -39,12 +39,12 @@ class WasmlineServiceRuntimeTest {
+ 
+     @BeforeTest
+     fun setUp() {
+-        WasmlineServiceRegistry.register(EchoServiceDefinition)
++        registerWasmlineServiceDefinition(EchoServiceDefinition)
+     }
+ 
+     @AfterTest
+     fun tearDown() {
+-        WasmlineServiceRegistry.unregister(EchoService::class)
++        unregisterWasmlineServiceDefinition(EchoService::class)
+     }
+ 
+     @Test
+---
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	deleted:    wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.ir.txt
+	deleted:    wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.txt
+	new file:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistration.kt
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   structs/ir.md
+	modified:   structs/wasmline-ir-design.md
+	modified:   wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt
+	modified:   wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt
+	modified:   wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/crow/wasmline/kotlin/runners/JvmBoxTestGenerated.java
+	modified:   wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineBindingScope.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineEndpoint.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineLinking.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlinePayload.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceDefinition.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistration.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineServiceRegistry.kt
+	modified:   wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.ir.txt
+	wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/echoProxyRoundTrip.fir.txt
