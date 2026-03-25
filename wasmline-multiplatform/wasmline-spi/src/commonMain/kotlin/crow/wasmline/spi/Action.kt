@@ -1,20 +1,23 @@
-package crow.wasmline
+@file:Suppress("unused")
+
+package crow.wasmline.spi
 
 import kotlin.jvm.JvmInline
 
 /** Strongly typed identifiers used by generated Wasmline service glue. */
 @JvmInline
-value class WasmlineServiceId(val value: String)
+value class ServiceId(val value: String)
 
 /** Strongly typed identifiers used by generated Wasmline service glue. */
 @JvmInline
-value class WasmlineMethodId(val value: String)
+value class MethodId(val value: String)
 
 /** Fully qualified action key used on the low-level action/payload transport. */
-data class WasmlineAction(
-    val service: WasmlineServiceId,
-    val method: WasmlineMethodId,
+data class Action(
+    val service: ServiceId,
+    val method: MethodId,
 ) {
     val value: String get() = "${service.value}#${method.value}"
 }
+
 

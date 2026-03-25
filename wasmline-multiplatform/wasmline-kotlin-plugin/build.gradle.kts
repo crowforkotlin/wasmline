@@ -30,7 +30,7 @@ plugins {
  * - Manually aggregates essential libraries (stdlib, reflect) required
  * for the guest code to execute during compiler-driven tests.
  *
- * 3. [jvmRuntimeElements]: Target Variant Selection.
+ * 3. `jvmRuntimeElements`: Target Variant Selection.
  * - Explicitly targets the JVM-specific output of the :wasmline module,
  * ensuring compatibility even in Multiplatform (KMP) environments.
  *
@@ -110,6 +110,7 @@ dependencies {
     compileOnly(libs.kotlin.compiler)
     compileOnly(libs.kotlin.stdlib)
 
+    implementation(project(":wasmline-spi"))
     implementation(projects.wasmline)
     implementation(projects.wasmlineLoader)
 
@@ -131,7 +132,6 @@ dependencies {
     testFixturesApi(libs.kotlin.test.junit5)
     testFixturesApi(libs.kotlin.compiler)
     testFixturesApi(libs.kotlin.compiler.internal.test.framework)
-
     // Command -> ./gradlew :wasmline:outgoingVariants
     wasmlineRuntimeClasspath(dependency = projects.wasmline, dependencyConfiguration = { targetConfiguration = "jvmRuntimeElements" })
 

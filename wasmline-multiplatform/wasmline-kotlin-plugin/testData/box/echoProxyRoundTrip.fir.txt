@@ -5,7 +5,7 @@ FILE: echoProxyRoundTrip.kt
         public abstract fun echo(payload: R|kotlin/ByteArray|): R|kotlin/ByteArray|
 
     }
-    private final class RecordingEndpoint : R|crow/wasmline/WasmlineEndpoint| {
+    private final class RecordingEndpoint : R|crow/wasmline/spi/WasmlineEndpoint| {
         public constructor(): R|test/box/RecordingEndpoint| {
             super<R|kotlin/Any|>()
         }
@@ -36,21 +36,21 @@ FILE: echoProxyRoundTrip.kt
 
     }
     public final fun box(): R|kotlin/String| {
-        @R|kotlin/Suppress|(names = vararg(String(UNCHECKED_CAST))) lval definition: R|crow/wasmline/WasmlineServiceDefinition<test/box/EchoService>| = (Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.box.EchoService_WasmlineDefinition)).R|SubstitutionOverride<java/lang/Class.getField: R|java/lang/reflect/Field!|>|(String(INSTANCE)).R|java/lang/reflect/Field.get|(Null(null)) as R|crow/wasmline/WasmlineServiceDefinition<test/box/EchoService>|)
+        @R|kotlin/Suppress|(names = vararg(String(UNCHECKED_CAST))) lval definition: R|crow/wasmline/spi/ServiceDefinition<test/box/EchoService>| = (Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.box.EchoService_WasmlineDefinition)).R|SubstitutionOverride<java/lang/Class.getField: R|java/lang/reflect/Field!|>|(String(INSTANCE)).R|java/lang/reflect/Field.get|(Null(null)) as R|crow/wasmline/spi/ServiceDefinition<test/box/EchoService>|)
         when () {
-            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|, <getClass>(Q|test/box/EchoService|)) ->  {
-                ^box <strcat>(String(Fail contract=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|)
+            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/spi/ServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|, <getClass>(Q|test/box/EchoService|)) ->  {
+                ^box <strcat>(String(Fail contract=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/spi/ServiceDefinition.contract: R|kotlin/reflect/KClass<test/box/EchoService>|>|)
             }
         }
 
         when () {
-            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.serviceId: R|crow/wasmline/WasmlineServiceId|>|.R|crow/wasmline/WasmlineServiceId.value|, String(test.box.EchoService)) ->  {
-                ^box <strcat>(String(Fail serviceId=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.serviceId: R|crow/wasmline/WasmlineServiceId|>|.R|crow/wasmline/WasmlineServiceId.value|)
+            !=(R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/spi/ServiceDefinition.serviceId: R|crow/wasmline/spi/ServiceId|>|.R|crow/wasmline/spi/ServiceId.value|, String(test.box.EchoService)) ->  {
+                ^box <strcat>(String(Fail serviceId=), R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/spi/ServiceDefinition.serviceId: R|crow/wasmline/spi/ServiceId|>|.R|crow/wasmline/spi/ServiceId.value|)
             }
         }
 
         lval endpoint: R|test/box/RecordingEndpoint| = R|test/box/RecordingEndpoint.RecordingEndpoint|()
-        lval proxy: R|test/box/EchoService| = R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.link: R|test/box/EchoService|>|(R|<local>/endpoint|)
+        lval proxy: R|test/box/EchoService| = R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/spi/ServiceDefinition.link: R|test/box/EchoService|>|(R|<local>/endpoint|)
         when () {
             (R|<local>/proxy| !is R|test/box/EchoService|) ->  {
                 ^box <strcat>(String(Fail proxyContractType=), <getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|)
@@ -82,17 +82,13 @@ FILE: echoProxyRoundTrip.kt
             }
         }
 
-        lval bindError: R|kotlin/String| = try {
-            R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/WasmlineServiceDefinition.bind: R|kotlin/Unit|>|(R|test/box/EchoServiceImpl.EchoServiceImpl|(), R|crow/wasmline/WasmlineBindingScope.WasmlineBindingScope|())
-            String(NO_ERROR)
-        }
-        catch (e: R|{kotlin/IllegalStateException=} java/lang/IllegalStateException|) {
-            R|<local>/e|.R|kotlin/Throwable.message|.R|kotlin/text/orEmpty|()
-        }
-
+        lval boundScope: R|crow/wasmline/spi/WasmlineBindingScope| = R|crow/wasmline/spi/WasmlineBindingScope.WasmlineBindingScope|()
+        R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/spi/ServiceDefinition.bind: R|kotlin/Unit|>|(R|test/box/EchoServiceImpl.EchoServiceImpl|(), R|<local>/boundScope|)
+        lval boundProxy: R|test/box/EchoService| = R|<local>/definition|.R|SubstitutionOverride<crow/wasmline/spi/ServiceDefinition.link: R|test/box/EchoService|>|(R|<local>/boundScope|.R|crow/wasmline/spi/WasmlineBindingScope.endpoint|())
+        lval boundResult: R|kotlin/String| = R|<local>/boundProxy|.R|test/box/EchoService.echo|(String(bound).R|kotlin/text/encodeToByteArray|()).R|kotlin/text/decodeToString|()
         when () {
-            !=(R|<local>/bindError|, String(Wasmline adapter method generation is not implemented yet for test.box.EchoService.)) ->  {
-                ^box <strcat>(String(Fail bindError=), R|<local>/bindError|)
+            !=(R|<local>/boundResult|, String(bound)) ->  {
+                ^box <strcat>(String(Fail boundResult=), R|<local>/boundResult|)
             }
         }
 

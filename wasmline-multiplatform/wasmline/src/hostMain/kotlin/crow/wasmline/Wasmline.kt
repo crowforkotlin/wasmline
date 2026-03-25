@@ -1,8 +1,11 @@
+@file:Suppress("unused")
+
 package crow.wasmline
 
 expect class Wasmline(moduleKey: String) {
 
 
+    @Suppress("unused")
     companion object {
 
         /**
@@ -25,17 +28,19 @@ expect class Wasmline(moduleKey: String) {
 
     }
 
-    suspend fun setOutbound(dispatcher: WasmlineHostDispatcher)
+    @Suppress("unused")
+    internal suspend fun setOutbound(dispatcher: crow.wasmline.spi.WasmlineHostDispatcher)
 
     /**
      * 执行 Wasm 函数
      * 支持并发调用，底层会自动创建独立的 Session
      */
-    suspend fun call(action: String, inputBytes: ByteArray): ByteArray
+    internal suspend fun call(action: String, inputBytes: ByteArray): ByteArray
 
     /**
      * 释放当前模块
      * 不会影响 Engine，但会释放此模块占用的内存
      */
+    @Suppress("unused")
     fun release()
 }

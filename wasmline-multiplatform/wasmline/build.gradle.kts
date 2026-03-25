@@ -1,9 +1,6 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage", "SpellCheckingInspection")
 
 import com.android.build.api.dsl.androidLibrary
-import com.android.build.gradle.internal.cxx.gradle.generator.externalNativeBuildIsActive
-import com.android.kotlin.multiplatform.ide.models.serialization.androidSourceSetKey
-
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -75,6 +72,7 @@ kotlin {
 
         val commonMain by getting {
             dependencies {
+                api(project(":wasmline-spi"))
                 implementation(libs.kotlinx.coroutines)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.serialization.protobuf)

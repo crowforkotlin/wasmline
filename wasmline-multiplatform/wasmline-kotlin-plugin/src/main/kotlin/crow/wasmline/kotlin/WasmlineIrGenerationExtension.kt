@@ -88,21 +88,26 @@ internal class WasmlineIrGenerationExtension(
         runtimeSymbols: WasmlineRuntimeSymbols,
     ) {
         val ownerSymbols = ArrayDeque<org.jetbrains.kotlin.ir.symbols.IrSymbol>()
+        val ownerRegisteredContracts = ArrayDeque<MutableSet<IrClassSymbol>>()
         moduleFragment.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitFunction(declaration: IrFunction): IrStatement {
                 ownerSymbols.addLast(declaration.symbol)
+                ownerRegisteredContracts.addLast(linkedSetOf())
                 return try {
                     super.visitFunction(declaration)
                 } finally {
+                    ownerRegisteredContracts.removeLast()
                     ownerSymbols.removeLast()
                 }
             }
 
             override fun visitConstructor(declaration: IrConstructor): IrStatement {
                 ownerSymbols.addLast(declaration.symbol)
+                ownerRegisteredContracts.addLast(linkedSetOf())
                 return try {
                     super.visitConstructor(declaration)
                 } finally {
+                    ownerRegisteredContracts.removeLast()
                     ownerSymbols.removeLast()
                 }
             }
@@ -113,6 +118,10 @@ internal class WasmlineIrGenerationExtension(
                 val contract = resolveContractForAutoRegistration(transformedCall, runtimeSymbols) ?: return transformedCall
                 val definitionSymbol = runtimeSymbols.definitionObjectSymbol(contract) ?: return transformed
                 val ownerSymbol = ownerSymbols.lastOrNull() ?: return transformed
+                val registeredContracts = ownerRegisteredContracts.lastOrNull() ?: return transformed
+                if (!registeredContracts.add(contract.symbol)) {
+                    return transformedCall
+                }
                 val builder = DeclarationIrBuilder(
                     generatorContext = pluginContext,
                     symbol = ownerSymbol,
@@ -261,13 +270,19 @@ internal class WasmlineIrGenerationExtension(
             runtimeSymbols.hostLinkFunction,
             runtimeSymbols.linkHostFunction,
             runtimeSymbols.bindingScopeBindAsFunction,
+            runtimeSymbols.hostBindAsFunction,
+            runtimeSymbols.topLevelBindAsFunction,
             -> call.typeArguments.getOrNull(0)?.asWasmlineServiceContract()
 
             runtimeSymbols.endpointLinkContractFunction,
             runtimeSymbols.bindingScopeBindContractFunction,
+            runtimeSymbols.hostBindContractFunction,
+            runtimeSymbols.topLevelBindContractFunction,
             -> call.regularValueArgument(0)?.classLiteralContract()
 
             runtimeSymbols.bindingScopeBindSingleFunction,
+            runtimeSymbols.hostBindSingleFunction,
+            runtimeSymbols.topLevelBindSingleFunction,
             -> call.regularValueArgument(0)?.type?.implementedWasmlineServiceContracts()?.singleOrNull()
 
             else -> null
@@ -351,7 +366,7 @@ internal class WasmlineIrGenerationExtension(
         val definitionObject = irFactory.buildClass {
             initDefaults(contract)
             name = definitionName
-            visibility = DescriptorVisibilities.PUBLIC
+            visibility = DescriptorVisibilities.INTERNAL
             kind = ClassKind.OBJECT
         }.apply {
             parent = file
@@ -433,7 +448,7 @@ internal class WasmlineIrGenerationExtension(
         val proxyClass = pluginContext.irFactory.buildClass {
             initDefaults(contract)
             name = proxyName
-            visibility = DescriptorVisibilities.PUBLIC
+            visibility = DescriptorVisibilities.PRIVATE
             modality = Modality.FINAL
             kind = ClassKind.CLASS
         }.apply {
@@ -505,7 +520,7 @@ internal class WasmlineIrGenerationExtension(
         val adapterClass = pluginContext.irFactory.buildClass {
             initDefaults(contract)
             name = adapterName
-            visibility = DescriptorVisibilities.PUBLIC
+            visibility = DescriptorVisibilities.PRIVATE
             modality = Modality.FINAL
             kind = ClassKind.CLASS
         }.apply {
@@ -514,11 +529,34 @@ internal class WasmlineIrGenerationExtension(
             createThisReceiverParameter()
         }
 
+        val implementationField = createPrivateField(
+            owner = adapterClass,
+            pluginContext = pluginContext,
+            type = contract.defaultType,
+            name = Name.identifier("implementation"),
+        )
+        adapterClass.declarations += implementationField
+
+        val contractFunctions = contract.declarations
+            .filterIsInstance<IrSimpleFunction>()
+            .filterNot { it.name.isSpecial }
+            .filterNot { it.isFakeOverride }
+
+        val handlerConstructors = contractFunctions.associateWith { contractFunction ->
+            generateAdapterHandlerClass(
+                contract = contract,
+                contractFunction = contractFunction,
+                file = file,
+                pluginContext = pluginContext,
+                runtimeSymbols = runtimeSymbols,
+            ).constructors.single()
+        }
+
         adapterClass.addConstructor {
             initDefaults(contract)
             visibility = DescriptorVisibilities.PUBLIC
         }.apply {
-            addValueParameter("implementation", contract.defaultType)
+            val implementationParameter = addValueParameter("implementation", contract.defaultType)
             irConstructorBody(pluginContext) { statements ->
                 val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
                 statements += irDelegatingConstructorCall(
@@ -528,6 +566,11 @@ internal class WasmlineIrGenerationExtension(
                 statements += irInstanceInitializerCall(
                     context = pluginContext,
                     classSymbol = adapterClass.symbol,
+                )
+                statements += irSetField(
+                    receiver = irGet(adapterClass.thisReceiver!!),
+                    field = implementationField,
+                    value = irGet(implementationParameter),
                 )
             }
         }
@@ -555,21 +598,158 @@ internal class WasmlineIrGenerationExtension(
             parameters += buildReceiverParameter {
                 type = adapterClass.defaultType
             }
-            addValueParameter("scope", runtimeSymbols.bindingScopeClass.owner.defaultType)
+            val scopeParameter = addValueParameter("scope", runtimeSymbols.bindingScopeClass.owner.defaultType)
             irFunctionBody(
                 context = pluginContext,
                 scopeOwnerSymbol = symbol,
             ) {
-                +irInvoke(
-                    null,
-                    runtimeSymbols.kotlinErrorFunction,
-                    irString("Wasmline adapter method generation is not implemented yet for $fqName."),
+                val implementation = irGetField(
+                    irGet(dispatchReceiverParameter!!),
+                    implementationField,
                 )
+                contractFunctions.forEach { contractFunction ->
+                    val action = "$fqName#${contractFunction.id}"
+                    val handlerConstructor = handlerConstructors.getValue(contractFunction)
+                    +irInvoke(
+                        irGet(scopeParameter),
+                        runtimeSymbols.bindingScopeBindActionFunction,
+                        irString(action),
+                        irCallConstructor(handlerConstructor.symbol, emptyList()).apply {
+                            arguments[0] = implementation
+                        },
+                    )
+                }
             }
         }
 
         file.declarations += adapterClass
         return adapterClass
+    }
+
+    private fun generateAdapterHandlerClass(
+        contract: IrClass,
+        contractFunction: IrSimpleFunction,
+        file: IrFile,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+    ): IrClass {
+        val handlerName = Name.identifier(
+            "${contract.name.identifier}_${contractFunction.name.identifier}_${contractFunction.id}_WasmlineHandler",
+        )
+        file.declarations.filterIsInstance<IrClass>().firstOrNull { it.name == handlerName }?.let { return it }
+
+        val handlerClass = pluginContext.irFactory.buildClass {
+            initDefaults(contractFunction)
+            name = handlerName
+            visibility = DescriptorVisibilities.PRIVATE
+            modality = Modality.FINAL
+            kind = ClassKind.CLASS
+        }.apply {
+            parent = file
+            superTypes = listOf(runtimeSymbols.actionHandlerClass.owner.defaultType)
+            createThisReceiverParameter()
+        }
+
+        val implementationField = createPrivateField(
+            owner = handlerClass,
+            pluginContext = pluginContext,
+            type = contract.defaultType,
+            name = Name.identifier("implementation"),
+        )
+        handlerClass.declarations += implementationField
+
+        handlerClass.addConstructor {
+            initDefaults(contractFunction)
+            visibility = DescriptorVisibilities.PUBLIC
+        }.apply {
+            val implementationParameter = addValueParameter("implementation", contract.defaultType)
+            irConstructorBody(pluginContext) { statements ->
+                val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
+                statements += irDelegatingConstructorCall(
+                    context = pluginContext,
+                    symbol = anyClass.owner.constructors.single().symbol,
+                )
+                statements += irInstanceInitializerCall(
+                    context = pluginContext,
+                    classSymbol = handlerClass.symbol,
+                )
+                statements += irSetField(
+                    receiver = irGet(handlerClass.thisReceiver!!),
+                    field = implementationField,
+                    value = irGet(implementationParameter),
+                )
+            }
+        }
+
+        handlerClass.declarations += pluginContext.irFactory.createSimpleFunction(
+            startOffset = contractFunction.startOffset,
+            endOffset = contractFunction.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            name = Name.identifier("handle"),
+            visibility = DescriptorVisibilities.PUBLIC,
+            isInline = false,
+            isExpect = false,
+            returnType = runtimeSymbols.actionHandlerHandleFunction.owner.returnType,
+            modality = Modality.FINAL,
+            symbol = IrSimpleFunctionSymbolImpl(),
+            isTailrec = false,
+            isSuspend = false,
+            isOperator = false,
+            isInfix = false,
+            isExternal = false,
+            containerSource = null,
+            isFakeOverride = false,
+        ).apply {
+            parent = handlerClass
+            overriddenSymbols = listOf(runtimeSymbols.actionHandlerHandleFunction)
+            parameters += buildReceiverParameter {
+                type = handlerClass.defaultType
+            }
+            val payloadParameter = addValueParameter(
+                "payload",
+                runtimeSymbols.actionHandlerHandleFunction.owner.parameters
+                    .single { it.kind == IrParameterKind.Regular }
+                    .type,
+            )
+            irFunctionBody(
+                context = pluginContext,
+                scopeOwnerSymbol = symbol,
+            ) {
+                val implementation = irGetField(
+                    irGet(dispatchReceiverParameter!!),
+                    implementationField,
+                )
+                val regularParameters = contractFunction.parameters.filter { it.kind == IrParameterKind.Regular }
+                val implementationCall = when (regularParameters.size) {
+                    0 -> irInvoke(
+                        implementation,
+                        contractFunction.symbol,
+                    )
+
+                    else -> irInvoke(
+                        implementation,
+                        contractFunction.symbol,
+                        irGet(payloadParameter),
+                    )
+                }
+
+                if (contractFunction.returnType.isUnit()) {
+                    +implementationCall
+                    +irReturn(
+                        value = irInvoke(null, runtimeSymbols.emptyPayloadFunction),
+                        returnTargetSymbol = symbol,
+                    )
+                } else {
+                    +irReturn(
+                        value = implementationCall,
+                        returnTargetSymbol = symbol,
+                    )
+                }
+            }
+        }
+
+        file.declarations += handlerClass
+        return handlerClass
     }
 
     private fun generateProxyMethodStub(

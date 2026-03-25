@@ -1,12 +1,11 @@
-@file:Suppress("unused")
+@file:Suppress("unused", "OPTIONAL_DECLARATION_USAGE_IN_NON_COMMON_SOURCE")
 
 package crow.wasmline
 
-import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineHostDispatcher
-import crow.wasmline.WasmlineLoadState
 import crow.wasmline.extensions.loadNativeLibrary
+import crow.wasmline.spi.WasmlineHostDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -103,13 +102,13 @@ actual class Wasmline actual constructor(val moduleKey: String) {
         @JvmStatic private external fun nativeReleaseEngine()
     }
 
-    actual suspend fun setOutbound(dispatcher: WasmlineHostDispatcher) = withContext(Dispatchers.Default) { nativeSetOutboundHandler(moduleKey, dispatcher) }
+    actual internal suspend fun setOutbound(dispatcher: WasmlineHostDispatcher) = withContext(Dispatchers.Default) { nativeSetOutboundHandler(moduleKey, dispatcher) }
 
     /**
      * 执行 Wasm 函数
      * 支持并发调用，底层会自动创建独立的 Session
      */
-    actual suspend fun call(action: String, inputBytes: ByteArray) : ByteArray = nativeInvokeInbound(moduleKey, action, inputBytes)
+    actual internal suspend fun call(action: String, inputBytes: ByteArray) : ByteArray = nativeInvokeInbound(moduleKey, action, inputBytes)
     // suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, json) }
 
     /**

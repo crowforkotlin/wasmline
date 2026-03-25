@@ -1,17 +1,18 @@
-# Wasmline IR 工作记录（交接文档）
+# Wasmline IR 工作记录
 
-> 更新时间：2026-03-24  
-> 用途：快速恢复 `wasmline-kotlin-plugin` 的当前实现状态、最近完成事项与下一步任务。
+> 更新时间：2026-03-25  
+> 用途：快速恢复 `wasmline-kotlin-plugin` 的当前实现状态、最近完成事项与下一步任务。  
+> 面向用户的主设计文档已收敛到 `structs/wasmline-design-v2.md`。
 
 ---
 
 ## 0. 文档角色
 
-建议继续与 `wasmline-ir-design.md` **分开维护，不合并**：
+建议继续与 `wasmline-design-v2.md` **分开维护，不合并**：
 
-- `wasmline-ir-design.md`
-  - 负责稳定设计、术语和职责边界
-  - 回答“为什么这样设计”
+- `wasmline-design-v2.md`
+  - 负责稳定设计、用户 API 和职责边界
+  - 回答“对外应该怎样表达和使用”
 - `ir.md`
   - 负责阶段性状态、近期修复和待办事项
   - 回答“现在做到哪里了、接下来做什么”
@@ -28,7 +29,7 @@
 
 当前主缺口已经收敛为：
 
-- `Adapter.bind()` 的真实绑定逻辑还未完成
+- `Adapter.bind()` 已经进入真实 action 绑定生成，但仍需要更大范围的 box 回归验证
 - 自动注册链路虽然已经接入 IR 侧，但仍需要 box / 运行时层面的正式回归验证
 - 正式 box fixture 数量还偏少
 - diagnostics 覆盖仍待补齐
@@ -56,11 +57,14 @@
 - `Proxy` 已经接到 `endpoint.invoke(...)`
 - `Definition.link()` / `Definition.bind()` 已经有基本 glue
 - 已开始对 typed 高层入口做 call-site 级别的 definition 自动注册注入：
-  - `WasmlineEndpoint.link<T>()`
+  - `crow.wasmline.spi.WasmlineEndpoint.link<T>()`
   - `Wasmline.link<T>()`
+  - `Wasmline.bind(implementation)`
+  - `Wasmline.bind(contract, implementation)`
+  - `Wasmline.bindAs<T>(implementation)`
   - `linkHost<T>()`
-  - `WasmlineBindingScope.bind(...)`
-  - `WasmlineBindingScope.bindAs<T>(...)`
+  - `crow.wasmline.spi.WasmlineBindingScope.bind(...)`
+  - `crow.wasmline.spi.WasmlineBindingScope.bindAs<T>(...)`
 
 ### 2.2 typed runtime API 当前状态
 
@@ -69,17 +73,21 @@
 - 用户主 API：
   - `Wasmline`
   - `WasmlineService`
-  - `WasmlineEndpoint`
   - `link<T>()`
-  - `bindServices { ... }`
-  - `WasmlineBindingScope`（高级 / DSL 作用域）
-- 生成代码 / bootstrap 过渡 API：
-  - `WasmlineServiceDefinition`
-  - `registerWasmlineServiceDefinition(...)`
-  - `unregisterWasmlineServiceDefinition(...)`
-  - `wasmlineEmptyPayload()`
+  - `bind(...)`
+- 生成代码 / bootstrap SPI：
+  - `crow.wasmline.spi.ServiceDefinition`
+  - `crow.wasmline.spi.WasmlineEndpoint`
+  - `crow.wasmline.spi.WasmlineBindingScope`
+  - `crow.wasmline.spi.WasmlineActionHandler`
+  - `crow.wasmline.spi.WasmlineHostDispatcher`
+  - `crow.wasmline.spi.registerServiceDefinition(...)`
+  - `crow.wasmline.spi.unregisterServiceDefinition(...)`
+  - `crow.wasmline.spi.emptyPayload()`
 - 内部实现：
   - `WasmlineServiceRegistry` 已改为 `internal`
+
+当前模块边界已开始朝：用户依赖 `:wasmline`、生成代码 ABI 独立到 `:wasmline-spi` 的方向演进。
 
 ### 2.3 生成物观察方式
 
@@ -158,17 +166,15 @@
 当前已完成的收口动作包括：
 
 - `WasmlineServiceRegistry` 不再作为普通用户 API 暴露，而是改为 `internal`
-- 新增更窄的过渡 bootstrap hook：
-  - `registerWasmlineServiceDefinition(...)`
-  - `unregisterWasmlineServiceDefinition(...)`
-- `WasmlineServiceDefinition`、`WasmlineEndpoint`、`WasmlineBindingScope`、`wasmlineEmptyPayload()` 的注释已重新标注“用户 API / 高级 API / generated SPI”的职责边界
+- 生成代码改为依赖 `crow.wasmline.spi.*`，不再走主包兼容壳
+- `WasmlineEndpoint`、`WasmlineBindingScope`、`WasmlineActionHandler`、`WasmlineHostDispatcher` 已下沉到 `crow.wasmline.spi.*`
 
 ### 3.6 自动注册逻辑已开始接入 IR 入口改写
 
 当前 `WasmlineIrGenerationExtension` 在生成 definition / proxy / adapter 之外，还新增了一层 call-site 改写：
 
 - 当编译器看到 `link<T>()` / `bind(...)` / `bindAs<T>()` / `linkHost<T>()` 等 typed 入口时
-- 会在调用前注入 `registerWasmlineServiceDefinition(...)`
+- 会在调用前注入 `registerServiceDefinition(...)`
 - 从而尽量让用户不必手动接触 registry 或 definition 注册流程
 
 需要注意：
@@ -205,17 +211,38 @@
 
 ---
 
+## 4.5 当前 API / 模块收口进展
+
+本轮已经开始把“用户 API / SPI ABI / runtime 内部实现”进一步拆开。
+
+当前状态：
+
+- 已新增独立模块：`:wasmline-spi`
+- `crow.wasmline.spi.*` 中的纯 ABI 类型已开始迁入 `:wasmline-spi`
+- `:wasmline` 通过 `api(project(":wasmline-spi"))` 对外聚合 SPI，确保用户只依赖 `:wasmline` 时，生成代码仍能解析到 SPI 符号
+- `WasmlineServiceRegistry` 继续保留在 `:wasmline` 内部，并维持 `internal`
+- `Wasmline.call(...)` 与 `Wasmline.setOutbound(...)` 已按设计方向收为 `internal`
+- host / wasm 两侧公开 facade 继续聚焦：`bind(...)`、`bindAs(...)`、`link<T>()`
+
+需要特别注意：
+
+- `:wasmline-spi` 当前承载的是“纯 ABI 类型层”，不应再继续放依赖 `WasmlineServiceRegistry` 的 runtime glue
+- 依赖 `Registry` 的 bind / link / register 运行时辅助逻辑，应留在 `:wasmline`
+- 这意味着当前拆分目标不是“把所有 `spi` 包名文件机械移动到新模块”，而是“按 ABI / runtime glue 重新分层”
+
+---
+
 ## 5. 当前仍未完成的核心问题
 
-### 5.1 `Adapter.bind()` 还只是 phase-one stub
+### 5.1 `Adapter.bind()` 已经不再只是 phase-one stub
 
 当前最重要的功能缺口仍然是：
 
-- `Adapter.bind()` 还没有完成真正的 action 绑定逻辑
-- payload 解码 / handler 注册 / 返回值编码链路还未补齐
+- `Adapter.bind()` 已开始生成真实 action → handler 绑定逻辑
+- 仍需继续验证 zero-arg / `Unit` return / 更多 contract 形态的生成结果
 
-也就是说，目前 typed service 的“调出去”已经有基础形状，
-但“接进来”的完整接线还没有完成。
+也就是说，目前 typed service 的“调出去”和“接进来”都已经有第一版完整接线，
+但还没有经过足够多的正式 fixture 覆盖。
 
 ### 5.2 自动注册链路还缺正式回归证明
 
@@ -248,19 +275,36 @@ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，�
 - overload
 - generic contract / generic function
 
+### 5.5 `:wasmline-spi` 模块拆分还处于收尾阶段
+
+当前模块拆分已经进入代码实现，但还没有完全收尾，剩余重点包括：
+
+- 把 `:wasmline-spi` 固定为“纯 ABI 类型模块”
+- 把 runtime glue 全部回收到 `:wasmline`
+- 让 `:wasmline-kotlin-plugin` 对 `:wasmline-spi` 的依赖关系彻底稳定
+- 确认 sample / README 不再示范 raw `call(...)` 等内部入口
+
 ---
 
 ## 6. 现在最推荐的下一步
 
-### 第一优先级：补齐 `Adapter.bind()` 的真实逻辑
+### 第一优先级：完成 `:wasmline-spi` 模块收尾
 
 目标：
 
-- 生成稳定 action id → handler 的绑定逻辑
-- 把本地实现真正接入 `WasmlineBindingScope`
-- 让 `Definition.bind()` 不再只是走到 error stub
+- 固定 `:wasmline-spi` = ABI only
+- 固定 `:wasmline` = facade + runtime glue + internal registry
+- 重新核对插件、sample、snapshot 对新模块边界的引用
 
-### 第二优先级：验证并固化自动注册链路
+### 第二优先级：验证并扩展 `Adapter.bind()` 的真实逻辑
+
+目标：
+
+- 验证当前生成的 action id → handler 绑定逻辑
+- 继续覆盖 zero-arg / `Unit` return 等 phase-one 变体
+- 确保 `Definition.bind()` 在更多 case 下都能稳定工作
+
+### 第三优先级：验证并固化自动注册链路
 
 目标：
 
@@ -268,7 +312,7 @@ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，�
 - 明确验证 `link<T>()`、`bindAs<T>()`、`bind(implementation)` 自动注册是否都按预期生效
 - 判断当前“按调用点注入”的策略是否足够，还是要升级为模块级 bootstrap
 
-### 第三优先级：继续补正式 box case
+### 第四优先级：继续补正式 box case
 
 建议顺序：
 
@@ -277,7 +321,7 @@ phase-one validator 已有不少限制，但还缺正式 diagnostics 覆盖，�
 3. 更聚焦的 `ByteArray -> ByteArray` case
 4. 明确覆盖 bind / auto-register 行为的 case
 
-### 第四优先级：补 diagnostics 测试
+### 第五优先级：补 diagnostics 测试
 
 等基础 box case 稳定后，再开始系统化补 validator 的负例测试。
 

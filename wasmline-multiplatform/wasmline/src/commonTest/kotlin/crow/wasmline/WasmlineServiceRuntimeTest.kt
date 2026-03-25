@@ -1,5 +1,13 @@
 package crow.wasmline
 
+import crow.wasmline.spi.Action
+import crow.wasmline.spi.MethodId
+import crow.wasmline.spi.ServiceDefinition
+import crow.wasmline.spi.ServiceId
+import crow.wasmline.spi.WasmlineBindingScope
+import crow.wasmline.spi.WasmlineEndpoint
+import crow.wasmline.spi.registerServiceDefinition
+import crow.wasmline.spi.unregisterServiceDefinition
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -16,10 +24,10 @@ class WasmlineServiceRuntimeTest {
         override fun echo(message: String): String = "echo:$message"
     }
 
-    private object EchoServiceDefinition : WasmlineServiceDefinition<EchoService> {
+    private object EchoServiceDefinition : ServiceDefinition<EchoService> {
         override val contract = EchoService::class
-        override val serviceId = WasmlineServiceId("test.EchoService")
-        private val echoAction = WasmlineAction(serviceId, WasmlineMethodId("echo")).value
+        override val serviceId = ServiceId("test.EchoService")
+        private val echoAction = Action(serviceId, MethodId("echo")).value
 
         override fun link(endpoint: WasmlineEndpoint): EchoService {
             return object : EchoService {
@@ -35,36 +43,69 @@ class WasmlineServiceRuntimeTest {
         }
     }
 
+    private object ConflictingEchoServiceDefinition : ServiceDefinition<EchoService> {
+        override val contract = EchoService::class
+        override val serviceId = ServiceId("test.EchoService.conflict")
+
+        override fun link(endpoint: WasmlineEndpoint): EchoService {
+            return object : EchoService {
+                override fun echo(message: String): String = message
+            }
+        }
+
+        override fun bind(implementation: EchoService, scope: WasmlineBindingScope) = Unit
+    }
+
     private interface MissingService : WasmlineService
 
     @BeforeTest
     fun setUp() {
-        registerWasmlineServiceDefinition(EchoServiceDefinition)
+        registerServiceDefinition(EchoServiceDefinition)
     }
 
     @AfterTest
     fun tearDown() {
-        unregisterWasmlineServiceDefinition(EchoService::class)
+        unregisterServiceDefinition(EchoService::class)
     }
 
     @Test
     fun bindAndLinkRoundTripThroughLocalEndpoint() {
         val scope = WasmlineBindingScope().apply {
-            bind(EchoServiceImpl())
+            bindInternal(EchoServiceImpl())
         }
 
-        val service = scope.endpoint().link<EchoService>()
+        val service = scope.endpoint().linkInternal<EchoService>()
         assertEquals("echo:hello", service.echo("hello"))
     }
 
     @Test
     fun bindAsUsesExplicitContract() {
         val scope = WasmlineBindingScope().apply {
-            bindAs<EchoService>(EchoServiceImpl())
+            bindAsInternal<EchoService>(EchoServiceImpl())
         }
 
-        val service = scope.endpoint().link<EchoService>()
+        val service = scope.endpoint().linkInternal<EchoService>()
         assertEquals("echo:typed", service.echo("typed"))
+    }
+
+    @Test
+    fun repeatedRegistrationOfSameDefinitionIsIdempotent() {
+        registerServiceDefinition(EchoServiceDefinition)
+
+        val service = WasmlineBindingScope().apply {
+            bindInternal(EchoServiceImpl())
+        }.endpoint().linkInternal<EchoService>()
+
+        assertEquals("echo:again", service.echo("again"))
+    }
+
+    @Test
+    fun conflictingRegistrationFailsFast() {
+        val error = assertFailsWith<IllegalStateException> {
+            registerServiceDefinition(ConflictingEchoServiceDefinition)
+        }
+
+        assertTrue(error.message.orEmpty().contains("Conflicting Wasmline service definition registration"))
     }
 
     @Test
@@ -84,7 +125,7 @@ class WasmlineServiceRuntimeTest {
     @Test
     fun missingDefinitionFailsFast() {
         val error = assertFailsWith<IllegalStateException> {
-            scopeWithMissing().link<MissingService>()
+            scopeWithMissing().linkInternal<MissingService>()
         }
         assertTrue(error.message.orEmpty().contains("No Wasmline service definition registered"))
     }

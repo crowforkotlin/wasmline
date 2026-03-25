@@ -10,8 +10,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import crow.wasmline.link
 import crow.wasmline.extensions.Data
 import crow.wasmline.extensions.info
+import crow.wasmline.sample.ir.TimeSyncService
 import crow.wasmline.sample.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -78,12 +80,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         val module = loadState.wasmline
                         startMs = System.currentTimeMillis()
-                        module.setOutbound(dispatcher = { action, payload ->
-                            "[Android] receive wasm action is : $action \t payload is $payload".info()
-                            byteArrayOf()
-                        })
-//                        module.call("init", data)
-                        val result = module.call("add", data)
+                        val result = module.link<TimeSyncService>().timeSync(data)
                         val duration = System.currentTimeMillis() - startMs
                         "[Android] MainActivity --> spend time invokeInbound function --------> $duration ms.".info()
                         withContext(Dispatchers.Main) { binding.content.text = "Result : \n\n${baseJson.encodeToString(ProtoBuf.decodeFromByteArray<Data>(result))}\n\ncall function duration : $duration ms" }

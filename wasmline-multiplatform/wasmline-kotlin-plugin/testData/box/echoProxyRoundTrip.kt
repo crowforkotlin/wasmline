@@ -2,10 +2,10 @@
 
 package test.box
 
-import crow.wasmline.WasmlineBindingScope
-import crow.wasmline.WasmlineEndpoint
 import crow.wasmline.WasmlineService
-import crow.wasmline.WasmlineServiceDefinition
+import crow.wasmline.spi.ServiceDefinition
+import crow.wasmline.spi.WasmlineBindingScope
+import crow.wasmline.spi.WasmlineEndpoint
 
 interface EchoService : WasmlineService {
     fun echo(payload: ByteArray): ByteArray
@@ -31,7 +31,7 @@ fun box(): String {
     @Suppress("UNCHECKED_CAST")
     val definition = Class.forName("test.box.EchoService_WasmlineDefinition")
         .getField("INSTANCE")
-        .get(null) as WasmlineServiceDefinition<EchoService>
+        .get(null) as ServiceDefinition<EchoService>
 
     if (definition.contract != EchoService::class) {
         return "Fail contract=${definition.contract}"
@@ -60,14 +60,13 @@ fun box(): String {
         return "Fail payload=${endpoint.payload?.decodeToString()}"
     }
 
-    val bindError = try {
-        definition.bind(EchoServiceImpl(), WasmlineBindingScope())
-        "NO_ERROR"
-    } catch (e: IllegalStateException) {
-        e.message.orEmpty()
-    }
-    if (bindError != "Wasmline adapter method generation is not implemented yet for test.box.EchoService.") {
-        return "Fail bindError=$bindError"
+    val boundScope = WasmlineBindingScope()
+    definition.bind(EchoServiceImpl(), boundScope)
+
+    val boundProxy = definition.link(boundScope.endpoint())
+    val boundResult = boundProxy.echo("bound".encodeToByteArray()).decodeToString()
+    if (boundResult != "bound") {
+        return "Fail boundResult=$boundResult"
     }
 
     return "OK"

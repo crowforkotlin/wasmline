@@ -1,4 +1,4 @@
-package crow.wasmline
+package crow.wasmline.spi
 
 fun interface WasmlineActionHandler {
     fun handle(payload: ByteArray): ByteArray
@@ -22,4 +22,6 @@ internal class InMemoryWasmlineEndpoint(
         return handler.handle(payload)
     }
 }
+
+
 

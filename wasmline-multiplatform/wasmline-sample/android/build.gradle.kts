@@ -21,5 +21,6 @@ dependencies {
     api(libs.androidx.material)
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.serialization.protobuf)
+    api(projects.wasmlineSample.common)
     api(projects.wasmline)
 }

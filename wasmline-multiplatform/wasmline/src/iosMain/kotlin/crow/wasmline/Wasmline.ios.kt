@@ -3,6 +3,7 @@
 package crow.wasmline
 
 import crow.wasmline.native.c.*
+import crow.wasmline.spi.WasmlineHostDispatcher
 import kotlinx.cinterop.*
 import platform.Foundation.NSFileManager
 import kotlinx.coroutines.Dispatchers
@@ -88,7 +89,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
      * iOS 需要传递静态 C 函数指针
      */
 
-    actual suspend fun setOutbound(dispatcher: WasmlineHostDispatcher) = withContext(Dispatchers.Default) {
+    actual internal suspend fun setOutbound(dispatcher: WasmlineHostDispatcher): Unit = withContext(Dispatchers.Default) {
         // 保存 dispatcher 到全局映射中，以便 C 回调时能找到
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
 
@@ -100,7 +101,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
     /**
      * 执行 Wasm 函数
      */
-    actual suspend fun call(action: String, inputBytes: ByteArray): ByteArray = withContext(Dispatchers.Default) {
+    actual internal suspend fun call(action: String, inputBytes: ByteArray): ByteArray = withContext(Dispatchers.Default) {
         memScoped {
             val keyCstr = moduleKey
             val actionCstr = action

@@ -1,5 +1,7 @@
 package crow.wasmline
 
+import crow.wasmline.spi.WasmlineBindingScope
+
 /**
  * Marker interface for first-phase typed RPC contracts.
  *
@@ -14,4 +16,8 @@ package crow.wasmline
  * The compiler plugin is expected to validate these rules and generate the
  * matching Wasmline definition / proxy / adapter glue.
  */
-interface WasmlineService
+interface WasmlineService {
+    companion object {
+
+    }
+}

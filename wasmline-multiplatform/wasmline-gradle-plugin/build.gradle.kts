@@ -42,7 +42,6 @@ dependencies {
 
     compileOnly(libs.kotlin.compiler.embeddable)
 
-    implementation(projects.wasmline)
     implementation(projects.wasmlineLoader)
     implementation(libs.gradle.kotlin.plugin)
     implementation(libs.gradle.kotlin.plugin.api)

@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import crow.wasmline.Wasmline
+import crow.wasmline.link
 import crow.wasmline.onFailure
 import crow.wasmline.onSuccess
 import crow.wasmline.sample.extensions.getPlatformBean
@@ -12,6 +13,7 @@ import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.baseProtobuf
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.extensions.toProtoBytes
+import crow.wasmline.sample.ir.TimeSyncService
 import kotlin.time.measureTime
 
 internal class WasmLoader {
@@ -33,7 +35,8 @@ internal class WasmLoader {
             val duration = measureTime {
                 val platform = getPlatformBean()
                 "[WasmLoader] call time sync platform:  $platform".info()
-                val bytes = wasmline!!.call(action = "timeSync", inputBytes = toProtoBytes<PlatformBean>(value = platform))
+                val bytes = wasmline!!.link<TimeSyncService>()
+                    .timeSync(toProtoBytes<PlatformBean>(value = platform))
 
                 "[WasmLoader] wasm bytes:  ${bytes.size}".info()
                 "[WasmLoader] HEX: ${bytes.toHexString()}".info()

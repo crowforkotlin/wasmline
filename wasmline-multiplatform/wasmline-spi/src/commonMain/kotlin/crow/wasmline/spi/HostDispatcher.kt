@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package crow.wasmline
+package crow.wasmline.spi
 
 /**
  * 分发器接口
@@ -11,3 +11,5 @@ package crow.wasmline
 fun interface WasmlineHostDispatcher {
     fun dispatch(action: String, payload: ByteArray): ByteArray
 }
+
+
