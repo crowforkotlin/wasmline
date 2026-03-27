@@ -2,21 +2,20 @@
 
 package crow.wasmline
 
-import crow.wasmline.spi.WasmlineBindingScope
-import crow.wasmline.spi.WasmlineEndpoint
-import crow.wasmline.spi.WasmlineHostDispatcher
+import crow.wasmline.internal.bridge.WasmlineBindingScope
+import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 
 @PublishedApi
-internal fun Wasmline.asEndpoint(): WasmlineEndpoint {
-    return object : WasmlineEndpoint {
-        override fun invoke(action: String, payload: ByteArray): ByteArray = runBlocking { call(action, payload) }
-    }
+internal fun Wasmline.invokeActionBlocking(action: String, payload: ByteArray): ByteArray {
+    return runBlocking { call(action, payload) }
 }
 
 inline fun <reified T : WasmlineService> Wasmline.link(): T {
-    return asEndpoint().linkInternal(T::class)
+    return linkInternal(T::class) { action, payload ->
+        invokeActionBlocking(action, payload)
+    }
 }
 
 @PublishedApi
@@ -28,7 +27,9 @@ internal suspend fun Wasmline.bindServicesInternal(block: WasmlineBindingScope.(
 /** Bind a local implementation using an explicit service contract. */
 suspend fun <T : WasmlineService> Wasmline.bind(contract: KClass<T>, implementation: T) {
     bindServicesInternal {
-        bindInternal(contract, implementation)
+        bindInternal(contract, implementation) { action, handler ->
+            bind(action, handler)
+        }
     }
 }
 
@@ -39,7 +40,9 @@ suspend fun <T : WasmlineService> Wasmline.bind(contract: KClass<T>, implementat
  */
 suspend fun Wasmline.bind(implementation: WasmlineService) {
     bindServicesInternal {
-        bindInternal(implementation)
+        bindInternal(implementation) { action, handler ->
+            bind(action, handler)
+        }
     }
 }
 

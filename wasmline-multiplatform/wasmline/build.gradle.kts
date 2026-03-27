@@ -72,7 +72,6 @@ kotlin {
 
         val commonMain by getting {
             dependencies {
-                api(project(":wasmline-spi"))
                 implementation(libs.kotlinx.coroutines)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.serialization.protobuf)

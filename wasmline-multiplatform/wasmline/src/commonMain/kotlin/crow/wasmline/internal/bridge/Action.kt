@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package crow.wasmline.spi
+package crow.wasmline.internal.bridge
 
 import kotlin.jvm.JvmInline
 
@@ -19,5 +19,4 @@ data class Action(
 ) {
     val value: String get() = "${service.value}#${method.value}"
 }
-
 

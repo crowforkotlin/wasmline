@@ -1,15 +1,14 @@
 package crow.wasmline.kotlin
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
-import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -27,64 +26,21 @@ import org.jetbrains.kotlin.name.Name
 internal class WasmlineRuntimeSymbols(
     private val pluginContext: IrPluginContext,
 ) {
-    val serviceDefinitionClass: IrClassSymbol = requireClass(SPI_PACKAGE, "ServiceDefinition")
-    val serviceIdClass: IrClassSymbol = requireClass(SPI_PACKAGE, "ServiceId")
-    val endpointClass: IrClassSymbol = requireClass(SPI_PACKAGE, "WasmlineEndpoint")
-    val bindingScopeClass: IrClassSymbol = requireClass(SPI_PACKAGE, "WasmlineBindingScope")
-    val actionHandlerClass: IrClassSymbol = requireClass(SPI_PACKAGE, "WasmlineActionHandler")
+    val byteArrayClass: IrClassSymbol = requireClass("kotlin", "ByteArray")
+    val function1Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(1).symbol
+    val function2Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(2).symbol
+    val function1InvokeFunction: IrSimpleFunctionSymbol = requireFunction(function1Class, "invoke", 1)
+    val function2InvokeFunction: IrSimpleFunctionSymbol = requireFunction(function2Class, "invoke", 2)
 
-    val serviceDefinitionContractProperty: IrPropertySymbol = requireProperty(serviceDefinitionClass, "contract")
-    val serviceDefinitionServiceIdProperty: IrPropertySymbol = requireProperty(serviceDefinitionClass, "serviceId")
-    val serviceDefinitionLinkFunction: IrSimpleFunctionSymbol = requireFunction(serviceDefinitionClass, "link")
-    val serviceDefinitionBindFunction: IrSimpleFunctionSymbol = requireFunction(serviceDefinitionClass, "bind")
-    val endpointInvokeFunction: IrSimpleFunctionSymbol = requireFunction(endpointClass, "invoke")
-    val bindingScopeBindActionFunction: IrSimpleFunctionSymbol = requireFunction(bindingScopeClass, "bind")
-    val actionHandlerHandleFunction: IrSimpleFunctionSymbol = requireFunction(actionHandlerClass, "handle")
-
-    val serviceIdConstructor: IrConstructorSymbol = serviceIdClass.owner.declarations
-        .filterIsInstance<IrConstructor>()
-        .single()
-        .symbol
     val emptyPayloadFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
         packageName = SPI_PACKAGE,
         functionName = "emptyPayload",
         regularParameterCount = 0,
     )
-    val registerServiceDefinitionFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+    val registerGeneratedServiceFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
         packageName = SPI_PACKAGE,
-        functionName = "registerServiceDefinition",
-        regularParameterCount = 1,
-    )
-
-    val endpointLinkNoArgFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
-        packageName = SPI_PACKAGE,
-        functionName = "link",
-        extensionReceiverClassName = "WasmlineEndpoint",
-        regularParameterCount = 0,
-    )
-    val endpointLinkContractFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
-        packageName = SPI_PACKAGE,
-        functionName = "link",
-        extensionReceiverClassName = "WasmlineEndpoint",
-        regularParameterCount = 1,
-    )
-    val bindingScopeBindSingleFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
-        packageName = SPI_PACKAGE,
-        functionName = "bind",
-        extensionReceiverClassName = "WasmlineBindingScope",
-        regularParameterCount = 1,
-    )
-    val bindingScopeBindContractFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
-        packageName = SPI_PACKAGE,
-        functionName = "bind",
-        extensionReceiverClassName = "WasmlineBindingScope",
-        regularParameterCount = 2,
-    )
-    val bindingScopeBindAsFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
-        packageName = SPI_PACKAGE,
-        functionName = "bindAs",
-        extensionReceiverClassName = "WasmlineBindingScope",
-        regularParameterCount = 1,
+        functionName = "registerGeneratedService",
+        regularParameterCount = 5,
     )
     val hostBindSingleFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
         packageName = MAIN_PACKAGE,
@@ -131,12 +87,43 @@ internal class WasmlineRuntimeSymbols(
         regularParameterCount = 0,
     )
 
-    fun serviceDefinitionType(contract: IrClass): IrType {
-        return serviceDefinitionClass.typeWith(contract.defaultType)
-    }
-
     fun contractKClassType(contract: IrClass): IrType {
         return pluginContext.irBuiltIns.kClassClass.typeWith(contract.defaultType)
+    }
+
+    fun actionHandlerType(): IrType {
+        return function1Class.typeWith(
+            byteArrayClass.owner.defaultType,
+            byteArrayClass.owner.defaultType,
+        )
+    }
+
+    fun actionInvokerType(): IrType {
+        return function2Class.typeWith(
+            pluginContext.irBuiltIns.stringType,
+            byteArrayClass.owner.defaultType,
+            byteArrayClass.owner.defaultType,
+        )
+    }
+
+    fun actionRegistrarType(): IrType {
+        return function2Class.typeWith(
+            pluginContext.irBuiltIns.stringType,
+            actionHandlerType(),
+            pluginContext.irBuiltIns.unitType,
+        )
+    }
+
+    fun linkerType(contract: IrClass): IrType {
+        return function1Class.typeWith(actionInvokerType(), contract.defaultType)
+    }
+
+    fun binderType(contract: IrClass): IrType {
+        return function2Class.typeWith(
+            contract.defaultType,
+            actionRegistrarType(),
+            pluginContext.irBuiltIns.unitType,
+        )
     }
 
     fun definitionObjectName(contract: IrClass): Name {
@@ -150,6 +137,10 @@ internal class WasmlineRuntimeSymbols(
     fun adapterClassName(contract: IrClass): Name {
         return Name.identifier("${contract.name.identifier}_WasmlineAdapter")
     }
+
+    fun linkerPropertyName(): Name = Name.identifier("linker")
+
+    fun binderPropertyName(): Name = Name.identifier("binder")
 
     fun definitionObjectSymbol(contract: IrClass): IrClassSymbol? {
         val fqName = contract.fqNameWhenAvailable ?: return null
@@ -168,19 +159,16 @@ internal class WasmlineRuntimeSymbols(
     }
 
 
-    private fun requireProperty(ownerClass: IrClassSymbol, name: String): IrPropertySymbol {
-        return ownerClass.owner.declarations
-            .filterIsInstance<IrProperty>()
-            .single { it.name.asString() == name }
-            .symbol
-    }
-
-    private fun requireFunction(ownerClass: IrClassSymbol, name: String): IrSimpleFunctionSymbol {
+    private fun requireFunction(
+        ownerClass: IrClassSymbol,
+        name: String,
+        regularParameterCount: Int? = null,
+    ): IrSimpleFunctionSymbol {
         return ownerClass.owner.declarations
             .filterIsInstance<IrSimpleFunction>()
             .single { function ->
                 function.name.asString() == name &&
-                    function.parameters.count { it.kind == IrParameterKind.Regular } <= 2
+                    (regularParameterCount == null || function.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount)
             }
             .symbol
     }
@@ -229,7 +217,7 @@ internal class WasmlineRuntimeSymbols(
 
     private companion object {
         const val MAIN_PACKAGE = "crow.wasmline"
-        const val SPI_PACKAGE = "crow.wasmline.spi"
+        const val SPI_PACKAGE = "crow.wasmline.internal.bridge"
     }
 }
 

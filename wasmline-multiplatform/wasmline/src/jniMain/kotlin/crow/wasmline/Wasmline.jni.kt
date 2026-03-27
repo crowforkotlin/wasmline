@@ -3,7 +3,7 @@
 package crow.wasmline
 
 import crow.wasmline.extensions.loadNativeLibrary
-import crow.wasmline.spi.WasmlineHostDispatcher
+import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext

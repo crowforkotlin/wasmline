@@ -2,8 +2,8 @@
 
 package crow.wasmline
 
-import crow.wasmline.spi.WasmlineBindingScope
-import crow.wasmline.spi.WasmlineEndpoint
+import crow.wasmline.internal.bridge.WasmlineBindingScope
+import crow.wasmline.internal.bridge.WasmlineEndpoint
 import kotlin.reflect.KClass
 
 object WasmlineHostEndpoint : WasmlineEndpoint {
@@ -12,8 +12,10 @@ object WasmlineHostEndpoint : WasmlineEndpoint {
     }
 }
 
-inline fun <reified T : WasmlineService> linkHost(): T {
-    return WasmlineHostEndpoint.linkInternal(T::class)
+internal inline fun <reified T : WasmlineService> linkHost(): T {
+    return linkInternal(T::class) { action, payload ->
+        WasmBridge.callHost(action, payload)
+    }
 }
 
 @PublishedApi
@@ -21,20 +23,24 @@ internal fun bindServicesInternal(block: WasmlineBindingScope.() -> Unit) {
     val scope = WasmlineBindingScope().apply(block)
     for ((action, handler) in scope.snapshot()) {
         WasmRouter.register(action) { payload ->
-            handler.handle(payload ?: ByteArray(0))
+            handler(payload ?: ByteArray(0))
         }
     }
 }
 
 fun <T : WasmlineService> bind(contract: KClass<T>, implementation: T) {
     bindServicesInternal {
-        bindInternal(contract, implementation)
+        bindInternal(contract, implementation) { action, handler ->
+            bind(action, handler)
+        }
     }
 }
 
 fun bind(implementation: WasmlineService) {
     bindServicesInternal {
-        bindInternal(implementation)
+        bindInternal(implementation) { action, handler ->
+            bind(action, handler)
+        }
     }
 }
 

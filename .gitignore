@@ -49,3 +49,5 @@ platforms/
 **/*.cwasm
 **/*.wasm
 **/*.tar.xz
+
+/AGENTS.md

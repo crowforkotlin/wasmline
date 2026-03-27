@@ -110,7 +110,6 @@ dependencies {
     compileOnly(libs.kotlin.compiler)
     compileOnly(libs.kotlin.stdlib)
 
-    implementation(project(":wasmline-spi"))
     implementation(projects.wasmline)
     implementation(projects.wasmlineLoader)
 

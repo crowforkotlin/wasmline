@@ -1,13 +1,8 @@
 package crow.wasmline
 
-import crow.wasmline.spi.Action
-import crow.wasmline.spi.MethodId
-import crow.wasmline.spi.ServiceDefinition
-import crow.wasmline.spi.ServiceId
-import crow.wasmline.spi.WasmlineBindingScope
-import crow.wasmline.spi.WasmlineEndpoint
-import crow.wasmline.spi.registerServiceDefinition
-import crow.wasmline.spi.unregisterServiceDefinition
+import crow.wasmline.internal.bridge.WasmlineBindingScope
+import crow.wasmline.internal.bridge.registerGeneratedService
+import crow.wasmline.internal.bridge.unregisterGeneratedService
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -24,77 +19,85 @@ class WasmlineServiceRuntimeTest {
         override fun echo(message: String): String = "echo:$message"
     }
 
-    private object EchoServiceDefinition : ServiceDefinition<EchoService> {
-        override val contract = EchoService::class
-        override val serviceId = ServiceId("test.EchoService")
-        private val echoAction = Action(serviceId, MethodId("echo")).value
-
-        override fun link(endpoint: WasmlineEndpoint): EchoService {
-            return object : EchoService {
-                override fun echo(message: String): String =
-                    endpoint.invoke(echoAction, message.encodeToByteArray()).decodeToString()
-            }
-        }
-
-        override fun bind(implementation: EchoService, scope: WasmlineBindingScope) {
-            scope.bind(echoAction) { payload ->
-                implementation.echo(payload.decodeToString()).encodeToByteArray()
-            }
-        }
-    }
-
-    private object ConflictingEchoServiceDefinition : ServiceDefinition<EchoService> {
-        override val contract = EchoService::class
-        override val serviceId = ServiceId("test.EchoService.conflict")
-
-        override fun link(endpoint: WasmlineEndpoint): EchoService {
-            return object : EchoService {
-                override fun echo(message: String): String = message
-            }
-        }
-
-        override fun bind(implementation: EchoService, scope: WasmlineBindingScope) = Unit
-    }
+    private val echoAction = "test.EchoService#echo"
 
     private interface MissingService : WasmlineService
 
     @BeforeTest
     fun setUp() {
-        registerServiceDefinition(EchoServiceDefinition)
+        registerGeneratedService(
+            contract = EchoService::class,
+            serviceId = "test.EchoService",
+            linker = { invokeAction ->
+                object : EchoService {
+                    override fun echo(message: String): String =
+                        invokeAction(echoAction, message.encodeToByteArray()).decodeToString()
+                }
+            },
+            binder = { implementation, registerAction ->
+                registerAction(echoAction) { payload ->
+                    implementation.echo(payload.decodeToString()).encodeToByteArray()
+                }
+            },
+            identityTag = "test.runtime.EchoServiceDefinition",
+        )
     }
 
     @AfterTest
     fun tearDown() {
-        unregisterServiceDefinition(EchoService::class)
+        unregisterGeneratedService(EchoService::class)
     }
 
     @Test
     fun bindAndLinkRoundTripThroughLocalEndpoint() {
         val scope = WasmlineBindingScope().apply {
-            bindInternal(EchoServiceImpl())
+            bindInternal(EchoServiceImpl()) { action, handler ->
+                bind(action, handler)
+            }
         }
 
-        val service = scope.endpoint().linkInternal<EchoService>()
+        val service = linkInternal(EchoService::class) { action, payload -> scope.invoke(action, payload) }
         assertEquals("echo:hello", service.echo("hello"))
     }
 
     @Test
     fun bindAsUsesExplicitContract() {
         val scope = WasmlineBindingScope().apply {
-            bindAsInternal<EchoService>(EchoServiceImpl())
+            bindInternal(EchoService::class, EchoServiceImpl()) { action, handler ->
+                bind(action, handler)
+            }
         }
 
-        val service = scope.endpoint().linkInternal<EchoService>()
+        val service = linkInternal(EchoService::class) { action, payload -> scope.invoke(action, payload) }
         assertEquals("echo:typed", service.echo("typed"))
     }
 
     @Test
     fun repeatedRegistrationOfSameDefinitionIsIdempotent() {
-        registerServiceDefinition(EchoServiceDefinition)
+        registerGeneratedService(
+            contract = EchoService::class,
+            serviceId = "test.EchoService",
+            linker = { invokeAction ->
+                object : EchoService {
+                    override fun echo(message: String): String =
+                        invokeAction(echoAction, message.encodeToByteArray()).decodeToString()
+                }
+            },
+            binder = { implementation, registerAction ->
+                registerAction(echoAction) { payload ->
+                    implementation.echo(payload.decodeToString()).encodeToByteArray()
+                }
+            },
+            identityTag = "test.runtime.EchoServiceDefinition",
+        )
 
         val service = WasmlineBindingScope().apply {
-            bindInternal(EchoServiceImpl())
-        }.endpoint().linkInternal<EchoService>()
+            bindInternal(EchoServiceImpl()) { action, handler ->
+                bind(action, handler)
+            }
+        }.let { scope ->
+            linkInternal(EchoService::class) { action, payload -> scope.invoke(action, payload) }
+        }
 
         assertEquals("echo:again", service.echo("again"))
     }
@@ -102,7 +105,13 @@ class WasmlineServiceRuntimeTest {
     @Test
     fun conflictingRegistrationFailsFast() {
         val error = assertFailsWith<IllegalStateException> {
-            registerServiceDefinition(ConflictingEchoServiceDefinition)
+            registerGeneratedService(
+                contract = EchoService::class,
+                serviceId = "test.EchoService.conflict",
+                linker = { _ -> object : EchoService { override fun echo(message: String): String = message } },
+                binder = { _, _ -> Unit },
+                identityTag = "test.runtime.ConflictingEchoServiceDefinition",
+            )
         }
 
         assertTrue(error.message.orEmpty().contains("Conflicting Wasmline service definition registration"))
@@ -125,13 +134,9 @@ class WasmlineServiceRuntimeTest {
     @Test
     fun missingDefinitionFailsFast() {
         val error = assertFailsWith<IllegalStateException> {
-            scopeWithMissing().linkInternal<MissingService>()
+            linkInternal(MissingService::class) { _, _ -> ByteArray(0) }
         }
         assertTrue(error.message.orEmpty().contains("No Wasmline service definition registered"))
-    }
-
-    private fun scopeWithMissing(): WasmlineEndpoint {
-        return WasmlineBindingScope().endpoint()
     }
 }
 

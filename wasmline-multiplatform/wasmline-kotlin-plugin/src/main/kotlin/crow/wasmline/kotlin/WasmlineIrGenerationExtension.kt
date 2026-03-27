@@ -117,6 +117,12 @@ internal class WasmlineIrGenerationExtension(
                 val transformedCall = transformed as? IrCall ?: return transformed
                 val contract = resolveContractForAutoRegistration(transformedCall, runtimeSymbols) ?: return transformedCall
                 val definitionSymbol = runtimeSymbols.definitionObjectSymbol(contract) ?: return transformed
+                val definitionClass = definitionSymbol.owner
+                val contractGetter = definitionClass.requirePropertyGetter(Name.identifier("contract"))
+                val serviceIdGetter = definitionClass.requirePropertyGetter(Name.identifier("serviceId"))
+                val linkerGetter = definitionClass.requirePropertyGetter(runtimeSymbols.linkerPropertyName())
+                val binderGetter = definitionClass.requirePropertyGetter(runtimeSymbols.binderPropertyName())
+                val identityTag = definitionClass.fqNameWhenAvailable?.asString() ?: definitionClass.name.asString()
                 val ownerSymbol = ownerSymbols.lastOrNull() ?: return transformed
                 val registeredContracts = ownerRegisteredContracts.lastOrNull() ?: return transformed
                 if (!registeredContracts.add(contract.symbol)) {
@@ -136,8 +142,12 @@ internal class WasmlineIrGenerationExtension(
                 ).apply {
                     statements += builder.irInvoke(
                         null,
-                        runtimeSymbols.registerServiceDefinitionFunction,
-                        irGetObject(definitionSymbol),
+                        runtimeSymbols.registerGeneratedServiceFunction,
+                        builder.irInvoke(irGetObject(definitionSymbol), contractGetter.symbol),
+                        builder.irInvoke(irGetObject(definitionSymbol), serviceIdGetter.symbol),
+                        builder.irInvoke(irGetObject(definitionSymbol), linkerGetter.symbol),
+                        builder.irInvoke(irGetObject(definitionSymbol), binderGetter.symbol),
+                        builder.irString(identityTag),
                     )
                     statements += transformedCall
                 }
@@ -266,21 +276,16 @@ internal class WasmlineIrGenerationExtension(
         runtimeSymbols: WasmlineRuntimeSymbols,
     ): IrClass? {
         return when (call.symbol) {
-            runtimeSymbols.endpointLinkNoArgFunction,
             runtimeSymbols.hostLinkFunction,
             runtimeSymbols.linkHostFunction,
-            runtimeSymbols.bindingScopeBindAsFunction,
             runtimeSymbols.hostBindAsFunction,
             runtimeSymbols.topLevelBindAsFunction,
             -> call.typeArguments.getOrNull(0)?.asWasmlineServiceContract()
 
-            runtimeSymbols.endpointLinkContractFunction,
-            runtimeSymbols.bindingScopeBindContractFunction,
             runtimeSymbols.hostBindContractFunction,
             runtimeSymbols.topLevelBindContractFunction,
             -> call.regularValueArgument(0)?.classLiteralContract()
 
-            runtimeSymbols.bindingScopeBindSingleFunction,
             runtimeSymbols.hostBindSingleFunction,
             runtimeSymbols.topLevelBindSingleFunction,
             -> call.regularValueArgument(0)?.type?.implementedWasmlineServiceContracts()?.singleOrNull()
@@ -370,7 +375,7 @@ internal class WasmlineIrGenerationExtension(
             kind = ClassKind.OBJECT
         }.apply {
             parent = file
-            superTypes = listOf(runtimeSymbols.serviceDefinitionType(contract))
+            superTypes = listOf(pluginContext.irBuiltIns.anyType)
             createThisReceiverParameter()
         }
 
@@ -396,27 +401,29 @@ internal class WasmlineIrGenerationExtension(
             propertyType = runtimeSymbols.contractKClassType(contract),
             declaringClass = definitionObject,
             propertyName = Name.identifier("contract"),
-            overriddenProperty = runtimeSymbols.serviceDefinitionContractProperty,
+            visibility = DescriptorVisibilities.PUBLIC,
         ) {
             irExprBody(irKClass(contract))
         }
 
         definitionObject.declarations += irVal(
             pluginContext = pluginContext,
-            propertyType = runtimeSymbols.serviceIdClass.owner.defaultType,
+            propertyType = pluginContext.irBuiltIns.stringType,
             declaringClass = definitionObject,
             propertyName = Name.identifier("serviceId"),
-            overriddenProperty = runtimeSymbols.serviceDefinitionServiceIdProperty,
+            visibility = DescriptorVisibilities.PUBLIC,
         ) {
-            irExprBody(
-                irCallConstructor(runtimeSymbols.serviceIdConstructor, emptyList()).apply {
-                    arguments[0] = irString(fqName)
-                },
-            )
+            irExprBody(irString(fqName))
         }
 
-        definitionObject.declarations += generateLinkStub(contract, definitionObject, pluginContext, runtimeSymbols, proxyConstructor)
-        definitionObject.declarations += generateBindStub(
+        val definitionLinkFunction = generateLinkStub(
+            contract,
+            definitionObject,
+            pluginContext,
+            runtimeSymbols,
+            proxyConstructor,
+        )
+        val definitionBindFunction = generateBindStub(
             contract,
             definitionObject,
             pluginContext,
@@ -424,6 +431,42 @@ internal class WasmlineIrGenerationExtension(
             adapterConstructor,
             adapterBindFunction,
         )
+        val linkerClass = generateDefinitionLinkerClass(
+            contract = contract,
+            file = file,
+            pluginContext = pluginContext,
+            runtimeSymbols = runtimeSymbols,
+            definitionObject = definitionObject,
+            definitionLinkFunction = definitionLinkFunction,
+        )
+        val binderClass = generateDefinitionBinderClass(
+            contract = contract,
+            file = file,
+            pluginContext = pluginContext,
+            runtimeSymbols = runtimeSymbols,
+            definitionObject = definitionObject,
+            definitionBindFunction = definitionBindFunction,
+        )
+        definitionObject.declarations += definitionLinkFunction
+        definitionObject.declarations += definitionBindFunction
+        definitionObject.declarations += irVal(
+            pluginContext = pluginContext,
+            propertyType = runtimeSymbols.linkerType(contract),
+            declaringClass = definitionObject,
+            propertyName = runtimeSymbols.linkerPropertyName(),
+            visibility = DescriptorVisibilities.PUBLIC,
+        ) {
+            irExprBody(irCallConstructor(linkerClass.constructors.single().symbol, emptyList()))
+        }
+        definitionObject.declarations += irVal(
+            pluginContext = pluginContext,
+            propertyType = runtimeSymbols.binderType(contract),
+            declaringClass = definitionObject,
+            propertyName = runtimeSymbols.binderPropertyName(),
+            visibility = DescriptorVisibilities.PUBLIC,
+        ) {
+            irExprBody(irCallConstructor(binderClass.constructors.single().symbol, emptyList()))
+        }
         file.declarations += definitionObject
 
         report(
@@ -460,8 +503,8 @@ internal class WasmlineIrGenerationExtension(
         val endpointField = createPrivateField(
             owner = proxyClass,
             pluginContext = pluginContext,
-            type = runtimeSymbols.endpointClass.owner.defaultType,
-            name = Name.identifier("endpoint"),
+            type = runtimeSymbols.actionInvokerType(),
+            name = Name.identifier("invokeAction"),
         )
         proxyClass.declarations += endpointField
 
@@ -469,7 +512,7 @@ internal class WasmlineIrGenerationExtension(
             initDefaults(contract)
             visibility = DescriptorVisibilities.PUBLIC
         }.apply {
-            val endpointParameter = addValueParameter("endpoint", runtimeSymbols.endpointClass.owner.defaultType)
+            val endpointParameter = addValueParameter("invokeAction", runtimeSymbols.actionInvokerType())
             irConstructorBody(pluginContext) { statements ->
                 val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
                 statements += irDelegatingConstructorCall(
@@ -598,7 +641,7 @@ internal class WasmlineIrGenerationExtension(
             parameters += buildReceiverParameter {
                 type = adapterClass.defaultType
             }
-            val scopeParameter = addValueParameter("scope", runtimeSymbols.bindingScopeClass.owner.defaultType)
+            val registerActionParameter = addValueParameter("registerAction", runtimeSymbols.actionRegistrarType())
             irFunctionBody(
                 context = pluginContext,
                 scopeOwnerSymbol = symbol,
@@ -611,8 +654,8 @@ internal class WasmlineIrGenerationExtension(
                     val action = "$fqName#${contractFunction.id}"
                     val handlerConstructor = handlerConstructors.getValue(contractFunction)
                     +irInvoke(
-                        irGet(scopeParameter),
-                        runtimeSymbols.bindingScopeBindActionFunction,
+                        irGet(registerActionParameter),
+                        runtimeSymbols.function2InvokeFunction,
                         irString(action),
                         irCallConstructor(handlerConstructor.symbol, emptyList()).apply {
                             arguments[0] = implementation
@@ -646,7 +689,7 @@ internal class WasmlineIrGenerationExtension(
             kind = ClassKind.CLASS
         }.apply {
             parent = file
-            superTypes = listOf(runtimeSymbols.actionHandlerClass.owner.defaultType)
+            superTypes = listOf(runtimeSymbols.actionHandlerType())
             createThisReceiverParameter()
         }
 
@@ -685,11 +728,11 @@ internal class WasmlineIrGenerationExtension(
             startOffset = contractFunction.startOffset,
             endOffset = contractFunction.endOffset,
             origin = IrDeclarationOrigin.DEFINED,
-            name = Name.identifier("handle"),
+            name = Name.identifier("invoke"),
             visibility = DescriptorVisibilities.PUBLIC,
             isInline = false,
             isExpect = false,
-            returnType = runtimeSymbols.actionHandlerHandleFunction.owner.returnType,
+            returnType = runtimeSymbols.function1InvokeFunction.owner.returnType,
             modality = Modality.FINAL,
             symbol = IrSimpleFunctionSymbolImpl(),
             isTailrec = false,
@@ -701,13 +744,13 @@ internal class WasmlineIrGenerationExtension(
             isFakeOverride = false,
         ).apply {
             parent = handlerClass
-            overriddenSymbols = listOf(runtimeSymbols.actionHandlerHandleFunction)
+            overriddenSymbols = listOf(runtimeSymbols.function1InvokeFunction)
             parameters += buildReceiverParameter {
                 type = handlerClass.defaultType
             }
             val payloadParameter = addValueParameter(
                 "payload",
-                runtimeSymbols.actionHandlerHandleFunction.owner.parameters
+                runtimeSymbols.function1InvokeFunction.owner.parameters
                     .single { it.kind == IrParameterKind.Regular }
                     .type,
             )
@@ -810,7 +853,7 @@ internal class WasmlineIrGenerationExtension(
                 }
                 val invokeCall = irInvoke(
                     endpoint,
-                    runtimeSymbols.endpointInvokeFunction,
+                    runtimeSymbols.function2InvokeFunction,
                     irString(action),
                     payload,
                 )
@@ -853,11 +896,10 @@ internal class WasmlineIrGenerationExtension(
             isFakeOverride = false,
         ).apply {
             parent = definitionObject
-            overriddenSymbols = listOf(runtimeSymbols.serviceDefinitionLinkFunction)
             parameters += buildReceiverParameter {
                 type = definitionObject.defaultType
             }
-            val endpointParameter = addValueParameter("endpoint", runtimeSymbols.endpointClass.owner.defaultType)
+            val endpointParameter = addValueParameter("invokeAction", runtimeSymbols.actionInvokerType())
             irFunctionBody(
                 context = pluginContext,
                 scopeOwnerSymbol = symbol,
@@ -900,12 +942,11 @@ internal class WasmlineIrGenerationExtension(
             isFakeOverride = false,
         ).apply {
             parent = definitionObject
-            overriddenSymbols = listOf(runtimeSymbols.serviceDefinitionBindFunction)
             parameters += buildReceiverParameter {
                 type = definitionObject.defaultType
             }
             val implementationParameter = addValueParameter("implementation", contract.defaultType)
-            val scopeParameter = addValueParameter("scope", runtimeSymbols.bindingScopeClass.owner.defaultType)
+            val scopeParameter = addValueParameter("registerAction", runtimeSymbols.actionRegistrarType())
             irFunctionBody(
                 context = pluginContext,
                 scopeOwnerSymbol = symbol,
@@ -920,6 +961,173 @@ internal class WasmlineIrGenerationExtension(
                 )
             }
         }
+    }
+
+    private fun generateDefinitionLinkerClass(
+        contract: IrClass,
+        file: IrFile,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+        definitionObject: IrClass,
+        definitionLinkFunction: IrSimpleFunction,
+    ): IrClass {
+        val linkerName = Name.identifier("${contract.name.identifier}_WasmlineLinker")
+        file.declarations.filterIsInstance<IrClass>().firstOrNull { it.name == linkerName }?.let { return it }
+
+        val linkerClass = pluginContext.irFactory.buildClass {
+            initDefaults(contract)
+            name = linkerName
+            visibility = DescriptorVisibilities.PRIVATE
+            modality = Modality.FINAL
+            kind = ClassKind.CLASS
+        }.apply {
+            parent = file
+            superTypes = listOf(runtimeSymbols.linkerType(contract))
+            createThisReceiverParameter()
+        }
+
+        linkerClass.addConstructor {
+            initDefaults(contract)
+            visibility = DescriptorVisibilities.PUBLIC
+        }.apply {
+            irConstructorBody(pluginContext) { statements ->
+                val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
+                statements += irDelegatingConstructorCall(
+                    context = pluginContext,
+                    symbol = anyClass.owner.constructors.single().symbol,
+                )
+                statements += irInstanceInitializerCall(
+                    context = pluginContext,
+                    classSymbol = linkerClass.symbol,
+                )
+            }
+        }
+
+        linkerClass.declarations += pluginContext.irFactory.createSimpleFunction(
+            startOffset = contract.startOffset,
+            endOffset = contract.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            name = Name.identifier("invoke"),
+            visibility = DescriptorVisibilities.PUBLIC,
+            isInline = false,
+            isExpect = false,
+            returnType = contract.defaultType,
+            modality = Modality.FINAL,
+            symbol = IrSimpleFunctionSymbolImpl(),
+            isTailrec = false,
+            isSuspend = false,
+            isOperator = true,
+            isInfix = false,
+            isExternal = false,
+            containerSource = null,
+            isFakeOverride = false,
+        ).apply {
+            parent = linkerClass
+            overriddenSymbols = listOf(runtimeSymbols.function1InvokeFunction)
+            parameters += buildReceiverParameter {
+                type = linkerClass.defaultType
+            }
+            val invokeActionParameter = addValueParameter("invokeAction", runtimeSymbols.actionInvokerType())
+            irFunctionBody(
+                context = pluginContext,
+                scopeOwnerSymbol = symbol,
+            ) {
+                +irReturn(
+                    value = irInvoke(
+                        irGetObject(definitionObject.symbol),
+                        definitionLinkFunction.symbol,
+                        irGet(invokeActionParameter),
+                    ),
+                    returnTargetSymbol = symbol,
+                )
+            }
+        }
+
+        file.declarations += linkerClass
+        return linkerClass
+    }
+
+    private fun generateDefinitionBinderClass(
+        contract: IrClass,
+        file: IrFile,
+        pluginContext: IrPluginContext,
+        runtimeSymbols: WasmlineRuntimeSymbols,
+        definitionObject: IrClass,
+        definitionBindFunction: IrSimpleFunction,
+    ): IrClass {
+        val binderName = Name.identifier("${contract.name.identifier}_WasmlineBinder")
+        file.declarations.filterIsInstance<IrClass>().firstOrNull { it.name == binderName }?.let { return it }
+
+        val binderClass = pluginContext.irFactory.buildClass {
+            initDefaults(contract)
+            name = binderName
+            visibility = DescriptorVisibilities.PRIVATE
+            modality = Modality.FINAL
+            kind = ClassKind.CLASS
+        }.apply {
+            parent = file
+            superTypes = listOf(runtimeSymbols.binderType(contract))
+            createThisReceiverParameter()
+        }
+
+        binderClass.addConstructor {
+            initDefaults(contract)
+            visibility = DescriptorVisibilities.PUBLIC
+        }.apply {
+            irConstructorBody(pluginContext) { statements ->
+                val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
+                statements += irDelegatingConstructorCall(
+                    context = pluginContext,
+                    symbol = anyClass.owner.constructors.single().symbol,
+                )
+                statements += irInstanceInitializerCall(
+                    context = pluginContext,
+                    classSymbol = binderClass.symbol,
+                )
+            }
+        }
+
+        binderClass.declarations += pluginContext.irFactory.createSimpleFunction(
+            startOffset = contract.startOffset,
+            endOffset = contract.endOffset,
+            origin = IrDeclarationOrigin.DEFINED,
+            name = Name.identifier("invoke"),
+            visibility = DescriptorVisibilities.PUBLIC,
+            isInline = false,
+            isExpect = false,
+            returnType = pluginContext.irBuiltIns.unitType,
+            modality = Modality.FINAL,
+            symbol = IrSimpleFunctionSymbolImpl(),
+            isTailrec = false,
+            isSuspend = false,
+            isOperator = true,
+            isInfix = false,
+            isExternal = false,
+            containerSource = null,
+            isFakeOverride = false,
+        ).apply {
+            parent = binderClass
+            overriddenSymbols = listOf(runtimeSymbols.function2InvokeFunction)
+            parameters += buildReceiverParameter {
+                type = binderClass.defaultType
+            }
+            val implementationParameter = addValueParameter("implementation", contract.defaultType)
+            val registerActionParameter = addValueParameter("registerAction", runtimeSymbols.actionRegistrarType())
+            irFunctionBody(
+                context = pluginContext,
+                scopeOwnerSymbol = symbol,
+            ) {
+                +irInvoke(
+                    irGetObject(definitionObject.symbol),
+                    definitionBindFunction.symbol,
+                    irGet(implementationParameter),
+                    irGet(registerActionParameter),
+                )
+            }
+        }
+
+        file.declarations += binderClass
+        return binderClass
     }
 
     private fun reportError(file: IrFile, declaration: IrDeclaration, message: String) {
@@ -946,6 +1154,14 @@ internal class WasmlineIrGenerationExtension(
         ).apply {
             parent = owner
         }
+    }
+
+    private fun IrClass.requirePropertyGetter(name: Name): IrSimpleFunction {
+        return declarations
+            .filterIsInstance<IrProperty>()
+            .single { it.name == name }
+            .getter
+            ?: error("Missing getter for property ${name.asString()} on ${this.name.asString()}")
     }
 
     private fun report(

@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
@@ -268,6 +269,8 @@ fun irVal(
   declaringClass: IrClass,
   propertyName: Name,
   overriddenProperty: IrPropertySymbol? = null,
+  visibility: DescriptorVisibility = overriddenProperty?.owner?.visibility ?: DescriptorVisibilities.PRIVATE,
+  getterVisibility: DescriptorVisibility = overriddenProperty?.owner?.getter?.visibility ?: visibility,
   initializer: IrBlockBuilder.() -> IrExpressionBody,
 ): IrProperty {
   val irFactory = pluginContext.irFactory
@@ -277,7 +280,7 @@ fun irVal(
     origin = IrDeclarationOrigin.DEFINED,
     symbol = IrPropertySymbolImpl(),
     name = propertyName,
-    visibility = overriddenProperty?.owner?.visibility ?: DescriptorVisibilities.PRIVATE,
+    visibility = visibility,
     modality = Modality.FINAL,
     isVar = false,
     isConst = false,
@@ -320,7 +323,7 @@ fun irVal(
     endOffset = declaringClass.endOffset,
     origin = IrDeclarationOrigin.DEFAULT_PROPERTY_ACCESSOR,
     name = Name.special("<get-${propertyName.identifier}>"),
-    visibility = overriddenProperty?.owner?.getter?.visibility ?: DescriptorVisibilities.PRIVATE,
+    visibility = getterVisibility,
     isInline = false,
     isExpect = false,
     returnType = propertyType,

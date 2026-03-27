@@ -1,6 +1,5 @@
 package crow.wasmline
 
-import crow.wasmline.spi.WasmlineBindingScope
 
 /**
  * Marker interface for first-phase typed RPC contracts.

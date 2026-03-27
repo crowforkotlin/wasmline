@@ -1,22 +1,47 @@
 package crow.wasmline
 
-import crow.wasmline.spi.ServiceDefinition
-import crow.wasmline.spi.WasmlineBindingScope
-import crow.wasmline.spi.WasmlineEndpoint
 import kotlin.reflect.KClass
 
 @PublishedApi
-internal fun <T : WasmlineService> WasmlineEndpoint.linkInternal(contract: KClass<T>): T {
-    return WasmlineServiceRegistry.require(contract).link(this)
+internal fun <T : WasmlineService> linkInternal(
+    contract: KClass<T>,
+    invokeAction: (String, ByteArray) -> ByteArray,
+): T {
+    return WasmlineServiceRegistry.require(contract).link(invokeAction)
 }
 
 @PublishedApi
-internal fun <T : WasmlineService> WasmlineBindingScope.bindInternal(contract: KClass<T>, implementation: T) {
-    WasmlineServiceRegistry.require(contract).bind(implementation, this)
+internal inline fun <reified T : WasmlineService> linkInternal(
+    noinline invokeAction: (String, ByteArray) -> ByteArray,
+): T {
+    return linkInternal(T::class, invokeAction)
 }
 
 @PublishedApi
-internal fun WasmlineBindingScope.bindInternal(implementation: WasmlineService) {
+internal fun <T : WasmlineService> bindInternal(
+    contract: KClass<T>,
+    implementation: T,
+    registerAction: (String, (ByteArray) -> ByteArray) -> Unit,
+) {
+    WasmlineServiceRegistry.require(contract).bind(implementation, registerAction)
+}
+
+@PublishedApi
+internal inline fun <reified T : WasmlineService> bindAsInternal(
+    implementation: WasmlineService,
+    noinline registerAction: (String, (ByteArray) -> ByteArray) -> Unit,
+) {
+    check(T::class.isInstance(implementation)) {
+        "Implementation ${implementation::class.qualifiedName} is not an instance of service contract ${T::class.qualifiedName}."
+    }
+    bindInternal(T::class, implementation as T, registerAction)
+}
+
+@PublishedApi
+internal fun bindInternal(
+    implementation: WasmlineService,
+    registerAction: (String, (ByteArray) -> ByteArray) -> Unit,
+) {
     val matches = WasmlineServiceRegistry.matching(implementation)
     when (matches.size) {
         0 -> error(
@@ -24,7 +49,7 @@ internal fun WasmlineBindingScope.bindInternal(implementation: WasmlineService) 
                 "Did the compiler plugin generate and register its contract definition?",
         )
 
-        1 -> bindUnchecked(matches.single(), implementation)
+        1 -> bindUnchecked(matches.single(), implementation, registerAction)
 
         else -> error(
             buildString {
@@ -39,11 +64,12 @@ internal fun WasmlineBindingScope.bindInternal(implementation: WasmlineService) 
 }
 
 @Suppress("UNCHECKED_CAST")
-private fun WasmlineBindingScope.bindUnchecked(
-    definition: ServiceDefinition<out WasmlineService>,
+private fun bindUnchecked(
+    definition: RegisteredServiceEntry<out WasmlineService>,
     implementation: WasmlineService,
+    registerAction: (String, (ByteArray) -> ByteArray) -> Unit,
 ) {
-    (definition as ServiceDefinition<WasmlineService>).bind(implementation, this)
+    (definition as RegisteredServiceEntry<WasmlineService>).bind(implementation, registerAction)
 }
 
 

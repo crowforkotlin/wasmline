@@ -18,8 +18,5 @@ interface EchoService : WasmlineService {
 
 class EchoServiceImpl : EchoService {
     override fun echo() {}
-    init {
-
-    }
 }
 

@@ -1,6 +1,6 @@
 # Wasmline Design V2
 
-> 状态：主设计文档 / 2026-03-25  
+> 状态：主设计文档 / 2026-03-28  
 > 目标：把 Wasmline 的对外 API 收敛成用户真正需要理解的一层。  
 > 结论：**保留 `Wasmline`、保留 `bind` / `link`，隐藏所有 binding / definition / registry / JNI 等内部细节。**
 
@@ -194,17 +194,13 @@ suspend fun loadAndUse(path: String) {
 
 ### 7.2 用户不应该接触的概念
 
-- `crow.wasmline.spi.ServiceDefinition`
-- `crow.wasmline.spi.WasmlineBindingScope`
-- `crow.wasmline.spi.WasmlineEndpoint`
-- `crow.wasmline.spi.WasmlineActionHandler`
-- `crow.wasmline.spi.WasmlineHostDispatcher`
-- `crow.wasmline.spi.registerServiceDefinition(...)`
-- `crow.wasmline.spi.unregisterServiceDefinition(...)`
+- 任何 bridge 类型
+- 任何 definition / adapter / endpoint / binding scope 类型
+- 任何 register / bootstrap / registry 辅助入口
 - `WasmlineServiceRegistry`
 - linking / bootstrap / registry 细节
 
-这些能力即便继续存在，也应只服务于：
+这些能力即便继续存在，也只应服务于：
 
 - runtime 内部实现；
 - 编译器插件；
@@ -213,38 +209,46 @@ suspend fun loadAndUse(path: String) {
 
 它们不应该进入首页示例，也不应该成为普通用户需要学习的词汇。
 
-当前实现方向上，`crow.wasmline.spi` 也应逐步独立为单独的 `:wasmline-spi` 模块，
-由 `:wasmline` 对外聚合，避免普通用户直接把 SPI 当作主依赖面来使用。
-
 ---
 
-## 8. 关于重复 register 的内部结论
+## 8. 关于 bridge 隐藏的设计结论
 
-`link<T>()` 每次调用都隐式触发重复 register，这件事不应暴露给用户。
+设计目标非常明确：
 
-内部实现建议采用：
+> **bridge 应该被用户“感知不到”，而不是只是换个名字继续暴露。**
 
-### 主方向：A
+因此这些做法都不算真正完成隐藏：
 
-优先使用**生成静态初始化块 / 自动 bootstrap** 的方式，把注册前移成一次性动作。
+- 仅仅重命名 bridge 类型
+- 仅仅更换包名
+- 仅仅在文档里写“不要直接使用”
 
-这样更符合用户直觉：
+真正有效的方向只有两类：
 
-- `link` 就只是 `link`；
-- `bind` 就只是 `bind`；
-- 用户不会感觉每次调用都在做额外注册。
+### 方向 A：bridge 不是用户主依赖面
 
-### 安全兜底：B
+也就是：
 
-即便采用 A，registry 仍然应该具备幂等去重能力，作为内部安全保障。
+- 用户主 API 不再需要 import bridge
+- 示例、sample、fixture 不再把 bridge 当用户 API 使用
+- bridge 留在 runtime / compiler plugin 协作层
 
-### 平台增强：C
+### 方向 B：bridge 不再是生成物的直接 ABI
 
-`ServiceLoader` / 启动钩子可以作为某些平台的增强方案，但不应成为核心设计前提。
+如果要做到接近 Zipline 的隐藏效果，最终还要进一步做到：
 
-最终原则只有一条：
+- 生成物不再直接把 bridge 类型写进跨模块签名
+- internal adapter / helper 留在 runtime 内部
+- compiler plugin 主要通过改写 / 注入把用户调用接到内部实现
 
-> **注册机制属于内部实现，不能污染用户 API 心智。**
+当前的直接工作重点也已经确定为：
+
+- **先缩小 runtime 对 `ServiceDefinition` 的中心依赖**
+- **再继续把生成物从 `ServiceDefinition / Endpoint / BindingScope` 这组三件套中脱开**
+
+也就是说，真正的终点不是“把 bridge 放进 `internal` 包”，而是：
+
+> **让用户模块的生成 ABI 本身不再以 bridge 类型为中心。**
 
 ---
 
@@ -264,7 +268,3 @@ Wasmline 应被表达为：
 6. 最后 `release()`。
 
 除此之外的 binding、definition、registry、JNI、IR、bootstrap 细节，全部属于内部层。
-
-
-
-

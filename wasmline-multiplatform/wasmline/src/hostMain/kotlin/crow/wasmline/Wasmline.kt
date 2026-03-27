@@ -2,6 +2,8 @@
 
 package crow.wasmline
 
+import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+
 expect class Wasmline(moduleKey: String) {
 
 
@@ -29,7 +31,7 @@ expect class Wasmline(moduleKey: String) {
     }
 
     @Suppress("unused")
-    internal suspend fun setOutbound(dispatcher: crow.wasmline.spi.WasmlineHostDispatcher)
+    internal suspend fun setOutbound(dispatcher: WasmlineHostDispatcher)
 
     /**
      * 执行 Wasm 函数
