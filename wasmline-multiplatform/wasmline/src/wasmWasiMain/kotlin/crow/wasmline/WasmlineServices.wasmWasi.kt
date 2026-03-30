@@ -3,20 +3,10 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineBindingScope
-import crow.wasmline.internal.bridge.WasmlineEndpoint
+import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import kotlin.reflect.KClass
 
-object WasmlineHostEndpoint : WasmlineEndpoint {
-    override fun invoke(action: String, payload: ByteArray): ByteArray {
-        return WasmBridge.callHost(action, payload)
-    }
-}
 
-internal inline fun <reified T : WasmlineService> linkHost(): T {
-    return linkInternal(T::class) { action, payload ->
-        WasmBridge.callHost(action, payload)
-    }
-}
 
 @PublishedApi
 internal fun bindServicesInternal(block: WasmlineBindingScope.() -> Unit) {
@@ -28,26 +18,23 @@ internal fun bindServicesInternal(block: WasmlineBindingScope.() -> Unit) {
     }
 }
 
-fun <T : WasmlineService> bind(contract: KClass<T>, implementation: T) {
+fun bindGenerated(bridge: WasmlineGeneratedBridge) {
     bindServicesInternal {
-        bindInternal(contract, implementation) { action, handler ->
+        bridge.bind { action, handler ->
             bind(action, handler)
         }
     }
+}
+
+fun <T : WasmlineService> bind(contract: KClass<T>, implementation: T) {
+    error("Wasmline compiler plugin is not applied or failed to replace bind(contract, implementation).")
 }
 
 fun bind(implementation: WasmlineService) {
-    bindServicesInternal {
-        bindInternal(implementation) { action, handler ->
-            bind(action, handler)
-        }
-    }
+    error("Wasmline compiler plugin is not applied or failed to replace bind(implementation).")
 }
 
-inline fun <reified T : WasmlineService> bindAs(implementation: WasmlineService) {
-    check(T::class.isInstance(implementation)) {
-        "Implementation ${implementation::class.qualifiedName} is not an instance of service contract ${T::class.qualifiedName}."
-    }
-    bind(T::class, implementation as T)
+fun <T : WasmlineService> bindAs(implementation: WasmlineService) {
+    error("Wasmline compiler plugin is not applied or failed to replace bindAs<T>().")
 }
 

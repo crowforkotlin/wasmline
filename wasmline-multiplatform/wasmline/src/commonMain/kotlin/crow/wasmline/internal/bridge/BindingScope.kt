@@ -1,7 +1,7 @@
 package crow.wasmline.internal.bridge
 
 /** Mutable binding container used by generated Wasmline bridge code. */
-internal class WasmlineBindingScope internal constructor() {
+internal class WasmlineBindingScope {
     private val handlers = linkedMapOf<String, (ByteArray) -> ByteArray>()
 
     fun bind(action: String, handler: (ByteArray) -> ByteArray) {

@@ -3,6 +3,8 @@
 package test.box
 
 import crow.wasmline.WasmlineService
+import java.lang.reflect.InvocationHandler
+import java.lang.reflect.Proxy
 import kotlin.jvm.functions.Function1
 import kotlin.jvm.functions.Function2
 
@@ -14,61 +16,54 @@ private class EchoServiceImpl : EchoService {
     override fun echo(payload: ByteArray): ByteArray = payload
 }
 
-private fun Any.invokeNoArgMethod(prefix: String): Any? {
-    val method = javaClass.methods.firstOrNull {
-        it.parameterCount == 0 && it.name.startsWith(prefix)
-    } ?: error("Missing no-arg method starting with '$prefix' on ${javaClass.name}")
-    return method.invoke(this)
-}
-
 fun box(): String {
-    val definitionClass = Class.forName("test.box.EchoService_WasmlineDefinition")
-    val definition = definitionClass
-        .getField("INSTANCE")
-        .get(null)
-
-    val contract = definition.invokeNoArgMethod("getContract")
-    if (contract != EchoService::class) {
-        return "Fail contract=$contract"
+    if (runCatching { Class.forName("test.box.EchoService_WasmlineDefinition") }.isSuccess) {
+        return "Fail legacyDefinitionStillExists"
     }
 
-    val serviceId = definition.invokeNoArgMethod("getServiceId")
-    val serviceIdValue = when (serviceId) {
-        is String -> serviceId
-        null -> null
-        else -> serviceId.invokeNoArgMethod("getValue")
-    }
-    if (serviceIdValue != "test.box.EchoService") {
-        return "Fail serviceId=$serviceIdValue"
+    val bridgeClass = Class.forName("test.box.EchoService_WasmlineBridge")
+    if (!EchoService::class.java.isAssignableFrom(bridgeClass)) {
+        return "Fail bridgeContractType=${bridgeClass.name}"
     }
 
-    val linkMethod = definitionClass.methods.singleOrNull { it.name == "link" && it.parameterCount == 1 }
-        ?: return "Fail missingLinkMethod"
-    if (linkMethod.parameterTypes.single().name != "kotlin.jvm.functions.Function2") {
-        return "Fail linkParamType=${linkMethod.parameterTypes.single().name}"
+    val constructors = bridgeClass.declaredConstructors.sortedBy { it.parameterTypes.singleOrNull()?.name.orEmpty() }
+    if (constructors.size != 2) {
+        return "Fail constructorCount=${constructors.size}"
     }
 
-    val bindMethod = definitionClass.methods.singleOrNull { it.name == "bind" && it.parameterCount == 2 }
+    val endpointCtor = constructors.firstOrNull { ctor -> ctor.parameterTypes.singleOrNull()?.name == "crow.wasmline.internal.bridge.WasmlineEndpoint" }
+        ?: return "Fail missingEndpointCtor"
+    val implementationCtor = constructors.firstOrNull { ctor -> ctor.parameterTypes.singleOrNull() == EchoService::class.java }
+        ?: return "Fail missingImplementationCtor"
+
+    val bindMethod = bridgeClass.methods.singleOrNull { it.name == "bind" && it.parameterCount == 1 }
         ?: return "Fail missingBindMethod"
-    if (bindMethod.parameterTypes[0] != EchoService::class.java) {
-        return "Fail bindImplType=${bindMethod.parameterTypes[0].name}"
+    if (bindMethod.parameterTypes.single().name != "kotlin.jvm.functions.Function2") {
+        return "Fail bindRegistrarType=${bindMethod.parameterTypes.single().name}"
     }
-    if (bindMethod.parameterTypes[1].name != "kotlin.jvm.functions.Function2") {
-        return "Fail bindRegistrarType=${bindMethod.parameterTypes[1].name}"
-    }
+
+    val endpointType = endpointCtor.parameterTypes.single()
 
     var action: String? = null
     var payload: ByteArray? = null
-    val invokeAction = object : Function2<String, ByteArray, ByteArray> {
-        override fun invoke(invokedAction: String, invokedPayload: ByteArray): ByteArray {
-            action = invokedAction
-            payload = invokedPayload.copyOf()
-            return "reply:${payload!!.decodeToString()}".encodeToByteArray()
-        }
-    }
+    val linkedEndpoint = Proxy.newProxyInstance(
+        endpointType.classLoader,
+        arrayOf(endpointType),
+        InvocationHandler { _, method, args ->
+            when (method.name) {
+                "invoke" -> {
+                    action = args!![0] as String
+                    payload = (args[1] as ByteArray).copyOf()
+                    "reply:${payload!!.decodeToString()}".encodeToByteArray()
+                }
 
-    val proxy = linkMethod.invoke(definition, invokeAction) as EchoService
-    if (proxy::class.qualifiedName != "test.box.EchoService_WasmlineProxy") {
+                else -> error("Unexpected endpoint method ${method.name}")
+            }
+        },
+    )
+
+    val proxy = endpointCtor.newInstance(linkedEndpoint) as EchoService
+    if (proxy::class.qualifiedName != "test.box.EchoService_WasmlineBridge") {
         return "Fail proxyType=${proxy::class.qualifiedName}"
     }
 
@@ -80,7 +75,7 @@ fun box(): String {
     if (result != "reply:hello") {
         return "Fail result=$result"
     }
-    if (action != "test.box.EchoService#xjRgE7w2") {
+    if (action != "test.box.EchoService#echo") {
         return "Fail action=$action"
     }
     if (payload?.decodeToString() != "hello") {
@@ -94,17 +89,30 @@ fun box(): String {
             if (existing != null) error("Duplicate action $registeredAction")
         }
     }
-    bindMethod.invoke(definition, EchoServiceImpl(), registerAction)
+    val binderBridge = implementationCtor.newInstance(EchoServiceImpl())
+    bindMethod.invoke(binderBridge, registerAction)
 
-    val boundProxy = linkMethod.invoke(
-        definition,
-        object : Function2<String, ByteArray, ByteArray> {
-            override fun invoke(invokedAction: String, invokedPayload: ByteArray): ByteArray {
-                val handler = boundHandlers[invokedAction] ?: error("Missing handler $invokedAction")
-                return handler.invoke(invokedPayload)
+    if (boundHandlers.keys != setOf("test.box.EchoService#echo")) {
+        return "Fail boundActions=${boundHandlers.keys}"
+    }
+
+    val boundEndpoint = Proxy.newProxyInstance(
+        endpointType.classLoader,
+        arrayOf(endpointType),
+        InvocationHandler { _, method, args ->
+            when (method.name) {
+                "invoke" -> {
+                    val invokedAction = args!![0] as String
+                    val invokedPayload = args[1] as ByteArray
+                    val handler = boundHandlers[invokedAction] ?: error("Missing handler $invokedAction")
+                    handler.invoke(invokedPayload)
+                }
+
+                else -> error("Unexpected endpoint method ${method.name}")
             }
         },
-    ) as EchoService
+    )
+    val boundProxy = endpointCtor.newInstance(boundEndpoint) as EchoService
     val boundResult = boundProxy.echo("bound".encodeToByteArray()).decodeToString()
     if (boundResult != "bound") {
         return "Fail boundResult=$boundResult"

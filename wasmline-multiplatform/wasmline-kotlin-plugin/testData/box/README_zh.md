@@ -24,11 +24,10 @@
 
 - service contract 发现
 - phase-one 校验规则
-- 生成的 `*_WasmlineDefinition`
-- 生成的 `*_WasmlineProxy`
-- 生成的 `*_WasmlineAdapter`
+- 生成的单 `*_WasmlineBridge`
 - `endpoint.invoke(...)` 这类生成调用形状
-- `link()` 以及当前临时 `bind()` stub 等 glue 行为
+- `bind(registerAction)` 的 action 注册形状
+- typed `link()` / `bind()` / `bindAs()` 调用点是否被 IR 直接替换
 
 ## 一个有效 case 的预期结果
 

@@ -1,18 +1,16 @@
 package crow.wasmline.kotlin
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
-import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
-import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -26,21 +24,37 @@ import org.jetbrains.kotlin.name.Name
 internal class WasmlineRuntimeSymbols(
     private val pluginContext: IrPluginContext,
 ) {
+    val wasmlineClass: IrClassSymbol = requireClass(MAIN_PACKAGE, "Wasmline")
     val byteArrayClass: IrClassSymbol = requireClass("kotlin", "ByteArray")
     val function1Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(1).symbol
     val function2Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(2).symbol
-    val function1InvokeFunction: IrSimpleFunctionSymbol = requireFunction(function1Class, "invoke", 1)
     val function2InvokeFunction: IrSimpleFunctionSymbol = requireFunction(function2Class, "invoke", 2)
+    val endpointClass: IrClassSymbol = requireClass(SPI_PACKAGE, "WasmlineEndpoint")
+    val endpointInvokeFunction: IrSimpleFunctionSymbol = requireFunction(endpointClass, "invoke", 2)
+    val generatedBridgeClass: IrClassSymbol = requireClass(SPI_PACKAGE, "WasmlineGeneratedBridge")
+    val generatedBridgeBindFunction: IrSimpleFunctionSymbol = requireFunction(generatedBridgeClass, "bind", 1)
+    val unlinkedEndpointObject: IrClassSymbol = requireClass(SPI_PACKAGE, "UnlinkedWasmlineEndpoint")
+    val generatedHostEndpointClass: IrClassSymbol? = referenceClass(MAIN_PACKAGE, "GeneratedWasmlineHostEndpoint")
 
     val emptyPayloadFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
         packageName = SPI_PACKAGE,
         functionName = "emptyPayload",
         regularParameterCount = 0,
     )
-    val registerGeneratedServiceFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+    val bindGeneratedBridgeActionFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
         packageName = SPI_PACKAGE,
-        functionName = "registerGeneratedService",
-        regularParameterCount = 5,
+        functionName = "bindGeneratedBridgeAction",
+        regularParameterCount = 3,
+    )
+    val requireGeneratedImplementationFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "requireGeneratedImplementation",
+        regularParameterCount = 2,
+    )
+    val unknownGeneratedActionFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "unknownGeneratedAction",
+        regularParameterCount = 2,
     )
     val hostBindSingleFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
         packageName = MAIN_PACKAGE,
@@ -82,25 +96,76 @@ internal class WasmlineRuntimeSymbols(
         extensionReceiverClassName = "Wasmline",
         regularParameterCount = 0,
     )
-    val linkHostFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
-        callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("linkHost")),
+    val hostBindGeneratedFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
+        packageName = MAIN_PACKAGE,
+        functionName = "bindGenerated",
+        extensionReceiverClassName = "Wasmline",
+        regularParameterCount = 1,
+    )
+    val topLevelBindGeneratedFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
+        callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("bindGenerated")),
+        regularParameterCount = 1,
+    )
+
+    fun isHostLinkCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesExtensionFunction(
+        symbol = symbol,
+        resolvedSymbol = hostLinkFunction,
+        functionName = "link",
+        extensionReceiverClass = wasmlineClass,
         regularParameterCount = 0,
     )
 
-    fun contractKClassType(contract: IrClass): IrType {
-        return pluginContext.irBuiltIns.kClassClass.typeWith(contract.defaultType)
+    fun isHostBindContractCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesExtensionFunction(
+        symbol = symbol,
+        resolvedSymbol = hostBindContractFunction,
+        functionName = "bind",
+        extensionReceiverClass = wasmlineClass,
+        regularParameterCount = 2,
+    ) { function ->
+        ((function.parameters.firstOrNull { it.kind == IrParameterKind.Regular }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == pluginContext.irBuiltIns.kClassClass
     }
+
+    fun isHostBindSingleCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesExtensionFunction(
+        symbol = symbol,
+        resolvedSymbol = hostBindSingleFunction,
+        functionName = "bind",
+        extensionReceiverClass = wasmlineClass,
+        regularParameterCount = 1,
+    )
+
+    fun isHostBindAsCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesExtensionFunction(
+        symbol = symbol,
+        resolvedSymbol = hostBindAsFunction,
+        functionName = "bindAs",
+        extensionReceiverClass = wasmlineClass,
+        regularParameterCount = 1,
+    )
+
+    fun isTopLevelBindContractCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesTopLevelFunction(
+        symbol = symbol,
+        resolvedSymbol = topLevelBindContractFunction,
+        functionName = "bind",
+        regularParameterCount = 2,
+    ) { function ->
+        ((function.parameters.firstOrNull { it.kind == IrParameterKind.Regular }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == pluginContext.irBuiltIns.kClassClass
+    }
+
+    fun isTopLevelBindSingleCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesTopLevelFunction(
+        symbol = symbol,
+        resolvedSymbol = topLevelBindSingleFunction,
+        functionName = "bind",
+        regularParameterCount = 1,
+    )
+
+    fun isTopLevelBindAsCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesTopLevelFunction(
+        symbol = symbol,
+        resolvedSymbol = topLevelBindAsFunction,
+        functionName = "bindAs",
+        regularParameterCount = 1,
+    )
 
     fun actionHandlerType(): IrType {
         return function1Class.typeWith(
-            byteArrayClass.owner.defaultType,
-            byteArrayClass.owner.defaultType,
-        )
-    }
-
-    fun actionInvokerType(): IrType {
-        return function2Class.typeWith(
-            pluginContext.irBuiltIns.stringType,
             byteArrayClass.owner.defaultType,
             byteArrayClass.owner.defaultType,
         )
@@ -114,48 +179,37 @@ internal class WasmlineRuntimeSymbols(
         )
     }
 
-    fun linkerType(contract: IrClass): IrType {
-        return function1Class.typeWith(actionInvokerType(), contract.defaultType)
+    fun endpointType(): IrType {
+        return endpointClass.owner.defaultType
     }
 
-    fun binderType(contract: IrClass): IrType {
-        return function2Class.typeWith(
-            contract.defaultType,
-            actionRegistrarType(),
-            pluginContext.irBuiltIns.unitType,
-        )
+    fun generatedBridgeType(): IrType {
+        return generatedBridgeClass.owner.defaultType
     }
 
-    fun definitionObjectName(contract: IrClass): Name {
-        return Name.identifier("${contract.name.identifier}_WasmlineDefinition")
+    fun bridgeClassName(contract: IrClass): Name {
+        return Name.identifier("${contract.name.identifier}_WasmlineBridge")
     }
 
-    fun proxyClassName(contract: IrClass): Name {
-        return Name.identifier("${contract.name.identifier}_WasmlineProxy")
-    }
-
-    fun adapterClassName(contract: IrClass): Name {
-        return Name.identifier("${contract.name.identifier}_WasmlineAdapter")
-    }
-
-    fun linkerPropertyName(): Name = Name.identifier("linker")
-
-    fun binderPropertyName(): Name = Name.identifier("binder")
-
-    fun definitionObjectSymbol(contract: IrClass): IrClassSymbol? {
+    fun bridgeClassSymbol(contract: IrClass): IrClassSymbol? {
         val fqName = contract.fqNameWhenAvailable ?: return null
         return pluginContext.referenceClass(
             ClassId(
                 fqName.parent(),
-                definitionObjectName(contract),
+                bridgeClassName(contract),
             ),
         )
     }
 
     private fun requireClass(packageName: String, className: String): IrClassSymbol {
+        return referenceClass(packageName, className)
+            ?: error("Unable to resolve Wasmline runtime class $packageName.$className")
+    }
+
+    private fun referenceClass(packageName: String, className: String): IrClassSymbol? {
         return pluginContext.referenceClass(
             ClassId(FqName(packageName), Name.identifier(className)),
-        ) ?: error("Unable to resolve Wasmline runtime class $packageName.$className")
+        )
     }
 
 
@@ -213,6 +267,61 @@ internal class WasmlineRuntimeSymbols(
                 function.owner.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount &&
                     extraFilter(function.owner)
             }
+    }
+
+    private fun matchesExtensionFunction(
+        symbol: IrSimpleFunctionSymbol,
+        resolvedSymbol: IrSimpleFunctionSymbol?,
+        functionName: String,
+        extensionReceiverClass: IrClassSymbol,
+        regularParameterCount: Int,
+        extraFilter: (IrFunction) -> Boolean = { true },
+    ): Boolean {
+        return matchesFunction(
+            symbol = symbol,
+            resolvedSymbol = resolvedSymbol,
+            functionName = functionName,
+            regularParameterCount = regularParameterCount,
+            extraFilter = { function ->
+                val extensionReceiver = function.parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
+                    ?.type
+                    ?.classifierOrNull as? IrClassSymbol
+                extensionReceiver == extensionReceiverClass && extraFilter(function)
+            },
+        )
+    }
+
+    private fun matchesTopLevelFunction(
+        symbol: IrSimpleFunctionSymbol,
+        resolvedSymbol: IrSimpleFunctionSymbol?,
+        functionName: String,
+        regularParameterCount: Int,
+        extraFilter: (IrFunction) -> Boolean = { true },
+    ): Boolean {
+        return matchesFunction(
+            symbol = symbol,
+            resolvedSymbol = resolvedSymbol,
+            functionName = functionName,
+            regularParameterCount = regularParameterCount,
+            extraFilter = { function ->
+                function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } && extraFilter(function)
+            },
+        )
+    }
+
+    private fun matchesFunction(
+        symbol: IrSimpleFunctionSymbol,
+        resolvedSymbol: IrSimpleFunctionSymbol?,
+        functionName: String,
+        regularParameterCount: Int,
+        extraFilter: (IrFunction) -> Boolean,
+    ): Boolean {
+        if (symbol == resolvedSymbol) return true
+        val function = symbol.owner
+        return function.name.asString() == functionName &&
+            function.fqNameWhenAvailable?.parent()?.asString() == MAIN_PACKAGE &&
+            function.parameters.count { it.kind == IrParameterKind.Regular } == regularParameterCount &&
+            extraFilter(function)
     }
 
     private companion object {

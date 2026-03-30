@@ -8,7 +8,7 @@ pluginManagement {
         mavenLocal()
         google {
             content {
-                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex(    "com\\.android.*")
                 includeGroupByRegex("androidx.*")
                 includeGroupByRegex("com\\.google.*")
             }

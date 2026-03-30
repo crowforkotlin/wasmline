@@ -1,6 +1,7 @@
 package crow.wasmline.kotlin
 
 import crow.wasmline.kotlin.runners.AbstractJvmBoxTest
+import crow.wasmline.kotlin.runners.AbstractJvmDiagnosticTest
 import org.jetbrains.kotlin.generators.dsl.junit5.generateTestGroupSuiteWithJUnit5
 import java.nio.file.Files
 import java.nio.file.Path
@@ -18,6 +19,9 @@ fun main() {
         ) {
             testClass<AbstractJvmBoxTest> {
                 model("box")
+            }
+            testClass<AbstractJvmDiagnosticTest> {
+                model("diagnostics")
             }
         }
     }

@@ -460,17 +460,29 @@ fun IrBuilderWithScope.irInvoke(
   dispatchReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
   vararg args: IrExpression,
+  extensionReceiver: IrExpression? = null,
   typeHint: IrType? = null,
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
   val requiresDispatchReceiver = callee.owner.parameters.any { it.kind == IrParameterKind.DispatchReceiver }
+  val requiresExtensionReceiver = callee.owner.parameters.any { it.kind == IrParameterKind.ExtensionReceiver }
   require(!requiresDispatchReceiver || dispatchReceiver != null) {
     "Function ${callee.owner.name} requires a dispatch receiver."
   }
+  require(!requiresExtensionReceiver || extensionReceiver != null) {
+    "Function ${callee.owner.name} requires an extension receiver."
+  }
   val returnType = typeHint ?: callee.owner.returnType
   val call = irCall(callee, type = returnType)
-  call.dispatchReceiver = dispatchReceiver
-  val valueParameters = callee.owner.parameters.filter { it.kind != IrParameterKind.DispatchReceiver }
+  if (dispatchReceiver != null) {
+    call.insertDispatchReceiver(dispatchReceiver)
+  }
+  if (extensionReceiver != null) {
+    call.insertExtensionReceiver(extensionReceiver)
+  }
+  val valueParameters = callee.owner.parameters.filter {
+    it.kind != IrParameterKind.DispatchReceiver && it.kind != IrParameterKind.ExtensionReceiver
+  }
   require(args.size <= valueParameters.size) {
     "Too many value arguments for ${callee.owner.name}: expected at most ${valueParameters.size}, got ${args.size}."
   }
@@ -486,11 +498,13 @@ fun IrBuilderWithScope.irInvoke(
   callee: IrFunctionSymbol,
   typeArguments: List<IrType?>,
   valueArguments: List<IrExpression>,
+  extensionReceiver: IrExpression? = null,
   returnTypeHint: IrType? = null,
 ): IrMemberAccessExpression<*> = irInvoke(
     dispatchReceiver,
     callee,
     *valueArguments.toTypedArray(),
+    extensionReceiver = extensionReceiver,
     typeHint = returnTypeHint,
   ).also { call ->
     for ((index, typeArgument) in typeArguments.withIndex()) {

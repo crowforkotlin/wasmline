@@ -26,105 +26,78 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
       BLOCK_BODY
         RETURN type=kotlin.Nothing from='public open fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoServiceImpl'
           GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoServiceImpl.echo' type=kotlin.ByteArray origin=null
-  CLASS CLASS name:EchoService_WasmlineAdapter modality:FINAL visibility:private superTypes:[kotlin.Any]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineAdapter
-    FIELD name:implementation type:test.box.EchoService visibility:private [final]
-    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineAdapter [primary]
+  CLASS CLASS name:EchoService_WasmlineBridge modality:FINAL visibility:internal superTypes:[test.box.EchoService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineBridge
+    FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
+    FIELD name:implementation type:test.box.EchoService? visibility:private [final]
+    CONSTRUCTOR visibility:internal returnType:test.box.EchoService_WasmlineBridge [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineBridge modality:FINAL visibility:internal superTypes:[test.box.EchoService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.box.EchoService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineBridge declared in test.box.EchoService_WasmlineBridge' type=test.box.EchoService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.box.EchoService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.box.EchoService? visibility:private [final] declared in test.box.EchoService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineBridge declared in test.box.EchoService_WasmlineBridge' type=test.box.EchoService_WasmlineBridge origin=null
+          value: CONST Null type=kotlin.Nothing? value=null
+    CONSTRUCTOR visibility:internal returnType:test.box.EchoService_WasmlineBridge [primary]
       VALUE_PARAMETER kind:Regular name:implementation index:0 type:test.box.EchoService
       BLOCK_BODY
         DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineAdapter modality:FINAL visibility:private superTypes:[kotlin.Any]' type=kotlin.Unit
-        SET_FIELD 'FIELD name:implementation type:test.box.EchoService visibility:private [final] declared in test.box.EchoService_WasmlineAdapter' type=kotlin.Unit origin=null
-          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineAdapter declared in test.box.EchoService_WasmlineAdapter' type=test.box.EchoService_WasmlineAdapter origin=null
-          value: GET_VAR 'implementation: test.box.EchoService declared in test.box.EchoService_WasmlineAdapter.<init>' type=test.box.EchoService origin=null
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineBridge modality:FINAL visibility:internal superTypes:[test.box.EchoService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.box.EchoService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineBridge declared in test.box.EchoService_WasmlineBridge' type=test.box.EchoService_WasmlineBridge origin=null
+          value: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:UnlinkedWasmlineEndpoint modality:FINAL visibility:public superTypes:[crow.wasmline.internal.bridge.WasmlineEndpoint]' type=crow.wasmline.internal.bridge.UnlinkedWasmlineEndpoint
+        SET_FIELD 'FIELD name:implementation type:test.box.EchoService? visibility:private [final] declared in test.box.EchoService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineBridge declared in test.box.EchoService_WasmlineBridge' type=test.box.EchoService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.box.EchoService declared in test.box.EchoService_WasmlineBridge.<init>' type=test.box.EchoService origin=null
     FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineAdapter
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineBridge
       VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
-      BLOCK_BODY
-        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
-          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.box.EchoService_WasmlineAdapter.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
-          ARG p1: CONST String type=kotlin.String value="test.box.EchoService#xjRgE7w2"
-          ARG p2: CONSTRUCTOR_CALL 'public constructor <init> (implementation: test.box.EchoService) declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler' type=test.box.EchoService_echo_xjRgE7w2_WasmlineHandler origin=null
-            ARG implementation: GET_FIELD 'FIELD name:implementation type:test.box.EchoService visibility:private [final] declared in test.box.EchoService_WasmlineAdapter' type=test.box.EchoService origin=null
-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineAdapter declared in test.box.EchoService_WasmlineAdapter.bind' type=test.box.EchoService_WasmlineAdapter origin=null
-  CLASS CLASS name:EchoService_WasmlineBinder modality:FINAL visibility:private superTypes:[kotlin.Function2<test.box.EchoService, kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>, kotlin.Unit>]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineBinder
-    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineBinder [primary]
-      BLOCK_BODY
-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineBinder modality:FINAL visibility:private superTypes:[kotlin.Function2<test.box.EchoService, kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>, kotlin.Unit>]' type=kotlin.Unit
-    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.Unit [operator]
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineBinder
-      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.box.EchoService
-      VALUE_PARAMETER kind:Regular name:registerAction index:2 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
       overridden:
-        public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2
+        public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
       BLOCK_BODY
-        CALL 'public final fun bind (implementation: test.box.EchoService, registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in test.box.EchoService_WasmlineDefinition' type=kotlin.Unit origin=null
-          ARG <this>: GET_OBJECT 'CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:internal superTypes:[kotlin.Any]' type=test.box.EchoService_WasmlineDefinition
-          ARG implementation: GET_VAR 'implementation: test.box.EchoService declared in test.box.EchoService_WasmlineBinder.invoke' type=test.box.EchoService origin=null
-          ARG registerAction: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.box.EchoService_WasmlineBinder.invoke' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
-  CLASS CLASS name:EchoService_WasmlineLinker modality:FINAL visibility:private superTypes:[kotlin.Function1<kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>, test.box.EchoService>]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineLinker
-    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineLinker [primary]
-      BLOCK_BODY
-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineLinker modality:FINAL visibility:private superTypes:[kotlin.Function1<kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>, test.box.EchoService>]' type=kotlin.Unit
-    FUN name:invoke visibility:public modality:FINAL returnType:test.box.EchoService [operator]
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineLinker
-      VALUE_PARAMETER kind:Regular name:invokeAction index:1 type:kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>
-      overridden:
-        public abstract fun invoke (p1: P1 of kotlin.Function1): R of kotlin.Function1 declared in kotlin.Function1
-      BLOCK_BODY
-        RETURN type=test.box.EchoService from='public final fun invoke (invokeAction: kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>): test.box.EchoService declared in test.box.EchoService_WasmlineLinker'
-          CALL 'public final fun link (invokeAction: kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>): test.box.EchoService declared in test.box.EchoService_WasmlineDefinition' type=test.box.EchoService origin=null
-            ARG <this>: GET_OBJECT 'CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:internal superTypes:[kotlin.Any]' type=test.box.EchoService_WasmlineDefinition
-            ARG invokeAction: GET_VAR 'invokeAction: kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> declared in test.box.EchoService_WasmlineLinker.invoke' type=kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> origin=null
-  CLASS CLASS name:EchoService_WasmlineProxy modality:FINAL visibility:private superTypes:[test.box.EchoService]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineProxy
-    FIELD name:invokeAction type:kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> visibility:private [final]
-    CONSTRUCTOR visibility:public returnType:test.box.EchoService_WasmlineProxy [primary]
-      VALUE_PARAMETER kind:Regular name:invokeAction index:0 type:kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>
-      BLOCK_BODY
-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_WasmlineProxy modality:FINAL visibility:private superTypes:[test.box.EchoService]' type=kotlin.Unit
-        SET_FIELD 'FIELD name:invokeAction type:kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> visibility:private [final] declared in test.box.EchoService_WasmlineProxy' type=kotlin.Unit origin=null
-          receiver: GET_VAR '<this>: test.box.EchoService_WasmlineProxy declared in test.box.EchoService_WasmlineProxy' type=test.box.EchoService_WasmlineProxy origin=null
-          value: GET_VAR 'invokeAction: kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> declared in test.box.EchoService_WasmlineProxy.<init>' type=kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> origin=null
+        CALL 'public final fun bindGeneratedBridgeAction (action: kotlin.String, dispatcher: crow.wasmline.internal.bridge.WasmlineGeneratedBridge, registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge' type=kotlin.Unit origin=null
+          ARG action: CONST String type=kotlin.String value="test.box.EchoService#echo"
+          ARG dispatcher: GET_VAR '<this>: test.box.EchoService_WasmlineBridge declared in test.box.EchoService_WasmlineBridge.bind' type=test.box.EchoService_WasmlineBridge origin=null
+          ARG registerAction: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.box.EchoService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
     FUN name:echo visibility:public modality:FINAL returnType:kotlin.ByteArray
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineProxy
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineBridge
       VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
       overridden:
         public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService
       BLOCK_BODY
-        RETURN type=R of kotlin.Function2 from='public final fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService_WasmlineProxy'
-          CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
-            ARG <this>: GET_FIELD 'FIELD name:invokeAction type:kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> visibility:private [final] declared in test.box.EchoService_WasmlineProxy' type=kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> origin=null
-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineProxy declared in test.box.EchoService_WasmlineProxy.echo' type=test.box.EchoService_WasmlineProxy origin=null
-            ARG p1: CONST String type=kotlin.String value="test.box.EchoService#xjRgE7w2"
-            ARG p2: GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoService_WasmlineProxy.echo' type=kotlin.ByteArray origin=null
-  CLASS CLASS name:EchoService_echo_xjRgE7w2_WasmlineHandler modality:FINAL visibility:private superTypes:[kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_echo_xjRgE7w2_WasmlineHandler
-    FIELD name:implementation type:test.box.EchoService visibility:private [final]
-    CONSTRUCTOR visibility:public returnType:test.box.EchoService_echo_xjRgE7w2_WasmlineHandler [primary]
-      VALUE_PARAMETER kind:Regular name:implementation index:0 type:test.box.EchoService
-      BLOCK_BODY
-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EchoService_echo_xjRgE7w2_WasmlineHandler modality:FINAL visibility:private superTypes:[kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>]' type=kotlin.Unit
-        SET_FIELD 'FIELD name:implementation type:test.box.EchoService visibility:private [final] declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler' type=kotlin.Unit origin=null
-          receiver: GET_VAR '<this>: test.box.EchoService_echo_xjRgE7w2_WasmlineHandler declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler' type=test.box.EchoService_echo_xjRgE7w2_WasmlineHandler origin=null
-          value: GET_VAR 'implementation: test.box.EchoService declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler.<init>' type=test.box.EchoService origin=null
-    FUN name:invoke visibility:public modality:FINAL returnType:R of kotlin.Function1
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_echo_xjRgE7w2_WasmlineHandler
-      VALUE_PARAMETER kind:Regular name:payload index:1 type:P1 of kotlin.Function1
+        RETURN type=kotlin.ByteArray from='public final fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService_WasmlineBridge'
+          CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+            ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.box.EchoService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineBridge declared in test.box.EchoService_WasmlineBridge.echo' type=test.box.EchoService_WasmlineBridge origin=null
+            ARG action: CONST String type=kotlin.String value="test.box.EchoService#echo"
+            ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoService_WasmlineBridge.echo' type=kotlin.ByteArray origin=null
+    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
       overridden:
-        public abstract fun invoke (p1: P1 of kotlin.Function1): R of kotlin.Function1 declared in kotlin.Function1
+        public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2
       BLOCK_BODY
-        RETURN type=kotlin.ByteArray from='public final fun invoke (payload: P1 of kotlin.Function1): R of kotlin.Function1 declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler'
-          CALL 'public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService' type=kotlin.ByteArray origin=null
-            ARG <this>: GET_FIELD 'FIELD name:implementation type:test.box.EchoService visibility:private [final] declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler' type=test.box.EchoService origin=null
-              receiver: GET_VAR '<this>: test.box.EchoService_echo_xjRgE7w2_WasmlineHandler declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler.invoke' type=test.box.EchoService_echo_xjRgE7w2_WasmlineHandler origin=null
-            ARG payload: GET_VAR 'payload: P1 of kotlin.Function1 declared in test.box.EchoService_echo_xjRgE7w2_WasmlineHandler.invoke' type=P1 of kotlin.Function1 origin=null
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.box.EchoService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService#echo"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService_WasmlineBridge'
+              CALL 'public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService' type=kotlin.ByteArray origin=null
+                ARG <this>: CALL 'public final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.box.EchoService origin=null
+                  TYPE_ARG T: test.box.EchoService
+                  ARG implementation: GET_FIELD 'FIELD name:implementation type:test.box.EchoService? visibility:private [final] declared in test.box.EchoService_WasmlineBridge' type=test.box.EchoService? origin=null
+                    receiver: GET_VAR '<this>: test.box.EchoService_WasmlineBridge declared in test.box.EchoService_WasmlineBridge.invoke' type=test.box.EchoService_WasmlineBridge origin=null
+                  ARG contractId: CONST String type=kotlin.String value="test.box.EchoService"
+                ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.box.EchoService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService_WasmlineBridge'
+          CALL 'public final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.box.EchoService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.box.EchoService_WasmlineBridge.invoke' type=kotlin.String origin=null
   CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService
     FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
@@ -143,209 +116,168 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
     FUN name:echo visibility:public modality:ABSTRACT returnType:kotlin.ByteArray
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService
       VALUE_PARAMETER kind:Regular name:payload index:1 type:kotlin.ByteArray
-  CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:internal superTypes:[kotlin.Any]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.EchoService_WasmlineDefinition
-    PROPERTY name:contract visibility:public modality:FINAL [val]
-      FIELD PROPERTY_BACKING_FIELD name:contract type:kotlin.reflect.KClass<test.box.EchoService> visibility:private [final]
-        EXPRESSION_BODY
-          CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-contract> visibility:public modality:FINAL returnType:kotlin.reflect.KClass<test.box.EchoService>
-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
-        correspondingProperty: PROPERTY name:contract visibility:public modality:FINAL [val]
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun <get-contract> (): kotlin.reflect.KClass<test.box.EchoService> declared in test.box.EchoService_WasmlineDefinition'
-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:contract type:kotlin.reflect.KClass<test.box.EchoService> visibility:private [final]' type=kotlin.reflect.KClass<test.box.EchoService> origin=null
-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-contract>' type=test.box.EchoService_WasmlineDefinition origin=null
-    PROPERTY name:serviceId visibility:public modality:FINAL [val]
-      FIELD PROPERTY_BACKING_FIELD name:serviceId type:kotlin.String visibility:private [final]
-        EXPRESSION_BODY
-          CONST String type=kotlin.String value="test.box.EchoService"
-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-serviceId> visibility:public modality:FINAL returnType:kotlin.String
-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
-        correspondingProperty: PROPERTY name:serviceId visibility:public modality:FINAL [val]
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun <get-serviceId> (): kotlin.String declared in test.box.EchoService_WasmlineDefinition'
-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:serviceId type:kotlin.String visibility:private [final]' type=kotlin.String origin=null
-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-serviceId>' type=test.box.EchoService_WasmlineDefinition origin=null
-    PROPERTY name:linker visibility:public modality:FINAL [val]
-      FIELD PROPERTY_BACKING_FIELD name:linker type:kotlin.Function1<kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>, test.box.EchoService> visibility:private [final]
-        EXPRESSION_BODY
-          CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.EchoService_WasmlineLinker' type=test.box.EchoService_WasmlineLinker origin=null
-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-linker> visibility:public modality:FINAL returnType:kotlin.Function1<kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>, test.box.EchoService>
-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
-        correspondingProperty: PROPERTY name:linker visibility:public modality:FINAL [val]
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun <get-linker> (): kotlin.Function1<kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>, test.box.EchoService> declared in test.box.EchoService_WasmlineDefinition'
-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:linker type:kotlin.Function1<kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>, test.box.EchoService> visibility:private [final]' type=kotlin.Function1<kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>, test.box.EchoService> origin=null
-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-linker>' type=test.box.EchoService_WasmlineDefinition origin=null
-    PROPERTY name:binder visibility:public modality:FINAL [val]
-      FIELD PROPERTY_BACKING_FIELD name:binder type:kotlin.Function2<test.box.EchoService, kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>, kotlin.Unit> visibility:private [final]
-        EXPRESSION_BODY
-          CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.EchoService_WasmlineBinder' type=test.box.EchoService_WasmlineBinder origin=null
-      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-binder> visibility:public modality:FINAL returnType:kotlin.Function2<test.box.EchoService, kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>, kotlin.Unit>
-        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
-        correspondingProperty: PROPERTY name:binder visibility:public modality:FINAL [val]
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun <get-binder> (): kotlin.Function2<test.box.EchoService, kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>, kotlin.Unit> declared in test.box.EchoService_WasmlineDefinition'
-            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:binder type:kotlin.Function2<test.box.EchoService, kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>, kotlin.Unit> visibility:private [final]' type=kotlin.Function2<test.box.EchoService, kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>, kotlin.Unit> origin=null
-              receiver: GET_VAR '<this>: test.box.EchoService_WasmlineDefinition declared in test.box.EchoService_WasmlineDefinition.<get-binder>' type=test.box.EchoService_WasmlineDefinition origin=null
-    CONSTRUCTOR visibility:private returnType:test.box.EchoService_WasmlineDefinition [primary]
-      BLOCK_BODY
-        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS OBJECT name:EchoService_WasmlineDefinition modality:FINAL visibility:internal superTypes:[kotlin.Any]' type=kotlin.Unit
-    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
-      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.box.EchoService
-      VALUE_PARAMETER kind:Regular name:registerAction index:2 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
-      BLOCK_BODY
-        CALL 'public final fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in test.box.EchoService_WasmlineAdapter' type=kotlin.Unit origin=null
-          ARG <this>: CONSTRUCTOR_CALL 'public constructor <init> (implementation: test.box.EchoService) declared in test.box.EchoService_WasmlineAdapter' type=test.box.EchoService_WasmlineAdapter origin=null
-            ARG implementation: GET_VAR 'implementation: test.box.EchoService declared in test.box.EchoService_WasmlineDefinition.bind' type=test.box.EchoService origin=null
-          ARG registerAction: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.box.EchoService_WasmlineDefinition.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
-    FUN name:link visibility:public modality:FINAL returnType:test.box.EchoService
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.EchoService_WasmlineDefinition
-      VALUE_PARAMETER kind:Regular name:invokeAction index:1 type:kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>
-      BLOCK_BODY
-        RETURN type=test.box.EchoService_WasmlineProxy from='public final fun link (invokeAction: kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>): test.box.EchoService declared in test.box.EchoService_WasmlineDefinition'
-          CONSTRUCTOR_CALL 'public constructor <init> (invokeAction: kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>) declared in test.box.EchoService_WasmlineProxy' type=test.box.EchoService_WasmlineProxy origin=null
-            ARG invokeAction: GET_VAR 'invokeAction: kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> declared in test.box.EchoService_WasmlineDefinition.link' type=kotlin.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray> origin=null
   FUN name:box visibility:public modality:FINAL returnType:kotlin.String
     BLOCK_BODY
-      VAR name:definitionClass type:@[FlexibleNullability] java.lang.Class<*>? [val]
-        CALL 'public open fun forName (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.Class<*>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
-          ARG p0: CONST String type=kotlin.String value="test.box.EchoService_WasmlineDefinition"
-      VAR name:definition type:@[FlexibleNullability] kotlin.Any? [val]
-        CALL 'public open fun get (p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Field' type=@[FlexibleNullability] kotlin.Any? origin=null
-          ARG <this>: TYPE_OP type=java.lang.reflect.Field origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Field
-            CALL 'public open fun getField (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.reflect.Field? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.reflect.Field? origin=null
-              ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                GET_VAR 'val definitionClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
-              ARG p0: CONST String type=kotlin.String value="INSTANCE"
-          ARG p0: CONST Null type=kotlin.Nothing? value=null
-      VAR name:contract type:kotlin.Any? [val]
-        CALL 'private final fun invokeNoArgMethod (<this>: kotlin.Any, prefix: kotlin.String): kotlin.Any? declared in test.box' type=kotlin.Any? origin=null
-          ARG <this>: TYPE_OP type=kotlin.Any origin=IMPLICIT_NOTNULL typeOperand=kotlin.Any
-            GET_VAR 'val definition: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
-          ARG prefix: CONST String type=kotlin.String value="getContract"
       WHEN type=kotlin.Unit origin=IF
         BRANCH
-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
-              ARG arg0: GET_VAR 'val contract: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-              ARG arg1: CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
-          then: BLOCK type=kotlin.Unit origin=null
-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
-              STRING_CONCATENATION type=kotlin.String
-                CONST String type=kotlin.String value="Fail contract="
-                GET_VAR 'val contract: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-      VAR name:serviceId type:kotlin.Any? [val]
-        CALL 'private final fun invokeNoArgMethod (<this>: kotlin.Any, prefix: kotlin.String): kotlin.Any? declared in test.box' type=kotlin.Any? origin=null
-          ARG <this>: TYPE_OP type=kotlin.Any origin=IMPLICIT_NOTNULL typeOperand=kotlin.Any
-            GET_VAR 'val definition: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
-          ARG prefix: CONST String type=kotlin.String value="getServiceId"
-      VAR name:serviceIdValue type:kotlin.Any? [val]
-        BLOCK type=kotlin.Any? origin=WHEN
-          VAR IR_TEMPORARY_VARIABLE name:tmp_0 type:kotlin.Any? [val]
-            GET_VAR 'val serviceId: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-          WHEN type=kotlin.Any? origin=WHEN
-            BRANCH
-              if: TYPE_OP type=kotlin.Boolean origin=INSTANCEOF typeOperand=kotlin.String
-                GET_VAR 'val tmp_0: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-              then: TYPE_OP type=kotlin.String origin=IMPLICIT_CAST typeOperand=kotlin.String
-                GET_VAR 'val serviceId: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-            BRANCH
-              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                ARG arg0: GET_VAR 'val tmp_0: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-                ARG arg1: CONST Null type=kotlin.Nothing? value=null
-              then: CONST Null type=kotlin.Nothing? value=null
-            BRANCH
-              if: CONST Boolean type=kotlin.Boolean value=true
-              then: CALL 'private final fun invokeNoArgMethod (<this>: kotlin.Any, prefix: kotlin.String): kotlin.Any? declared in test.box' type=kotlin.Any? origin=null
-                ARG <this>: TYPE_OP type=kotlin.Any origin=IMPLICIT_CAST typeOperand=kotlin.Any
-                  GET_VAR 'val serviceId: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-                ARG prefix: CONST String type=kotlin.String value="getValue"
-      WHEN type=kotlin.Unit origin=IF
-        BRANCH
-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
-              ARG arg0: GET_VAR 'val serviceIdValue: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService"
-          then: BLOCK type=kotlin.Unit origin=null
-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
-              STRING_CONCATENATION type=kotlin.String
-                CONST String type=kotlin.String value="Fail serviceId="
-                GET_VAR 'val serviceIdValue: kotlin.Any? declared in test.box.box' type=kotlin.Any? origin=null
-      VAR name:linkMethod type:java.lang.reflect.Method [val]
-        BLOCK type=java.lang.reflect.Method origin=ELVIS
-          VAR IR_TEMPORARY_VARIABLE name:tmp_1 type:java.lang.reflect.Method? [val]
-            CALL 'public final fun singleOrNull <T> (<this>: kotlin.Array<out T of kotlin.collections.singleOrNull>, predicate: kotlin.Function1<T of kotlin.collections.singleOrNull, kotlin.Boolean>): T of kotlin.collections.singleOrNull? declared in kotlin.collections' type=java.lang.reflect.Method? origin=null
-              TYPE_ARG T: @[FlexibleNullability] java.lang.reflect.Method?
-              ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>
-                CALL 'public open fun getMethods (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>? declared in java.lang.Class' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>? origin=GET_PROPERTY
-                  ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                    GET_VAR 'val definitionClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
-              ARG predicate: FUN_EXPR type=kotlin.Function1<@[FlexibleNullability] java.lang.reflect.Method?, kotlin.Boolean> origin=LAMBDA
-                FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Boolean
-                  VALUE_PARAMETER kind:Regular name:it index:0 type:@[FlexibleNullability] java.lang.reflect.Method?
+          if: CALL 'public final fun <get-isSuccess> (): kotlin.Boolean declared in kotlin.Result' type=kotlin.Boolean origin=GET_PROPERTY
+            ARG <this>: CALL 'public final fun runCatching <R> (block: kotlin.Function0<R of kotlin.runCatching>): kotlin.Result<R of kotlin.runCatching> declared in kotlin' type=kotlin.Result<@[FlexibleNullability] java.lang.Class<*>?> origin=null
+              TYPE_ARG R: @[FlexibleNullability] java.lang.Class<*>?
+              ARG block: FUN_EXPR type=kotlin.Function0<@[FlexibleNullability] java.lang.Class<*>?> origin=LAMBDA
+                FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:@[FlexibleNullability] java.lang.Class<*>?
                   BLOCK_BODY
-                    RETURN type=kotlin.Nothing from='local final fun <anonymous> (it: @[FlexibleNullability] java.lang.reflect.Method?): kotlin.Boolean declared in test.box.box'
-                      WHEN type=kotlin.Boolean origin=ANDAND
-                        BRANCH
-                          if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                            ARG arg0: CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
-                              ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
-                                GET_VAR 'it: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
-                            ARG arg1: CONST String type=kotlin.String value="link"
-                          then: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                            ARG arg0: CALL 'public open fun getParameterCount (): kotlin.Int declared in java.lang.reflect.Method' type=kotlin.Int origin=GET_PROPERTY
-                              ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
-                                GET_VAR 'it: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
-                            ARG arg1: CONST Int type=kotlin.Int value=1
-                        BRANCH
-                          if: CONST Boolean type=kotlin.Boolean value=true
-                          then: CONST Boolean type=kotlin.Boolean value=false
-          WHEN type=java.lang.reflect.Method origin=null
-            BRANCH
-              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                ARG arg0: GET_VAR 'val tmp_1: java.lang.reflect.Method? declared in test.box.box' type=java.lang.reflect.Method? origin=null
-                ARG arg1: CONST Null type=kotlin.Nothing? value=null
-              then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
-                CONST String type=kotlin.String value="Fail missingLinkMethod"
-            BRANCH
-              if: CONST Boolean type=kotlin.Boolean value=true
-              then: GET_VAR 'val tmp_1: java.lang.reflect.Method? declared in test.box.box' type=java.lang.reflect.Method? origin=null
+                    RETURN type=kotlin.Nothing from='local final fun <anonymous> (): @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box'
+                      CALL 'public open fun forName (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.Class<*>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+                        ARG p0: CONST String type=kotlin.String value="test.box.EchoService_WasmlineDefinition"
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              CONST String type=kotlin.String value="Fail legacyDefinitionStillExists"
+      VAR name:bridgeClass type:@[FlexibleNullability] java.lang.Class<*>? [val]
+        CALL 'public open fun forName (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.Class<*>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG p0: CONST String type=kotlin.String value="test.box.EchoService_WasmlineBridge"
       WHEN type=kotlin.Unit origin=IF
         BRANCH
-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
-              ARG arg0: CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
-                ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                  CALL 'public final fun single <T> (<this>: kotlin.Array<out T of kotlin.collections.single>): T of kotlin.collections.single declared in kotlin.collections' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
-                    TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
-                    ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
-                      CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Method' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
-                        ARG <this>: GET_VAR 'val linkMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-              ARG arg1: CONST String type=kotlin.String value="kotlin.jvm.functions.Function2"
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=null
+            ARG <this>: CALL 'public open fun isAssignableFrom (p0: @[FlexibleNullability] java.lang.Class<*>?): kotlin.Boolean declared in java.lang.Class' type=kotlin.Boolean origin=null
+              ARG <this>: CALL 'public final fun <get-java> <T> (<this>: kotlin.reflect.KClass<T of kotlin.jvm.<get-java>>): java.lang.Class<T of kotlin.jvm.<get-java>> declared in kotlin.jvm' type=java.lang.Class<test.box.EchoService> origin=GET_PROPERTY
+                TYPE_ARG T: test.box.EchoService
+                ARG <this>: CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
+              ARG p0: GET_VAR 'val bridgeClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
           then: BLOCK type=kotlin.Unit origin=null
             RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
               STRING_CONCATENATION type=kotlin.String
-                CONST String type=kotlin.String value="Fail linkParamType="
+                CONST String type=kotlin.String value="Fail bridgeContractType="
                 CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
                   ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                    CALL 'public final fun single <T> (<this>: kotlin.Array<out T of kotlin.collections.single>): T of kotlin.collections.single declared in kotlin.collections' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
-                      TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
-                      ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
-                        CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Method' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
-                          ARG <this>: GET_VAR 'val linkMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
+                    GET_VAR 'val bridgeClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+      VAR name:constructors type:kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> [val]
+        CALL 'public final fun sortedBy <T, R> (<this>: kotlin.Array<out T of kotlin.collections.sortedBy>, selector: kotlin.Function1<T of kotlin.collections.sortedBy, R of kotlin.collections.sortedBy?>): kotlin.collections.List<T of kotlin.collections.sortedBy> declared in kotlin.collections' type=kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> origin=null
+          TYPE_ARG T: @[FlexibleNullability] java.lang.reflect.Constructor<*>?
+          TYPE_ARG R: kotlin.String
+          ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Constructor<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Constructor<*>?>
+            CALL 'public open fun getDeclaredConstructors (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Constructor<*>?>? declared in java.lang.Class' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Constructor<*>?>? origin=GET_PROPERTY
+              ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
+                GET_VAR 'val bridgeClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG selector: FUN_EXPR type=kotlin.Function1<@[FlexibleNullability] java.lang.reflect.Constructor<*>?, kotlin.String?> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.String?
+              VALUE_PARAMETER kind:Regular name:it index:0 type:@[FlexibleNullability] java.lang.reflect.Constructor<*>?
+              BLOCK_BODY
+                RETURN type=kotlin.Nothing from='local final fun <anonymous> (it: @[FlexibleNullability] java.lang.reflect.Constructor<*>?): kotlin.String? declared in test.box.box'
+                  CALL 'public final fun orEmpty (<this>: kotlin.String?): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+                    ARG <this>: BLOCK type=@[FlexibleNullability] kotlin.String? origin=SAFE_CALL
+                      VAR IR_TEMPORARY_VARIABLE name:tmp_0 type:java.lang.Class<*>? [val]
+                        CALL 'public final fun singleOrNull <T> (<this>: kotlin.Array<out T of kotlin.collections.singleOrNull>): T of kotlin.collections.singleOrNull? declared in kotlin.collections' type=java.lang.Class<*>? origin=null
+                          TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
+                          ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
+                            CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
+                              ARG <this>: TYPE_OP type=java.lang.reflect.Constructor<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Constructor<*>
+                                GET_VAR 'it: @[FlexibleNullability] java.lang.reflect.Constructor<*>? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Constructor<*>? origin=null
+                      WHEN type=@[FlexibleNullability] kotlin.String? origin=null
+                        BRANCH
+                          if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                            ARG arg0: GET_VAR 'val tmp_0: java.lang.Class<*>? declared in test.box.box.<anonymous>' type=java.lang.Class<*>? origin=null
+                            ARG arg1: CONST Null type=kotlin.Nothing? value=null
+                          then: CONST Null type=kotlin.Nothing? value=null
+                        BRANCH
+                          if: CONST Boolean type=kotlin.Boolean value=true
+                          then: CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
+                            ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_CAST typeOperand=java.lang.Class<*>
+                              GET_VAR 'val tmp_0: java.lang.Class<*>? declared in test.box.box.<anonymous>' type=java.lang.Class<*>? origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public abstract fun <get-size> (): kotlin.Int declared in kotlin.collections.List' type=kotlin.Int origin=GET_PROPERTY
+                ARG <this>: GET_VAR 'val constructors: kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> declared in test.box.box' type=kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> origin=null
+              ARG arg1: CONST Int type=kotlin.Int value=2
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail constructorCount="
+                CALL 'public abstract fun <get-size> (): kotlin.Int declared in kotlin.collections.List' type=kotlin.Int origin=GET_PROPERTY
+                  ARG <this>: GET_VAR 'val constructors: kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> declared in test.box.box' type=kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> origin=null
+      VAR name:endpointCtor type:java.lang.reflect.Constructor<*> [val]
+        BLOCK type=java.lang.reflect.Constructor<*> origin=ELVIS
+          VAR IR_TEMPORARY_VARIABLE name:tmp_1 type:java.lang.reflect.Constructor<*>? [val]
+            CALL 'public final fun firstOrNull <T> (<this>: kotlin.collections.Iterable<T of kotlin.collections.firstOrNull>, predicate: kotlin.Function1<T of kotlin.collections.firstOrNull, kotlin.Boolean>): T of kotlin.collections.firstOrNull? declared in kotlin.collections' type=java.lang.reflect.Constructor<*>? origin=null
+              TYPE_ARG T: @[FlexibleNullability] java.lang.reflect.Constructor<*>?
+              ARG <this>: GET_VAR 'val constructors: kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> declared in test.box.box' type=kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> origin=null
+              ARG predicate: FUN_EXPR type=kotlin.Function1<@[FlexibleNullability] java.lang.reflect.Constructor<*>?, kotlin.Boolean> origin=LAMBDA
+                FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Boolean
+                  VALUE_PARAMETER kind:Regular name:ctor index:0 type:@[FlexibleNullability] java.lang.reflect.Constructor<*>?
+                  BLOCK_BODY
+                    RETURN type=kotlin.Nothing from='local final fun <anonymous> (ctor: @[FlexibleNullability] java.lang.reflect.Constructor<*>?): kotlin.Boolean declared in test.box.box'
+                      CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                        ARG arg0: BLOCK type=@[FlexibleNullability] kotlin.String? origin=SAFE_CALL
+                          VAR IR_TEMPORARY_VARIABLE name:tmp_2 type:java.lang.Class<*>? [val]
+                            CALL 'public final fun singleOrNull <T> (<this>: kotlin.Array<out T of kotlin.collections.singleOrNull>): T of kotlin.collections.singleOrNull? declared in kotlin.collections' type=java.lang.Class<*>? origin=null
+                              TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
+                              ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
+                                CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
+                                  ARG <this>: TYPE_OP type=java.lang.reflect.Constructor<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Constructor<*>
+                                    GET_VAR 'ctor: @[FlexibleNullability] java.lang.reflect.Constructor<*>? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Constructor<*>? origin=null
+                          WHEN type=@[FlexibleNullability] kotlin.String? origin=null
+                            BRANCH
+                              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                                ARG arg0: GET_VAR 'val tmp_2: java.lang.Class<*>? declared in test.box.box.<anonymous>' type=java.lang.Class<*>? origin=null
+                                ARG arg1: CONST Null type=kotlin.Nothing? value=null
+                              then: CONST Null type=kotlin.Nothing? value=null
+                            BRANCH
+                              if: CONST Boolean type=kotlin.Boolean value=true
+                              then: CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
+                                ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_CAST typeOperand=java.lang.Class<*>
+                                  GET_VAR 'val tmp_2: java.lang.Class<*>? declared in test.box.box.<anonymous>' type=java.lang.Class<*>? origin=null
+                        ARG arg1: CONST String type=kotlin.String value="crow.wasmline.internal.bridge.WasmlineEndpoint"
+          WHEN type=java.lang.reflect.Constructor<*> origin=null
+            BRANCH
+              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                ARG arg0: GET_VAR 'val tmp_1: java.lang.reflect.Constructor<*>? declared in test.box.box' type=java.lang.reflect.Constructor<*>? origin=null
+                ARG arg1: CONST Null type=kotlin.Nothing? value=null
+              then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+                CONST String type=kotlin.String value="Fail missingEndpointCtor"
+            BRANCH
+              if: CONST Boolean type=kotlin.Boolean value=true
+              then: GET_VAR 'val tmp_1: java.lang.reflect.Constructor<*>? declared in test.box.box' type=java.lang.reflect.Constructor<*>? origin=null
+      VAR name:implementationCtor type:java.lang.reflect.Constructor<*> [val]
+        BLOCK type=java.lang.reflect.Constructor<*> origin=ELVIS
+          VAR IR_TEMPORARY_VARIABLE name:tmp_3 type:java.lang.reflect.Constructor<*>? [val]
+            CALL 'public final fun firstOrNull <T> (<this>: kotlin.collections.Iterable<T of kotlin.collections.firstOrNull>, predicate: kotlin.Function1<T of kotlin.collections.firstOrNull, kotlin.Boolean>): T of kotlin.collections.firstOrNull? declared in kotlin.collections' type=java.lang.reflect.Constructor<*>? origin=null
+              TYPE_ARG T: @[FlexibleNullability] java.lang.reflect.Constructor<*>?
+              ARG <this>: GET_VAR 'val constructors: kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> declared in test.box.box' type=kotlin.collections.List<@[FlexibleNullability] java.lang.reflect.Constructor<*>?> origin=null
+              ARG predicate: FUN_EXPR type=kotlin.Function1<@[FlexibleNullability] java.lang.reflect.Constructor<*>?, kotlin.Boolean> origin=LAMBDA
+                FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Boolean
+                  VALUE_PARAMETER kind:Regular name:ctor index:0 type:@[FlexibleNullability] java.lang.reflect.Constructor<*>?
+                  BLOCK_BODY
+                    RETURN type=kotlin.Nothing from='local final fun <anonymous> (ctor: @[FlexibleNullability] java.lang.reflect.Constructor<*>?): kotlin.Boolean declared in test.box.box'
+                      CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                        ARG arg0: CALL 'public final fun singleOrNull <T> (<this>: kotlin.Array<out T of kotlin.collections.singleOrNull>): T of kotlin.collections.singleOrNull? declared in kotlin.collections' type=java.lang.Class<*>? origin=null
+                          TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
+                          ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
+                            CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
+                              ARG <this>: TYPE_OP type=java.lang.reflect.Constructor<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Constructor<*>
+                                GET_VAR 'ctor: @[FlexibleNullability] java.lang.reflect.Constructor<*>? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Constructor<*>? origin=null
+                        ARG arg1: CALL 'public final fun <get-java> <T> (<this>: kotlin.reflect.KClass<T of kotlin.jvm.<get-java>>): java.lang.Class<T of kotlin.jvm.<get-java>> declared in kotlin.jvm' type=java.lang.Class<test.box.EchoService> origin=GET_PROPERTY
+                          TYPE_ARG T: test.box.EchoService
+                          ARG <this>: CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
+          WHEN type=java.lang.reflect.Constructor<*> origin=null
+            BRANCH
+              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                ARG arg0: GET_VAR 'val tmp_3: java.lang.reflect.Constructor<*>? declared in test.box.box' type=java.lang.reflect.Constructor<*>? origin=null
+                ARG arg1: CONST Null type=kotlin.Nothing? value=null
+              then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+                CONST String type=kotlin.String value="Fail missingImplementationCtor"
+            BRANCH
+              if: CONST Boolean type=kotlin.Boolean value=true
+              then: GET_VAR 'val tmp_3: java.lang.reflect.Constructor<*>? declared in test.box.box' type=java.lang.reflect.Constructor<*>? origin=null
       VAR name:bindMethod type:java.lang.reflect.Method [val]
         BLOCK type=java.lang.reflect.Method origin=ELVIS
-          VAR IR_TEMPORARY_VARIABLE name:tmp_2 type:java.lang.reflect.Method? [val]
+          VAR IR_TEMPORARY_VARIABLE name:tmp_4 type:java.lang.reflect.Method? [val]
             CALL 'public final fun singleOrNull <T> (<this>: kotlin.Array<out T of kotlin.collections.singleOrNull>, predicate: kotlin.Function1<T of kotlin.collections.singleOrNull, kotlin.Boolean>): T of kotlin.collections.singleOrNull? declared in kotlin.collections' type=java.lang.reflect.Method? origin=null
               TYPE_ARG T: @[FlexibleNullability] java.lang.reflect.Method?
               ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>
                 CALL 'public open fun getMethods (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>? declared in java.lang.Class' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>? origin=GET_PROPERTY
                   ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                    GET_VAR 'val definitionClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+                    GET_VAR 'val bridgeClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
               ARG predicate: FUN_EXPR type=kotlin.Function1<@[FlexibleNullability] java.lang.reflect.Method?, kotlin.Boolean> origin=LAMBDA
                 FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Boolean
                   VALUE_PARAMETER kind:Regular name:it index:0 type:@[FlexibleNullability] java.lang.reflect.Method?
@@ -362,54 +294,31 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
                             ARG arg0: CALL 'public open fun getParameterCount (): kotlin.Int declared in java.lang.reflect.Method' type=kotlin.Int origin=GET_PROPERTY
                               ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
                                 GET_VAR 'it: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
-                            ARG arg1: CONST Int type=kotlin.Int value=2
+                            ARG arg1: CONST Int type=kotlin.Int value=1
                         BRANCH
                           if: CONST Boolean type=kotlin.Boolean value=true
                           then: CONST Boolean type=kotlin.Boolean value=false
           WHEN type=java.lang.reflect.Method origin=null
             BRANCH
               if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                ARG arg0: GET_VAR 'val tmp_2: java.lang.reflect.Method? declared in test.box.box' type=java.lang.reflect.Method? origin=null
+                ARG arg0: GET_VAR 'val tmp_4: java.lang.reflect.Method? declared in test.box.box' type=java.lang.reflect.Method? origin=null
                 ARG arg1: CONST Null type=kotlin.Nothing? value=null
               then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
                 CONST String type=kotlin.String value="Fail missingBindMethod"
             BRANCH
               if: CONST Boolean type=kotlin.Boolean value=true
-              then: GET_VAR 'val tmp_2: java.lang.reflect.Method? declared in test.box.box' type=java.lang.reflect.Method? origin=null
-      WHEN type=kotlin.Unit origin=IF
-        BRANCH
-          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
-            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
-              ARG arg0: CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] java.lang.Class<*>? origin=GET_ARRAY_ELEMENT
-                ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
-                  CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Method' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
-                    ARG <this>: GET_VAR 'val bindMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-                ARG index: CONST Int type=kotlin.Int value=0
-              ARG arg1: CALL 'public final fun <get-java> <T> (<this>: kotlin.reflect.KClass<T of kotlin.jvm.<get-java>>): java.lang.Class<T of kotlin.jvm.<get-java>> declared in kotlin.jvm' type=java.lang.Class<test.box.EchoService> origin=GET_PROPERTY
-                TYPE_ARG T: test.box.EchoService
-                ARG <this>: CLASS_REFERENCE 'CLASS INTERFACE name:EchoService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.box.EchoService>
-          then: BLOCK type=kotlin.Unit origin=null
-            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
-              STRING_CONCATENATION type=kotlin.String
-                CONST String type=kotlin.String value="Fail bindImplType="
-                CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
-                  ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                    CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] java.lang.Class<*>? origin=GET_ARRAY_ELEMENT
-                      ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
-                        CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Method' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
-                          ARG <this>: GET_VAR 'val bindMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-                      ARG index: CONST Int type=kotlin.Int value=0
+              then: GET_VAR 'val tmp_4: java.lang.reflect.Method? declared in test.box.box' type=java.lang.reflect.Method? origin=null
       WHEN type=kotlin.Unit origin=IF
         BRANCH
           if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
             ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
               ARG arg0: CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
                 ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                  CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] java.lang.Class<*>? origin=GET_ARRAY_ELEMENT
+                  CALL 'public final fun single <T> (<this>: kotlin.Array<out T of kotlin.collections.single>): T of kotlin.collections.single declared in kotlin.collections' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+                    TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
                     ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
                       CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Method' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
                         ARG <this>: GET_VAR 'val bindMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-                    ARG index: CONST Int type=kotlin.Int value=1
               ARG arg1: CONST String type=kotlin.String value="kotlin.jvm.functions.Function2"
           then: BLOCK type=kotlin.Unit origin=null
             RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
@@ -417,65 +326,85 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
                 CONST String type=kotlin.String value="Fail bindRegistrarType="
                 CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
                   ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
-                    CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] java.lang.Class<*>? origin=GET_ARRAY_ELEMENT
+                    CALL 'public final fun single <T> (<this>: kotlin.Array<out T of kotlin.collections.single>): T of kotlin.collections.single declared in kotlin.collections' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+                      TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
                       ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
                         CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Method' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
                           ARG <this>: GET_VAR 'val bindMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-                      ARG index: CONST Int type=kotlin.Int value=1
+      VAR name:endpointType type:@[FlexibleNullability] java.lang.Class<*>? [val]
+        CALL 'public final fun single <T> (<this>: kotlin.Array<out T of kotlin.collections.single>): T of kotlin.collections.single declared in kotlin.collections' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
+          ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>
+            CALL 'public open fun getParameterTypes (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? origin=GET_PROPERTY
+              ARG <this>: GET_VAR 'val endpointCtor: java.lang.reflect.Constructor<*> declared in test.box.box' type=java.lang.reflect.Constructor<*> origin=null
       VAR name:action type:kotlin.String? [var]
         CONST Null type=kotlin.Nothing? value=null
       VAR name:payload type:kotlin.ByteArray? [var]
         CONST Null type=kotlin.Nothing? value=null
-      VAR name:invokeAction type:test.box.box.<no name provided> [val]
-        BLOCK type=test.box.box.<no name provided> origin=OBJECT_LITERAL
-          CLASS CLASS name:<no name provided> modality:FINAL visibility:local superTypes:[kotlin.jvm.functions.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>]
-            thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.box.<no name provided>
-            CONSTRUCTOR visibility:public returnType:test.box.box.<no name provided> [primary]
-              BLOCK_BODY
-                DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-                INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:<no name provided> modality:FINAL visibility:local superTypes:[kotlin.jvm.functions.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>]' type=kotlin.Unit
-            FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
-              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
-              VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
-              overridden:
-                public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in kotlin.jvm.functions.Function2
-            FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
-              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
-              overridden:
-                public open fun hashCode (): kotlin.Int declared in kotlin.jvm.functions.Function2
-            FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
-              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
-              overridden:
-                public open fun toString (): kotlin.String declared in kotlin.jvm.functions.Function2
-            FUN name:invoke visibility:public modality:OPEN returnType:kotlin.ByteArray [operator]
-              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.box.<no name provided>
-              VALUE_PARAMETER kind:Regular name:invokedAction index:1 type:kotlin.String
-              VALUE_PARAMETER kind:Regular name:invokedPayload index:2 type:kotlin.ByteArray
-              overridden:
-                public abstract fun invoke (p1: P1 of kotlin.jvm.functions.Function2, p2: P2 of kotlin.jvm.functions.Function2): R of kotlin.jvm.functions.Function2 declared in kotlin.jvm.functions.Function2
-              BLOCK_BODY
-                SET_VAR 'var action: kotlin.String? declared in test.box.box' type=kotlin.Unit origin=EQ
-                  GET_VAR 'invokedAction: kotlin.String declared in test.box.box.<no name provided>.invoke' type=kotlin.String origin=null
-                SET_VAR 'var payload: kotlin.ByteArray? declared in test.box.box' type=kotlin.Unit origin=EQ
-                  CALL 'public final fun copyOf (<this>: kotlin.ByteArray): kotlin.ByteArray declared in kotlin.collections' type=kotlin.ByteArray origin=null
-                    ARG <this>: GET_VAR 'invokedPayload: kotlin.ByteArray declared in test.box.box.<no name provided>.invoke' type=kotlin.ByteArray origin=null
-                RETURN type=kotlin.Nothing from='public open fun invoke (invokedAction: kotlin.String, invokedPayload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.box.<no name provided>'
-                  CALL 'public final fun encodeToByteArray (<this>: kotlin.String): kotlin.ByteArray declared in kotlin.text' type=kotlin.ByteArray origin=null
-                    ARG <this>: STRING_CONCATENATION type=kotlin.String
-                      CONST String type=kotlin.String value="reply:"
-                      CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
-                        ARG <this>: CALL 'public final fun CHECK_NOT_NULL <T0> (arg0: T0 of kotlin.internal.ir.CHECK_NOT_NULL?): {T0 of kotlin.internal.ir.CHECK_NOT_NULL & Any} declared in kotlin.internal.ir' type=kotlin.ByteArray origin=EXCLEXCL
-                          TYPE_ARG T0: kotlin.ByteArray
-                          ARG arg0: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
-                            GET_VAR 'var payload: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
-          CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.box.<no name provided>' type=test.box.box.<no name provided> origin=OBJECT_LITERAL
+      VAR name:linkedEndpoint type:@[FlexibleNullability] kotlin.Any? [val]
+        CALL 'public open fun newProxyInstance (p0: @[FlexibleNullability] java.lang.ClassLoader?, p1: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>?, p2: @[FlexibleNullability] java.lang.reflect.InvocationHandler?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Proxy' type=@[FlexibleNullability] kotlin.Any? origin=null
+          ARG p0: CALL 'public open fun getClassLoader (): @[FlexibleNullability] java.lang.ClassLoader? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.ClassLoader? origin=GET_PROPERTY
+            ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
+              GET_VAR 'val endpointType: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG p1: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<@[FlexibleNullability] java.lang.Class<*>?> origin=null
+            TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
+            ARG elements: VARARG type=kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> varargElementType=@[FlexibleNullability] java.lang.Class<*>?
+              GET_VAR 'val endpointType: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG p2: TYPE_OP type=java.lang.reflect.InvocationHandler origin=SAM_CONVERSION typeOperand=java.lang.reflect.InvocationHandler
+            FUN_EXPR type=kotlin.Function3<@[FlexibleNullability] kotlin.Any?, @[FlexibleNullability] java.lang.reflect.Method?, @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>?, @[FlexibleNullability] kotlin.Any?> origin=LAMBDA
+              FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:@[FlexibleNullability] kotlin.Any?
+                VALUE_PARAMETER UNDERSCORE_PARAMETER kind:Regular name:<unused var> index:0 type:@[FlexibleNullability] kotlin.Any?
+                VALUE_PARAMETER kind:Regular name:method index:1 type:@[FlexibleNullability] java.lang.reflect.Method?
+                VALUE_PARAMETER kind:Regular name:args index:2 type:@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>?
+                BLOCK_BODY
+                  RETURN type=kotlin.Nothing from='local final fun <anonymous> (<unused var>: @[FlexibleNullability] kotlin.Any?, method: @[FlexibleNullability] java.lang.reflect.Method?, args: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>?): @[FlexibleNullability] kotlin.Any? declared in test.box.box'
+                    BLOCK type=kotlin.ByteArray origin=WHEN
+                      VAR IR_TEMPORARY_VARIABLE name:tmp_5 type:@[FlexibleNullability] kotlin.String? [val]
+                        CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
+                          ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
+                            GET_VAR 'method: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
+                      WHEN type=kotlin.ByteArray origin=WHEN
+                        BRANCH
+                          if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                            ARG arg0: GET_VAR 'val tmp_5: @[FlexibleNullability] kotlin.String? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] kotlin.String? origin=null
+                            ARG arg1: CONST String type=kotlin.String value="invoke"
+                          then: BLOCK type=kotlin.ByteArray origin=null
+                            SET_VAR 'var action: kotlin.String? declared in test.box.box' type=kotlin.Unit origin=EQ
+                              TYPE_OP type=kotlin.String origin=CAST typeOperand=kotlin.String
+                                CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] kotlin.Any? origin=GET_ARRAY_ELEMENT
+                                  ARG <this>: CALL 'public final fun CHECK_NOT_NULL <T0> (arg0: T0 of kotlin.internal.ir.CHECK_NOT_NULL?): {T0 of kotlin.internal.ir.CHECK_NOT_NULL & Any} declared in kotlin.internal.ir' type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?> origin=EXCLEXCL
+                                    TYPE_ARG T0: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>
+                                    ARG arg0: GET_VAR 'args: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? origin=null
+                                  ARG index: CONST Int type=kotlin.Int value=0
+                            SET_VAR 'var payload: kotlin.ByteArray? declared in test.box.box' type=kotlin.Unit origin=EQ
+                              CALL 'public final fun copyOf (<this>: kotlin.ByteArray): kotlin.ByteArray declared in kotlin.collections' type=kotlin.ByteArray origin=null
+                                ARG <this>: TYPE_OP type=kotlin.ByteArray origin=CAST typeOperand=kotlin.ByteArray
+                                  CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] kotlin.Any? origin=GET_ARRAY_ELEMENT
+                                    ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?> origin=IMPLICIT_CAST typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>
+                                      GET_VAR 'args: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? origin=null
+                                    ARG index: CONST Int type=kotlin.Int value=1
+                            CALL 'public final fun encodeToByteArray (<this>: kotlin.String): kotlin.ByteArray declared in kotlin.text' type=kotlin.ByteArray origin=null
+                              ARG <this>: STRING_CONCATENATION type=kotlin.String
+                                CONST String type=kotlin.String value="reply:"
+                                CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
+                                  ARG <this>: CALL 'public final fun CHECK_NOT_NULL <T0> (arg0: T0 of kotlin.internal.ir.CHECK_NOT_NULL?): {T0 of kotlin.internal.ir.CHECK_NOT_NULL & Any} declared in kotlin.internal.ir' type=kotlin.ByteArray origin=EXCLEXCL
+                                    TYPE_ARG T0: kotlin.ByteArray
+                                    ARG arg0: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
+                                      GET_VAR 'var payload: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+                        BRANCH
+                          if: CONST Boolean type=kotlin.Boolean value=true
+                          then: CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+                            ARG message: STRING_CONCATENATION type=kotlin.String
+                              CONST String type=kotlin.String value="Unexpected endpoint method "
+                              CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
+                                ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
+                                  GET_VAR 'method: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
       VAR name:proxy type:test.box.EchoService [val]
         TYPE_OP type=test.box.EchoService origin=CAST typeOperand=test.box.EchoService
-          CALL 'public open fun invoke (p0: @[FlexibleNullability] kotlin.Any?, vararg p1: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.Any? origin=null
-            ARG <this>: GET_VAR 'val linkMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-            ARG p0: GET_VAR 'val definition: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
-            ARG p1: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
-              GET_VAR 'val invokeAction: test.box.box.<no name provided> declared in test.box.box' type=test.box.box.<no name provided> origin=null
+          CALL 'public open fun newInstance (vararg p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] T of java.lang.reflect.Constructor? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] kotlin.Any? origin=null
+            ARG <this>: GET_VAR 'val endpointCtor: java.lang.reflect.Constructor<*> declared in test.box.box' type=java.lang.reflect.Constructor<*> origin=null
+            ARG p0: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
+              GET_VAR 'val linkedEndpoint: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
       WHEN type=kotlin.Unit origin=IF
         BRANCH
           if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
@@ -483,7 +412,7 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
               ARG arg0: CALL 'public abstract fun <get-qualifiedName> (): kotlin.String? declared in kotlin.reflect.KClass' type=kotlin.String? origin=GET_PROPERTY
                 ARG <this>: GET_CLASS type=kotlin.reflect.KClass<out test.box.EchoService>
                   GET_VAR 'val proxy: test.box.EchoService declared in test.box.box' type=test.box.EchoService origin=null
-              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService_WasmlineProxy"
+              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService_WasmlineBridge"
           then: BLOCK type=kotlin.Unit origin=null
             RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
               STRING_CONCATENATION type=kotlin.String
@@ -524,7 +453,7 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
           if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
             ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
               ARG arg0: GET_VAR 'var action: kotlin.String? declared in test.box.box' type=kotlin.String? origin=null
-              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService#xjRgE7w2"
+              ARG arg1: CONST String type=kotlin.String value="test.box.EchoService#echo"
           then: BLOCK type=kotlin.Unit origin=null
             RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
               STRING_CONCATENATION type=kotlin.String
@@ -535,38 +464,38 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
           if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
             ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
               ARG arg0: BLOCK type=kotlin.String? origin=SAFE_CALL
-                VAR IR_TEMPORARY_VARIABLE name:tmp_3 type:kotlin.ByteArray? [val]
+                VAR IR_TEMPORARY_VARIABLE name:tmp_6 type:kotlin.ByteArray? [val]
                   GET_VAR 'var payload: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
                 WHEN type=kotlin.String? origin=null
                   BRANCH
                     if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                      ARG arg0: GET_VAR 'val tmp_3: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+                      ARG arg0: GET_VAR 'val tmp_6: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
                       ARG arg1: CONST Null type=kotlin.Nothing? value=null
                     then: CONST Null type=kotlin.Nothing? value=null
                   BRANCH
                     if: CONST Boolean type=kotlin.Boolean value=true
                     then: CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
                       ARG <this>: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
-                        GET_VAR 'val tmp_3: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+                        GET_VAR 'val tmp_6: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
               ARG arg1: CONST String type=kotlin.String value="hello"
           then: BLOCK type=kotlin.Unit origin=null
             RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
               STRING_CONCATENATION type=kotlin.String
                 CONST String type=kotlin.String value="Fail payload="
                 BLOCK type=kotlin.String? origin=SAFE_CALL
-                  VAR IR_TEMPORARY_VARIABLE name:tmp_4 type:kotlin.ByteArray? [val]
+                  VAR IR_TEMPORARY_VARIABLE name:tmp_7 type:kotlin.ByteArray? [val]
                     GET_VAR 'var payload: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
                   WHEN type=kotlin.String? origin=null
                     BRANCH
                       if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                        ARG arg0: GET_VAR 'val tmp_4: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+                        ARG arg0: GET_VAR 'val tmp_7: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
                         ARG arg1: CONST Null type=kotlin.Nothing? value=null
                       then: CONST Null type=kotlin.Nothing? value=null
                     BRANCH
                       if: CONST Boolean type=kotlin.Boolean value=true
                       then: CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
                         ARG <this>: TYPE_OP type=kotlin.ByteArray origin=IMPLICIT_CAST typeOperand=kotlin.ByteArray
-                          GET_VAR 'val tmp_4: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
+                          GET_VAR 'val tmp_7: kotlin.ByteArray? declared in test.box.box' type=kotlin.ByteArray? origin=null
       VAR name:boundHandlers type:java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> [val]
         CALL 'public final fun linkedMapOf <K, V> (): java.util.LinkedHashMap<K of kotlin.collections.linkedMapOf, V of kotlin.collections.linkedMapOf> declared in kotlin.collections' type=java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
           TYPE_ARG K: kotlin.String
@@ -615,69 +544,108 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
                         CONST String type=kotlin.String value="Duplicate action "
                         GET_VAR 'registeredAction: kotlin.String declared in test.box.box.<no name provided>.invoke' type=kotlin.String origin=null
           CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.box.<no name provided>' type=test.box.box.<no name provided> origin=OBJECT_LITERAL
+      VAR name:binderBridge type:@[FlexibleNullability] kotlin.Any? [val]
+        CALL 'public open fun newInstance (vararg p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] T of java.lang.reflect.Constructor? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] kotlin.Any? origin=null
+          ARG <this>: GET_VAR 'val implementationCtor: java.lang.reflect.Constructor<*> declared in test.box.box' type=java.lang.reflect.Constructor<*> origin=null
+          ARG p0: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
+            CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.EchoServiceImpl' type=test.box.EchoServiceImpl origin=null
       TYPE_OP type=kotlin.Unit origin=IMPLICIT_COERCION_TO_UNIT typeOperand=kotlin.Unit
         CALL 'public open fun invoke (p0: @[FlexibleNullability] kotlin.Any?, vararg p1: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.Any? origin=null
           ARG <this>: GET_VAR 'val bindMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-          ARG p0: GET_VAR 'val definition: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
+          ARG p0: GET_VAR 'val binderBridge: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
           ARG p1: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
-            CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.EchoServiceImpl' type=test.box.EchoServiceImpl origin=null
             GET_VAR 'val registerAction: test.box.box.<no name provided> declared in test.box.box' type=test.box.box.<no name provided> origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public open fun <get-keys> (): @[EnhancedNullability] kotlin.collections.MutableSet<@[EnhancedNullability] K of java.util.LinkedHashMap> declared in java.util.LinkedHashMap' type=@[EnhancedNullability] kotlin.collections.MutableSet<@[EnhancedNullability] kotlin.String> origin=GET_PROPERTY
+                ARG <this>: GET_VAR 'val boundHandlers: java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> declared in test.box.box' type=java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
+              ARG arg1: CALL 'public final fun setOf <T> (element: T of kotlin.collections.setOf): kotlin.collections.Set<T of kotlin.collections.setOf> declared in kotlin.collections' type=kotlin.collections.Set<kotlin.String> origin=null
+                TYPE_ARG T: kotlin.String
+                ARG element: CONST String type=kotlin.String value="test.box.EchoService#echo"
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
+              STRING_CONCATENATION type=kotlin.String
+                CONST String type=kotlin.String value="Fail boundActions="
+                CALL 'public open fun <get-keys> (): @[EnhancedNullability] kotlin.collections.MutableSet<@[EnhancedNullability] K of java.util.LinkedHashMap> declared in java.util.LinkedHashMap' type=@[EnhancedNullability] kotlin.collections.MutableSet<@[EnhancedNullability] kotlin.String> origin=GET_PROPERTY
+                  ARG <this>: GET_VAR 'val boundHandlers: java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> declared in test.box.box' type=java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
+      VAR name:boundEndpoint type:@[FlexibleNullability] kotlin.Any? [val]
+        CALL 'public open fun newProxyInstance (p0: @[FlexibleNullability] java.lang.ClassLoader?, p1: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>?, p2: @[FlexibleNullability] java.lang.reflect.InvocationHandler?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Proxy' type=@[FlexibleNullability] kotlin.Any? origin=null
+          ARG p0: CALL 'public open fun getClassLoader (): @[FlexibleNullability] java.lang.ClassLoader? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.ClassLoader? origin=GET_PROPERTY
+            ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
+              GET_VAR 'val endpointType: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG p1: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<@[FlexibleNullability] java.lang.Class<*>?> origin=null
+            TYPE_ARG T: @[FlexibleNullability] java.lang.Class<*>?
+            ARG elements: VARARG type=kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?> varargElementType=@[FlexibleNullability] java.lang.Class<*>?
+              GET_VAR 'val endpointType: @[FlexibleNullability] java.lang.Class<*>? declared in test.box.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG p2: TYPE_OP type=java.lang.reflect.InvocationHandler origin=SAM_CONVERSION typeOperand=java.lang.reflect.InvocationHandler
+            FUN_EXPR type=kotlin.Function3<@[FlexibleNullability] kotlin.Any?, @[FlexibleNullability] java.lang.reflect.Method?, @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>?, @[FlexibleNullability] kotlin.Any?> origin=LAMBDA
+              FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:@[FlexibleNullability] kotlin.Any?
+                VALUE_PARAMETER UNDERSCORE_PARAMETER kind:Regular name:<unused var> index:0 type:@[FlexibleNullability] kotlin.Any?
+                VALUE_PARAMETER kind:Regular name:method index:1 type:@[FlexibleNullability] java.lang.reflect.Method?
+                VALUE_PARAMETER kind:Regular name:args index:2 type:@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>?
+                BLOCK_BODY
+                  RETURN type=kotlin.Nothing from='local final fun <anonymous> (<unused var>: @[FlexibleNullability] kotlin.Any?, method: @[FlexibleNullability] java.lang.reflect.Method?, args: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>?): @[FlexibleNullability] kotlin.Any? declared in test.box.box'
+                    BLOCK type=kotlin.ByteArray origin=WHEN
+                      VAR IR_TEMPORARY_VARIABLE name:tmp_8 type:@[FlexibleNullability] kotlin.String? [val]
+                        CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
+                          ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
+                            GET_VAR 'method: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
+                      WHEN type=kotlin.ByteArray origin=WHEN
+                        BRANCH
+                          if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                            ARG arg0: GET_VAR 'val tmp_8: @[FlexibleNullability] kotlin.String? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] kotlin.String? origin=null
+                            ARG arg1: CONST String type=kotlin.String value="invoke"
+                          then: BLOCK type=kotlin.ByteArray origin=null
+                            VAR name:invokedAction type:kotlin.String [val]
+                              TYPE_OP type=kotlin.String origin=CAST typeOperand=kotlin.String
+                                CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] kotlin.Any? origin=GET_ARRAY_ELEMENT
+                                  ARG <this>: CALL 'public final fun CHECK_NOT_NULL <T0> (arg0: T0 of kotlin.internal.ir.CHECK_NOT_NULL?): {T0 of kotlin.internal.ir.CHECK_NOT_NULL & Any} declared in kotlin.internal.ir' type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?> origin=EXCLEXCL
+                                    TYPE_ARG T0: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>
+                                    ARG arg0: GET_VAR 'args: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? origin=null
+                                  ARG index: CONST Int type=kotlin.Int value=0
+                            VAR name:invokedPayload type:kotlin.ByteArray [val]
+                              TYPE_OP type=kotlin.ByteArray origin=CAST typeOperand=kotlin.ByteArray
+                                CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=@[FlexibleNullability] kotlin.Any? origin=GET_ARRAY_ELEMENT
+                                  ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?> origin=IMPLICIT_CAST typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>
+                                    GET_VAR 'args: @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? origin=null
+                                  ARG index: CONST Int type=kotlin.Int value=1
+                            VAR name:handler type:kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> [val]
+                              BLOCK type=kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=ELVIS
+                                VAR IR_TEMPORARY_VARIABLE name:tmp_9 type:@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? [val]
+                                  CALL 'public open fun get (p0: @[EnhancedNullability] K of java.util.LinkedHashMap): @[EnhancedNullability] V of java.util.LinkedHashMap? declared in java.util.LinkedHashMap' type=@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? origin=GET_ARRAY_ELEMENT
+                                    ARG <this>: GET_VAR 'val boundHandlers: java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> declared in test.box.box' type=java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
+                                    ARG p0: GET_VAR 'val invokedAction: kotlin.String declared in test.box.box.<anonymous>' type=kotlin.String origin=null
+                                WHEN type=kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=null
+                                  BRANCH
+                                    if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                                      ARG arg0: GET_VAR 'val tmp_9: @[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? declared in test.box.box.<anonymous>' type=@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? origin=null
+                                      ARG arg1: CONST Null type=kotlin.Nothing? value=null
+                                    then: CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+                                      ARG message: STRING_CONCATENATION type=kotlin.String
+                                        CONST String type=kotlin.String value="Missing handler "
+                                        GET_VAR 'val invokedAction: kotlin.String declared in test.box.box.<anonymous>' type=kotlin.String origin=null
+                                  BRANCH
+                                    if: CONST Boolean type=kotlin.Boolean value=true
+                                    then: GET_VAR 'val tmp_9: @[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? declared in test.box.box.<anonymous>' type=@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? origin=null
+                            CALL 'public abstract fun invoke (p1: P1 of kotlin.jvm.functions.Function1): R of kotlin.jvm.functions.Function1 declared in kotlin.jvm.functions.Function1' type=kotlin.ByteArray origin=null
+                              ARG <this>: GET_VAR 'val handler: kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> declared in test.box.box.<anonymous>' type=kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=null
+                              ARG p1: GET_VAR 'val invokedPayload: kotlin.ByteArray declared in test.box.box.<anonymous>' type=kotlin.ByteArray origin=null
+                        BRANCH
+                          if: CONST Boolean type=kotlin.Boolean value=true
+                          then: CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+                            ARG message: STRING_CONCATENATION type=kotlin.String
+                              CONST String type=kotlin.String value="Unexpected endpoint method "
+                              CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
+                                ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
+                                  GET_VAR 'method: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.box.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
       VAR name:boundProxy type:test.box.EchoService [val]
         TYPE_OP type=test.box.EchoService origin=CAST typeOperand=test.box.EchoService
-          CALL 'public open fun invoke (p0: @[FlexibleNullability] kotlin.Any?, vararg p1: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.Any? origin=null
-            ARG <this>: GET_VAR 'val linkMethod: java.lang.reflect.Method declared in test.box.box' type=java.lang.reflect.Method origin=null
-            ARG p0: GET_VAR 'val definition: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
-            ARG p1: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
-              BLOCK type=test.box.box.<no name provided> origin=OBJECT_LITERAL
-                CLASS CLASS name:<no name provided> modality:FINAL visibility:local superTypes:[kotlin.jvm.functions.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>]
-                  thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.box.<no name provided>
-                  CONSTRUCTOR visibility:public returnType:test.box.box.<no name provided> [primary]
-                    BLOCK_BODY
-                      DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-                      INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:<no name provided> modality:FINAL visibility:local superTypes:[kotlin.jvm.functions.Function2<kotlin.String, kotlin.ByteArray, kotlin.ByteArray>]' type=kotlin.Unit
-                  FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
-                    VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
-                    VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
-                    overridden:
-                      public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in kotlin.jvm.functions.Function2
-                  FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
-                    VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
-                    overridden:
-                      public open fun hashCode (): kotlin.Int declared in kotlin.jvm.functions.Function2
-                  FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
-                    VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
-                    overridden:
-                      public open fun toString (): kotlin.String declared in kotlin.jvm.functions.Function2
-                  FUN name:invoke visibility:public modality:OPEN returnType:kotlin.ByteArray [operator]
-                    VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.box.<no name provided>
-                    VALUE_PARAMETER kind:Regular name:invokedAction index:1 type:kotlin.String
-                    VALUE_PARAMETER kind:Regular name:invokedPayload index:2 type:kotlin.ByteArray
-                    overridden:
-                      public abstract fun invoke (p1: P1 of kotlin.jvm.functions.Function2, p2: P2 of kotlin.jvm.functions.Function2): R of kotlin.jvm.functions.Function2 declared in kotlin.jvm.functions.Function2
-                    BLOCK_BODY
-                      VAR name:handler type:kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> [val]
-                        BLOCK type=kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=ELVIS
-                          VAR IR_TEMPORARY_VARIABLE name:tmp_5 type:@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? [val]
-                            CALL 'public open fun get (p0: @[EnhancedNullability] K of java.util.LinkedHashMap): @[EnhancedNullability] V of java.util.LinkedHashMap? declared in java.util.LinkedHashMap' type=@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? origin=GET_ARRAY_ELEMENT
-                              ARG <this>: GET_VAR 'val boundHandlers: java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> declared in test.box.box' type=java.util.LinkedHashMap<kotlin.String, kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
-                              ARG p0: GET_VAR 'invokedAction: kotlin.String declared in test.box.box.<no name provided>.invoke' type=kotlin.String origin=null
-                          WHEN type=kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=null
-                            BRANCH
-                              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                                ARG arg0: GET_VAR 'val tmp_5: @[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? declared in test.box.box.<no name provided>.invoke' type=@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? origin=null
-                                ARG arg1: CONST Null type=kotlin.Nothing? value=null
-                              then: CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-                                ARG message: STRING_CONCATENATION type=kotlin.String
-                                  CONST String type=kotlin.String value="Missing handler "
-                                  GET_VAR 'invokedAction: kotlin.String declared in test.box.box.<no name provided>.invoke' type=kotlin.String origin=null
-                            BRANCH
-                              if: CONST Boolean type=kotlin.Boolean value=true
-                              then: GET_VAR 'val tmp_5: @[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? declared in test.box.box.<no name provided>.invoke' type=@[EnhancedNullability] kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray>? origin=null
-                      RETURN type=kotlin.Nothing from='public open fun invoke (invokedAction: kotlin.String, invokedPayload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.box.<no name provided>'
-                        CALL 'public abstract fun invoke (p1: P1 of kotlin.jvm.functions.Function1): R of kotlin.jvm.functions.Function1 declared in kotlin.jvm.functions.Function1' type=kotlin.ByteArray origin=null
-                          ARG <this>: GET_VAR 'val handler: kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> declared in test.box.box.<no name provided>.invoke' type=kotlin.jvm.functions.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=null
-                          ARG p1: GET_VAR 'invokedPayload: kotlin.ByteArray declared in test.box.box.<no name provided>.invoke' type=kotlin.ByteArray origin=null
-                CONSTRUCTOR_CALL 'public constructor <init> () declared in test.box.box.<no name provided>' type=test.box.box.<no name provided> origin=OBJECT_LITERAL
+          CALL 'public open fun newInstance (vararg p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] T of java.lang.reflect.Constructor? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] kotlin.Any? origin=null
+            ARG <this>: GET_VAR 'val endpointCtor: java.lang.reflect.Constructor<*> declared in test.box.box' type=java.lang.reflect.Constructor<*> origin=null
+            ARG p0: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
+              GET_VAR 'val boundEndpoint: @[FlexibleNullability] kotlin.Any? declared in test.box.box' type=@[FlexibleNullability] kotlin.Any? origin=null
       VAR name:boundResult type:kotlin.String [val]
         CALL 'public final fun decodeToString (<this>: kotlin.ByteArray): kotlin.String declared in kotlin.text' type=kotlin.String origin=null
           ARG <this>: CALL 'public abstract fun echo (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.EchoService' type=kotlin.ByteArray origin=null
@@ -697,59 +665,3 @@ FILE fqName:test.box fileName:/echoProxyRoundTrip.kt
                 GET_VAR 'val boundResult: kotlin.String declared in test.box.box' type=kotlin.String origin=null
       RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.box'
         CONST String type=kotlin.String value="OK"
-  FUN name:invokeNoArgMethod visibility:private modality:FINAL returnType:kotlin.Any?
-    VALUE_PARAMETER kind:ExtensionReceiver name:<this> index:0 type:kotlin.Any
-    VALUE_PARAMETER kind:Regular name:prefix index:1 type:kotlin.String
-    BLOCK_BODY
-      VAR name:method type:java.lang.reflect.Method [val]
-        BLOCK type=java.lang.reflect.Method origin=ELVIS
-          VAR IR_TEMPORARY_VARIABLE name:tmp_6 type:java.lang.reflect.Method? [val]
-            CALL 'public final fun firstOrNull <T> (<this>: kotlin.Array<out T of kotlin.collections.firstOrNull>, predicate: kotlin.Function1<T of kotlin.collections.firstOrNull, kotlin.Boolean>): T of kotlin.collections.firstOrNull? declared in kotlin.collections' type=java.lang.reflect.Method? origin=null
-              TYPE_ARG T: @[FlexibleNullability] java.lang.reflect.Method?
-              ARG <this>: TYPE_OP type=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?> origin=IMPLICIT_NOTNULL typeOperand=@[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>
-                CALL 'public open fun getMethods (): @[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>? declared in java.lang.Class' type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.reflect.Method?>? origin=GET_PROPERTY
-                  ARG <this>: CALL 'public final fun <get-javaClass> <T> (<this>: T of kotlin.jvm.<get-javaClass>): java.lang.Class<T of kotlin.jvm.<get-javaClass>> declared in kotlin.jvm' type=java.lang.Class<kotlin.Any> origin=GET_PROPERTY
-                    TYPE_ARG T: kotlin.Any
-                    ARG <this>: GET_VAR '<this>: kotlin.Any declared in test.box.invokeNoArgMethod' type=kotlin.Any origin=IMPLICIT_ARGUMENT
-              ARG predicate: FUN_EXPR type=kotlin.Function1<@[FlexibleNullability] java.lang.reflect.Method?, kotlin.Boolean> origin=LAMBDA
-                FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Boolean
-                  VALUE_PARAMETER kind:Regular name:it index:0 type:@[FlexibleNullability] java.lang.reflect.Method?
-                  BLOCK_BODY
-                    RETURN type=kotlin.Nothing from='local final fun <anonymous> (it: @[FlexibleNullability] java.lang.reflect.Method?): kotlin.Boolean declared in test.box.invokeNoArgMethod'
-                      WHEN type=kotlin.Boolean origin=ANDAND
-                        BRANCH
-                          if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                            ARG arg0: CALL 'public open fun getParameterCount (): kotlin.Int declared in java.lang.reflect.Method' type=kotlin.Int origin=GET_PROPERTY
-                              ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
-                                GET_VAR 'it: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.invokeNoArgMethod.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
-                            ARG arg1: CONST Int type=kotlin.Int value=0
-                          then: CALL 'public final fun startsWith (<this>: kotlin.String, prefix: kotlin.String, ignoreCase: kotlin.Boolean): kotlin.Boolean declared in kotlin.text' type=kotlin.Boolean origin=null
-                            ARG <this>: TYPE_OP type=kotlin.String origin=IMPLICIT_NOTNULL typeOperand=kotlin.String
-                              CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
-                                ARG <this>: TYPE_OP type=java.lang.reflect.Method origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Method
-                                  GET_VAR 'it: @[FlexibleNullability] java.lang.reflect.Method? declared in test.box.invokeNoArgMethod.<anonymous>' type=@[FlexibleNullability] java.lang.reflect.Method? origin=null
-                            ARG prefix: GET_VAR 'prefix: kotlin.String declared in test.box.invokeNoArgMethod' type=kotlin.String origin=null
-                        BRANCH
-                          if: CONST Boolean type=kotlin.Boolean value=true
-                          then: CONST Boolean type=kotlin.Boolean value=false
-          WHEN type=java.lang.reflect.Method origin=null
-            BRANCH
-              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
-                ARG arg0: GET_VAR 'val tmp_6: java.lang.reflect.Method? declared in test.box.invokeNoArgMethod' type=java.lang.reflect.Method? origin=null
-                ARG arg1: CONST Null type=kotlin.Nothing? value=null
-              then: CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-                ARG message: STRING_CONCATENATION type=kotlin.String
-                  CONST String type=kotlin.String value="Missing no-arg method starting with '"
-                  GET_VAR 'prefix: kotlin.String declared in test.box.invokeNoArgMethod' type=kotlin.String origin=null
-                  CONST String type=kotlin.String value="' on "
-                  CALL 'public open fun getName (): @[FlexibleNullability] kotlin.String? declared in java.lang.Class' type=@[FlexibleNullability] kotlin.String? origin=GET_PROPERTY
-                    ARG <this>: CALL 'public final fun <get-javaClass> <T> (<this>: T of kotlin.jvm.<get-javaClass>): java.lang.Class<T of kotlin.jvm.<get-javaClass>> declared in kotlin.jvm' type=java.lang.Class<kotlin.Any> origin=GET_PROPERTY
-                      TYPE_ARG T: kotlin.Any
-                      ARG <this>: GET_VAR '<this>: kotlin.Any declared in test.box.invokeNoArgMethod' type=kotlin.Any origin=IMPLICIT_ARGUMENT
-            BRANCH
-              if: CONST Boolean type=kotlin.Boolean value=true
-              then: GET_VAR 'val tmp_6: java.lang.reflect.Method? declared in test.box.invokeNoArgMethod' type=java.lang.reflect.Method? origin=null
-      RETURN type=kotlin.Nothing from='private final fun invokeNoArgMethod (<this>: kotlin.Any, prefix: kotlin.String): kotlin.Any? declared in test.box'
-        CALL 'public open fun invoke (p0: @[FlexibleNullability] kotlin.Any?, vararg p1: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] kotlin.Any? declared in java.lang.reflect.Method' type=@[FlexibleNullability] kotlin.Any? origin=null
-          ARG <this>: GET_VAR 'val method: java.lang.reflect.Method declared in test.box.invokeNoArgMethod' type=java.lang.reflect.Method origin=null
-          ARG p0: GET_VAR '<this>: kotlin.Any declared in test.box.invokeNoArgMethod' type=kotlin.Any origin=null

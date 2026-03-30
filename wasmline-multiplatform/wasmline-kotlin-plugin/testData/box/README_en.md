@@ -24,11 +24,10 @@ Keep the scope focused on **IR-plugin behavior**:
 
 - service contract discovery
 - phase-one validation rules
-- generated `*_WasmlineDefinition`
-- generated `*_WasmlineProxy`
-- generated `*_WasmlineAdapter`
+- generated single `*_WasmlineBridge`
 - generated IR call shapes such as `endpoint.invoke(...)`
-- current glue behavior such as `link()` and the temporary `bind()` stub
+- generated `bind(registerAction)` action registration shapes
+- whether typed `link()` / `bind()` / `bindAs()` call sites are directly rewritten by IR
 
 ## Expected result for a valid case
 
