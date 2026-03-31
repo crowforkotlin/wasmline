@@ -1,4 +1,4 @@
-# Script
+# gradle-build.md
 
 ```shell
 ./gradlew :wasmline-sample:plugin:compileDevelopmentLibraryKotlinWasmWasiOptimize

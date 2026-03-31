@@ -2,7 +2,7 @@
 
 - Zig Version : 0.15.1
 
-- ```shell
+```shell
 Download .tar.gz
 zig fetch --save-exact=compile_commands "https://github.com/the-argus/zig-compile-commands/archive/70fb439897e12cae896c071717d7c9c382918689.tar.gz"
 zig fetch --save-exact=compile_commands ~/Downloads/zig-compile-commands-70fb439897e12cae896c071717d7c9c382918689.tar.gz
