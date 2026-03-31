@@ -171,6 +171,7 @@ class Compile : CliktCommand(name = "compile") {
                 "-W", "gc=y",
                 "-W", "function-references=y",
                 "-W", "exceptions=y",
+                "-W", "threads=n",
                 "-W", "simd=n",
                 "-W", "relaxed-simd=n",
                 "-O", "static-memory-guard-size=0",
@@ -246,11 +247,18 @@ class Compile : CliktCommand(name = "compile") {
 
         fun findWasmtimeExecutable(directory: File): File? {
             val isWindows = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("win")
-            val targetName = if (isWindows) "wasmtime.exe" else "wasmtime"
-            return directory.walk()
-                .filter { it.isFile && it.name.equals(targetName, ignoreCase = true) }
-                .firstOrNull()
-                ?.also { if (!isWindows) it.setExecutable(true) }
+            val candidateNames = if (isWindows) {
+                listOf("wasmtime-min.exe")
+            } else {
+                listOf("wasmtime-min")
+            }
+            return candidateNames.firstNotNullOfOrNull { targetName ->
+                directory.walk()
+                    .filter { it.isFile && it.name.equals(targetName, ignoreCase = true) }
+                    .firstOrNull()
+            }?.also {
+                if (!isWindows) it.setExecutable(true)
+            }
         }
     }
 }

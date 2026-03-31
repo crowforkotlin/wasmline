@@ -2,7 +2,6 @@
 
 package crow.wasmline
 
-import crow.wasmline.internal.bridge.WasmlineBindingScope
 import crow.wasmline.internal.bridge.WasmlineEndpoint
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
@@ -14,6 +13,7 @@ internal fun Wasmline.invokeActionBlocking(action: String, payload: ByteArray): 
     return runBlocking { call(action, payload) }
 }
 
+@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
 class GeneratedWasmlineHostEndpoint(
     private val wasmline: Wasmline,
 ) : WasmlineEndpoint {
@@ -22,22 +22,18 @@ class GeneratedWasmlineHostEndpoint(
     }
 }
 
+@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
 suspend fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
-    bindServicesInternal {
-        bridge.bind { action, handler ->
-            bind(action, handler)
-        }
+    val handlers = linkedMapOf<String, (ByteArray) -> ByteArray>()
+    bridge.bind { action, handler ->
+        check(action !in handlers) { "Action '$action' is already bound in this Wasmline binding scope." }
+        handlers[action] = handler
     }
+    setOutbound(handlers.toHostDispatcher())
 }
 
 fun <T : WasmlineService> Wasmline.link(): T {
     error("Wasmline compiler plugin is not applied or failed to replace Wasmline.link<T>().")
-}
-
-@PublishedApi
-internal suspend fun Wasmline.bindServicesInternal(block: WasmlineBindingScope.() -> Unit) {
-    val scope = WasmlineBindingScope().apply(block)
-    setOutbound(scope.toHostDispatcher())
 }
 
 /** Bind a local implementation using an explicit service contract. */
@@ -59,8 +55,11 @@ suspend fun <T : WasmlineService> Wasmline.bindAs(implementation: WasmlineServic
     error("Wasmline compiler plugin is not applied or failed to replace Wasmline.bindAs<T>().")
 }
 
-private fun WasmlineBindingScope.toHostDispatcher(): WasmlineHostDispatcher {
-    return WasmlineHostDispatcher { action, payload -> invoke(action, payload) }
+private fun Map<String, (ByteArray) -> ByteArray>.toHostDispatcher(): WasmlineHostDispatcher {
+    return WasmlineHostDispatcher { action, payload ->
+        val handler = this[action] ?: error("No Wasmline action bound for '$action'.")
+        handler(payload)
+    }
 }
 
 

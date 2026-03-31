@@ -3,31 +3,31 @@
 ## compile all default targets
 
 ```shell
-./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos"
+./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos"
 ```
 
 ## compile with custom product name
 
 ```shell
-./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin"
+./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -n plugin"
 ```
 
 ## compile with custom product name and version
 
 ```shell
-./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin --version 1.2.0"
+./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -n plugin --version 1.2.0"
 ```
 
 ## compile specific architectures only
 
 ```shell
-./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -a pulley64 -a aarch64-android"
+./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -a pulley64 -a aarch64-android"
 ```
 
 ## compile with custom output root directory
 
 ```shell
-./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -o build/wasmline/output -n plugin --version 1.0.0"
+./gradlew :wasmline-cli:run --args="compile -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -o build/wasmline/output -n plugin --version 1.0.0"
 ```
 
 ## output

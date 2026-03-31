@@ -1,5 +1,3 @@
-platforms/
-
 *.o
 *.a
 *.so
@@ -51,3 +49,5 @@ platforms/
 **/*.tar.xz
 
 /AGENTS.md
+/platforms/
+/.cache/

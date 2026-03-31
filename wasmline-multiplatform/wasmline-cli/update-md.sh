@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WASM_INPUT="../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm"
 
 # Wasmtime directory (used by: build, compile)
-WASMTIME_DIR="build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos"
+WASMTIME_DIR="build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos"
 
 # Product / plugin name (used by: build, compile, manifest)
 NAME="plugin"
@@ -47,7 +47,7 @@ VERSION_CODE_ALT="120"
 OUTPUT_DIR="build/wasmline/output"
 
 # Wasmtime release version tag
-WASMTIME_VERSION="v41.0.1"
+WASMTIME_VERSION="v43.0.0"
 
 # Key output directory (used by: keys)
 KEYS_DIR="build/wasmline/keys"

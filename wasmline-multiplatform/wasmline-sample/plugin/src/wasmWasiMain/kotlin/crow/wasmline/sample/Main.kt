@@ -12,11 +12,11 @@ import crow.wasmline.sample.ir.TimeSyncService
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.time.Clock
 
+private var wasmlineBindingsInstalled = false
 
-@WasmExport("InitWasmline")
-fun InitWasmline(actionLen: Int, inputLen: Int) { WasmlineInitialize(actionLen, inputLen) }
-
-fun main() {
+private fun ensureWasmlineBindings() {
+    if (wasmlineBindingsInstalled) return
+    wasmlineBindingsInstalled = true
     bind(object : TimeSyncService {
         override fun timeSync(payload: ByteArray): ByteArray {
             println("[Kotlin Wasi] Plugin \"timeSync\" receive bean : ${toProtoBean<PlatformBean>(payload)}")
@@ -33,4 +33,14 @@ fun main() {
             }
         }
     })
+}
+
+@WasmExport("InitWasmline")
+fun InitWasmline(actionLen: Int, inputLen: Int) {
+    ensureWasmlineBindings()
+    WasmlineInitialize(actionLen, inputLen)
+}
+
+fun main() {
+    ensureWasmlineBindings()
 }

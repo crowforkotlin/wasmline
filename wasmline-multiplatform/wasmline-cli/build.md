@@ -3,31 +3,31 @@
 ## build with all defaults (full pipeline: compile → manifest → package)
 
 ```shell
-./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos --key build/wasmline/keys/ed25519_private.key"
+./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos --key build/wasmline/keys/ed25519_private.key"
 ```
 
 ## build with custom name and version
 
 ```shell
-./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin -v 1.2.0 --key build/wasmline/keys/ed25519_private.key"
+./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -n plugin -v 1.2.0 --key build/wasmline/keys/ed25519_private.key"
 ```
 
 ## build with full manifest metadata
 
 ```shell
-./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin --version 1.2.0 --version-code 120 --plugin-id crow.wasmline.plugin --display-name 'Upgrade loader' --author Crow --description 'A upgrade loader plugin' --key build/wasmline/keys/ed25519_private.key"
+./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -n plugin --version 1.2.0 --version-code 120 --plugin-id crow.wasmline.plugin --display-name 'Upgrade loader' --author Crow --description 'A upgrade loader plugin' --key build/wasmline/keys/ed25519_private.key"
 ```
 
 ## build with hex string key instead of file
 
 ```shell
-./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin --version 1.0.0 --key 10829ee4b2894f74647aa109ff82ff549a176e28d64632b69f1c8d5a5225023b"
+./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -n plugin --version 1.0.0 --key 10829ee4b2894f74647aa109ff82ff549a176e28d64632b69f1c8d5a5225023b"
 ```
 
 ## build specific architectures only
 
 ```shell
-./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos -n plugin --version 1.0.0 -a pulley64 -a aarch64-android -a x86_64-windows --key build/wasmline/keys/ed25519_private.key"
+./gradlew :wasmline-cli:run --args="build -i ../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos -n plugin --version 1.0.0 -a pulley64 -a aarch64-android --key build/wasmline/keys/ed25519_private.key"
 ```
 
 ## output

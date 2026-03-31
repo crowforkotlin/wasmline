@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.name.Name
 internal class WasmlineRuntimeSymbols(
     private val pluginContext: IrPluginContext,
 ) {
-    val wasmlineClass: IrClassSymbol = requireClass(MAIN_PACKAGE, "Wasmline")
+    val wasmlineClass: IrClassSymbol? = referenceClass(MAIN_PACKAGE, "Wasmline")
     val byteArrayClass: IrClassSymbol = requireClass("kotlin", "ByteArray")
     val function1Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(1).symbol
     val function2Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(2).symbol
@@ -111,7 +111,7 @@ internal class WasmlineRuntimeSymbols(
         symbol = symbol,
         resolvedSymbol = hostLinkFunction,
         functionName = "link",
-        extensionReceiverClass = wasmlineClass,
+        extensionReceiverClass = wasmlineClass ?: return false,
         regularParameterCount = 0,
     )
 
@@ -119,7 +119,7 @@ internal class WasmlineRuntimeSymbols(
         symbol = symbol,
         resolvedSymbol = hostBindContractFunction,
         functionName = "bind",
-        extensionReceiverClass = wasmlineClass,
+        extensionReceiverClass = wasmlineClass ?: return false,
         regularParameterCount = 2,
     ) { function ->
         ((function.parameters.firstOrNull { it.kind == IrParameterKind.Regular }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == pluginContext.irBuiltIns.kClassClass
@@ -129,7 +129,7 @@ internal class WasmlineRuntimeSymbols(
         symbol = symbol,
         resolvedSymbol = hostBindSingleFunction,
         functionName = "bind",
-        extensionReceiverClass = wasmlineClass,
+        extensionReceiverClass = wasmlineClass ?: return false,
         regularParameterCount = 1,
     )
 
@@ -137,7 +137,7 @@ internal class WasmlineRuntimeSymbols(
         symbol = symbol,
         resolvedSymbol = hostBindAsFunction,
         functionName = "bindAs",
-        extensionReceiverClass = wasmlineClass,
+        extensionReceiverClass = wasmlineClass ?: return false,
         regularParameterCount = 1,
     )
 
@@ -247,11 +247,12 @@ internal class WasmlineRuntimeSymbols(
         regularParameterCount: Int,
         extraFilter: (IrFunction) -> Boolean = { true },
     ): IrSimpleFunctionSymbol? {
+        val extensionReceiverClass = referenceClass(packageName, extensionReceiverClassName) ?: return null
         return referenceTopLevelFunction(
             callableId = CallableId(FqName(packageName), Name.identifier(functionName)),
             regularParameterCount = regularParameterCount,
         ) { function ->
-            ((function.parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == requireClass(packageName, extensionReceiverClassName) &&
+            ((function.parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == extensionReceiverClass &&
                 extraFilter(function)
         }
     }

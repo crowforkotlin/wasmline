@@ -2,26 +2,18 @@
 
 package crow.wasmline
 
-import crow.wasmline.internal.bridge.WasmlineBindingScope
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import kotlin.reflect.KClass
 
 
 
-@PublishedApi
-internal fun bindServicesInternal(block: WasmlineBindingScope.() -> Unit) {
-    val scope = WasmlineBindingScope().apply(block)
-    for ((action, handler) in scope.snapshot()) {
+@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
+fun bindGenerated(bridge: WasmlineGeneratedBridge) {
+    val registeredActions = linkedSetOf<String>()
+    bridge.bind { action, handler ->
+        check(registeredActions.add(action)) { "Action '$action' is already bound in this Wasmline binding scope." }
         WasmRouter.register(action) { payload ->
             handler(payload ?: ByteArray(0))
-        }
-    }
-}
-
-fun bindGenerated(bridge: WasmlineGeneratedBridge) {
-    bindServicesInternal {
-        bridge.bind { action, handler ->
-            bind(action, handler)
         }
     }
 }

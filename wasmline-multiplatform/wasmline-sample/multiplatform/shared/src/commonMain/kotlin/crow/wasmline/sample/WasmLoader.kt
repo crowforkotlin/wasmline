@@ -37,19 +37,6 @@ internal class WasmLoader {
                 "[WasmLoader] call time sync platform:  $platform".info()
                 val bytes = wasmline!!.link<TimeSyncService>()
                     .timeSync(toProtoBytes<PlatformBean>(value = platform))
-
-                "[WasmLoader] wasm bytes:  ${bytes.size}".info()
-                "[WasmLoader] HEX: ${bytes.toHexString()}".info()
-                // 【新增诊断代码】
-                if (bytes.size >= 3) {
-                    val b0 = bytes[0].toInt() and 0xFF
-                    val b1 = bytes[1].toInt() and 0xFF
-                    val b2 = bytes[2].toInt() and 0xFF
-                    println("[Kotlin Debug] Byte[0]=$b0 (Ex: 10), Byte[1]=$b1 (Ex: 18), Byte[2]=$b2 (Ex: 107)")
-
-                    // 如果这里打印出来不是 10, 18, 107，说明 JNI 到 Java 的数据拷贝错位了
-                }
-
                 platformBean = baseProtobuf.decodeFromByteArray(PlatformBean.serializer(),bytes)
             }
             "[WasmLoader] call time sync spend : ${duration.inWholeMilliseconds} ms".info()

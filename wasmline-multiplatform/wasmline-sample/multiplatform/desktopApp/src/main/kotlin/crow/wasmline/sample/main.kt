@@ -55,7 +55,7 @@ fun main() = application {
 fun ApplicationScope.AppWindows(content: @Composable () -> Unit) {
     var iconPainter by remember { mutableStateOf<BitmapPainter?>(null) }
     LaunchedEffect(Unit) {
-        iconPainter = BitmapPainter(image = readResourceBytes("favicon.ico").decodeToImageBitmap())
+//        iconPainter = BitmapPainter(image = readResourceBytes("favicon.ico").decodeToImageBitmap())
     }
     IntUiTheme(
         theme = JewelTheme.lightThemeDefinition(),

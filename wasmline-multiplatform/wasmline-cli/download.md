@@ -9,13 +9,13 @@
 ## download specific version
 
 ```shell
-./gradlew :wasmline-cli:run --args="download -v v41.0.1"
+./gradlew :wasmline-cli:run --args="download -v v43.0.0"
 ```
 
 ## download multiple versions
 
 ```shell
-./gradlew :wasmline-cli:run --args="download -v v41.0.1,v40.0.0"
+./gradlew :wasmline-cli:run --args="download -v v43.0.0,v40.0.0"
 ```
 
 ## download for specific architecture
@@ -39,14 +39,14 @@
 ## force redownload
 
 ```shell
-./gradlew :wasmline-cli:run --args="download -v v41.0.1 -f"
+./gradlew :wasmline-cli:run --args="download -v v43.0.0 -f"
 ```
 
 ## output
 
 ```
 build/wasmline/wasmtime/
-└── wasmtime-v41.0.1-aarch64-macos/
+└── wasmtime-v43.0.0-aarch64-macos/
     ├── wasmtime
     ├── ...
     └── .success

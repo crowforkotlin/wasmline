@@ -81,7 +81,7 @@ internal class WasmlineIrGenerationExtension(
         moduleFragment: IrModuleFragment,
         pluginContext: IrPluginContext,
         runtimeSymbols: WasmlineRuntimeSymbols,
-        generatedBridges: Map<IrClassSymbol, IrClass>,
+        generatedBridges: MutableMap<IrClassSymbol, IrClass>,
     ) {
         moduleFragment.files.forEach { file ->
             val ownerDeclarations = ArrayDeque<IrDeclaration>()
@@ -119,11 +119,13 @@ internal class WasmlineIrGenerationExtension(
         file: IrFile,
         pluginContext: IrPluginContext,
         runtimeSymbols: WasmlineRuntimeSymbols,
-        generatedBridges: Map<IrClassSymbol, IrClass>,
+        generatedBridges: MutableMap<IrClassSymbol, IrClass>,
         ownerDeclaration: IrDeclaration,
     ): IrExpression? {
         val contract = resolveContractForTypedEntryPoint(call, runtimeSymbols, file, ownerDeclaration) ?: return null
-        val bridgeClass = generatedBridges[contract.symbol] ?: runtimeSymbols.bridgeClassSymbol(contract)?.owner ?: return null
+        val bridgeClass = generatedBridges[contract.symbol]
+            ?: runtimeSymbols.bridgeClassSymbol(contract)?.owner
+            ?: generateBridge(contract, file, pluginContext, runtimeSymbols).also { generatedBridges[contract.symbol] = it }
         val builder = DeclarationIrBuilder(pluginContext, ownerDeclaration.symbol, call.startOffset, call.endOffset)
         return when {
             runtimeSymbols.isHostLinkCall(call.symbol) -> {

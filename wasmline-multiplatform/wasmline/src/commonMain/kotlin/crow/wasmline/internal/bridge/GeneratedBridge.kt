@@ -24,6 +24,7 @@ object UnlinkedWasmlineEndpoint : WasmlineEndpoint {
 }
 
 /** Runtime helper shared by generated bridge classes when installing bind handlers. */
+@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
 fun bindGeneratedBridgeAction(
     action: String,
     dispatcher: WasmlineGeneratedBridge,
@@ -36,6 +37,7 @@ fun bindGeneratedBridgeAction(
 
 
 /** Fails fast when a generated binder bridge is invoked without a concrete implementation. */
+@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
 fun <T : Any> requireGeneratedImplementation(implementation: T?, contractId: String): T {
     return implementation ?: error(
         "Generated Wasmline bridge for $contractId does not hold a bound implementation. " +
@@ -44,6 +46,7 @@ fun <T : Any> requireGeneratedImplementation(implementation: T?, contractId: Str
 }
 
 /** Fails fast for unknown generated actions reaching a bridge dispatcher. */
+@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
 fun unknownGeneratedAction(contractId: String, action: String): Nothing {
     error("Unknown Wasmline action '$action' for generated bridge $contractId.")
 }
