@@ -55,7 +55,7 @@ wasmline-multiplatform/
 
 ### 环境要求
 
-- **JDK 21** 或更高版本
+- 常规构建至少需要 **Java 21**；对于 `./.github/skills/wasmline/scripts/skill_preflight.sh` 覆盖的 Gradle 任务（尤其是 Compose Desktop / 桌面 sample），请使用 **JBR 21**
 - **Zig 0.15.1**（用于原生库构建）
 - 构建 AOT 产物时需要本地准备好 Wasmtime toolchain
 
@@ -70,6 +70,12 @@ sh ./scripts/init.sh
 ### 构建
 
 所有 Gradle 命令在 `wasmline-multiplatform/` 目录下运行：
+
+运行 Gradle 前，先执行：
+
+```zsh
+bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+```
 
 ```zsh
 cd wasmline-multiplatform
@@ -190,8 +196,8 @@ Wasmline 当前建议使用 **Kotlin 2.3.20-Beta1** 或更高版本，以获得�
 - `wasmline-multiplatform/wasmline` —— runtime SPI 与公共 API
 - `wasmline-multiplatform/wasmline-kotlin-plugin` —— Kotlin compiler plugin
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md` —— IR box testData 说明
-- `structs/wasmline-ir-design.md` —— 稳定设计说明
-- `structs/ir.md` —— 当前 IR 工作记录与下一步任务
+- `.github/skills/wasmline/SKILL.md` —— 仓库工作流、预检与模块定位说明
+- `structs/ir-plan.md` —— 当前 IR 计划与实现记录
 
 ## 相关资源
 

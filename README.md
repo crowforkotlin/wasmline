@@ -55,7 +55,7 @@ wasmline-multiplatform/
 
 ### Prerequisites
 
-- **JDK 21** or later
+- **Java 21** or later for general builds; use **JBR 21** for Gradle tasks covered by `./.github/skills/wasmline/scripts/skill_preflight.sh` (especially Compose Desktop / desktop samples)
 - **Zig 0.15.1** (for native library builds)
 - a locally prepared Wasmtime toolchain when building AOT artifacts
 
@@ -70,6 +70,12 @@ sh ./scripts/init.sh
 ### Build
 
 All Gradle commands run from the `wasmline-multiplatform/` directory:
+
+Before running Gradle, verify the current shell with:
+
+```zsh
+bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+```
 
 ```zsh
 cd wasmline-multiplatform
@@ -190,8 +196,8 @@ If you are working on Wasmline itself, the most useful entry points are:
 - `wasmline-multiplatform/wasmline` — runtime SPI and public API
 - `wasmline-multiplatform/wasmline-kotlin-plugin` — Kotlin compiler plugin
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_en.md` — IR box testData guide
-- `structs/wasmline-ir-design.md` — stable design notes
-- `structs/ir.md` — current IR work log and next tasks
+- `.github/skills/wasmline/SKILL.md` — repository workflow, preflight, and module routing guide
+- `structs/ir-plan.md` — current IR plan and implementation notes
 
 ## Resources
 

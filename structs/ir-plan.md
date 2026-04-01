@@ -6,7 +6,7 @@ Wasmline Kotlin IR 插件的主链路已经明显向 `单接口 -> 单 Bridge` �
 
 但文档和剩余测试口径仍有一部分停留在旧的 `Definition + Registry` 叙述上。当前真正需要推进的，不再是“是否切换到单 Bridge 架构”，而是：继续补齐 `link()/bind()/bindAs()` 覆盖、统一最终公开 API 语义、并在新链路稳定后进入旧组件清理阶段。
 
-同时需要遵守 `AGENTS.md` 中的 IR 测试约束：`testData` 下的 `*.fir.txt` / `*.fir.ir.txt` 是生成快照，不手改；快照不一致时删除后重跑测试生成。
+同时需要遵守 `.github/skills/wasmline/SKILL.md` 中的 IR 测试约束：`testData` 下的 `*.fir.txt` / `*.fir.ir.txt` 是生成快照，不手改；快照不一致时删除后重跑测试生成。
 
 ---
 
@@ -259,7 +259,7 @@ Bridge 对用户侧必须遵守以下约束：
 ### 3. 快照波动较大
 
 重构会显著改变 `testData/box` 的 FIR/IR dump。  
-需要严格遵守 `AGENTS.md`：不手改快照文件，删除旧 `*.fir.txt` / `*.fir.ir.txt` 后重跑生成与测试。
+需要严格遵守 `.github/skills/wasmline/SKILL.md`：不手改快照文件，删除旧 `*.fir.txt` / `*.fir.ir.txt` 后重跑生成与测试。
 
 ### 4. 旧新路线并存期间容易出现双链路污染
 
@@ -334,8 +334,8 @@ Bridge 对用户侧必须遵守以下约束：
 
 ### 4. 编译与测试环境要求
 
-运行和测试需要使用 `AGENTS.md` 指定的 JBR 环境，即 `D:\program\jbrsdk-21.0.9-windows-x64-b1163.94`。  
-计划实施时，所有与 `wasmline-kotlin-plugin` 相关的生成与测试都应以此环境为准，避免工具链差异导致快照抖动。
+运行和测试前应先执行 `bash ./.github/skills/wasmline/scripts/skill_preflight.sh`，确认当前会话已经切到可用的 JBR 21。  
+计划实施时，所有与 `wasmline-kotlin-plugin` 相关的生成与测试都应以同一套通过预检的 JBR 21 环境为准，避免工具链差异导致快照抖动。
 
 ---
 

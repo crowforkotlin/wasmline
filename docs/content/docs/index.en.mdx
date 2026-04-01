@@ -57,7 +57,7 @@ wasmline-multiplatform/
 
 ### Prerequisites
 
-- **JDK 21** or later
+- **Java 21** or later; for Gradle tasks that depend on the repository preflight (especially Compose Desktop / desktop samples), use **JBR 21**
 - **Zig 0.15.1** (for native library builds only)
 
 <Steps>
@@ -71,6 +71,12 @@ wasmline-multiplatform/
 
   <Step>
     ### Build the Project
+
+    Before running Gradle, verify the current shell with:
+
+    ```bash
+    bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+    ```
 
     All Gradle commands run from the `wasmline-multiplatform/` directory:
 

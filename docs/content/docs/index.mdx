@@ -57,7 +57,7 @@ wasmline-multiplatform/
 
 ### 环境要求
 
-- **JDK 21** 或更高版本
+- 至少使用 **Java 21**；对于依赖仓库预检的 Gradle 任务（尤其是 Compose Desktop / 桌面 sample），请使用 **JBR 21**
 - **Zig 0.15.1**（仅构建原生库时需要）
 
 <Steps>
@@ -71,6 +71,12 @@ wasmline-multiplatform/
 
   <Step>
     ### 构建项目
+
+    运行 Gradle 前，先确认当前 shell：
+
+    ```bash
+    bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+    ```
 
     所有 Gradle 命令在 `wasmline-multiplatform/` 目录下运行：
 

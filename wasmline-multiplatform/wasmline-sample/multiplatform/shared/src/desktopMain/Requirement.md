@@ -1,2 +1,3 @@
-- Download JBR SDK 21
-https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b1163.94
+- Prepare a usable JBR 21 for desktop builds.
+- Before running Gradle, verify the current shell with `bash ./.github/skills/wasmline/scripts/skill_preflight.sh`.
+- The desktop sample toolchain sets `JvmVendorSpec.JETBRAINS`, so a plain non-JetBrains JDK 21 may still be insufficient.
