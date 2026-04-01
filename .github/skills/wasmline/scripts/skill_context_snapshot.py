@@ -27,7 +27,7 @@ EXCLUDED_DIR_NAMES = {
 }
 
 KEY_FILES = [
-    "AGENTS.md",
+    ".github/skills/wasmline/SKILL.md",
     "README_zh.md",
     "README.md",
     "scripts/init.sh",
@@ -55,6 +55,8 @@ def run_git(*args: str) -> str:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
     except FileNotFoundError:
         return "<git unavailable>"

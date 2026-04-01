@@ -3,7 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
-REQUIRED_JBR_DEFAULT="$HOME/WuYa/tools/jbrsdk_jcef-21.0.9-osx-aarch64-b1163.94/Contents/Home"
 PROFILE_FILES=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile")
 
 red='\033[1;31m'
@@ -82,6 +81,17 @@ collect_candidate_paths() {
     done | awk '!seen[$0]++'
 }
 
+detect_java_home_from_path() {
+    command -v java >/dev/null 2>&1 || return 1
+
+    local detected
+    detected="$(java -XshowSettings:properties -version 2>&1 | awk -F'= ' '/^[[:space:]]*java\.home = / { print $2; exit }')"
+    [ -n "$detected" ] || return 1
+    [ -x "$detected/bin/java" ] || return 1
+
+    printf '%s\n' "$detected"
+}
+
 check_platform_assets() {
     local count
     count="$(find "$ROOT_DIR/platforms" -type d \( -name lib -o -name include \) 2>/dev/null | wc -l | tr -d ' ')"
@@ -140,6 +150,13 @@ main() {
 
     section "JBR 21 检查"
     local current_java_home="${JAVA_HOME:-}"
+    if [ -z "$current_java_home" ]; then
+        current_java_home="$(detect_java_home_from_path || true)"
+        if [ -n "$current_java_home" ]; then
+            info "当前 JAVA_HOME 未设置，已从 java 命令推断 java.home: $current_java_home"
+        fi
+    fi
+
     if [ -n "$current_java_home" ]; then
         info "当前 JAVA_HOME: $current_java_home"
         if is_jbr21_home "$current_java_home"; then
@@ -173,13 +190,6 @@ main() {
     fi
 
     if ! is_jbr21_home "${current_java_home:-}"; then
-        if [ -d "$REQUIRED_JBR_DEFAULT" ]; then
-            info "仓库约定的默认 JBR 21 路径存在：$REQUIRED_JBR_DEFAULT"
-            found_usable=1
-            if [ -z "$preferred_jbr_home" ]; then
-                preferred_jbr_home="$REQUIRED_JBR_DEFAULT"
-            fi
-        fi
 
         fail "当前会话未切到 JBR 21。按仓库约束，这里应停止后续 Gradle 编译/测试。"
         if [ "$found_usable" -eq 1 ]; then

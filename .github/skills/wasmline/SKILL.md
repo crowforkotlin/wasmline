@@ -31,13 +31,7 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
 
 ## 第一步：Gradle 之前必须预检
 
-本仓库通过 `gradlew` 进行构建或测试时，要求使用 **JetBrains Runtime 21**。
-
-仓库已记录的本机 JBR 路径为：
-
-```bash
-~/WuYa/tools/jbrsdk_jcef-21.0.9-osx-aarch64-b1163.94/Contents/Home
-```
+本仓库的 Gradle 构建至少要求 **Java 21**；其中 Compose Desktop / 部分桌面 sample 明确配置了 `JvmVendorSpec.JETBRAINS`，因此本技能统一按 **JBR 21** 作为预检标准。
 
 先运行：
 
@@ -45,12 +39,14 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
 bash ./.github/skills/wasmline/scripts/skill_preflight.sh
 ```
 
-约束如下：
+预检重点如下：
 
-- 不要在未确认 JBR 的情况下直接运行 Gradle。
+- 不要在未确认 Java/JBR 版本的情况下直接运行 Gradle。
+- 预检脚本会优先检查当前 `JAVA_HOME`，必要时再结合 `java -version`、`<JAVA_HOME>/release` 与 shell 配置中的 JBR/JAVA_HOME 线索进行只读判断。
 - 预检脚本会只读检查 `~/.zshrc`、`~/.bashrc`、`~/.bash_profile` 中的 JBR/JAVA_HOME 线索。
 - 这些 shell 配置文件只能读取，不能修改。
-- 如果当前 shell 未切到 JBR 21，应先告知用户并停止后续 Gradle 编译/测试动作。
+- 如果当前 shell 未切到可用的 JBR 21，应先告知用户并停止后续 Gradle 编译/测试动作。
+- 不要把任何开发机上的本地 JBR 安装路径硬编码进技能文档、脚本或仓库说明中。
 
 如果任务涉及 Compose Desktop 或桌面 native 产物，再运行：
 
@@ -172,9 +168,11 @@ python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
 
 如果需求涉及 Compose Desktop、JNI 或本地库，优先看：
 
-- `wasmline-multiplatform/wasmline/ZigBuild.md`
+- `wasmline-multiplatform/wasmline/zig-build.md`
+- `wasmline-multiplatform/wasmline/build.zig`
 - `wasmline-multiplatform/wasmline-sample/multiplatform/shared/src/desktopMain/Requirement.md`
-- `wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/`
+- `wasmline-multiplatform/wasmline/src/jniMain/native/`
+- `wasmline-multiplatform/wasmline/src/jvmMain/native/`
 
 典型构建命令：
 
@@ -182,6 +180,11 @@ python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
 cd wasmline-multiplatform/wasmline
 zig build --release=small -p src/jvmMain/resources
 ```
+
+补充说明：
+
+- `src/jvmMain/resources/jni/` 更适合作为 Zig 安装输出目录，而不是稳定的源码阅读入口。
+- 默认输出会落到 `zig-out/jni/`；如果显式传入 `-p <目录>`，则 JNI 产物会安装到该目录下的 `jni/` 子目录。
 
 仓库文档要求 Zig 版本为 **0.15.1**。
 
@@ -229,16 +232,17 @@ cd wasmline-multiplatform
 
 第一次接触仓库时，建议按以下顺序阅读：
 
-1. `AGENTS.md`
-2. `README_zh.md`
+1. `README_zh.md`
+2. `README.md`
 3. `.github/skills/wasmline/SKILL.md`
-4. `scripts/init.sh`
-5. `wasmline-multiplatform/settings.gradle.kts`
-6. `wasmline-core/`
-7. `wasmline-multiplatform/wasmline/`
-8. `wasmline-multiplatform/wasmline-kotlin-plugin/`
-9. `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
-10. `structs/ir-plan.md`
+4. `.github/skills/wasmline/scripts/skill_preflight.sh`
+5. `scripts/init.sh`
+6. `wasmline-multiplatform/settings.gradle.kts`
+7. `wasmline-core/`
+8. `wasmline-multiplatform/wasmline/`
+9. `wasmline-multiplatform/wasmline-kotlin-plugin/`
+10. `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
+11. `structs/ir-plan.md`
 
 ## 工作原则
 
