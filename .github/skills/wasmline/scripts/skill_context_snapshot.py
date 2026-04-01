@@ -36,7 +36,7 @@ KEY_FILES = [
     "wasmline-multiplatform/wasmline/build.gradle.kts",
     "wasmline-multiplatform/wasmline-kotlin-plugin/build.gradle.kts",
     "wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md",
-    "structs/ir-plan.md",
+    ".github/plans/ir-plan.md",
     "wasmline-core/src/Engine.cpp",
     "wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/GeneratedBridge.kt",
     "wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt",
@@ -249,7 +249,7 @@ def write_snapshot() -> None:
     lines.append("1. 先运行 `bash ./.github/skills/wasmline/scripts/skill_preflight.sh`，确认 JBR 21 与平台资产。")
     lines.append("2. 再运行本脚本，生成一份当前仓库快照。")
     lines.append("3. 每次进入新需求或完成一轮修改后，重新生成快照，重点比对 `当前改动文件` 与 `变更 diff 预览`。")
-    lines.append("4. 若问题落在 IR/plugin，请优先回看 `wasmline-kotlin-plugin` 与 `structs/ir-plan.md`。")
+    lines.append("4. 若问题落在 IR/plugin，请优先回看 `wasmline-kotlin-plugin` 与 `.github/plans/ir-plan.md`。")
     lines.append("")
 
     content = "\n".join(lines).rstrip() + "\n"
