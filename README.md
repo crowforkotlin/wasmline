@@ -197,7 +197,7 @@ If you are working on Wasmline itself, the most useful entry points are:
 - `wasmline-multiplatform/wasmline-kotlin-plugin` — Kotlin compiler plugin
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_en.md` — IR box testData guide
 - `.github/skills/wasmline/SKILL.md` — repository workflow, preflight, and module routing guide
-- `.github/plans/ir-plan.md` — current IR plan and implementation notes
+- `.github/plans/ir-planv2.md` — current IR / runtime / platform V2 plan and implementation notes
 
 ## Resources
 

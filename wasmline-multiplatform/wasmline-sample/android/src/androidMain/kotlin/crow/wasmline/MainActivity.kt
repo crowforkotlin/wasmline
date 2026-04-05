@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import crow.wasmline.link
 import crow.wasmline.extensions.Data
 import crow.wasmline.extensions.info
+import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
 import crow.wasmline.sample.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +80,11 @@ class MainActivity : AppCompatActivity() {
                             "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
                         }
                         val module = loadState.wasmline
+                        module.bind(object : EchoService {
+                            override fun echo() {
+                                "[Android] Plugin invoked host echo()".info()
+                            }
+                        })
                         startMs = System.currentTimeMillis()
                         val result = module.link<TimeSyncService>().timeSync(data)
                         val duration = System.currentTimeMillis() - startMs

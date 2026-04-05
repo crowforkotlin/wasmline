@@ -40,29 +40,29 @@ FILE fqName:test.box fileName:/zeroArgUnitBridgeRoundTrip.kt
           ARG <this>: CALL 'private final fun <get-sink> (): kotlin.collections.MutableList<kotlin.String> declared in test.box.HeartbeatServiceImpl' type=kotlin.collections.MutableList<kotlin.String> origin=PLUSEQ
             ARG <this>: GET_VAR '<this>: test.box.HeartbeatServiceImpl declared in test.box.HeartbeatServiceImpl.ping' type=test.box.HeartbeatServiceImpl origin=IMPLICIT_ARGUMENT
           ARG element: CONST String type=kotlin.String value="ping"
-  CLASS CLASS name:HeartbeatService_WasmlineBridge modality:FINAL visibility:internal superTypes:[test.box.HeartbeatService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+  CLASS CLASS name:HeartbeatService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.box.HeartbeatService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.HeartbeatService_WasmlineBridge
     FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
     FIELD name:implementation type:test.box.HeartbeatService? visibility:private [final]
-    CONSTRUCTOR visibility:internal returnType:test.box.HeartbeatService_WasmlineBridge [primary]
+    CONSTRUCTOR visibility:public returnType:test.box.HeartbeatService_WasmlineBridge [primary]
       VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
       BLOCK_BODY
         DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:HeartbeatService_WasmlineBridge modality:FINAL visibility:internal superTypes:[test.box.HeartbeatService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:HeartbeatService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.box.HeartbeatService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
         SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.box.HeartbeatService_WasmlineBridge' type=kotlin.Unit origin=null
           receiver: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge' type=test.box.HeartbeatService_WasmlineBridge origin=null
           value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.box.HeartbeatService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
         SET_FIELD 'FIELD name:implementation type:test.box.HeartbeatService? visibility:private [final] declared in test.box.HeartbeatService_WasmlineBridge' type=kotlin.Unit origin=null
           receiver: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge' type=test.box.HeartbeatService_WasmlineBridge origin=null
           value: CONST Null type=kotlin.Nothing? value=null
-    CONSTRUCTOR visibility:internal returnType:test.box.HeartbeatService_WasmlineBridge [primary]
+    CONSTRUCTOR visibility:public returnType:test.box.HeartbeatService_WasmlineBridge [primary]
       VALUE_PARAMETER kind:Regular name:implementation index:0 type:test.box.HeartbeatService
       BLOCK_BODY
         DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:HeartbeatService_WasmlineBridge modality:FINAL visibility:internal superTypes:[test.box.HeartbeatService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:HeartbeatService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.box.HeartbeatService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
         SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.box.HeartbeatService_WasmlineBridge' type=kotlin.Unit origin=null
           receiver: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge' type=test.box.HeartbeatService_WasmlineBridge origin=null
-          value: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:UnlinkedWasmlineEndpoint modality:FINAL visibility:public superTypes:[crow.wasmline.internal.bridge.WasmlineEndpoint]' type=crow.wasmline.internal.bridge.UnlinkedWasmlineEndpoint
+          value: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:UnlinkedWasmlineEndpoint modality:FINAL visibility:internal superTypes:[crow.wasmline.internal.bridge.WasmlineEndpoint]' type=crow.wasmline.internal.bridge.UnlinkedWasmlineEndpoint
         SET_FIELD 'FIELD name:implementation type:test.box.HeartbeatService? visibility:private [final] declared in test.box.HeartbeatService_WasmlineBridge' type=kotlin.Unit origin=null
           receiver: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge' type=test.box.HeartbeatService_WasmlineBridge origin=null
           value: GET_VAR 'implementation: test.box.HeartbeatService declared in test.box.HeartbeatService_WasmlineBridge.<init>' type=test.box.HeartbeatService origin=null
@@ -72,10 +72,18 @@ FILE fqName:test.box fileName:/zeroArgUnitBridgeRoundTrip.kt
       overridden:
         public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
       BLOCK_BODY
-        CALL 'public final fun bindGeneratedBridgeAction (action: kotlin.String, dispatcher: crow.wasmline.internal.bridge.WasmlineGeneratedBridge, registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge' type=kotlin.Unit origin=null
-          ARG action: CONST String type=kotlin.String value="test.box.HeartbeatService#ping"
-          ARG dispatcher: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge.bind' type=test.box.HeartbeatService_WasmlineBridge origin=null
-          ARG registerAction: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.box.HeartbeatService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.box.HeartbeatService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.box.HeartbeatService#ping"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=R of kotlin.Function2 from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.HeartbeatService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+                    ARG <this>: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge.bind' type=test.box.HeartbeatService_WasmlineBridge origin=null
+                    ARG p1: CONST String type=kotlin.String value="test.box.HeartbeatService#ping"
+                    ARG p2: GET_VAR 'payload: kotlin.ByteArray declared in test.box.HeartbeatService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
     FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.box.HeartbeatService_WasmlineBridge
       VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
@@ -91,14 +99,14 @@ FILE fqName:test.box fileName:/zeroArgUnitBridgeRoundTrip.kt
             then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.HeartbeatService_WasmlineBridge'
               BLOCK type=kotlin.ByteArray origin=null
                 CALL 'public abstract fun ping (): kotlin.Unit declared in test.box.HeartbeatService' type=kotlin.Unit origin=null
-                  ARG <this>: CALL 'public final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.box.HeartbeatService origin=null
+                  ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.box.HeartbeatService origin=null
                     TYPE_ARG T: test.box.HeartbeatService
                     ARG implementation: GET_FIELD 'FIELD name:implementation type:test.box.HeartbeatService? visibility:private [final] declared in test.box.HeartbeatService_WasmlineBridge' type=test.box.HeartbeatService? origin=null
                       receiver: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge.invoke' type=test.box.HeartbeatService_WasmlineBridge origin=null
                     ARG contractId: CONST String type=kotlin.String value="test.box.HeartbeatService"
-                CALL 'public final fun emptyPayload (): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                CALL 'internal final fun emptyPayload (): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
         RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.box.HeartbeatService_WasmlineBridge'
-          CALL 'public final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+          CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
             ARG contractId: CONST String type=kotlin.String value="test.box.HeartbeatService"
             ARG action: GET_VAR 'action: kotlin.String declared in test.box.HeartbeatService_WasmlineBridge.invoke' type=kotlin.String origin=null
     FUN name:ping visibility:public modality:FINAL returnType:kotlin.Unit
@@ -111,7 +119,7 @@ FILE fqName:test.box fileName:/zeroArgUnitBridgeRoundTrip.kt
             ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.box.HeartbeatService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
               receiver: GET_VAR '<this>: test.box.HeartbeatService_WasmlineBridge declared in test.box.HeartbeatService_WasmlineBridge.ping' type=test.box.HeartbeatService_WasmlineBridge origin=null
             ARG action: CONST String type=kotlin.String value="test.box.HeartbeatService#ping"
-            ARG payload: CALL 'public final fun emptyPayload (): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+            ARG payload: CALL 'internal final fun emptyPayload (): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
   CLASS INTERFACE name:HeartbeatService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.box.HeartbeatService
     FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]

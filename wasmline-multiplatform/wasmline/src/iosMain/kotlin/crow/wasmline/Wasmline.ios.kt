@@ -6,8 +6,6 @@ import crow.wasmline.native.c.*
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import kotlinx.cinterop.*
 import platform.Foundation.NSFileManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 // 必须导入我们在 common 定义的类
 // 假设 WasmlineLoadState 和 WasmlineHostDispatcher 在 commonMain 定义了
@@ -20,66 +18,40 @@ actual class Wasmline actual constructor(val moduleKey: String) {
             wasmline_init_engine()
         }
 
-        actual fun release() {
+        actual fun shutdown() {
             wasmline_release_engine()
         }
 
         /**
          * 加载模块 (iOS 实现)
          */
-        actual suspend fun load(
+        actual fun load(
             filepath: String,
             cacheFilepath: String?,
             threadSafe: Boolean
-        ): WasmlineLoadState = withContext(Dispatchers.Default) {
+        ): WasmlineLoadState {
             val fileManager = NSFileManager.defaultManager
             val key = filepath
             val isUnsafe = !threadSafe
-            if (cacheFilepath != null && fileManager.fileExistsAtPath(cacheFilepath)) {
-                val success = wasmline_load_module(key, filepath, true, isUnsafe)
-                if (success) {
-                    return@withContext WasmlineLoadState.Success(
-                        code = WasmlineLoadState.CODE_SUCCESS_AOT,
-                        wasmline = Wasmline(moduleKey = key)
-                    )
-                } else {
-                    // 加载缓存失败，删除坏缓存
-                    fileManager.removeItemAtPath(cacheFilepath, null)
-                }
-            }
-
-            // 2. 检查源文件是否存在
-            if (!fileManager.fileExistsAtPath(filepath)) {
-                return@withContext WasmlineLoadState.Failure(
-                    code = WasmlineLoadState.CODE_FAILURE,
-                    cause = "[Wasmline] Load failure, file not found: $filepath"
-                )
-            }
-
-            // 3. JIT 加载 (.wasm) -> 对应 nativeLoadJit
-            // 在 C 接口中，isJit=true
-            val jitSuccess = wasmline_load_module(key, filepath, true, isUnsafe)
-
-            if (!jitSuccess) {
-                return@withContext WasmlineLoadState.Failure(
-                    code = WasmlineLoadState.CODE_FAILURE,
-                    cause = "[Wasmline] Native JIT load failed for: $filepath"
-                )
-            }
-
-            // 4. 保存缓存
-            // 注意：之前的 C 接口定义中似乎漏掉了 wasmline_save_cache。
-            // 如果你的 C 接口里有这个函数，请在这里调用。
-            // 暂时注释掉，等你补充 C 接口后开启：
-            /*
-            if (cacheFilepath != null) {
-                wasmline_save_module_cache(key, cacheFilepath)
-            }
-            */
-
-            return@withContext WasmlineLoadState.Success(
-                code = WasmlineLoadState.CODE_SUCCESS_JIT,
-                wasmline = Wasmline(moduleKey = key)
+            return loadWasmlineModule(
+                sourcePath = filepath,
+                cachePath = cacheFilepath,
+                key = key,
+                createWasmline = ::Wasmline,
+                fileExists = fileManager::fileExistsAtPath,
+                deleteFile = { path -> fileManager.removeItemAtPath(path, null) },
+                loadAot = { moduleKey, path ->
+                    wasmline_load_module(moduleKey, path, false, isUnsafe)
+                },
+                loadJit = { moduleKey, path ->
+                    wasmline_load_module(moduleKey, path, true, isUnsafe)
+                },
+                saveCache = { moduleKey, path ->
+                    wasmline_save_cache(moduleKey, path, isUnsafe)
+                },
+                jitFailureMessage = { path ->
+                    "[Wasmline] Native JIT load failed for: $path"
+                },
             )
         }
     }
@@ -89,7 +61,7 @@ actual class Wasmline actual constructor(val moduleKey: String) {
      * iOS 需要传递静态 C 函数指针
      */
 
-    actual internal suspend fun setOutbound(dispatcher: WasmlineHostDispatcher): Unit = withContext(Dispatchers.Default) {
+    actual internal fun setOutbound(dispatcher: WasmlineHostDispatcher) {
         // 保存 dispatcher 到全局映射中，以便 C 回调时能找到
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
 
@@ -101,47 +73,41 @@ actual class Wasmline actual constructor(val moduleKey: String) {
     /**
      * 执行 Wasm 函数
      */
-    actual internal suspend fun call(action: String, inputBytes: ByteArray): ByteArray = withContext(Dispatchers.Default) {
-        memScoped {
-            val keyCstr = moduleKey
-            val actionCstr = action
-            val dataSize = inputBytes.size.toULong()
+    actual internal fun call(action: String, inputBytes: ByteArray): ByteArray = memScoped {
+        val keyCstr = moduleKey
+        val actionCstr = action
+        val dataSize = inputBytes.size.toULong()
 
-            // 1. 分配一个 ULongVar 变量，用来接收 C 返回的长度
-            val outLen = alloc<ULongVar>()
+        val outLen = alloc<ULongVar>()
 
-            inputBytes.usePinned { pinned ->
-                val dataPtr = if (inputBytes.isNotEmpty()) pinned.addressOf(0) else null
+        inputBytes.usePinned { pinned ->
+            val dataPtr = if (inputBytes.isNotEmpty()) pinned.addressOf(0) else null
+            val resultPtr = wasmline_invoke_inbound(
+                keyCstr,
+                actionCstr,
+                action.length.toULong(),
+                dataPtr,
+                dataSize,
+                outLen.ptr,
+            )
 
-                // 2. 传入 outLen.ptr
-                val resultPtr = wasmline_invoke_inbound(
-                    keyCstr,
-                    actionCstr,
-                    action.length.toULong(),
-                    dataPtr,
-                    dataSize,
-                    outLen.ptr // <--- 传指针进去接收长度
-                )
-
-                // 3. 读取长度
-                val length = outLen.value.toInt()
-
-                if (resultPtr == null || length == 0) {
-                    return@memScoped byteArrayOf()
-                }
-
-                // 4. 根据长度读取二进制数据 (readBytes 是二进制安全的)
-                val resultArray = resultPtr.readBytes(length)
-
-                // 5. 释放 C 内存
-                wasmline_free_memory(resultPtr)
-
-                return@memScoped resultArray
+            if (resultPtr == null) {
+                return@memScoped byteArrayOf()
             }
+
+            val length = outLen.value.toInt()
+            if (length == 0) {
+                wasmline_free_memory(resultPtr)
+                return@memScoped byteArrayOf()
+            }
+
+            val resultArray = resultPtr.readBytes(length)
+            wasmline_free_memory(resultPtr)
+            resultArray
         }
     }
 
-    actual fun release() {
+    actual fun close() {
         WasmlineCallbackRegistry.unregister(moduleKey)
         wasmline_release_module(moduleKey)
     }

@@ -1,12 +1,9 @@
+
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.UnlinkedWasmlineEndpoint
-import crow.wasmline.internal.bridge.WasmlineBindingScope
 import crow.wasmline.internal.bridge.WasmlineEndpoint
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
-import crow.wasmline.internal.bridge.bindGeneratedBridgeAction
-import crow.wasmline.internal.bridge.requireGeneratedImplementation
-import crow.wasmline.internal.bridge.unknownGeneratedAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -34,21 +31,42 @@ class WasmlineServiceRuntimeTest {
         }
 
         override fun bind(registerAction: (String, (ByteArray) -> ByteArray) -> Unit) {
-            bindGeneratedBridgeAction(ECHO_ACTION, this, registerAction)
+            registerAction(ECHO_ACTION) { payload ->
+                invoke(ECHO_ACTION, payload)
+            }
         }
 
         override fun invoke(action: String, payload: ByteArray): ByteArray {
             if (action != ECHO_ACTION) {
-                unknownGeneratedAction(CONTRACT_ID, action)
+                error("Unknown Wasmline action '$action' for generated bridge $CONTRACT_ID.")
             }
-            val target = requireGeneratedImplementation(implementation, CONTRACT_ID)
+            val target = implementation ?: error(
+                "Generated Wasmline bridge for $CONTRACT_ID does not hold a bound implementation. " +
+                    "Did the compiler plugin wire bind() correctly?",
+            )
             return target.echo(payload.decodeToString()).encodeToByteArray()
+        }
+    }
+
+    private class TestBindingScope {
+        private val handlers = linkedMapOf<String, (ByteArray) -> ByteArray>()
+
+        fun bind(action: String, handler: (ByteArray) -> ByteArray) {
+            check(action !in handlers) { "Action '$action' is already bound in this Wasmline binding scope." }
+            handlers[action] = handler
+        }
+
+        fun endpoint(): WasmlineEndpoint = object : WasmlineEndpoint {
+            override fun invoke(action: String, payload: ByteArray): ByteArray {
+                val handler = handlers[action] ?: error("No Wasmline action bound for '$action'.")
+                return handler(payload)
+            }
         }
     }
 
     @Test
     fun bindAndLinkRoundTripThroughLocalEndpoint() {
-        val scope = WasmlineBindingScope().apply {
+        val scope = TestBindingScope().apply {
             EchoServiceBridge(EchoServiceImpl()).bind { action, handler ->
                 bind(action, handler)
             }
@@ -60,10 +78,10 @@ class WasmlineServiceRuntimeTest {
 
     @Test
     fun repeatedBridgeBindingIsIdempotentAcrossIndependentScopes() {
-        val firstScope = WasmlineBindingScope().apply {
+        val firstScope = TestBindingScope().apply {
             EchoServiceBridge(EchoServiceImpl()).bind { action, handler -> bind(action, handler) }
         }
-        val secondScope = WasmlineBindingScope().apply {
+        val secondScope = TestBindingScope().apply {
             EchoServiceBridge(EchoServiceImpl()).bind { action, handler -> bind(action, handler) }
         }
 
@@ -73,7 +91,7 @@ class WasmlineServiceRuntimeTest {
 
     @Test
     fun duplicateActionFailsFast() {
-        val scope = WasmlineBindingScope()
+        val scope = TestBindingScope()
         scope.bind("sample#ping") { byteArrayOf(1) }
 
         val error = assertFailsWith<IllegalStateException> {

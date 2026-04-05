@@ -148,7 +148,7 @@ python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
 - `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt`
 - `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt`
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
-- `.github/plans/ir-plan.md`
+- `.github/plans/ir-planv2.md`
 
 要点：
 
@@ -242,7 +242,7 @@ cd wasmline-multiplatform
 8. `wasmline-multiplatform/wasmline/`
 9. `wasmline-multiplatform/wasmline-kotlin-plugin/`
 10. `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
-11. `.github/plans/ir-plan.md`
+11. `.github/plans/ir-planv2.md`
 
 ## 工作原则
 

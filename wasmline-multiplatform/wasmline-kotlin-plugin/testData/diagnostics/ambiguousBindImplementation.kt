@@ -20,7 +20,7 @@ class MultiServiceImpl : AlphaService, BetaService {
     override fun beta(payload: ByteArray): ByteArray = payload
 }
 
-suspend fun trigger(wasmline: Wasmline, implementation: MultiServiceImpl) {
+fun trigger(wasmline: Wasmline, implementation: MultiServiceImpl) {
     wasmline.bind(implementation)
 }
 

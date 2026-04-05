@@ -197,7 +197,7 @@ Wasmline 当前建议使用 **Kotlin 2.3.20-Beta1** 或更高版本，以获得�
 - `wasmline-multiplatform/wasmline-kotlin-plugin` —— Kotlin compiler plugin
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md` —— IR box testData 说明
 - `.github/skills/wasmline/SKILL.md` —— 仓库工作流、预检与模块定位说明
-- `.github/plans/ir-plan.md` —— 当前 IR 计划与实现记录
+- `.github/plans/ir-planv2.md` —— 当前 IR / runtime / platform V2 计划与实现记录
 
 ## 相关资源
 

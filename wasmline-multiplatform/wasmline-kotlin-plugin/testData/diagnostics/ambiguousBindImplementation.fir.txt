@@ -23,6 +23,6 @@ FILE: ambiguousBindImplementation.kt
         }
 
     }
-    public final suspend fun trigger(wasmline: R|crow/wasmline/Wasmline|, implementation: R|test/diagnostics/MultiServiceImpl|): R|kotlin/Unit| {
+    public final fun trigger(wasmline: R|crow/wasmline/Wasmline|, implementation: R|test/diagnostics/MultiServiceImpl|): R|kotlin/Unit| {
         R|<local>/wasmline|.R|crow/wasmline/bind|(R|<local>/implementation|)
     }

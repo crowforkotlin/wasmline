@@ -29,8 +29,8 @@ FILE: bindAsSelectsRequestedContract.kt
             super<R|kotlin/Any|>()
         }
 
-        @R|kotlin/Suppress|(names = vararg(String(unused))) public final suspend fun install(wasmline: R|crow/wasmline/Wasmline|, implementation: R|test/box/MultiServiceImpl|): R|kotlin/Unit| {
-            R|<local>/wasmline|.R|crow/wasmline/bindAs|<R|test/box/AlphaService|>(R|<local>/implementation|)
+        @R|kotlin/Suppress|(names = vararg(String(unused))) public final fun install(wasmline: R|crow/wasmline/Wasmline|, implementation: R|test/box/MultiServiceImpl|): R|kotlin/Unit| {
+            R|<local>/wasmline|.R|crow/wasmline/bind|<R|test/box/AlphaService|>(<getClass>(Q|test/box/AlphaService|), R|<local>/implementation|)
         }
 
     }
@@ -39,8 +39,8 @@ FILE: bindAsSelectsRequestedContract.kt
             super<R|kotlin/Any|>()
         }
 
-        @R|kotlin/Suppress|(names = vararg(String(unused))) public final suspend fun install(wasmline: R|crow/wasmline/Wasmline|, implementation: R|test/box/MultiServiceImpl|): R|kotlin/Unit| {
-            R|<local>/wasmline|.R|crow/wasmline/bindAs|<R|test/box/BetaService|>(R|<local>/implementation|)
+        @R|kotlin/Suppress|(names = vararg(String(unused))) public final fun install(wasmline: R|crow/wasmline/Wasmline|, implementation: R|test/box/MultiServiceImpl|): R|kotlin/Unit| {
+            R|<local>/wasmline|.R|crow/wasmline/bind|<R|test/box/BetaService|>(<getClass>(Q|test/box/BetaService|), R|<local>/implementation|)
         }
 
     }
@@ -103,7 +103,10 @@ FILE: bindAsSelectsRequestedContract.kt
         }
 
         when () {
-            R|<local>/alphaConstants|.R|SubstitutionOverride<kotlin/collections/Set.contains: R|kotlin/Boolean|>|(String(bindAs)) ->  {
+            R|<local>/alphaConstants|.R|kotlin/collections/any|<R|kotlin/String|>(<L> = any@fun <anonymous>(it: R|kotlin/String|): R|kotlin/Boolean| <inline=Inline, kind=UNKNOWN>  {
+                ^ ==(R|<local>/it|, String(bindAs))
+            }
+            ) ->  {
                 ^box String(Fail alphaStillReferencesBindAs)
             }
         }
@@ -134,7 +137,10 @@ FILE: bindAsSelectsRequestedContract.kt
         }
 
         when () {
-            R|<local>/betaConstants|.R|SubstitutionOverride<kotlin/collections/Set.contains: R|kotlin/Boolean|>|(String(bindAs)) ->  {
+            R|<local>/betaConstants|.R|kotlin/collections/any|<R|kotlin/String|>(<L> = any@fun <anonymous>(it: R|kotlin/String|): R|kotlin/Boolean| <inline=Inline, kind=UNKNOWN>  {
+                ^ ==(R|<local>/it|, String(bindAs))
+            }
+            ) ->  {
                 ^box String(Fail betaStillReferencesBindAs)
             }
         }

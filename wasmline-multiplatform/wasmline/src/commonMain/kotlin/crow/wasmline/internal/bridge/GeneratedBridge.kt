@@ -9,12 +9,14 @@ package crow.wasmline.internal.bridge
  * both as the linked proxy (typed contract calls -> endpoint.invoke) and as the binder dispatcher
  * (action,payload -> implementation method).
  */
-interface WasmlineGeneratedBridge : (String, ByteArray) -> ByteArray {
+@PublishedApi
+internal interface WasmlineGeneratedBridge : (String, ByteArray) -> ByteArray {
     fun bind(registerAction: (String, (ByteArray) -> ByteArray) -> Unit)
 }
 
 /** Fails fast when a generated bridge is used before being linked to a live endpoint. */
-object UnlinkedWasmlineEndpoint : WasmlineEndpoint {
+@PublishedApi
+internal object UnlinkedWasmlineEndpoint : WasmlineEndpoint {
     override fun invoke(action: String, payload: ByteArray): ByteArray {
         error(
             "Wasmline generated bridge is not linked to a transport endpoint. " +
@@ -23,31 +25,19 @@ object UnlinkedWasmlineEndpoint : WasmlineEndpoint {
     }
 }
 
-/** Runtime helper shared by generated bridge classes when installing bind handlers. */
-@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
-fun bindGeneratedBridgeAction(
-    action: String,
-    dispatcher: WasmlineGeneratedBridge,
-    registerAction: (String, (ByteArray) -> ByteArray) -> Unit,
-) {
-    registerAction(action) { payload ->
-        dispatcher(action, payload)
-    }
-}
-
-
 /** Fails fast when a generated binder bridge is invoked without a concrete implementation. */
-@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
-fun <T : Any> requireGeneratedImplementation(implementation: T?, contractId: String): T {
+@PublishedApi
+internal fun <T : Any> requireGeneratedImplementation(implementation: T?, contractId: String): T {
     return implementation ?: error(
         "Generated Wasmline bridge for $contractId does not hold a bound implementation. " +
-            "Did the compiler plugin wire bind()/bindAs() correctly?",
+            "Did the compiler plugin wire bind() correctly?",
     )
 }
 
 /** Fails fast for unknown generated actions reaching a bridge dispatcher. */
-@Deprecated("Wasmline compiler internal API", level = DeprecationLevel.HIDDEN)
-fun unknownGeneratedAction(contractId: String, action: String): Nothing {
+@PublishedApi
+internal fun unknownGeneratedAction(contractId: String, action: String): Nothing {
     error("Unknown Wasmline action '$action' for generated bridge $contractId.")
 }
+
 

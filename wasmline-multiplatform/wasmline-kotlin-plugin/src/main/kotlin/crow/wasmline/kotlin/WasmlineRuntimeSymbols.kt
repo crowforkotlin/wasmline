@@ -41,11 +41,6 @@ internal class WasmlineRuntimeSymbols(
         functionName = "emptyPayload",
         regularParameterCount = 0,
     )
-    val bindGeneratedBridgeActionFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
-        packageName = SPI_PACKAGE,
-        functionName = "bindGeneratedBridgeAction",
-        regularParameterCount = 3,
-    )
     val requireGeneratedImplementationFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
         packageName = SPI_PACKAGE,
         functionName = "requireGeneratedImplementation",
@@ -70,12 +65,6 @@ internal class WasmlineRuntimeSymbols(
     ) { function ->
         ((function.parameters.firstOrNull { it.kind == IrParameterKind.Regular }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == pluginContext.irBuiltIns.kClassClass
     }
-    val hostBindAsFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
-        packageName = MAIN_PACKAGE,
-        functionName = "bindAs",
-        extensionReceiverClassName = "Wasmline",
-        regularParameterCount = 1,
-    )
     val topLevelBindSingleFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
         callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("bind")),
         regularParameterCount = 1,
@@ -86,10 +75,6 @@ internal class WasmlineRuntimeSymbols(
     ) { function ->
         ((function.parameters.firstOrNull { it.kind == IrParameterKind.Regular }?.type as? IrSimpleType)?.classifier as? IrClassSymbol) == pluginContext.irBuiltIns.kClassClass
     }
-    val topLevelBindAsFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
-        callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("bindAs")),
-        regularParameterCount = 1,
-    )
     val hostLinkFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
         packageName = MAIN_PACKAGE,
         functionName = "link",
@@ -133,14 +118,6 @@ internal class WasmlineRuntimeSymbols(
         regularParameterCount = 1,
     )
 
-    fun isHostBindAsCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesExtensionFunction(
-        symbol = symbol,
-        resolvedSymbol = hostBindAsFunction,
-        functionName = "bindAs",
-        extensionReceiverClass = wasmlineClass ?: return false,
-        regularParameterCount = 1,
-    )
-
     fun isTopLevelBindContractCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesTopLevelFunction(
         symbol = symbol,
         resolvedSymbol = topLevelBindContractFunction,
@@ -154,13 +131,6 @@ internal class WasmlineRuntimeSymbols(
         symbol = symbol,
         resolvedSymbol = topLevelBindSingleFunction,
         functionName = "bind",
-        regularParameterCount = 1,
-    )
-
-    fun isTopLevelBindAsCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesTopLevelFunction(
-        symbol = symbol,
-        resolvedSymbol = topLevelBindAsFunction,
-        functionName = "bindAs",
         regularParameterCount = 1,
     )
 

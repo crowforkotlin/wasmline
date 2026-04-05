@@ -13,19 +13,25 @@ class WasmlineHostApiCompileTest {
     }
 
     @Suppress("UNUSED_VARIABLE")
-    private suspend fun compileAgainstHostApi(
+    private fun compileAgainstHostApi(
         wasmline: Wasmline,
         implementation: EchoService,
         contract: KClass<EchoService> = EchoService::class,
     ) {
+        val loadState = Wasmline.load(filepath = "plugin.wasm")
+
+        Wasmline.init()
+        Wasmline.shutdown()
+
         wasmline.bind(implementation)
         wasmline.bind(contract, implementation)
-        wasmline.bindAs<EchoService>(implementation)
 
         val linked = wasmline.link<EchoService>()
+
+        wasmline.close()
     }
 
-    private suspend fun compileAgainstConvenienceOverloads(wasmline: Wasmline) {
+    private fun compileAgainstConvenienceOverloads(wasmline: Wasmline) {
         compileAgainstHostApi(wasmline, EchoServiceImpl())
     }
 }

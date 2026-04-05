@@ -6,7 +6,7 @@ package test.box
 
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineService
-import crow.wasmline.bindAs
+import crow.wasmline.bind
 import java.io.DataInputStream
 
 interface AlphaService : WasmlineService {
@@ -25,15 +25,15 @@ private class MultiServiceImpl : AlphaService, BetaService {
 
 private object AlphaBinding {
     @Suppress("unused")
-    suspend fun install(wasmline: Wasmline, implementation: MultiServiceImpl) {
-        wasmline.bindAs<AlphaService>(implementation)
+    fun install(wasmline: Wasmline, implementation: MultiServiceImpl) {
+        wasmline.bind(AlphaService::class, implementation)
     }
 }
 
 private object BetaBinding {
     @Suppress("unused")
-    suspend fun install(wasmline: Wasmline, implementation: MultiServiceImpl) {
-        wasmline.bindAs<BetaService>(implementation)
+    fun install(wasmline: Wasmline, implementation: MultiServiceImpl) {
+        wasmline.bind(BetaService::class, implementation)
     }
 }
 
@@ -65,7 +65,7 @@ fun box(): String {
     if ("bindGenerated" !in alphaConstants) {
         return "Fail alphaMissingBindGenerated"
     }
-    if ("bindAs" in alphaConstants) {
+    if (alphaConstants.any { it == "bindAs" }) {
         return "Fail alphaStillReferencesBindAs"
     }
     if (alphaConstants.none { it.contains("AlphaService_WasmlineBridge") }) {
@@ -79,7 +79,7 @@ fun box(): String {
     if ("bindGenerated" !in betaConstants) {
         return "Fail betaMissingBindGenerated"
     }
-    if ("bindAs" in betaConstants) {
+    if (betaConstants.any { it == "bindAs" }) {
         return "Fail betaStillReferencesBindAs"
     }
     if (betaConstants.none { it.contains("BetaService_WasmlineBridge") }) {
