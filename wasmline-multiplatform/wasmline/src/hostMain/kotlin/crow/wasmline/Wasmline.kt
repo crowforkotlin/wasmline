@@ -4,14 +4,19 @@ package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 
-expect class Wasmline(moduleKey: String) {
+expect class Wasmline internal constructor(moduleKey: String) {
 
 
     @Suppress("unused")
     companion object {
 
         /**
-         * 加载模块
+         * Runtime-level local artifact loading entrypoint.
+         *
+         * Host-facing package/manifest/download workflows should prefer the
+         * `wasmline-loader` module, while this API remains the direct runtime
+         * bridge for prepared local `.cwasm` / `.pwasm` artifacts.
+         *
          * @param filepath 预编译产物路径，仅支持 `.cwasm` 或 `.pwasm`
          */
         fun load(filepath: String, threadSafe: Boolean = false): WasmlineLoadState

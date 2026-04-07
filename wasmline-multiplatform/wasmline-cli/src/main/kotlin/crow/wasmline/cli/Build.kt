@@ -12,11 +12,10 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.long
-import crow.wasmline.cli.BuildConfig
 import crow.wasmline.cli.extensions.baseJson
 import crow.wasmline.loader.internal.crypto.Ed25519
-import crow.wasmline.model.SignedManifestEnvelope
-import crow.wasmline.model.WasmlineManifest
+import crow.wasmline.loader.model.SignedManifestEnvelope
+import crow.wasmline.loader.model.WasmlineManifest
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.decodeHex

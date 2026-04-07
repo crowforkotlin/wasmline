@@ -6,7 +6,7 @@ import crow.wasmline.extensions.loadNativeLibrary
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import java.io.File
 
-actual class Wasmline actual constructor(val moduleKey: String) {
+actual class Wasmline actual internal constructor(private val moduleKey: String) {
 
     actual companion object {
 
@@ -17,21 +17,23 @@ actual class Wasmline actual constructor(val moduleKey: String) {
          * @param filepath 预编译产物路径，仅支持 .cwasm 或 .pwasm
          */
         actual fun load(filepath: String, threadSafe: Boolean): WasmlineLoadState {
-            return WasmlineRuntimeLoader.load(
-                request = WasmlineLocalLoadRequest(
-                    artifactPath = filepath,
-                    threadSafe = threadSafe,
-                ),
-                platform = object : WasmlinePlatformLoader {
-                    override fun createWasmline(key: String): Wasmline = Wasmline(key)
+            return WasmlineLocalArtifactBridge.load(
+                artifactPath = filepath,
+                platform = object : WasmlinePlatformArtifactBridge {
+                    override fun createWasmline(moduleKey: String): Wasmline = Wasmline(moduleKey)
 
-                    override fun normalizePath(path: String): String = File(path).absolutePath
+                    override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? {
+                        val artifactFile = File(path).absoluteFile
+                        if (!artifactFile.exists()) return null
+                        return ResolvedPrecompiledArtifact(
+                            artifactPath = artifactFile.path,
+                            moduleKey = artifactFile.path,
+                        )
+                    }
 
-                    override fun fileExists(path: String): Boolean = File(path).exists()
-
-                    override fun loadPrecompiled(key: String, path: String): Boolean {
-                        return if (threadSafe) nativeLoadAot(key = key, path = path)
-                        else nativeLoadAotUnsafe(key = key, path = path)
+                    override fun loadPrecompiled(moduleKey: String, path: String): Boolean {
+                        return if (threadSafe) nativeLoadAot(key = moduleKey, path = path)
+                        else nativeLoadAotUnsafe(key = moduleKey, path = path)
                     }
                 },
             )

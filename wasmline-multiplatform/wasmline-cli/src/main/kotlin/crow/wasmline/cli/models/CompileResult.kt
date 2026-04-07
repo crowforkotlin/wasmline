@@ -1,6 +1,6 @@
 package crow.wasmline.cli.models
 
-import crow.wasmline.model.WasmlineArtifact
+import crow.wasmline.loader.model.WasmlineArtifact
 import kotlinx.serialization.Serializable
 
 /**

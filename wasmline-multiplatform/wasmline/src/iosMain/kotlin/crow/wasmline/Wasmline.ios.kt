@@ -10,7 +10,7 @@ import platform.Foundation.NSFileManager
 // 必须导入我们在 common 定义的类
 // 假设 WasmlineLoadState 和 WasmlineHostDispatcher 在 commonMain 定义了
 
-actual class Wasmline actual constructor(val moduleKey: String) {
+actual class Wasmline actual internal constructor(private val moduleKey: String) {
 
     actual companion object {
 
@@ -31,18 +31,21 @@ actual class Wasmline actual constructor(val moduleKey: String) {
         ): WasmlineLoadState {
             val fileManager = NSFileManager.defaultManager
             val isUnsafe = !threadSafe
-            return WasmlineRuntimeLoader.load(
-                request = WasmlineLocalLoadRequest(
-                    artifactPath = filepath,
-                    threadSafe = threadSafe,
-                ),
-                platform = object : WasmlinePlatformLoader {
-                    override fun createWasmline(key: String): Wasmline = Wasmline(key)
+            return WasmlineLocalArtifactBridge.load(
+                artifactPath = filepath,
+                platform = object : WasmlinePlatformArtifactBridge {
+                    override fun createWasmline(moduleKey: String): Wasmline = Wasmline(moduleKey)
 
-                    override fun fileExists(path: String): Boolean = fileManager.fileExistsAtPath(path)
+                    override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? {
+                        if (!fileManager.fileExistsAtPath(path)) return null
+                        return ResolvedPrecompiledArtifact(
+                            artifactPath = path,
+                            moduleKey = path,
+                        )
+                    }
 
-                    override fun loadPrecompiled(key: String, path: String): Boolean {
-                        return wasmline_load_module(key, path, isUnsafe)
+                    override fun loadPrecompiled(moduleKey: String, path: String): Boolean {
+                        return wasmline_load_module(moduleKey, path, isUnsafe)
                     }
 
                     override fun loadFailureMessage(path: String): String {

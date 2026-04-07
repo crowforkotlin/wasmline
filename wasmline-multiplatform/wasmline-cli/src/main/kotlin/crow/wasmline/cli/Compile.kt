@@ -10,11 +10,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
-import crow.wasmline.cli.BuildConfig
 import crow.wasmline.cli.extensions.baseJson
 import crow.wasmline.cli.models.CompileResult
-import crow.wasmline.model.WasmlineArtifact
-import crow.wasmline.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineArtifact
+import crow.wasmline.loader.model.WasmlineArtifactType
 import java.io.File
 import java.security.MessageDigest
 import java.util.Locale

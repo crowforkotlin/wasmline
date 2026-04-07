@@ -41,14 +41,20 @@ kotlin {
                 implementation(libs.okio.core)
             }
         }
-        val jniMain by creating { dependsOn(other = commonMain) }
+        val hostMain by creating { dependsOn(other = commonMain) }
+        val jniMain by creating { dependsOn(other = hostMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
+        val iosMain by getting { dependsOn(other = hostMain) }
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
             }
+        }
+        val hostTest by creating { dependsOn(other = commonTest) }
+        val jvmTest by getting {
+            dependsOn(other = hostTest)
         }
     }
 }

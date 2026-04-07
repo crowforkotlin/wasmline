@@ -5,10 +5,10 @@ package crow.wasmline
 import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.extensions.Keys
 import crow.wasmline.extensions.printHeader
-import crow.wasmline.model.SignedManifestEnvelope
-import crow.wasmline.model.WasmlineArtifact
-import crow.wasmline.model.WasmlineArtifactType
-import crow.wasmline.model.WasmlineManifest
+import crow.wasmline.loader.model.SignedManifestEnvelope
+import crow.wasmline.loader.model.WasmlineArtifact
+import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineManifest
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
