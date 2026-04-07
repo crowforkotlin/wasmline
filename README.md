@@ -61,10 +61,12 @@ wasmline-multiplatform/
 
 ### Initialization
 
-Initialize the required platform assets:
+Initialize the required platform assets (pick one — all three are equivalent):
 
 ```zsh
-sh ./scripts/init.sh
+sh ./scripts/init.sh            # Bash (requires curl + tar/unzip)
+python3 ./scripts/init.py       # Python 3.9+ (no third-party deps)
+node ./scripts/init.mjs         # Node.js 18+ (no third-party deps)
 ```
 
 ### Build

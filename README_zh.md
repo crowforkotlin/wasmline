@@ -61,10 +61,12 @@ wasmline-multiplatform/
 
 ### 初始化
 
-初始化所需的平台资源：
+初始化所需的平台资源（三选一，功能等价）：
 
 ```zsh
-sh ./scripts/init.sh
+sh ./scripts/init.sh            # Bash（需要 curl + tar/unzip）
+python3 ./scripts/init.py       # Python 3.9+（无第三方依赖）
+node ./scripts/init.mjs         # Node.js 18+（无第三方依赖）
 ```
 
 ### 构建
