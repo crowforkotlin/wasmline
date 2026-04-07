@@ -12,9 +12,9 @@ expect class Wasmline(moduleKey: String) {
 
         /**
          * 加载模块
-         * @param filepath .wasm (源码) 或 .cwasm (缓存)
+         * @param filepath 预编译产物路径，仅支持 `.cwasm` 或 `.pwasm`
          */
-        fun load(filepath: String, cacheFilepath: String? = null, threadSafe: Boolean = false): WasmlineLoadState
+        fun load(filepath: String, threadSafe: Boolean = false): WasmlineLoadState
 
         /**
          * 初始化全局 Engine。

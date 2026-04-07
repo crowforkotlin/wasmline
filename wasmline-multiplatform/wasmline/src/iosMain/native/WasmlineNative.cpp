@@ -37,21 +37,14 @@ void wasmline_release_engine() {
     Api::releaseEngine();
 }
 
-bool wasmline_load_module(const char* key, const char* path, bool isJit, bool isUnsafe) {
+bool wasmline_load_module(const char* key, const char* path, bool isUnsafe) {
     if (isUnsafe) {
-        return Api::loadModuleUnsafe(std::string(key), std::string(path), isJit);
+        return Api::loadModuleUnsafe(std::string(key), std::string(path));
     } else {
-        return Api::loadModule(std::string(key), std::string(path), isJit);
+        return Api::loadModule(std::string(key), std::string(path));
     }
 }
 
-bool wasmline_save_cache(const char* key, const char* path, bool isUnsafe) {
-    if (isUnsafe) {
-        return Api::saveModuleCacheUnsafe(std::string(key), std::string(path));
-    } else {
-        return Api::saveModuleCache(std::string(key), std::string(path));
-    }
-}
 
 void wasmline_release_module(const char* key) {
     Api::releaseModule(std::string(key));

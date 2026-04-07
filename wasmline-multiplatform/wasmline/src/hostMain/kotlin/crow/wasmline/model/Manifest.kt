@@ -87,7 +87,7 @@ data class WasmlineManifest(
 /**
  * Represents a specific binary artifact within the manifest.
  *
- * @property type The type of the artifact (CWASM, PWASM, WASM).
+ * @property type The type of the artifact (CWASM, PWASM).
  * @property url Relative path (./lib.cwasm) or CDN address.
  * @property sha256 File integrity hash (Hex string).
  *  * @property targetCompilerVersion ABI compatibility check.
@@ -113,9 +113,8 @@ data class WasmlineArtifact(
 /**
  * Enumeration of supported artifact types.
  *
- * CWASM: AOT Compiled (CPU Bound, Fast).
- * PWASM: Pulley Bytecode (Portable, Interpreter).
- * WASM: Standard Wasm (Web / JIT).
+ * CWASM: AOT compiled native artifact.
+ * PWASM: Pulley bytecode artifact.
  *
  * 2026-01-22
  * @author crowforkotlin
@@ -123,6 +122,5 @@ data class WasmlineArtifact(
 @Serializable
 enum class WasmlineArtifactType {
     CWASM,
-    PWASM,
-    WASM
+    PWASM
 }

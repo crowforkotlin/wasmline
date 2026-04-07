@@ -38,23 +38,16 @@ namespace wasmline {
         Engine::getInstance().release();
     }
 
-    bool Api::loadModule(const std::string &key, const std::string &path, bool isJit) {
-        auto *mod = Module::getInstance().load(key, path, isJit);
+    bool Api::loadModule(const std::string &key, const std::string &path) {
+        auto *mod = Module::getInstance().load(key, path);
         return (mod != nullptr);
     }
 
-    bool Api::loadModuleUnsafe(const std::string &key, const std::string &path, bool isJit) {
-        auto *mod = Module::getInstance().loadUnsafe(key, path, isJit);
+    bool Api::loadModuleUnsafe(const std::string &key, const std::string &path) {
+        auto *mod = Module::getInstance().loadUnsafe(key, path);
         return (mod != nullptr);
     }
 
-    bool Api::saveModuleCache(const std::string &key, const std::string &path) {
-        return Module::getInstance().serialize(key, path);
-    }
-
-    bool Api::saveModuleCacheUnsafe(const std::string &key, const std::string &path) {
-        return Module::getInstance().serializeUnsafe(key, path);
-    }
 
     void Api::releaseModule(const std::string &key) {
         // 1. Remove associated session if exists

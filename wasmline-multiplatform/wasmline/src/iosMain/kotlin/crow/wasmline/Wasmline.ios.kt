@@ -27,30 +27,27 @@ actual class Wasmline actual constructor(val moduleKey: String) {
          */
         actual fun load(
             filepath: String,
-            cacheFilepath: String?,
             threadSafe: Boolean
         ): WasmlineLoadState {
             val fileManager = NSFileManager.defaultManager
-            val key = filepath
             val isUnsafe = !threadSafe
-            return loadWasmlineModule(
-                sourcePath = filepath,
-                cachePath = cacheFilepath,
-                key = key,
-                createWasmline = ::Wasmline,
-                fileExists = fileManager::fileExistsAtPath,
-                deleteFile = { path -> fileManager.removeItemAtPath(path, null) },
-                loadAot = { moduleKey, path ->
-                    wasmline_load_module(moduleKey, path, false, isUnsafe)
-                },
-                loadJit = { moduleKey, path ->
-                    wasmline_load_module(moduleKey, path, true, isUnsafe)
-                },
-                saveCache = { moduleKey, path ->
-                    wasmline_save_cache(moduleKey, path, isUnsafe)
-                },
-                jitFailureMessage = { path ->
-                    "[Wasmline] Native JIT load failed for: $path"
+            return WasmlineRuntimeLoader.load(
+                request = WasmlineLocalLoadRequest(
+                    artifactPath = filepath,
+                    threadSafe = threadSafe,
+                ),
+                platform = object : WasmlinePlatformLoader {
+                    override fun createWasmline(key: String): Wasmline = Wasmline(key)
+
+                    override fun fileExists(path: String): Boolean = fileManager.fileExistsAtPath(path)
+
+                    override fun loadPrecompiled(key: String, path: String): Boolean {
+                        return wasmline_load_module(key, path, isUnsafe)
+                    }
+
+                    override fun loadFailureMessage(path: String): String {
+                        return "[Wasmline] Native artifact load failed for: $path"
+                    }
                 },
             )
         }

@@ -35,34 +35,13 @@ Java_crow_wasmline_Wasmline_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadJit(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadModuleCommon(env, keyStr, pathStr, true, false);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadJitUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadModuleCommon(env, keyStr, pathStr, true, true);
-}
-
-JNIEXPORT jboolean JNICALL
 Java_crow_wasmline_Wasmline_nativeLoadAot(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadModuleCommon(env, keyStr, pathStr, false, false);
+    return loadPrecompiledModuleCommon(env, keyStr, pathStr, false);
 }
 
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmline_Wasmline_nativeLoadAotUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadModuleCommon(env, keyStr, pathStr, false, true);
-}
-
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeSaveCache(JNIEnv* env, jclass thiz, jstring keyStr, jstring outPathStr) {
-    return saveCacheCommon(env, keyStr, outPathStr, false);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeSaveCacheUnsafe(JNIEnv* env, jclass thiz, jstring keyStr, jstring outPathStr) {
-    return saveCacheCommon(env, keyStr, outPathStr, true);
+    return loadPrecompiledModuleCommon(env, keyStr, pathStr, true);
 }
 
 JNIEXPORT void JNICALL

@@ -61,11 +61,6 @@ class ManifestTest {
                     sha256 = "cafebabe87654321",
                     targetCompilerVersion = "wasmtime-17.0",
                     is64Bit = true
-                ),
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.WASM,
-                    url = "lib.wasm",
-                    sha256 = "abcdef0123456789"
                 )
             )
         )
@@ -280,8 +275,8 @@ class ManifestTest {
             buildTimestamp = 0L,
             artifacts = listOf(
                 WasmlineArtifact(
-                    type = WasmlineArtifactType.WASM,
-                    url = "lib.wasm",
+                    type = WasmlineArtifactType.PWASM,
+                    url = "lib.pwasm",
                     sha256 = "abc123"
                 )
             )
@@ -301,8 +296,8 @@ class ManifestTest {
         printHeader("Test: Artifact Optional Defaults")
 
         val artifact = WasmlineArtifact(
-            type = WasmlineArtifactType.WASM,
-            url = "lib.wasm",
+            type = WasmlineArtifactType.PWASM,
+            url = "lib.pwasm",
             sha256 = "abc123"
         )
 

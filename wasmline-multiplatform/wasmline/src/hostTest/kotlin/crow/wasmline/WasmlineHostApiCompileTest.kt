@@ -18,7 +18,7 @@ class WasmlineHostApiCompileTest {
         implementation: EchoService,
         contract: KClass<EchoService> = EchoService::class,
     ) {
-        val loadState = Wasmline.load(filepath = "plugin.wasm")
+        val loadState = Wasmline.load(filepath = "plugin.pwasm")
 
         Wasmline.init()
         Wasmline.shutdown()

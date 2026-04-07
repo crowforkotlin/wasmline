@@ -14,25 +14,22 @@ void wasmline_init_engine();
 void wasmline_release_engine();
 
 // 2. 模块加载
-bool wasmline_load_module(const char* key, const char* path, bool isJit, bool isUnsafe);
+bool wasmline_load_module(const char* key, const char* path, bool isUnsafe);
 
-// 3. 缓存保存
-bool wasmline_save_cache(const char* key, const char* path, bool isUnsafe);
-
-// 4. 释放模块
+// 3. 释放模块
 void wasmline_release_module(const char* key);
 
-// 5. 执行调用 (Inbound)
+// 4. 执行调用 (Inbound)
 char* wasmline_invoke_inbound(const char* key,
                               const char* action, size_t actionLen,
                               const void* data, // <--- 改成 void*
                               size_t dataLen,
                               size_t* outLen);
 
-// 6. 释放内存
+// 5. 释放内存
 void wasmline_free_memory(char* ptr);
 
-// 7. Outbound 回调
+// 6. Outbound 回调
 typedef char* (*OutboundCallback)(const char* action, size_t actionLen, const char* payload, size_t payloadLen);
 void wasmline_set_outbound_handler(const char* key, OutboundCallback callback);
 

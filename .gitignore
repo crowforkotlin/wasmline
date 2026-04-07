@@ -13,12 +13,15 @@
 *.wasm
 *.db
 *.tar.xz
+*.pbxuser
+*.xcworkspace
 
 **/.cxx/
 **/build/
 **/release/
 **/debug/
 **/.kotlin/
+**/.zig-out/
 **/.zig-cache/
 **/.gradle/
 **/build/
@@ -29,8 +32,9 @@
 **/.cache/
 
 **/local.properties
-**/*.cwasm
 **/*.wasm
+**/*.cwasm
+**/*.pwasm
 **/*.lib
 **/*.dll
 **/*.pdb
@@ -42,7 +46,6 @@
 **/*.bin
 **/.DS_Stor
 **/compile_commands.json
-**/*.pwasm
 **/*.db
 **/*.cwasm
 **/*.wasm

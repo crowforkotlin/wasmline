@@ -14,33 +14,25 @@ actual class Wasmline actual constructor(val moduleKey: String) {
 
         /**
          * 加载模块
-         * @param filepath .wasm (源码路径) 或 .cwasm (缓存路径)
+         * @param filepath 预编译产物路径，仅支持 .cwasm 或 .pwasm
          */
-        actual fun load(filepath: String, cacheFilepath: String?, threadSafe: Boolean): WasmlineLoadState {
-            val sourceFile = File(filepath)
-            val cacheFile = cacheFilepath?.let(::File)
-            val sourcePath = sourceFile.absolutePath
-            val cachePath = cacheFile?.absolutePath
-            val key = sourcePath
+        actual fun load(filepath: String, threadSafe: Boolean): WasmlineLoadState {
+            return WasmlineRuntimeLoader.load(
+                request = WasmlineLocalLoadRequest(
+                    artifactPath = filepath,
+                    threadSafe = threadSafe,
+                ),
+                platform = object : WasmlinePlatformLoader {
+                    override fun createWasmline(key: String): Wasmline = Wasmline(key)
 
-            return loadWasmlineModule(
-                sourcePath = sourcePath,
-                cachePath = cachePath,
-                key = key,
-                createWasmline = ::Wasmline,
-                fileExists = { path -> File(path).exists() },
-                deleteFile = { path -> File(path).delete() },
-                loadAot = { moduleKey, path ->
-                    if (threadSafe) nativeLoadAot(key = moduleKey, path = path)
-                    else nativeLoadAotUnsafe(key = moduleKey, path = path)
-                },
-                loadJit = { moduleKey, path ->
-                    if (threadSafe) nativeLoadJit(key = moduleKey, path = path)
-                    else nativeLoadJitUnsafe(key = moduleKey, path = path)
-                },
-                saveCache = { moduleKey, path ->
-                    if (threadSafe) nativeSaveCache(key = moduleKey, path = path)
-                    else nativeSaveCacheUnsafe(key = moduleKey, path = path)
+                    override fun normalizePath(path: String): String = File(path).absolutePath
+
+                    override fun fileExists(path: String): Boolean = File(path).exists()
+
+                    override fun loadPrecompiled(key: String, path: String): Boolean {
+                        return if (threadSafe) nativeLoadAot(key = key, path = path)
+                        else nativeLoadAotUnsafe(key = key, path = path)
+                    }
                 },
             )
         }
@@ -58,12 +50,8 @@ actual class Wasmline actual constructor(val moduleKey: String) {
         actual fun shutdown() { nativeReleaseEngine() }
 
         // JNI Methods
-        @JvmStatic private external fun nativeLoadJit(key: String, path: String): Boolean
-        @JvmStatic private external fun nativeLoadJitUnsafe(key: String, path: String): Boolean
         @JvmStatic private external fun nativeLoadAot(key: String, path: String): Boolean
         @JvmStatic private external fun nativeLoadAotUnsafe(key: String, path: String): Boolean
-        @JvmStatic private external fun nativeSaveCache(key: String, path: String): Boolean
-        @JvmStatic private external fun nativeSaveCacheUnsafe(key: String, path: String): Boolean
         @JvmStatic private external fun nativeReleaseModule(key: String)
         @JvmStatic private external fun nativeSetOutboundHandler(key: String, dispatcher: WasmlineHostDispatcher)
         @JvmStatic private external fun nativeInvokeInbound(key: String, action: String, protobufBytes: ByteArray): ByteArray
@@ -88,3 +76,4 @@ actual class Wasmline actual constructor(val moduleKey: String) {
      */
     actual fun close() { nativeReleaseModule(moduleKey) }
 }
+

@@ -31,10 +31,10 @@ namespace wasmline {
     // ============================================================================
 
     /**
-     * Shared Logic: File Read + Compilation.
+     * Shared Logic: File Read + precompiled artifact deserialization.
      * No locks are held inside this function.
      */
-    wasmtime_module_t *Module::compileInternal(const std::string &key, const std::string &filePath, bool isJit) {
+    wasmtime_module_t *Module::compileInternal(const std::string &key, const std::string &filePath) {
         // 1. IO Operation
         std::vector<uint8_t> data = Utils::readFile(filePath);
         if (data.empty()) {
@@ -49,24 +49,12 @@ namespace wasmline {
             return nullptr;
         }
 
-        // 3. Compilation / Deserialization
+        // 3. Deserialization of precompiled artifacts only
         wasmtime_module_t *module = nullptr;
         wasmtime_error_t *error = nullptr;
 
-        if (data.size() > 4 && data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F') {
-            LOGI("[Wasmtime] Detected ELF header. Using DESERIALIZE for %s", filePath.c_str());
-            error = wasmtime_module_deserialize(engine, (uint8_t*)data.data(), data.size(), &module);
-        } else {
-            LOGI("[Wasmtime] Detected Wasm header. Using NEW (JIT) for %s", filePath.c_str());
-            error = wasmtime_module_new(engine, (uint8_t*)data.data(), data.size(), &module);
-        }
-        /*if (isJit) {
-            LOGI("[Wasmtime] Module --> Jit Compiling for %s...", filePath.c_str());
-            error = wasmtime_module_new(engine, data.data(), data.size(), &module);
-        } else {
-            LOGI("[Wasmtime] Module --> Aot Deserializing for %s...", filePath.c_str());
-            error = wasmtime_module_deserialize(engine, data.data(), data.size(), &module);
-        }*/
+        LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
+        error = wasmtime_module_deserialize(engine, reinterpret_cast<const uint8_t*>(data.data()), data.size(), &module);
 
         // 4. Error Handling
         if (error) {
@@ -81,39 +69,8 @@ namespace wasmline {
         return module;
     }
 
-    /**
-     * Shared Logic: Serialization + File Write.
-     * No locks are held for file writing, but caller must ensure 'module' is valid.
-     */
-    bool Module::serializeInternal(const std::string &key, wasmtime_module_t *module, const std::string &outPath) {
-        if (!module) return false;
-
-        // 1. Serialize via Wasmtime
-        wasm_byte_vec_t serialized;
-        wasmtime_error_t *err = wasmtime_module_serialize(module, &serialized);
-
-        if (err) {
-            wasmtime_error_delete(err);
-            LOGE("[Wasmtime] Module --> Serialization failed for %s", key.c_str());
-            return false;
-        }
-
-        // 2. Write to File
-        bool success = Utils::writeFile(outPath, reinterpret_cast<const uint8_t *>(serialized.data), serialized.size);
-        wasm_byte_vec_delete(&serialized);
-
-        if (success) {
-            LOGI("[Wasmtime] Module --> Saved cache to %s", outPath.c_str());
-        } else {
-            LOGE("[Wasmtime] Module --> Failed to write cache file: %s", outPath.c_str());
-        }
-
-        return success;
-    }
-
-
     // Load Module (Thread-Safe & Optimized)
-    wasmtime_module_t *Module::load(const std::string &key, const std::string &filePath, bool isJit) {
+    wasmtime_module_t *Module::load(const std::string &key, const std::string &filePath) {
         std::unique_lock<std::mutex> lock(cacheMutex);
 
         // 1. Check & Wait Phase
@@ -139,7 +96,7 @@ namespace wasmline {
         lock.unlock();
 
         // 4. Core Logic (Reuse)
-        wasmtime_module_t *module = compileInternal(key, filePath, isJit);
+        wasmtime_module_t *module = compileInternal(key, filePath);
 
         // 5. Commit Phase
         lock.lock();
@@ -159,7 +116,7 @@ namespace wasmline {
     }
 
     // Load Module (Unsafe / Fast)
-    wasmtime_module_t *Module::loadUnsafe(const std::string &key, const std::string &filePath, bool isJit) {
+    wasmtime_module_t *Module::loadUnsafe(const std::string &key, const std::string &filePath) {
         // 1. Direct Cache Check
         auto it = moduleCache.find(key);
         if (it != moduleCache.end()) {
@@ -168,7 +125,7 @@ namespace wasmline {
         }
 
         // 2. Core Logic (Reuse)
-        wasmtime_module_t *module = compileInternal(key, filePath, isJit);
+        wasmtime_module_t *module = compileInternal(key, filePath);
 
         // 3. Update Cache
         if (module) {
@@ -179,32 +136,6 @@ namespace wasmline {
         return module;
     }
 
-    // Serialize Module (Thread-Safe)
-    bool Module::serialize(const std::string &key, const std::string &outPath) {
-        std::lock_guard<std::mutex> lock(cacheMutex);
-
-        auto it = moduleCache.find(key);
-        if (it == moduleCache.end()) {
-            LOGE("[Wasmtime] Module --> Cannot save cache, module not found: %s", key.c_str());
-            return false;
-        }
-
-        // Call helper inside the lock to ensure module is not deleted by another thread
-        return serializeInternal(key, it->second, outPath);
-    }
-
-    // Serialize Module (Unsafe / Fast)
-    bool Module::serializeUnsafe(const std::string &key, const std::string &outPath) {
-        // No lock held
-        auto it = moduleCache.find(key);
-        if (it == moduleCache.end()) {
-            LOGE("[Wasmtime] Module (Unsafe) --> Cannot save cache, module not found: %s", key.c_str());
-            return false;
-        }
-
-        // Call common serialize
-        return serializeInternal(key, it->second, outPath);
-    }
 
     // Get Cached Module
     wasmtime_module_t *Module::get(const std::string &key) {

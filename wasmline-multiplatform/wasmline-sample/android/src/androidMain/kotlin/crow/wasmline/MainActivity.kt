@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import crow.wasmline.link
 import crow.wasmline.extensions.Data
 import crow.wasmline.extensions.info
 import crow.wasmline.sample.ir.EchoService
@@ -59,23 +58,21 @@ class MainActivity : AppCompatActivity() {
             try {
                 "==============================================".info()
                 val data = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
-                val wasmFile = File(cacheDir, "plugin.wasm")
-                val cacheFile = File(cacheDir, "plugin.cwasm")
-                "[Android] Wasm file : ${wasmFile.name}    ||    wasm file exits : ${wasmFile.exists()}    ||    wasm file path :  ${wasmFile.absolutePath}".info()
-                "[Android] Cwasm cache file : ${cacheFile.name}    ||    cache file exits : ${cacheFile.exists()}    ||    cache file path :  ${cacheFile.absolutePath}".info()
-                if (!wasmFile.exists()) {
-                    assets.open(wasmFile.name).use { input ->
-                        FileOutputStream(wasmFile).use { output ->
+                val artifactFile = File(cacheDir, "plugin.pwasm")
+                "[Android] Artifact file : ${artifactFile.name}    ||    exists : ${artifactFile.exists()}    ||    path : ${artifactFile.absolutePath}".info()
+                if (!artifactFile.exists()) {
+                    assets.open(artifactFile.name).use { input ->
+                        FileOutputStream(artifactFile).use { output ->
                                 input.copyTo(output)
                             }
                         }
                     }
                 var startMs = System.currentTimeMillis()
-                when(val loadState = Wasmline.load(wasmFile.absolutePath, cacheFile.absolutePath)) {
+                when(val loadState = Wasmline.load(artifactFile.absolutePath)) {
                     is WasmlineLoadState.Failure -> { loadState.cause.info() }
                     is WasmlineLoadState.Success -> {
-                        if (loadState.code == WasmlineLoadState.CODE_SUCCESS_JIT) {
-                            "[Wasmline] Load jit success, spend ${System.currentTimeMillis() - startMs}  ms".info()
+                        if (loadState.code == WasmlineLoadState.CODE_SUCCESS_PULLEY) {
+                            "[Wasmline] Load pulley success, spend ${System.currentTimeMillis() - startMs}  ms".info()
                         } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
                             "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
                         }

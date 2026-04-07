@@ -105,7 +105,7 @@ class Manifest : CliktCommand(name = "manifest") {
         echo("Loaded compile result: ${compileResult.artifacts.size} artifacts from ${compileResult.inputFile}")
 
         // 2. Build WasmlineManifest
-        val resolvedPluginId = pluginId ?: compileResult.inputFile.removeSuffix(".wasm")
+        val resolvedPluginId = pluginId ?: File(compileResult.inputFile).nameWithoutExtension
         val manifest = WasmlineManifest(
             pluginId = resolvedPluginId,
             version = version,

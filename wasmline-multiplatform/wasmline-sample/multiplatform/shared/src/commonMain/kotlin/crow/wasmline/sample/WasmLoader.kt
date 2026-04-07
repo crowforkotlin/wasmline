@@ -24,9 +24,9 @@ internal class WasmLoader {
 
     private var wasmline: Wasmline? by mutableStateOf(null)
 
-    fun loadWasm(wasmAbsPath: String): Wasmline? {
+    fun loadWasm(artifactAbsPath: String): Wasmline? {
         if (wasmline == null) {
-            Wasmline.load(filepath = wasmAbsPath, cacheFilepath = wasmAbsPath, threadSafe = false)
+            Wasmline.load(filepath = artifactAbsPath, threadSafe = false)
                 .onSuccess {
                     wasmline.bind(object : EchoService {
                         override fun echo() {

@@ -1,1611 +1,2993 @@
+diff --git a/.github/plans/ir-planv2.md b/.github/plans/ir-planv2.md
+index aaea4fe..5a2813a 100644
+--- a/.github/plans/ir-planv2.md
++++ b/.github/plans/ir-planv2.md
+@@ -17,9 +17,9 @@
+ 但从“未来要用于生产上线”的标准看，当前实现仍存在明显的职责混杂与长期扩展风险：
+ 
+ 1. `Wasmline` 同时承担了 **Engine 生命周期**、**Module 生命周期**、**加载策略**、**平台桥接**、**对外 API 承载** 多类职责。
+-2. `jniMain` / `iosMain` actual 实现中混入了过多高层策略，例如文件存在判断、缓存路径逻辑、AOT/JIT 回退流程。
+-3. Host 与 Plugin 未来若都需要长期演进，必须提前统一“平台侧使用模型”，避免一边实例式、一边全局式的割裂 API。
+-4. 当前 IR 主链路已经明显稳定，但 runtime 可见性收口、平台模型、实例生命周期命名仍不够清晰。
++2. ~~`jniMain` / `iosMain` actual 实现中混入了过多高层策略，例如文件存在判断、缓存路径逻辑、AOT/JIT 回退流程。~~ → **已解决**：两平台均已收窄为纯 bridge 层，高层加载由 `WasmlineRuntimeLoader` 统一处理。
++3. Host 与 Plugin 未来若都需要长期演进，必须提前统一"平台侧使用模型"，避免一边实例式、一边全局式的割裂 API。
++4. ~~当前 IR 主链路已经明显稳定，但 runtime 可见性收口、平台模型、实例生命周期命名仍不够清晰。~~ → **已部分解决**：生命周期命名已对齐 `shutdown()` / `close()`；generated bridge SPI 已收口到 `@PublishedApi internal`。
+ 5. 未来会引入网络下载 `wlm` / manifest / cache / 签名校验，如果不先拆分核心结构，后续只会越来越混乱。
+ 
+ 因此 V2 计划的核心目标不再只是“继续调 IR”，而是：
+@@ -73,35 +73,67 @@ V2 计划明确采用以下立场：
+ 
+ ---
+ 
++### 2.4 当前运行时加载约束（2026-04-07 更新）
++
++V2 当前阶段新增一条硬约束：
++
++> **Host/runtime 侧移除 JIT 加载路径，后续仅接受预编译 artifact。**
++
++也就是说：
++
++1. runtime 侧不再直接加载 `.wasm` 源文件；
++2. 当前允许的本地产物类型收口为 `.cwasm` 与 `.pwasm`；
++3. `PWASM`（Pulley）与 `CWASM`（AOT）成为后续 loader / manifest / runtime 的唯一 artifact 方向；
++4. 旧的 `cache fallback -> JIT compile -> save cache` 流程应逐步从 runtime、JNI、native bridge、文档与样例中移除；
++5. Host loader 后续负责“选择哪个 artifact”，而不是把 `.wasm` 直接交给 runtime 即时编译。
++
++---
++
+ ## 3. 非目标
+ 
+ 本计划当前不直接包含以下内容：
+ 
+ 1. 不在本轮立即完整实现网络下载、manifest 校验、签名下载链路。
+ 2. 不在本轮立即支持任意 Kotlin 类型、泛型、`suspend`、默认参数、`vararg`、重载。
+-3. 不在本轮立即重写所有 iOS callback/native bridge；但会把其作为高优先级整改项列出。
++3. 不在当前 `Windows` 工作阶段执行 iOS callback/native bridge 的本地实现与验证；待切换到可用的 `macOS/iOS` 环境后恢复，并继续作为独立整改项保留。
+ 4. 不在本轮立即强行实现所有平台 100% 对称 API；但会优先设计出最终统一方向。
+ 5. 不在本轮手工修改 `testData/box/*.fir.txt` / `*.fir.ir.txt` 等生成快照。
+ 6. 不在本轮把 `kotlinx-coroutines` 设定为 Wasmline 核心 API 的强制编程模型。
+ 
+ ---
+ 
+-## 3.1 当前实施状态（截至 2026-04-06）
++### 当前执行策略（Windows 环境）
++
++当前阶段的执行顺序调整为：**先推进不依赖 Apple 平台的后续计划，再在环境切换后回补 iOS 专项事项。**
++
++具体约束如下：
++
++1. 当前机型上不强行推进 `iosMain` 本地实现、联调与回归验证。
++2. 优先推进 `WasmlineLoader`、`WasmlineEngine`、`Wasmline.current` 使用模型统一、`WasmlineLoadRequest` / `WasmlineSource` / `WasmlineArtifact` 抽象，以及 runtime / IR 收口。
++3. JNI、Host、Plugin、文档与架构层整理继续按主计划推进。
++4. iOS 相关 blocker 仍保留在计划中，但状态记为“环境暂缓”，避免和“已完成”混淆。
++
++---
++
++## 3.1 当前实施状态（截至 2026-04-07）
+ 
+ ### 已完成
+ 
+ - [x] Host 核心 API 已切到 sync-first：`Wasmline.load(...)`、`call(...)`、`bind(...)`、`bindGenerated(...)` 不再把 `suspend` 固化进核心 ABI。
+-- [x] 生命周期命名基线已落地到代码：全局侧使用 `shutdown()`，实例侧使用 `close()`。
++- [x] 生命周期命名基线已落地到代码：全局侧使用 `shutdown()`，实例侧使用 `close()`。`jniMain` 和 `iosMain` 均已对齐（`init()` / `shutdown()` / `close()`）。
+ - [x] generated bridge runtime SPI 已收口到 `@PublishedApi internal`，避免为修复 IR 可见性而直接暴露用户 API。
+-- [x] platform actual 中重复的本地加载主流程已抽到共享 helper，`jniMain` / `iosMain` 不再各自维护完整的 AOT/JIT fallback 逻辑。
++- [x] platform actual 中重复的本地加载主流程已抽到共享 helper：`jniMain` 和 `iosMain` 均已统一委托 `WasmlineRuntimeLoader.load()` + `WasmlinePlatformLoader` 接口，不再各自维护完整的加载策略。
++- [x] iOS `load()` 已与 JNI 完全对齐：通过 `WasmlinePlatformLoader` 提供 `fileExists`、`loadPrecompiled`、`createWasmline` 等回调，实际加载判断（文件存在检查、后缀校验、code 映射）全部由共享的 `WasmlineRuntimeLoader` 完成。
+ - [x] Plugin 侧已经引入 `Wasmline.current` 与实例式 `bind/link` 入口，顶层 `bind()` 退化为过渡代理。
++- [x] Runtime 侧已移除 JIT 加载路径，`WasmlineRuntimeLoader.loadLocal()` 仅接受 `.cwasm` / `.pwasm` 预编译产物。
+ 
+ ### 尚未完成
+ 
+-- [ ] iOS callback 仍存在 `findAny()` 的生产 blocker，尚未切到可精确定位 runtime/module 的方案。
+-- [ ] `WasmlineEngine` / `WasmlineLoader` 仍主要停留在语义拆分与最小 helper 阶段，尚未形成完整独立对象模型。
+-- [ ] `WasmlineLoadRequest`、`WasmlineSource`、`WasmlineArtifact` 等远程加载抽象尚未落地。
+-- [ ] Plugin 侧仍保留顶层过渡入口，Host / Plugin 文档尚未完全统一为“先拿到 wasmline，再 bind/link”。
++- [ ] iOS callback 仍存在 `findAny()` 的生产 blocker。**根因已明确**：C 层 `OutboundCallback` 函数签名为 `char* (*)(action, actionLen, payload, payloadLen)`，不携带 `key` 参数；而 Kotlin/Native 的 `staticCFunction` 不允许捕获上下文，导致回调触发时无法识别来源模块。详见下方 §10.2 分析。当前因 `Windows` 环境暂缓本地实现与验证，待切换到 `macOS/iOS` 环境后恢复处理。
++- [ ] `iosStaticOutboundCallback` 当前仍为 TODO 占位实现（始终返回 `null`），尚未真正分发到 `WasmlineHostDispatcher`。
++- [~] `wasmline` runtime 内部已存在共享的本地文件加载 helper（`WasmlineRuntimeLoader`），JNI 和 iOS 均已接入；但真正面向 Host 的公共 `WasmlineLoader` 模块入口仍未形成，`WasmlineEngine` 与完整独立对象模型也仍未形成。
++- [ ] `WasmlineLoadRequest`、`WasmlineSource`、`WasmlineArtifact` 等 Host 级加载抽象仍应落在 `wasmline-loader` 模块，尚未完成正式迁移与公开 API 收口。
++- [ ] Plugin 侧仍保留顶层过渡入口，Host / Plugin 文档尚未完全统一为"先拿到 wasmline，再 bind/link"。
+ 
+ ---
+ 
+@@ -145,28 +177,36 @@ bind(object : SomeService { ... })
+ 
+ ### 4.3 平台 actual 实现
+ 
+-#### jniMain
++#### jniMain（2026-04-07 更新）
+ 
+-`Wasmline.jni.kt` 当前同时承担：
++`Wasmline.jni.kt` 当前职责已收窄为纯平台桥接层：
+ 
+-- engine init/release
+-- module load
+-- cache 路径判断
+-- native JIT/AOT 调用
+-- cache 保存
++- engine init/shutdown（委托 `nativeInit()` / `nativeReleaseEngine()`）
++- `load()` 完全委托 `WasmlineRuntimeLoader`，自身仅提供 `WasmlinePlatformLoader` 回调
+ - setOutbound
+-- call
+-- module release
++- call（inbound invoke）
++- module release（`close()` → `nativeReleaseModule()`）
++
++**已不再直接包含**：cache 路径判断、JIT/AOT fallback、文件存在检查等高层逻辑。
++
++#### iosMain（2026-04-07 更新）
++
++`Wasmline.ios.kt` 的 `load()` 已与 JNI 完全对齐——同样委托 `WasmlineRuntimeLoader.load()` 并通过 `WasmlinePlatformLoader` 提供平台回调（`NSFileManager.fileExistsAtPath` / `wasmline_load_module`）。
+ 
+-问题：职责过多。
++**已完成的收口**：
+ 
+-#### iosMain
++- 高层加载策略（文件判断、后缀校验、code 映射）已由共享 `WasmlineRuntimeLoader` 统一处理；
++- 生命周期命名已对齐：`init()` → `wasmline_init_engine()`、`shutdown()` → `wasmline_release_engine()`、`close()` → `wasmline_release_module()`；
++- JIT/cache fallback 已移除，仅通过 `wasmline_load_module(key, path, isUnsafe)` 加载预编译产物。
+ 
+-`Wasmline.ios.kt` 当前也承担类似职责，并且存在一个生产级 blocker：
++**仍存在的生产级 blocker**：
+ 
+-- 回调注册表中的 `findAny()` 方案无法正确定位 moduleKey；
+-- 多模块/多实例/并发场景下不可接受；
+-- 必须尽快改成“回调可明确定位当前模块”的方案。
++1. `WasmlineCallbackRegistry` 中的 `findAny()` 派发方案无法正确定位 moduleKey；
++2. `iosStaticOutboundCallback` 仍为 TODO 占位实现（始终返回 `null`），未真正把回调分发给 `WasmlineHostDispatcher`；
++3. **根因**：C 层 `OutboundCallback` 签名为 `char* (*)(action, actionLen, payload, payloadLen)`，不携带 `key`；而 `staticCFunction` 不能捕获上下文，导致 Kotlin 回调端无法识别来源模块；
++4. 多模块 / 多实例 / 并发场景下不可接受。
++
++> 此 blocker 的解决需要修改 C 层接口（例如在 `OutboundCallback` 签名中新增 `key` 参数）或采用其他模块定位机制，属于 **环境暂缓** 项，待 macOS/iOS 环境恢复后优先处理。
+ 
+ #### kn / Native 其他平台
+ 
+@@ -431,12 +471,14 @@ wasmline.setLogger(...)
+ 
+ ## 8. 加载策略的演进路线
+ 
+-### 8.1 当前阶段
++### 8.1 当前阶段（2026-04-07 更新）
++
++当前阶段以本地预编译产物路径加载为主，仅支持：
+ 
+-当前阶段仍允许以本地路径加载为主：
++- `.cwasm`（AOT 预编译）
++- `.pwasm`（Pulley 预编译）
+ 
+-- `.wasm`
+-- `.cwasm`
++> `.wasm` 源文件已不再被 runtime 接受（参见 §2.4 运行时加载约束）。
+ 
+ ### 8.2 未来阶段
+ 
+@@ -505,49 +547,78 @@ IR 不应该继续承担：
+ 
+ ## 10. 平台层职责清单
+ 
+-### 10.1 JNI 平台
++### 10.1 JNI 平台（2026-04-07 更新）
+ 
+ #### 负责
+ 
+ - native library load
+ - engine init/shutdown
+-- local file based module load
++- local file based module load（通过 `WasmlinePlatformLoader` 提供 native 桥接能力）
+ - module release
+ - outbound handler registration
+ - inbound invoke
+-- native cache save/load bridge
+ 
+ #### 不负责
+ 
+-- 高层 `Wasmline.load` 策略聚合
++- 高层 `Wasmline.load` 策略聚合（已由 `WasmlineRuntimeLoader` 统一承担）
+ - URL 下载
+ - manifest 解析
+ - 用户级 API 语义命名
+ 
+-#### 必做整改项
++#### 整改项状态
+ 
+-1. 删除 `testAAA()`；
+-2. 逐步把 `load(...)` 中的高层策略迁移到 loader 层；
+-3. 区分 instance close 与 engine shutdown 命名；
+-4. 收口 `moduleKey` 可见性。
++1. [x] 删除 `testAAA()` 等无效入口；
++2. [x] `load(...)` 中的高层策略已迁移到 `WasmlineRuntimeLoader`，JNI 层仅通过 `WasmlinePlatformLoader` 提供 `fileExists` / `loadPrecompiled` 回调；
++3. [x] instance close 与 engine shutdown 命名已区分：`shutdown()` vs `close()`；
++4. [ ] `moduleKey` 可见性收口尚未最终完成（仍为 public constructor 参数）。
+ 
+-### 10.2 iOS 平台
++### 10.2 iOS 平台（2026-04-07 更新）
++
++> 当前说明：由于现阶段工作环境为 `Windows`，本节中的实现与验证任务暂不在本机执行；待切换到可用的 `macOS/iOS` 环境后恢复。
+ 
+ #### 负责
+ 
+ - engine init/shutdown
+-- local module load
++- local module load（已委托 `WasmlineRuntimeLoader`，自身仅提供 `WasmlinePlatformLoader` 回调）
+ - outbound callback 桥接
+ - inbound invoke
+ - module release
+ 
+-#### 生产 blocker
++#### 已完成整改
++
++- [x] `load()` 已统一委托 `WasmlineRuntimeLoader`，不再自行维护高层加载逻辑；
++- [x] 生命周期命名已对齐 `init()` / `shutdown()` / `close()`；
++- [x] JIT/cache fallback 逻辑已移除。
++
++#### 生产 blocker：iOS Outbound Callback 模块定位
++
++**当前状态**：`iosStaticOutboundCallback` 始终返回 `null`（TODO 占位），`WasmlineCallbackRegistry.findAny()` 无法正确定位模块。
++
++**根因分析**：
++
++1. C 层 `OutboundCallback` 函数签名为：
++   ```c
++   typedef char* (*OutboundCallback)(const char* action, size_t actionLen, const char* payload, size_t payloadLen);
++   ```
++   该签名 **不携带 `key`**（moduleKey）参数。
+ 
+-必须移除当前 `findAny()` callback 派发方案，改为：
++2. C++ 侧 `wasmline_set_outbound_handler(key, callback)` 会为每个 key 创建独立的 `IosOutboundHandler` 实例，各自持有同一个 `kotlinCallback` 函数指针；但当 handler 触发 `onOutboundInvoke` 时，它只传回 `(action, payload)` 而不传 `key`。
+ 
+-- callback 能定位到准确 module/runtime handle；
+-- 多模块、多实例并发场景下完全正确；
+-- 不允许“随便取一个 dispatcher”的临时实现进入生产。
++3. Kotlin/Native 的 `staticCFunction(::iosStaticOutboundCallback)` 不允许捕获任何上下文（闭包），因此 Kotlin 侧无法在编译期或运行期绑定 key 到特定回调实例。
++
++4. 结果：Kotlin 回调被触发时，无法确定是哪个模块发起的 outbound 调用。
++
++**候选解决方案**（待 macOS/iOS 环境恢复后评估与实施）：
++
++| 方案 | 描述 | 优缺点 |
++|------|------|--------|
++| **A. 扩展 C 回调签名** | 修改 `OutboundCallback` 为 `char* (*)(const char* key, size_t keyLen, const char* action, ...)` | 最简洁正确；需改 `WasmlineNative.h` / `.cpp` 及 Kotlin cinterop 定义 |
++| **B. 携带 opaque context** | 改为 `char* (*)(void* context, const char* action, ...)`，`context` 由 Kotlin 侧提供并在回调时原样传回 | 更灵活，可绑定任意 Kotlin 对象引用（通过 `StableRef`） |
++| **C. 线程本地/全局当前模块** | 在 C++ 的 `onOutboundInvoke` 入口处设置 TLS 标记当前 key，Kotlin 侧通过 C 函数查询 | 不需要改回调签名，但增加 TLS 依赖，多线程并发需格外小心 |
++
++**建议方向**：方案 A 或 B，因为它们从协议层根治问题，不引入隐式状态。
++
++在当前 `Windows` 阶段，这一 blocker 保持为**环境暂缓**，不从计划中删除；恢复 Apple 环境后应重新提升到平台专项优先级。
+ 
+ ### 10.3 KN / Native 其他平台
+ 
+@@ -555,14 +626,15 @@ IR 不应该继续承担：
+ 
+ ---
+ 
+-## 11. API 命名收口建议
++## 11. API 命名收口建议（2026-04-07 更新）
+ 
+-### 当前存在的问题
++### 当前状态
+ 
+-- companion `release()`：语义上是 engine release
+-- instance `release()`：语义上是 module release
++命名迁移已基本完成，代码中不再混用 `release()`：
+ 
+-这在生产 API 中不应继续保留。
++- 全局级：`Wasmline.init()` / `Wasmline.shutdown()` — `jniMain` 和 `iosMain` 均已对齐
++- 实例级：`wasmline.close()` — 两个平台均已使用 `close()` 而非 `release()`
++- `hostMain/Wasmline.kt` expect 声明已统一为 `shutdown()` / `close()`
+ 
+ ### 建议命名
+ 
+@@ -594,7 +666,7 @@ wasmline.isClosed
+ 
+ ## 12. 分阶段实施计划
+ 
+-### Phase 0：生产 blocker 与命名风险先收口
++### Phase 0：生产 blocker 与命名风险先收口（当前 Windows 阶段先处理非 Apple 项）
+ 
+ #### 目标
+ 
+@@ -603,14 +675,14 @@ wasmline.isClosed
+ #### 任务
+ 
+ 1. [x] 删除 `testAAA()` 等无效入口；
+-2. [ ] 把 iOS callback 的 `findAny()` 替换为可准确定位 runtime 的方案；
++2. [ ] 把 iOS callback 的 `findAny()` 替换为可准确定位 runtime 的方案（待切换到 `macOS/iOS` 环境后恢复执行）；
+ 3. [x] 清理明显不合理的 public/internal 暴露；
+ 4. [x] 为 instance/global lifecycle 建立新的命名目标，并已在当前代码中落到 `shutdown()` / `close()` 基线。
+ 
+ #### 完成标志
+ 
+-- 不再存在生产 blocker 级 callback 定位问题；
+-- 生命周期语义在文档和代码中不再混淆。
++- 当前 `Windows` 阶段：生命周期语义在文档和代码中不再混淆，且非 Apple 平台的高风险临时代码已收口；
++- 切换到 `macOS/iOS` 环境后：补完 iOS callback 定位问题，恢复 Phase 0 的完整完成判定。
+ 
+ ---
+ 
+@@ -623,7 +695,7 @@ wasmline.isClosed
+ #### 任务
+ 
+ 1. [ ] 抽出独立的 `WasmlineEngine` 对象；
+-2. [~] 抽出 `WasmlineLoader`：已落地最小共享 loader helper，但尚未形成完整独立 loader 对象。
++2. [~] 抽出 `WasmlineLoader`：runtime 内部本地加载流程已共享，但真正独立的 Host loader 模块入口与请求模型仍未落地。
+ 3. [~] 把 `Wasmline` 明确定位为单模块 runtime handle：语义与实例生命周期已明显收口，但 engine / loader 静态语义仍挂在同名类型上。
+ 4. [x] 把 `load(...)` 中的文件存在判断、cache fallback 等高层逻辑从 platform actual 中抽到共享加载流程。
+ 
+@@ -661,8 +733,8 @@ wasmline.isClosed
+ 
+ #### 任务
+ 
+-1. [ ] 定义 `WasmlineLoadRequest`；
+-2. [ ] 定义 `WasmlineSource` / `WasmlineArtifact`；
++1. [ ] 定义 `WasmlineLoadRequest`：应作为 `wasmline-loader` 的 Host 级公开请求模型落地；
++2. [ ] 定义 `WasmlineSource` / `WasmlineArtifact`：应由 `wasmline-loader` 统一承载 source/package/artifact 语义，而不是继续留在 runtime 模块；
+ 3. [ ] 设计 cache / manifest / signature 的扩展插槽；
+ 4. [ ] 让 loader 能同时支持本地与未来远程来源。
+ 
+@@ -721,7 +793,8 @@ wasmline.isClosed
+ 
+ - 先把模块定位方案设计清楚；
+ - 再改 callback bridge；
+-- 这项不应被后置到最后。
++- 当前 `Windows` 阶段可以暂缓执行，但不应从路线图中删除；
++- 恢复 Apple 环境后不应继续后置到最后。
+ 
+ ---
+ 
+@@ -733,26 +806,30 @@ wasmline.isClosed
+ 2. `Wasmline` 不再同时暴露 engine lifecycle 与 module lifecycle 的同名 `release()` 语义；
+ 3. 文档可清晰解释 Host / Plugin 获取 `wasmline` 的方式。
+ 
+-### 14.2 编译与 IR 验证
++### 14.2 当前 Windows 阶段优先验证
+ 
+-继续沿用当前已稳定的验证链：
++前提：先切到可用的 `JBR 21`，再运行不依赖 Apple 平台的验证链。
+ 
+ ```bash
+-export JAVA_HOME="/Users/crowforkotlin/WuYa/tools/jbrsdk_jcef-21.0.9-osx-aarch64-b1163.94/Contents/Home"
+-cd /Users/crowforkotlin/github/wasmline/wasmline-multiplatform
++cd wasmline-multiplatform
+ ./gradlew --no-daemon :wasmline-kotlin-plugin:compileKotlin
+ ./gradlew --no-daemon :wasmline-kotlin-plugin:publishToMavenLocal
+-./gradlew --no-daemon :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+ ./gradlew --no-daemon :wasmline:jvmTest
+ ```
+ 
+-### 14.3 平台专项验证
++优先关注：
++
++1. `WasmlineLoader` / runtime / IR 收口后的编译稳定性；
++2. Plugin current runtime 获取与 `bind/link` 路径；
++3. JNI 多模块加载/释放行为。
+ 
+-后续需要补充：
++### 14.3 Apple 环境恢复后补做验证
+ 
+-1. JNI 多模块加载/释放验证；
+-2. iOS 多模块 callback 正确分发验证；
+-3. Plugin current runtime 获取与 bind/link 路径验证。
++切换到可用的 `macOS/iOS` 环境后，再补做以下验证：
++
++1. iOS 多模块 callback 正确分发验证；
++2. iOS runtime/module 精确定位与并发回调验证；
++3. 如有 Apple 平台相关 bridge 调整，再补平台回归验证。
+ 
+ ---
+ 
+@@ -760,27 +837,27 @@ cd /Users/crowforkotlin/github/wasmline/wasmline-multiplatform
+ 
+ ### P0
+ 
+-1. 修 iOS callback module 定位问题；
+-2. 删除明显的临时代码与无效入口；
+-3. 梳理生命周期命名：`close` / `shutdown` 目标语义。
++1. 抽出 `WasmlineLoader` 设计与最小实现；
++2. 将 `Wasmline.load(...)` 的高层流程继续迁移到 loader；
++3. 统一 Host / Plugin runtime handle 使用模型，继续收口 `Wasmline.current` 与顶层 `bind()` 过渡策略。
+ 
+ ### P1
+ 
+-4. 抽出 `WasmlineLoader` 设计与最小实现；
+-5. 将 `Wasmline.load(...)` 的高层流程迁移到 loader；
+-6. 让 platform actual 收敛为纯 bridge。
++4. 定义 `WasmlineLoadRequest`；
++5. 定义 `WasmlineSource` / `WasmlineArtifact`；
++6. 为 cache / manifest / signature / metadata 预留扩展插槽。
+ 
+ ### P2
+ 
+-7. 设计 Host / Plugin 统一 runtime handle 模型；
+-8. 明确 `Wasmline.current` 的语义与边界；
+-9. 规划顶层 `bind()` 过渡策略。
++7. 继续推进 runtime public API 收口；
++8. 做低风险 IR 瘦身与 internal helper 审计；
++9. 完成 JNI 多模块与 Plugin current 路径的非 Apple 平台验证。
+ 
+ ### P3
+ 
+-10. 定义远程 source / artifact 抽象；
+-11. 预留 converters / metadata capability 入口；
+-12. 做最后一轮 runtime public API 收口。
++10. 切换到 `macOS/iOS` 环境后，修 iOS callback module 定位问题；
++11. 补做 iOS 多模块 callback 正确分发验证；
++12. 视 Apple 平台 bridge 调整结果，完成对应的专项回归。
+ 
+ ---
+ 
+@@ -798,4 +875,3 @@ V2 的重点不是继续把更多逻辑塞进现有 `Wasmline`，而是：
+ 4. Host 与 Plugin 是否还能围绕统一的 `Wasmline` runtime handle 来理解？
+ 
+ 只要这四个问题持续回答清楚，后续逐项实现时就不容易再次回到“能跑但越来越混乱”的状态。
+-
 diff --git a/.github/skills/wasmline/SKILL.md b/.github/skills/wasmline/SKILL.md
-index 1222c1c..34a93aa 100644
+index 34a93aa..8f1db50 100644
 --- a/.github/skills/wasmline/SKILL.md
 +++ b/.github/skills/wasmline/SKILL.md
-@@ -5,29 +5,31 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
+@@ -29,6 +29,15 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
+ 3. 先定位到正确模块，再进行修改。
+ 4. 严格区分手写源码与生成物，尤其是 IR 快照与测试生成文件。
  
- # Wasmline 仓库技能
- 
--当任务涉及 `wasmline` 仓库的构建、测试、调试、排障或代码修改时，使用此技能。
-+当任务涉及 `wasmline` 仓库的构建、测试、调试、排障或代码修改时，**必须**使用此技能。
- 
- ## 目录约定
- 
--本技能目录采用如下组织方式：
--
--- `SKILL.md`：技能入口说明
--- `scripts/skill_preflight.sh`：环境预检脚本
--- `scripts/skill_context_snapshot.py`：上下文快照脚本
-+```
-+.github/skills/wasmline/
-+├── SKILL.md                        # 技能入口说明（本文件）
-+└── scripts/
-+    └── skill_preflight.sh          # 环境预检脚本
-+```
- 
--辅助脚本统一放在 `scripts/` 子目录中，便于维护，也更符合“技能说明与配套资源分离”的组织习惯。
-+辅助脚本统一放在 `scripts/` 子目录中，便于维护，也更符合"技能说明与配套资源分离"的组织习惯。
- 
- ## 目标
- 
--在真正开始编译、测试或改代码之前，先确认环境、聚合上下文，并将任务路由到正确模块。
-+在真正开始编译、测试或改代码之前，先确认环境，并将任务路由到正确模块。
- 
- ## 推荐流程
- 
--1. 先运行预检脚本，确认是否满足 Gradle/测试前置条件。
--2. 如有需要，初始化平台运行时资产。
--3. 在大范围阅读或多文件修改前，生成上下文快照。
--4. 先定位到正确模块，再进行修改。
--5. 严格区分手写源码与生成物，尤其是 IR 快照与测试生成文件。
-+1. 运行预检脚本，确认是否满足 Gradle/测试前置条件。
-+2. 按需初始化平台运行时资产。
-+3. 先定位到正确模块，再进行修改。
-+4. 严格区分手写源码与生成物，尤其是 IR 快照与测试生成文件。
++### 当前执行策略（Windows 环境）
 +
-+---
++如果当前工作环境是 **Windows**，而任务又涉及 `macOS` / `iOS` 专项实现、联调或验证，则按以下规则处理：
++
++- 当前轮次先把 Apple 平台相关事项标记为**环境暂缓**，不在本机强行执行。
++- 优先推进可在当前环境继续的后续计划，例如 `JNI`、`Loader`、`Runtime`、`IR`、公开 API 收口与文档整理。
++- 如果只是更新计划、补充设计说明或整理待办，可以继续修改文档，但不要把“暂缓”误写成“已完成”。
++- 等切换到可用的 `macOS/iOS` 环境后，再恢复 Apple 平台实现、回归验证与 blocker 收口。
++
+ ---
  
  ## 第一步：Gradle 之前必须预检
+diff --git a/.gitignore b/.gitignore
+index 2ae3ac5..0a1b843 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -13,12 +13,15 @@
+ *.wasm
+ *.db
+ *.tar.xz
++*.pbxuser
++*.xcworkspace
  
-@@ -41,112 +43,148 @@ bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+ **/.cxx/
+ **/build/
+ **/release/
+ **/debug/
+ **/.kotlin/
++**/.zig-out/
+ **/.zig-cache/
+ **/.gradle/
+ **/build/
+@@ -29,8 +32,9 @@
+ **/.cache/
  
- 预检重点如下：
- 
--- 不要在未确认 Java/JBR 版本的情况下直接运行 Gradle。
-+- **不要在未确认 Java/JBR 版本的情况下直接运行 Gradle。**
- - 预检脚本会优先检查当前 `JAVA_HOME`，必要时再结合 `java -version`、`<JAVA_HOME>/release` 与 shell 配置中的 JBR/JAVA_HOME 线索进行只读判断。
- - 预检脚本会只读检查 `~/.zshrc`、`~/.bashrc`、`~/.bash_profile` 中的 JBR/JAVA_HOME 线索。
--- 这些 shell 配置文件只能读取，不能修改。
--- 如果当前 shell 未切到可用的 JBR 21，应先告知用户并停止后续 Gradle 编译/测试动作。
-+- 这些 shell 配置文件**只能读取，不能修改**。
-+- 如果当前 shell 未切到可用的 JBR 21，应先告知用户并**停止**后续 Gradle 编译/测试动作。
- - 不要把任何开发机上的本地 JBR 安装路径硬编码进技能文档、脚本或仓库说明中。
- 
--如果任务涉及 Compose Desktop 或桌面 native 产物，再运行：
-+如果任务涉及 **Compose Desktop** 或 **桌面 native** 产物，额外运行：
- 
- ```bash
- bash ./.github/skills/wasmline/scripts/skill_preflight.sh --compose-desktop
- ```
- 
-+该模式会额外检查 Zig 版本（要求 **0.15.1**）和桌面 JNI/native 产物状态。
-+
-+---
-+
- ## 第二步：按需初始化平台资产
- 
--仓库依赖各平台的 Wasmtime C-API 运行时资产。如果 `platforms/` 尚未准备好，执行：
-+仓库依赖各平台的 Wasmtime C-API 运行时资产。如果 `platforms/` 尚未准备好，选择以下任一方式执行：
- 
- ```bash
-+# Bash（需要 bash + curl + tar/unzip）
- sh ./scripts/init.sh
--```
--
--说明：
- 
--- `platforms/` 主要是下载或解压后的平台运行时资产。
--- 不要默认这些资产在任何机器上都已存在。
--- 如果作者已经预先准备好，可跳过初始化。
-+# Python 3（需要 Python 3.9+，无第三方依赖）
-+python3 ./scripts/init.py
- 
--## 第三步：生成上下文快照
--
--当仓库体量较大、阅读入口较分散，或者准备做一轮较大修改时，先生成快照：
--
--```bash
--python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
-+# Node.js（需要 Node.js 18+，无第三方依赖）
-+node ./scripts/init.mjs
- ```
- 
--该脚本会生成：
-+三个脚本功能完全等价，均支持：
- 
--- `.cache/skill/context-latest.md`
--- `.cache/skill/context-<timestamp>.md`
-+- 交互式选择目标平台与架构
-+- 配置并发下载数
-+- 可选代理（第一个参数，如 `127.0.0.1:7890`）
-+- 下载后自动解压部署到 `platforms/` 目录
- 
--快照包含：
--
--- 当前 Git 分支、提交和工作区状态
--- 仓库目录摘要
--- `wasmline-multiplatform/` 模块摘要
--- 关键文档与关键入口文件摘录
--- 当前变更文件和 diff 预览
-+说明：
- 
--适用场景：
-+- `platforms/` 主要是下载或解压后的平台运行时资产（头文件 + 静态/动态库）。
-+- 不要默认这些资产在任何机器上都已存在。
-+- 如果预检脚本提示已检测到运行时资产，可跳过此步骤。
- 
--- 第一次快速理解仓库
--- 进入复杂需求前聚合上下文
--- 一轮修改完成后复核重点变更
-+---
- 
--## 第四步：先定位模块，再修改
-+## 第三步：先定位模块，再修改
- 
- ### 仓库结构总览
- 
--- `wasmline-core/`：C/C++ 编写的原生 Wasmtime bridge
--- `wasmline-multiplatform/`：Kotlin Multiplatform 主工程
--- `wasmline-ci/`：CI 与样例自动化脚本
--- `scripts/`：仓库级初始化与辅助脚本
--- `platforms/`：平台运行时资产
--- `structs/`：设计说明与 IR 计划
--- `docs/`：文档站点资源
-+| 目录 | 说明 |
-+|---|---|
-+| `wasmline-core/` | C/C++ 编写的原生 Wasmtime bridge（Engine、Module、Session、Api） |
-+| `wasmline-multiplatform/` | Kotlin Multiplatform 主工程 |
-+| `wasmline-multiplatform/wasmline/` | 核心运行时库（commonMain / hostMain / wasmWasiMain / jniMain / jvmMain 等） |
-+| `wasmline-multiplatform/wasmline-kotlin-plugin/` | Kotlin IR 编译器插件 |
-+| `wasmline-multiplatform/wasmline-cli/` | CLI 命令行工具 |
-+| `wasmline-multiplatform/wasmline-loader/` | Loader 模块 |
-+| `wasmline-multiplatform/wasmline-gradle-plugin/` | Gradle 插件 |
-+| `wasmline-multiplatform/wasmline-sample/` | 示例工程（android / application / common / multiplatform / plugin） |
-+| `wasmline-multiplatform/wasmline-build-logic/` | 构建逻辑（convention plugins） |
-+| `wasmline-ci/` | CI 与样例自动化脚本 |
-+| `scripts/` | 仓库级初始化与辅助脚本 |
-+| `platforms/` | 平台运行时资产（由 `scripts/init.sh` 初始化） |
-+| `docs/` | 文档站点资源 |
- 
--### Runtime / Bridge 相关问题
-+### Runtime / Bridge 相关
- 
--如果需求涉及 wasm 加载、会话生命周期、宿主与 wasm 的调用链、runtime bridge 行为，优先看：
-+涉及 wasm 加载、会话生命周期、宿主与 wasm 的调用链、runtime bridge 行为时，优先看：
-+
-+**C/C++ Bridge 层：**
- 
- - `wasmline-core/include/Engine.h`
- - `wasmline-core/src/Engine.cpp`
- - `wasmline-core/src/Module.cpp`
- - `wasmline-core/src/Session.cpp`
- - `wasmline-core/src/Api.cpp`
--- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/`
--- `wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt`
--
--### Kotlin Multiplatform Runtime API 相关问题
- 
--如果需求涉及公开 API、binding、generated bridge 接入、平台 runtime 实现，优先看：
-+**Kotlin Bridge 层：**
- 
--- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt`
--- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineServices.host.kt`
--- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmlineServices.wasmWasi.kt`
- - `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/GeneratedBridge.kt`
- - `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/Endpoint.kt`
--- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/BindingScope.kt`
-+- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/HostDispatcher.kt`
-+- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/Payload.kt`
-+
-+**测试：**
-+
-+- `wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt`
-+
-+### Kotlin Multiplatform Runtime API 相关
-+
-+涉及公开 API、binding、generated bridge 接入、平台 runtime 实现时，优先看：
-+
-+- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineService.kt` — 服务定义入口
-+- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt` — 宿主侧主 API
-+- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineServices.host.kt` — 宿主侧服务注册
-+- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoader.kt` — 宿主侧加载器
-+- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmlineServices.wasmWasi.kt` — WASI 侧服务注册
-+- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmBridge.kt` — WASI 侧桥接
-+- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmRouter.kt` — WASI 侧路由
- 
- 重点概念：
- 
- - `WasmlineEndpoint`
--- `WasmlineBindingScope`
- - `WasmlineGeneratedBridge`
- - `bindGeneratedBridgeAction(...)`
- - `requireGeneratedImplementation(...)`
- - `unknownGeneratedAction(...)`
- 
--### Kotlin 编译器插件 / IR 相关问题
-+### Kotlin 编译器插件 / IR 相关
-+
-+涉及 `link()`、`bind()`、`bindAs()`、桥接生成、IR 改写或插件行为时，优先看：
- 
--如果需求涉及 `link()`、`bind()`、`bindAs()`、桥接生成、IR 改写或插件行为，优先看：
-+**插件注册与入口：**
- 
- - `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineCompilerPluginRegistrar.kt`
- - `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineCommandLineProcessor.kt`
--- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt`
--- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt`
-+
-+**IR 变换核心：**
-+
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt` — IR 生成扩展入口
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineBridgeGenerator.kt` — 桥接代码生成
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineTypedEntryPointRewriter.kt` — 类型化入口重写
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineServiceContractValidator.kt` — 服务契约校验
-+
-+**符号解析与工具：**
-+
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt` — Runtime 符号解析
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrDiagnostics.kt` — 诊断信息
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/SignatureHash.kt` — 签名哈希
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/ir.kt` — IR 工具函数
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/typeToString.kt` — 类型序列化
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/package.kt` — 包级声明
-+
-+**测试数据：**
-+
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/` — box test 用例
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/diagnostics/` — 诊断测试用例
-+
-+**设计文档：**
-+
- - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
- - `.github/plans/ir-planv2.md`
- 
-@@ -154,19 +192,19 @@ python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
- 
- - 这里是 **IR 插件**，不是简单的源码生成器。
- - 很多行为必须结合 IR 输出、生成测试和 runtime 行为一起验证。
--- 只看某一个文件通常不够，需要把 runtime helper、插件代码和 box test 作为一个系统理解。
-+- 只看某一个文件通常不够，需要把 runtime helper、插件代码和 box test 作为一个系统来理解。
- 
--### CLI / Loader / 打包相关问题
-+### CLI / Loader / 打包相关
- 
--如果需求涉及 manifest、签名、打包或命令行链路，优先看：
-+涉及 manifest、签名、打包或命令行链路时，优先看：
- 
- - `wasmline-multiplatform/wasmline-loader/`
- - `wasmline-multiplatform/wasmline-cli/`
- - `wasmline-multiplatform/wasmline-gradle-plugin/`
- 
--### 桌面 Native 相关问题
-+### 桌面 Native 相关
- 
--如果需求涉及 Compose Desktop、JNI 或本地库，优先看：
-+涉及 Compose Desktop、JNI 或本地库时，优先看：
- 
- - `wasmline-multiplatform/wasmline/zig-build.md`
- - `wasmline-multiplatform/wasmline/build.zig`
-@@ -185,39 +223,51 @@ zig build --release=small -p src/jvmMain/resources
- 
- - `src/jvmMain/resources/jni/` 更适合作为 Zig 安装输出目录，而不是稳定的源码阅读入口。
- - 默认输出会落到 `zig-out/jni/`；如果显式传入 `-p <目录>`，则 JNI 产物会安装到该目录下的 `jni/` 子目录。
-+- 仓库文档要求 Zig 版本为 **0.15.1**。
- 
--仓库文档要求 Zig 版本为 **0.15.1**。
-+---
- 
--## 第五步：严格遵守生成物约束
-+## 第四步：严格遵守生成物约束
- 
--除非任务明确要求重新生成，否则不要手改以下内容：
-+除非任务明确要求重新生成，否则**不要手改**以下内容：
- 
--- `wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/`
--- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.txt`
--- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.ir.txt`
--- `platforms/`
--- `**/build/`
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/` — 自动生成的测试运行器
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.txt` — FIR 快照
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.ir.txt` — FIR IR 快照
-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/diagnostics/*.fir.txt` — 诊断快照
-+- `platforms/` — 平台运行时资产
-+- `**/build/` — 构建产物
- 
- 关于 IR 测试，需要牢记：
- 
--- `*.fir.txt` 和 `*.fir.ir.txt` 是自动生成、自动比较的快照文件。
-+- `*.fir.txt` 和 `*.fir.ir.txt` 是**自动生成、自动比较**的快照文件。
- - 第一次运行测试时，可能因为快照缺失或 IR 有变化而失败。
--- 第二次运行在生成正确快照后，可能恢复通过。
--- 如果只是修改实现逻辑，通常不应手工编辑这些 IR 快照。
-+- 第二次运行在生成正确快照后，通常能恢复通过。
-+- 如果只是修改实现逻辑，**不应**手工编辑这些 IR 快照。
-+
-+如果需要新增或更新 box test，正确做法是：
-+
-+1. 在 `testData/box/` 下编写 `.kt` 测试源文件。
-+2. 运行 `./gradlew :wasmline-kotlin-plugin:generateTests` 以生成测试运行器。
-+3. 运行测试，快照文件会自动生成。
-+4. 确认快照内容后提交。
-+
-+---
- 
- ## 常用命令
- 
--### 只做阅读与分析
-+### 环境预检
- 
- ```bash
- bash ./.github/skills/wasmline/scripts/skill_preflight.sh
--python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
- ```
- 
- ### 初始化平台运行时
- 
- ```bash
--sh ./scripts/init.sh
-+sh ./scripts/init.sh            # Bash
-+python3 ./scripts/init.py       # Python 3.9+
-+node ./scripts/init.mjs         # Node.js 18+
- ```
- 
- ### 生成插件测试并运行 box test
-@@ -228,28 +278,44 @@ cd wasmline-multiplatform
- ./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
- ```
- 
-+### 运行诊断测试
-+
-+```bash
-+cd wasmline-multiplatform
-+./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
-+```
-+
-+### 构建桌面 JNI 产物（需要 Zig 0.15.1）
-+
-+```bash
-+cd wasmline-multiplatform/wasmline
-+zig build --release=small -p src/jvmMain/resources
-+```
-+
-+---
-+
- ## 推荐阅读顺序
- 
- 第一次接触仓库时，建议按以下顺序阅读：
- 
--1. `README_zh.md`
--2. `README.md`
--3. `.github/skills/wasmline/SKILL.md`
--4. `.github/skills/wasmline/scripts/skill_preflight.sh`
--5. `scripts/init.sh`
--6. `wasmline-multiplatform/settings.gradle.kts`
--7. `wasmline-core/`
--8. `wasmline-multiplatform/wasmline/`
--9. `wasmline-multiplatform/wasmline-kotlin-plugin/`
--10. `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
--11. `.github/plans/ir-planv2.md`
-+1. `README_zh.md` / `README.md` — 项目概述
-+2. `.github/skills/wasmline/SKILL.md` — 本文件
-+3. `scripts/init.sh` — 平台资产初始化流程
-+4. `wasmline-multiplatform/settings.gradle.kts` — 多平台模块划分
-+5. `wasmline-core/` — C/C++ bridge 层实现
-+6. `wasmline-multiplatform/wasmline/` — Kotlin 核心运行时
-+7. `wasmline-multiplatform/wasmline-kotlin-plugin/` — IR 编译器插件
-+8. `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md` — box test 说明
-+9. `.github/plans/ir-planv2.md` — IR 变换设计计划
-+
-+---
- 
- ## 工作原则
- 
--- Gradle 之前先确认 JBR 21。
--- 平台相关构建前先确认运行时资产是否齐全。
--- 大任务开始前先生成上下文快照。
--- 修改前先定位模块，不要盲改。
--- 把 IR 快照和生成测试文件视为生成物，而不是手写源码。
-+1. **先预检，再构建。** Gradle 之前先确认 JBR 21。
-+2. **先确认资产，再编译。** 平台相关构建前先确认运行时资产是否齐全。
-+3. **先定位模块，再修改。** 不要盲改，确认需求对应的模块后再动手。
-+4. **生成物不手改。** 把 IR 快照、`test-gen/`、`build/` 视为生成物，而不是手写源码。
-+5. **系统性理解。** IR 插件行为需要 runtime helper + 插件代码 + box test 三者结合验证。
- 
--一句话原则：**先预检，再确认资产，再聚合上下文，最后才开始实现。**
-+一句话原则：**先预检，再确认资产，再定位模块，最后才开始实现。**
-diff --git a/.github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc b/.github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc
+ **/local.properties
+-**/*.cwasm
+ **/*.wasm
++**/*.cwasm
++**/*.pwasm
+ **/*.lib
+ **/*.dll
+ **/*.pdb
+@@ -42,7 +46,6 @@
+ **/*.bin
+ **/.DS_Stor
+ **/compile_commands.json
+-**/*.pwasm
+ **/*.db
+ **/*.cwasm
+ **/*.wasm
+diff --git a/commit_message.txt b/commit_message.txt
 deleted file mode 100644
-index d702269..0000000
-Binary files a/.github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc and /dev/null differ
-diff --git a/.github/skills/wasmline/scripts/skill_context_snapshot.py b/.github/skills/wasmline/scripts/skill_context_snapshot.py
-deleted file mode 100644
-index 53bbce6..0000000
---- a/.github/skills/wasmline/scripts/skill_context_snapshot.py
+index b2aa0ac..0000000
+--- a/commit_message.txt
 +++ /dev/null
-@@ -1,267 +0,0 @@
--#!/usr/bin/env python3
--from __future__ import annotations
+@@ -1,1611 +0,0 @@
+-diff --git a/.github/skills/wasmline/SKILL.md b/.github/skills/wasmline/SKILL.md
+-index 1222c1c..34a93aa 100644
+---- a/.github/skills/wasmline/SKILL.md
+-+++ b/.github/skills/wasmline/SKILL.md
+-@@ -5,29 +5,31 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
+- 
+- # Wasmline 仓库技能
+- 
+--当任务涉及 `wasmline` 仓库的构建、测试、调试、排障或代码修改时，使用此技能。
+-+当任务涉及 `wasmline` 仓库的构建、测试、调试、排障或代码修改时，**必须**使用此技能。
+- 
+- ## 目录约定
+- 
+--本技能目录采用如下组织方式：
+--
+--- `SKILL.md`：技能入口说明
+--- `scripts/skill_preflight.sh`：环境预检脚本
+--- `scripts/skill_context_snapshot.py`：上下文快照脚本
+-+```
+-+.github/skills/wasmline/
+-+├── SKILL.md                        # 技能入口说明（本文件）
+-+└── scripts/
+-+    └── skill_preflight.sh          # 环境预检脚本
+-+```
+- 
+--辅助脚本统一放在 `scripts/` 子目录中，便于维护，也更符合“技能说明与配套资源分离”的组织习惯。
+-+辅助脚本统一放在 `scripts/` 子目录中，便于维护，也更符合"技能说明与配套资源分离"的组织习惯。
+- 
+- ## 目标
+- 
+--在真正开始编译、测试或改代码之前，先确认环境、聚合上下文，并将任务路由到正确模块。
+-+在真正开始编译、测试或改代码之前，先确认环境，并将任务路由到正确模块。
+- 
+- ## 推荐流程
+- 
+--1. 先运行预检脚本，确认是否满足 Gradle/测试前置条件。
+--2. 如有需要，初始化平台运行时资产。
+--3. 在大范围阅读或多文件修改前，生成上下文快照。
+--4. 先定位到正确模块，再进行修改。
+--5. 严格区分手写源码与生成物，尤其是 IR 快照与测试生成文件。
+-+1. 运行预检脚本，确认是否满足 Gradle/测试前置条件。
+-+2. 按需初始化平台运行时资产。
+-+3. 先定位到正确模块，再进行修改。
+-+4. 严格区分手写源码与生成物，尤其是 IR 快照与测试生成文件。
+-+
+-+---
+- 
+- ## 第一步：Gradle 之前必须预检
+- 
+-@@ -41,112 +43,148 @@ bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+- 
+- 预检重点如下：
+- 
+--- 不要在未确认 Java/JBR 版本的情况下直接运行 Gradle。
+-+- **不要在未确认 Java/JBR 版本的情况下直接运行 Gradle。**
+- - 预检脚本会优先检查当前 `JAVA_HOME`，必要时再结合 `java -version`、`<JAVA_HOME>/release` 与 shell 配置中的 JBR/JAVA_HOME 线索进行只读判断。
+- - 预检脚本会只读检查 `~/.zshrc`、`~/.bashrc`、`~/.bash_profile` 中的 JBR/JAVA_HOME 线索。
+--- 这些 shell 配置文件只能读取，不能修改。
+--- 如果当前 shell 未切到可用的 JBR 21，应先告知用户并停止后续 Gradle 编译/测试动作。
+-+- 这些 shell 配置文件**只能读取，不能修改**。
+-+- 如果当前 shell 未切到可用的 JBR 21，应先告知用户并**停止**后续 Gradle 编译/测试动作。
+- - 不要把任何开发机上的本地 JBR 安装路径硬编码进技能文档、脚本或仓库说明中。
+- 
+--如果任务涉及 Compose Desktop 或桌面 native 产物，再运行：
+-+如果任务涉及 **Compose Desktop** 或 **桌面 native** 产物，额外运行：
+- 
+- ```bash
+- bash ./.github/skills/wasmline/scripts/skill_preflight.sh --compose-desktop
+- ```
+- 
+-+该模式会额外检查 Zig 版本（要求 **0.15.1**）和桌面 JNI/native 产物状态。
+-+
+-+---
+-+
+- ## 第二步：按需初始化平台资产
+- 
+--仓库依赖各平台的 Wasmtime C-API 运行时资产。如果 `platforms/` 尚未准备好，执行：
+-+仓库依赖各平台的 Wasmtime C-API 运行时资产。如果 `platforms/` 尚未准备好，选择以下任一方式执行：
+- 
+- ```bash
+-+# Bash（需要 bash + curl + tar/unzip）
+- sh ./scripts/init.sh
+--```
+--
+--说明：
+- 
+--- `platforms/` 主要是下载或解压后的平台运行时资产。
+--- 不要默认这些资产在任何机器上都已存在。
+--- 如果作者已经预先准备好，可跳过初始化。
+-+# Python 3（需要 Python 3.9+，无第三方依赖）
+-+python3 ./scripts/init.py
+- 
+--## 第三步：生成上下文快照
+--
+--当仓库体量较大、阅读入口较分散，或者准备做一轮较大修改时，先生成快照：
+--
+--```bash
+--python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
+-+# Node.js（需要 Node.js 18+，无第三方依赖）
+-+node ./scripts/init.mjs
+- ```
+- 
+--该脚本会生成：
+-+三个脚本功能完全等价，均支持：
+- 
+--- `.cache/skill/context-latest.md`
+--- `.cache/skill/context-<timestamp>.md`
+-+- 交互式选择目标平台与架构
+-+- 配置并发下载数
+-+- 可选代理（第一个参数，如 `127.0.0.1:7890`）
+-+- 下载后自动解压部署到 `platforms/` 目录
+- 
+--快照包含：
+--
+--- 当前 Git 分支、提交和工作区状态
+--- 仓库目录摘要
+--- `wasmline-multiplatform/` 模块摘要
+--- 关键文档与关键入口文件摘录
+--- 当前变更文件和 diff 预览
+-+说明：
+- 
+--适用场景：
+-+- `platforms/` 主要是下载或解压后的平台运行时资产（头文件 + 静态/动态库）。
+-+- 不要默认这些资产在任何机器上都已存在。
+-+- 如果预检脚本提示已检测到运行时资产，可跳过此步骤。
+- 
+--- 第一次快速理解仓库
+--- 进入复杂需求前聚合上下文
+--- 一轮修改完成后复核重点变更
+-+---
+- 
+--## 第四步：先定位模块，再修改
+-+## 第三步：先定位模块，再修改
+- 
+- ### 仓库结构总览
+- 
+--- `wasmline-core/`：C/C++ 编写的原生 Wasmtime bridge
+--- `wasmline-multiplatform/`：Kotlin Multiplatform 主工程
+--- `wasmline-ci/`：CI 与样例自动化脚本
+--- `scripts/`：仓库级初始化与辅助脚本
+--- `platforms/`：平台运行时资产
+--- `structs/`：设计说明与 IR 计划
+--- `docs/`：文档站点资源
+-+| 目录 | 说明 |
+-+|---|---|
+-+| `wasmline-core/` | C/C++ 编写的原生 Wasmtime bridge（Engine、Module、Session、Api） |
+-+| `wasmline-multiplatform/` | Kotlin Multiplatform 主工程 |
+-+| `wasmline-multiplatform/wasmline/` | 核心运行时库（commonMain / hostMain / wasmWasiMain / jniMain / jvmMain 等） |
+-+| `wasmline-multiplatform/wasmline-kotlin-plugin/` | Kotlin IR 编译器插件 |
+-+| `wasmline-multiplatform/wasmline-cli/` | CLI 命令行工具 |
+-+| `wasmline-multiplatform/wasmline-loader/` | Loader 模块 |
+-+| `wasmline-multiplatform/wasmline-gradle-plugin/` | Gradle 插件 |
+-+| `wasmline-multiplatform/wasmline-sample/` | 示例工程（android / application / common / multiplatform / plugin） |
+-+| `wasmline-multiplatform/wasmline-build-logic/` | 构建逻辑（convention plugins） |
+-+| `wasmline-ci/` | CI 与样例自动化脚本 |
+-+| `scripts/` | 仓库级初始化与辅助脚本 |
+-+| `platforms/` | 平台运行时资产（由 `scripts/init.sh` 初始化） |
+-+| `docs/` | 文档站点资源 |
+- 
+--### Runtime / Bridge 相关问题
+-+### Runtime / Bridge 相关
+- 
+--如果需求涉及 wasm 加载、会话生命周期、宿主与 wasm 的调用链、runtime bridge 行为，优先看：
+-+涉及 wasm 加载、会话生命周期、宿主与 wasm 的调用链、runtime bridge 行为时，优先看：
+-+
+-+**C/C++ Bridge 层：**
+- 
+- - `wasmline-core/include/Engine.h`
+- - `wasmline-core/src/Engine.cpp`
+- - `wasmline-core/src/Module.cpp`
+- - `wasmline-core/src/Session.cpp`
+- - `wasmline-core/src/Api.cpp`
+--- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/`
+--- `wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt`
+--
+--### Kotlin Multiplatform Runtime API 相关问题
+- 
+--如果需求涉及公开 API、binding、generated bridge 接入、平台 runtime 实现，优先看：
+-+**Kotlin Bridge 层：**
+- 
+--- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt`
+--- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineServices.host.kt`
+--- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmlineServices.wasmWasi.kt`
+- - `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/GeneratedBridge.kt`
+- - `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/Endpoint.kt`
+--- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/BindingScope.kt`
+-+- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/HostDispatcher.kt`
+-+- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/Payload.kt`
+-+
+-+**测试：**
+-+
+-+- `wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt`
+-+
+-+### Kotlin Multiplatform Runtime API 相关
+-+
+-+涉及公开 API、binding、generated bridge 接入、平台 runtime 实现时，优先看：
+-+
+-+- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineService.kt` — 服务定义入口
+-+- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt` — 宿主侧主 API
+-+- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineServices.host.kt` — 宿主侧服务注册
+-+- `wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoader.kt` — 宿主侧加载器
+-+- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmlineServices.wasmWasi.kt` — WASI 侧服务注册
+-+- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmBridge.kt` — WASI 侧桥接
+-+- `wasmline-multiplatform/wasmline/src/wasmWasiMain/kotlin/crow/wasmline/WasmRouter.kt` — WASI 侧路由
+- 
+- 重点概念：
+- 
+- - `WasmlineEndpoint`
+--- `WasmlineBindingScope`
+- - `WasmlineGeneratedBridge`
+- - `bindGeneratedBridgeAction(...)`
+- - `requireGeneratedImplementation(...)`
+- - `unknownGeneratedAction(...)`
+- 
+--### Kotlin 编译器插件 / IR 相关问题
+-+### Kotlin 编译器插件 / IR 相关
+-+
+-+涉及 `link()`、`bind()`、`bindAs()`、桥接生成、IR 改写或插件行为时，优先看：
+- 
+--如果需求涉及 `link()`、`bind()`、`bindAs()`、桥接生成、IR 改写或插件行为，优先看：
+-+**插件注册与入口：**
+- 
+- - `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineCompilerPluginRegistrar.kt`
+- - `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineCommandLineProcessor.kt`
+--- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt`
+--- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt`
+-+
+-+**IR 变换核心：**
+-+
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrGenerationExtension.kt` — IR 生成扩展入口
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineBridgeGenerator.kt` — 桥接代码生成
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineTypedEntryPointRewriter.kt` — 类型化入口重写
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineServiceContractValidator.kt` — 服务契约校验
+-+
+-+**符号解析与工具：**
+-+
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineRuntimeSymbols.kt` — Runtime 符号解析
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/WasmlineIrDiagnostics.kt` — 诊断信息
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/SignatureHash.kt` — 签名哈希
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/ir.kt` — IR 工具函数
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/typeToString.kt` — 类型序列化
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/src/main/kotlin/crow/wasmline/kotlin/package.kt` — 包级声明
+-+
+-+**测试数据：**
+-+
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/` — box test 用例
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/diagnostics/` — 诊断测试用例
+-+
+-+**设计文档：**
+-+
+- - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
+- - `.github/plans/ir-planv2.md`
+- 
+-@@ -154,19 +192,19 @@ python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
+- 
+- - 这里是 **IR 插件**，不是简单的源码生成器。
+- - 很多行为必须结合 IR 输出、生成测试和 runtime 行为一起验证。
+--- 只看某一个文件通常不够，需要把 runtime helper、插件代码和 box test 作为一个系统理解。
+-+- 只看某一个文件通常不够，需要把 runtime helper、插件代码和 box test 作为一个系统来理解。
+- 
+--### CLI / Loader / 打包相关问题
+-+### CLI / Loader / 打包相关
+- 
+--如果需求涉及 manifest、签名、打包或命令行链路，优先看：
+-+涉及 manifest、签名、打包或命令行链路时，优先看：
+- 
+- - `wasmline-multiplatform/wasmline-loader/`
+- - `wasmline-multiplatform/wasmline-cli/`
+- - `wasmline-multiplatform/wasmline-gradle-plugin/`
+- 
+--### 桌面 Native 相关问题
+-+### 桌面 Native 相关
+- 
+--如果需求涉及 Compose Desktop、JNI 或本地库，优先看：
+-+涉及 Compose Desktop、JNI 或本地库时，优先看：
+- 
+- - `wasmline-multiplatform/wasmline/zig-build.md`
+- - `wasmline-multiplatform/wasmline/build.zig`
+-@@ -185,39 +223,51 @@ zig build --release=small -p src/jvmMain/resources
+- 
+- - `src/jvmMain/resources/jni/` 更适合作为 Zig 安装输出目录，而不是稳定的源码阅读入口。
+- - 默认输出会落到 `zig-out/jni/`；如果显式传入 `-p <目录>`，则 JNI 产物会安装到该目录下的 `jni/` 子目录。
+-+- 仓库文档要求 Zig 版本为 **0.15.1**。
+- 
+--仓库文档要求 Zig 版本为 **0.15.1**。
+-+---
+- 
+--## 第五步：严格遵守生成物约束
+-+## 第四步：严格遵守生成物约束
+- 
+--除非任务明确要求重新生成，否则不要手改以下内容：
+-+除非任务明确要求重新生成，否则**不要手改**以下内容：
+- 
+--- `wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/`
+--- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.txt`
+--- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.ir.txt`
+--- `platforms/`
+--- `**/build/`
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/test-gen/` — 自动生成的测试运行器
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.txt` — FIR 快照
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.ir.txt` — FIR IR 快照
+-+- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/diagnostics/*.fir.txt` — 诊断快照
+-+- `platforms/` — 平台运行时资产
+-+- `**/build/` — 构建产物
+- 
+- 关于 IR 测试，需要牢记：
+- 
+--- `*.fir.txt` 和 `*.fir.ir.txt` 是自动生成、自动比较的快照文件。
+-+- `*.fir.txt` 和 `*.fir.ir.txt` 是**自动生成、自动比较**的快照文件。
+- - 第一次运行测试时，可能因为快照缺失或 IR 有变化而失败。
+--- 第二次运行在生成正确快照后，可能恢复通过。
+--- 如果只是修改实现逻辑，通常不应手工编辑这些 IR 快照。
+-+- 第二次运行在生成正确快照后，通常能恢复通过。
+-+- 如果只是修改实现逻辑，**不应**手工编辑这些 IR 快照。
+-+
+-+如果需要新增或更新 box test，正确做法是：
+-+
+-+1. 在 `testData/box/` 下编写 `.kt` 测试源文件。
+-+2. 运行 `./gradlew :wasmline-kotlin-plugin:generateTests` 以生成测试运行器。
+-+3. 运行测试，快照文件会自动生成。
+-+4. 确认快照内容后提交。
+-+
+-+---
+- 
+- ## 常用命令
+- 
+--### 只做阅读与分析
+-+### 环境预检
+- 
+- ```bash
+- bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+--python3 ./.github/skills/wasmline/scripts/skill_context_snapshot.py
+- ```
+- 
+- ### 初始化平台运行时
+- 
+- ```bash
+--sh ./scripts/init.sh
+-+sh ./scripts/init.sh            # Bash
+-+python3 ./scripts/init.py       # Python 3.9+
+-+node ./scripts/init.mjs         # Node.js 18+
+- ```
+- 
+- ### 生成插件测试并运行 box test
+-@@ -228,28 +278,44 @@ cd wasmline-multiplatform
+- ./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+- ```
+- 
+-+### 运行诊断测试
+-+
+-+```bash
+-+cd wasmline-multiplatform
+-+./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
+-+```
+-+
+-+### 构建桌面 JNI 产物（需要 Zig 0.15.1）
+-+
+-+```bash
+-+cd wasmline-multiplatform/wasmline
+-+zig build --release=small -p src/jvmMain/resources
+-+```
+-+
+-+---
+-+
+- ## 推荐阅读顺序
+- 
+- 第一次接触仓库时，建议按以下顺序阅读：
+- 
+--1. `README_zh.md`
+--2. `README.md`
+--3. `.github/skills/wasmline/SKILL.md`
+--4. `.github/skills/wasmline/scripts/skill_preflight.sh`
+--5. `scripts/init.sh`
+--6. `wasmline-multiplatform/settings.gradle.kts`
+--7. `wasmline-core/`
+--8. `wasmline-multiplatform/wasmline/`
+--9. `wasmline-multiplatform/wasmline-kotlin-plugin/`
+--10. `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md`
+--11. `.github/plans/ir-planv2.md`
+-+1. `README_zh.md` / `README.md` — 项目概述
+-+2. `.github/skills/wasmline/SKILL.md` — 本文件
+-+3. `scripts/init.sh` — 平台资产初始化流程
+-+4. `wasmline-multiplatform/settings.gradle.kts` — 多平台模块划分
+-+5. `wasmline-core/` — C/C++ bridge 层实现
+-+6. `wasmline-multiplatform/wasmline/` — Kotlin 核心运行时
+-+7. `wasmline-multiplatform/wasmline-kotlin-plugin/` — IR 编译器插件
+-+8. `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md` — box test 说明
+-+9. `.github/plans/ir-planv2.md` — IR 变换设计计划
+-+
+-+---
+- 
+- ## 工作原则
+- 
+--- Gradle 之前先确认 JBR 21。
+--- 平台相关构建前先确认运行时资产是否齐全。
+--- 大任务开始前先生成上下文快照。
+--- 修改前先定位模块，不要盲改。
+--- 把 IR 快照和生成测试文件视为生成物，而不是手写源码。
+-+1. **先预检，再构建。** Gradle 之前先确认 JBR 21。
+-+2. **先确认资产，再编译。** 平台相关构建前先确认运行时资产是否齐全。
+-+3. **先定位模块，再修改。** 不要盲改，确认需求对应的模块后再动手。
+-+4. **生成物不手改。** 把 IR 快照、`test-gen/`、`build/` 视为生成物，而不是手写源码。
+-+5. **系统性理解。** IR 插件行为需要 runtime helper + 插件代码 + box test 三者结合验证。
+- 
+--一句话原则：**先预检，再确认资产，再聚合上下文，最后才开始实现。**
+-+一句话原则：**先预检，再确认资产，再定位模块，最后才开始实现。**
+-diff --git a/.github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc b/.github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc
+-deleted file mode 100644
+-index d702269..0000000
+-Binary files a/.github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc and /dev/null differ
+-diff --git a/.github/skills/wasmline/scripts/skill_context_snapshot.py b/.github/skills/wasmline/scripts/skill_context_snapshot.py
+-deleted file mode 100644
+-index 53bbce6..0000000
+---- a/.github/skills/wasmline/scripts/skill_context_snapshot.py
+-+++ /dev/null
+-@@ -1,267 +0,0 @@
+--#!/usr/bin/env python3
+--from __future__ import annotations
+--
+--import datetime as _dt
+--import os
+--from pathlib import Path
+--import subprocess
+--import sys
+--from typing import Iterable
+--
+--ROOT = Path(__file__).resolve().parents[4]
+--OUT_DIR = ROOT / ".cache" / "skill"
+--STAMP = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+--SNAPSHOT = OUT_DIR / f"context-{STAMP}.md"
+--LATEST = OUT_DIR / "context-latest.md"
+--
+--EXCLUDED_DIR_NAMES = {
+--    ".git",
+--    ".gradle",
+--    ".idea",
+--    ".kotlin",
+--    ".zig-cache",
+--    ".cxx",
+--    "build",
+--    "node_modules",
+--    ".cache",
+--}
+--
+--KEY_FILES = [
+--    ".github/skills/wasmline/SKILL.md",
+--    "README_zh.md",
+--    "README.md",
+--    "scripts/init.sh",
+--    "wasmline-multiplatform/settings.gradle.kts",
+--    "wasmline-multiplatform/gradle.properties",
+--    "wasmline-multiplatform/wasmline/build.gradle.kts",
+--    "wasmline-multiplatform/wasmline-kotlin-plugin/build.gradle.kts",
+--    "wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md",
+--    ".github/plans/ir-plan.md",
+--    "wasmline-core/src/Engine.cpp",
+--    "wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/GeneratedBridge.kt",
+--    "wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt",
+--]
+--
+--
+--def rel(path: Path) -> str:
+--    return path.relative_to(ROOT).as_posix()
+--
+--
+--def run_git(*args: str) -> str:
+--    try:
+--        result = subprocess.run(
+--            ["git", "--no-pager", *args],
+--            cwd=ROOT,
+--            check=False,
+--            capture_output=True,
+--            text=True,
+--            encoding="utf-8",
+--            errors="replace",
+--        )
+--    except FileNotFoundError:
+--        return "<git unavailable>"
+--    output = (result.stdout or result.stderr).strip()
+--    return output or "<empty>"
+--
+--
+--def language_for(path: Path) -> str:
+--    suffix = path.suffix.lower()
+--    return {
+--        ".md": "markdown",
+--        ".kt": "kotlin",
+--        ".kts": "kotlin",
+--        ".sh": "bash",
+--        ".py": "python",
+--        ".cpp": "cpp",
+--        ".h": "cpp",
+--        ".java": "java",
+--        ".properties": "ini",
+--    }.get(suffix, "text")
+--
+--
+--def read_excerpt(path: Path, limit: int = 80) -> str:
+--    try:
+--        lines = path.read_text(encoding="utf-8").splitlines()
+--    except UnicodeDecodeError:
+--        return "<binary or non-utf8 file>"
+--    excerpt = lines[:limit]
+--    if len(lines) > limit:
+--        excerpt.append("...<truncated>...")
+--    return "
+-".join(excerpt)
+--
+--
+--def walk_with_depth(base: Path, max_depth: int) -> list[Path]:
+--    results: list[Path] = []
+--    stack: list[tuple[Path, int]] = [(base, 0)]
+--    while stack:
+--        current, depth = stack.pop()
+--        if depth > max_depth:
+--            continue
+--        if current != base:
+--            results.append(current)
+--        if current.is_dir() and depth < max_depth and current.name not in EXCLUDED_DIR_NAMES:
+--            try:
+--                children = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()), reverse=False)
+--            except PermissionError:
+--                continue
+--            for child in reversed(children):
+--                if child.name in EXCLUDED_DIR_NAMES:
+--                    continue
+--                stack.append((child, depth + 1))
+--    return sorted(results, key=lambda p: rel(p))
+--
+--
+--def list_gradle_modules() -> list[str]:
+--    base = ROOT / "wasmline-multiplatform"
+--    modules: list[str] = []
+--    for path in sorted(base.rglob("build.gradle.kts")):
+--        if any(part in EXCLUDED_DIR_NAMES for part in path.parts):
+--            continue
+--        modules.append(rel(path.parent))
+--    return modules
+--
+--
+--def indent_tree(paths: Iterable[Path], base: Path) -> str:
+--    lines = []
+--    for path in sorted(paths, key=lambda p: rel(p)):
+--        relative = path.relative_to(base)
+--        depth = len(relative.parts) - 1
+--        label = f"{'  ' * depth}- {relative.parts[-1]}{'/' if path.is_dir() else ''}"
+--        lines.append(label)
+--    return "
+-".join(lines)
+--
+--
+--def changed_files() -> list[str]:
+--    out = run_git("diff", "--name-only")
+--    if out in {"<empty>", "<git unavailable>"}:
+--        return []
+--    return [line.strip() for line in out.splitlines() if line.strip()]
+--
+--
+--def staged_or_untracked_files() -> list[str]:
+--    out = run_git("status", "--short")
+--    if out in {"<empty>", "<git unavailable>"}:
+--        return []
+--    files = []
+--    for line in out.splitlines():
+--        entry = line[3:].strip() if len(line) > 3 else line.strip()
+--        if entry:
+--            files.append(entry)
+--    return files
+--
+--
+--def write_snapshot() -> None:
+--    OUT_DIR.mkdir(parents=True, exist_ok=True)
+--
+--    top_paths = walk_with_depth(ROOT, max_depth=2)
+--    module_paths = walk_with_depth(ROOT / "wasmline-multiplatform", max_depth=2)
+--    gradle_modules = list_gradle_modules()
+--    changed = changed_files()
+--    status_files = staged_or_untracked_files()
+--
+--    lines: list[str] = []
+--    lines.append("# Wasmline Context Snapshot")
+--    lines.append("")
+--    lines.append(f"- Generated at: {_dt.datetime.now().isoformat(timespec='seconds')}")
+--    lines.append(f"- Repository root: `{ROOT}`")
+--    lines.append("")
+--
+--    lines.append("## Git 概览")
+--    lines.append("")
+--    lines.append("```text")
+--    lines.append(run_git("rev-parse", "--abbrev-ref", "HEAD"))
+--    lines.append(run_git("rev-parse", "HEAD"))
+--    lines.append("```")
+--    lines.append("")
+--    lines.append("### 工作区状态")
+--    lines.append("")
+--    lines.append("```text")
+--    lines.append(run_git("status", "--short"))
+--    lines.append("```")
+--    lines.append("")
+--    lines.append("### Diff 统计")
+--    lines.append("")
+--    lines.append("```text")
+--    lines.append(run_git("diff", "--stat"))
+--    lines.append("```")
+--    lines.append("")
+--
+--    lines.append("## 根目录结构（深度 2）")
+--    lines.append("")
+--    lines.append("```text")
+--    lines.append(indent_tree(top_paths, ROOT))
+--    lines.append("```")
+--    lines.append("")
+--
+--    lines.append("## `wasmline-multiplatform/` 结构（深度 2）")
+--    lines.append("")
+--    lines.append("```text")
+--    lines.append(indent_tree(module_paths, ROOT / "wasmline-multiplatform"))
+--    lines.append("```")
+--    lines.append("")
+--
+--    lines.append("## Gradle 模块清单")
+--    lines.append("")
+--    for module in gradle_modules:
+--        lines.append(f"- `{module}`")
+--    lines.append("")
+--
+--    lines.append("## 关键上下文文件摘录")
+--    lines.append("")
+--    for relative in KEY_FILES:
+--        path = ROOT / relative
+--        if not path.exists():
+--            lines.append(f"### `{relative}`")
+--            lines.append("")
+--            lines.append("<missing>")
+--            lines.append("")
+--            continue
+--        lines.append(f"### `{relative}`")
+--        lines.append("")
+--        lines.append(f"```{language_for(path)}")
+--        lines.append(read_excerpt(path, limit=80))
+--        lines.append("```")
+--        lines.append("")
+--
+--    lines.append("## 当前改动文件")
+--    lines.append("")
+--    if status_files:
+--        for file in status_files:
+--            lines.append(f"- `{file}`")
+--    else:
+--        lines.append("- <none>")
+--    lines.append("")
+--
+--    if changed:
+--        lines.append("## 变更 diff 预览")
+--        lines.append("")
+--        lines.append("```diff")
+--        diff_preview = run_git("diff", "--unified=2", "--", *changed)
+--        preview_lines = diff_preview.splitlines()
+--        if len(preview_lines) > 400:
+--            preview_lines = preview_lines[:400] + ["...<truncated>..."]
+--        lines.extend(preview_lines or ["<empty>"])
+--        lines.append("```")
+--        lines.append("")
+--
+--    lines.append("## 建议使用方式")
+--    lines.append("")
+--    lines.append("1. 先运行 `bash ./.github/skills/wasmline/scripts/skill_preflight.sh`，确认 JBR 21 与平台资产。")
+--    lines.append("2. 再运行本脚本，生成一份当前仓库快照。")
+--    lines.append("3. 每次进入新需求或完成一轮修改后，重新生成快照，重点比对 `当前改动文件` 与 `变更 diff 预览`。")
+--    lines.append("4. 若问题落在 IR/plugin，请优先回看 `wasmline-kotlin-plugin` 与 `.github/plans/ir-plan.md`。")
+--    lines.append("")
+--
+--    content = "
+-".join(lines).rstrip() + "
+-"
+--    SNAPSHOT.write_text(content, encoding="utf-8")
+--    LATEST.write_text(content, encoding="utf-8")
+--
+--    print(f"Generated: {SNAPSHOT}")
+--    print(f"Updated : {LATEST}")
+--
+--
+--if __name__ == "__main__":
+--    try:
+--        write_snapshot()
+--    except KeyboardInterrupt:
+--        sys.exit(130)
+-diff --git a/README.md b/README.md
+-index fe2d583..ba6bb16 100644
+---- a/README.md
+-+++ b/README.md
+-@@ -61,10 +61,12 @@ wasmline-multiplatform/
+- 
+- ### Initialization
+- 
+--Initialize the required platform assets:
+-+Initialize the required platform assets (pick one — all three are equivalent):
+- 
+- ```zsh
+--sh ./scripts/init.sh
+-+sh ./scripts/init.sh            # Bash (requires curl + tar/unzip)
+-+python3 ./scripts/init.py       # Python 3.9+ (no third-party deps)
+-+node ./scripts/init.mjs         # Node.js 18+ (no third-party deps)
+- ```
+- 
+- ### Build
+-diff --git a/README_zh.md b/README_zh.md
+-index 54de545..a206748 100644
+---- a/README_zh.md
+-+++ b/README_zh.md
+-@@ -61,10 +61,12 @@ wasmline-multiplatform/
+- 
+- ### 初始化
+- 
+--初始化所需的平台资源：
+-+初始化所需的平台资源（三选一，功能等价）：
+- 
+- ```zsh
+--sh ./scripts/init.sh
+-+sh ./scripts/init.sh            # Bash（需要 curl + tar/unzip）
+-+python3 ./scripts/init.py       # Python 3.9+（无第三方依赖）
+-+node ./scripts/init.mjs         # Node.js 18+（无第三方依赖）
+- ```
+- 
+- ### 构建
+-diff --git a/docs/content/docs/index.en.mdx b/docs/content/docs/index.en.mdx
+-index 312c3b6..9745d3c 100644
+---- a/docs/content/docs/index.en.mdx
+-+++ b/docs/content/docs/index.en.mdx
+-@@ -64,8 +64,12 @@ wasmline-multiplatform/
+-   <Step>
+-     ### Initialize Environment
+- 
+-+    Pick one — all three are equivalent:
+-+
+-     ```bash
+--    sh ./scripts/init.sh
+-+    sh ./scripts/init.sh            # Bash (requires curl + tar/unzip)
+-+    python3 ./scripts/init.py       # Python 3.9+ (no third-party deps)
+-+    node ./scripts/init.mjs         # Node.js 18+ (no third-party deps)
+-     ```
+-   </Step>
+- 
+-diff --git a/docs/content/docs/index.mdx b/docs/content/docs/index.mdx
+-index 84d3ad1..091e69f 100644
+---- a/docs/content/docs/index.mdx
+-+++ b/docs/content/docs/index.mdx
+-@@ -64,8 +64,12 @@ wasmline-multiplatform/
+-   <Step>
+-     ### 初始化环境
+- 
+-+    三选一，功能等价：
+-+
+-     ```bash
+--    sh ./scripts/init.sh
+-+    sh ./scripts/init.sh            # Bash（需要 curl + tar/unzip）
+-+    python3 ./scripts/init.py       # Python 3.9+（无第三方依赖）
+-+    node ./scripts/init.mjs         # Node.js 18+（无第三方依赖）
+-     ```
+-   </Step>
+- 
+-diff --git a/scripts/init.mjs b/scripts/init.mjs
+-new file mode 100644
+-index 0000000..16d92ab
+---- /dev/null
+-+++ b/scripts/init.mjs
+-@@ -0,0 +1,472 @@
+-+#!/usr/bin/env node
+-+/**
+-+ * Wasmtime C-API Init Script (Node.js / ESM)
+-+ * ============================================
+-+ * Equivalent to init.sh — downloads and deploys Wasmtime C-API platform assets.
+-+ *
+-+ * Usage:
+-+ *   node scripts/init.mjs [proxy]
+-+ *
+-+ * Examples:
+-+ *   node scripts/init.mjs
+-+ *   node scripts/init.mjs 127.0.0.1:7890
+-+ */
+-+
+-+import { createWriteStream, cpSync, existsSync, mkdirSync, rmSync, statSync, readdirSync } from "node:fs";
+-+import { basename, dirname, join, resolve } from "node:path";
+-+import { createInterface } from "node:readline";
+-+import { pipeline } from "node:stream/promises";
+-+import { createGunzip } from "node:zlib";
+-+import { fileURLToPath } from "node:url";
+-+import { execFileSync, execSync } from "node:child_process";
+-+import { randomBytes } from "node:crypto";
+-+
+-+const __filename = fileURLToPath(import.meta.url);
+-+const SCRIPT_DIR = dirname(__filename);
+-+const PROJECT_ROOT = resolve(SCRIPT_DIR, "..");
+-+const PLATFORMS_ROOT = join(PROJECT_ROOT, "platforms");
+-+const REPO = "crowforkotlin/wasmtime";
+-+
+-+// ── Colors ──────────────────────────────────────────────────────────────────
+-+const isTTY = process.stdout.isTTY && !process.env.NO_COLOR;
+-+const c = (code, t) => (isTTY ? `[${code}m${t}[0m` : t);
+-+const red = (t) => c("1;31", t);
+-+const green = (t) => c("1;32", t);
+-+const yellow = (t) => c("1;33", t);
+-+const blue = (t) => c("1;34", t);
+-+const magenta = (t) => c("1;35", t);
+-+const cyan = (t) => c("1;36", t);
+-+const white = (t) => c("1;37", t);
+-+const gray = (t) => c("1;30", t);
+-+
+-+const logInfo = (m) => console.log(`${magenta("[INFO]")} ${m}`);
+-+const logOk = (m) => console.log(`${green("[OK]")}   ${m}`);
+-+const logWarn = (m) => console.log(`${yellow("[WARN]")} ${m}`);
+-+const logErr = (m) => console.log(`${red("[ERR]")}  ${m}`);
+-+const logStep = (m) => console.log(`${blue("[STEP]")} ${m}`);
+-+const logDetail = (m) => console.log(`       ${gray("└─")} ${m}`);
+-+const logHeader = (m) => {
+-+  const bar = cyan("=".repeat(49));
+-+  console.log(`${bar}
+-      ${m}
+-${bar}`);
+-+};
+-+
+-+// ── Helpers ─────────────────────────────────────────────────────────────────
+-+
+-+function formatSize(n) {
+-+  if (n < 1024) return `${n}B`;
+-+  if (n < 1048576) return `${Math.round((n + 512) / 1024)}KB`;
+-+  const mb = Math.floor((n * 100) / 1048576);
+-+  return `${Math.floor(mb / 100)}.${String(mb % 100).padStart(2, "0")}MB`;
+-+}
+-+
+-+function ask(prompt) {
+-+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+-+  return new Promise((res) => rl.question(prompt, (a) => { rl.close(); res(a.trim()); }));
+-+}
+-+
+-+function tmpDir() {
+-+  const p = join(PLATFORMS_ROOT, `.tmp_${randomBytes(6).toString("hex")}`);
+-+  mkdirSync(p, { recursive: true });
+-+  return p;
+-+}
+-+
+-+// ── Targets ─────────────────────────────────────────────────────────────────
+-+
+-+const TARGETS = [
+-+  ["1", "Android (aarch64)", "aarch64-android"],
+-+  ["2", "iOS Device (aarch64)", "aarch64-ios-c-api"],
+-+  ["3", "iOS Simulator (aarch64)", "aarch64-ios-sim"],
+-+  ["4", "Linux (aarch64)", "aarch64-linux"],
+-+  ["5", "Linux (x86_64)", "x86_64-linux"],
+-+  ["6", "macOS (aarch64)", "aarch64-macos"],
+-+  ["7", "macOS (x86_64)", "x86_64-macos"],
+-+  ["8", "Windows (x86_64)", "x86_64-windows"],
+-+  ["a", "All Platforms", "all"],
+-+];
+-+
+-+const PLATFORM_MAP = {
+-+  "aarch64-android": "android/arm64-v8a",
+-+  "aarch64-ios-sim": "ios/simulator-arm64",
+-+  "aarch64-ios-c-api": "ios/arm64",
+-+  "aarch64-linux": "linux/aarch64",
+-+  "x86_64-linux": "linux/x64",
+-+  "aarch64-macos": "mac/aarch64",
+-+  "x86_64-macos": "mac/x64",
+-+  "x86_64-windows": "windows/x64",
+-+};
+-+
+-+async function selectTarget() {
+-+  console.log();
+-+  logHeader("Platform & Architecture Selection");
+-+  console.log("Select specific target:");
+-+  for (const [key, label] of TARGETS) {
+-+    console.log(`  ${white(key + ")")} ${label}`);
+-+  }
+-+  console.log();
+-+  while (true) {
+-+    const choice = (await ask(`${cyan("Choice [1-8, a]: ")}`)).toLowerCase();
+-+    const match = TARGETS.find(([k]) => k === choice);
+-+    if (match) {
+-+      const display = match[2] === "all" ? "All Platforms" : match[2];
+-+      logOk(`Target Filter: ${white(display)}`);
+-+      return match[2];
+-+    }
+-+    console.log(red("Invalid input."));
+-+  }
+-+}
+-+
+-+async function configureConcurrency() {
+-+  console.log();
+-+  logHeader("Download Settings");
+-+  const raw = await ask(`Set max concurrent downloads (Default: ${white("3")}):
+-${cyan("Count > ")}`);
+-+  let n = parseInt(raw, 10);
+-+  if (!Number.isFinite(n) || n < 1) n = 3;
+-+  logOk(`Concurrency set to: ${white(String(n))}`);
+-+  return n;
+-+}
+-+
+-+// ── Network ─────────────────────────────────────────────────────────────────
+-+
+-+function setupProxy(proxy) {
+-+  if (proxy) {
+-+    process.env.http_proxy = `http://${proxy}`;
+-+    process.env.https_proxy = `http://${proxy}`;
+-+    logOk(`Proxy: ${proxy}`);
+-+  } else {
+-+    logInfo("Direct connection.");
+-+    console.log(`${yellow("[TIP]")} If slow, use: node ${process.argv[1]} 127.0.0.1:7890`);
+-+  }
+-+}
+-+
+-+async function fetchJSON(url) {
+-+  const resp = await fetch(url, {
+-+    headers: { Accept: "application/vnd.github+json" },
+-+  });
+-+  if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
+-+  return resp.json();
+-+}
+-+
+-+async function downloadFile(url, dest) {
+-+  const resp = await fetch(url, { redirect: "follow" });
+-+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+-+  const ws = createWriteStream(dest);
+-+  // @ts-ignore – Node 18+ body is a ReadableStream / web stream
+-+  await pipeline(resp.body, ws);
+-+}
+-+
+-+// ── Extract ─────────────────────────────────────────────────────────────────
+-+
+-+function hasBin(bin) {
+-+  try {
+-+    execSync(process.platform === "win32" ? `where ${bin}` : `which ${bin}`, { stdio: "ignore" });
+-+    return true;
+-+  } catch { return false; }
+-+}
+-+
+-+function toMsysPath(p) {
+-+  const normalized = resolve(p).replace(/\/g, "/");
+-+  const match = normalized.match(/^([A-Za-z]):\/(.*)$/);
+-+  if (!match) return normalized;
+-+  return `/${match[1].toLowerCase()}/${match[2]}`;
+-+}
+-+
+-+function findPython() {
+-+  const candidates = process.platform === "win32" ? ["python", "py"] : ["python3", "python"];
+-+  for (const candidate of candidates) {
+-+    if (hasBin(candidate)) return candidate;
+-+  }
+-+  return null;
+-+}
+-+
+-+function extractArchiveWithPython(archive, destDir) {
+-+  const python = findPython();
+-+  if (!python) return false;
+-+
+-+  const script = [
+-+    "import pathlib, sys, tarfile, zipfile",
+-+    "archive = pathlib.Path(sys.argv[1])",
+-+    "dest = pathlib.Path(sys.argv[2])",
+-+    "dest.mkdir(parents=True, exist_ok=True)",
+-+    "if archive.suffix == '.zip':",
+-+    "    with zipfile.ZipFile(archive) as zf:",
+-+    "        zf.extractall(dest)",
+-+    "else:",
+-+    "    with tarfile.open(archive) as tf:",
+-+    "        tf.extractall(dest)",
+-+  ].join("
+-");
+-+
+-+  const args = python === "py"
+-+    ? ["-3", "-c", script, archive, destDir]
+-+    : ["-c", script, archive, destDir];
+-+
+-+  execFileSync(python, args, { stdio: "ignore" });
+-+  return true;
+-+}
+-+
+-+function extractArchive(archive, destDir) {
+-+  const name = basename(archive);
+-+  mkdirSync(destDir, { recursive: true });
+-+
+-+  if (name.endsWith(".zip")) {
+-+    if (process.platform === "win32") {
+-+      execSync(`tar -xf "${archive}" -C "${destDir}"`, { stdio: "ignore" });
+-+    } else {
+-+      execSync(`unzip -q -o "${archive}" -d "${destDir}"`, { stdio: "ignore" });
+-+    }
+-+    return;
+-+  }
+-+
+-+  // .tar.xz / .tar.gz — on Windows the built-in tar.exe cannot handle .xz
+-+  if (process.platform === "win32" && name.endsWith(".tar.xz")) {
+-+    // Prefer MSYS2 / Git-Bash tar.exe directly to avoid nested shell quoting issues.
+-+    const msysTar = findMsysTar();
+-+    if (msysTar) {
+-+      execFileSync(msysTar, ["-xf", toMsysPath(archive), "-C", toMsysPath(destDir)], { stdio: "ignore" });
+-+      return;
+-+    }
+-+
+-+    // Python's stdlib tarfile handles .tar.xz reliably when Python is available.
+-+    if (extractArchiveWithPython(archive, destDir)) {
+-+      return;
+-+    }
+-+
+-+    // Fallback: two-step  xz → tar  (requires xz on PATH)
+-+    if (hasBin("xz")) {
+-+      const tarFile = archive.replace(/\.xz$/, "");
+-+      execSync(`xz -dk "${archive}"`, { stdio: "ignore" });
+-+      execSync(`tar -xf "${tarFile}" -C "${destDir}"`, { stdio: "ignore" });
+-+      rmSync(tarFile, { force: true });
+-+      return;
+-+    }
+-+    // Last resort: 7z
+-+    if (hasBin("7z")) {
+-+      execSync(`7z x "${archive}" -so | 7z x -si -ttar -o"${destDir}"`, { stdio: "ignore", shell: true });
+-+      return;
+-+    }
+-+    throw new Error(
+-+      `Cannot extract .tar.xz on Windows — install Git-Bash / MSYS2, xz-utils, or 7-Zip and make sure they are on PATH.`
+-+    );
+-+  }
+-+
+-+  // Unix or .tar.gz on any platform
+-+  execSync(`tar -xf "${archive}" -C "${destDir}"`, { stdio: "ignore" });
+-+}
+-+
+-+/** Try to locate a MSYS2 / Git-Bash bash.exe that bundles GNU tar with xz support. */
+-+function findMsysBash() {
+-+  const candidates = [
+-+    process.env.MSYS2_BASH,
+-+    // Git for Windows
+-+    "C:\Program Files\Git srinash.exe",
+-+    "C:\Program Files (x86)\Git srinash.exe",
+-+    // MSYS2 default
+-+    "C:\msys64 srinash.exe",
+-+  ];
+-+  for (const p of candidates) {
+-+    if (p && existsSync(p)) return p;
+-+  }
+-+  // Check if current shell IS already MSYS/Git-Bash (MSYSTEM env var set)
+-+  if (process.env.MSYSTEM && hasBin("bash")) return "bash";
+-+  return null;
+-+}
+-+
+-+function findMsysTar() {
+-+  const msysBash = findMsysBash();
+-+  if (msysBash && msysBash !== "bash") {
+-+    const candidate = join(dirname(msysBash), "tar.exe");
+-+    if (existsSync(candidate)) return candidate;
+-+  }
+-+
+-+  const candidates = [
+-+    "C:\Program Files\Git srin	ar.exe",
+-+    "C:\Program Files (x86)\Git srin	ar.exe",
+-+    "C:\msys64 srin	ar.exe",
+-+  ];
+-+  for (const candidate of candidates) {
+-+    if (existsSync(candidate)) return candidate;
+-+  }
+-+
+-+  return null;
+-+}
+-+
+-+function findIncludeDir(root) {
+-+  const entries = readdirSync(root, { withFileTypes: true });
+-+  for (const e of entries) {
+-+    if (e.isDirectory() && e.name === "include") return root;
+-+    if (e.isDirectory()) {
+-+      const found = findIncludeDir(join(root, e.name));
+-+      if (found) return found;
+-+    }
+-+  }
+-+  return null;
+-+}
+-+
+-+// ── Deploy ──────────────────────────────────────────────────────────────────
+-+
+-+function deployPlatform(archive, plat) {
+-+  const target = join(PLATFORMS_ROOT, plat);
+-+  logStep(`Deploying: ${white(plat)}`);
+-+  logDetail(`Archive: ${cyan(basename(archive))}`);
+-+
+-+  if (existsSync(target)) rmSync(target, { recursive: true, force: true });
+-+  mkdirSync(target, { recursive: true });
+-+
+-+  const tmp = tmpDir();
+-+  try {
+-+    extractArchive(archive, tmp);
+-+    const cRoot = findIncludeDir(tmp);
+-+    if (!cRoot) throw new Error(`Invalid structure: ${basename(archive)}`);
+-+
+-+    const srcInclude = join(cRoot, "include");
+-+    const srcLib = join(cRoot, "lib");
+-+    cpSync(srcInclude, join(target, "include"), { recursive: true });
+-+    cpSync(srcLib, join(target, "lib"), { recursive: true });
+-+    logOk(`Installed: ${plat}`);
+-+  } finally {
+-+    rmSync(tmp, { recursive: true, force: true });
+-+  }
+-+}
+-+
+-+
+-+// ── Filter ──────────────────────────────────────────────────────────────────
+-+
+-+function matchesFilter(fname, filter) {
+-+  if (filter === "all") return true;
+-+  if (filter === "aarch64-ios-c-api") {
+-+    return fname.includes(filter) && !fname.includes("sim");
+-+  }
+-+  return fname.includes(filter);
+-+}
+-+
+-+function fnameToPlatform(fname) {
+-+  // Order matters: sim before generic ios
+-+  const keys = [
+-+    "aarch64-ios-sim",
+-+    "aarch64-ios-c-api",
+-+    "aarch64-android",
+-+    "aarch64-linux",
+-+    "x86_64-linux",
+-+    "aarch64-macos",
+-+    "x86_64-macos",
+-+    "x86_64-windows",
+-+  ];
+-+  for (const k of keys) {
+-+    if (fname.includes(k)) return PLATFORM_MAP[k];
+-+  }
+-+  return null;
+-+}
+-+
+-+// ── Main ────────────────────────────────────────────────────────────────────
+-+
+-+async function main() {
+-+  process.chdir(PROJECT_ROOT);
+-+  mkdirSync(PLATFORMS_ROOT, { recursive: true });
+-+
+-+  logHeader("Wasmtime SDK Init");
+-+  setupProxy(process.argv[2] || null);
+-+
+-+  // 1. Fetch release info
+-+  logInfo("Fetching releases...");
+-+  let data;
+-+  try {
+-+    data = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/latest`);
+-+  } catch (e) {
+-+    logErr(`Fetch failed: ${e.message}`);
+-+    process.exit(1);
+-+  }
+-+
+-+  const tag = data.tag_name || "";
+-+  if (!tag) { logErr("Fetch failed: no tag_name."); process.exit(1); }
+-+  logInfo(`Version: ${green(tag)}`);
+-+
+-+  // 2. Interactive selections
+-+  const userFilter = await selectTarget();
+-+  const maxConcurrent = await configureConcurrency();
+-+
+-+  // 3. Collect download URLs
+-+  logInfo("Analyzing targets...");
+-+  /** @type {{url:string, fname:string, plat:string}[]} */
+-+  const jobs = [];
+-+  for (const asset of data.assets || []) {
+-+    const url = asset.browser_download_url || "";
+-+    const fname = basename(url);
+-+    if (!fname.includes("c-api")) continue;
+-+    if (!matchesFilter(fname, userFilter)) continue;
+-+    const plat = fnameToPlatform(fname);
+-+    if (plat) jobs.push({ url, fname, plat });
+-+  }
+-+
+-+  if (jobs.length === 0) { logWarn("No assets found."); process.exit(0); }
+-+  logInfo(`Ready. Queue: ${jobs.length} files (Max concurrent: ${maxConcurrent})`);
+-+  console.log("-".repeat(80));
+-+
+-+  // 4. Download with concurrency control
+-+  const errors = [];
+-+  /** @type {{plat:string, archive:string}[]} */
+-+  const downloaded = [];
+-+
+-+  async function doDownload({ url, fname, plat }) {
+-+    const tmp = tmpDir();
+-+    const dest = join(tmp, fname);
+-+    const t0 = performance.now();
+-+    try {
+-+      await downloadFile(url, dest);
+-+      const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+-+      const size = formatSize(statSync(dest).size);
+-+      logOk(`${plat.padEnd(18)}  ${size.padStart(10)}  ${String(elapsed).padStart(5)}s  ${cyan(fname)}`);
+-+      downloaded.push({ plat, archive: dest });
+-+    } catch (e) {
+-+      errors.push(`${fname}: ${e.message}`);
+-+      logErr(`${plat.padEnd(18)}  FAILED  ${fname}`);
+-+      rmSync(tmp, { recursive: true, force: true });
+-+    }
+-+  }
+-+
+-+  // Simple concurrency pool
+-+  let running = 0;
+-+  let idx = 0;
+-+  await new Promise((done) => {
+-+    function next() {
+-+      while (running < maxConcurrent && idx < jobs.length) {
+-+        running++;
+-+        const job = jobs[idx++];
+-+        doDownload(job).finally(() => {
+-+          running--;
+-+          if (idx >= jobs.length && running === 0) done();
+-+          else next();
+-+        });
+-+      }
+-+      if (jobs.length === 0) done();
+-+    }
+-+    next();
+-+  });
+-+
+-+  console.log("-".repeat(80));
+-+  logOk("All Downloads Finished.");
+-+  console.log();
+-+
+-+  // 5. Deploy
+-+  logInfo("Deploying...");
+-+  for (const { plat, archive } of downloaded) {
+-+    try {
+-+      deployPlatform(archive, plat);
+-+    } catch (e) {
+-+      errors.push(e.message);
+-+    }
+-+    // Clean temp dir containing the archive
+-+    rmSync(dirname(archive), { recursive: true, force: true });
+-+    console.log();
+-+  }
+-+
+-+  if (errors.length > 0) {
+-+    logErr("Completed with errors:");
+-+    for (const e of errors) console.log(`  - ${e}`);
+-+    process.exit(1);
+-+  }
+-+
+-+  logHeader("Success");
+-+  console.log(`Location: ${PLATFORMS_ROOT}/`);
+-+}
+-+
+-+main().catch((e) => { logErr(e.message); process.exit(1); });
+-+
+-diff --git a/scripts/init.py b/scripts/init.py
+-new file mode 100644
+-index 0000000..b4c6a31
+---- /dev/null
+-+++ b/scripts/init.py
+-@@ -0,0 +1,335 @@
+-+#!/usr/bin/env python3
+-+"""
+-+Wasmtime C-API Init Script (Python)
+-+====================================
+-+Equivalent to init.sh — downloads and deploys Wasmtime C-API platform assets.
+-+
+-+Usage:
+-+    python3 scripts/init.py [proxy]
+-+
+-+Examples:
+-+    python3 scripts/init.py
+-+    python3 scripts/init.py 127.0.0.1:7890
+-+"""
+-+
+-+from __future__ import annotations
+-+
+-+import json
+-+import os
+-+import shutil
+-+import sys
+-+import tarfile
+-+import tempfile
+-+import time
+-+import zipfile
+-+from concurrent.futures import ThreadPoolExecutor, as_completed
+-+from pathlib import Path
+-+from urllib.request import Request, urlopen
+-+from urllib.error import URLError
+-+
+-+# ── Paths ────────────────────────────────────────────────────────────────────
+-+SCRIPT_DIR = Path(__file__).resolve().parent
+-+PROJECT_ROOT = SCRIPT_DIR.parent
+-+PLATFORMS_ROOT = PROJECT_ROOT / "platforms"
+-+
+-+REPO = "crowforkotlin/wasmtime"
+-+
+-+# ── Colors ───────────────────────────────────────────────────────────────────
+-+_NO_COLOR = os.environ.get("NO_COLOR")
+-+
+-+def _c(code: str, text: str) -> str:
+-+    if _NO_COLOR or not sys.stdout.isatty():
+-+        return text
+-+    return f"[{code}m{text}[0m"
+-+
+-+def red(t: str) -> str: return _c("1;31", t)
+-+def green(t: str) -> str: return _c("1;32", t)
+-+def yellow(t: str) -> str: return _c("1;33", t)
+-+def blue(t: str) -> str: return _c("1;34", t)
+-+def magenta(t: str) -> str: return _c("1;35", t)
+-+def cyan(t: str) -> str: return _c("1;36", t)
+-+def white(t: str) -> str: return _c("1;37", t)
+-+def gray(t: str) -> str: return _c("1;30", t)
+-+
+-+def log_info(msg: str) -> None: print(f"{magenta('[INFO]')} {msg}")
+-+def log_ok(msg: str) -> None: print(f"{green('[OK]')}   {msg}")
+-+def log_warn(msg: str) -> None: print(f"{yellow('[WARN]')} {msg}")
+-+def log_err(msg: str) -> None: print(f"{red('[ERR]')}  {msg}")
+-+def log_step(msg: str) -> None: print(f"{blue('[STEP]')} {msg}")
+-+def log_detail(msg: str) -> None: print(f"       {gray('└─')} {msg}")
+-+
+-+def log_header(msg: str) -> None:
+-+    bar = cyan("=" * 49)
+-+    print(f"{bar}
+-      {msg}
+-{bar}")
+-+
+-+# ── Helpers ──────────────────────────────────────────────────────────────────
+-+
+-+def format_size(n: int) -> str:
+-+    if n < 1024:
+-+        return f"{n}B"
+-+    if n < 1048576:
+-+        return f"{(n + 512) // 1024}KB"
+-+    mb = n * 100 // 1048576
+-+    return f"{mb // 100}.{mb % 100:02d}MB"
+-+
+-+# ── Target menu ──────────────────────────────────────────────────────────────
+-+
+-+TARGETS = [
+-+    ("1", "Android (aarch64)",       "aarch64-android"),
+-+    ("2", "iOS Device (aarch64)",    "aarch64-ios-c-api"),
+-+    ("3", "iOS Simulator (aarch64)", "aarch64-ios-sim"),
+-+    ("4", "Linux (aarch64)",         "aarch64-linux"),
+-+    ("5", "Linux (x86_64)",          "x86_64-linux"),
+-+    ("6", "macOS (aarch64)",         "aarch64-macos"),
+-+    ("7", "macOS (x86_64)",          "x86_64-macos"),
+-+    ("8", "Windows (x86_64)",        "x86_64-windows"),
+-+    ("a", "All Platforms",           "all"),
+-+]
+-+
+-+PLATFORM_MAP: dict[str, str] = {
+-+    "aarch64-android":    "android/arm64-v8a",
+-+    "aarch64-ios-sim":    "ios/simulator-arm64",
+-+    "aarch64-ios-c-api":  "ios/arm64",
+-+    "aarch64-linux":      "linux/aarch64",
+-+    "x86_64-linux":       "linux/x64",
+-+    "aarch64-macos":      "mac/aarch64",
+-+    "x86_64-macos":       "mac/x64",
+-+    "x86_64-windows":     "windows/x64",
+-+}
+-+
+-+
+-+def select_target() -> str:
+-+    print()
+-+    log_header("Platform & Architecture Selection")
+-+    print("Select specific target:")
+-+    for key, label, _ in TARGETS:
+-+        print(f"  {white(key + ')')} {label}")
+-+    print()
+-+    while True:
+-+        choice = input(f"{cyan('Choice [1-8, a]: ')}").strip().lower()
+-+        for key, _, filter_val in TARGETS:
+-+            if choice == key:
+-+                display = filter_val if filter_val != "all" else "All Platforms"
+-+                log_ok(f"Target Filter: {white(display)}")
+-+                return filter_val
+-+        print(f"{red('Invalid input.')}")
+-+
+-+
+-+def configure_concurrency() -> int:
+-+    print()
+-+    log_header("Download Settings")
+-+    raw = input(f"Set max concurrent downloads (Default: {white('3')}):
+-{cyan('Count > ')}").strip()
+-+    try:
+-+        n = int(raw)
+-+        if n < 1:
+-+            raise ValueError
+-+    except ValueError:
+-+        n = 3
+-+    log_ok(f"Concurrency set to: {white(str(n))}")
+-+    return n
+-+
+-+
+-+# ── Network ──────────────────────────────────────────────────────────────────
+-+
+-+def setup_proxy(proxy: str | None) -> None:
+-+    if proxy:
+-+        os.environ["http_proxy"] = f"http://{proxy}"
+-+        os.environ["https_proxy"] = f"http://{proxy}"
+-+        log_ok(f"Proxy: {proxy}")
+-+    else:
+-+        log_info("Direct connection.")
+-+        print(f"{yellow('[TIP]')} If slow, use: python3 {sys.argv[0]} 127.0.0.1:7890")
+-+
+-+
+-+def api_get_json(url: str) -> dict:
+-+    req = Request(url, headers={"Accept": "application/vnd.github+json"})
+-+    with urlopen(req, timeout=30) as resp:
+-+        return json.loads(resp.read())
+-+
+-+
+-+def download_file(url: str, dest: Path) -> None:
+-+    dest.parent.mkdir(parents=True, exist_ok=True)
+-+    req = Request(url)
+-+    with urlopen(req, timeout=60) as resp, open(dest, "wb") as f:
+-+        while True:
+-+            chunk = resp.read(65536)
+-+            if not chunk:
+-+                break
+-+            f.write(chunk)
+-+
+-+
+-+# ── Deploy ───────────────────────────────────────────────────────────────────
+-+
+-+def deploy_platform(archive: Path, plat: str) -> None:
+-+    target = PLATFORMS_ROOT / plat
+-+    log_step(f"Deploying: {white(plat)}")
+-+    log_detail(f"Archive: {cyan(archive.name)}")
+-+
+-+    if target.exists():
+-+        shutil.rmtree(target)
+-+    target.mkdir(parents=True, exist_ok=True)
+-+
+-+    with tempfile.TemporaryDirectory() as tmp:
+-+        tmp_path = Path(tmp)
+-+        if archive.suffix == ".zip":
+-+            with zipfile.ZipFile(archive) as zf:
+-+                zf.extractall(tmp_path)
+-+        else:
+-+            with tarfile.open(archive) as tf:
+-+                tf.extractall(tmp_path)
+-+
+-+        # Find the directory containing include/
+-+        include_dir = None
+-+        for root, dirs, _ in os.walk(tmp_path):
+-+            if "include" in dirs:
+-+                include_dir = Path(root)
+-+                break
+-+
+-+        if include_dir is None:
+-+            log_err(f"Invalid structure: {archive.name}")
+-+            raise RuntimeError(f"No include/ found in {archive.name}")
+-+
+-+        shutil.move(str(include_dir / "include"), str(target / "include"))
+-+        shutil.move(str(include_dir / "lib"), str(target / "lib"))
+-+        log_ok(f"Installed: {plat}")
+-+
+-+
+-+# ── Filename → filter matching ───────────────────────────────────────────────
+-+
+-+def matches_filter(fname: str, user_filter: str) -> bool:
+-+    if user_filter == "all":
+-+        return True
+-+    if user_filter == "aarch64-ios-c-api":
+-+        return user_filter in fname and "sim" not in fname
+-+    return user_filter in fname
+-+
+-+
+-+def fname_to_platform(fname: str) -> str | None:
+-+    for key, plat in PLATFORM_MAP.items():
+-+        # iOS device needs special ordering: check sim first
+-+        pass
+-+    if "aarch64-ios-sim" in fname:
+-+        return PLATFORM_MAP["aarch64-ios-sim"]
+-+    if "aarch64-ios-c-api" in fname:
+-+        return PLATFORM_MAP["aarch64-ios-c-api"]
+-+    if "aarch64-android" in fname:
+-+        return PLATFORM_MAP["aarch64-android"]
+-+    if "aarch64-linux" in fname:
+-+        return PLATFORM_MAP["aarch64-linux"]
+-+    if "x86_64-linux" in fname:
+-+        return PLATFORM_MAP["x86_64-linux"]
+-+    if "aarch64-macos" in fname:
+-+        return PLATFORM_MAP["aarch64-macos"]
+-+    if "x86_64-macos" in fname:
+-+        return PLATFORM_MAP["x86_64-macos"]
+-+    if "x86_64-windows" in fname:
+-+        return PLATFORM_MAP["x86_64-windows"]
+-+    return None
+-+
+-+
+-+# ── Main ─────────────────────────────────────────────────────────────────────
+-+
+-+def main() -> None:
+-+    os.chdir(PROJECT_ROOT)
+-+    PLATFORMS_ROOT.mkdir(parents=True, exist_ok=True)
+-+
+-+    log_header("Wasmtime SDK Init")
+-+    setup_proxy(sys.argv[1] if len(sys.argv) > 1 else None)
+-+
+-+    # 1. Fetch release info
+-+    log_info("Fetching releases...")
+-+    try:
+-+        data = api_get_json(f"https://api.github.com/repos/{REPO}/releases/latest")
+-+    except (URLError, OSError) as exc:
+-+        log_err(f"Fetch failed: {exc}")
+-+        sys.exit(1)
+-+
+-+    tag = data.get("tag_name", "")
+-+    if not tag:
+-+        log_err("Fetch failed: no tag_name in response.")
+-+        sys.exit(1)
+-+    log_info(f"Version: {green(tag)}")
+-+
+-+    # 2. Interactive selections
+-+    user_filter = select_target()
+-+    max_concurrent = configure_concurrency()
+-+
+-+    # 3. Collect download URLs
+-+    log_info("Analyzing targets...")
+-+    assets = data.get("assets", [])
+-+    jobs: list[tuple[str, str, str]] = []  # (url, fname, plat)
+-+
+-+    for asset in assets:
+-+        url: str = asset.get("browser_download_url", "")
+-+        fname = url.rsplit("/", 1)[-1] if url else ""
+-+        if "c-api" not in fname:
+-+            continue
+-+        if not matches_filter(fname, user_filter):
+-+            continue
+-+        plat = fname_to_platform(fname)
+-+        if plat:
+-+            jobs.append((url, fname, plat))
+-+
+-+    if not jobs:
+-+        log_warn("No assets found.")
+-+        sys.exit(0)
+-+
+-+    log_info(f"Ready. Queue: {len(jobs)} files (Max concurrent: {max_concurrent})")
+-+    print("-" * 80)
+-+
+-+    # 4. Download
+-+    errors: list[str] = []
+-+
+-+    def do_download(url: str, fname: str, plat: str) -> tuple[str, Path]:
+-+        tmp = Path(tempfile.mkdtemp(dir=PLATFORMS_ROOT))
+-+        dest = tmp / fname
+-+        t0 = time.monotonic()
+-+        try:
+-+            download_file(url, dest)
+-+            elapsed = time.monotonic() - t0
+-+            size_str = format_size(dest.stat().st_size)
+-+            log_ok(f"{plat:18s}  {size_str:>10s}  {elapsed:5.1f}s  {cyan(fname)}")
+-+        except Exception as exc:
+-+            errors.append(f"{fname}: {exc}")
+-+            log_err(f"{plat:18s}  FAILED  {fname}")
+-+            shutil.rmtree(tmp, ignore_errors=True)
+-+            raise
+-+        return plat, dest
+-+
+-+    downloaded: list[tuple[str, Path]] = []
+-+    with ThreadPoolExecutor(max_workers=max_concurrent) as pool:
+-+        futures = {pool.submit(do_download, url, fname, plat): plat for url, fname, plat in jobs}
+-+        for fut in as_completed(futures):
+-+            try:
+-+                downloaded.append(fut.result())
+-+            except Exception:
+-+                pass
+-+
+-+    print("-" * 80)
+-+    log_ok("All Downloads Finished.")
+-+    print()
+-+
+-+    # 5. Deploy
+-+    log_info("Deploying...")
+-+    for plat, archive in downloaded:
+-+        try:
+-+            deploy_platform(archive, plat)
+-+        except Exception as exc:
+-+            errors.append(str(exc))
+-+        # Clean temp dir containing the archive
+-+        shutil.rmtree(archive.parent, ignore_errors=True)
+-+        print()
+-+
+-+    if errors:
+-+        log_err("Completed with errors:")
+-+        for e in errors:
+-+            print(f"  - {e}")
+-+        sys.exit(1)
+-+
+-+    log_header("Success")
+-+    print(f"Location: {PLATFORMS_ROOT}/")
+-+
+-+
+-+if __name__ == "__main__":
+-+    main()
+-+
+----
+-On branch main
+-Your branch is up to date with 'origin/main'.
 -
--import datetime as _dt
--import os
--from pathlib import Path
--import subprocess
--import sys
--from typing import Iterable
+-Changes to be committed:
+-  (use "git restore --staged <file>..." to unstage)
+-	new file:   scripts/init.mjs
+-	new file:   scripts/init.py
 -
--ROOT = Path(__file__).resolve().parents[4]
--OUT_DIR = ROOT / ".cache" / "skill"
--STAMP = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
--SNAPSHOT = OUT_DIR / f"context-{STAMP}.md"
--LATEST = OUT_DIR / "context-latest.md"
+-Changes not staged for commit:
+-  (use "git add/rm <file>..." to update what will be committed)
+-  (use "git restore <file>..." to discard changes in working directory)
+-	modified:   .github/skills/wasmline/SKILL.md
+-	deleted:    .github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc
+-	deleted:    .github/skills/wasmline/scripts/skill_context_snapshot.py
+-	modified:   README.md
+-	modified:   README_zh.md
+-	modified:   docs/content/docs/index.en.mdx
+-	modified:   docs/content/docs/index.mdx
+-	modified:   scripts/init.mjs
 -
--EXCLUDED_DIR_NAMES = {
--    ".git",
--    ".gradle",
--    ".idea",
--    ".kotlin",
--    ".zig-cache",
--    ".cxx",
--    "build",
--    "node_modules",
--    ".cache",
+-Untracked files:
+-  (use "git add <file>..." to include in what will be committed)
+-	scripts/__pycache__/
+diff --git a/wasmline-core/include/Api.h b/wasmline-core/include/Api.h
+index 591e5ca..b94e983 100644
+--- a/wasmline-core/include/Api.h
++++ b/wasmline-core/include/Api.h
+@@ -30,24 +30,15 @@ namespace wasmline {
+         static void releaseEngine();
+ 
+         /**
+-         * Loads a module via Module.
++         * Loads a precompiled module artifact via Module.
+          */
+-        static bool loadModule(const std::string& key, const std::string& path, bool isJit);
++        static bool loadModule(const std::string& key, const std::string& path);
+ 
+         /**
+-         * Loads a module via Module. (Not thread-safe.)
++         * Loads a precompiled module artifact via Module. (Not thread-safe.)
+          */
+-        static bool loadModuleUnsafe(const std::string& key, const std::string& path, bool isJit);
++        static bool loadModuleUnsafe(const std::string& key, const std::string& path);
+ 
+-        /**
+-         * Saves a cached module to disk.
+-         */
+-        static bool saveModuleCache(const std::string& key, const std::string& path);
+-
+-        /**
+-         * Saves a cached module to disk.
+-         */
+-        static bool saveModuleCacheUnsafe(const std::string& key, const std::string& path);
+ 
+         /**
+          * Releases a module and its associated sessions.
+diff --git a/wasmline-core/include/Module.h b/wasmline-core/include/Module.h
+index a045156..7255057 100644
+--- a/wasmline-core/include/Module.h
++++ b/wasmline-core/include/Module.h
+@@ -29,19 +29,18 @@ namespace wasmline {
+         Module &operator=(const Module &) = delete;
+ 
+         /**
+-         * Loads a module from file system (Thread-Safe & Optimized).
++         * Loads a precompiled module artifact from file system (Thread-Safe & Optimized).
+          *
+          * Features:
+-         * 1. No Redundant IO/Compilation
++         * 1. No redundant IO/deserialization
+          * 2. Lock Merging: Minimizes lock contention overhead.
+          * 3. Safety: Uses RAII to prevent deadlocks.
+          *
+          * @param key Unique identifier for the module
+-         * @param filePath Absolute path to the file
+-         * @param isJit True if source (.wasm), False if precompiled (.cwasm)
++         * @param filePath Absolute path to the precompiled artifact file
+          * @return Raw pointer to wasmtime_module_t, or nullptr if failed.
+          */
+-        wasmtime_module_t *load(const std::string &key, const std::string &filePath, bool isJit);
++        wasmtime_module_t *load(const std::string &key, const std::string &filePath);
+ 
+         /**
+          * Loads a module WITHOUT any thread safety mechanisms.
+@@ -51,11 +50,10 @@ namespace wasmline {
+          * This provides the absolute fastest path by removing all locking overhead.
+          *
+          * @param key Unique identifier for the module
+-         * @param filePath Absolute path to the file
+-         * @param isJit True if source (.wasm), False if precompiled (.cwasm)
++         * @param filePath Absolute path to the precompiled artifact file
+          * @return Raw pointer to wasmtime_module_t, or nullptr if failed.
+          */
+-        wasmtime_module_t *loadUnsafe(const std::string &key, const std::string &filePath, bool isJit);
++        wasmtime_module_t *loadUnsafe(const std::string &key, const std::string &filePath);
+ 
+         /**
+          * Retrieves an existing cached module.
+@@ -63,18 +61,6 @@ namespace wasmline {
+          */
+         wasmtime_module_t *get(const std::string &key);
+ 
+-        /**
+-         * Serializes a loaded module to a cache file (AOT compilation).
+-         * @return true if success
+-         */
+-        bool serialize(const std::string &key, const std::string &outPath);
+-
+-        /**
+-         * Serializes a loaded module to a cache file (AOT compilation).
+-         * @return true if success
+-         */
+-        bool serializeUnsafe(const std::string &key, const std::string &outPath);
+-
+         /**
+          * Releases a specific module from cache.
+          */
+@@ -91,11 +77,9 @@ namespace wasmline {
+         ~Module();
+ 
+ 
+-        // Core logic: Read File -> Get Engine -> Compile/Deserialize
+-        wasmtime_module_t *compileInternal(const std::string &key, const std::string &filePath, bool isJit);
++        // Core logic: Read file -> get engine -> deserialize precompiled artifact
++        wasmtime_module_t *compileInternal(const std::string &key, const std::string &filePath);
+ 
+-        // Core logic: Wasm Serialize -> Write File
+-        bool serializeInternal(const std::string &key, wasmtime_module_t *module, const std::string &outPath);
+ 
+         // Cache storage: Key -> Module Pointer
+         std::unordered_map<std::string, wasmtime_module_t *> moduleCache;
+diff --git a/wasmline-core/src/Api.cpp b/wasmline-core/src/Api.cpp
+index f6e75a6..ddc444f 100644
+--- a/wasmline-core/src/Api.cpp
++++ b/wasmline-core/src/Api.cpp
+@@ -38,23 +38,16 @@ namespace wasmline {
+         Engine::getInstance().release();
+     }
+ 
+-    bool Api::loadModule(const std::string &key, const std::string &path, bool isJit) {
+-        auto *mod = Module::getInstance().load(key, path, isJit);
++    bool Api::loadModule(const std::string &key, const std::string &path) {
++        auto *mod = Module::getInstance().load(key, path);
+         return (mod != nullptr);
+     }
+ 
+-    bool Api::loadModuleUnsafe(const std::string &key, const std::string &path, bool isJit) {
+-        auto *mod = Module::getInstance().loadUnsafe(key, path, isJit);
++    bool Api::loadModuleUnsafe(const std::string &key, const std::string &path) {
++        auto *mod = Module::getInstance().loadUnsafe(key, path);
+         return (mod != nullptr);
+     }
+ 
+-    bool Api::saveModuleCache(const std::string &key, const std::string &path) {
+-        return Module::getInstance().serialize(key, path);
+-    }
+-
+-    bool Api::saveModuleCacheUnsafe(const std::string &key, const std::string &path) {
+-        return Module::getInstance().serializeUnsafe(key, path);
+-    }
+ 
+     void Api::releaseModule(const std::string &key) {
+         // 1. Remove associated session if exists
+diff --git a/wasmline-core/src/Module.cpp b/wasmline-core/src/Module.cpp
+index f66b005..843ce47 100644
+--- a/wasmline-core/src/Module.cpp
++++ b/wasmline-core/src/Module.cpp
+@@ -31,10 +31,10 @@ namespace wasmline {
+     // ============================================================================
+ 
+     /**
+-     * Shared Logic: File Read + Compilation.
++     * Shared Logic: File Read + precompiled artifact deserialization.
+      * No locks are held inside this function.
+      */
+-    wasmtime_module_t *Module::compileInternal(const std::string &key, const std::string &filePath, bool isJit) {
++    wasmtime_module_t *Module::compileInternal(const std::string &key, const std::string &filePath) {
+         // 1. IO Operation
+         std::vector<uint8_t> data = Utils::readFile(filePath);
+         if (data.empty()) {
+@@ -49,24 +49,12 @@ namespace wasmline {
+             return nullptr;
+         }
+ 
+-        // 3. Compilation / Deserialization
++        // 3. Deserialization of precompiled artifacts only
+         wasmtime_module_t *module = nullptr;
+         wasmtime_error_t *error = nullptr;
+ 
+-        if (data.size() > 4 && data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F') {
+-            LOGI("[Wasmtime] Detected ELF header. Using DESERIALIZE for %s", filePath.c_str());
+-            error = wasmtime_module_deserialize(engine, (uint8_t*)data.data(), data.size(), &module);
+-        } else {
+-            LOGI("[Wasmtime] Detected Wasm header. Using NEW (JIT) for %s", filePath.c_str());
+-            error = wasmtime_module_new(engine, (uint8_t*)data.data(), data.size(), &module);
+-        }
+-        /*if (isJit) {
+-            LOGI("[Wasmtime] Module --> Jit Compiling for %s...", filePath.c_str());
+-            error = wasmtime_module_new(engine, data.data(), data.size(), &module);
+-        } else {
+-            LOGI("[Wasmtime] Module --> Aot Deserializing for %s...", filePath.c_str());
+-            error = wasmtime_module_deserialize(engine, data.data(), data.size(), &module);
+-        }*/
++        LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
++        error = wasmtime_module_deserialize(engine, reinterpret_cast<const uint8_t*>(data.data()), data.size(), &module);
+ 
+         // 4. Error Handling
+         if (error) {
+@@ -81,39 +69,8 @@ namespace wasmline {
+         return module;
+     }
+ 
+-    /**
+-     * Shared Logic: Serialization + File Write.
+-     * No locks are held for file writing, but caller must ensure 'module' is valid.
+-     */
+-    bool Module::serializeInternal(const std::string &key, wasmtime_module_t *module, const std::string &outPath) {
+-        if (!module) return false;
+-
+-        // 1. Serialize via Wasmtime
+-        wasm_byte_vec_t serialized;
+-        wasmtime_error_t *err = wasmtime_module_serialize(module, &serialized);
+-
+-        if (err) {
+-            wasmtime_error_delete(err);
+-            LOGE("[Wasmtime] Module --> Serialization failed for %s", key.c_str());
+-            return false;
+-        }
+-
+-        // 2. Write to File
+-        bool success = Utils::writeFile(outPath, reinterpret_cast<const uint8_t *>(serialized.data), serialized.size);
+-        wasm_byte_vec_delete(&serialized);
+-
+-        if (success) {
+-            LOGI("[Wasmtime] Module --> Saved cache to %s", outPath.c_str());
+-        } else {
+-            LOGE("[Wasmtime] Module --> Failed to write cache file: %s", outPath.c_str());
+-        }
+-
+-        return success;
+-    }
+-
+-
+     // Load Module (Thread-Safe & Optimized)
+-    wasmtime_module_t *Module::load(const std::string &key, const std::string &filePath, bool isJit) {
++    wasmtime_module_t *Module::load(const std::string &key, const std::string &filePath) {
+         std::unique_lock<std::mutex> lock(cacheMutex);
+ 
+         // 1. Check & Wait Phase
+@@ -139,7 +96,7 @@ namespace wasmline {
+         lock.unlock();
+ 
+         // 4. Core Logic (Reuse)
+-        wasmtime_module_t *module = compileInternal(key, filePath, isJit);
++        wasmtime_module_t *module = compileInternal(key, filePath);
+ 
+         // 5. Commit Phase
+         lock.lock();
+@@ -159,7 +116,7 @@ namespace wasmline {
+     }
+ 
+     // Load Module (Unsafe / Fast)
+-    wasmtime_module_t *Module::loadUnsafe(const std::string &key, const std::string &filePath, bool isJit) {
++    wasmtime_module_t *Module::loadUnsafe(const std::string &key, const std::string &filePath) {
+         // 1. Direct Cache Check
+         auto it = moduleCache.find(key);
+         if (it != moduleCache.end()) {
+@@ -168,7 +125,7 @@ namespace wasmline {
+         }
+ 
+         // 2. Core Logic (Reuse)
+-        wasmtime_module_t *module = compileInternal(key, filePath, isJit);
++        wasmtime_module_t *module = compileInternal(key, filePath);
+ 
+         // 3. Update Cache
+         if (module) {
+@@ -179,32 +136,6 @@ namespace wasmline {
+         return module;
+     }
+ 
+-    // Serialize Module (Thread-Safe)
+-    bool Module::serialize(const std::string &key, const std::string &outPath) {
+-        std::lock_guard<std::mutex> lock(cacheMutex);
+-
+-        auto it = moduleCache.find(key);
+-        if (it == moduleCache.end()) {
+-            LOGE("[Wasmtime] Module --> Cannot save cache, module not found: %s", key.c_str());
+-            return false;
+-        }
+-
+-        // Call helper inside the lock to ensure module is not deleted by another thread
+-        return serializeInternal(key, it->second, outPath);
+-    }
+-
+-    // Serialize Module (Unsafe / Fast)
+-    bool Module::serializeUnsafe(const std::string &key, const std::string &outPath) {
+-        // No lock held
+-        auto it = moduleCache.find(key);
+-        if (it == moduleCache.end()) {
+-            LOGE("[Wasmtime] Module (Unsafe) --> Cannot save cache, module not found: %s", key.c_str());
+-            return false;
+-        }
+-
+-        // Call common serialize
+-        return serializeInternal(key, it->second, outPath);
+-    }
+ 
+     // Get Cached Module
+     wasmtime_module_t *Module::get(const std::string &key) {
+diff --git a/wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Manifest.kt b/wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Manifest.kt
+index 66b3f06..a40204e 100644
+--- a/wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Manifest.kt
++++ b/wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Manifest.kt
+@@ -105,7 +105,7 @@ class Manifest : CliktCommand(name = "manifest") {
+         echo("Loaded compile result: ${compileResult.artifacts.size} artifacts from ${compileResult.inputFile}")
+ 
+         // 2. Build WasmlineManifest
+-        val resolvedPluginId = pluginId ?: compileResult.inputFile.removeSuffix(".wasm")
++        val resolvedPluginId = pluginId ?: File(compileResult.inputFile).nameWithoutExtension
+         val manifest = WasmlineManifest(
+             pluginId = resolvedPluginId,
+             version = version,
+diff --git a/wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt b/wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt
+index 4012894..8425925 100644
+--- a/wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt
++++ b/wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt
+@@ -61,11 +61,6 @@ class ManifestTest {
+                     sha256 = "cafebabe87654321",
+                     targetCompilerVersion = "wasmtime-17.0",
+                     is64Bit = true
+-                ),
+-                WasmlineArtifact(
+-                    type = WasmlineArtifactType.WASM,
+-                    url = "lib.wasm",
+-                    sha256 = "abcdef0123456789"
+                 )
+             )
+         )
+@@ -280,8 +275,8 @@ class ManifestTest {
+             buildTimestamp = 0L,
+             artifacts = listOf(
+                 WasmlineArtifact(
+-                    type = WasmlineArtifactType.WASM,
+-                    url = "lib.wasm",
++                    type = WasmlineArtifactType.PWASM,
++                    url = "lib.pwasm",
+                     sha256 = "abc123"
+                 )
+             )
+@@ -301,8 +296,8 @@ class ManifestTest {
+         printHeader("Test: Artifact Optional Defaults")
+ 
+         val artifact = WasmlineArtifact(
+-            type = WasmlineArtifactType.WASM,
+-            url = "lib.wasm",
++            type = WasmlineArtifactType.PWASM,
++            url = "lib.pwasm",
+             sha256 = "abc123"
+         )
+ 
+diff --git a/wasmline-multiplatform/wasmline-sample/android/src/androidMain/kotlin/crow/wasmline/MainActivity.kt b/wasmline-multiplatform/wasmline-sample/android/src/androidMain/kotlin/crow/wasmline/MainActivity.kt
+index cc1d3a2..30512d4 100644
+--- a/wasmline-multiplatform/wasmline-sample/android/src/androidMain/kotlin/crow/wasmline/MainActivity.kt
++++ b/wasmline-multiplatform/wasmline-sample/android/src/androidMain/kotlin/crow/wasmline/MainActivity.kt
+@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity
+ import androidx.core.view.ViewCompat
+ import androidx.core.view.WindowInsetsCompat
+ import androidx.lifecycle.lifecycleScope
+-import crow.wasmline.link
+ import crow.wasmline.extensions.Data
+ import crow.wasmline.extensions.info
+ import crow.wasmline.sample.ir.EchoService
+@@ -59,23 +58,21 @@ class MainActivity : AppCompatActivity() {
+             try {
+                 "==============================================".info()
+                 val data = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
+-                val wasmFile = File(cacheDir, "plugin.wasm")
+-                val cacheFile = File(cacheDir, "plugin.cwasm")
+-                "[Android] Wasm file : ${wasmFile.name}    ||    wasm file exits : ${wasmFile.exists()}    ||    wasm file path :  ${wasmFile.absolutePath}".info()
+-                "[Android] Cwasm cache file : ${cacheFile.name}    ||    cache file exits : ${cacheFile.exists()}    ||    cache file path :  ${cacheFile.absolutePath}".info()
+-                if (!wasmFile.exists()) {
+-                    assets.open(wasmFile.name).use { input ->
+-                        FileOutputStream(wasmFile).use { output ->
++                val artifactFile = File(cacheDir, "plugin.pwasm")
++                "[Android] Artifact file : ${artifactFile.name}    ||    exists : ${artifactFile.exists()}    ||    path : ${artifactFile.absolutePath}".info()
++                if (!artifactFile.exists()) {
++                    assets.open(artifactFile.name).use { input ->
++                        FileOutputStream(artifactFile).use { output ->
+                                 input.copyTo(output)
+                             }
+                         }
+                     }
+                 var startMs = System.currentTimeMillis()
+-                when(val loadState = Wasmline.load(wasmFile.absolutePath, cacheFile.absolutePath)) {
++                when(val loadState = Wasmline.load(artifactFile.absolutePath)) {
+                     is WasmlineLoadState.Failure -> { loadState.cause.info() }
+                     is WasmlineLoadState.Success -> {
+-                        if (loadState.code == WasmlineLoadState.CODE_SUCCESS_JIT) {
+-                            "[Wasmline] Load jit success, spend ${System.currentTimeMillis() - startMs}  ms".info()
++                        if (loadState.code == WasmlineLoadState.CODE_SUCCESS_PULLEY) {
++                            "[Wasmline] Load pulley success, spend ${System.currentTimeMillis() - startMs}  ms".info()
+                         } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
+                             "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
+                         }
+diff --git a/wasmline-multiplatform/wasmline-sample/multiplatform/shared/src/commonMain/kotlin/crow/wasmline/sample/WasmLoader.kt b/wasmline-multiplatform/wasmline-sample/multiplatform/shared/src/commonMain/kotlin/crow/wasmline/sample/WasmLoader.kt
+index 3403670..32913b9 100644
+--- a/wasmline-multiplatform/wasmline-sample/multiplatform/shared/src/commonMain/kotlin/crow/wasmline/sample/WasmLoader.kt
++++ b/wasmline-multiplatform/wasmline-sample/multiplatform/shared/src/commonMain/kotlin/crow/wasmline/sample/WasmLoader.kt
+@@ -24,9 +24,9 @@ internal class WasmLoader {
+ 
+     private var wasmline: Wasmline? by mutableStateOf(null)
+ 
+-    fun loadWasm(wasmAbsPath: String): Wasmline? {
++    fun loadWasm(artifactAbsPath: String): Wasmline? {
+         if (wasmline == null) {
+-            Wasmline.load(filepath = wasmAbsPath, cacheFilepath = wasmAbsPath, threadSafe = false)
++            Wasmline.load(filepath = artifactAbsPath, threadSafe = false)
+                 .onSuccess {
+                     wasmline.bind(object : EchoService {
+                         override fun echo() {
+diff --git a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt
+index 2d197b7..9f3bce5 100644
+--- a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt
++++ b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt
+@@ -12,9 +12,9 @@ expect class Wasmline(moduleKey: String) {
+ 
+         /**
+          * 加载模块
+-         * @param filepath .wasm (源码) 或 .cwasm (缓存)
++         * @param filepath 预编译产物路径，仅支持 `.cwasm` 或 `.pwasm`
+          */
+-        fun load(filepath: String, cacheFilepath: String? = null, threadSafe: Boolean = false): WasmlineLoadState
++        fun load(filepath: String, threadSafe: Boolean = false): WasmlineLoadState
+ 
+         /**
+          * 初始化全局 Engine。
+diff --git a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoadState.kt b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoadState.kt
+index 28b5737..d2d784d 100644
+--- a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoadState.kt
++++ b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoadState.kt
+@@ -12,7 +12,7 @@ import kotlin.contracts.ExperimentalContracts
+  */
+ sealed class WasmlineLoadState {
+     companion object Companion {
+-        const val CODE_SUCCESS_JIT: Byte = 0
++        const val CODE_SUCCESS_PULLEY: Byte = 0
+         const val CODE_SUCCESS_AOT: Byte = 1
+         const val CODE_FAILURE: Byte = 2
+     }
+diff --git a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoader.kt b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoader.kt
+index 0bc1fe5..828e57c 100644
+--- a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoader.kt
++++ b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoader.kt
+@@ -1,50 +1,81 @@
+ package crow.wasmline
+ 
+-internal fun loadWasmlineModule(
+-    sourcePath: String,
+-    cachePath: String?,
+-    key: String,
+-    createWasmline: (String) -> Wasmline,
+-    fileExists: (String) -> Boolean,
+-    deleteFile: (String) -> Unit,
+-    loadAot: (String, String) -> Boolean,
+-    loadJit: (String, String) -> Boolean,
+-    saveCache: ((String, String) -> Boolean)? = null,
+-    jitFailureMessage: (String) -> String = { path ->
+-        "[Wasmline] Load failure, because native load return false, file path is :  $path"
+-    },
+-): WasmlineLoadState {
+-    if (cachePath != null && fileExists(cachePath)) {
+-        if (loadAot(key, cachePath)) {
+-            return WasmlineLoadState.Success(
+-                code = WasmlineLoadState.CODE_SUCCESS_AOT,
+-                wasmline = createWasmline(key),
+-            )
+-        }
+-        deleteFile(cachePath)
+-    }
++internal data class WasmlineLocalLoadRequest(
++    val artifactPath: String,
++    val threadSafe: Boolean = false,
++)
+ 
+-    if (!fileExists(sourcePath)) {
+-        return WasmlineLoadState.Failure(
+-            code = WasmlineLoadState.CODE_FAILURE,
+-            cause = "[Wasmline] Load failure, file not found: $sourcePath",
++/**
++ * Shared local-file loading helper for runtime platform bridges.
++ *
++ * This object intentionally stays internal to the `wasmline` runtime module.
++ * Host-facing package/manifest/download/signature workflows belong in the
++ * separate `wasmline-loader` module, while this helper only centralizes the
++ * native local precompiled-artifact loading flow used by JNI/iOS actuals.
++ */
++internal object WasmlineRuntimeLoader {
++    internal fun load(request: WasmlineLocalLoadRequest, platform: WasmlinePlatformLoader): WasmlineLoadState {
++        val artifactPath = platform.normalizePath(request.artifactPath)
++        return loadLocal(
++            request = LocalWasmlineLoadRequest(
++                artifactPath = artifactPath,
++                key = platform.moduleKeyFor(artifactPath),
++            ),
++            platform = platform,
+         )
+     }
+ 
+-    if (!loadJit(key, sourcePath)) {
+-        return WasmlineLoadState.Failure(
+-            code = WasmlineLoadState.CODE_FAILURE,
+-            cause = jitFailureMessage(sourcePath),
++    internal fun loadLocal(
++        request: LocalWasmlineLoadRequest,
++        platform: WasmlinePlatformLoader,
++    ): WasmlineLoadState {
++        if (!platform.fileExists(request.artifactPath)) {
++            return WasmlineLoadState.Failure(
++                code = WasmlineLoadState.CODE_FAILURE,
++                cause = "[Wasmline] Load failure, artifact file not found: ${request.artifactPath}",
++            )
++        }
++
++        val code = request.artifactPath.backendCodeOrNull()
++            ?: return WasmlineLoadState.Failure(
++                code = WasmlineLoadState.CODE_FAILURE,
++                cause = "[Wasmline] Load failure, only .cwasm or .pwasm artifacts are supported: ${request.artifactPath}",
++            )
++
++        if (!platform.loadPrecompiled(request.key, request.artifactPath)) {
++            return WasmlineLoadState.Failure(
++                code = WasmlineLoadState.CODE_FAILURE,
++                cause = platform.loadFailureMessage(request.artifactPath),
++            )
++        }
++
++        return WasmlineLoadState.Success(
++            code = code,
++            wasmline = platform.createWasmline(request.key),
+         )
+     }
++}
+ 
+-    if (cachePath != null) {
+-        saveCache?.invoke(key, cachePath)
+-    }
++internal data class LocalWasmlineLoadRequest(
++    val artifactPath: String,
++    val key: String,
++)
++
++internal interface WasmlinePlatformLoader {
++    fun createWasmline(key: String): Wasmline
++    fun normalizePath(path: String): String = path
++    fun moduleKeyFor(sourcePath: String): String = sourcePath
++    fun fileExists(path: String): Boolean
++    fun loadPrecompiled(key: String, path: String): Boolean
++    fun loadFailureMessage(path: String): String =
++        "[Wasmline] Load failure, because native load return false, artifact path is : $path"
++}
+ 
+-    return WasmlineLoadState.Success(
+-        code = WasmlineLoadState.CODE_SUCCESS_JIT,
+-        wasmline = createWasmline(key),
+-    )
++private fun String.backendCodeOrNull(): Byte? {
++    return when (substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
++        "cwasm" -> WasmlineLoadState.CODE_SUCCESS_AOT
++        "pwasm" -> WasmlineLoadState.CODE_SUCCESS_PULLEY
++        else -> null
++    }
+ }
+ 
+diff --git a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/model/Manifest.kt b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/model/Manifest.kt
+index 770d2b1..2619171 100644
+--- a/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/model/Manifest.kt
++++ b/wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/model/Manifest.kt
+@@ -87,7 +87,7 @@ data class WasmlineManifest(
+ /**
+  * Represents a specific binary artifact within the manifest.
+  *
+- * @property type The type of the artifact (CWASM, PWASM, WASM).
++ * @property type The type of the artifact (CWASM, PWASM).
+  * @property url Relative path (./lib.cwasm) or CDN address.
+  * @property sha256 File integrity hash (Hex string).
+  *  * @property targetCompilerVersion ABI compatibility check.
+@@ -113,9 +113,8 @@ data class WasmlineArtifact(
+ /**
+  * Enumeration of supported artifact types.
+  *
+- * CWASM: AOT Compiled (CPU Bound, Fast).
+- * PWASM: Pulley Bytecode (Portable, Interpreter).
+- * WASM: Standard Wasm (Web / JIT).
++ * CWASM: AOT compiled native artifact.
++ * PWASM: Pulley bytecode artifact.
+  *
+  * 2026-01-22
+  * @author crowforkotlin
+@@ -123,6 +122,5 @@ data class WasmlineArtifact(
+ @Serializable
+ enum class WasmlineArtifactType {
+     CWASM,
+-    PWASM,
+-    WASM
++    PWASM
+ }
+\ No newline at end of file
+diff --git a/wasmline-multiplatform/wasmline/src/hostTest/kotlin/crow/wasmline/WasmlineHostApiCompileTest.kt b/wasmline-multiplatform/wasmline/src/hostTest/kotlin/crow/wasmline/WasmlineHostApiCompileTest.kt
+index b176ad4..b662cc9 100644
+--- a/wasmline-multiplatform/wasmline/src/hostTest/kotlin/crow/wasmline/WasmlineHostApiCompileTest.kt
++++ b/wasmline-multiplatform/wasmline/src/hostTest/kotlin/crow/wasmline/WasmlineHostApiCompileTest.kt
+@@ -18,7 +18,7 @@ class WasmlineHostApiCompileTest {
+         implementation: EchoService,
+         contract: KClass<EchoService> = EchoService::class,
+     ) {
+-        val loadState = Wasmline.load(filepath = "plugin.wasm")
++        val loadState = Wasmline.load(filepath = "plugin.pwasm")
+ 
+         Wasmline.init()
+         Wasmline.shutdown()
+diff --git a/wasmline-multiplatform/wasmline/src/iosMain/kotlin/crow/wasmline/Wasmline.ios.kt b/wasmline-multiplatform/wasmline/src/iosMain/kotlin/crow/wasmline/Wasmline.ios.kt
+index 466087e..473509a 100644
+--- a/wasmline-multiplatform/wasmline/src/iosMain/kotlin/crow/wasmline/Wasmline.ios.kt
++++ b/wasmline-multiplatform/wasmline/src/iosMain/kotlin/crow/wasmline/Wasmline.ios.kt
+@@ -27,30 +27,27 @@ actual class Wasmline actual constructor(val moduleKey: String) {
+          */
+         actual fun load(
+             filepath: String,
+-            cacheFilepath: String?,
+             threadSafe: Boolean
+         ): WasmlineLoadState {
+             val fileManager = NSFileManager.defaultManager
+-            val key = filepath
+             val isUnsafe = !threadSafe
+-            return loadWasmlineModule(
+-                sourcePath = filepath,
+-                cachePath = cacheFilepath,
+-                key = key,
+-                createWasmline = ::Wasmline,
+-                fileExists = fileManager::fileExistsAtPath,
+-                deleteFile = { path -> fileManager.removeItemAtPath(path, null) },
+-                loadAot = { moduleKey, path ->
+-                    wasmline_load_module(moduleKey, path, false, isUnsafe)
+-                },
+-                loadJit = { moduleKey, path ->
+-                    wasmline_load_module(moduleKey, path, true, isUnsafe)
+-                },
+-                saveCache = { moduleKey, path ->
+-                    wasmline_save_cache(moduleKey, path, isUnsafe)
+-                },
+-                jitFailureMessage = { path ->
+-                    "[Wasmline] Native JIT load failed for: $path"
++            return WasmlineRuntimeLoader.load(
++                request = WasmlineLocalLoadRequest(
++                    artifactPath = filepath,
++                    threadSafe = threadSafe,
++                ),
++                platform = object : WasmlinePlatformLoader {
++                    override fun createWasmline(key: String): Wasmline = Wasmline(key)
++
++                    override fun fileExists(path: String): Boolean = fileManager.fileExistsAtPath(path)
++
++                    override fun loadPrecompiled(key: String, path: String): Boolean {
++                        return wasmline_load_module(key, path, isUnsafe)
++                    }
++
++                    override fun loadFailureMessage(path: String): String {
++                        return "[Wasmline] Native artifact load failed for: $path"
++                    }
+                 },
+             )
+         }
+diff --git a/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.cpp b/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.cpp
+index 74b998c..9d02cc1 100644
+--- a/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.cpp
++++ b/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.cpp
+@@ -37,21 +37,14 @@ void wasmline_release_engine() {
+     Api::releaseEngine();
+ }
+ 
+-bool wasmline_load_module(const char* key, const char* path, bool isJit, bool isUnsafe) {
++bool wasmline_load_module(const char* key, const char* path, bool isUnsafe) {
+     if (isUnsafe) {
+-        return Api::loadModuleUnsafe(std::string(key), std::string(path), isJit);
++        return Api::loadModuleUnsafe(std::string(key), std::string(path));
+     } else {
+-        return Api::loadModule(std::string(key), std::string(path), isJit);
++        return Api::loadModule(std::string(key), std::string(path));
+     }
+ }
+ 
+-bool wasmline_save_cache(const char* key, const char* path, bool isUnsafe) {
+-    if (isUnsafe) {
+-        return Api::saveModuleCacheUnsafe(std::string(key), std::string(path));
+-    } else {
+-        return Api::saveModuleCache(std::string(key), std::string(path));
+-    }
+-}
+ 
+ void wasmline_release_module(const char* key) {
+     Api::releaseModule(std::string(key));
+diff --git a/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.h b/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.h
+index 2c75672..cc4cbef 100644
+--- a/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.h
++++ b/wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.h
+@@ -14,25 +14,22 @@ void wasmline_init_engine();
+ void wasmline_release_engine();
+ 
+ // 2. 模块加载
+-bool wasmline_load_module(const char* key, const char* path, bool isJit, bool isUnsafe);
++bool wasmline_load_module(const char* key, const char* path, bool isUnsafe);
+ 
+-// 3. 缓存保存
+-bool wasmline_save_cache(const char* key, const char* path, bool isUnsafe);
+-
+-// 4. 释放模块
++// 3. 释放模块
+ void wasmline_release_module(const char* key);
+ 
+-// 5. 执行调用 (Inbound)
++// 4. 执行调用 (Inbound)
+ char* wasmline_invoke_inbound(const char* key,
+                               const char* action, size_t actionLen,
+                               const void* data, // <--- 改成 void*
+                               size_t dataLen,
+                               size_t* outLen);
+ 
+-// 6. 释放内存
++// 5. 释放内存
+ void wasmline_free_memory(char* ptr);
+ 
+-// 7. Outbound 回调
++// 6. Outbound 回调
+ typedef char* (*OutboundCallback)(const char* action, size_t actionLen, const char* payload, size_t payloadLen);
+ void wasmline_set_outbound_handler(const char* key, OutboundCallback callback);
+ 
+diff --git a/wasmline-multiplatform/wasmline/src/jniMain/kotlin/crow/wasmline/Wasmline.jni.kt b/wasmline-multiplatform/wasmline/src/jniMain/kotlin/crow/wasmline/Wasmline.jni.kt
+index 9732bd2..70d7536 100644
+--- a/wasmline-multiplatform/wasmline/src/jniMain/kotlin/crow/wasmline/Wasmline.jni.kt
++++ b/wasmline-multiplatform/wasmline/src/jniMain/kotlin/crow/wasmline/Wasmline.jni.kt
+@@ -14,33 +14,25 @@ actual class Wasmline actual constructor(val moduleKey: String) {
+ 
+         /**
+          * 加载模块
+-         * @param filepath .wasm (源码路径) 或 .cwasm (缓存路径)
++         * @param filepath 预编译产物路径，仅支持 .cwasm 或 .pwasm
+          */
+-        actual fun load(filepath: String, cacheFilepath: String?, threadSafe: Boolean): WasmlineLoadState {
+-            val sourceFile = File(filepath)
+-            val cacheFile = cacheFilepath?.let(::File)
+-            val sourcePath = sourceFile.absolutePath
+-            val cachePath = cacheFile?.absolutePath
+-            val key = sourcePath
+-
+-            return loadWasmlineModule(
+-                sourcePath = sourcePath,
+-                cachePath = cachePath,
+-                key = key,
+-                createWasmline = ::Wasmline,
+-                fileExists = { path -> File(path).exists() },
+-                deleteFile = { path -> File(path).delete() },
+-                loadAot = { moduleKey, path ->
+-                    if (threadSafe) nativeLoadAot(key = moduleKey, path = path)
+-                    else nativeLoadAotUnsafe(key = moduleKey, path = path)
+-                },
+-                loadJit = { moduleKey, path ->
+-                    if (threadSafe) nativeLoadJit(key = moduleKey, path = path)
+-                    else nativeLoadJitUnsafe(key = moduleKey, path = path)
+-                },
+-                saveCache = { moduleKey, path ->
+-                    if (threadSafe) nativeSaveCache(key = moduleKey, path = path)
+-                    else nativeSaveCacheUnsafe(key = moduleKey, path = path)
++        actual fun load(filepath: String, threadSafe: Boolean): WasmlineLoadState {
++            return WasmlineRuntimeLoader.load(
++                request = WasmlineLocalLoadRequest(
++                    artifactPath = filepath,
++                    threadSafe = threadSafe,
++                ),
++                platform = object : WasmlinePlatformLoader {
++                    override fun createWasmline(key: String): Wasmline = Wasmline(key)
++
++                    override fun normalizePath(path: String): String = File(path).absolutePath
++
++                    override fun fileExists(path: String): Boolean = File(path).exists()
++
++                    override fun loadPrecompiled(key: String, path: String): Boolean {
++                        return if (threadSafe) nativeLoadAot(key = key, path = path)
++                        else nativeLoadAotUnsafe(key = key, path = path)
++                    }
+                 },
+             )
+         }
+@@ -58,12 +50,8 @@ actual class Wasmline actual constructor(val moduleKey: String) {
+         actual fun shutdown() { nativeReleaseEngine() }
+ 
+         // JNI Methods
+-        @JvmStatic private external fun nativeLoadJit(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeLoadJitUnsafe(key: String, path: String): Boolean
+         @JvmStatic private external fun nativeLoadAot(key: String, path: String): Boolean
+         @JvmStatic private external fun nativeLoadAotUnsafe(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeSaveCache(key: String, path: String): Boolean
+-        @JvmStatic private external fun nativeSaveCacheUnsafe(key: String, path: String): Boolean
+         @JvmStatic private external fun nativeReleaseModule(key: String)
+         @JvmStatic private external fun nativeSetOutboundHandler(key: String, dispatcher: WasmlineHostDispatcher)
+         @JvmStatic private external fun nativeInvokeInbound(key: String, action: String, protobufBytes: ByteArray): ByteArray
+@@ -87,4 +75,5 @@ actual class Wasmline actual constructor(val moduleKey: String) {
+      * 不会影响 Engine，但会释放此模块占用的内存
+      */
+     actual fun close() { nativeReleaseModule(moduleKey) }
+-}
+\ No newline at end of file
++}
++
+diff --git a/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.cpp b/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.cpp
+index a4c53e5..69e7f62 100644
+--- a/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.cpp
++++ b/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.cpp
+@@ -34,35 +34,14 @@ Java_crow_wasmline_Wasmline_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
+     wasmline::Api::releaseEngine();
+ }
+ 
+-JNIEXPORT jboolean JNICALL
+-Java_crow_wasmline_Wasmline_nativeLoadJit(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+-    return loadModuleCommon(env, keyStr, pathStr, true, false);
 -}
 -
--KEY_FILES = [
--    ".github/skills/wasmline/SKILL.md",
--    "README_zh.md",
--    "README.md",
--    "scripts/init.sh",
--    "wasmline-multiplatform/settings.gradle.kts",
--    "wasmline-multiplatform/gradle.properties",
--    "wasmline-multiplatform/wasmline/build.gradle.kts",
--    "wasmline-multiplatform/wasmline-kotlin-plugin/build.gradle.kts",
--    "wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_zh.md",
--    ".github/plans/ir-plan.md",
--    "wasmline-core/src/Engine.cpp",
--    "wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/GeneratedBridge.kt",
--    "wasmline-multiplatform/wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt",
--]
+-JNIEXPORT jboolean JNICALL
+-Java_crow_wasmline_Wasmline_nativeLoadJitUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+-    return loadModuleCommon(env, keyStr, pathStr, true, true);
+-}
 -
--
--def rel(path: Path) -> str:
--    return path.relative_to(ROOT).as_posix()
--
--
--def run_git(*args: str) -> str:
--    try:
--        result = subprocess.run(
--            ["git", "--no-pager", *args],
--            cwd=ROOT,
--            check=False,
--            capture_output=True,
--            text=True,
--            encoding="utf-8",
--            errors="replace",
--        )
--    except FileNotFoundError:
--        return "<git unavailable>"
--    output = (result.stdout or result.stderr).strip()
--    return output or "<empty>"
--
--
--def language_for(path: Path) -> str:
--    suffix = path.suffix.lower()
--    return {
--        ".md": "markdown",
--        ".kt": "kotlin",
--        ".kts": "kotlin",
--        ".sh": "bash",
--        ".py": "python",
--        ".cpp": "cpp",
--        ".h": "cpp",
--        ".java": "java",
--        ".properties": "ini",
--    }.get(suffix, "text")
--
--
--def read_excerpt(path: Path, limit: int = 80) -> str:
--    try:
--        lines = path.read_text(encoding="utf-8").splitlines()
--    except UnicodeDecodeError:
--        return "<binary or non-utf8 file>"
--    excerpt = lines[:limit]
--    if len(lines) > limit:
--        excerpt.append("...<truncated>...")
--    return "
-".join(excerpt)
--
--
--def walk_with_depth(base: Path, max_depth: int) -> list[Path]:
--    results: list[Path] = []
--    stack: list[tuple[Path, int]] = [(base, 0)]
--    while stack:
--        current, depth = stack.pop()
--        if depth > max_depth:
--            continue
--        if current != base:
--            results.append(current)
--        if current.is_dir() and depth < max_depth and current.name not in EXCLUDED_DIR_NAMES:
--            try:
--                children = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()), reverse=False)
--            except PermissionError:
--                continue
--            for child in reversed(children):
--                if child.name in EXCLUDED_DIR_NAMES:
--                    continue
--                stack.append((child, depth + 1))
--    return sorted(results, key=lambda p: rel(p))
--
--
--def list_gradle_modules() -> list[str]:
--    base = ROOT / "wasmline-multiplatform"
--    modules: list[str] = []
--    for path in sorted(base.rglob("build.gradle.kts")):
--        if any(part in EXCLUDED_DIR_NAMES for part in path.parts):
--            continue
--        modules.append(rel(path.parent))
--    return modules
--
--
--def indent_tree(paths: Iterable[Path], base: Path) -> str:
--    lines = []
--    for path in sorted(paths, key=lambda p: rel(p)):
--        relative = path.relative_to(base)
--        depth = len(relative.parts) - 1
--        label = f"{'  ' * depth}- {relative.parts[-1]}{'/' if path.is_dir() else ''}"
--        lines.append(label)
--    return "
-".join(lines)
--
--
--def changed_files() -> list[str]:
--    out = run_git("diff", "--name-only")
--    if out in {"<empty>", "<git unavailable>"}:
--        return []
--    return [line.strip() for line in out.splitlines() if line.strip()]
--
--
--def staged_or_untracked_files() -> list[str]:
--    out = run_git("status", "--short")
--    if out in {"<empty>", "<git unavailable>"}:
--        return []
--    files = []
--    for line in out.splitlines():
--        entry = line[3:].strip() if len(line) > 3 else line.strip()
--        if entry:
--            files.append(entry)
--    return files
--
--
--def write_snapshot() -> None:
--    OUT_DIR.mkdir(parents=True, exist_ok=True)
--
--    top_paths = walk_with_depth(ROOT, max_depth=2)
--    module_paths = walk_with_depth(ROOT / "wasmline-multiplatform", max_depth=2)
--    gradle_modules = list_gradle_modules()
--    changed = changed_files()
--    status_files = staged_or_untracked_files()
--
--    lines: list[str] = []
--    lines.append("# Wasmline Context Snapshot")
--    lines.append("")
--    lines.append(f"- Generated at: {_dt.datetime.now().isoformat(timespec='seconds')}")
--    lines.append(f"- Repository root: `{ROOT}`")
--    lines.append("")
--
--    lines.append("## Git 概览")
--    lines.append("")
--    lines.append("```text")
--    lines.append(run_git("rev-parse", "--abbrev-ref", "HEAD"))
--    lines.append(run_git("rev-parse", "HEAD"))
--    lines.append("```")
--    lines.append("")
--    lines.append("### 工作区状态")
--    lines.append("")
--    lines.append("```text")
--    lines.append(run_git("status", "--short"))
--    lines.append("```")
--    lines.append("")
--    lines.append("### Diff 统计")
--    lines.append("")
--    lines.append("```text")
--    lines.append(run_git("diff", "--stat"))
--    lines.append("```")
--    lines.append("")
--
--    lines.append("## 根目录结构（深度 2）")
--    lines.append("")
--    lines.append("```text")
--    lines.append(indent_tree(top_paths, ROOT))
--    lines.append("```")
--    lines.append("")
--
--    lines.append("## `wasmline-multiplatform/` 结构（深度 2）")
--    lines.append("")
--    lines.append("```text")
--    lines.append(indent_tree(module_paths, ROOT / "wasmline-multiplatform"))
--    lines.append("```")
--    lines.append("")
--
--    lines.append("## Gradle 模块清单")
--    lines.append("")
--    for module in gradle_modules:
--        lines.append(f"- `{module}`")
--    lines.append("")
--
--    lines.append("## 关键上下文文件摘录")
--    lines.append("")
--    for relative in KEY_FILES:
--        path = ROOT / relative
--        if not path.exists():
--            lines.append(f"### `{relative}`")
--            lines.append("")
--            lines.append("<missing>")
--            lines.append("")
--            continue
--        lines.append(f"### `{relative}`")
--        lines.append("")
--        lines.append(f"```{language_for(path)}")
--        lines.append(read_excerpt(path, limit=80))
--        lines.append("```")
--        lines.append("")
--
--    lines.append("## 当前改动文件")
--    lines.append("")
--    if status_files:
--        for file in status_files:
--            lines.append(f"- `{file}`")
--    else:
--        lines.append("- <none>")
--    lines.append("")
--
--    if changed:
--        lines.append("## 变更 diff 预览")
--        lines.append("")
--        lines.append("```diff")
--        diff_preview = run_git("diff", "--unified=2", "--", *changed)
--        preview_lines = diff_preview.splitlines()
--        if len(preview_lines) > 400:
--            preview_lines = preview_lines[:400] + ["...<truncated>..."]
--        lines.extend(preview_lines or ["<empty>"])
--        lines.append("```")
--        lines.append("")
--
--    lines.append("## 建议使用方式")
--    lines.append("")
--    lines.append("1. 先运行 `bash ./.github/skills/wasmline/scripts/skill_preflight.sh`，确认 JBR 21 与平台资产。")
--    lines.append("2. 再运行本脚本，生成一份当前仓库快照。")
--    lines.append("3. 每次进入新需求或完成一轮修改后，重新生成快照，重点比对 `当前改动文件` 与 `变更 diff 预览`。")
--    lines.append("4. 若问题落在 IR/plugin，请优先回看 `wasmline-kotlin-plugin` 与 `.github/plans/ir-plan.md`。")
--    lines.append("")
--
--    content = "
-".join(lines).rstrip() + "
-"
--    SNAPSHOT.write_text(content, encoding="utf-8")
--    LATEST.write_text(content, encoding="utf-8")
--
--    print(f"Generated: {SNAPSHOT}")
--    print(f"Updated : {LATEST}")
--
--
--if __name__ == "__main__":
--    try:
--        write_snapshot()
--    except KeyboardInterrupt:
--        sys.exit(130)
-diff --git a/README.md b/README.md
-index fe2d583..ba6bb16 100644
---- a/README.md
-+++ b/README.md
-@@ -61,10 +61,12 @@ wasmline-multiplatform/
+ JNIEXPORT jboolean JNICALL
+ Java_crow_wasmline_Wasmline_nativeLoadAot(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+-    return loadModuleCommon(env, keyStr, pathStr, false, false);
++    return loadPrecompiledModuleCommon(env, keyStr, pathStr, false);
+ }
  
- ### Initialization
+ JNIEXPORT jboolean JNICALL
+ Java_crow_wasmline_Wasmline_nativeLoadAotUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+-    return loadModuleCommon(env, keyStr, pathStr, false, true);
+-}
+-
+-
+-JNIEXPORT jboolean JNICALL
+-Java_crow_wasmline_Wasmline_nativeSaveCache(JNIEnv* env, jclass thiz, jstring keyStr, jstring outPathStr) {
+-    return saveCacheCommon(env, keyStr, outPathStr, false);
+-}
+-
+-JNIEXPORT jboolean JNICALL
+-Java_crow_wasmline_Wasmline_nativeSaveCacheUnsafe(JNIEnv* env, jclass thiz, jstring keyStr, jstring outPathStr) {
+-    return saveCacheCommon(env, keyStr, outPathStr, true);
++    return loadPrecompiledModuleCommon(env, keyStr, pathStr, true);
+ }
  
--Initialize the required platform assets:
-+Initialize the required platform assets (pick one — all three are equivalent):
+ JNIEXPORT void JNICALL
+diff --git a/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.h b/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.h
+index 9dbf2d8..152640e 100644
+--- a/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.h
++++ b/wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.h
+@@ -3,22 +3,12 @@
+ #include <string>
+ #include "Logger.h"
+ #include "Api.h"
+-#include "extensions/FileUtils.h"
+ #include "JniHostHandler.h"
  
- ```zsh
--sh ./scripts/init.sh
-+sh ./scripts/init.sh            # Bash (requires curl + tar/unzip)
-+python3 ./scripts/init.py       # Python 3.9+ (no third-party deps)
-+node ./scripts/init.mjs         # Node.js 18+ (no third-party deps)
- ```
- 
- ### Build
-diff --git a/README_zh.md b/README_zh.md
-index 54de545..a206748 100644
---- a/README_zh.md
-+++ b/README_zh.md
-@@ -61,10 +61,12 @@ wasmline-multiplatform/
- 
- ### 初始化
- 
--初始化所需的平台资源：
-+初始化所需的平台资源（三选一，功能等价）：
- 
- ```zsh
--sh ./scripts/init.sh
-+sh ./scripts/init.sh            # Bash（需要 curl + tar/unzip）
-+python3 ./scripts/init.py       # Python 3.9+（无第三方依赖）
-+node ./scripts/init.mjs         # Node.js 18+（无第三方依赖）
- ```
- 
- ### 构建
-diff --git a/docs/content/docs/index.en.mdx b/docs/content/docs/index.en.mdx
-index 312c3b6..9745d3c 100644
---- a/docs/content/docs/index.en.mdx
-+++ b/docs/content/docs/index.en.mdx
-@@ -64,8 +64,12 @@ wasmline-multiplatform/
-   <Step>
-     ### Initialize Environment
- 
-+    Pick one — all three are equivalent:
-+
-     ```bash
--    sh ./scripts/init.sh
-+    sh ./scripts/init.sh            # Bash (requires curl + tar/unzip)
-+    python3 ./scripts/init.py       # Python 3.9+ (no third-party deps)
-+    node ./scripts/init.mjs         # Node.js 18+ (no third-party deps)
-     ```
-   </Step>
- 
-diff --git a/docs/content/docs/index.mdx b/docs/content/docs/index.mdx
-index 84d3ad1..091e69f 100644
---- a/docs/content/docs/index.mdx
-+++ b/docs/content/docs/index.mdx
-@@ -64,8 +64,12 @@ wasmline-multiplatform/
-   <Step>
-     ### 初始化环境
- 
-+    三选一，功能等价：
-+
-     ```bash
--    sh ./scripts/init.sh
-+    sh ./scripts/init.sh            # Bash（需要 curl + tar/unzip）
-+    python3 ./scripts/init.py       # Python 3.9+（无第三方依赖）
-+    node ./scripts/init.mjs         # Node.js 18+（无第三方依赖）
-     ```
-   </Step>
- 
-diff --git a/scripts/init.mjs b/scripts/init.mjs
-new file mode 100644
-index 0000000..16d92ab
---- /dev/null
-+++ b/scripts/init.mjs
-@@ -0,0 +1,472 @@
-+#!/usr/bin/env node
-+/**
-+ * Wasmtime C-API Init Script (Node.js / ESM)
-+ * ============================================
-+ * Equivalent to init.sh — downloads and deploys Wasmtime C-API platform assets.
-+ *
-+ * Usage:
-+ *   node scripts/init.mjs [proxy]
-+ *
-+ * Examples:
-+ *   node scripts/init.mjs
-+ *   node scripts/init.mjs 127.0.0.1:7890
-+ */
-+
-+import { createWriteStream, cpSync, existsSync, mkdirSync, rmSync, statSync, readdirSync } from "node:fs";
-+import { basename, dirname, join, resolve } from "node:path";
-+import { createInterface } from "node:readline";
-+import { pipeline } from "node:stream/promises";
-+import { createGunzip } from "node:zlib";
-+import { fileURLToPath } from "node:url";
-+import { execFileSync, execSync } from "node:child_process";
-+import { randomBytes } from "node:crypto";
-+
-+const __filename = fileURLToPath(import.meta.url);
-+const SCRIPT_DIR = dirname(__filename);
-+const PROJECT_ROOT = resolve(SCRIPT_DIR, "..");
-+const PLATFORMS_ROOT = join(PROJECT_ROOT, "platforms");
-+const REPO = "crowforkotlin/wasmtime";
-+
-+// ── Colors ──────────────────────────────────────────────────────────────────
-+const isTTY = process.stdout.isTTY && !process.env.NO_COLOR;
-+const c = (code, t) => (isTTY ? `[${code}m${t}[0m` : t);
-+const red = (t) => c("1;31", t);
-+const green = (t) => c("1;32", t);
-+const yellow = (t) => c("1;33", t);
-+const blue = (t) => c("1;34", t);
-+const magenta = (t) => c("1;35", t);
-+const cyan = (t) => c("1;36", t);
-+const white = (t) => c("1;37", t);
-+const gray = (t) => c("1;30", t);
-+
-+const logInfo = (m) => console.log(`${magenta("[INFO]")} ${m}`);
-+const logOk = (m) => console.log(`${green("[OK]")}   ${m}`);
-+const logWarn = (m) => console.log(`${yellow("[WARN]")} ${m}`);
-+const logErr = (m) => console.log(`${red("[ERR]")}  ${m}`);
-+const logStep = (m) => console.log(`${blue("[STEP]")} ${m}`);
-+const logDetail = (m) => console.log(`       ${gray("└─")} ${m}`);
-+const logHeader = (m) => {
-+  const bar = cyan("=".repeat(49));
-+  console.log(`${bar}
-      ${m}
-${bar}`);
-+};
-+
-+// ── Helpers ─────────────────────────────────────────────────────────────────
-+
-+function formatSize(n) {
-+  if (n < 1024) return `${n}B`;
-+  if (n < 1048576) return `${Math.round((n + 512) / 1024)}KB`;
-+  const mb = Math.floor((n * 100) / 1048576);
-+  return `${Math.floor(mb / 100)}.${String(mb % 100).padStart(2, "0")}MB`;
-+}
-+
-+function ask(prompt) {
-+  const rl = createInterface({ input: process.stdin, output: process.stdout });
-+  return new Promise((res) => rl.question(prompt, (a) => { rl.close(); res(a.trim()); }));
-+}
-+
-+function tmpDir() {
-+  const p = join(PLATFORMS_ROOT, `.tmp_${randomBytes(6).toString("hex")}`);
-+  mkdirSync(p, { recursive: true });
-+  return p;
-+}
-+
-+// ── Targets ─────────────────────────────────────────────────────────────────
-+
-+const TARGETS = [
-+  ["1", "Android (aarch64)", "aarch64-android"],
-+  ["2", "iOS Device (aarch64)", "aarch64-ios-c-api"],
-+  ["3", "iOS Simulator (aarch64)", "aarch64-ios-sim"],
-+  ["4", "Linux (aarch64)", "aarch64-linux"],
-+  ["5", "Linux (x86_64)", "x86_64-linux"],
-+  ["6", "macOS (aarch64)", "aarch64-macos"],
-+  ["7", "macOS (x86_64)", "x86_64-macos"],
-+  ["8", "Windows (x86_64)", "x86_64-windows"],
-+  ["a", "All Platforms", "all"],
-+];
-+
-+const PLATFORM_MAP = {
-+  "aarch64-android": "android/arm64-v8a",
-+  "aarch64-ios-sim": "ios/simulator-arm64",
-+  "aarch64-ios-c-api": "ios/arm64",
-+  "aarch64-linux": "linux/aarch64",
-+  "x86_64-linux": "linux/x64",
-+  "aarch64-macos": "mac/aarch64",
-+  "x86_64-macos": "mac/x64",
-+  "x86_64-windows": "windows/x64",
-+};
-+
-+async function selectTarget() {
-+  console.log();
-+  logHeader("Platform & Architecture Selection");
-+  console.log("Select specific target:");
-+  for (const [key, label] of TARGETS) {
-+    console.log(`  ${white(key + ")")} ${label}`);
-+  }
-+  console.log();
-+  while (true) {
-+    const choice = (await ask(`${cyan("Choice [1-8, a]: ")}`)).toLowerCase();
-+    const match = TARGETS.find(([k]) => k === choice);
-+    if (match) {
-+      const display = match[2] === "all" ? "All Platforms" : match[2];
-+      logOk(`Target Filter: ${white(display)}`);
-+      return match[2];
-+    }
-+    console.log(red("Invalid input."));
-+  }
-+}
-+
-+async function configureConcurrency() {
-+  console.log();
-+  logHeader("Download Settings");
-+  const raw = await ask(`Set max concurrent downloads (Default: ${white("3")}):
-${cyan("Count > ")}`);
-+  let n = parseInt(raw, 10);
-+  if (!Number.isFinite(n) || n < 1) n = 3;
-+  logOk(`Concurrency set to: ${white(String(n))}`);
-+  return n;
-+}
-+
-+// ── Network ─────────────────────────────────────────────────────────────────
-+
-+function setupProxy(proxy) {
-+  if (proxy) {
-+    process.env.http_proxy = `http://${proxy}`;
-+    process.env.https_proxy = `http://${proxy}`;
-+    logOk(`Proxy: ${proxy}`);
-+  } else {
-+    logInfo("Direct connection.");
-+    console.log(`${yellow("[TIP]")} If slow, use: node ${process.argv[1]} 127.0.0.1:7890`);
-+  }
-+}
-+
-+async function fetchJSON(url) {
-+  const resp = await fetch(url, {
-+    headers: { Accept: "application/vnd.github+json" },
-+  });
-+  if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
-+  return resp.json();
-+}
-+
-+async function downloadFile(url, dest) {
-+  const resp = await fetch(url, { redirect: "follow" });
-+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-+  const ws = createWriteStream(dest);
-+  // @ts-ignore – Node 18+ body is a ReadableStream / web stream
-+  await pipeline(resp.body, ws);
-+}
-+
-+// ── Extract ─────────────────────────────────────────────────────────────────
-+
-+function hasBin(bin) {
-+  try {
-+    execSync(process.platform === "win32" ? `where ${bin}` : `which ${bin}`, { stdio: "ignore" });
-+    return true;
-+  } catch { return false; }
-+}
-+
-+function toMsysPath(p) {
-+  const normalized = resolve(p).replace(/\/g, "/");
-+  const match = normalized.match(/^([A-Za-z]):\/(.*)$/);
-+  if (!match) return normalized;
-+  return `/${match[1].toLowerCase()}/${match[2]}`;
-+}
-+
-+function findPython() {
-+  const candidates = process.platform === "win32" ? ["python", "py"] : ["python3", "python"];
-+  for (const candidate of candidates) {
-+    if (hasBin(candidate)) return candidate;
-+  }
-+  return null;
-+}
-+
-+function extractArchiveWithPython(archive, destDir) {
-+  const python = findPython();
-+  if (!python) return false;
-+
-+  const script = [
-+    "import pathlib, sys, tarfile, zipfile",
-+    "archive = pathlib.Path(sys.argv[1])",
-+    "dest = pathlib.Path(sys.argv[2])",
-+    "dest.mkdir(parents=True, exist_ok=True)",
-+    "if archive.suffix == '.zip':",
-+    "    with zipfile.ZipFile(archive) as zf:",
-+    "        zf.extractall(dest)",
-+    "else:",
-+    "    with tarfile.open(archive) as tf:",
-+    "        tf.extractall(dest)",
-+  ].join("
-");
-+
-+  const args = python === "py"
-+    ? ["-3", "-c", script, archive, destDir]
-+    : ["-c", script, archive, destDir];
-+
-+  execFileSync(python, args, { stdio: "ignore" });
-+  return true;
-+}
-+
-+function extractArchive(archive, destDir) {
-+  const name = basename(archive);
-+  mkdirSync(destDir, { recursive: true });
-+
-+  if (name.endsWith(".zip")) {
-+    if (process.platform === "win32") {
-+      execSync(`tar -xf "${archive}" -C "${destDir}"`, { stdio: "ignore" });
-+    } else {
-+      execSync(`unzip -q -o "${archive}" -d "${destDir}"`, { stdio: "ignore" });
-+    }
-+    return;
-+  }
-+
-+  // .tar.xz / .tar.gz — on Windows the built-in tar.exe cannot handle .xz
-+  if (process.platform === "win32" && name.endsWith(".tar.xz")) {
-+    // Prefer MSYS2 / Git-Bash tar.exe directly to avoid nested shell quoting issues.
-+    const msysTar = findMsysTar();
-+    if (msysTar) {
-+      execFileSync(msysTar, ["-xf", toMsysPath(archive), "-C", toMsysPath(destDir)], { stdio: "ignore" });
-+      return;
-+    }
-+
-+    // Python's stdlib tarfile handles .tar.xz reliably when Python is available.
-+    if (extractArchiveWithPython(archive, destDir)) {
-+      return;
-+    }
-+
-+    // Fallback: two-step  xz → tar  (requires xz on PATH)
-+    if (hasBin("xz")) {
-+      const tarFile = archive.replace(/\.xz$/, "");
-+      execSync(`xz -dk "${archive}"`, { stdio: "ignore" });
-+      execSync(`tar -xf "${tarFile}" -C "${destDir}"`, { stdio: "ignore" });
-+      rmSync(tarFile, { force: true });
-+      return;
-+    }
-+    // Last resort: 7z
-+    if (hasBin("7z")) {
-+      execSync(`7z x "${archive}" -so | 7z x -si -ttar -o"${destDir}"`, { stdio: "ignore", shell: true });
-+      return;
-+    }
-+    throw new Error(
-+      `Cannot extract .tar.xz on Windows — install Git-Bash / MSYS2, xz-utils, or 7-Zip and make sure they are on PATH.`
-+    );
-+  }
-+
-+  // Unix or .tar.gz on any platform
-+  execSync(`tar -xf "${archive}" -C "${destDir}"`, { stdio: "ignore" });
-+}
-+
-+/** Try to locate a MSYS2 / Git-Bash bash.exe that bundles GNU tar with xz support. */
-+function findMsysBash() {
-+  const candidates = [
-+    process.env.MSYS2_BASH,
-+    // Git for Windows
-+    "C:\Program Files\Git\usr\bin\bash.exe",
-+    "C:\Program Files (x86)\Git\usr\bin\bash.exe",
-+    // MSYS2 default
-+    "C:\msys64\usr\bin\bash.exe",
-+  ];
-+  for (const p of candidates) {
-+    if (p && existsSync(p)) return p;
-+  }
-+  // Check if current shell IS already MSYS/Git-Bash (MSYSTEM env var set)
-+  if (process.env.MSYSTEM && hasBin("bash")) return "bash";
-+  return null;
-+}
-+
-+function findMsysTar() {
-+  const msysBash = findMsysBash();
-+  if (msysBash && msysBash !== "bash") {
-+    const candidate = join(dirname(msysBash), "tar.exe");
-+    if (existsSync(candidate)) return candidate;
-+  }
-+
-+  const candidates = [
-+    "C:\Program Files\Git\usr\bin\tar.exe",
-+    "C:\Program Files (x86)\Git\usr\bin\tar.exe",
-+    "C:\msys64\usr\bin\tar.exe",
-+  ];
-+  for (const candidate of candidates) {
-+    if (existsSync(candidate)) return candidate;
-+  }
-+
-+  return null;
-+}
-+
-+function findIncludeDir(root) {
-+  const entries = readdirSync(root, { withFileTypes: true });
-+  for (const e of entries) {
-+    if (e.isDirectory() && e.name === "include") return root;
-+    if (e.isDirectory()) {
-+      const found = findIncludeDir(join(root, e.name));
-+      if (found) return found;
-+    }
-+  }
-+  return null;
-+}
-+
-+// ── Deploy ──────────────────────────────────────────────────────────────────
-+
-+function deployPlatform(archive, plat) {
-+  const target = join(PLATFORMS_ROOT, plat);
-+  logStep(`Deploying: ${white(plat)}`);
-+  logDetail(`Archive: ${cyan(basename(archive))}`);
-+
-+  if (existsSync(target)) rmSync(target, { recursive: true, force: true });
-+  mkdirSync(target, { recursive: true });
-+
-+  const tmp = tmpDir();
-+  try {
-+    extractArchive(archive, tmp);
-+    const cRoot = findIncludeDir(tmp);
-+    if (!cRoot) throw new Error(`Invalid structure: ${basename(archive)}`);
-+
-+    const srcInclude = join(cRoot, "include");
-+    const srcLib = join(cRoot, "lib");
-+    cpSync(srcInclude, join(target, "include"), { recursive: true });
-+    cpSync(srcLib, join(target, "lib"), { recursive: true });
-+    logOk(`Installed: ${plat}`);
-+  } finally {
-+    rmSync(tmp, { recursive: true, force: true });
-+  }
-+}
-+
-+
-+// ── Filter ──────────────────────────────────────────────────────────────────
-+
-+function matchesFilter(fname, filter) {
-+  if (filter === "all") return true;
-+  if (filter === "aarch64-ios-c-api") {
-+    return fname.includes(filter) && !fname.includes("sim");
-+  }
-+  return fname.includes(filter);
-+}
-+
-+function fnameToPlatform(fname) {
-+  // Order matters: sim before generic ios
-+  const keys = [
-+    "aarch64-ios-sim",
-+    "aarch64-ios-c-api",
-+    "aarch64-android",
-+    "aarch64-linux",
-+    "x86_64-linux",
-+    "aarch64-macos",
-+    "x86_64-macos",
-+    "x86_64-windows",
-+  ];
-+  for (const k of keys) {
-+    if (fname.includes(k)) return PLATFORM_MAP[k];
-+  }
-+  return null;
-+}
-+
-+// ── Main ────────────────────────────────────────────────────────────────────
-+
-+async function main() {
-+  process.chdir(PROJECT_ROOT);
-+  mkdirSync(PLATFORMS_ROOT, { recursive: true });
-+
-+  logHeader("Wasmtime SDK Init");
-+  setupProxy(process.argv[2] || null);
-+
-+  // 1. Fetch release info
-+  logInfo("Fetching releases...");
-+  let data;
-+  try {
-+    data = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/latest`);
-+  } catch (e) {
-+    logErr(`Fetch failed: ${e.message}`);
-+    process.exit(1);
-+  }
-+
-+  const tag = data.tag_name || "";
-+  if (!tag) { logErr("Fetch failed: no tag_name."); process.exit(1); }
-+  logInfo(`Version: ${green(tag)}`);
-+
-+  // 2. Interactive selections
-+  const userFilter = await selectTarget();
-+  const maxConcurrent = await configureConcurrency();
-+
-+  // 3. Collect download URLs
-+  logInfo("Analyzing targets...");
-+  /** @type {{url:string, fname:string, plat:string}[]} */
-+  const jobs = [];
-+  for (const asset of data.assets || []) {
-+    const url = asset.browser_download_url || "";
-+    const fname = basename(url);
-+    if (!fname.includes("c-api")) continue;
-+    if (!matchesFilter(fname, userFilter)) continue;
-+    const plat = fnameToPlatform(fname);
-+    if (plat) jobs.push({ url, fname, plat });
-+  }
-+
-+  if (jobs.length === 0) { logWarn("No assets found."); process.exit(0); }
-+  logInfo(`Ready. Queue: ${jobs.length} files (Max concurrent: ${maxConcurrent})`);
-+  console.log("-".repeat(80));
-+
-+  // 4. Download with concurrency control
-+  const errors = [];
-+  /** @type {{plat:string, archive:string}[]} */
-+  const downloaded = [];
-+
-+  async function doDownload({ url, fname, plat }) {
-+    const tmp = tmpDir();
-+    const dest = join(tmp, fname);
-+    const t0 = performance.now();
-+    try {
-+      await downloadFile(url, dest);
-+      const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-+      const size = formatSize(statSync(dest).size);
-+      logOk(`${plat.padEnd(18)}  ${size.padStart(10)}  ${String(elapsed).padStart(5)}s  ${cyan(fname)}`);
-+      downloaded.push({ plat, archive: dest });
-+    } catch (e) {
-+      errors.push(`${fname}: ${e.message}`);
-+      logErr(`${plat.padEnd(18)}  FAILED  ${fname}`);
-+      rmSync(tmp, { recursive: true, force: true });
-+    }
-+  }
-+
-+  // Simple concurrency pool
-+  let running = 0;
-+  let idx = 0;
-+  await new Promise((done) => {
-+    function next() {
-+      while (running < maxConcurrent && idx < jobs.length) {
-+        running++;
-+        const job = jobs[idx++];
-+        doDownload(job).finally(() => {
-+          running--;
-+          if (idx >= jobs.length && running === 0) done();
-+          else next();
-+        });
-+      }
-+      if (jobs.length === 0) done();
-+    }
-+    next();
-+  });
-+
-+  console.log("-".repeat(80));
-+  logOk("All Downloads Finished.");
-+  console.log();
-+
-+  // 5. Deploy
-+  logInfo("Deploying...");
-+  for (const { plat, archive } of downloaded) {
-+    try {
-+      deployPlatform(archive, plat);
-+    } catch (e) {
-+      errors.push(e.message);
-+    }
-+    // Clean temp dir containing the archive
-+    rmSync(dirname(archive), { recursive: true, force: true });
-+    console.log();
-+  }
-+
-+  if (errors.length > 0) {
-+    logErr("Completed with errors:");
-+    for (const e of errors) console.log(`  - ${e}`);
-+    process.exit(1);
-+  }
-+
-+  logHeader("Success");
-+  console.log(`Location: ${PLATFORMS_ROOT}/`);
-+}
-+
-+main().catch((e) => { logErr(e.message); process.exit(1); });
-+
-diff --git a/scripts/init.py b/scripts/init.py
-new file mode 100644
-index 0000000..b4c6a31
---- /dev/null
-+++ b/scripts/init.py
-@@ -0,0 +1,335 @@
-+#!/usr/bin/env python3
-+"""
-+Wasmtime C-API Init Script (Python)
-+====================================
-+Equivalent to init.sh — downloads and deploys Wasmtime C-API platform assets.
-+
-+Usage:
-+    python3 scripts/init.py [proxy]
-+
-+Examples:
-+    python3 scripts/init.py
-+    python3 scripts/init.py 127.0.0.1:7890
-+"""
-+
-+from __future__ import annotations
-+
-+import json
-+import os
-+import shutil
-+import sys
-+import tarfile
-+import tempfile
-+import time
-+import zipfile
-+from concurrent.futures import ThreadPoolExecutor, as_completed
-+from pathlib import Path
-+from urllib.request import Request, urlopen
-+from urllib.error import URLError
-+
-+# ── Paths ────────────────────────────────────────────────────────────────────
-+SCRIPT_DIR = Path(__file__).resolve().parent
-+PROJECT_ROOT = SCRIPT_DIR.parent
-+PLATFORMS_ROOT = PROJECT_ROOT / "platforms"
-+
-+REPO = "crowforkotlin/wasmtime"
-+
-+# ── Colors ───────────────────────────────────────────────────────────────────
-+_NO_COLOR = os.environ.get("NO_COLOR")
-+
-+def _c(code: str, text: str) -> str:
-+    if _NO_COLOR or not sys.stdout.isatty():
-+        return text
-+    return f"[{code}m{text}[0m"
-+
-+def red(t: str) -> str: return _c("1;31", t)
-+def green(t: str) -> str: return _c("1;32", t)
-+def yellow(t: str) -> str: return _c("1;33", t)
-+def blue(t: str) -> str: return _c("1;34", t)
-+def magenta(t: str) -> str: return _c("1;35", t)
-+def cyan(t: str) -> str: return _c("1;36", t)
-+def white(t: str) -> str: return _c("1;37", t)
-+def gray(t: str) -> str: return _c("1;30", t)
-+
-+def log_info(msg: str) -> None: print(f"{magenta('[INFO]')} {msg}")
-+def log_ok(msg: str) -> None: print(f"{green('[OK]')}   {msg}")
-+def log_warn(msg: str) -> None: print(f"{yellow('[WARN]')} {msg}")
-+def log_err(msg: str) -> None: print(f"{red('[ERR]')}  {msg}")
-+def log_step(msg: str) -> None: print(f"{blue('[STEP]')} {msg}")
-+def log_detail(msg: str) -> None: print(f"       {gray('└─')} {msg}")
-+
-+def log_header(msg: str) -> None:
-+    bar = cyan("=" * 49)
-+    print(f"{bar}
-      {msg}
-{bar}")
-+
-+# ── Helpers ──────────────────────────────────────────────────────────────────
-+
-+def format_size(n: int) -> str:
-+    if n < 1024:
-+        return f"{n}B"
-+    if n < 1048576:
-+        return f"{(n + 512) // 1024}KB"
-+    mb = n * 100 // 1048576
-+    return f"{mb // 100}.{mb % 100:02d}MB"
-+
-+# ── Target menu ──────────────────────────────────────────────────────────────
-+
-+TARGETS = [
-+    ("1", "Android (aarch64)",       "aarch64-android"),
-+    ("2", "iOS Device (aarch64)",    "aarch64-ios-c-api"),
-+    ("3", "iOS Simulator (aarch64)", "aarch64-ios-sim"),
-+    ("4", "Linux (aarch64)",         "aarch64-linux"),
-+    ("5", "Linux (x86_64)",          "x86_64-linux"),
-+    ("6", "macOS (aarch64)",         "aarch64-macos"),
-+    ("7", "macOS (x86_64)",          "x86_64-macos"),
-+    ("8", "Windows (x86_64)",        "x86_64-windows"),
-+    ("a", "All Platforms",           "all"),
-+]
-+
-+PLATFORM_MAP: dict[str, str] = {
-+    "aarch64-android":    "android/arm64-v8a",
-+    "aarch64-ios-sim":    "ios/simulator-arm64",
-+    "aarch64-ios-c-api":  "ios/arm64",
-+    "aarch64-linux":      "linux/aarch64",
-+    "x86_64-linux":       "linux/x64",
-+    "aarch64-macos":      "mac/aarch64",
-+    "x86_64-macos":       "mac/x64",
-+    "x86_64-windows":     "windows/x64",
-+}
-+
-+
-+def select_target() -> str:
-+    print()
-+    log_header("Platform & Architecture Selection")
-+    print("Select specific target:")
-+    for key, label, _ in TARGETS:
-+        print(f"  {white(key + ')')} {label}")
-+    print()
-+    while True:
-+        choice = input(f"{cyan('Choice [1-8, a]: ')}").strip().lower()
-+        for key, _, filter_val in TARGETS:
-+            if choice == key:
-+                display = filter_val if filter_val != "all" else "All Platforms"
-+                log_ok(f"Target Filter: {white(display)}")
-+                return filter_val
-+        print(f"{red('Invalid input.')}")
-+
-+
-+def configure_concurrency() -> int:
-+    print()
-+    log_header("Download Settings")
-+    raw = input(f"Set max concurrent downloads (Default: {white('3')}):
-{cyan('Count > ')}").strip()
-+    try:
-+        n = int(raw)
-+        if n < 1:
-+            raise ValueError
-+    except ValueError:
-+        n = 3
-+    log_ok(f"Concurrency set to: {white(str(n))}")
-+    return n
-+
-+
-+# ── Network ──────────────────────────────────────────────────────────────────
-+
-+def setup_proxy(proxy: str | None) -> None:
-+    if proxy:
-+        os.environ["http_proxy"] = f"http://{proxy}"
-+        os.environ["https_proxy"] = f"http://{proxy}"
-+        log_ok(f"Proxy: {proxy}")
-+    else:
-+        log_info("Direct connection.")
-+        print(f"{yellow('[TIP]')} If slow, use: python3 {sys.argv[0]} 127.0.0.1:7890")
-+
-+
-+def api_get_json(url: str) -> dict:
-+    req = Request(url, headers={"Accept": "application/vnd.github+json"})
-+    with urlopen(req, timeout=30) as resp:
-+        return json.loads(resp.read())
-+
-+
-+def download_file(url: str, dest: Path) -> None:
-+    dest.parent.mkdir(parents=True, exist_ok=True)
-+    req = Request(url)
-+    with urlopen(req, timeout=60) as resp, open(dest, "wb") as f:
-+        while True:
-+            chunk = resp.read(65536)
-+            if not chunk:
-+                break
-+            f.write(chunk)
-+
-+
-+# ── Deploy ───────────────────────────────────────────────────────────────────
-+
-+def deploy_platform(archive: Path, plat: str) -> None:
-+    target = PLATFORMS_ROOT / plat
-+    log_step(f"Deploying: {white(plat)}")
-+    log_detail(f"Archive: {cyan(archive.name)}")
-+
-+    if target.exists():
-+        shutil.rmtree(target)
-+    target.mkdir(parents=True, exist_ok=True)
-+
-+    with tempfile.TemporaryDirectory() as tmp:
-+        tmp_path = Path(tmp)
-+        if archive.suffix == ".zip":
-+            with zipfile.ZipFile(archive) as zf:
-+                zf.extractall(tmp_path)
-+        else:
-+            with tarfile.open(archive) as tf:
-+                tf.extractall(tmp_path)
-+
-+        # Find the directory containing include/
-+        include_dir = None
-+        for root, dirs, _ in os.walk(tmp_path):
-+            if "include" in dirs:
-+                include_dir = Path(root)
-+                break
-+
-+        if include_dir is None:
-+            log_err(f"Invalid structure: {archive.name}")
-+            raise RuntimeError(f"No include/ found in {archive.name}")
-+
-+        shutil.move(str(include_dir / "include"), str(target / "include"))
-+        shutil.move(str(include_dir / "lib"), str(target / "lib"))
-+        log_ok(f"Installed: {plat}")
-+
-+
-+# ── Filename → filter matching ───────────────────────────────────────────────
-+
-+def matches_filter(fname: str, user_filter: str) -> bool:
-+    if user_filter == "all":
-+        return True
-+    if user_filter == "aarch64-ios-c-api":
-+        return user_filter in fname and "sim" not in fname
-+    return user_filter in fname
-+
-+
-+def fname_to_platform(fname: str) -> str | None:
-+    for key, plat in PLATFORM_MAP.items():
-+        # iOS device needs special ordering: check sim first
-+        pass
-+    if "aarch64-ios-sim" in fname:
-+        return PLATFORM_MAP["aarch64-ios-sim"]
-+    if "aarch64-ios-c-api" in fname:
-+        return PLATFORM_MAP["aarch64-ios-c-api"]
-+    if "aarch64-android" in fname:
-+        return PLATFORM_MAP["aarch64-android"]
-+    if "aarch64-linux" in fname:
-+        return PLATFORM_MAP["aarch64-linux"]
-+    if "x86_64-linux" in fname:
-+        return PLATFORM_MAP["x86_64-linux"]
-+    if "aarch64-macos" in fname:
-+        return PLATFORM_MAP["aarch64-macos"]
-+    if "x86_64-macos" in fname:
-+        return PLATFORM_MAP["x86_64-macos"]
-+    if "x86_64-windows" in fname:
-+        return PLATFORM_MAP["x86_64-windows"]
-+    return None
-+
-+
-+# ── Main ─────────────────────────────────────────────────────────────────────
-+
-+def main() -> None:
-+    os.chdir(PROJECT_ROOT)
-+    PLATFORMS_ROOT.mkdir(parents=True, exist_ok=True)
-+
-+    log_header("Wasmtime SDK Init")
-+    setup_proxy(sys.argv[1] if len(sys.argv) > 1 else None)
-+
-+    # 1. Fetch release info
-+    log_info("Fetching releases...")
-+    try:
-+        data = api_get_json(f"https://api.github.com/repos/{REPO}/releases/latest")
-+    except (URLError, OSError) as exc:
-+        log_err(f"Fetch failed: {exc}")
-+        sys.exit(1)
-+
-+    tag = data.get("tag_name", "")
-+    if not tag:
-+        log_err("Fetch failed: no tag_name in response.")
-+        sys.exit(1)
-+    log_info(f"Version: {green(tag)}")
-+
-+    # 2. Interactive selections
-+    user_filter = select_target()
-+    max_concurrent = configure_concurrency()
-+
-+    # 3. Collect download URLs
-+    log_info("Analyzing targets...")
-+    assets = data.get("assets", [])
-+    jobs: list[tuple[str, str, str]] = []  # (url, fname, plat)
-+
-+    for asset in assets:
-+        url: str = asset.get("browser_download_url", "")
-+        fname = url.rsplit("/", 1)[-1] if url else ""
-+        if "c-api" not in fname:
-+            continue
-+        if not matches_filter(fname, user_filter):
-+            continue
-+        plat = fname_to_platform(fname)
-+        if plat:
-+            jobs.append((url, fname, plat))
-+
-+    if not jobs:
-+        log_warn("No assets found.")
-+        sys.exit(0)
-+
-+    log_info(f"Ready. Queue: {len(jobs)} files (Max concurrent: {max_concurrent})")
-+    print("-" * 80)
-+
-+    # 4. Download
-+    errors: list[str] = []
-+
-+    def do_download(url: str, fname: str, plat: str) -> tuple[str, Path]:
-+        tmp = Path(tempfile.mkdtemp(dir=PLATFORMS_ROOT))
-+        dest = tmp / fname
-+        t0 = time.monotonic()
-+        try:
-+            download_file(url, dest)
-+            elapsed = time.monotonic() - t0
-+            size_str = format_size(dest.stat().st_size)
-+            log_ok(f"{plat:18s}  {size_str:>10s}  {elapsed:5.1f}s  {cyan(fname)}")
-+        except Exception as exc:
-+            errors.append(f"{fname}: {exc}")
-+            log_err(f"{plat:18s}  FAILED  {fname}")
-+            shutil.rmtree(tmp, ignore_errors=True)
-+            raise
-+        return plat, dest
-+
-+    downloaded: list[tuple[str, Path]] = []
-+    with ThreadPoolExecutor(max_workers=max_concurrent) as pool:
-+        futures = {pool.submit(do_download, url, fname, plat): plat for url, fname, plat in jobs}
-+        for fut in as_completed(futures):
-+            try:
-+                downloaded.append(fut.result())
-+            except Exception:
-+                pass
-+
-+    print("-" * 80)
-+    log_ok("All Downloads Finished.")
-+    print()
-+
-+    # 5. Deploy
-+    log_info("Deploying...")
-+    for plat, archive in downloaded:
-+        try:
-+            deploy_platform(archive, plat)
-+        except Exception as exc:
-+            errors.append(str(exc))
-+        # Clean temp dir containing the archive
-+        shutil.rmtree(archive.parent, ignore_errors=True)
-+        print()
-+
-+    if errors:
-+        log_err("Completed with errors:")
-+        for e in errors:
-+            print(f"  - {e}")
-+        sys.exit(1)
-+
-+    log_header("Success")
-+    print(f"Location: {PLATFORMS_ROOT}/")
-+
-+
-+if __name__ == "__main__":
-+    main()
-+
+-static jboolean saveCacheCommon(JNIEnv *env, jstring keyStr, jstring outPathStr, bool unsafe) {
+-    const char *key = env->GetStringUTFChars(keyStr, nullptr);
+-    const char *outPath = env->GetStringUTFChars(outPathStr, nullptr);
+-    bool success = unsafe ? wasmline::Api::saveModuleCacheUnsafe(key, outPath) : wasmline::Api::saveModuleCache(key, outPath);
+-    env->ReleaseStringUTFChars(keyStr, key);
+-    env->ReleaseStringUTFChars(outPathStr, outPath);
+-    return success ? JNI_TRUE : JNI_FALSE;
+-}
+-
+-static jboolean loadModuleCommon(JNIEnv *env, jstring keyStr, jstring pathStr, bool isJit,  bool unsafe) {
++static jboolean loadPrecompiledModuleCommon(JNIEnv *env, jstring keyStr, jstring pathStr, bool unsafe) {
+     const char *key = env->GetStringUTFChars(keyStr, nullptr);
+     const char *path = env->GetStringUTFChars(pathStr, nullptr);
+-    bool success = unsafe ? wasmline::Api::loadModuleUnsafe(key, path, isJit) : wasmline::Api::loadModule(key, path, isJit);
++    bool success = unsafe ? wasmline::Api::loadModuleUnsafe(key, path) : wasmline::Api::loadModule(key, path);
+     env->ReleaseStringUTFChars(keyStr, key);
+     env->ReleaseStringUTFChars(pathStr, path);
+     return success;
 ---
 On branch main
 Your branch is up to date with 'origin/main'.
 
 Changes to be committed:
   (use "git restore --staged <file>..." to unstage)
-	new file:   scripts/init.mjs
-	new file:   scripts/init.py
+	deleted:    commit_message.txt
 
 Changes not staged for commit:
-  (use "git add/rm <file>..." to update what will be committed)
+  (use "git add <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
+	modified:   .github/plans/ir-planv2.md
 	modified:   .github/skills/wasmline/SKILL.md
-	deleted:    .github/skills/wasmline/scripts/__pycache__/skill_context_snapshot.cpython-314.pyc
-	deleted:    .github/skills/wasmline/scripts/skill_context_snapshot.py
-	modified:   README.md
-	modified:   README_zh.md
-	modified:   docs/content/docs/index.en.mdx
-	modified:   docs/content/docs/index.mdx
-	modified:   scripts/init.mjs
-
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	scripts/__pycache__/
+	modified:   .gitignore
+	modified:   wasmline-core/include/Api.h
+	modified:   wasmline-core/include/Module.h
+	modified:   wasmline-core/src/Api.cpp
+	modified:   wasmline-core/src/Module.cpp
+	modified:   wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Manifest.kt
+	modified:   wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt
+	modified:   wasmline-multiplatform/wasmline-sample/android/src/androidMain/kotlin/crow/wasmline/MainActivity.kt
+	modified:   wasmline-multiplatform/wasmline-sample/multiplatform/shared/src/commonMain/kotlin/crow/wasmline/sample/WasmLoader.kt
+	modified:   wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/Wasmline.kt
+	modified:   wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoadState.kt
+	modified:   wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/WasmlineLoader.kt
+	modified:   wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/model/Manifest.kt
+	modified:   wasmline-multiplatform/wasmline/src/hostTest/kotlin/crow/wasmline/WasmlineHostApiCompileTest.kt
+	modified:   wasmline-multiplatform/wasmline/src/iosMain/kotlin/crow/wasmline/Wasmline.ios.kt
+	modified:   wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.cpp
+	modified:   wasmline-multiplatform/wasmline/src/iosMain/native/WasmlineNative.h
+	modified:   wasmline-multiplatform/wasmline/src/jniMain/kotlin/crow/wasmline/Wasmline.jni.kt
+	modified:   wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.cpp
+	modified:   wasmline-multiplatform/wasmline/src/jniMain/native/WasmlineJni.h

@@ -12,7 +12,7 @@ import kotlin.contracts.ExperimentalContracts
  */
 sealed class WasmlineLoadState {
     companion object Companion {
-        const val CODE_SUCCESS_JIT: Byte = 0
+        const val CODE_SUCCESS_PULLEY: Byte = 0
         const val CODE_SUCCESS_AOT: Byte = 1
         const val CODE_FAILURE: Byte = 2
     }
