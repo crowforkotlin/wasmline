@@ -1,9 +1,5 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
 
-import com.android.build.api.dsl.androidLibrary
-import org.jetbrains.kotlin.konan.target.HostManager
-
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)

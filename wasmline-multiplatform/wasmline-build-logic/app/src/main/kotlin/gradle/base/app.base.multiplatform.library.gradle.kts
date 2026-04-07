@@ -1,8 +1,5 @@
 @file:Suppress("PackageDirectoryMismatch", "unused", "UnstableApiUsage")
 
-import com.android.build.api.dsl.androidLibrary
-
-
 /** @formatter:off */
 
 

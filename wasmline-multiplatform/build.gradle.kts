@@ -12,7 +12,6 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.github.fourlastor.construo) apply false
     alias(libs.plugins.conveyor) apply false
-    alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.buildconfig) apply false
     alias(libs.plugins.maven.publish) apply false
