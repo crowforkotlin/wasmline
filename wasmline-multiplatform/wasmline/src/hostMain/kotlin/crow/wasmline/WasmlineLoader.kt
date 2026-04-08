@@ -14,7 +14,10 @@ internal data class ResolvedPrecompiledArtifact(
  * final local artifact validation and native load flow used by JNI/iOS actuals.
  */
 internal object WasmlineLocalArtifactBridge {
-    internal fun load(artifactPath: String, platform: WasmlinePlatformArtifactBridge): WasmlineLoadState {
+    internal fun load(
+        artifactPath: String,
+        platform: WasmlinePlatformArtifactBridge
+    ): WasmlineLoadState {
         val resolvedArtifact = platform.resolveArtifact(artifactPath)
             ?: return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,

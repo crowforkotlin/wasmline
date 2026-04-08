@@ -6,15 +6,15 @@ import crow.wasmline.extensions.loadNativeLibrary
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import java.io.File
 
-actual class Wasmline actual internal constructor(private val moduleKey: String) {
+actual class Wasmline internal actual constructor(private val moduleKey: String) {
 
     actual companion object {
 
         init { loadNativeLibrary() }
 
         /**
-         * 加载模块
-         * @param filepath 预编译产物路径，仅支持 .cwasm 或 .pwasm
+         * load module
+         * @param filepath Precompiled product path, only supports .cwasm or .pwasm
          */
         actual fun load(filepath: String, threadSafe: Boolean): WasmlineLoadState {
             return WasmlineLocalArtifactBridge.load(
@@ -40,14 +40,14 @@ actual class Wasmline actual internal constructor(private val moduleKey: String)
         }
 
         /**
-         * 初始化全局 Engine。
-         * 建议在 Application onCreate 中调用。
+         * Initialize the global Engine.
+         * It is recommended to call it in Application onCreate.
          */
         actual fun init() { nativeInit() }
 
         /**
-         * 释放全局 Engine 和所有缓存的 Module。
-         * 建议在确定不再使用 Wasm 时调用，或者 Activity onDestroy。
+         * Release the global Engine and all cached Modules.
+         * It is recommended to call Wasm when you are sure you are no longer using it, or Activity onDestroy.
          */
         actual fun shutdown() { nativeReleaseEngine() }
 
@@ -66,15 +66,15 @@ actual class Wasmline actual internal constructor(private val moduleKey: String)
     }
 
     /**
-     * 执行 Wasm 函数
-     * 支持并发调用，底层会自动创建独立的 Session
+     * Execute Wasm function
+     * Supports concurrent calls, the bottom layer will automatically create an independent Session
      */
     actual internal fun call(action: String, inputBytes: ByteArray) : ByteArray = nativeInvokeInbound(moduleKey, action, inputBytes)
     // suspend fun call(action: String, json: String): String = withContext(Dispatchers.Default) { nativeCall(moduleKey, action, json) }
 
     /**
-     * 释放当前模块
-     * 不会影响 Engine，但会释放此模块占用的内存
+     * Release the current module
+     * Will not affect the Engine, but will free the memory occupied by this module
      */
     actual fun close() { nativeReleaseModule(moduleKey) }
 }

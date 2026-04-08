@@ -47,8 +47,6 @@ namespace wasmline {
     Session::Session(wasm_engine_t *eng, wasmtime_module_t *mod, std::string k)
             : engine(eng), module(mod), key(std::move(k)) {
         store = wasmtime_store_new(engine, this, nullptr);
-        context = wasmtime_store_context(store);
-        linker = wasmtime_linker_new(engine);
     }
 
     /**
@@ -98,9 +96,9 @@ namespace wasmline {
             wasm_byte_vec_t error_msg;
             wasmtime_error_message(wasiErr, &error_msg);
             LOGE("[Wasmtime] Session --> 1. Setup wasi failure: %s", error_msg.data);
-            wasm_byte_vec_delete(&error_msg); // 释放字符串内存
-            wasmtime_error_delete(wasiErr);   // 释放错误对象内存
-            wasi_config_delete(wasi);         // 关键：失败时必须手动释放 config
+            wasm_byte_vec_delete(&error_msg);
+            wasmtime_error_delete(wasiErr);
+            wasi_config_delete(wasi);
             return false;
         }
 

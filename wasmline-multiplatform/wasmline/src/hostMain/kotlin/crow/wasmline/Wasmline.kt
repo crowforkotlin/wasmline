@@ -1,4 +1,4 @@
-@file:Suppress("unused")
+@file:Suppress("unused", "SpellCheckingInspection")
 
 package crow.wasmline
 
@@ -6,8 +6,6 @@ import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 
 expect class Wasmline internal constructor(moduleKey: String) {
 
-
-    @Suppress("unused")
     companion object {
 
         /**
@@ -17,37 +15,38 @@ expect class Wasmline internal constructor(moduleKey: String) {
          * `wasmline-loader` module, while this API remains the direct runtime
          * bridge for prepared local `.cwasm` / `.pwasm` artifacts.
          *
-         * @param filepath 预编译产物路径，仅支持 `.cwasm` 或 `.pwasm`
+         * @param filepath Precompiled product path, only supports `.cwasm` or `.pwasm`
          */
         fun load(filepath: String, threadSafe: Boolean = false): WasmlineLoadState
 
         /**
-         * 初始化全局 Engine。
-         * 建议在 Application onCreate 中调用。
+         * Initialize the global Engine.
+         * It is recommended to call it in Application onCreate.
          */
         fun init()
 
         /**
-         * 释放全局 Engine 和所有缓存的 Module。
-         * 建议在确定不再使用 Wasm 时调用，或者 Activity onDestroy。
+         * Release the global Engine and all cached Modules.
+         * It is recommended to call Wasm when you are sure you are no longer using it, or Activity onDestroy.
          */
         fun shutdown()
-
     }
 
-    @Suppress("unused")
+    /**
+     * Set callback
+     * The dispatcher will be retained by the runtime, so it is recommended to use a singleton or static instance.
+     */
     internal fun setOutbound(dispatcher: WasmlineHostDispatcher)
 
     /**
-     * 执行 Wasm 函数
-     * 支持并发调用，底层会自动创建独立的 Session
+     * Execute Wasm function
+     * Supports concurrent calls, the bottom layer will automatically create an independent Session
      */
     internal fun call(action: String, inputBytes: ByteArray): ByteArray
 
     /**
-     * 释放当前模块
-     * 不会影响 Engine，但会释放此模块占用的内存
+     * Release the current module
+     * Will not affect the Engine, but will free the memory occupied by this module
      */
-    @Suppress("unused")
     fun close()
 }
