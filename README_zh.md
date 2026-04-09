@@ -56,6 +56,12 @@ wasmline-multiplatform/
 ### 环境要求
 
 - 常规构建至少需要 **Java 21**；对于 `./.github/skills/wasmline/scripts/skill_preflight.sh` 覆盖的 Gradle 任务（尤其是 Compose Desktop / 桌面 sample），请使用 **JBR 21**
+- Android 工具链可能会跟随较新的 **Gradle** / **AGP** alpha 版本；如果在较旧的 Android Studio 中出现 sync 失败或 Android 模块无法运行，请升级到当前 AGP 对应的 Android Studio 版本。
+  - 当前仓库基线：`wasmline-multiplatform/gradle/libs.versions.toml` 中 `agp = 9.2.0-alpha07`
+  - 建议使用：**Android Studio Panda 4 | 2025.3.4 Canary 3** 或更高版本
+  - Build：`AI-253.32098.37.2534.15136351`（built on April 2, 2026）
+  - Runtime version：`21.0.10+-14961533-b1163.108 amd64`
+  - VM：`OpenJDK 64-Bit Server VM by JetBrains s.r.o.`
 - **Zig 0.15.1**（用于原生库构建）
 - 构建 AOT 产物时需要本地准备好 Wasmtime toolchain
 

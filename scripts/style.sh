@@ -8,21 +8,35 @@ if [ -n "$STYLE_SOURCED_MARKER" ]; then return 0; fi
 export STYLE_SOURCED_MARKER="true"
 
 # --- 1. Colors (High Intensity) ---
-export RED='\033[1;31m'
-export GREEN='\033[1;32m'
-export YELLOW='\033[1;33m'
-export BLUE='\033[1;34m'
-export MAGENTA='\033[1;35m'
-export CYAN='\033[1;36m'
-export WHITE='\033[1;37m'
-export GRAY='\033[1;30m'
-export NC='\033[0m'
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    export STYLE_USE_ANSI="true"
+    export RED='\033[1;31m'
+    export GREEN='\033[1;32m'
+    export YELLOW='\033[1;33m'
+    export BLUE='\033[1;34m'
+    export MAGENTA='\033[1;35m'
+    export CYAN='\033[1;36m'
+    export WHITE='\033[1;37m'
+    export GRAY='\033[1;30m'
+    export NC='\033[0m'
+else
+    export STYLE_USE_ANSI="false"
+    export RED=''
+    export GREEN=''
+    export YELLOW=''
+    export BLUE=''
+    export MAGENTA=''
+    export CYAN=''
+    export WHITE=''
+    export GRAY=''
+    export NC=''
+fi
 
 # --- 2. Cursor Control (Crucial for Dashboard) ---
-cursor_hide() { printf "\033[?25l"; }
-cursor_show() { printf "\033[?25h"; }
-cursor_up()   { printf "\033[%dA" "$1"; } # Move cursor up N lines
-clear_line()  { printf "\033[2K\r"; }     # Clear current line
+cursor_hide() { [ "$STYLE_USE_ANSI" = "true" ] && printf "\033[?25l"; }
+cursor_show() { [ "$STYLE_USE_ANSI" = "true" ] && printf "\033[?25h"; }
+cursor_up()   { [ "$STYLE_USE_ANSI" = "true" ] && printf "\033[%dA" "$1"; } # Move cursor up N lines
+clear_line()  { [ "$STYLE_USE_ANSI" = "true" ] && printf "\033[2K\r"; }     # Clear current line
 
 # --- 3. Format Utilities ---
 # Convert bytes to human readable (KB, MB)

@@ -40,6 +40,50 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
 
 ---
 
+## 终端会话记录规范
+
+当任务需要通过终端（PowerShell / Bash / 其他 shell）执行命令时，**必须**遵循以下流程：
+
+1. **新一轮对话开始时**，先确保仓库根目录下存在 `.cache/`，再删除 `.cache/session_chat.txt`（如果存在）：
+
+   ```powershell
+   # Windows PowerShell
+   New-Item -ItemType Directory -Path ".cache" -Force | Out-Null
+   Remove-Item -Path ".cache/session_chat.txt" -ErrorAction SilentlyContinue
+   ```
+
+   ```bash
+   # Bash / macOS / Linux
+   mkdir -p .cache
+   rm -f .cache/session_chat.txt
+   ```
+
+2. **每次通过终端执行命令时**，将执行的命令本身及其完整输出追加写入仓库根目录的 `.cache/session_chat.txt`，并使用分隔线隔开各次执行记录。记录格式如下：
+
+   ```
+   > 执行的命令
+   命令的完整输出内容
+   ---------------------------------
+   ```
+
+3. **写入日志的内容必须是纯文本**。禁止把 ANSI 颜色控制符、光标控制符、其他终端转义序列原样写入 `.cache/session_chat.txt`。
+
+   要点：
+
+   - 优先让命令自身在非 TTY / `NO_COLOR=1` 下输出无色文本。
+   - 如果命令仍会输出 ANSI 转义序列，必须在追加到日志前先剥离。
+   - `.cache/session_chat.txt` 面向回溯排查，应保持可直接阅读，不应出现 `\u001b[1;36m`、`\033[0m`、`^[` 等控制符残留。
+
+4. **所有终端操作完成后**，自动退出终端会话（即执行 `exit`），不要让终端保持挂起状态。
+
+要点：
+
+- `.cache/session_chat.txt` 是**临时会话日志**，每轮对话开始时清空重建，不提交到版本控制。
+- 该文件应始终位于仓库根目录下的 `.cache/` 目录（即 `D:\fish\wasmline\.cache\session_chat.txt` 或对应工作目录根路径）。
+- 此规范的目的是留存当次对话中所有终端交互的完整上下文，方便回溯排查。
+
+---
+
 ## 第一步：Gradle 之前必须预检
 
 本仓库的 Gradle 构建至少要求 **Java 21**；其中 Compose Desktop / 部分桌面 sample 明确配置了 `JvmVendorSpec.JETBRAINS`，因此本技能统一按 **JBR 21** 作为预检标准。

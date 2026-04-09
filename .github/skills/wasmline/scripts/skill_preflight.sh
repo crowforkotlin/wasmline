@@ -5,12 +5,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 PROFILE_FILES=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile")
 
-red='\033[1;31m'
-green='\033[1;32m'
-yellow='\033[1;33m'
-blue='\033[1;34m'
-cyan='\033[1;36m'
-reset='\033[0m'
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    red='\033[1;31m'
+    green='\033[1;32m'
+    yellow='\033[1;33m'
+    blue='\033[1;34m'
+    cyan='\033[1;36m'
+    reset='\033[0m'
+else
+    red=''
+    green=''
+    yellow=''
+    blue=''
+    cyan=''
+    reset=''
+fi
 
 info() { printf "${blue}[INFO]${reset} %s\n" "$1"; }
 success() { printf "${green}[OK]${reset}   %s\n" "$1"; }

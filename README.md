@@ -56,6 +56,12 @@ wasmline-multiplatform/
 ### Prerequisites
 
 - **Java 21** or later for general builds; use **JBR 21** for Gradle tasks covered by `./.github/skills/wasmline/scripts/skill_preflight.sh` (especially Compose Desktop / desktop samples)
+- The Android toolchain may track newer **Gradle** / **AGP** alpha releases. If sync or Android builds fail in an older IDE, upgrade Android Studio to the version required by the current AGP line.
+  - Current repository baseline: `agp = 9.2.0-alpha07` in `wasmline-multiplatform/gradle/libs.versions.toml`
+  - Recommended Android Studio for that AGP baseline: **Android Studio Panda 4 | 2025.3.4 Canary 3** or newer
+  - Build: `AI-253.32098.37.2534.15136351` (built on April 2, 2026)
+  - Runtime: `21.0.10+-14961533-b1163.108 amd64`
+  - VM: `OpenJDK 64-Bit Server VM by JetBrains s.r.o.`
 - **Zig 0.15.1** (for native library builds)
 - a locally prepared Wasmtime toolchain when building AOT artifacts
 
