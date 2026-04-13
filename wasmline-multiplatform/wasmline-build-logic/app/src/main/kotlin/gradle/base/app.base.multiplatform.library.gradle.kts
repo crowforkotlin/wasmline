@@ -1,5 +1,8 @@
 @file:Suppress("PackageDirectoryMismatch", "unused", "UnstableApiUsage")
 
+import org.jetbrains.kotlin.konan.target.HostManager
+
+
 /** @formatter:off */
 
 
@@ -23,10 +26,12 @@ kotlin {
 
     jvm(name = "desktop")
 
-    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            isStatic = true
-            baseName = Config.getBaseName(project)
+    if (HostManager.hostIsMac) {
+        listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                isStatic = true
+                baseName = Config.getBaseName(project)
+            }
         }
     }
 

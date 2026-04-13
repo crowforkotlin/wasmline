@@ -1,5 +1,8 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage", "SpellCheckingInspection")
 
+import org.jetbrains.kotlin.konan.target.HostManager
+
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
@@ -46,20 +49,22 @@ kotlin {
                 }
             }
         }
-        listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
-            configureCInterop(target)
-            target.binaries.framework {
-                isStatic = false
-                freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
-                val coreLibAbsPath = iosBuildDir.resolve("libwasmline_core_ios.a").absolutePath
-                val wasmtimeLibAbsPath = wasmtimeLibDir.resolve("libwasmtime.a").absolutePath
-                linkerOpts(
-                    "-Wl,-force_load,${coreLibAbsPath}",
-                    "-Wl,-force_load,${wasmtimeLibAbsPath}",
-                    "-lc++",
-                    "-framework", "CoreFoundation",
-                    "-framework", "Security"
-                )
+        if (HostManager.hostIsMac) {
+            listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+                configureCInterop(target)
+                target.binaries.framework {
+                    isStatic = false
+                    freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
+                    val coreLibAbsPath = iosBuildDir.resolve("libwasmline_core_ios.a").absolutePath
+                    val wasmtimeLibAbsPath = wasmtimeLibDir.resolve("libwasmtime.a").absolutePath
+                    linkerOpts(
+                        "-Wl,-force_load,${coreLibAbsPath}",
+                        "-Wl,-force_load,${wasmtimeLibAbsPath}",
+                        "-lc++",
+                        "-framework", "CoreFoundation",
+                        "-framework", "Security"
+                    )
+                }
             }
         }
     }
@@ -77,9 +82,6 @@ kotlin {
         }
         val hostMain by creating { dependsOn(other = commonMain) }
         val jniMain by creating { dependsOn(other = hostMain) }
-        val iosMain by getting { dependsOn(other = hostMain) }
-        val iosArm64Main by getting { dependsOn(other = iosMain) }
-        val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
 //        val macosArm64Main by getting { dependsOn(hostMain) }
 //        val linuxX64Main by getting { dependsOn(jvmMain) }
@@ -101,7 +103,13 @@ kotlin {
         }
         val hostTest by creating { dependsOn(other = commonTest) }
         val jvmTest by getting { dependsOn(other = hostTest) }
-        val iosTest by getting { dependsOn(other = hostTest) }
+
+        if (HostManager.hostIsMac) {
+            val iosMain by getting { dependsOn(other = hostMain) }
+            val iosArm64Main by getting { dependsOn(other = iosMain) }
+            val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
+            val iosTest by getting { dependsOn(other = hostTest) }
+        }
 //        val androidInstrumentedTest by getting { dependsOn(other = hostTest) }
     }
 }

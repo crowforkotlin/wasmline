@@ -1,5 +1,8 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
 
+import org.jetbrains.kotlin.konan.target.HostManager
+
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
@@ -21,13 +24,15 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { target ->
-        target.binaries.framework {
-            isStatic = false
-            freeCompilerArgs
+    if (HostManager.hostIsMac) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { target ->
+            target.binaries.framework {
+                isStatic = false
+                freeCompilerArgs
+            }
         }
     }
     applyDefaultHierarchyTemplate()
@@ -45,7 +50,6 @@ kotlin {
         val jniMain by creating { dependsOn(other = hostMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
-        val iosMain by getting { dependsOn(other = hostMain) }
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)
@@ -55,6 +59,10 @@ kotlin {
         val hostTest by creating { dependsOn(other = commonTest) }
         val jvmTest by getting {
             dependsOn(other = hostTest)
+        }
+
+        if (HostManager.hostIsMac) {
+            val iosMain by getting { dependsOn(other = hostMain) }
         }
     }
 }
