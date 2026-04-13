@@ -3,6 +3,11 @@
 rootProject.name = "wasmline-multiplatform"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
+
+    gradle.extra["wasmlineAvailable"] = File(System.getProperty("user.home"))
+        .resolve(".m2/repository/crow/wasmline/crow.wasmline.gradle.plugin/1.0.0")
+        .exists()
+
     includeBuild("wasmline-build-logic")
     repositories {
         mavenLocal()

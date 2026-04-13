@@ -1,12 +1,17 @@
 @file:Suppress("unused", "UnstableApiUsage")
 
+import org.jetbrains.kotlin.konan.target.HostManager
+
 
 plugins {
     id("app.base.multiplatform.library")
     alias(libs.plugins.jetbrains.compose.compiler)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.wasmline)
+}
+
+if (gradle.extra["wasmlineAvailable"] as? Boolean == true) {
+    apply(plugin = "crow.wasmline")
 }
 
 java {
@@ -51,6 +56,8 @@ kotlin {
                 api(libs.conveyor)
             }
         }
-        val iosSimulatorArm64Main by getting { }
+        if (HostManager.hostIsMac) {
+            val iosSimulatorArm64Main by getting { }
+        }
     }
 }

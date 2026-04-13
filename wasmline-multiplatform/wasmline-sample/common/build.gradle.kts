@@ -1,9 +1,15 @@
 @file:Suppress("OPT_IN_USAGE")
 
+import com.android.utils.TraceUtils.simpleId
+
+
 plugins {
     id("app.base.multiplatform.library")
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.wasmline)
+}
+
+if (gradle.extra["wasmlineAvailable"] as? Boolean == true) {
+    apply(plugin = "crow.wasmline")
 }
 
 java {

@@ -4,7 +4,10 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.wasmline)
+}
+
+if (gradle.extra["wasmlineAvailable"] as? Boolean == true) {
+    apply(plugin = "crow.wasmline")
 }
 
 java {

@@ -15,7 +15,10 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.buildconfig) apply false
     alias(libs.plugins.maven.publish) apply false
-    alias(libs.plugins.wasmline) apply false
+}
+
+if (gradle.extra["wasmlineAvailable"] as? Boolean == true) {
+    apply(plugin = "crow.wasmline")
 }
 
 
