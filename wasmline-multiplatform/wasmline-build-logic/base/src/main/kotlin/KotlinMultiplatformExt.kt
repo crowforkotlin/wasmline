@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+@file:Suppress("unused")
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -18,10 +19,10 @@ fun KotlinMultiplatformExtension.applyBaseHierarchyTemplate(
         this.withSourceSetTree(tree = arrayOf(KotlinSourceSetTree.main, KotlinSourceSetTree.test))
         this.common {
             this.withCompilations { true }
-            this.nonWebCommon()
-//            this.native()
+            this.nonWebCommon()//            this.native()
 //            this.webCommon()
 //            this.nonWasmCommon()
+
         }
     })
 }
@@ -47,7 +48,6 @@ fun KotlinHierarchyBuilder.nonWebCommon() {
     group(name = "nonWebCommon") {
         withJvm()
         withAndroidTarget()
-//        native()
     }
 }
 

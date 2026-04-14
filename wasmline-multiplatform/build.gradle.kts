@@ -1,6 +1,10 @@
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 
 plugins {
+    alias(libs.plugins.app.base.multiplatform.library) apply false
+    alias(libs.plugins.app.base.library)  apply false
+    alias(libs.plugins.app.base.android) apply false
+
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.android.library.kmp) apply false
@@ -15,18 +19,12 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.buildconfig) apply false
     alias(libs.plugins.maven.publish) apply false
+    // alias(libs.plugins.wasmline) apply false
 }
-
-if (gradle.extra["wasmlineAvailable"] as? Boolean == true) {
-    apply(plugin = "crow.wasmline")
-}
-
-
 
 allprojects {
     group = "crow.wasmline"
     version = project.property("wasmline.version") as String
-
     pluginManager.withPlugin("com.vanniktech.maven.publish") {
         configure<MavenPublishBaseExtension> {
             publishToMavenCentral(automaticRelease = true)

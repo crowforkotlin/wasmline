@@ -3,11 +3,6 @@
 rootProject.name = "wasmline-multiplatform"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
-
-    gradle.extra["wasmlineAvailable"] = File(System.getProperty("user.home"))
-        .resolve(".m2/repository/crow/wasmline/crow.wasmline.gradle.plugin/1.0.0")
-        .exists()
-
     includeBuild("wasmline-build-logic")
     repositories {
         mavenLocal()
@@ -41,14 +36,13 @@ dependencyResolutionManagement {
     }
 }
 
-/////////////  自动 include 模块  ///////////
+/////////////  Auto include module  ///////////
 
-// 需要删除模块时写这里面，将不再进行 include，直接写模块名即可
+// When you need to delete a module, write this, and you will no longer include it, just write the module name
 val excludeList: List<String> = listOf()
-
 fun includeModule(topName: String, file: File) {
-    if (!file.resolve("settings.gradle.kts").exists()) {
-        if (file.resolve("build.gradle.kts").exists() && !excludeList.contains(file.name)) {
+    if (!file.resolve(relative = "settings.gradle.kts").exists()) {
+        if (file.resolve(relative = "build.gradle.kts").exists() && !excludeList.contains(file.name)) {
             var path = ""
             var nowFile = file
             while (nowFile.name != topName) {
@@ -59,13 +53,12 @@ fun includeModule(topName: String, file: File) {
             include(path)
         }
     }
-    // 递归寻找所有子模块
     file.listFiles()?.filter {
-        it.name != "src" // 去掉 src 文件夹
+        it.name != "src"
                 && it.name != "build"
                 && it.name != "iosApp"
-                && !it.resolve("settings.gradle.kts").exists() // 去掉独立的项目模块，比如 build-logic
-                && !excludeList.contains(it.name) // 去掉被忽略的模块
+                && !it.resolve("settings.gradle.kts").exists()
+                && !excludeList.contains(it.name)
     }?.forEach {
         includeModule(topName, it)
     }

@@ -1,5 +1,5 @@
 plugins {
-    id("app.base.library")
+    alias(libs.plugins.app.base.library)
     alias(libs.plugins.maven.publish)
 }
 

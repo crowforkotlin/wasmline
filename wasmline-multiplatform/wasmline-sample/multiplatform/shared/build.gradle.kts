@@ -4,14 +4,11 @@ import org.jetbrains.kotlin.konan.target.HostManager
 
 
 plugins {
-    id("app.base.multiplatform.library")
+    alias(libs.plugins.app.base.multiplatform.library)
     alias(libs.plugins.jetbrains.compose.compiler)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.kotlin.serialization)
-}
-
-if (gradle.extra["wasmlineAvailable"] as? Boolean == true) {
-    apply(plugin = "crow.wasmline")
+    // alias(libs.plugins.wasmline)
 }
 
 java {

@@ -318,4 +318,7 @@ maven-publish = { id = "com.vanniktech.maven.publish.base", version.ref = "maven
 
 wasmline = { id = "crow.wasmline", version = "1.0.0" }
 wasmline-kotlin = { id = "crow.wasmline.kotlin" }
-wasmline-gradle = { id = "crow.wasmline.gradle.plugin", version = "1.0.0" }
+
+app-base-multiplatform-library = { id = "app.base.multiplatform.library" }
+app-base-library = { id = "app.base.library" }
+app-base-android = { id = "app.base.android" }

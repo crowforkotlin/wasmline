@@ -1,13 +1,9 @@
 @file:Suppress("OPT_IN_USAGE")
 
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-}
-
-if (gradle.extra["wasmlineAvailable"] as? Boolean == true) {
-    apply(plugin = "crow.wasmline")
+    // alias(libs.plugins.wasmline)
 }
 
 java {

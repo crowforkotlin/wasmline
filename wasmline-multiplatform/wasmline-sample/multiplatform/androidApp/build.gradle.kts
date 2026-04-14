@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("app.base.android")
+    alias(libs.plugins.app.base.android)
     alias(libs.plugins.jetbrains.compose.compiler)
 }
 

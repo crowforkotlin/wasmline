@@ -2,7 +2,7 @@
 
 plugins {
     alias(libs.plugins.kotlin.serialization)
-    id("app.base.android")
+    alias(libs.plugins.app.base.android)
 }
 
 androidApplication {
