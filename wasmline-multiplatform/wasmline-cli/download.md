@@ -6,16 +6,18 @@
 ./gradlew :wasmline-cli:run --args="download"
 ```
 
+> On Apple Silicon, the CLI prefers the host macOS architecture even when Gradle runs on an x86_64 JDK under Rosetta. If you intentionally need the Intel build, pass `-a x86_64-macos`.
+
 ## download specific version
 
 ```shell
-./gradlew :wasmline-cli:run --args="download -v v43.0.0"
+./gradlew :wasmline-cli:run --args="download -v v43.0.2"
 ```
 
 ## download multiple versions
 
 ```shell
-./gradlew :wasmline-cli:run --args="download -v v43.0.0,v40.0.0"
+./gradlew :wasmline-cli:run --args="download -v v43.0.2,v40.0.0"
 ```
 
 ## download for specific architecture
@@ -39,14 +41,14 @@
 ## force redownload
 
 ```shell
-./gradlew :wasmline-cli:run --args="download -v v43.0.0 -f"
+./gradlew :wasmline-cli:run --args="download -v v43.0.2 -f"
 ```
 
 ## output
 
 ```
 build/wasmline/wasmtime/
-└── wasmtime-v43.0.0-aarch64-macos/
+└── wasmtime-v43.0.2-aarch64-macos/
     ├── wasmtime
     ├── ...
     └── .success

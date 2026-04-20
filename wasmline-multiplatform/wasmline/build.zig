@@ -234,12 +234,16 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
 // ============================================================================
 
 fn autoDetectJavaHome(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
-    if (b.option([]const u8, "java-home", "Override JAVA_HOME")) |path| return path;
+    if (b.option([]const u8, "java-home", "Override JAVA_HOME")) |path| return validateJavaHome(path, target);
+    if (std.process.getEnvVarOwned(b.allocator, "JAVA_HOME")) |path| return validateJavaHome(path, target) else |_| {}
     if (target.result.os.tag == .macos) {
         const result = try std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{"/usr/libexec/java_home"} });
-        return std.mem.trim(u8, result.stdout, " \n\r");
+        if (result.term.Exited != 0) return error.JavaHomeNotFound;
+        const path = std.mem.trim(u8, result.stdout, " \n\r");
+        if (path.len == 0) return error.JavaHomeNotFound;
+        return validateJavaHome(path, target);
     }
-    if (std.process.getEnvVarOwned(b.allocator, "JAVA_HOME")) |path| return path else |_| return error.JavaHomeNotFound;
+    return error.JavaHomeNotFound;
 }
 
 fn getPlatformSubdir(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
@@ -257,7 +261,7 @@ fn getPlatformSubdir(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u
         .macos => {
             const arch = switch (t.cpu.arch) {
                 .aarch64 => "aarch64",
-                .x86_64 => "x86_64",
+                .x86_64 => "x64",
                 else => return error.UnsupportedArch,
             };
             return b.fmt("mac/{s}", .{arch});
@@ -281,3 +285,23 @@ fn getPlatformSubdir(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u
         else => return error.UnsupportedOs,
     }
 }
+
+fn validateJavaHome(java_home: []const u8, target: std.Build.ResolvedTarget) ![]const u8 {
+    const jni_platform_dir = switch (target.result.os.tag) {
+        .linux => "linux",
+        .windows => "win32",
+        .macos => "darwin",
+        else => return error.UnsupportedOs,
+    };
+
+    const jni_header = try std.fs.path.join(std.heap.page_allocator, &.{ java_home, "include", "jni.h" });
+    defer std.heap.page_allocator.free(jni_header);
+    std.fs.cwd().access(jni_header, .{}) catch return error.JavaHomeInvalid;
+
+    const jni_platform_header = try std.fs.path.join(std.heap.page_allocator, &.{ java_home, "include", jni_platform_dir, "jni_md.h" });
+    defer std.heap.page_allocator.free(jni_platform_header);
+    std.fs.cwd().access(jni_platform_header, .{}) catch return error.JavaHomeInvalid;
+
+    return java_home;
+}
+

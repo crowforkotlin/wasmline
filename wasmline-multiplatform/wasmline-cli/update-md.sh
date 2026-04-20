@@ -15,14 +15,28 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ===== Configurable Variables =====
 
-# Input wasm file path (used by: build, compile)
-WASM_INPUT="../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized/plugin.wasm"
+# Input wasm example location (edit DIR / FILE_NAME, then re-run this script)
+WASM_INPUT_DIR="../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized"
+WASM_INPUT_FILE_NAME="wasmline-multiplatform-wasmline-sample-plugin.wasm"
+WASM_INPUT="${WASM_INPUT_DIR}/${WASM_INPUT_FILE_NAME}"
 
-# Wasmtime directory (used by: build, compile)
-WASMTIME_DIR="build/wasmline/wasmtime/wasmtime-v43.0.0-aarch64-macos"
+# Output artifact base name (controls -n, manifest dir, .cwasm/.pwasm/.zip filenames)
+OUTPUT_NAME="wasmline-multiplatform-wasmline-sample-plugin"
 
-# Product / plugin name (used by: build, compile, manifest)
-NAME="plugin"
+# Default version (used by most examples)
+VERSION="1.0.0"
+
+# Alternative version for "custom version" examples
+VERSION_ALT="1.2.0"
+VERSION_CODE_ALT="120"
+
+# Wasmtime release version / target arch (used by: download, build, compile examples)
+WASMTIME_VERSION="v43.0.2"
+WASMTIME_TARGET="aarch64-macos"
+WASMTIME_DIR="build/wasmline/wasmtime/wasmtime-${WASMTIME_VERSION}-${WASMTIME_TARGET}"
+
+# Backward-compatible alias used by the templates below
+NAME="${OUTPUT_NAME}"
 
 # Key file path (used by: build, manifest)
 KEY_FILE="build/wasmline/keys/ed25519_private.key"
@@ -36,18 +50,8 @@ AUTHOR="Crow"
 DISPLAY_NAME="Upgrade loader"
 DESCRIPTION="A upgrade loader plugin"
 
-# Default version (used by most examples)
-VERSION="1.0.0"
-
-# Alternative version for "custom version" examples
-VERSION_ALT="1.2.0"
-VERSION_CODE_ALT="120"
-
 # Output base directory
 OUTPUT_DIR="build/wasmline/output"
-
-# Wasmtime release version tag
-WASMTIME_VERSION="v43.0.0"
 
 # Key output directory (used by: keys)
 KEYS_DIR="build/wasmline/keys"
@@ -284,6 +288,8 @@ cat > "${SCRIPT_DIR}/download.md" << DOWNLOADEOF
 ${GRADLE}"download"
 \`\`\`
 
+> On Apple Silicon, the CLI prefers the host macOS architecture even when Gradle runs on an x86_64 JDK under Rosetta. If you intentionally need the Intel build, pass \`-a x86_64-macos\`.
+
 ## download specific version
 
 \`\`\`shell
@@ -324,7 +330,7 @@ ${GRADLE}"download -v ${WASMTIME_VERSION} -f"
 
 \`\`\`
 build/wasmline/wasmtime/
-└── wasmtime-${WASMTIME_VERSION}-aarch64-macos/
+└── wasmtime-${WASMTIME_VERSION}-${WASMTIME_TARGET}/
     ├── wasmtime
     ├── ...
     └── .success

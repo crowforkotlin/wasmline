@@ -2,7 +2,7 @@
 
 
 [versions]
-agp = "9.2.0-alpha07"
+agp = "9.3.0-alpha01"
 android-compileSdk = "36"
 android-minSdk = "23"
 android-targetSdk = "36"

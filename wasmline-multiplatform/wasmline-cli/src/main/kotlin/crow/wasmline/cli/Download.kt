@@ -265,25 +265,66 @@ class Download : CliktCommand(name = "download") {
      * @formatter:on
      */
     private fun detectPlatform(): String {
-        val os = System.getProperty("os.name").lowercase()
-        val arch = System.getProperty("os.arch").lowercase()
-        val normalizedOs = when {
-            os.contains("win") -> "windows"
-            os.contains("mac") -> "macos"
-            os.contains("linux") -> "linux"
-            os.contains("android") -> "android"
-            else -> "unknown"
-        }
-        val normalizedArch = when {
-            arch.contains("amd64") || arch.contains("x86_64") -> "x86_64"
-            arch.contains("aarch64") || arch.contains("arm64") -> "aarch64"
-            else -> arch
-        }
-        return "$normalizedArch-$normalizedOs"
+        return DownloadPlatformDetector.detectPlatform()
     }
 
     companion object {
         const val BASE_URL = "https://api.github.com/repos/crowforkotlin/wasmtime/releases"
         const val REPOSITORY = "$BASE_URL/latest"
+    }
+}
+
+internal object DownloadPlatformDetector {
+
+    fun detectPlatform(): String {
+        val osName = System.getProperty("os.name")
+        val osArch = System.getProperty("os.arch")
+        val normalizedOs = normalizeOs(osName)
+        val macHardwareArm64 = if (normalizedOs == "macos" && normalizeArch(osArch) == "x86_64") {
+            detectMacHardwareArm64()
+        } else {
+            null
+        }
+        return detectPlatform(osName = osName, osArch = osArch, macHardwareArm64 = macHardwareArm64)
+    }
+
+    internal fun detectPlatform(osName: String, osArch: String, macHardwareArm64: Boolean? = null): String {
+        val normalizedOs = normalizeOs(osName)
+        val normalizedArch = when {
+            normalizedOs == "macos" && normalizeArch(osArch) == "x86_64" && macHardwareArm64 == true -> "aarch64"
+            else -> normalizeArch(osArch)
+        }
+        return "$normalizedArch-$normalizedOs"
+    }
+
+    internal fun normalizeOs(osName: String): String {
+        val normalizedName = osName.lowercase()
+        return when {
+            normalizedName.contains("win") -> "windows"
+            normalizedName.contains("mac") -> "macos"
+            normalizedName.contains("linux") -> "linux"
+            normalizedName.contains("android") -> "android"
+            else -> "unknown"
+        }
+    }
+
+    internal fun normalizeArch(osArch: String): String {
+        val normalizedName = osArch.lowercase()
+        return when {
+            normalizedName.contains("amd64") || normalizedName.contains("x86_64") -> "x86_64"
+            normalizedName.contains("aarch64") || normalizedName.contains("arm64") -> "aarch64"
+            else -> normalizedName
+        }
+    }
+
+    private fun detectMacHardwareArm64(): Boolean? {
+        val sysctl = File("/usr/sbin/sysctl").takeIf(File::exists)?.absolutePath ?: "sysctl"
+        return runCatching {
+            val process = ProcessBuilder(sysctl, "-in", "hw.optional.arm64")
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+            if (process.waitFor() == 0) output == "1" else null
+        }.getOrNull()
     }
 }
