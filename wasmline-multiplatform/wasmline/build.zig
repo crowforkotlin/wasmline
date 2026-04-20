@@ -208,7 +208,7 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
         }
     else switch (target.result.cpu.arch) {
         .aarch64 => "jni/aarch64",
-        .x86_64 => "jni/amd64",
+        .x86_64 => "jni/x86_64",
         else => b.fmt("jni/{s}", .{@tagName(target.result.cpu.arch)}),
     };
 
@@ -234,16 +234,33 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
 // ============================================================================
 
 fn autoDetectJavaHome(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
-    if (b.option([]const u8, "java-home", "Override JAVA_HOME")) |path| return validateJavaHome(path, target);
-    if (std.process.getEnvVarOwned(b.allocator, "JAVA_HOME")) |path| return validateJavaHome(path, target) else |_| {}
-    if (target.result.os.tag == .macos) {
-        const result = try std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{"/usr/libexec/java_home"} });
-        if (result.term.Exited != 0) return error.JavaHomeNotFound;
-        const path = std.mem.trim(u8, result.stdout, " \n\r");
-        if (path.len == 0) return error.JavaHomeNotFound;
-        return validateJavaHome(path, target);
+    if (b.option([]const u8, "java-home", "Override JAVA_HOME")) |path| {
+        return validateJavaHomeWithContext(path, target, "-Djava-home");
     }
-    return error.JavaHomeNotFound;
+
+    if (std.process.getEnvVarOwned(b.allocator, "JAVA_HOME")) |path| {
+        if (tryValidateJavaHome(path, target, "JAVA_HOME")) |valid| return valid;
+    } else |_| {}
+
+    if (target.result.os.tag == .macos) {
+        const result = std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{ "/usr/libexec/java_home" } }) catch |err| {
+            std.debug.print("[Warn] Failed to execute /usr/libexec/java_home: {any}\n", .{err});
+            return detectJavaHomeFromShellConfigs(b, target);
+        };
+        if (result.term.Exited == 0) {
+            const path = std.mem.trim(u8, result.stdout, " \n\r");
+            if (path.len != 0) {
+                if (tryValidateJavaHome(path, target, "/usr/libexec/java_home")) |valid| return valid;
+            }
+        } else {
+            const stderr_text = std.mem.trim(u8, result.stderr, " \n\r");
+            if (stderr_text.len != 0) {
+                std.debug.print("[Warn] /usr/libexec/java_home returned: {s}\n", .{stderr_text});
+            }
+        }
+    }
+
+    return detectJavaHomeFromShellConfigs(b, target);
 }
 
 fn getPlatformSubdir(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
@@ -303,5 +320,109 @@ fn validateJavaHome(java_home: []const u8, target: std.Build.ResolvedTarget) ![]
     std.fs.cwd().access(jni_platform_header, .{}) catch return error.JavaHomeInvalid;
 
     return java_home;
+}
+
+fn validateJavaHomeWithContext(java_home: []const u8, target: std.Build.ResolvedTarget, source: []const u8) ![]const u8 {
+    return validateJavaHome(java_home, target) catch |err| {
+        switch (err) {
+            error.JavaHomeInvalid => {
+                const jni_platform_dir = switch (target.result.os.tag) {
+                    .linux => "linux",
+                    .windows => "win32",
+                    .macos => "darwin",
+                    else => return error.UnsupportedOs,
+                };
+
+                const jni_header = try std.fs.path.join(std.heap.page_allocator, &.{ java_home, "include", "jni.h" });
+                defer std.heap.page_allocator.free(jni_header);
+                const jni_platform_header = try std.fs.path.join(std.heap.page_allocator, &.{ java_home, "include", jni_platform_dir, "jni_md.h" });
+                defer std.heap.page_allocator.free(jni_platform_header);
+
+                std.debug.print(
+                    "[Error] Invalid Java home from {s}: {s}\n[Error] Expected JNI headers:\n  - {s}\n  - {s}\n",
+                    .{ source, java_home, jni_header, jni_platform_header },
+                );
+            },
+            else => {},
+        }
+        return err;
+    };
+}
+
+fn tryValidateJavaHome(java_home: []const u8, target: std.Build.ResolvedTarget, source: []const u8) ?[]const u8 {
+    return validateJavaHome(java_home, target) catch |err| {
+        switch (err) {
+            error.JavaHomeInvalid => {
+                std.debug.print("[Warn] Ignoring invalid Java home from {s}: {s}\n", .{ source, java_home });
+                return null;
+            },
+            else => {
+                std.debug.print("[Warn] Failed to validate Java home from {s}: {any}\n", .{ source, err });
+                return null;
+            },
+        }
+    };
+}
+
+fn detectJavaHomeFromShellConfigs(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
+    const home = std.process.getEnvVarOwned(b.allocator, "HOME") catch return error.JavaHomeNotFound;
+    const config_names = [_][]const u8{ ".zshrc", ".bashrc", ".bash_profile" };
+
+    for (config_names) |config_name| {
+        const config_path = try std.fs.path.join(b.allocator, &.{ home, config_name });
+        defer b.allocator.free(config_path);
+
+        const content = std.fs.cwd().readFileAlloc(b.allocator, config_path, 1024 * 1024) catch |err| switch (err) {
+            error.FileNotFound => continue,
+            else => return err,
+        };
+        defer b.allocator.free(content);
+
+        var candidates = std.ArrayList([]const u8){};
+        defer candidates.deinit(b.allocator);
+
+        try collectQuotedPathCandidates(b.allocator, content, &candidates);
+        for (candidates.items) |candidate| {
+            if (tryValidateJavaHome(candidate, target, config_path)) |valid| {
+                std.debug.print("[Info] Using Java home discovered from {s}: {s}\n", .{ config_path, valid });
+                return valid;
+            }
+        }
+    }
+
+    return error.JavaHomeNotFound;
+}
+
+fn collectQuotedPathCandidates(
+    allocator: std.mem.Allocator,
+    content: []const u8,
+    candidates: *std.ArrayList([]const u8),
+) !void {
+    var i: usize = 0;
+    while (i < content.len) : (i += 1) {
+        const quote = content[i];
+        if (quote != '"' and quote != '\'') continue;
+
+        var j = i + 1;
+        while (j < content.len and content[j] != quote) : (j += 1) {}
+        if (j >= content.len) break;
+
+        const candidate = std.mem.trim(u8, content[i + 1 .. j], " \t\r\n");
+        if (looksLikeJavaHome(candidate) and !containsSlice(candidates.items, candidate)) {
+            try candidates.append(allocator, try allocator.dupe(u8, candidate));
+        }
+
+    }
+}
+
+fn looksLikeJavaHome(candidate: []const u8) bool {
+    return std.mem.endsWith(u8, candidate, "/Contents/Home") or std.mem.endsWith(u8, candidate, "/Home");
+}
+
+fn containsSlice(items: []const []const u8, needle: []const u8) bool {
+    for (items) |item| {
+        if (std.mem.eql(u8, item, needle)) return true;
+    }
+    return false;
 }
 

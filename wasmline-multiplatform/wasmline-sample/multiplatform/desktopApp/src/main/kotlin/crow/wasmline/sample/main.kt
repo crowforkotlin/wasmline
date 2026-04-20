@@ -11,17 +11,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
 import crow.wasmline.Wasmline
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.InternalResourceApi
-import org.jetbrains.compose.resources.readResourceBytes
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.default
@@ -38,12 +35,11 @@ import org.jetbrains.jewel.window.styling.TitleBarStyle
 import java.awt.Dimension
 import java.io.File
 
-private val baseJson = Json { prettyPrint = true; isLenient = true; }
 @OptIn(ExperimentalResourceApi::class)
 fun main() = application {
     Wasmline.init()
-    val wasmFile = extractResourceToTemp("plugin.pwasm")
-    println("Wasm extracted to: ${wasmFile.absolutePath}")
+    val (resourceName, wasmFile) = extractPluginArtifactToTemp()
+    println("Wasm extracted from $resourceName to: ${wasmFile.absolutePath}")
     AppWindows {
         App(
             wasmPath = wasmFile.absolutePath,
@@ -112,3 +108,12 @@ fun extractResourceToTemp(resourcePath: String): File {
     }
     return tempFile
 }
+
+@OptIn(ExperimentalResourceApi::class)
+fun extractPluginArtifactToTemp(): Pair<String, File> {
+    val resourceName = listOf("plugin.generated.pwasm", "plugin.pwasm")
+        .firstOrNull { Thread.currentThread().contextClassLoader.getResource(it) != null }
+        ?: error("Resource not found: plugin.generated.pwasm or plugin.pwasm")
+    return resourceName to extractResourceToTemp(resourceName)
+}
+

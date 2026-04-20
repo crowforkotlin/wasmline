@@ -62,7 +62,7 @@ namespace wasmline {
         bool hasMemory = false;
         std::mutex sessionMutex;
 
-        void registerHostFunctions();
+        bool registerHostFunctions();
 
         // Static Host Callbacks
         static wasm_trap_t *bridge_inbound_get_size(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults);

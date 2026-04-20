@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.jetbrains.compose.compiler)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.kotlin.serialization)
-    // alias(libs.plugins.wasmline)
+    alias(libs.plugins.wasmline)
 }
 
 java {

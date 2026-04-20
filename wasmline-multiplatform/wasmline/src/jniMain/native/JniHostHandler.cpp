@@ -49,7 +49,8 @@ std::string JniHostHandler::onOutboundInvoke(const std::string_view action, cons
         attached = true;
     }
 
-    jstring jAction = env->NewStringUTF(action.data());
+    const std::string actionText(action);
+    jstring jAction = env->NewStringUTF(actionText.c_str());
     jbyteArray jPayload = env->NewByteArray((jsize)payload.size());
     if (payload.size() > 0) {
         env->SetByteArrayRegion(jPayload, 0, (jsize)payload.size(), (const jbyte *) payload.data());

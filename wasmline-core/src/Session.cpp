@@ -46,7 +46,27 @@ namespace wasmline {
      */
     Session::Session(wasm_engine_t *eng, wasmtime_module_t *mod, std::string k)
             : engine(eng), module(mod), key(std::move(k)) {
+        if (!engine) {
+            LOGE("[Wasmtime] Session --> Cannot create store because engine is null: %s", key.c_str());
+            return;
+        }
+
         store = wasmtime_store_new(engine, this, nullptr);
+        if (!store) {
+            LOGE("[Wasmtime] Session --> Failed to create store: %s", key.c_str());
+            return;
+        }
+
+        context = wasmtime_store_context(store);
+        if (!context) {
+            LOGE("[Wasmtime] Session --> Failed to acquire store context: %s", key.c_str());
+            return;
+        }
+
+        linker = wasmtime_linker_new(engine);
+        if (!linker) {
+            LOGE("[Wasmtime] Session --> Failed to create linker: %s", key.c_str());
+        }
     }
 
     /**
@@ -80,13 +100,37 @@ namespace wasmline {
         std::lock_guard<std::mutex> lock(sessionMutex);
         if (isInitialized) return true;
 
+        if (!store || !context || !linker || !module) {
+            LOGE(
+                "[Wasmtime] Session --> Invalid state before initialization. store=%p context=%p linker=%p module=%p key=%s",
+                store,
+                context,
+                linker,
+                module,
+                key.c_str()
+            );
+            return false;
+        }
+
         // =========================================================================================
         // STEP 1: Setup WASI (WebAssembly System Interface)
         // =========================================================================================
         // Defines the "Standard Library" for the Wasm environment.
         // Redirects Wasm stdout/stderr to our custom logger.
-        wasmtime_linker_define_wasi(linker);
+        wasmtime_error_t *defineWasiErr = wasmtime_linker_define_wasi(linker);
+        if (defineWasiErr) {
+            wasm_byte_vec_t error_msg;
+            wasmtime_error_message(defineWasiErr, &error_msg);
+            LOGE("[Wasmtime] Session --> 1. Define wasi failure: %s", error_msg.data);
+            wasm_byte_vec_delete(&error_msg);
+            wasmtime_error_delete(defineWasiErr);
+            return false;
+        }
         wasi_config_t *wasi = wasi_config_new();
+        if (!wasi) {
+            LOGE("[Wasmtime] Session --> 1. Failed to create wasi config.");
+            return false;
+        }
         wasi_config_inherit_env(wasi);
         wasi_config_set_stdout_custom(wasi, wasi_log_writer, nullptr, nullptr);
         wasi_config_set_stderr_custom(wasi, wasi_log_writer, nullptr, nullptr);
@@ -108,7 +152,10 @@ namespace wasmline {
         // STEP 2: Register Host Functions
         // =========================================================================================
         // Injects custom C++ functions into the Linker so the Wasm module can import and invokeInbound them.
-        registerHostFunctions();
+        if (!registerHostFunctions()) {
+            LOGE("[Wasmtime] Session --> 2. Register host functions failure.");
+            return false;
+        }
         LOGI("[Wasmtime] Session --> 2. Register host functions success.");
 
         // =========================================================================================
@@ -267,22 +314,27 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    void Session::registerHostFunctions() {
+    bool Session::registerHostFunctions() {
+
+        if (!linker) {
+            LOGE("[Wasmtime] Session --> Cannot register host functions because linker is null: %s", key.c_str());
+            return false;
+        }
 
         // Helper Lambda for fast registration using stack memory
         auto define = [&](
                 const char *name, wasmtime_func_callback_t cb,
                 std::initializer_list<wasm_valkind_t> params,
                 std::initializer_list<wasm_valkind_t> results
-        ) {
-            // Stack allocation for parameters (Max 4 is sufficient)
-            wasm_valtype_t *p_arr[4];
-            wasm_valtype_t *r_arr[4];
+        ) -> bool {
+            // Stack allocation for the small fixed signatures used by the bridge.
+            wasm_valtype_t *p_arr[6] = {nullptr};
+            wasm_valtype_t *r_arr[2] = {nullptr};
 
             int i = 0;
-            for (auto k: params) if (i < 4) p_arr[i++] = wasm_valtype_new(k);
+            for (auto k: params) if (i < 6) p_arr[i++] = wasm_valtype_new(k);
             int j = 0;
-            for (auto k: results) if (j < 4) r_arr[j++] = wasm_valtype_new(k);
+            for (auto k: results) if (j < 2) r_arr[j++] = wasm_valtype_new(k);
 
             // Construct the vectors required by C API
             wasm_valtype_vec_t p_vec, r_vec;
@@ -291,20 +343,32 @@ namespace wasmline {
 
             // Create function type and define it in the linker
             wasm_functype_t *ty = wasm_functype_new(&p_vec, &r_vec);
-            wasmtime_linker_define_func(linker, "env", 3, name, strlen(name), ty, cb, nullptr, nullptr);
+            wasmtime_error_t *defineErr = wasmtime_linker_define_func(linker, "env", 3, name, strlen(name), ty, cb, nullptr, nullptr);
 
             // Clean up function type (valtypes are handled internally by wasmtime)
             wasm_functype_delete(ty);
+
+            if (defineErr) {
+                wasm_byte_vec_t error_msg;
+                wasmtime_error_message(defineErr, &error_msg);
+                LOGE("[Wasmtime] Session --> Define host function '%s' failure: %s", name, error_msg.data);
+                wasm_byte_vec_delete(&error_msg);
+                wasmtime_error_delete(defineErr);
+                return false;
+            }
+
+            return true;
         };
 
         // Register specific host functions
-        define("bridge_inbound_get_size", bridge_inbound_get_size, {WASM_I32}, {WASM_I32});
-        define("bridge_inbound_copy_params", bridge_inbound_copy_params, {WASM_I32, WASM_I32, WASM_I32}, {});
-        define("bridge_inbound_set_response", bridge_inbound_set_response, {WASM_I32, WASM_I32}, {});
+        if (!define("bridge_inbound_get_size", bridge_inbound_get_size, {WASM_I32}, {WASM_I32})) return false;
+        if (!define("bridge_inbound_copy_params", bridge_inbound_copy_params, {WASM_I32, WASM_I32, WASM_I32}, {})) return false;
+        if (!define("bridge_inbound_set_response", bridge_inbound_set_response, {WASM_I32, WASM_I32}, {})) return false;
 
         // Register Outbound
-        define("bridge_outbound_call_host", bridge_outbound_call_host, {WASM_I32, WASM_I32, WASM_I32, WASM_I32}, {WASM_I32});
-        define("bridge_outbound_get_response", bridge_outbound_get_response, {WASM_I32}, {});
+        if (!define("bridge_outbound_call_host", bridge_outbound_call_host, {WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32}, {WASM_I32})) return false;
+        if (!define("bridge_outbound_get_response", bridge_outbound_get_response, {WASM_I32}, {})) return false;
+        return true;
     }
 
     /**
