@@ -15,12 +15,38 @@
  */
 package crow.wasmline.kotlin
 
+import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
+import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.config.CompilerConfigurationKey
+
+internal const val ENABLE_WASI_INIT_EXPORT_OPTION_NAME = "enableWasiInitExport"
+internal val ENABLE_WASI_INIT_EXPORT_OPTION = CompilerConfigurationKey<Boolean>(
+    "enable generated wasm entry export for wasmWasi compilations",
+)
 
 @OptIn(ExperimentalCompilerApi::class)
 class WasmlineCommandLineProcessor : CommandLineProcessor {
     override val pluginId: String = BuildConfig.KOTLIN_PLUGIN_ID
-    override val pluginOptions = listOf<CliOption>()
+    override val pluginOptions = listOf(
+        CliOption(
+            optionName = ENABLE_WASI_INIT_EXPORT_OPTION_NAME,
+            valueDescription = "true|false",
+            description = "Generate a wasmWasi entry export in the final module.",
+            required = false,
+            allowMultipleOccurrences = false,
+        ),
+    )
+
+    override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
+        when (option.optionName) {
+            ENABLE_WASI_INIT_EXPORT_OPTION_NAME -> {
+                configuration.put(ENABLE_WASI_INIT_EXPORT_OPTION, value.toBooleanStrictOrNull() ?: false)
+            }
+
+            else -> error("Unknown Wasmline compiler option: ${option.optionName}")
+        }
+    }
 }

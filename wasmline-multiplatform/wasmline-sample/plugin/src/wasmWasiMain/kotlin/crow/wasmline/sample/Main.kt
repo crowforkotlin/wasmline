@@ -1,10 +1,9 @@
 @file:OptIn(ExperimentalWasmInterop::class, ExperimentalSerializationApi::class)
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "unused")
 
 package crow.wasmline.sample
 
 import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineInitialize
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.sample.bean.PlatformBean
@@ -15,12 +14,8 @@ import crow.wasmline.sample.ir.TimeSyncService
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.time.Clock
 
-private var wasmlineBindingsInstalled = false
-
-private fun ensureWasmlineBindings() {
-    if (wasmlineBindingsInstalled) return
-    wasmlineBindingsInstalled = true
-
+fun main() {
+    println("[Kotlin Wasi] Plugin main executed")
     Wasmline.current.bind(object : TimeSyncService {
         override fun timeSync(payload: ByteArray): ByteArray {
             Wasmline.current.link<EchoService>().echo()
@@ -40,12 +35,3 @@ private fun ensureWasmlineBindings() {
     })
 }
 
-@WasmExport("InitWasmline")
-fun InitWasmline(actionLen: Int, inputLen: Int) {
-    ensureWasmlineBindings()
-    WasmlineInitialize(actionLen, inputLen)
-}
-
-fun main() {
-    ensureWasmlineBindings()
-}

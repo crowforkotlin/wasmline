@@ -12,7 +12,7 @@ import crow.wasmline.internal.bridge.WasmlineEndpoint
  */
 class Wasmline private constructor() {
     internal fun call(action: String, inputBytes: ByteArray): ByteArray {
-        return WasmBridge.callHost(action = action, payload = inputBytes)
+        return WasmlineWasmBridge.callHost(action = action, payload = inputBytes)
     }
 
     fun close() = Unit

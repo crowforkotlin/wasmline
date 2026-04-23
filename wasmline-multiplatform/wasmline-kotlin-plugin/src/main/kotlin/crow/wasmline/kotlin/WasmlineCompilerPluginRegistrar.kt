@@ -32,8 +32,12 @@ class WasmlineCompilerPluginRegistrar : CompilerPluginRegistrar() {
             CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
             MessageCollector.NONE,
         )
+        val enableWasiInitExport = configuration.get(ENABLE_WASI_INIT_EXPORT_OPTION, false)
         IrGenerationExtension.registerExtension(
-            WasmlineIrGenerationExtension(messageCollector),
+            WasmlineIrGenerationExtension(
+                messageCollector = messageCollector,
+                enableWasiInitExport = enableWasiInitExport,
+            ),
         )
         messageCollector.report(CompilerMessageSeverity.INFO, "[Wasmline] compiler plugin registered")
     }

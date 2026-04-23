@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
  */
 internal class WasmlineIrGenerationExtension(
     private val messageCollector: MessageCollector,
+    private val enableWasiInitExport: Boolean,
 ) : IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
@@ -45,5 +46,14 @@ internal class WasmlineIrGenerationExtension(
             runtimeSymbols = runtimeSymbols,
             generatedBridges = generatedBridges,
         )
+
+        if (enableWasiInitExport) {
+            generateWasiEntryExport(
+                moduleFragment = moduleFragment,
+                pluginContext = pluginContext,
+                runtimeSymbols = runtimeSymbols,
+                messageCollector = messageCollector,
+            )
+        }
     }
 }

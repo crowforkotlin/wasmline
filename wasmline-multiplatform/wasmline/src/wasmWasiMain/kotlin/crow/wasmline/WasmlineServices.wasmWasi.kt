@@ -10,7 +10,7 @@ internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
     val registeredActions = linkedSetOf<String>()
     bridge.bind { action, handler ->
         check(registeredActions.add(action)) { "Action '$action' is already bound in this Wasmline binding scope." }
-        WasmRouter.register(action) { payload ->
+        WasmlineRouter.register(action) { payload ->
             handler(payload ?: ByteArray(0))
         }
     }

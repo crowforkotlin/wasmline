@@ -6,6 +6,7 @@ import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.slf4j.LoggerFactory
@@ -23,11 +24,23 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     )
 
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
-        return kotlinCompilation.target.project.provider { listOf() }
+        return kotlinCompilation.target.project.provider {
+            listOf(
+                SubpluginOption(
+                    key = ENABLE_WASI_INIT_EXPORT_OPTION,
+                    value = shouldEnableWasiInitExport(kotlinCompilation).toString(),
+                ),
+            )
+        }
     }
 
     override fun apply(target: Project) {
         createGenerateKeyPairTasks(target)
+    }
+
+    private fun shouldEnableWasiInitExport(kotlinCompilation: KotlinCompilation<*>): Boolean {
+        return kotlinCompilation.target.platformType == KotlinPlatformType.wasm &&
+            kotlinCompilation.defaultSourceSet.name == "wasmWasiMain"
     }
 
 
@@ -42,6 +55,10 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
                 generateKeyPair(SignatureAlgorithmId.EcdsaP256)
             }
         }
+    }
+
+    private companion object {
+        const val ENABLE_WASI_INIT_EXPORT_OPTION = "enableWasiInitExport"
     }
 
     @Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER") // Access :zipline-loader internals.

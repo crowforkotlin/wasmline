@@ -2,10 +2,12 @@ package crow.wasmline.kotlin
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -35,6 +37,19 @@ internal class WasmlineRuntimeSymbols(
     val generatedBridgeBindFunction: IrSimpleFunctionSymbol = requireFunction(generatedBridgeClass, "bind", 1)
     val unlinkedEndpointObject: IrClassSymbol = requireClass(SPI_PACKAGE, "UnlinkedWasmlineEndpoint")
     val generatedHostEndpointClass: IrClassSymbol? = referenceClass(MAIN_PACKAGE, "GeneratedWasmlineHostEndpoint")
+    val wasmlineHandleInboundFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
+        callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("wasmlineHandleInbound")),
+        regularParameterCount = 2,
+    )
+    val wasmExportAnnotationClass: IrClassSymbol? = referenceClass("kotlin.wasm", "WasmExport")
+    val wasmExportAnnotationConstructor: IrConstructorSymbol? = wasmExportAnnotationClass?.let { annotationClass ->
+        annotationClass.owner.declarations
+            .filterIsInstance<IrConstructor>()
+            .singleOrNull { constructor ->
+                constructor.parameters.count { parameter -> parameter.kind == IrParameterKind.Regular } == 1
+            }
+            ?.symbol
+    }
 
     val emptyPayloadFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
         packageName = SPI_PACKAGE,
@@ -169,6 +184,10 @@ internal class WasmlineRuntimeSymbols(
                 bridgeClassName(contract),
             ),
         )
+    }
+
+    fun canGenerateWasiEntryExport(): Boolean {
+        return wasmlineHandleInboundFunction != null && wasmExportAnnotationConstructor != null
     }
 
     private fun requireClass(packageName: String, className: String): IrClassSymbol {

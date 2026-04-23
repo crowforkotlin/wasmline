@@ -200,17 +200,44 @@ namespace wasmline {
         // =========================================================================================
         // STEP 5: Run _initialize (WASI Reactor Model)
         // =========================================================================================
-        // Executes the initialization function (like a constructor or static block) for the Wasm module.
+        // Executes the module initialization function for the instantiated Wasm reactor.
         wasmtime_extern_t init_func;
-        if (wasmtime_instance_export_get(context, &instance, "_initialize", 11, &init_func)) {
+        if (wasmtime_instance_export_get(context, &instance, "_initialize", 11, &init_func) && init_func.kind == WASMTIME_EXTERN_FUNC) {
             wasmtime_func_call(context, &init_func.of.func, nullptr, 0, nullptr, 0, &trap);
             if (trap) {
                 wasm_trap_delete(trap);
+                trap = nullptr;
             }
         }
 
+        // =========================================================================================
+        // STEP 6: Run the generated Wasmline init export once (if present)
+        // =========================================================================================
+        // This gives the final wasmWasi module a deterministic one-time hook to execute user main().
+        wasmtime_extern_t wasmline_init;
+        if (wasmtime_instance_export_get(context, &instance, kWasmlineInitExportName.data(), kWasmlineInitExportName.size(), &wasmline_init) && wasmline_init.kind == WASMTIME_EXTERN_FUNC) {
+            wasmtime_error_t *initError = wasmtime_func_call(context, &wasmline_init.of.func, nullptr, 0, nullptr, 0, &trap);
+            if (trap) {
+                wasm_byte_vec_t msg;
+                wasm_trap_message(trap, &msg);
+                LOGE("[Wasmtime] Session --> 6. Wasm init trap: %s", msg.data);
+                wasm_byte_vec_delete(&msg);
+                wasm_trap_delete(trap);
+                return false;
+            }
+            if (initError) {
+                wasm_byte_vec_t msg;
+                wasmtime_error_message(initError, &msg);
+                LOGE("[Wasmtime] Session --> 6. Wasm init error: %s", msg.data);
+                wasm_byte_vec_delete(&msg);
+                wasmtime_error_delete(initError);
+                return false;
+            }
+            LOGI("[Wasmtime] Session --> 6. Ran wasm init export '%s'.", kWasmlineInitExportName.data());
+        }
+
         isInitialized = true;
-        LOGI("[Wasmtime] Session --> 5. Initialized success: %s", key.c_str());
+        LOGI("[Wasmtime] Session --> 7. Initialized success: %s", key.c_str());
         return true;
     }
 
@@ -257,7 +284,7 @@ namespace wasmline {
         wasm_trap_t *trap = nullptr;
 
         // 2. Call the "run_entry" function exported by Kotlin/Wasm
-        if (wasmtime_instance_export_get(context, &instance, kInitWasmline.data(), kInitWasmline.size(), &run_entry)) {
+        if (wasmtime_instance_export_get(context, &instance, kWasmlineEntryExportName.data(), kWasmlineEntryExportName.size(), &run_entry)) {
             wasmtime_val_t args[2];
             args[0].kind = WASMTIME_I32;
             args[0].of.i32 = (int32_t)actionLen;
@@ -288,7 +315,7 @@ namespace wasmline {
                 return "";
             }
         } else {
-            LOGE(R"([Wasmtime] Session --> Wasm export get '%s' not found.)", wasmline::kInitWasmline.data());
+            LOGE(R"([Wasmtime] Session --> Wasm export get '%s' not found.)", wasmline::kWasmlineEntryExportName.data());
             inbound.actionPtr = nullptr;
             inbound.dataPtr = nullptr;
             return "";

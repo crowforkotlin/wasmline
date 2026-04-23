@@ -50,6 +50,7 @@
 **/*.cwasm
 **/*.wasm
 **/*.tar.xz
+**/*.log
 
 /AGENTS.md
 /platforms/
