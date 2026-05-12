@@ -3,7 +3,7 @@
 plugins {
     alias(libs.plugins.app.base.multiplatform.library)
     alias(libs.plugins.kotlin.serialization)
-    // alias(libs.plugins.wasmline)
+    alias(libs.plugins.wasmline)
 }
 
 java {
@@ -25,3 +25,4 @@ kotlin {
         }
     }
 }
+

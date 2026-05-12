@@ -160,8 +160,14 @@ class Manifest : CliktCommand(name = "manifest") {
          * @author crowforkotlin
          */
         fun resolveKey(key: String): String {
-            val file = File(key)
-            return if (file.isFile) file.readText().trim() else key.trim()
+            val trimmed = key.trim()
+            val file = File(trimmed)
+            if (file.isFile) return file.readText().trim()
+
+            val looksLikePath = trimmed.contains('/') || trimmed.contains('\\') || trimmed.endsWith(".key")
+            require(!looksLikePath) { "Key file not found: $trimmed" }
+
+            return trimmed
         }
     }
 }
