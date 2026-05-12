@@ -17,7 +17,7 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     export MAGENTA='\033[1;35m'
     export CYAN='\033[1;36m'
     export WHITE='\033[1;37m'
-    export GRAY='\033[1;30m'
+    export GRAY='\033[0;90m'
     export NC='\033[0m'
 else
     export STYLE_USE_ANSI="false"

@@ -3,9 +3,11 @@
 - Zig Version : 0.15.1
 
 ```shell
-Download .tar.gz
+# Check Zig version
+zig version
+
+# Download compile_commands dependency
 zig fetch --save-exact=compile_commands "https://github.com/the-argus/zig-compile-commands/archive/70fb439897e12cae896c071717d7c9c382918689.tar.gz"
-zig fetch --save-exact=compile_commands ~/Downloads/zig-compile-commands-70fb439897e12cae896c071717d7c9c382918689.tar.gz
 ```
 
 ## General Build
@@ -16,9 +18,12 @@ zig fetch --save-exact=compile_commands ~/Downloads/zig-compile-commands-70fb439
 zig build --release=small -p src/jvmMain/resources
 ```
 
+If Java is not exported as `JAVA_HOME`, the build now falls back to the active `java` command.
+You can still override it explicitly with `-Djava-home=/path/to/jdk`.
+
 **Debug:**
 
-```shellº
+```shell
 zig build -p src/jvmMain/resources
 ```
 ---
@@ -36,4 +41,3 @@ zig build -p src/jvmMain/resources
 ```shell
 zig build -Dtarget=x86_64-windows-gnu --release=small -p shared/jvmMain/resources 
 ```
-

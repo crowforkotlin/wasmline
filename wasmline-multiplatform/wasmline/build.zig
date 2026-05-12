@@ -243,8 +243,9 @@ fn autoDetectJavaHome(b: *std.Build, target: std.Build.ResolvedTarget) ![]const 
     } else |_| {}
 
     if (target.result.os.tag == .macos) {
-        const result = std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{ "/usr/libexec/java_home" } }) catch |err| {
+        const result = std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{"/usr/libexec/java_home"} }) catch |err| {
             std.debug.print("[Warn] Failed to execute /usr/libexec/java_home: {any}\n", .{err});
+            if (try detectJavaHomeFromJavaCommand(b, target)) |path| return path;
             return detectJavaHomeFromShellConfigs(b, target);
         };
         if (result.term.Exited == 0) {
@@ -260,6 +261,7 @@ fn autoDetectJavaHome(b: *std.Build, target: std.Build.ResolvedTarget) ![]const 
         }
     }
 
+    if (try detectJavaHomeFromJavaCommand(b, target)) |path| return path;
     return detectJavaHomeFromShellConfigs(b, target);
 }
 
@@ -293,7 +295,7 @@ fn getPlatformSubdir(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u
         },
         .linux => {
             const arch = switch (t.cpu.arch) {
-                .x86_64 => "x86_64",
+                .x86_64 => "x64",
                 .aarch64 => "aarch64",
                 else => return error.UnsupportedArch,
             };
@@ -393,6 +395,45 @@ fn detectJavaHomeFromShellConfigs(b: *std.Build, target: std.Build.ResolvedTarge
     return error.JavaHomeNotFound;
 }
 
+fn detectJavaHomeFromJavaCommand(b: *std.Build, target: std.Build.ResolvedTarget) !?[]const u8 {
+    const result = std.process.Child.run(.{
+        .allocator = b.allocator,
+        .argv = &.{ "java", "-XshowSettings:properties", "-version" },
+    }) catch |err| {
+        std.debug.print("[Warn] Failed to execute java -XshowSettings:properties -version: {any}\n", .{err});
+        return null;
+    };
+    defer b.allocator.free(result.stdout);
+    defer b.allocator.free(result.stderr);
+
+    if (result.term.Exited != 0) {
+        const stderr_text = std.mem.trim(u8, result.stderr, " \n\r");
+        if (stderr_text.len != 0) {
+            std.debug.print("[Warn] java -XshowSettings:properties -version returned: {s}\n", .{stderr_text});
+        }
+        return null;
+    }
+
+    const detected = extractJavaHomeFromJavaSettings(result.stderr) orelse extractJavaHomeFromJavaSettings(result.stdout) orelse {
+        std.debug.print("[Warn] Could not infer java.home from java command output.\n", .{});
+        return null;
+    };
+
+    const owned_path = try b.allocator.dupe(u8, detected);
+    return tryValidateJavaHome(owned_path, target, "java -XshowSettings:properties -version");
+}
+
+fn extractJavaHomeFromJavaSettings(output: []const u8) ?[]const u8 {
+    var lines = std.mem.splitScalar(u8, output, '\n');
+    while (lines.next()) |raw_line| {
+        const line = std.mem.trim(u8, raw_line, " \t\r");
+        if (std.mem.indexOf(u8, line, "java.home = ")) |start| {
+            return std.mem.trim(u8, line[start + "java.home = ".len ..], " \t\r");
+        }
+    }
+    return null;
+}
+
 fn collectQuotedPathCandidates(
     allocator: std.mem.Allocator,
     content: []const u8,
@@ -411,12 +452,15 @@ fn collectQuotedPathCandidates(
         if (looksLikeJavaHome(candidate) and !containsSlice(candidates.items, candidate)) {
             try candidates.append(allocator, try allocator.dupe(u8, candidate));
         }
-
     }
 }
 
 fn looksLikeJavaHome(candidate: []const u8) bool {
-    return std.mem.endsWith(u8, candidate, "/Contents/Home") or std.mem.endsWith(u8, candidate, "/Home");
+    return std.mem.endsWith(u8, candidate, "/Contents/Home") or
+        std.mem.endsWith(u8, candidate, "/Home") or
+        std.mem.indexOf(u8, candidate, "jbr") != null or
+        std.mem.indexOf(u8, candidate, "jdk") != null or
+        std.mem.indexOf(u8, candidate, "java") != null;
 }
 
 fn containsSlice(items: []const []const u8, needle: []const u8) bool {
@@ -425,4 +469,3 @@ fn containsSlice(items: []const []const u8, needle: []const u8) bool {
     }
     return false;
 }
-

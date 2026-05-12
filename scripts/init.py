@@ -49,7 +49,7 @@ def blue(t: str) -> str: return _c("1;34", t)
 def magenta(t: str) -> str: return _c("1;35", t)
 def cyan(t: str) -> str: return _c("1;36", t)
 def white(t: str) -> str: return _c("1;37", t)
-def gray(t: str) -> str: return _c("1;30", t)
+def gray(t: str) -> str: return _c("0;90", t)
 
 def log_info(msg: str) -> None: print(f"{magenta('[INFO]')} {msg}")
 def log_ok(msg: str) -> None: print(f"{green('[OK]')}   {msg}")
@@ -75,16 +75,18 @@ def format_size(n: int) -> str:
 # ── Target menu ──────────────────────────────────────────────────────────────
 
 TARGETS = [
-    ("1", "Android (aarch64)",       "aarch64-android"),
-    ("2", "iOS Device (aarch64)",    "aarch64-ios-c-api"),
-    ("3", "iOS Simulator (aarch64)", "aarch64-ios-sim"),
-    ("4", "Linux (aarch64)",         "aarch64-linux"),
-    ("5", "Linux (x86_64)",          "x86_64-linux"),
-    ("6", "macOS (aarch64)",         "aarch64-macos"),
-    ("7", "macOS (x86_64)",          "x86_64-macos"),
-    ("8", "Windows (x86_64)",        "x86_64-windows"),
-    ("a", "All Platforms",           "all"),
+    {"key": "1", "name": "Android / arm64-v8a", "filter": "aarch64-android", "platform": "android/arm64-v8a"},
+    {"key": "2", "name": "iOS Device / arm64", "filter": "aarch64-ios-c-api", "platform": "ios/arm64"},
+    {"key": "3", "name": "iOS Simulator / simulator-arm64", "filter": "aarch64-ios-sim", "platform": "ios/simulator-arm64"},
+    {"key": "4", "name": "Linux / aarch64", "filter": "aarch64-linux", "platform": "linux/aarch64"},
+    {"key": "5", "name": "Linux / x64", "filter": "x86_64-linux", "platform": "linux/x64"},
+    {"key": "6", "name": "macOS / aarch64", "filter": "aarch64-macos", "platform": "mac/aarch64"},
+    {"key": "7", "name": "macOS / x64", "filter": "x86_64-macos", "platform": "mac/x64"},
+    {"key": "8", "name": "Windows / x64", "filter": "x86_64-windows", "platform": "windows/x64"},
+    {"key": "a", "name": "All Platforms", "filter": "all", "platform": None},
 ]
+
+TARGETS_BY_KEY = {target["key"]: target for target in TARGETS}
 
 PLATFORM_MAP: dict[str, str] = {
     "aarch64-android":    "android/arm64-v8a",
@@ -98,20 +100,25 @@ PLATFORM_MAP: dict[str, str] = {
 }
 
 
+def format_target_summary(target: dict[str, str | None]) -> str:
+    if target["filter"] == "all":
+        return str(target["name"])
+    return f"{target['name']} -> platforms/{target['platform']} [asset: {target['filter']}]"
+
+
 def select_target() -> str:
     print()
     log_header("Platform & Architecture Selection")
     print("Select specific target:")
-    for key, label, _ in TARGETS:
-        print(f"  {white(key + ')')} {label}")
+    for target in TARGETS:
+        print(f"  {white(str(target['key']) + ')')} {format_target_summary(target)}")
     print()
     while True:
         choice = input(f"{cyan('Choice [1-8, a]: ')}").strip().lower()
-        for key, _, filter_val in TARGETS:
-            if choice == key:
-                display = filter_val if filter_val != "all" else "All Platforms"
-                log_ok(f"Target Filter: {white(display)}")
-                return filter_val
+        target = TARGETS_BY_KEY.get(choice)
+        if target is not None:
+            log_ok(f"Target: {white(format_target_summary(target))}")
+            return str(target["filter"])
         print(f"{red('Invalid input.')}")
 
 
@@ -332,4 +339,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

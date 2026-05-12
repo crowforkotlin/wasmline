@@ -37,7 +37,7 @@ const blue = (t) => c("1;34", t);
 const magenta = (t) => c("1;35", t);
 const cyan = (t) => c("1;36", t);
 const white = (t) => c("1;37", t);
-const gray = (t) => c("1;30", t);
+const gray = (t) => c("0;90", t);
 
 const logInfo = (m) => console.log(`${magenta("[INFO]")} ${m}`);
 const logOk = (m) => console.log(`${green("[OK]")}   ${m}`);
@@ -73,16 +73,23 @@ function tmpDir() {
 // ── Targets ─────────────────────────────────────────────────────────────────
 
 const TARGETS = [
-  ["1", "Android (aarch64)", "aarch64-android"],
-  ["2", "iOS Device (aarch64)", "aarch64-ios-c-api"],
-  ["3", "iOS Simulator (aarch64)", "aarch64-ios-sim"],
-  ["4", "Linux (aarch64)", "aarch64-linux"],
-  ["5", "Linux (x86_64)", "x86_64-linux"],
-  ["6", "macOS (aarch64)", "aarch64-macos"],
-  ["7", "macOS (x86_64)", "x86_64-macos"],
-  ["8", "Windows (x86_64)", "x86_64-windows"],
-  ["a", "All Platforms", "all"],
+  { key: "1", name: "Android / arm64-v8a", filter: "aarch64-android", platform: "android/arm64-v8a" },
+  { key: "2", name: "iOS Device / arm64", filter: "aarch64-ios-c-api", platform: "ios/arm64" },
+  { key: "3", name: "iOS Simulator / simulator-arm64", filter: "aarch64-ios-sim", platform: "ios/simulator-arm64" },
+  { key: "4", name: "Linux / aarch64", filter: "aarch64-linux", platform: "linux/aarch64" },
+  { key: "5", name: "Linux / x64", filter: "x86_64-linux", platform: "linux/x64" },
+  { key: "6", name: "macOS / aarch64", filter: "aarch64-macos", platform: "mac/aarch64" },
+  { key: "7", name: "macOS / x64", filter: "x86_64-macos", platform: "mac/x64" },
+  { key: "8", name: "Windows / x64", filter: "x86_64-windows", platform: "windows/x64" },
+  { key: "a", name: "All Platforms", filter: "all", platform: null },
 ];
+
+const TARGETS_BY_KEY = new Map(TARGETS.map((target) => [target.key, target]));
+
+function formatTargetSummary(target) {
+  if (target.filter === "all") return target.name;
+  return `${target.name} -> platforms/${target.platform} [asset: ${target.filter}]`;
+}
 
 const PLATFORM_MAP = {
   "aarch64-android": "android/arm64-v8a",
@@ -99,17 +106,16 @@ async function selectTarget() {
   console.log();
   logHeader("Platform & Architecture Selection");
   console.log("Select specific target:");
-  for (const [key, label] of TARGETS) {
-    console.log(`  ${white(key + ")")} ${label}`);
+  for (const target of TARGETS) {
+    console.log(`  ${white(target.key + ")")} ${formatTargetSummary(target)}`);
   }
   console.log();
   while (true) {
     const choice = (await ask(`${cyan("Choice [1-8, a]: ")}`)).toLowerCase();
-    const match = TARGETS.find(([k]) => k === choice);
-    if (match) {
-      const display = match[2] === "all" ? "All Platforms" : match[2];
-      logOk(`Target Filter: ${white(display)}`);
-      return match[2];
+    const target = TARGETS_BY_KEY.get(choice);
+    if (target) {
+      logOk(`Target: ${white(formatTargetSummary(target))}`);
+      return target.filter;
     }
     console.log(red("Invalid input."));
   }
@@ -469,4 +475,3 @@ async function main() {
 }
 
 main().catch((e) => { logErr(e.message); process.exit(1); });
-

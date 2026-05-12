@@ -63,7 +63,7 @@ elif [[ "$OS_NAME" == "Linux" ]]; then
     if [[ "$ARCH_NAME" == "aarch64" ]]; then
         LIB_SRC="$PLATFORMS_ROOT/linux/aarch64/lib/$LIB_DST_NAME"
     else
-        LIB_SRC="$PLATFORMS_ROOT/linux/x86_64/lib/$LIB_DST_NAME"
+        LIB_SRC="$PLATFORMS_ROOT/linux/x64/lib/$LIB_DST_NAME"
     fi
 elif [[ "$OS_NAME" == CYGWIN* ]] || [[ "$OS_NAME" == MINGW* ]] || [[ "$OS_NAME" == MSYS* ]] || [[ "$OS_NAME" == Windows* ]]; then
     # Windows
@@ -101,4 +101,3 @@ else
     echo "    [ERROR] Go Build Failed"
     exit 1
 fi
-
