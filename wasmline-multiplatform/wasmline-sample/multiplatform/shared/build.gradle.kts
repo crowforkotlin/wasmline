@@ -23,6 +23,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(projects.wasmline)
+                implementation(projects.wasmlineLoader)
                 api(projects.wasmlineSample.common)
                 api(compose.material3)
                 api(compose.components.resources)

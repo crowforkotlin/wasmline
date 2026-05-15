@@ -22,4 +22,5 @@ dependencies {
     api(libs.kotlinx.serialization.protobuf)
     api(projects.wasmlineSample.common)
     api(projects.wasmline)
+    implementation(projects.wasmlineLoader)
 }

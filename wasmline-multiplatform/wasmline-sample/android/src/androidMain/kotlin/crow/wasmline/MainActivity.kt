@@ -10,11 +10,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import crow.sample.android.databinding.ActivityMainBinding
 import crow.wasmline.extensions.Data
 import crow.wasmline.extensions.info
+import crow.wasmline.loader.loadWasmline
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
-import crow.wasmline.sample.android.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,7 +69,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 var startMs = System.currentTimeMillis()
-                when(val loadState = Wasmline.load(artifactFile.absolutePath)) {
+                when (val loadState = loadWasmline(artifactPath = artifactFile.absolutePath)) {
                     is WasmlineLoadState.Failure -> { loadState.cause.info() }
                     is WasmlineLoadState.Success -> {
                         if (loadState.code == WasmlineLoadState.CODE_SUCCESS_PULLEY) {

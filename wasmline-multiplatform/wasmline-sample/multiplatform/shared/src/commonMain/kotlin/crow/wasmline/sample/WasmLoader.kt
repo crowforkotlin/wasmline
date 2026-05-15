@@ -10,6 +10,7 @@ import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.onFailure
 import crow.wasmline.onSuccess
+import crow.wasmline.loader.loadWasmline
 import crow.wasmline.sample.extensions.getPlatformBean
 import crow.wasmline.sample.extensions.info
 import crow.wasmline.sample.bean.PlatformBean
@@ -26,7 +27,7 @@ internal class WasmLoader {
 
     fun loadWasm(artifactAbsPath: String): Wasmline? {
         if (wasmline == null) {
-            Wasmline.load(filepath = artifactAbsPath, threadSafe = false)
+            loadWasmline(artifactPath = artifactAbsPath, threadSafe = false)
                 .onSuccess {
                     wasmline.bind(object : EchoService {
                         override fun echo() {

@@ -1,5 +1,6 @@
 package crow.wasmline
 
+import crow.wasmline.loader.loadWasmline
 import kotlin.reflect.KClass
 
 @Suppress("unused")
@@ -18,7 +19,7 @@ class WasmlineHostApiCompileTest {
         implementation: EchoService,
         contract: KClass<EchoService> = EchoService::class,
     ) {
-        val loadState = Wasmline.load(filepath = "plugin.pwasm")
+        val loadState = loadWasmline(artifactPath = "plugin.pwasm")
 
         Wasmline.init()
         Wasmline.shutdown()
@@ -35,4 +36,3 @@ class WasmlineHostApiCompileTest {
         compileAgainstHostApi(wasmline, EchoServiceImpl())
     }
 }
-

@@ -18,7 +18,7 @@ java {
 
 kotlin {
     jvm()
-    androidLibrary {
+    android {
         namespace = "crow.wasmline"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -101,7 +101,12 @@ kotlin {
                 implementation(projects.wasmline)
             }
         }
-        val hostTest by creating { dependsOn(other = commonTest) }
+        val hostTest by creating {
+            dependsOn(other = commonTest)
+            dependencies {
+                implementation(projects.wasmlineLoader)
+            }
+        }
         val jvmTest by getting { dependsOn(other = hostTest) }
 
         if (HostManager.hostIsMac) {
