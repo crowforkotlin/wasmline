@@ -20,7 +20,9 @@ dependencies {
     api(libs.androidx.material)
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.serialization.protobuf)
-    api(projects.wasmlineSample.common)
-    api(projects.wasmline)
-    implementation(projects.wasmlineLoader)
+
+    api(projects.sampleCommon)
+
+    api(libs.crow.wasmline)
+    api(libs.crow.wasmline.loader)
 }

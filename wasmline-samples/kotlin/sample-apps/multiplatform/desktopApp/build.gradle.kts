@@ -11,5 +11,5 @@ compose.desktop {
 }
 
 dependencies {
-    implementation(projects.wasmlineSample.multiplatform.shared)
+    implementation(projects.sampleApps.multiplatform.shared)
 }

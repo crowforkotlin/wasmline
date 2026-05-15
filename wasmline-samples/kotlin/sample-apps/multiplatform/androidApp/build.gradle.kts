@@ -6,6 +6,6 @@ plugins {
 }
 
 dependencies {
-    implementation(projects.wasmlineSample.multiplatform.shared)
+    implementation(projects.sampleApps.multiplatform.shared)
     implementation(libs.androidx.activity.compose)
 }

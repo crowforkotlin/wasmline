@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import crow.sample.android.databinding.ActivityMainBinding
+import crow.apps.android.databinding.ActivityMainBinding
 import crow.wasmline.extensions.Data
 import crow.wasmline.extensions.info
 import crow.wasmline.loader.loadWasmline

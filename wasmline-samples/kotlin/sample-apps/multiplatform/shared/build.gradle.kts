@@ -22,9 +22,10 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(projects.wasmline)
-                implementation(projects.wasmlineLoader)
-                api(projects.wasmlineSample.common)
+                api(libs.crow.wasmline)
+                api(libs.crow.wasmline.loader)
+
+                api(projects.sampleCommon)
                 api(compose.material3)
                 api(compose.components.resources)
                 api(compose.runtime)

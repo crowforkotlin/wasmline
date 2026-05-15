@@ -132,6 +132,8 @@ compress-tukaani-xz = "1.11"
 maven-publish = "0.36.0"
 jetbrains-annotations = "26.1.0"
 
+wasmline = "1.0.0"
+
 [libraries]
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 
@@ -289,6 +291,9 @@ gradle-android-plugin = { module = "com.android.tools.build:gradle", version.ref
 gradle-kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 gradle-kotlin-plugin-api = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin-api", version.ref = "kotlin" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
+
+crow-wasmline = { module = "crow.wasmline:wasmline", version.ref = "wasmline" }
+crow-wasmline-loader = { module = "crow.wasmline:wasmline-loader", version.ref = "wasmline" }
 
 
 
