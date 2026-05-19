@@ -57,7 +57,7 @@ private fun String.backendCodeOrNull(): Byte? {
     return when (substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
         "cwasm" -> WasmlineLoadState.CODE_SUCCESS_AOT
         "pwasm" -> WasmlineLoadState.CODE_SUCCESS_PULLEY
+        "wasm" -> WasmlineLoadState.CODE_SUCCESS_WASM
         else -> null
     }
 }
-

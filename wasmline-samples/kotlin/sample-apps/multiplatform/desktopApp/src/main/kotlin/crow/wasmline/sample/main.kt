@@ -97,7 +97,8 @@ fun DecoratedWindowScope.DesktopTitleBar(
  */
 @OptIn(ExperimentalResourceApi::class)
 fun extractResourceToTemp(resourcePath: String): File {
-    val tempFile = File.createTempFile("wasmline_plugin", ".pwasm")
+    val suffix = "." + resourcePath.substringAfterLast('.', missingDelimiterValue = "bin")
+    val tempFile = File.createTempFile("wasmline_plugin", suffix)
     tempFile.deleteOnExit() // 程序退出时自动删除
     val stream = Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
         ?: error("Resource not found: $resourcePath")
@@ -111,9 +112,8 @@ fun extractResourceToTemp(resourcePath: String): File {
 
 @OptIn(ExperimentalResourceApi::class)
 fun extractPluginArtifactToTemp(): Pair<String, File> {
-    val resourceName = listOf("plugin.generated.pwasm", "plugin.pwasm")
+    val resourceName = listOf("plugin.generated.wasm", "plugin.generated.pwasm", "plugin.pwasm")
         .firstOrNull { Thread.currentThread().contextClassLoader.getResource(it) != null }
-        ?: error("Resource not found: plugin.generated.pwasm or plugin.pwasm")
+        ?: error("Resource not found: plugin.generated.wasm, plugin.generated.pwasm or plugin.pwasm")
     return resourceName to extractResourceToTemp(resourceName)
 }
-

@@ -1,5 +1,3 @@
-import com.vanniktech.maven.publish.MavenPublishBaseExtension
-
 plugins {
     alias(libs.plugins.app.base.multiplatform.library) apply false
     alias(libs.plugins.app.base.library) apply false
@@ -18,6 +16,5 @@ plugins {
     alias(libs.plugins.conveyor) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.buildconfig) apply false
-    alias(libs.plugins.maven.publish) apply false
     alias(libs.plugins.wasmline) apply false
 }

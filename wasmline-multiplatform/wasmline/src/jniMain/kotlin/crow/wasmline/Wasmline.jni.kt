@@ -14,7 +14,7 @@ actual class Wasmline internal actual constructor(private val moduleKey: String)
 
         /**
          * load module
-         * @param filepath Precompiled product path, only supports .cwasm or .pwasm
+         * @param filepath Local module artifact path, supports `.wasm`, `.cwasm`, or `.pwasm`
          */
         actual fun load(filepath: String, threadSafe: Boolean): WasmlineLoadState {
             return WasmlineLocalArtifactBridge.load(
@@ -78,4 +78,3 @@ actual class Wasmline internal actual constructor(private val moduleKey: String)
      */
     actual fun close() { nativeReleaseModule(moduleKey) }
 }
-

@@ -14,6 +14,20 @@
 #include "Logger.h"
 
 namespace wasmline {
+    namespace {
+        bool hasSuffixIgnoreCase(const std::string& value, const std::string& suffix) {
+            if (value.size() < suffix.size()) return false;
+            return std::equal(
+                suffix.rbegin(),
+                suffix.rend(),
+                value.rbegin(),
+                [](char lhs, char rhs) {
+                    return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+                }
+            );
+        }
+    }
+
     // Singleton Accessor
     Module &Module::getInstance() {
         static Module instance;
@@ -31,7 +45,7 @@ namespace wasmline {
     // ============================================================================
 
     /**
-     * Shared Logic: File Read + precompiled artifact deserialization.
+     * Shared Logic: File Read + raw wasm compilation or precompiled artifact deserialization.
      * No locks are held inside this function.
      */
     wasmtime_module_t *Module::compileInternal(const std::string &key, const std::string &filePath) {
@@ -49,12 +63,24 @@ namespace wasmline {
             return nullptr;
         }
 
-        // 3. Deserialization of precompiled artifacts only
+        const bool rawWasm = hasSuffixIgnoreCase(filePath, ".wasm");
+
+        // 3. Compile raw wasm or deserialize precompiled artifacts
         wasmtime_module_t *module = nullptr;
         wasmtime_error_t *error = nullptr;
 
-        LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
-        error = wasmtime_module_deserialize(engine, reinterpret_cast<const uint8_t*>(data.data()), data.size(), &module);
+        if (rawWasm) {
+            LOGI("[Wasmtime] Module --> Compiling raw wasm module for %s", filePath.c_str());
+            error = wasmtime_module_new(
+                engine,
+                reinterpret_cast<const uint8_t*>(data.data()),
+                data.size(),
+                &module
+            );
+        } else {
+            LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
+            error = wasmtime_module_deserialize(engine, reinterpret_cast<const uint8_t*>(data.data()), data.size(), &module);
+        }
 
         // 4. Error Handling
         if (error) {

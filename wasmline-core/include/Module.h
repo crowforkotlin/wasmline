@@ -1,7 +1,8 @@
 /**
  * Module.h
  * Manages Wasmtime Modules.
- * Handles loading (compilation/deserialization), caching, and serialization.
+ * Handles loading (raw wasm compilation / precompiled artifact deserialization),
+ * caching, and serialization.
  *
  * 2025-12-03
  * @author crowforkotlin
@@ -29,7 +30,8 @@ namespace wasmline {
         Module &operator=(const Module &) = delete;
 
         /**
-         * Loads a precompiled module artifact from file system (Thread-Safe & Optimized).
+         * Loads a module artifact from file system (Thread-Safe & Optimized).
+         * Supports raw `.wasm` and precompiled `.cwasm` / `.pwasm`.
          *
          * Features:
          * 1. No redundant IO/deserialization
@@ -37,20 +39,21 @@ namespace wasmline {
          * 3. Safety: Uses RAII to prevent deadlocks.
          *
          * @param key Unique identifier for the module
-         * @param filePath Absolute path to the precompiled artifact file
+         * @param filePath Absolute path to the module artifact file
          * @return Raw pointer to wasmtime_module_t, or nullptr if failed.
          */
         wasmtime_module_t *load(const std::string &key, const std::string &filePath);
 
         /**
          * Loads a module WITHOUT any thread safety mechanisms.
+         * Supports raw `.wasm` and precompiled `.cwasm` / `.pwasm`.
          *
          * WARNING: Use this ONLY during single-threaded initialization or when
          * you guarantee no other thread is accessing Module.
          * This provides the absolute fastest path by removing all locking overhead.
          *
          * @param key Unique identifier for the module
-         * @param filePath Absolute path to the precompiled artifact file
+         * @param filePath Absolute path to the module artifact file
          * @return Raw pointer to wasmtime_module_t, or nullptr if failed.
          */
         wasmtime_module_t *loadUnsafe(const std::string &key, const std::string &filePath);
@@ -77,7 +80,7 @@ namespace wasmline {
         ~Module();
 
 
-        // Core logic: Read file -> get engine -> deserialize precompiled artifact
+        // Core logic: Read file -> get engine -> compile raw wasm or deserialize precompiled artifact
         wasmtime_module_t *compileInternal(const std::string &key, const std::string &filePath);
 
 

@@ -247,9 +247,9 @@ class Compile : CliktCommand(name = "compile") {
         fun findWasmtimeExecutable(directory: File): File? {
             val isWindows = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("win")
             val candidateNames = if (isWindows) {
-                listOf("wasmtime-min.exe")
+                listOf("wasmtime.exe", "wasmtime-min.exe")
             } else {
-                listOf("wasmtime-min")
+                listOf("wasmtime", "wasmtime-min")
             }
             return candidateNames.firstNotNullOfOrNull { targetName ->
                 directory.walk()
