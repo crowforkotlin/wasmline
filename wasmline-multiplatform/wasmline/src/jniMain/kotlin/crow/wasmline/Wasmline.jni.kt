@@ -39,16 +39,8 @@ actual class Wasmline internal actual constructor(private val moduleKey: String)
             )
         }
 
-        /**
-         * Initialize the global Engine.
-         * It is recommended to call it in Application onCreate.
-         */
         actual fun init() { nativeInit() }
 
-        /**
-         * Release the global Engine and all cached Modules.
-         * It is recommended to call Wasm when you are sure you are no longer using it, or Activity onDestroy.
-         */
         actual fun shutdown() { nativeReleaseEngine() }
 
         // JNI Methods

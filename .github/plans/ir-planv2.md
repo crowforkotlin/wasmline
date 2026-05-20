@@ -109,7 +109,7 @@ V2 当前阶段新增一条硬约束：
 具体约束如下：
 
 1. 当前机型上不强行推进 `iosMain` 本地实现、联调与回归验证。
-2. 优先推进 `WasmlineLoader`、`WasmlineEngine`、`Wasmline.current` 使用模型统一、`WasmlineLoadRequest` / `WasmlineSource` / `WasmlineArtifact` 抽象，以及 runtime / IR 收口。
+2. 优先推进 `WasmlineLoader`、`Wasmline.current` 使用模型统一、`WasmlineLoadRequest` / `WasmlineSource` / `WasmlineArtifact` 抽象，以及 runtime / IR 收口。
 3. JNI、Host、Plugin、文档与架构层整理继续按主计划推进。
 4. iOS 相关 blocker 仍保留在计划中，但状态记为“环境暂缓”，避免和“已完成”混淆。
 
@@ -131,7 +131,8 @@ V2 当前阶段新增一条硬约束：
 
 - [ ] iOS callback 仍存在 `findAny()` 的生产 blocker。**根因已明确**：C 层 `OutboundCallback` 函数签名为 `char* (*)(action, actionLen, payload, payloadLen)`，不携带 `key` 参数；而 Kotlin/Native 的 `staticCFunction` 不允许捕获上下文，导致回调触发时无法识别来源模块。详见下方 §10.2 分析。当前因 `Windows` 环境暂缓本地实现与验证，待切换到 `macOS/iOS` 环境后恢复处理。
 - [ ] `iosStaticOutboundCallback` 当前仍为 TODO 占位实现（始终返回 `null`），尚未真正分发到 `WasmlineHostDispatcher`。
-- [~] `wasmline` runtime 内部已存在共享的本地文件加载 helper（`WasmlineRuntimeLoader`），JNI 和 iOS 均已接入；但真正面向 Host 的公共 `WasmlineLoader` 模块入口仍未形成，`WasmlineEngine` 与完整独立对象模型也仍未形成。
+- [~] `wasmline` runtime 内部已存在共享的本地文件加载 helper（`WasmlineRuntimeLoader`），JNI 和 iOS 均已接入；Host 侧 `WasmlineLoader` 已形成独立入口，但更完整的 public API 收口仍待继续推进。
+- [x] `LocalPackageFile` / `RemotePackageUrl` 已补自定义 resolver 扩展点，不再只能立刻 fail-fast；后续仍需继续接上 cache / manifest / signature 主链路。
 - [ ] `WasmlineLoadRequest`、`WasmlineSource`、`WasmlineArtifact` 等 Host 级加载抽象仍应落在 `wasmline-loader` 模块，尚未完成正式迁移与公开 API 收口。
 - [ ] Plugin 侧仍保留顶层过渡入口，Host / Plugin 文档尚未完全统一为"先拿到 wasmline，再 bind/link"。
 
@@ -224,37 +225,23 @@ V2 建议把 Wasmline 拆成四层。
 
 ---
 
-### 5.1 `WasmlineEngine`：全局引擎层
+### 5.1 已放弃：独立 `WasmlineEngine`
 
 #### 定位
 
-进程级、平台级全局引擎对象。
+该公开拆分类方案已于 2026-05-20 放弃。
 
 #### 职责
 
-1. 初始化底层 runtime engine；
-2. 关闭底层 runtime engine；
-3. 管理全局 engine 状态；
-4. 作为 loader / runtime handle 的上游依赖；
-5. 后续可承载全局 metrics、global registry、platform diagnostics 等。
+保留原因很简单：当前公开新增 `WasmlineEngine` 的收益不够高，反而会扩大 API 面和 sample / 依赖同步成本。现阶段继续保留 `Wasmline.init()` / `Wasmline.shutdown()` 这一现有模型，只在实现和文档层面维持职责边界。
 
 #### 不负责
 
-1. 不直接代表某个加载后的模块；
-2. 不直接提供业务层 `bind/link`；
-3. 不直接决定某个具体 artifact 的下载/缓存策略。
+后续不再把 engine 级能力拆成新的公开类型，而是把重点转到 loader 数据链路、runtime public API 收口、以及 Host / Plugin 使用模型统一。
 
 #### 建议 API 方向
 
-```kotlin
-object WasmlineEngine {
-    fun init()
-    fun shutdown()
-    val isInitialized: Boolean
-}
-```
-
-> 若第一阶段不想新增对象，也至少要在语义上把当前 `Wasmline.init()` / `Wasmline.release()` 当成 engine 级能力，并计划未来命名迁移为 `shutdown()`。
+> 2026-05-20 更新：独立 `WasmlineEngine` 方案已放弃，不再作为后续公开 API 演进方向。
 
 ---
 
@@ -641,12 +628,6 @@ IR 不应该继续承担：
 #### 全局级
 
 ```kotlin
-WasmlineEngine.shutdown()
-```
-
-若短期不拆类，也至少计划迁移为：
-
-```kotlin
 Wasmline.shutdown()
 ```
 
@@ -686,23 +667,23 @@ wasmline.isClosed
 
 ---
 
-### Phase 1：先拆 Engine / Loader / Module 语义
+### Phase 1：继续完善 Loader / Module 边界（已放弃独立 Engine 公开拆分）
 
 #### 目标
 
-把现有 `Wasmline` 全能类拆出最基本的三层语义。
+继续收紧 loader 与 module 的职责边界，但不再把 engine 级能力拆成新的公开 API。
 
 #### 任务
 
-1. [ ] 抽出独立的 `WasmlineEngine` 对象；
-2. [~] 抽出 `WasmlineLoader`：runtime 内部本地加载流程已共享，但真正独立的 Host loader 模块入口与请求模型仍未落地。
-3. [~] 把 `Wasmline` 明确定位为单模块 runtime handle：语义与实例生命周期已明显收口，但 engine / loader 静态语义仍挂在同名类型上。
+1. [x] 明确放弃独立 `WasmlineEngine` 公开 API，继续保留 `Wasmline.init()` / `shutdown()` 现有入口。
+2. [~] 抽出 `WasmlineLoader`：runtime 内部本地加载流程已共享，Host loader 模块入口与请求模型已存在，但 package/remote 主链路仍未补完。
+3. [~] 把 `Wasmline` 明确定位为单模块 runtime handle：实例生命周期已明显收口，但 `init()/shutdown()` 与 `load(...)` 仍共存于同一公开类型。
 4. [x] 把 `load(...)` 中的文件存在判断、cache fallback 等高层逻辑从 platform actual 中抽到共享加载流程。
 
 #### 完成标志
 
 - `jniMain / iosMain` actual 不再直接承担完整 loader 策略；
-- `Wasmline` 本体不再同时管理 engine 与 loader 语义。
+- 不再新增 `WasmlineEngine` 这类额外公开类型，后续重点转向 loader 数据链路补全与 runtime API 收口。
 
 ---
 

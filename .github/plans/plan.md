@@ -22,10 +22,10 @@
 | 项 | 状态 | 说明 |
 |---|---|---|
 | `wasmline-loader` 成为 Host 主入口 | 已完成 | Host 样例与 Host 编译面测试已切到 `loadWasmline(...)`，`Wasmline.load(...)` 保留为 runtime 直接桥接入口 |
-| `engine / loader / module` 三层语义拆分 | 待做 | `Wasmline` companion 仍同时承载 engine 生命周期与加载入口 |
-| Loader 数据链路收口 | 待做 | `LocalPackageFile / RemotePackageUrl` 当前 fail-fast，resolver/cache/manifest 扩展点未设计 |
+| `engine / loader / module` 三层语义拆分 | 已放弃 | 不再把 engine 拆成新的公开 API，继续保留 `Wasmline.init() / shutdown()` 这一现有使用模型 |
+| Loader 数据链路收口 | 进行中 | `LocalPackageFile / RemotePackageUrl` 已补自定义 resolver 扩展点，后续仍需继续补 cache/manifest/signature 主链路 |
 | Host / Plugin 使用模型统一 | 待做 | Plugin 顶层 `bind()` 过渡入口仍在，文档/样例未统一叙述 |
-| Runtime public API 最终收口 | 待做 | 可见性审计未完成，`moduleKey` 仍为 public constructor 参数 |
+| Runtime public API 最终收口 | 待做 | 可见性审计未完成，剩余 runtime helper 与过渡 API 仍待继续收口 |
 | iOS callback 模块定位 blocker | **环境暂缓** | 根因已明确，待切换到 macOS/iOS 环境后恢复 |
 
 ---
@@ -57,31 +57,31 @@
 
 ---
 
-### 步骤 2 — 拆清 `engine / loader / module` 三层语义
+### 步骤 2 — 放弃 `engine / loader / module` 公开拆分
 
-**当前问题**：`Wasmline` companion 同时挂了 `init() / shutdown()`（engine 级）和 `load(...)`（loader 级）；`Wasmline` 实例同时代表 module handle 又隐含 engine 状态。调用方无法从 API 形态上区分"全局引擎"和"单个加载好的模块"。
+**当前结论**：不再把 engine 拆成新的公开 API。继续保留 `Wasmline.init() / shutdown()` 作为现有对外入口，只在实现层面维持职责边界，不再推进 `WasmlineEngine` 方向。
 
 **三层定义**：
 
 | 层 | 职责 | 当前承载位置 |
 |---|---|---|
-| Engine 层 | `init / shutdown / isInitialized`；进程级全局 runtime engine 生命周期 | `Wasmline.init() / Wasmline.shutdown()`（挂在同一个 class 上） |
+| Engine 级能力 | `init / shutdown`；进程级全局 runtime engine 生命周期 | `Wasmline` companion object |
 | Loader 层 | 接收 `WasmlineLoadRequest`，把 source 解析为可执行 artifact，最终得到 `Wasmline` 实例 | `wasmline-loader` 模块（已存在，但与 engine 语义未拆开） |
-| Module 层 | `bind / link / call / close`；代表一个已就绪的 wasm module 实例 | `Wasmline` 实例（当前也承载 engine 静态入口） |
+| Module 层 | `bind / link / call / close`；代表一个已就绪的 wasm module 实例 | `Wasmline` 实例 |
 
 **要做的事**：
 
-- 决定是否立即抽出独立的 `WasmlineEngine` 对象（可选），或先做语义上的隔离（至少在文档和注释中把 engine 职责与 module 职责说清楚）。
-- 无论是否立即重命名，`Wasmline` 实例应只代表"一个已加载模块的 handle"；engine 初始化/销毁不应与模块实例生命周期挂在同一个类型上。
-- 把 `moduleKey` 收口为 `internal`，不再作为 public constructor 参数暴露。
+- 保持 `Wasmline.init() / shutdown()` 的现有公开入口，不再额外新增 `WasmlineEngine`。
+- 继续把 loader 数据链路与 runtime/module 边界整理清楚，但不把它们扩展成新的 engine 公开类型。
+- 在最终 public API 收口阶段审计剩余 runtime helper 与过渡入口，避免无谓新增公开面。
 
-**完成标志**：调用方理解 `Wasmline` 实例等于一个模块 handle，engine 的 init/shutdown 是独立的全局操作，loader 是两者中间的流程编排层。
+**完成标志**：对外 API 继续维持现有 `Wasmline.init() / shutdown()` 模型，不再为 engine 引入新的公开类型；后续工作重点转向 loader 和 runtime 收口。
 
 ---
 
 ### 步骤 3 — 把 loader 数据链路补完整
 
-**当前问题**：`WasmlineLoadRequest / WasmlineSource / WasmlineArtifact` 已存在，但 `DefaultWasmlineLoader` 只能真正执行 `LocalArtifactFile`，其他来源直接失败；扩展插槽（cache、manifest、signature、resolver）均未设计。
+**当前问题**：`WasmlineLoadRequest / WasmlineSource / WasmlineArtifact` 已存在；当前已补上 `LocalPackageFile / RemotePackageUrl` 的自定义 resolver 扩展点，但 cache、manifest、signature 主链路仍未设计。
 
 **要做的事**：
 
@@ -89,10 +89,10 @@
   - `LocalArtifactFile`：调用方已持有预编译 artifact 本地路径，直接交给 runtime。
   - `LocalPackageFile`：调用方持有 `.wlm` 包文件本地路径，需要 loader 负责解包、选择 artifact、验证 manifest。
   - `RemotePackageUrl`：需要 loader 负责下载、缓存、manifest 校验、artifact 选择。
-- 为 `LocalPackageFile / RemotePackageUrl` 设计"未支持时如何插入自定义 resolver"的扩展点，而不是永远 fail-fast。
+- 基于现有 resolver 扩展点继续梳理后续正式主链路应该如何接入 cache、manifest、signature。
 - 确认 `WasmlineLoadRequest.metadata` 的用途边界；cache key、签名策略等需要的扩展字段应放在哪一层。
 
-**完成标志**：loader 数据链路有明确的职责文档；`LocalPackageFile / RemotePackageUrl` 提供可插入的 resolver 扩展点，而不只是失败占位。
+**完成标志**：loader 数据链路有明确的职责文档；`LocalPackageFile / RemotePackageUrl` 已可通过 resolver 扩展进入正式加载流程，后续只剩主链路补全。
 
 ---
 
@@ -132,7 +132,7 @@ val service = wasmline.link<OtherService>()
 
 - 审计 `wasmline` runtime 模块中还暴露为 `public` 的 helper / SPI，能收成 `internal` 或 `@PublishedApi internal` 的继续收口。
 - 明确 `moduleKey` 的可见性：它是 native 层内部实现细节，不应作为 public constructor 参数暴露给 Host 开发者。
-- 决定顶层 `bind()` 的最终保留策略：继续作为 `@Deprecated` 兼容层，还是完全依赖 IR 插件替换掉。
+- 决定顶层 `bind()` 的最终保留策略：保留为过渡入口，还是完全依赖 IR 插件替换掉。
 - 对 IR 插件做小步去重和 contract 稳定化，不再大改主链路（`WasmlineBridgeGenerator / TypedEntryPointRewriter / ServiceContractValidator` 的职责边界已经清晰，重点是继续减少 helper 散落）。
 
 **完成标志**：对业务开发者暴露的 public API 面稳定且文档可读；内部 bridge/runtime helper 不再继续扩散。
@@ -194,8 +194,7 @@ cd wasmline-multiplatform
 └────────────────────┬─────────────────────────────┘
                      │
 ┌────────────────────▼─────────────────────────────┐
-│         Wasmline（module handle）                 │
-│         WasmlineEngine（全局 engine 生命周期）     │
+│         Wasmline（module handle + init/shutdown） │
 │         WasmlineRuntimeLoader（本地 artifact 加载）│
 └────────────────────┬─────────────────────────────┘
                      │

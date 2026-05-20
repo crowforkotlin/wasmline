@@ -13,7 +13,6 @@ import platform.Foundation.NSFileManager
 actual class Wasmline actual internal constructor(private val moduleKey: String) {
 
     actual companion object {
-
         actual fun init() {
             wasmline_init_engine()
         }

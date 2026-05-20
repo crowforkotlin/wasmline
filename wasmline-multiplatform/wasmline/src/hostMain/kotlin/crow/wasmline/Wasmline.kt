@@ -4,6 +4,13 @@ package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 
+/**
+ * Host-side runtime handle for a loaded module.
+ *
+ * The companion object exposes process-wide engine lifecycle and the direct
+ * local-artifact runtime bridge. Host-facing package/manifest/download
+ * workflows should still go through the `wasmline-loader` module first.
+ */
 expect class Wasmline internal constructor(moduleKey: String) {
 
     companion object {

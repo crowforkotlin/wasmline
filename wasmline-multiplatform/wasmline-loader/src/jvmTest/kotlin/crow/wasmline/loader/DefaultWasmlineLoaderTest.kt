@@ -19,6 +19,7 @@ class DefaultWasmlineLoaderTest {
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
         assertTrue(failure.cause.contains("Local package source '/tmp/plugin.wlm'"))
+        assertTrue(failure.cause.contains("request.resolvers.localPackage"))
     }
 
     @Test
@@ -32,7 +33,7 @@ class DefaultWasmlineLoaderTest {
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
         assertTrue(failure.cause.contains("Local package source '/tmp/plugin.wlm'"))
-        assertTrue(failure.cause.contains("not supported yet"))
+        assertTrue(failure.cause.contains("request.resolvers.localPackage"))
     }
 
     @Test
@@ -46,7 +47,77 @@ class DefaultWasmlineLoaderTest {
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
         assertTrue(failure.cause.contains("Remote package source 'https://example.com/plugin.wlm'"))
-        assertTrue(failure.cause.contains("not supported yet"))
+        assertTrue(failure.cause.contains("request.resolvers.remotePackage"))
+    }
+
+    @Test
+    fun `local package source can delegate to a configured resolver`() {
+        val result = DefaultWasmlineLoader.load(
+            WasmlineLoadRequest(
+                source = WasmlineSource.LocalPackageFile(path = "/tmp/plugin.wlm"),
+                metadata = mapOf("channel" to "debug"),
+                resolvers = WasmlineSourceResolvers(
+                    localPackage = WasmlineLocalPackageResolver { source, request ->
+                        assertEquals("/tmp/plugin.wlm", source.path)
+                        assertEquals("debug", request.metadata["channel"])
+                        WasmlineSourceResolution.ContinueWith(
+                            WasmlineSource.LocalArtifactFile(path = "/tmp/resolved-plugin.pwasm"),
+                        )
+                    },
+                ),
+            ),
+        )
+
+        val failure = assertIs<WasmlineLoadState.Failure>(result)
+        assertTrue(failure.cause.contains("artifact file not found"))
+        assertTrue(failure.cause.contains("/tmp/resolved-plugin.pwasm"))
+    }
+
+    @Test
+    fun `remote package source can chain through custom resolvers`() {
+        val result = DefaultWasmlineLoader.load(
+            WasmlineLoadRequest(
+                source = WasmlineSource.RemotePackageUrl(url = "https://example.com/plugin.wlm"),
+                resolvers = WasmlineSourceResolvers(
+                    remotePackage = WasmlineRemotePackageResolver { source, _ ->
+                        assertEquals("https://example.com/plugin.wlm", source.url)
+                        WasmlineSourceResolution.ContinueWith(
+                            WasmlineSource.LocalPackageFile(path = "/tmp/downloaded-plugin.wlm"),
+                        )
+                    },
+                    localPackage = WasmlineLocalPackageResolver { source, _ ->
+                        assertEquals("/tmp/downloaded-plugin.wlm", source.path)
+                        WasmlineSourceResolution.ContinueWith(
+                            WasmlineSource.LocalArtifactFile(path = "/tmp/resolved-plugin.cwasm"),
+                        )
+                    },
+                ),
+            ),
+        )
+
+        val failure = assertIs<WasmlineLoadState.Failure>(result)
+        assertTrue(failure.cause.contains("/tmp/resolved-plugin.cwasm"))
+    }
+
+    @Test
+    fun `resolver can complete with a terminal load state`() {
+        val terminal = WasmlineLoadState.Failure(
+            code = WasmlineLoadState.CODE_FAILURE,
+            cause = "Manifest signature mismatch",
+        )
+        val result = DefaultWasmlineLoader.load(
+            WasmlineLoadRequest(
+                source = WasmlineSource.LocalPackageFile(path = "/tmp/plugin.wlm"),
+                resolvers = WasmlineSourceResolvers(
+                    localPackage = WasmlineLocalPackageResolver { _, _ ->
+                        WasmlineSourceResolution.Complete(terminal)
+                    },
+                ),
+            ),
+        )
+
+        val failure = assertIs<WasmlineLoadState.Failure>(result)
+        assertEquals("Manifest signature mismatch", failure.cause)
     }
 
     @Test
@@ -59,4 +130,3 @@ class DefaultWasmlineLoaderTest {
         assertTrue(failure.cause.contains("/tmp/missing-plugin.pwasm"))
     }
 }
-
