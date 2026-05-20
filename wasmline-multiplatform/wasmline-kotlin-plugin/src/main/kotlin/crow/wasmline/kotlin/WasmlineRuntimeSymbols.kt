@@ -34,6 +34,7 @@ internal class WasmlineRuntimeSymbols(
     val endpointClass: IrClassSymbol = requireClass(SPI_PACKAGE, "WasmlineEndpoint")
     val endpointInvokeFunction: IrSimpleFunctionSymbol = requireFunction(endpointClass, "invoke", 2)
     val generatedBridgeClass: IrClassSymbol = requireClass(SPI_PACKAGE, "WasmlineGeneratedBridge")
+    val generatedBridgeInvokeFunction: IrSimpleFunctionSymbol = requireFunction(generatedBridgeClass, "invoke", 2)
     val generatedBridgeBindFunction: IrSimpleFunctionSymbol = requireFunction(generatedBridgeClass, "bind", 1)
     val unlinkedEndpointObject: IrClassSymbol = requireClass(SPI_PACKAGE, "UnlinkedWasmlineEndpoint")
     val generatedHostEndpointClass: IrClassSymbol? = referenceClass(MAIN_PACKAGE, "GeneratedWasmlineHostEndpoint")
@@ -319,7 +320,6 @@ internal class WasmlineRuntimeSymbols(
         const val SPI_PACKAGE = "crow.wasmline.internal.bridge"
     }
 }
-
 
 
 

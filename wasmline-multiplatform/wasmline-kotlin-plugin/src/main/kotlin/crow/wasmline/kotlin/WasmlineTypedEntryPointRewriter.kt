@@ -6,6 +6,8 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -94,14 +96,12 @@ internal class WasmlineTypedEntryPointRewriter(
                 val wasmline = call.extensionReceiverArgument() ?: return null
                 val endpointClass = runtimeSymbols.generatedHostEndpointClass ?: return null
                 val endpointConstructor = endpointClass.owner.constructors.single()
-                val linkConstructor = bridgeClass.constructors.single {
-                    it.parameters.count { parameter -> parameter.kind == IrParameterKind.Regular } == 1 &&
-                        it.parameters.first { parameter -> parameter.kind == IrParameterKind.Regular }.type.classifierOrNull == runtimeSymbols.endpointClass
-                }
-                builder.irCallConstructor(linkConstructor.symbol, emptyList()).apply {
+                val bridgeConstructor = bridgeClass.constructors.single()
+                builder.irCallConstructor(bridgeConstructor.symbol, emptyList()).apply {
                     arguments[0] = builder.irCallConstructor(endpointConstructor.symbol, emptyList()).apply {
                         arguments[0] = wasmline
                     }
+                    arguments[1] = builder.irNull()
                 }
             }
 
@@ -113,7 +113,7 @@ internal class WasmlineTypedEntryPointRewriter(
                 builder.irInvoke(
                     null,
                     bindGenerated,
-                    buildBindBridge(builder, bridgeClass, contract, implementation),
+                    buildBindBridge(builder, bridgeClass, implementation, runtimeSymbols),
                     extensionReceiver = wasmline,
                     typeHint = pluginContext.irBuiltIns.unitType,
                 )
@@ -126,7 +126,7 @@ internal class WasmlineTypedEntryPointRewriter(
                 builder.irInvoke(
                     null,
                     bindGenerated,
-                    buildBindBridge(builder, bridgeClass, contract, implementation),
+                    buildBindBridge(builder, bridgeClass, implementation, runtimeSymbols),
                     typeHint = pluginContext.irBuiltIns.unitType,
                 )
             }
@@ -197,15 +197,13 @@ internal class WasmlineTypedEntryPointRewriter(
 internal fun buildBindBridge(
     builder: DeclarationIrBuilder,
     bridgeClass: IrClass,
-    contract: IrClass,
     implementation: IrExpression,
+    runtimeSymbols: WasmlineRuntimeSymbols,
 ): IrExpression {
-    val bindConstructor = bridgeClass.constructors.single {
-        it.parameters.count { parameter -> parameter.kind == IrParameterKind.Regular } == 1 &&
-            it.parameters.first { parameter -> parameter.kind == IrParameterKind.Regular }.type.classifierOrNull == contract.symbol
-    }
-    return builder.irCallConstructor(bindConstructor.symbol, emptyList()).apply {
-        arguments[0] = implementation
+    val bridgeConstructor = bridgeClass.constructors.single()
+    return builder.irCallConstructor(bridgeConstructor.symbol, emptyList()).apply {
+        arguments[0] = builder.irGetObject(runtimeSymbols.unlinkedEndpointObject)
+        arguments[1] = implementation
     }
 }
 
@@ -249,5 +247,3 @@ internal fun IrCall.extensionReceiverArgument(): IrExpression? {
 internal fun IrExpression.classLiteralContract(): IrClass? {
     return (((this as? IrClassReference)?.symbol) as? IrClassSymbol)?.owner?.asWasmlineServiceContract()
 }
-
-

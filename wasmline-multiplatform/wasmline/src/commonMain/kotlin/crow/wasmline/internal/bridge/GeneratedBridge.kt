@@ -10,7 +10,9 @@ package crow.wasmline.internal.bridge
  * (action,payload -> implementation method).
  */
 @PublishedApi
-internal interface WasmlineGeneratedBridge : (String, ByteArray) -> ByteArray {
+internal interface WasmlineGeneratedBridge {
+    operator fun invoke(action: String, payload: ByteArray): ByteArray
+
     fun bind(registerAction: (String, (ByteArray) -> ByteArray) -> Unit)
 }
 
@@ -39,5 +41,4 @@ internal fun <T : Any> requireGeneratedImplementation(implementation: T?, contra
 internal fun unknownGeneratedAction(contractId: String, action: String): Nothing {
     error("Unknown Wasmline action '$action' for generated bridge $contractId.")
 }
-
 

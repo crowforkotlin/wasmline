@@ -26,18 +26,14 @@ kotlin {
                 api(libs.crow.wasmline.loader)
 
                 api(projects.sampleCommon)
+
                 api(compose.material3)
                 api(compose.components.resources)
                 api(compose.runtime)
                 api(compose.foundation)
                 api(compose.material)
                 api(compose.ui)
-                api(libs.jetbrains.compose.components.resources)
-                api(libs.jetbrains.lifecycle.viewmodel)
-                api(libs.jetbrains.lifecycle.runtime.compose)
-                api(libs.jetbrains.compose.material.window)
-                api(libs.jetbrains.compose.material.icons.core)
-                api(libs.coil)
+
 
                 api(libs.kotlinx.serialization.json)
                 api(libs.kotlinx.serialization.protobuf)
@@ -45,11 +41,18 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
+                api(libs.jetbrains.compose.components.resources)
                 api(libs.androidx.activity.compose)
             }
         }
         val desktopMain by getting {
             dependencies {
+                api(libs.jetbrains.lifecycle.viewmodel)
+                api(libs.jetbrains.lifecycle.runtime.compose)
+                api(libs.jetbrains.compose.material.window)
+                api(libs.jetbrains.compose.material.icons.core)
+                api(libs.coil)
+
                 api(compose.desktop.currentOs)
                 api(libs.jetbrains.jewel.decorated)
                 api(libs.conveyor)

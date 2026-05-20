@@ -23,6 +23,14 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
+    wasmJs {
+        browser()
+        binaries.library()
+    }
+    js {
+        browser()
+        binaries.library()
+    }
     wasmWasi {
         nodejs()
         binaries.library()
@@ -83,6 +91,9 @@ kotlin {
         val hostMain by creating { dependsOn(other = commonMain) }
         val jniMain by creating { dependsOn(other = hostMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
+        val webMain by getting { dependsOn(other = hostMain) }
+        val jsMain by getting { dependsOn(other = webMain) }
+        val wasmJsMain by getting { dependsOn(other = webMain) }
 //        val macosArm64Main by getting { dependsOn(hostMain) }
 //        val linuxX64Main by getting { dependsOn(jvmMain) }
 //        val mingwX64Main by getting { dependsOn(jvmMain) }

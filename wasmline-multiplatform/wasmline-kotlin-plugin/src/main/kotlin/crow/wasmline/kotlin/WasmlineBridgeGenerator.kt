@@ -94,8 +94,7 @@ internal fun generateBridge(
     bridgeClass.declarations += endpointField
     bridgeClass.declarations += implementationField
 
-    addLinkConstructor(bridgeClass, contract, endpointField, implementationField, pluginContext, runtimeSymbols)
-    addBindConstructor(bridgeClass, contract, endpointField, implementationField, pluginContext, runtimeSymbols)
+    addBridgeConstructor(bridgeClass, contract, endpointField, implementationField, pluginContext, runtimeSymbols)
 
     contractFunctions.forEach { contractFunction ->
         bridgeClass.declarations += generateBridgeContractMethod(
@@ -139,8 +138,8 @@ internal fun generateBridge(
     return bridgeClass
 }
 
-/** Adds the constructor used by rewritten `link()` entrypoints. */
-private fun addLinkConstructor(
+/** Adds the single constructor used by rewritten `link()` and `bind()` entrypoints. */
+private fun addBridgeConstructor(
     bridgeClass: IrClass,
     contract: IrClass,
     endpointField: IrField,
@@ -153,40 +152,13 @@ private fun addLinkConstructor(
         visibility = DescriptorVisibilities.PUBLIC
     }.apply {
         val endpointParameter = addValueParameter("endpoint", runtimeSymbols.endpointType())
+        val implementationParameter = addValueParameter("implementation", contract.defaultType.makeNullable())
         irConstructorBody(pluginContext) { statements ->
             initializeBridgeConstructorState(
                 pluginContext = pluginContext,
                 bridgeClass = bridgeClass,
                 endpointField = endpointField,
                 endpointValue = irGet(endpointParameter),
-                implementationField = implementationField,
-                implementationValue = irNull(),
-                statements = statements,
-            )
-        }
-    }
-}
-
-/** Adds the constructor used by rewritten `bind()` entrypoints. */
-private fun addBindConstructor(
-    bridgeClass: IrClass,
-    contract: IrClass,
-    endpointField: IrField,
-    implementationField: IrField,
-    pluginContext: IrPluginContext,
-    runtimeSymbols: WasmlineRuntimeSymbols,
-) {
-    bridgeClass.addConstructor {
-        initDefaults(contract)
-        visibility = DescriptorVisibilities.PUBLIC
-    }.apply {
-        val implementationParameter = addValueParameter("implementation", contract.defaultType)
-        irConstructorBody(pluginContext) { statements ->
-            initializeBridgeConstructorState(
-                pluginContext = pluginContext,
-                bridgeClass = bridgeClass,
-                endpointField = endpointField,
-                endpointValue = irGetObject(runtimeSymbols.unlinkedEndpointObject),
                 implementationField = implementationField,
                 implementationValue = irGet(implementationParameter),
                 statements = statements,
@@ -332,7 +304,7 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.generateBindActi
             +irReturn(
                 value = irInvoke(
                     dispatchReceiver = irGet(owner.dispatchReceiverParameter!!),
-                    callee = runtimeSymbols.function2InvokeFunction,
+                    callee = runtimeSymbols.generatedBridgeInvokeFunction,
                     irString(action),
                     irGet(payloadParameter),
                 ),
@@ -367,7 +339,7 @@ private fun generateBridgeDispatcherMethod(
         returnType = runtimeSymbols.byteArrayClass.owner.defaultType,
         isOperator = true,
     ).apply {
-        overriddenSymbols = listOf(runtimeSymbols.function2InvokeFunction)
+        overriddenSymbols = listOf(runtimeSymbols.generatedBridgeInvokeFunction)
         parameters += buildReceiverParameter {
             type = bridgeClass.defaultType
         }

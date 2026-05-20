@@ -24,13 +24,22 @@ interface WasmlineValueCodec {
     fun decode(payload: ByteArray): Any?
 }
 
+private fun describeCodecValue(value: Any?): String {
+    return when (value) {
+        null -> "null"
+        is ByteArray -> "kotlin.ByteArray"
+        Unit -> "kotlin.Unit"
+        else -> value.toString()
+    }
+}
+
 /** Built-in bridge codec for phase-one `ByteArray` payloads. */
 object WasmlineByteArrayCodec : WasmlineValueCodec {
     override val typeId: String = "kotlin.ByteArray"
 
     override fun encode(value: Any?): ByteArray {
         require(value is ByteArray) {
-            "Expected ByteArray for codec '$typeId', but was ${value?.let { it::class.qualifiedName } ?: "null"}."
+            "Expected ByteArray for codec '$typeId', but was ${describeCodecValue(value)}."
         }
         return value
     }
@@ -44,7 +53,7 @@ object WasmlineUnitCodec : WasmlineValueCodec {
 
     override fun encode(value: Any?): ByteArray {
         require(value == null || value === Unit) {
-            "Expected Unit for codec '$typeId', but was ${value?.let { it::class.qualifiedName } ?: "null"}."
+            "Expected Unit for codec '$typeId', but was ${describeCodecValue(value)}."
         }
         return ByteArray(0)
     }
@@ -67,5 +76,4 @@ object WasmlineBuiltinConvertFactory : WasmlineConvertFactory {
         }
     }
 }
-
 

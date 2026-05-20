@@ -17,6 +17,12 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+includeBuild("../../wasmline-multiplatform") {
+    dependencySubstitution {
+        substitute(module("crow.wasmline:wasmline")).using(project(":wasmline"))
+        substitute(module("crow.wasmline:wasmline-loader")).using(project(":wasmline-loader"))
+    }
+}
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {

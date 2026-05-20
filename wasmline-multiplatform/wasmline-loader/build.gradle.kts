@@ -24,6 +24,14 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
+    wasmJs {
+        browser()
+        binaries.library()
+    }
+    js {
+        browser()
+        binaries.library()
+    }
     if (HostManager.hostIsMac) {
         listOf(
             iosArm64(),
@@ -50,6 +58,7 @@ kotlin {
         val jniMain by creating { dependsOn(other = hostMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
+        val webMain by getting { dependsOn(other = hostMain) }
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)

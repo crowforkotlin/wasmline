@@ -132,7 +132,9 @@ V2 当前阶段新增一条硬约束：
 - [ ] iOS callback 仍存在 `findAny()` 的生产 blocker。**根因已明确**：C 层 `OutboundCallback` 函数签名为 `char* (*)(action, actionLen, payload, payloadLen)`，不携带 `key` 参数；而 Kotlin/Native 的 `staticCFunction` 不允许捕获上下文，导致回调触发时无法识别来源模块。详见下方 §10.2 分析。当前因 `Windows` 环境暂缓本地实现与验证，待切换到 `macOS/iOS` 环境后恢复处理。
 - [ ] `iosStaticOutboundCallback` 当前仍为 TODO 占位实现（始终返回 `null`），尚未真正分发到 `WasmlineHostDispatcher`。
 - [~] `wasmline` runtime 内部已存在共享的本地文件加载 helper（`WasmlineRuntimeLoader`），JNI 和 iOS 均已接入；Host 侧 `WasmlineLoader` 已形成独立入口，但更完整的 public API 收口仍待继续推进。
-- [x] `LocalPackageFile` / `RemotePackageUrl` 已补自定义 resolver 扩展点，不再只能立刻 fail-fast；后续仍需继续接上 cache / manifest / signature 主链路。
+- [x] `LocalPackageFile` / `RemotePackageUrl` 已补自定义 resolver 扩展点，不再只能立刻 fail-fast。
+- [x] `LocalPackageFile` 已可直接读取当前 `manifest.wlm`（签名 envelope protobuf）、按宿主目标选择 colocated artifact，并在进入 runtime 前校验 artifact `sha256`。
+- [ ] `RemotePackageUrl`、cache、manifest signature 验证主链路仍未完成。
 - [ ] `WasmlineLoadRequest`、`WasmlineSource`、`WasmlineArtifact` 等 Host 级加载抽象仍应落在 `wasmline-loader` 模块，尚未完成正式迁移与公开 API 收口。
 - [ ] Plugin 侧仍保留顶层过渡入口，Host / Plugin 文档尚未完全统一为"先拿到 wasmline，再 bind/link"。
 
@@ -471,10 +473,10 @@ wasmline.setLogger(...)
 
 未来会扩展为：
 
-- 下载 `.wlm`
+- 下载远端 package / manifest 入口
 - 解析 manifest / metadata
-- 校验签名
-- 提取 wasm / compiled artifact
+- 校验 manifest 签名
+- 选择并获取目标 artifact
 - 使用缓存
 - 最终生成 `Wasmline` 实例
 
@@ -491,7 +493,7 @@ wasmline.setLogger(...)
 sealed interface WasmlineSource {
     data class LocalFile(val path: String) : WasmlineSource
     data class RemoteUrl(val url: String) : WasmlineSource
-    data class LocalPackage(val path: String) : WasmlineSource // .wlm
+    data class LocalPackage(val path: String) : WasmlineSource // 当前为 manifest.wlm，而非 archive
 }
 ```
 
@@ -714,10 +716,10 @@ wasmline.isClosed
 
 #### 任务
 
-1. [ ] 定义 `WasmlineLoadRequest`：应作为 `wasmline-loader` 的 Host 级公开请求模型落地；
-2. [ ] 定义 `WasmlineSource` / `WasmlineArtifact`：应由 `wasmline-loader` 统一承载 source/package/artifact 语义，而不是继续留在 runtime 模块；
-3. [ ] 设计 cache / manifest / signature 的扩展插槽；
-4. [ ] 让 loader 能同时支持本地与未来远程来源。
+1. [x] 已定义 `WasmlineLoadRequest`：当前已作为 `wasmline-loader` 的 Host 级请求模型落地；
+2. [x] 已定义 `WasmlineSource` / `WasmlineArtifact`：当前由 `wasmline-loader` 统一承载 source/package/artifact 语义；
+3. [~] cache / manifest / signature 的扩展插槽已起步：resolver 扩展点已接入，本地 `manifest.wlm` 主链路已落地，但 manifest signature 与 cache 仍待补齐；
+4. [~] loader 已同时具备本地 artifact、本地 `manifest.wlm`、以及未来远程来源的入口模型，但远程主链路仍未实现。
 
 #### 完成标志
 

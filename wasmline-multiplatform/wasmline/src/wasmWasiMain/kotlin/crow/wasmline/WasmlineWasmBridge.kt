@@ -45,6 +45,8 @@ internal object WasmlineWasmBridge {
 
     /** Reads a host-owned inbound buffer into a wasm-managed [ByteArray]. */
     fun readBytesFromHost(type: Int, size: Int): ByteArray {
+        if (size <= 0) return ByteArray(0)
+
         // ScopedAllocator allocates linear-memory pages on the stack with minimal overhead.
         withScopedMemoryAllocator { allocator ->
             val pointer = allocator.allocate(size)
@@ -59,6 +61,11 @@ internal object WasmlineWasmBridge {
 
     /** Writes the wasm result buffer back to the host runtime. */
     fun  sendResult(result: ByteArray) {
+        if (result.isEmpty()) {
+            bridge_inbound_set_response(0, 0)
+            return
+        }
+
         withScopedMemoryAllocator { allocator ->
             val size = result.size
             val pointer = allocator.allocate(size)
@@ -82,19 +89,29 @@ internal object WasmlineWasmBridge {
 
         withScopedMemoryAllocator { allocator ->
             // Prepare input buffers in wasm linear memory.
-            val aPtr = allocator.allocate(actionBytes.size)
-            for (i in actionBytes.indices) (aPtr + i).storeByte(actionBytes[i])
+            val aPtrAddress = if (actionBytes.isEmpty()) {
+                0
+            } else {
+                val aPtr = allocator.allocate(actionBytes.size)
+                for (i in actionBytes.indices) (aPtr + i).storeByte(actionBytes[i])
+                aPtr.address.toInt()
+            }
 
-            val pPtr = allocator.allocate(payload.size)
-            for (i in payload.indices) (pPtr + i).storeByte(payload[i])
+            val pPtrAddress = if (payload.isEmpty()) {
+                0
+            } else {
+                val pPtr = allocator.allocate(payload.size)
+                for (i in payload.indices) (pPtr + i).storeByte(payload[i])
+                pPtr.address.toInt()
+            }
 
             // Reserve a small scratch buffer for the common fast-path response.
             val tempResultPtr = allocator.allocate(PRE_ALLOC_SIZE)
 
             // Invoke the host and let it decide whether the fast-path buffer is sufficient.
             val resultStatus = bridge_outbound_call_host(
-                aPtr.address.toInt(), actionBytes.size,
-                pPtr.address.toInt(), payload.size,
+                aPtrAddress, actionBytes.size,
+                pPtrAddress, payload.size,
                 tempResultPtr.address.toInt(), PRE_ALLOC_SIZE
             )
 

@@ -23,7 +23,7 @@
 |---|---|---|
 | `wasmline-loader` 成为 Host 主入口 | 已完成 | Host 样例与 Host 编译面测试已切到 `loadWasmline(...)`，`Wasmline.load(...)` 保留为 runtime 直接桥接入口 |
 | `engine / loader / module` 三层语义拆分 | 已放弃 | 不再把 engine 拆成新的公开 API，继续保留 `Wasmline.init() / shutdown()` 这一现有使用模型 |
-| Loader 数据链路收口 | 进行中 | `LocalPackageFile / RemotePackageUrl` 已补自定义 resolver 扩展点，后续仍需继续补 cache/manifest/signature 主链路 |
+| Loader 数据链路收口 | 进行中 | `LocalPackageFile` 已可直接加载当前 `manifest.wlm`（签名 envelope）并完成 artifact 选择与 sha256 校验；`RemotePackageUrl`、cache、manifest signature 验证仍待补齐 |
 | Host / Plugin 使用模型统一 | 待做 | Plugin 顶层 `bind()` 过渡入口仍在，文档/样例未统一叙述 |
 | Runtime public API 最终收口 | 待做 | 可见性审计未完成，剩余 runtime helper 与过渡 API 仍待继续收口 |
 | iOS callback 模块定位 blocker | **环境暂缓** | 根因已明确，待切换到 macOS/iOS 环境后恢复 |
@@ -81,18 +81,18 @@
 
 ### 步骤 3 — 把 loader 数据链路补完整
 
-**当前问题**：`WasmlineLoadRequest / WasmlineSource / WasmlineArtifact` 已存在；当前已补上 `LocalPackageFile / RemotePackageUrl` 的自定义 resolver 扩展点，但 cache、manifest、signature 主链路仍未设计。
+**当前问题**：`WasmlineLoadRequest / WasmlineSource / WasmlineArtifact` 已存在；当前 `LocalPackageFile` 已能直接读取本地 `manifest.wlm`、选择匹配宿主的 artifact，并校验 artifact `sha256` 后继续进入 runtime，但 `RemotePackageUrl`、cache、manifest signature 主链路仍未补齐。
 
 **要做的事**：
 
 - 梳理 `LocalArtifactFile / LocalPackageFile / RemotePackageUrl` 各自的边界：
   - `LocalArtifactFile`：调用方已持有预编译 artifact 本地路径，直接交给 runtime。
-  - `LocalPackageFile`：调用方持有 `.wlm` 包文件本地路径，需要 loader 负责解包、选择 artifact、验证 manifest。
+  - `LocalPackageFile`：调用方持有当前格式的 `manifest.wlm` 本地路径；loader 负责读取签名 envelope、选择 artifact、校验 artifact 完整性，并把解析后的本地 artifact 交给 runtime。
   - `RemotePackageUrl`：需要 loader 负责下载、缓存、manifest 校验、artifact 选择。
 - 基于现有 resolver 扩展点继续梳理后续正式主链路应该如何接入 cache、manifest、signature。
 - 确认 `WasmlineLoadRequest.metadata` 的用途边界；cache key、签名策略等需要的扩展字段应放在哪一层。
 
-**完成标志**：loader 数据链路有明确的职责文档；`LocalPackageFile / RemotePackageUrl` 已可通过 resolver 扩展进入正式加载流程，后续只剩主链路补全。
+**完成标志**：当前 `LocalPackageFile` 主链路可直接工作，`RemotePackageUrl` 及 cache / manifest signature 链路的职责文档明确，后续只剩远程与校验能力补全。
 
 ---
 

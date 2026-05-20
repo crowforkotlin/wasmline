@@ -1,5 +1,7 @@
 @file:Suppress("PackageDirectoryMismatch", "unused", "UnstableApiUsage")
+@file:OptIn(ExperimentalWasmDsl::class)
 
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.konan.target.HostManager
 
 
@@ -13,7 +15,7 @@ plugins {
 
 kotlin {
 
-    jvmToolchain {
+    jvmToolchain    {
         languageVersion.set(JavaLanguageVersion.of(21))
         vendor.set(JvmVendorSpec.JETBRAINS)
     }
@@ -25,6 +27,20 @@ kotlin {
     }
 
     jvm(name = "desktop")
+
+    wasmJs {
+        nodejs()
+        browser()
+        binaries.library()
+        binaries.executable()
+    }
+
+    js {
+        nodejs()
+        browser()
+        binaries.library()
+        binaries.executable()
+    }
 
     if (HostManager.hostIsMac) {
         listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
