@@ -4,6 +4,7 @@
 package crow.wasmline.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.multiple
@@ -113,7 +114,7 @@ class Build : CliktCommand(name = "build") {
         val wasmtimeExec = Compile.findWasmtimeExecutable(wasmtimeDir)
         if (wasmtimeExec == null) {
             echo("Error: Could not find 'wasmtime' executable in ${wasmtimeDir.absolutePath}", err = true)
-            return
+            throw ProgramResult(1)
         }
         echo("Using Wasmtime: ${wasmtimeExec.absolutePath}")
 
@@ -131,7 +132,7 @@ class Build : CliktCommand(name = "build") {
         val artifacts = Compile.compileAll(wasmtimeExec, inputFile, outputDir, resolvedName, finalTargets) { echo(it) }
         if (artifacts.isEmpty()) {
             echo("Error: No artifacts compiled successfully. Aborting.", err = true)
-            return
+            throw ProgramResult(1)
         }
 
         Compile.writeCompileResult(inputFile, debugDir, artifacts)

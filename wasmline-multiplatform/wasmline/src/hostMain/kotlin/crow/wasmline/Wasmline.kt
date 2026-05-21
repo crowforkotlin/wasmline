@@ -20,9 +20,11 @@ expect class Wasmline internal constructor(moduleKey: String) {
          *
          * Host-facing package/manifest/download workflows should prefer the
          * `wasmline-loader` module, while this API remains the direct runtime
-         * bridge for prepared local `.wasm`, `.cwasm`, or `.pwasm` artifacts.
+         * bridge for prepared local artifacts accepted by the current host.
+         * Browser hosts load raw `.wasm`, while Wasmtime-based hosts require
+         * precompiled `.cwasm` or `.pwasm`.
          *
-         * @param filepath Local module artifact path, supports `.wasm`, `.cwasm`, or `.pwasm`
+         * @param filepath Local module artifact path for the current host runtime
          */
         fun load(filepath: String, threadSafe: Boolean = false): WasmlineLoadState
 

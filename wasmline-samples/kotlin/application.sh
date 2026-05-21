@@ -4,14 +4,14 @@ set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SAMPLE_ROOT="${SCRIPT_DIR}"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 MULTIPLATFORM_ROOT="${REPO_ROOT}/wasmline-multiplatform"
 WASMLINE_MODULE_ROOT="${MULTIPLATFORM_ROOT}/wasmline"
 WASMLINE_CLI_ROOT="${MULTIPLATFORM_ROOT}/wasmline-cli"
 SAMPLE_PLUGIN_ROOT="${SAMPLE_ROOT}/sample-plugin"
-DESKTOP_RESOURCE_DIR="${SAMPLE_ROOT}/sample-apps/multiplatform/desktopApp/src/main/resources"
-COMPILE_OUTPUT_ROOT="${SAMPLE_ROOT}/build/desktop-output"
+APPLICATION_RESOURCE_DIR="${SAMPLE_ROOT}/sample-apps/application/src/main/resources"
+COMPILE_OUTPUT_ROOT="${SAMPLE_ROOT}/build/application-output"
 SHARED_WASMTIME_ROOT="${REPO_ROOT}/build/wasmline/wasmtime"
 PLATFORM=""
 WASMTIME_VERSION=""
@@ -22,7 +22,7 @@ print_help() {
 Usage:
   ./${SCRIPT_NAME} [--platform VALUE]
 
-Build and run the desktop sample.
+Build and run the application sample.
 
 Options:
   --platform VALUE   Wasmtime target used by wasmline-cli compile.
@@ -289,7 +289,7 @@ if [ -z "$WASMTIME_EXECUTABLE" ]; then
     fi
 fi
 if [ -z "$WASMTIME_EXECUTABLE" ] || [ -z "$WASMTIME_DIR" ]; then
-    echo "Wasmtime executable not found in shared toolchain cache for ${PLATFORM}; desktop sample cannot compile .pwasm yet." >&2
+    echo "Wasmtime executable not found in shared toolchain cache for ${PLATFORM}; application sample cannot compile .pwasm yet." >&2
     echo "Tried cache root: ${SHARED_WASMTIME_ROOT}" >&2
     exit 1
 fi
@@ -309,8 +309,8 @@ run_gradle "$SAMPLE_ROOT" :sample-plugin:compileProductionLibraryKotlinWasmWasiO
 PLUGIN_WASM_INPUT_DIR="${SAMPLE_PLUGIN_ROOT}/build/compileSync/wasmWasi/main/productionLibrary/optimized"
 PLUGIN_WASM_INPUT_FILE="$(find_first_file "$PLUGIN_WASM_INPUT_DIR" "*.wasm" "sample plugin wasm input")"
 
-mkdir -p "$DESKTOP_RESOURCE_DIR"
-rm -f "$DESKTOP_RESOURCE_DIR/plugin.generated.pwasm"
+mkdir -p "$APPLICATION_RESOURCE_DIR"
+rm -f "$APPLICATION_RESOURCE_DIR/plugin.generated.pwasm"
 
 CLI_COMPILE_ARGS="$(render_args \
     compile \
@@ -321,8 +321,7 @@ CLI_COMPILE_ARGS="$(render_args \
     -a pulley64
 )"
 
-# Desktop sample only needs the pulley64 artifact that gets copied into resources below.
 run_gradle "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$CLI_COMPILE_ARGS"
-PLUGIN_OUTPUT_FILE="$(find_first_file "$COMPILE_OUTPUT_ROOT" "*-pulley64.pwasm" "desktop plugin artifact" 2)"
-cp "$PLUGIN_OUTPUT_FILE" "$DESKTOP_RESOURCE_DIR/plugin.generated.pwasm"
-run_gradle "$SAMPLE_ROOT" :sample-apps:multiplatform:desktopApp:run
+PLUGIN_OUTPUT_FILE="$(find_first_file "$COMPILE_OUTPUT_ROOT" "*-pulley64.pwasm" "application plugin artifact" 2)"
+cp "$PLUGIN_OUTPUT_FILE" "$APPLICATION_RESOURCE_DIR/plugin.generated.pwasm"
+run_gradle "$SAMPLE_ROOT" :sample-apps:application:run

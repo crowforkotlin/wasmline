@@ -1,8 +1,8 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.wasmline)
     application
 }
-
 
 java {
     toolchain {
@@ -10,6 +10,9 @@ java {
     }
 }
 
-application { mainClass = "crow.wasmline.wasmline.AppKt" }
+application { mainClass = "crow.wasmline.sample.application.MainKt" }
 
-dependencies { }
+dependencies {
+    implementation(libs.crow.wasmline.loader)
+    implementation(project(":sample-common"))
+}

@@ -3,6 +3,7 @@
 package crow.wasmline.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.help
@@ -16,6 +17,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.contentLength
+import io.ktor.http.isSuccess
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -75,11 +77,20 @@ class Download : CliktCommand(name = "download") {
             .ifEmpty { listOf("latest") }
 
         val currentPlatform = archOption ?: detectPlatform()
+        var hasFailure = false
         withContext(Dispatchers.IO) {
             if (!outputDir.exists()) outputDir.mkdirs()
             targetVersions.forEach { version ->
-                processDownload(version, currentPlatform)
+                runCatching {
+                    processDownload(version, currentPlatform)
+                }.onFailure { throwable ->
+                    hasFailure = true
+                    echo("Error: ${throwable.message}", err = true)
+                }
             }
+        }
+        if (hasFailure) {
+            throw ProgramResult(1)
         }
     }
 
@@ -91,78 +102,123 @@ class Download : CliktCommand(name = "download") {
      * @formatter:on
      */
     private suspend fun processDownload(version: String, platform: String) {
-        try {
-            val url = if (version == "latest") REPOSITORY else "$BASE_URL/tags/$version"
-            val responseText = client.get(url).bodyAsText()
-            val releaseJson = Json.decodeFromString<JsonObject>(responseText)
-            val assets = releaseJson["assets"]?.jsonArray ?: return
+        val releaseJson = resolveRelease(version)
+        val assets = releaseJson["assets"]?.jsonArray
+            ?: throw IllegalStateException("Release for '$version' did not contain any assets")
 
-            val filteredAssets = assets.map { it.jsonObject }.filter { asset ->
-                val name = asset["name"]?.jsonPrimitive?.content ?: ""
-                val isNotCApi = !name.contains("c-api")
-                val matchesPlatform = platform == "all" || name.contains(platform)
-                isNotCApi && matchesPlatform
-            }
-
-            filteredAssets.forEach { asset ->
-                val fileName = asset["name"]?.jsonPrimitive?.content ?: return@forEach
-                val downloadUrl = asset["browser_download_url"]?.jsonPrimitive?.content ?: return@forEach
-                val folderName = fileName.removeSuffix(".tar.xz").removeSuffix(".zip")
-                val targetFolder = File(outputDir, folderName)
-                val successFile = File(targetFolder, ".success")
-                if (successFile.exists() && !forceDownload) {
-                    println("Skipping: $fileName (Already exists and complete)")
-                    return@forEach
-                }
-                if (targetFolder.exists()) {
-                    targetFolder.deleteRecursively()
-                }
-                targetFolder.mkdirs()
-
-                val tempFile = File(outputDir, fileName)
-                println("Downloading: $fileName")
-
-                val response = client.get(downloadUrl)
-                val totalBytes = response.contentLength() ?: 0L
-                val channel = response.bodyAsChannel()
-
-                FileOutputStream(tempFile).use { output ->
-                    val buffer = ByteArray(8192)
-                    var downloadedBytes = 0L
-                    while (!channel.isClosedForRead) {
-                        val read = channel.readAvailable(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
-                        downloadedBytes += read
-                        if (totalBytes > 0) printProgress(downloadedBytes, totalBytes)
-                    }
-                }
-                println()
-
-                try {
-                    when {
-                        fileName.endsWith(".tar.xz") -> {
-                            println("Extracting TAR.XZ: $fileName...")
-                            extractTarXz(tempFile, outputDir)
-                        }
-                        fileName.endsWith(".zip") -> {
-                            println("Extracting ZIP: $fileName...")
-                            extractZip(tempFile, outputDir)
-                        }
-                    }
-                    // 解压成功后，写入成功标记
-                    successFile.writeText("version=$version\nplatform=$platform\nurl=$downloadUrl")
-                } catch (e: Exception) {
-                    println("Extraction failed: ${e.message}")
-                    targetFolder.deleteRecursively() // 失败了就清理掉
-                    throw e
-                } finally {
-                    tempFile.delete() // 无论成功失败都删掉压缩包
-                }
-            }
-        } catch (e: Exception) {
-            println("\nError: ${e.message}")
+        val filteredAssets = assets.map { it.jsonObject }.filter { asset ->
+            val name = asset["name"]?.jsonPrimitive?.content ?: ""
+            val isNotCApi = !name.contains("c-api")
+            val matchesPlatform = platform == "all" || name.contains(platform)
+            isNotCApi && matchesPlatform
         }
+
+        if (filteredAssets.isEmpty()) {
+            throw IllegalStateException("No wasmtime assets matched version '$version' for platform '$platform'")
+        }
+
+        filteredAssets.forEach { asset ->
+            val fileName = asset["name"]?.jsonPrimitive?.content
+                ?: throw IllegalStateException("Missing asset name in release metadata")
+            val downloadUrl = asset["browser_download_url"]?.jsonPrimitive?.content
+                ?: throw IllegalStateException("Missing download url for asset '$fileName'")
+            val folderName = fileName.removeSuffix(".tar.xz").removeSuffix(".zip")
+            val targetFolder = File(outputDir, folderName)
+            val successFile = File(targetFolder, ".success")
+            if (successFile.exists() && !forceDownload) {
+                println("Skipping: $fileName (Already exists and complete)")
+                return@forEach
+            }
+            if (targetFolder.exists()) {
+                targetFolder.deleteRecursively()
+            }
+            targetFolder.mkdirs()
+
+            val tempFile = File(outputDir, fileName)
+            println("Downloading: $fileName")
+
+            val response = client.get(downloadUrl)
+            if (!response.status.isSuccess()) {
+                targetFolder.deleteRecursively()
+                throw IllegalStateException("Download failed for '$fileName' with HTTP ${response.status.value}")
+            }
+            val totalBytes = response.contentLength() ?: 0L
+            val channel = response.bodyAsChannel()
+
+            FileOutputStream(tempFile).use { output ->
+                val buffer = ByteArray(8192)
+                var downloadedBytes = 0L
+                while (!channel.isClosedForRead) {
+                    val read = channel.readAvailable(buffer)
+                    if (read == -1) break
+                    output.write(buffer, 0, read)
+                    downloadedBytes += read
+                    if (totalBytes > 0) printProgress(downloadedBytes, totalBytes)
+                }
+            }
+            println()
+
+            try {
+                when {
+                    fileName.endsWith(".tar.xz") -> {
+                        println("Extracting TAR.XZ: $fileName...")
+                        extractTarXz(tempFile, outputDir)
+                    }
+                    fileName.endsWith(".zip") -> {
+                        println("Extracting ZIP: $fileName...")
+                        extractZip(tempFile, outputDir)
+                    }
+                    else -> {
+                        targetFolder.deleteRecursively()
+                        throw IllegalStateException("Unsupported archive type for '$fileName'")
+                    }
+                }
+                successFile.writeText("version=$version\nplatform=$platform\nurl=$downloadUrl")
+            } catch (e: Exception) {
+                println("Extraction failed: ${e.message}")
+                targetFolder.deleteRecursively()
+                throw e
+            } finally {
+                tempFile.delete()
+            }
+        }
+    }
+
+    private suspend fun resolveRelease(version: String): JsonObject {
+        val urls = if (version == "latest") {
+            listOf(REPOSITORY)
+        } else {
+            candidateTags(version).map { "$BASE_URL/tags/$it" }
+        }
+
+        val failures = mutableListOf<String>()
+        urls.forEach { url ->
+            val response = client.get(url)
+            if (!response.status.isSuccess()) {
+                failures += "$url -> HTTP ${response.status.value}"
+                return@forEach
+            }
+            val body = response.bodyAsText()
+            val releaseJson = Json.decodeFromString<JsonObject>(body)
+            if (releaseJson["assets"] != null) {
+                return releaseJson
+            }
+            failures += "$url -> missing assets"
+        }
+        throw IllegalStateException(
+            "Unable to resolve wasmtime release for '$version'. Tried: ${failures.joinToString("; ")}"
+        )
+    }
+
+    private fun candidateTags(version: String): List<String> {
+        val raw = version.trim()
+        val base = raw.removePrefix("release-").removePrefix("v")
+        return listOf(
+            raw,
+            "v$base",
+            "release-$raw",
+            "release-v$base"
+        ).distinct()
     }
 
     /**

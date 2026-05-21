@@ -37,9 +37,9 @@ sealed interface WasmlineSource {
 /**
  * Host-side resolver hooks for non-artifact load sources.
  *
- * The current runtime can only execute prepared local `.cwasm` / `.pwasm`
- * artifacts, so richer source types must be translated by the loader layer
- * before they reach the runtime bridge.
+ * Package workflows currently target prepared local `.cwasm` / `.pwasm`
+ * artifacts for Wasmtime-based hosts, so richer source types must be
+ * translated by the loader layer before they reach the runtime bridge.
  */
 data class WasmlineSourceResolvers(
     val localPackage: WasmlineLocalPackageResolver? = null,

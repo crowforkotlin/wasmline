@@ -42,6 +42,18 @@ internal object BrowserWasmlineRuntime {
                     )
                 }
 
+                override fun backendCodeOrNull(path: String): Byte? {
+                    return if (path.substringAfterLast('.', "").lowercase() == "wasm") {
+                        WasmlineLoadState.CODE_SUCCESS_WASM
+                    } else {
+                        null
+                    }
+                }
+
+                override fun unsupportedArtifactMessage(path: String): String {
+                    return "[Wasmline] Browser web host only supports raw .wasm artifacts: $path"
+                }
+
                 override fun loadPrecompiled(moduleKey: String, path: String): Boolean {
                     return WasmlineWebModuleRegistry.load(moduleKey, path)
                 }

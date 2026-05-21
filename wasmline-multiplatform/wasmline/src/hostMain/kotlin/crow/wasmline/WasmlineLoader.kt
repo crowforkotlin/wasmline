@@ -6,12 +6,12 @@ internal data class ResolvedPrecompiledArtifact(
 )
 
 /**
- * Shared local precompiled-artifact bridge for runtime platform actuals.
+ * Shared local-artifact bridge for runtime platform actuals.
  *
  * This object intentionally stays internal to the `wasmline` runtime module.
  * Host-facing package/manifest/download/signature workflows belong in the
  * separate `wasmline-loader` module, while this bridge only centralizes the
- * final local artifact validation and native load flow used by JNI/iOS actuals.
+ * final local artifact validation and host load flow used by platform actuals.
  */
 internal object WasmlineLocalArtifactBridge {
     internal fun load(
@@ -25,10 +25,10 @@ internal object WasmlineLocalArtifactBridge {
             )
 
         val resolvedArtifactPath = resolvedArtifact.artifactPath
-        val code = resolvedArtifactPath.backendCodeOrNull()
+        val code = platform.backendCodeOrNull(resolvedArtifactPath)
             ?: return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,
-                cause = "[Wasmline] Load failure, only .cwasm or .pwasm artifacts are supported: $resolvedArtifactPath",
+                cause = platform.unsupportedArtifactMessage(resolvedArtifactPath),
             )
 
         if (!platform.loadPrecompiled(resolvedArtifact.moduleKey, resolvedArtifactPath)) {
@@ -49,15 +49,17 @@ internal interface WasmlinePlatformArtifactBridge {
     fun createWasmline(moduleKey: String): Wasmline
     fun resolveArtifact(path: String): ResolvedPrecompiledArtifact?
     fun loadPrecompiled(moduleKey: String, path: String): Boolean
+    fun backendCodeOrNull(path: String): Byte? = path.precompiledBackendCodeOrNull()
+    fun unsupportedArtifactMessage(path: String): String =
+        "[Wasmline] Load failure, only .cwasm or .pwasm artifacts are supported on Wasmtime hosts: $path"
     fun loadFailureMessage(path: String): String =
         "[Wasmline] Load failure, because native load return false, artifact path is : $path"
 }
 
-private fun String.backendCodeOrNull(): Byte? {
+private fun String.precompiledBackendCodeOrNull(): Byte? {
     return when (substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
         "cwasm" -> WasmlineLoadState.CODE_SUCCESS_AOT
         "pwasm" -> WasmlineLoadState.CODE_SUCCESS_PULLEY
-        "wasm" -> WasmlineLoadState.CODE_SUCCESS_WASM
         else -> null
     }
 }

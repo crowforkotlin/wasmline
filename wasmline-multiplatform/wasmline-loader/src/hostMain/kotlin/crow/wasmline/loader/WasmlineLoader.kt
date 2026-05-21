@@ -50,9 +50,10 @@ fun loadWasmline(
 /**
  * Minimal Host loader for the current V2 phase.
  *
- * Today the runtime only accepts prepared local `.cwasm` / `.pwasm`
- * artifacts. Package and remote sources are intentionally modeled here first,
- * but remain unsupported until manifest/package resolution is implemented.
+ * Package workflows still resolve to precompiled local `.cwasm` / `.pwasm`
+ * artifacts for Wasmtime-based hosts. Browser hosts may directly load raw
+ * `.wasm` through runtime APIs, but manifest/package resolution remains
+ * precompiled-artifact only for now.
  *
  * 2026-04-08
  * @author crowforkotlin
