@@ -3,7 +3,14 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+import crow.wasmline.serialization.WasmlineSerializationFactory
 import kotlin.reflect.KClass
+
+@PublishedApi
+internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFactory = serializationFactory
+
+@PublishedApi
+internal fun currentGeneratedSerializationFactory(): WasmlineSerializationFactory = Wasmline.current.serializationFactory
 
 @PublishedApi
 internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
@@ -40,4 +47,3 @@ fun <T : WasmlineService> bind(contract: KClass<T>, implementation: T) {
 fun bind(implementation: WasmlineService) {
     Wasmline.current.bind(implementation)
 }
-

@@ -91,15 +91,31 @@ internal fun generateBridge(
         type = contract.defaultType.makeNullable(),
         name = Name.identifier("implementation"),
     )
+    val serializationFactoryField = createPrivateField(
+        owner = bridgeClass,
+        pluginContext = pluginContext,
+        type = runtimeSymbols.serializationFactoryType(),
+        name = Name.identifier("serializationFactory"),
+    )
     bridgeClass.declarations += endpointField
     bridgeClass.declarations += implementationField
+    bridgeClass.declarations += serializationFactoryField
 
-    addBridgeConstructor(bridgeClass, contract, endpointField, implementationField, pluginContext, runtimeSymbols)
+    addBridgeConstructor(
+        bridgeClass,
+        contract,
+        endpointField,
+        implementationField,
+        serializationFactoryField,
+        pluginContext,
+        runtimeSymbols,
+    )
 
     contractFunctions.forEach { contractFunction ->
         bridgeClass.declarations += generateBridgeContractMethod(
             bridgeClass = bridgeClass,
             endpointField = endpointField,
+            serializationFactoryField = serializationFactoryField,
             contractFunction = contractFunction,
             pluginContext = pluginContext,
             runtimeSymbols = runtimeSymbols,
@@ -116,6 +132,7 @@ internal fun generateBridge(
     bridgeClass.declarations += generateBridgeDispatcherMethod(
         bridgeClass = bridgeClass,
         implementationField = implementationField,
+        serializationFactoryField = serializationFactoryField,
         contract = contract,
         contractFunctions = contractFunctions,
         pluginContext = pluginContext,
@@ -144,6 +161,7 @@ private fun addBridgeConstructor(
     contract: IrClass,
     endpointField: IrField,
     implementationField: IrField,
+    serializationFactoryField: IrField,
     pluginContext: IrPluginContext,
     runtimeSymbols: WasmlineRuntimeSymbols,
 ) {
@@ -153,6 +171,7 @@ private fun addBridgeConstructor(
     }.apply {
         val endpointParameter = addValueParameter("endpoint", runtimeSymbols.endpointType())
         val implementationParameter = addValueParameter("implementation", contract.defaultType.makeNullable())
+        val serializationFactoryParameter = addValueParameter("serializationFactory", runtimeSymbols.serializationFactoryType())
         irConstructorBody(pluginContext) { statements ->
             initializeBridgeConstructorState(
                 pluginContext = pluginContext,
@@ -161,6 +180,8 @@ private fun addBridgeConstructor(
                 endpointValue = irGet(endpointParameter),
                 implementationField = implementationField,
                 implementationValue = irGet(implementationParameter),
+                serializationFactoryField = serializationFactoryField,
+                serializationFactoryValue = irGet(serializationFactoryParameter),
                 statements = statements,
             )
         }
@@ -171,6 +192,7 @@ private fun addBridgeConstructor(
 private fun generateBridgeContractMethod(
     bridgeClass: IrClass,
     endpointField: IrField,
+    serializationFactoryField: IrField,
     contractFunction: IrSimpleFunction,
     pluginContext: IrPluginContext,
     runtimeSymbols: WasmlineRuntimeSymbols,
@@ -204,9 +226,22 @@ private fun generateBridgeContractMethod(
                 irGet(dispatchReceiverParameter!!),
                 endpointField,
             )
+            val serializationFactory = irGetField(
+                irGet(dispatchReceiverParameter!!),
+                serializationFactoryField,
+            )
             val payload = when (regularParameters.size) {
                 0 -> irInvoke(null, runtimeSymbols.emptyPayloadFunction)
-                else -> irGet(regularParameters.single())
+                else -> irInvoke(
+                    dispatchReceiver = null,
+                    callee = runtimeSymbols.encodeGeneratedValueFunction,
+                    typeArguments = listOf(regularParameters.single().type),
+                    valueArguments = listOf(
+                        serializationFactory,
+                        irGet(regularParameters.single()),
+                    ),
+                    returnTypeHint = runtimeSymbols.byteArrayClass.owner.defaultType,
+                )
             }
             val invokeCall = irInvoke(
                 endpoint,
@@ -218,7 +253,13 @@ private fun generateBridgeContractMethod(
                 +irImplicitCoercionToUnit(invokeCall)
             } else {
                 +irReturn(
-                    value = invokeCall,
+                    value = irInvoke(
+                        dispatchReceiver = null,
+                        callee = runtimeSymbols.decodeGeneratedValueFunction,
+                        typeArguments = listOf(contractFunction.returnType),
+                        valueArguments = listOf(serializationFactory, invokeCall),
+                        returnTypeHint = contractFunction.returnType,
+                    ),
                     returnTargetSymbol = symbol,
                 )
             }
@@ -325,6 +366,7 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.generateBindActi
 private fun generateBridgeDispatcherMethod(
     bridgeClass: IrClass,
     implementationField: IrField,
+    serializationFactoryField: IrField,
     contract: IrClass,
     contractFunctions: List<IrSimpleFunction>,
     pluginContext: IrPluginContext,
@@ -359,6 +401,7 @@ private fun generateBridgeDispatcherMethod(
                         value = dispatcherResultExpression(
                             bridgeThis = bridgeThis,
                             implementationField = implementationField,
+                            serializationFactoryField = serializationFactoryField,
                             contract = contract,
                             contractFunction = contractFunction,
                             payloadParameter = payloadParameter,
@@ -386,6 +429,7 @@ private fun generateBridgeDispatcherMethod(
 private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResultExpression(
     bridgeThis: IrExpression,
     implementationField: IrField,
+    serializationFactoryField: IrField,
     contract: IrClass,
     contractFunction: IrSimpleFunction,
     payloadParameter: IrValueParameter,
@@ -403,6 +447,7 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResult
         returnTypeHint = contract.defaultType,
     )
     val regularParameters = contractFunction.parameters.filter { it.kind == IrParameterKind.Regular }
+    val serializationFactory = irGetField(bridgeThis, serializationFactoryField)
     val implementationCall = when (regularParameters.size) {
         0 -> irInvoke(
             implementation,
@@ -412,7 +457,13 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResult
         else -> irInvoke(
             implementation,
             contractFunction.symbol,
-            irGet(payloadParameter),
+            irInvoke(
+                dispatchReceiver = null,
+                callee = runtimeSymbols.decodeGeneratedValueFunction,
+                typeArguments = listOf(regularParameters.single().type),
+                valueArguments = listOf(serializationFactory, irGet(payloadParameter)),
+                returnTypeHint = regularParameters.single().type,
+            ),
         )
     }
     return if (contractFunction.returnType.isKotlinUnitType()) {
@@ -426,7 +477,13 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResult
             statements += irInvoke(null, runtimeSymbols.emptyPayloadFunction)
         }
     } else {
-        implementationCall
+        irInvoke(
+            dispatchReceiver = null,
+            callee = runtimeSymbols.encodeGeneratedValueFunction,
+            typeArguments = listOf(contractFunction.returnType),
+            valueArguments = listOf(serializationFactory, implementationCall),
+            returnTypeHint = runtimeSymbols.byteArrayClass.owner.defaultType,
+        )
     }
 }
 
@@ -460,6 +517,8 @@ private fun DeclarationIrBuilder.initializeBridgeConstructorState(
     endpointValue: IrExpression,
     implementationField: IrField,
     implementationValue: IrExpression,
+    serializationFactoryField: IrField,
+    serializationFactoryValue: IrExpression,
     statements: MutableList<IrStatement>,
 ) {
     val anyClass = pluginContext.irBuiltIns.anyType.classifierOrNull as IrClassSymbol
@@ -480,6 +539,11 @@ private fun DeclarationIrBuilder.initializeBridgeConstructorState(
         receiver = irGet(bridgeClass.thisReceiver!!),
         field = implementationField,
         value = implementationValue,
+    )
+    statements += irSetField(
+        receiver = irGet(bridgeClass.thisReceiver!!),
+        field = serializationFactoryField,
+        value = serializationFactoryValue,
     )
 }
 

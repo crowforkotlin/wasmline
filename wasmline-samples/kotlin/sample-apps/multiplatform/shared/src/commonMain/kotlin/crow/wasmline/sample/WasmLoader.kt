@@ -6,17 +6,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import crow.wasmline.Wasmline
+import crow.wasmline.WasmlineConfig
 import crow.wasmline.bind
 import crow.wasmline.link
+import crow.wasmline.loader.loadWasmline
 import crow.wasmline.onFailure
 import crow.wasmline.onSuccess
-import crow.wasmline.loader.loadWasmline
+import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.sample.extensions.getPlatformBean
 import crow.wasmline.sample.extensions.info
 import crow.wasmline.sample.bean.PlatformBean
-import crow.wasmline.sample.extensions.baseProtobuf
 import crow.wasmline.sample.extensions.toJsonString
-import crow.wasmline.sample.extensions.toProtoBytes
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
 import kotlin.time.measureTime
@@ -27,7 +27,11 @@ internal class WasmLoader {
 
     fun loadWasm(artifactAbsPath: String): Wasmline? {
         if (wasmline == null) {
-            loadWasmline(artifactPath = artifactAbsPath, threadSafe = false)
+            loadWasmline(
+                artifactPath = artifactAbsPath,
+                threadSafe = false,
+                config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+            )
                 .onSuccess {
                     wasmline.bind(object : EchoService {
                         override fun echo() {
@@ -48,9 +52,7 @@ internal class WasmLoader {
             val duration = measureTime {
                 val platform = getPlatformBean()
                 "[WasmLoader] call time sync platform:  $platform".info()
-                val bytes = wasmline!!.link<TimeSyncService>()
-                    .timeSync(toProtoBytes<PlatformBean>(value = platform))
-                platformBean = baseProtobuf.decodeFromByteArray(PlatformBean.serializer(),bytes)
+                platformBean = wasmline!!.link<TimeSyncService>().timeSync(platform)
             }
             "[WasmLoader] call time sync spend : ${duration.inWholeMilliseconds} ms".info()
         }

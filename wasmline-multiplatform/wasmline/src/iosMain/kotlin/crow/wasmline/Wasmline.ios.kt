@@ -10,7 +10,10 @@ import platform.Foundation.NSFileManager
 // 必须导入我们在 common 定义的类
 // 假设 WasmlineLoadState 和 WasmlineHostDispatcher 在 commonMain 定义了
 
-actual class Wasmline actual internal constructor(private val moduleKey: String) {
+actual class Wasmline actual internal constructor(
+    private val moduleKey: String,
+    actual val config: WasmlineConfig,
+) {
 
     actual companion object {
         actual fun init() {
@@ -26,14 +29,18 @@ actual class Wasmline actual internal constructor(private val moduleKey: String)
          */
         actual fun load(
             filepath: String,
-            threadSafe: Boolean
+            threadSafe: Boolean,
+            config: WasmlineConfig,
         ): WasmlineLoadState {
             val fileManager = NSFileManager.defaultManager
             val isUnsafe = !threadSafe
             return WasmlineLocalArtifactBridge.load(
                 artifactPath = filepath,
+                config = config,
                 platform = object : WasmlinePlatformArtifactBridge {
-                    override fun createWasmline(moduleKey: String): Wasmline = Wasmline(moduleKey)
+                    override fun createWasmline(moduleKey: String, config: WasmlineConfig): Wasmline {
+                        return Wasmline(moduleKey, config)
+                    }
 
                     override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? {
                         if (!fileManager.fileExistsAtPath(path)) return null

@@ -16,6 +16,7 @@ internal data class ResolvedPrecompiledArtifact(
 internal object WasmlineLocalArtifactBridge {
     internal fun load(
         artifactPath: String,
+        config: WasmlineConfig,
         platform: WasmlinePlatformArtifactBridge
     ): WasmlineLoadState {
         val resolvedArtifact = platform.resolveArtifact(artifactPath)
@@ -40,13 +41,13 @@ internal object WasmlineLocalArtifactBridge {
 
         return WasmlineLoadState.Success(
             code = code,
-            wasmline = platform.createWasmline(resolvedArtifact.moduleKey),
+            wasmline = platform.createWasmline(resolvedArtifact.moduleKey, config),
         )
     }
 }
 
 internal interface WasmlinePlatformArtifactBridge {
-    fun createWasmline(moduleKey: String): Wasmline
+    fun createWasmline(moduleKey: String, config: WasmlineConfig): Wasmline
     fun resolveArtifact(path: String): ResolvedPrecompiledArtifact?
     fun loadPrecompiled(moduleKey: String, path: String): Boolean
     fun backendCodeOrNull(path: String): Byte? = path.precompiledBackendCodeOrNull()

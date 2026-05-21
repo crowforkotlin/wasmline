@@ -28,6 +28,7 @@ internal class WasmlineRuntimeSymbols(
 ) {
     val wasmlineClass: IrClassSymbol? = referenceClass(MAIN_PACKAGE, "Wasmline")
     val byteArrayClass: IrClassSymbol = requireClass("kotlin", "ByteArray")
+    val serializationFactoryClass: IrClassSymbol = requireClass(SERIALIZATION_PACKAGE, "WasmlineSerializationFactory")
     val function1Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(1).symbol
     val function2Class: IrClassSymbol = pluginContext.irBuiltIns.functionN(2).symbol
     val function2InvokeFunction: IrSimpleFunctionSymbol = requireFunction(function2Class, "invoke", 2)
@@ -67,6 +68,16 @@ internal class WasmlineRuntimeSymbols(
         functionName = "unknownGeneratedAction",
         regularParameterCount = 2,
     )
+    val encodeGeneratedValueFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "encodeGeneratedValue",
+        regularParameterCount = 2,
+    )
+    val decodeGeneratedValueFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "decodeGeneratedValue",
+        regularParameterCount = 2,
+    )
     val hostBindSingleFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
         packageName = MAIN_PACKAGE,
         functionName = "bind",
@@ -103,9 +114,19 @@ internal class WasmlineRuntimeSymbols(
         extensionReceiverClassName = "Wasmline",
         regularParameterCount = 1,
     )
+    val generatedSerializationFactoryFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
+        packageName = MAIN_PACKAGE,
+        functionName = "generatedSerializationFactory",
+        extensionReceiverClassName = "Wasmline",
+        regularParameterCount = 0,
+    )
     val topLevelBindGeneratedFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
         callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("bindGenerated")),
         regularParameterCount = 1,
+    )
+    val currentGeneratedSerializationFactoryFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
+        callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("currentGeneratedSerializationFactory")),
+        regularParameterCount = 0,
     )
 
     fun isHostLinkCall(symbol: IrSimpleFunctionSymbol): Boolean = matchesExtensionFunction(
@@ -171,6 +192,10 @@ internal class WasmlineRuntimeSymbols(
 
     fun generatedBridgeType(): IrType {
         return generatedBridgeClass.owner.defaultType
+    }
+
+    fun serializationFactoryType(): IrType {
+        return serializationFactoryClass.owner.defaultType
     }
 
     fun bridgeClassName(contract: IrClass): Name {
@@ -318,8 +343,8 @@ internal class WasmlineRuntimeSymbols(
     private companion object {
         const val MAIN_PACKAGE = "crow.wasmline"
         const val SPI_PACKAGE = "crow.wasmline.internal.bridge"
+        const val SERIALIZATION_PACKAGE = "crow.wasmline.serialization"
     }
 }
-
 
 

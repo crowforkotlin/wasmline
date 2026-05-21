@@ -97,11 +97,13 @@ internal class WasmlineTypedEntryPointRewriter(
                 val endpointClass = runtimeSymbols.generatedHostEndpointClass ?: return null
                 val endpointConstructor = endpointClass.owner.constructors.single()
                 val bridgeConstructor = bridgeClass.constructors.single()
+                val serializationFactory = builder.generatedSerializationFactory(wasmline, runtimeSymbols) ?: return null
                 builder.irCallConstructor(bridgeConstructor.symbol, emptyList()).apply {
                     arguments[0] = builder.irCallConstructor(endpointConstructor.symbol, emptyList()).apply {
                         arguments[0] = wasmline
                     }
                     arguments[1] = builder.irNull()
+                    arguments[2] = serializationFactory
                 }
             }
 
@@ -110,10 +112,11 @@ internal class WasmlineTypedEntryPointRewriter(
                 val wasmline = call.extensionReceiverArgument() ?: return null
                 val bindGenerated = runtimeSymbols.hostBindGeneratedFunction ?: return null
                 val implementation = bindImplementationArgument(call, runtimeSymbols) ?: return null
+                val serializationFactory = builder.generatedSerializationFactory(wasmline, runtimeSymbols) ?: return null
                 builder.irInvoke(
                     null,
                     bindGenerated,
-                    buildBindBridge(builder, bridgeClass, implementation, runtimeSymbols),
+                    buildBindBridge(builder, bridgeClass, implementation, serializationFactory, runtimeSymbols),
                     extensionReceiver = wasmline,
                     typeHint = pluginContext.irBuiltIns.unitType,
                 )
@@ -123,10 +126,11 @@ internal class WasmlineTypedEntryPointRewriter(
                 runtimeSymbols.isTopLevelBindSingleCall(call.symbol) -> {
                 val bindGenerated = runtimeSymbols.topLevelBindGeneratedFunction ?: return null
                 val implementation = bindImplementationArgument(call, runtimeSymbols) ?: return null
+                val serializationFactory = builder.currentGeneratedSerializationFactory(runtimeSymbols) ?: return null
                 builder.irInvoke(
                     null,
                     bindGenerated,
-                    buildBindBridge(builder, bridgeClass, implementation, runtimeSymbols),
+                    buildBindBridge(builder, bridgeClass, implementation, serializationFactory, runtimeSymbols),
                     typeHint = pluginContext.irBuiltIns.unitType,
                 )
             }
@@ -198,12 +202,14 @@ internal fun buildBindBridge(
     builder: DeclarationIrBuilder,
     bridgeClass: IrClass,
     implementation: IrExpression,
+    serializationFactory: IrExpression,
     runtimeSymbols: WasmlineRuntimeSymbols,
 ): IrExpression {
     val bridgeConstructor = bridgeClass.constructors.single()
     return builder.irCallConstructor(bridgeConstructor.symbol, emptyList()).apply {
         arguments[0] = builder.irGetObject(runtimeSymbols.unlinkedEndpointObject)
         arguments[1] = implementation
+        arguments[2] = serializationFactory
     }
 }
 
@@ -241,6 +247,30 @@ internal fun IrCall.extensionReceiverArgument(): IrExpression? {
         .firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
         ?: return null
     return arguments[parameter.indexInParameters]
+}
+
+private fun DeclarationIrBuilder.generatedSerializationFactory(
+    wasmline: IrExpression,
+    runtimeSymbols: WasmlineRuntimeSymbols,
+): IrExpression? {
+    val function = runtimeSymbols.generatedSerializationFactoryFunction ?: return null
+    return irInvoke(
+        null,
+        function,
+        extensionReceiver = wasmline,
+        typeHint = runtimeSymbols.serializationFactoryType(),
+    )
+}
+
+private fun DeclarationIrBuilder.currentGeneratedSerializationFactory(
+    runtimeSymbols: WasmlineRuntimeSymbols,
+): IrExpression? {
+    val function = runtimeSymbols.currentGeneratedSerializationFactoryFunction ?: return null
+    return irInvoke(
+        null,
+        function,
+        typeHint = runtimeSymbols.serializationFactoryType(),
+    )
 }
 
 /** Resolves a class literal expression such as `Foo::class` back to its contract type. */

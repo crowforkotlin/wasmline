@@ -5,6 +5,8 @@ package crow.wasmline
 import crow.wasmline.internal.bridge.WasmlineEndpoint
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.serialization.WasmlineSerializationFactory
+import crow.wasmline.serialization.WasmlineSerializationRegistry
 import kotlin.reflect.KClass
 
 @PublishedApi
@@ -14,6 +16,11 @@ internal class GeneratedWasmlineHostEndpoint(
     override fun invoke(action: String, payload: ByteArray): ByteArray {
         return wasmline.call(action, payload)
     }
+}
+
+@PublishedApi
+internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFactory {
+    return WasmlineSerializationRegistry.requireFactory(config.serialization.factoryId)
 }
 
 @PublishedApi
@@ -51,5 +58,4 @@ private fun Map<String, (ByteArray) -> ByteArray>.toHostDispatcher(): WasmlineHo
         handler(payload)
     }
 }
-
 

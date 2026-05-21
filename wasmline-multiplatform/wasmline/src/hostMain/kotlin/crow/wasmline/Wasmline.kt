@@ -11,7 +11,9 @@ import crow.wasmline.internal.bridge.WasmlineHostDispatcher
  * local-artifact runtime bridge. Host-facing package/manifest/download
  * workflows should still go through the `wasmline-loader` module first.
  */
-expect class Wasmline internal constructor(moduleKey: String) {
+expect class Wasmline internal constructor(moduleKey: String, config: WasmlineConfig) {
+
+    val config: WasmlineConfig
 
     companion object {
 
@@ -26,7 +28,11 @@ expect class Wasmline internal constructor(moduleKey: String) {
          *
          * @param filepath Local module artifact path for the current host runtime
          */
-        fun load(filepath: String, threadSafe: Boolean = false): WasmlineLoadState
+        fun load(
+            filepath: String,
+            threadSafe: Boolean = false,
+            config: WasmlineConfig = WasmlineConfig(),
+        ): WasmlineLoadState
 
         /**
          * Initialize the global Engine.

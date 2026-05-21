@@ -2,12 +2,19 @@ package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 
-actual class Wasmline internal actual constructor(moduleKey: String) {
+actual class Wasmline internal actual constructor(
+    moduleKey: String,
+    actual val config: WasmlineConfig,
+) {
     private val delegate = BrowserWasmline(moduleKey)
 
     actual companion object {
-        actual fun load(filepath: String, threadSafe: Boolean): WasmlineLoadState {
-            return BrowserWasmlineRuntime.load(filepath, threadSafe, ::Wasmline)
+        actual fun load(
+            filepath: String,
+            threadSafe: Boolean,
+            config: WasmlineConfig,
+        ): WasmlineLoadState {
+            return BrowserWasmlineRuntime.load(filepath, threadSafe, config, ::Wasmline)
         }
 
         actual fun init() = BrowserWasmlineRuntime.init()

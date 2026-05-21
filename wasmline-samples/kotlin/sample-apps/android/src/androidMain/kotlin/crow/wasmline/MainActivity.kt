@@ -11,19 +11,17 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import crow.apps.android.databinding.ActivityMainBinding
-import crow.wasmline.extensions.Data
 import crow.wasmline.extensions.info
 import crow.wasmline.loader.loadWasmline
+import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
+import crow.wasmline.serialization.WasmlineSerializationConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.system.measureTimeMillis
@@ -32,7 +30,6 @@ class MainActivity : AppCompatActivity() {
 
     private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val baseJson = Json { isLenient = true; prettyPrint = true; }
-    private val baseProtobuf = ProtoBuf { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,7 +55,13 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 "==============================================".info()
-                val data = ProtoBuf.encodeToByteArray(Data(1, "CrowF", "DataKey"))
+                val now = System.currentTimeMillis()
+                val data = PlatformBean(
+                    platform = "Android",
+                    content = "Hello from android",
+                    timeStr = now.toString(),
+                    timeMs = now,
+                )
                 val artifactFile = File(cacheDir, "plugin.pwasm")
                 "[Android] Artifact file : ${artifactFile.name}    ||    exists : ${artifactFile.exists()}    ||    path : ${artifactFile.absolutePath}".info()
                 if (!artifactFile.exists()) {
@@ -69,7 +72,12 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 var startMs = System.currentTimeMillis()
-                when (val loadState = loadWasmline(artifactPath = artifactFile.absolutePath)) {
+                when (
+                    val loadState = loadWasmline(
+                        artifactPath = artifactFile.absolutePath,
+                        config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+                    )
+                ) {
                     is WasmlineLoadState.Failure -> { loadState.cause.info() }
                     is WasmlineLoadState.Success -> {
                         if (loadState.code == WasmlineLoadState.CODE_SUCCESS_PULLEY) {
@@ -87,7 +95,7 @@ class MainActivity : AppCompatActivity() {
                         val result = module.link<TimeSyncService>().timeSync(data)
                         val duration = System.currentTimeMillis() - startMs
                         "[Android] MainActivity --> spend time invokeInbound function --------> $duration ms.".info()
-                        withContext(Dispatchers.Main) { binding.content.text = "Result : \n\n${baseJson.encodeToString(ProtoBuf.decodeFromByteArray<Data>(result))}\n\ncall function duration : $duration ms" }
+                        withContext(Dispatchers.Main) { binding.content.text = "Result : \n\n${baseJson.encodeToString(result)}\n\ncall function duration : $duration ms" }
                     }
                 }
             } catch (e: Exception) {

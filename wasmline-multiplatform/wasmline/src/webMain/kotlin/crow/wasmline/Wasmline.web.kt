@@ -22,7 +22,12 @@ internal class BrowserWasmline(private val moduleKey: String) {
 }
 
 internal object BrowserWasmlineRuntime {
-    fun load(filepath: String, threadSafe: Boolean, createWasmline: (String) -> Wasmline): WasmlineLoadState {
+    fun load(
+        filepath: String,
+        threadSafe: Boolean,
+        config: WasmlineConfig,
+        createWasmline: (String, WasmlineConfig) -> Wasmline,
+    ): WasmlineLoadState {
         if (threadSafe) {
             return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,
@@ -32,8 +37,11 @@ internal object BrowserWasmlineRuntime {
 
         return WasmlineLocalArtifactBridge.load(
             artifactPath = filepath,
+            config = config,
             platform = object : WasmlinePlatformArtifactBridge {
-                override fun createWasmline(moduleKey: String): Wasmline = createWasmline(moduleKey)
+                override fun createWasmline(moduleKey: String, config: WasmlineConfig): Wasmline {
+                    return createWasmline(moduleKey, config)
+                }
 
                 override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? {
                     return ResolvedPrecompiledArtifact(
@@ -267,7 +275,7 @@ private fun newRawWasmlineBrowserModule(): RawWasmlineBrowserModule = js(
             writeBytes(pointer, source.subarray(0, length));
           },
           bridge_inbound_set_response(pointer, length) {
-            inboundResponse = readBytes(pointer, length);
+            inboundResponse = length === 0 ? new Uint8Array(0) : readBytes(pointer, length);
           },
           bridge_outbound_call_host(actionPointer, actionLength, payloadPointer, payloadLength, outPointer, outLength) {
             if (!dispatcher) {

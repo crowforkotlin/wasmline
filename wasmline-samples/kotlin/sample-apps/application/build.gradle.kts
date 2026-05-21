@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.wasmline)
+    alias(libs.plugins.kotlin.serialization)
     application
 }
 
@@ -14,5 +15,7 @@ application { mainClass = "crow.wasmline.sample.application.MainKt" }
 
 dependencies {
     implementation(libs.crow.wasmline.loader)
-    implementation(project(":sample-common"))
+    implementation(libs.kotlinx.serialization.protobuf)
+    implementation(projects.sampleCommon)
+
 }

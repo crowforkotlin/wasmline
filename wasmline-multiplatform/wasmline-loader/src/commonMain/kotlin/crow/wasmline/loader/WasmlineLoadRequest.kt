@@ -1,5 +1,6 @@
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadState
 
 /**
@@ -14,6 +15,7 @@ import crow.wasmline.WasmlineLoadState
 data class WasmlineLoadRequest(
     val source: WasmlineSource,
     val threadSafe: Boolean = false,
+    val config: WasmlineConfig = WasmlineConfig(),
     val metadata: Map<String, String> = emptyMap(),
     val resolvers: WasmlineSourceResolvers = WasmlineSourceResolvers(),
 )

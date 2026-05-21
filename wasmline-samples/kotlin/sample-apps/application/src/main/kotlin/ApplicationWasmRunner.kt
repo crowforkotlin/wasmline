@@ -1,14 +1,14 @@
 package crow.wasmline.sample.application
 
 import crow.wasmline.Wasmline
+import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.loadWasmline
+import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toJsonString
-import crow.wasmline.sample.extensions.toProtoBean
-import crow.wasmline.sample.extensions.toProtoBytes
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
 import java.io.File
@@ -25,7 +25,13 @@ internal fun runApplicationSample() {
     println("[Application] Loading bundled artifact ($resourceName) from: ${artifactFile.absolutePath}")
 
     try {
-        when (val loadState = loadWasmline(artifactPath = artifactFile.absolutePath, threadSafe = false)) {
+        when (
+            val loadState = loadWasmline(
+                artifactPath = artifactFile.absolutePath,
+                threadSafe = false,
+                config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+            )
+        ) {
             is WasmlineLoadState.Failure -> {
                 error("[Application] Failed to load wasm: ${loadState.cause}")
             }
@@ -47,9 +53,8 @@ internal fun runApplicationSample() {
                 )
                 println("[Application] Sending request: ${toJsonString(request)}")
 
-                val response = module.link<TimeSyncService>().timeSync(toProtoBytes(request))
-                val bean = toProtoBean<PlatformBean>(response)
-                println("[Application] Plugin response: ${toJsonString(bean)}")
+                val response = module.link<TimeSyncService>().timeSync(request)
+                println("[Application] Plugin response: ${toJsonString(value = response)}")
                 module.close()
             }
         }

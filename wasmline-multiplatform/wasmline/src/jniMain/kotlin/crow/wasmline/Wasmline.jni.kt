@@ -6,7 +6,10 @@ import crow.wasmline.extensions.loadNativeLibrary
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import java.io.File
 
-actual class Wasmline internal actual constructor(private val moduleKey: String) {
+actual class Wasmline internal actual constructor(
+    private val moduleKey: String,
+    actual val config: WasmlineConfig,
+) {
 
     actual companion object {
 
@@ -16,11 +19,18 @@ actual class Wasmline internal actual constructor(private val moduleKey: String)
          * load module
          * @param filepath Local module artifact path, supports `.cwasm` or `.pwasm`
          */
-        actual fun load(filepath: String, threadSafe: Boolean): WasmlineLoadState {
+        actual fun load(
+            filepath: String,
+            threadSafe: Boolean,
+            config: WasmlineConfig,
+        ): WasmlineLoadState {
             return WasmlineLocalArtifactBridge.load(
                 artifactPath = filepath,
+                config = config,
                 platform = object : WasmlinePlatformArtifactBridge {
-                    override fun createWasmline(moduleKey: String): Wasmline = Wasmline(moduleKey)
+                    override fun createWasmline(moduleKey: String, config: WasmlineConfig): Wasmline {
+                        return Wasmline(moduleKey, config)
+                    }
 
                     override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? {
                         val artifactFile = File(path).absoluteFile

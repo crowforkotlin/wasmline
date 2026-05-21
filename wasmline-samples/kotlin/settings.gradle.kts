@@ -21,6 +21,7 @@ includeBuild("../../wasmline-multiplatform") {
     dependencySubstitution {
         substitute(module("crow.wasmline:wasmline")).using(project(":wasmline"))
         substitute(module("crow.wasmline:wasmline-loader")).using(project(":wasmline-loader"))
+        substitute(module("crow.wasmline:wasmline-kotlin-plugin")).using(project(":wasmline-kotlin-plugin"))
     }
 }
 dependencyResolutionManagement {

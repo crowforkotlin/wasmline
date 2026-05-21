@@ -1,5 +1,6 @@
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineConfig
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineLoadState
 
@@ -36,12 +37,14 @@ fun loadWasmline(
 fun loadWasmline(
     artifactPath: String,
     threadSafe: Boolean = false,
+    config: WasmlineConfig = WasmlineConfig(),
     loader: WasmlineLoader = DefaultWasmlineLoader,
 ): WasmlineLoadState {
     return loadWasmline(
         request = WasmlineLoadRequest(
             source = WasmlineSource.LocalArtifactFile(path = artifactPath),
             threadSafe = threadSafe,
+            config = config,
         ),
         loader = loader,
     )
@@ -82,6 +85,7 @@ object DefaultWasmlineLoader : WasmlineLoader {
             is WasmlineSource.LocalArtifactFile -> Wasmline.load(
                 filepath = source.path,
                 threadSafe = request.threadSafe,
+                config = request.config,
             )
 
             is WasmlineSource.LocalPackageFile -> resolveSource(

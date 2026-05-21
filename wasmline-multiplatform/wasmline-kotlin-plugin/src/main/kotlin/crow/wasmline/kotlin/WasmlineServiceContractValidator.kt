@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 
 /**
- * Finds Wasmline service contracts and validates the phase-one rules applied to them.
+ * Finds Wasmline service contracts and validates the currently supported bridge rules.
  */
 internal class WasmlineServiceContractValidator(
     private val messageCollector: MessageCollector,
@@ -100,7 +100,7 @@ internal class WasmlineServiceContractValidator(
         }
         if (function.isSuspend) {
             isValid = false
-            reportError(messageCollector, file, function, "Suspend Wasmline service methods are not supported in phase one.")
+            reportError(messageCollector, file, function, "Suspend Wasmline service methods are not supported yet.")
         }
         if (function.parameters.any { it.kind == IrParameterKind.ExtensionReceiver }) {
             isValid = false
@@ -118,26 +118,18 @@ internal class WasmlineServiceContractValidator(
             }
             if (parameter.type.isWasmlineServiceType()) {
                 isValid = false
-                reportError(messageCollector, file, parameter, "Passing service contracts as parameters is not supported in phase one.")
-            }
-            if (!parameter.type.isPhaseOnePayloadType()) {
-                isValid = false
-                reportError(messageCollector, file, parameter, "Phase-one Wasmline generation currently supports ByteArray parameters only.")
+                reportError(messageCollector, file, parameter, "Passing service contracts as parameters is not supported yet.")
             }
         }
 
         if (regularParameters.size > 1) {
             isValid = false
-            reportError(messageCollector, file, function, "Phase-one Wasmline generation currently supports at most one regular parameter.")
+            reportError(messageCollector, file, function, "Wasmline service methods currently support at most one regular parameter.")
         }
 
         if (function.returnType.isWasmlineServiceType()) {
             isValid = false
-            reportError(messageCollector, file, function, "Returning service contracts is not supported in phase one.")
-        }
-        if (!function.returnType.isPhaseOneReturnType()) {
-            isValid = false
-            reportError(messageCollector, file, function, "Phase-one Wasmline generation currently supports ByteArray or Unit returns only.")
+            reportError(messageCollector, file, function, "Returning service contracts is not supported yet.")
         }
 
         return isValid
@@ -160,14 +152,6 @@ internal class WasmlineServiceContractValidator(
         val classSymbol = classifierOrNull as? IrClassSymbol ?: return false
         return classSymbol.owner.isWasmlineServiceContract()
     }
-
-    private fun IrType.isPhaseOnePayloadType(): Boolean {
-        val classSymbol = classifierOrNull as? IrClassSymbol ?: return false
-        return classSymbol.owner.fqNameWhenAvailable?.asString() == "kotlin.ByteArray"
-    }
-
-    private fun IrType.isPhaseOneReturnType(): Boolean = isKotlinUnitType() || isPhaseOnePayloadType()
-
     private companion object {
         const val WASMLINE_SERVICE_FQ_NAME = "crow.wasmline.WasmlineService"
     }
