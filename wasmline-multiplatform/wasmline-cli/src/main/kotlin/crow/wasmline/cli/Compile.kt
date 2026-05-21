@@ -16,6 +16,8 @@ import crow.wasmline.cli.models.CompileResult
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -28,6 +30,7 @@ import java.util.Locale
  * build/wasmline/output/{name}-{version}/
  *   ├── {name}-pulley64.pwasm
  *   ├── {name}-aarch64-android.cwasm
+ *   ├── {name}.wasm
  *   └── debug/
  *       └── compile-result.json
  * ```
@@ -91,7 +94,7 @@ class Compile : CliktCommand(name = "compile") {
 
         val artifacts = compileAll(wasmtimeExec, inputFile, outputDir, resolvedName, finalTargets) { echo(it) }
 
-        if (artifacts.isNotEmpty()) {
+        if (artifacts.any { it.type != WasmlineArtifactType.WASM }) {
             val debugDir = File(outputDir, "debug")
             if (!debugDir.exists()) debugDir.mkdirs()
             writeCompileResult(inputFile, debugDir, artifacts)
@@ -99,7 +102,7 @@ class Compile : CliktCommand(name = "compile") {
             echo("Compile result written to: ${File(debugDir, COMPILE_RESULT_FILE).absolutePath}")
             echo("Total artifacts: ${artifacts.size}")
         } else {
-            echo("Error: No artifacts compiled successfully.", err = true)
+            echo("Error: No .cwasm or .pwasm artifacts compiled successfully.", err = true)
             throw ProgramResult(1)
         }
     }
@@ -118,7 +121,7 @@ class Compile : CliktCommand(name = "compile") {
         )
 
         /**
-         * Compile all target architectures and return a list of successful artifacts
+         * Prepare the browser `.wasm` artifact and compile native target artifacts.
          *
          * 2026-02-12 02:46:56
          * @param productName 产物名称前缀（如 "manga"），生成文件名为 manga-target.cwasm
@@ -133,6 +136,7 @@ class Compile : CliktCommand(name = "compile") {
             echo: (String) -> Unit
         ): List<WasmlineArtifact> {
             val artifacts = mutableListOf<WasmlineArtifact>()
+            copyBrowserArtifact(inputFile, outputDir, productName, echo)?.let(artifacts::add)
             targets.forEach { target ->
                 val artifact = compileTarget(wasmtimeExec, inputFile, outputDir, productName, target, echo)
                 if (artifact != null) {
@@ -140,6 +144,33 @@ class Compile : CliktCommand(name = "compile") {
                 }
             }
             return artifacts
+        }
+
+        fun copyBrowserArtifact(
+            inputFile: File,
+            outputDir: File,
+            productName: String,
+            echo: (String) -> Unit
+        ): WasmlineArtifact? {
+            val outFile = File(outputDir, "$productName.wasm")
+            return try {
+                Files.copy(inputFile.toPath(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                echo("--------------------------------------------------")
+                echo("Copying browser wasm artifact")
+                echo("Output: ${outFile.absolutePath}")
+                echo("Success: ${outFile.name}")
+                WasmlineArtifact(
+                    type = WasmlineArtifactType.WASM,
+                    url = outFile.name,
+                    sha256 = sha256Hex(outFile),
+                    targetCpu = "wasmjs",
+                    targetOs = "browser",
+                    is64Bit = true
+                )
+            } catch (e: Exception) {
+                echo("Failed to copy browser wasm artifact: ${e.message}")
+                null
+            }
         }
 
         /**

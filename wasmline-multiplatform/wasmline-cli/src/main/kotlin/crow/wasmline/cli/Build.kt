@@ -35,6 +35,7 @@ import java.util.zip.ZipOutputStream
  * ├── output/
  * │   └── {name}-{version}/
  * │       ├── manifest.wlm
+ * │       ├── {name}.wasm
  * │       ├── {name}-pulley64.pwasm
  * │       ├── {name}-aarch64-android.cwasm
  * │       └── debug/
@@ -130,8 +131,8 @@ class Build : CliktCommand(name = "build") {
         echo("Output: ${outputDir.absolutePath}")
 
         val artifacts = Compile.compileAll(wasmtimeExec, inputFile, outputDir, resolvedName, finalTargets) { echo(it) }
-        if (artifacts.isEmpty()) {
-            echo("Error: No artifacts compiled successfully. Aborting.", err = true)
+        if (artifacts.none { it.type != crow.wasmline.loader.model.WasmlineArtifactType.WASM }) {
+            echo("Error: No .cwasm or .pwasm artifacts compiled successfully. Aborting.", err = true)
             throw ProgramResult(1)
         }
 

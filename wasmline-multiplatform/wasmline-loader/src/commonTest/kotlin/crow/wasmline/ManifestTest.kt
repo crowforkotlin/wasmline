@@ -48,6 +48,13 @@ class ManifestTest {
             metadata = mapOf("git_hash" to "ff99aa", "compatibility" to "strict"),
             artifacts = listOf(
                 WasmlineArtifact(
+                    type = WasmlineArtifactType.WASM,
+                    url = "lib.wasm",
+                    sha256 = "rawwasm00112233",
+                    targetCpu = "wasmjs",
+                    targetOs = "browser"
+                ),
+                WasmlineArtifact(
                     type = WasmlineArtifactType.CWASM,
                     url = "lib.cwasm",
                     sha256 = "deadbeef12345678",

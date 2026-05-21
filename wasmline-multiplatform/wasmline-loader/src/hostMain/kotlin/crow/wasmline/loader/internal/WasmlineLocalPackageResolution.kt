@@ -78,9 +78,25 @@ internal object WasmlineLocalPackageResolution {
 
     private fun WasmlineArtifact.selectionScoreFor(target: WasmlineHostArtifactTarget): Int? {
         return when (type) {
+            WasmlineArtifactType.WASM -> wasmSelectionScore(target)
             WasmlineArtifactType.CWASM -> cwasmSelectionScore(target)
             WasmlineArtifactType.PWASM -> pwasmSelectionScore(target)
         }
+    }
+
+    private fun WasmlineArtifact.wasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
+        if (normalizeOs(target.os) != "browser") {
+            return null
+        }
+        val artifactOs = normalizeOs(targetOs)
+        if (artifactOs != null && artifactOs != "browser") {
+            return null
+        }
+        val artifactCpu = normalizeCpu(targetCpu)
+        if (artifactCpu != null && artifactCpu != target.cpu) {
+            return null
+        }
+        return 500
     }
 
     private fun WasmlineArtifact.cwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
@@ -130,6 +146,7 @@ internal object WasmlineLocalPackageResolution {
             "linux" -> "linux"
             "android" -> "android"
             "ios" -> "ios"
+            "web", "browser" -> "browser"
             else -> value.lowercase()
         }
     }
@@ -139,6 +156,7 @@ internal object WasmlineLocalPackageResolution {
             null -> null
             "amd64", "x86_64" -> "x86_64"
             "arm64", "aarch64" -> "aarch64"
+            "wasm", "wasm32", "wasmjs", "browser" -> "wasmjs"
             else -> value.lowercase()
         }
     }

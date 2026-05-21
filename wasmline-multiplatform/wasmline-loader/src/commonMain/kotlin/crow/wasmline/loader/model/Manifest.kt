@@ -84,14 +84,14 @@ data class WasmlineArtifact(
 )
 
 /**
- * Supported compiled artifact kinds for the current runtime pipeline.
+ * Supported runtime artifact kinds for the current package pipeline.
  *
  * 2026-04-08
  * @author crowforkotlin
  */
 @Serializable
 enum class WasmlineArtifactType {
+    WASM,
     CWASM,
     PWASM,
 }
-

@@ -28,7 +28,7 @@ import java.io.File
  * Expects the directory layout produced by [Compile]:
  * ```
  * {dir}/
- *   ├── *.cwasm / *.pwasm
+ *   ├── *.wasm / *.cwasm / *.pwasm
  *   └── debug/
  *       └── compile-result.json
  * ```
@@ -132,7 +132,7 @@ class Manifest : CliktCommand(name = "manifest") {
             algorithm = "Ed25519"
         )
 
-        // 4. Export manifest.wlm to the product directory (same level as .cwasm/.pwasm)
+        // 4. Export manifest.wlm to the product directory (same level as .wasm/.cwasm/.pwasm)
         val envelopeBytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
         val wlmFile = File(dir, DEFAULT_MANIFEST_NAME)
         wlmFile.writeBytes(envelopeBytes)

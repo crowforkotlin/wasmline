@@ -50,10 +50,9 @@ fun loadWasmline(
 /**
  * Minimal Host loader for the current V2 phase.
  *
- * Package workflows still resolve to precompiled local `.cwasm` / `.pwasm`
- * artifacts for Wasmtime-based hosts. Browser hosts may directly load raw
- * `.wasm` through runtime APIs, but manifest/package resolution remains
- * precompiled-artifact only for now.
+ * Package workflows still resolve to local host-compatible artifacts.
+ * Browser hosts consume raw `.wasm`, while Wasmtime-based hosts resolve to
+ * precompiled `.cwasm` / `.pwasm`.
  *
  * 2026-04-08
  * @author crowforkotlin
@@ -130,7 +129,7 @@ object DefaultWasmlineLoader : WasmlineLoader {
     ): WasmlineLoadState.Failure {
         return WasmlineLoadState.Failure(
             code = WasmlineLoadState.CODE_FAILURE,
-            cause = "$description is not supported yet. Provide $resolverHint to resolve it into a local precompiled .cwasm or .pwasm artifact for the current runtime.",
+            cause = "$description is not supported yet. Provide $resolverHint to resolve it into a local host-compatible artifact for the current runtime.",
         )
     }
 }
