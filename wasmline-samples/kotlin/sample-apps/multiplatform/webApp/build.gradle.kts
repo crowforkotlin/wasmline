@@ -2,7 +2,6 @@
 @file:OptIn(ExperimentalWasmDsl::class)
 
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
-import org.jetbrains.kotlin.konan.target.HostManager
 
 
 plugins {
@@ -11,17 +10,6 @@ plugins {
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.wasmline)
-}
-
-val pluginWasmResourceRoot = layout.buildDirectory.dir("generated/pluginWasm/webMain")
-
-val syncPluginWasmForWeb by tasks.registering(Copy::class) {
-    val pluginProject = project(":sample-plugin")
-    dependsOn(pluginProject.tasks.named("compileProductionLibraryKotlinWasmWasi"))
-    from(pluginProject.layout.buildDirectory.dir("compileSync/wasmWasi/main/productionLibrary/kotlin")) {
-        include("wasmline-sample-sample-plugin.wasm")
-    }
-    into(pluginWasmResourceRoot.map { it.dir("plugin") })
 }
 
 java {
@@ -47,12 +35,5 @@ kotlin {
             implementation(libs.crow.wasmline)
             implementation(libs.kotlinx.coroutines)
         }
-    }
-}
-
-tasks.matching { it.name == "wasmJsProcessResources" || it.name == "jsProcessResources" }.configureEach {
-    dependsOn(syncPluginWasmForWeb)
-    if (this is Copy) {
-        from(pluginWasmResourceRoot)
     }
 }

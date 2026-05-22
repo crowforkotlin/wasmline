@@ -7,8 +7,8 @@ import kotlin.time.Clock
 
 actual fun getPlatformBean(): PlatformBean {
     return PlatformBean(
-        platform = "Desktop",
-        content = "Hello from desktop",
+        platform = "Web Wasm",
+        content = "Hello from browser wasm",
         timeStr = Clock.System.now().toString(),
         timeMs = Clock.System.now().toEpochMilliseconds()
     )

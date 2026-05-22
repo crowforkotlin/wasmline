@@ -20,7 +20,7 @@ java {
 kotlin {
     jvm()
     androidLibrary {
-        namespace = "crow.wasmline"
+        namespace = "crow.wasmline.loader"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
