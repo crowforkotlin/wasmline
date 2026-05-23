@@ -1,21 +1,51 @@
 #!/bin/bash
 
-# 1. 基础路径 (往上跳3级回到根目录)
-PROJECT_ROOT="../.."
-CORE_SRC="$PROJECT_ROOT/wasmline-core/src"
-IOS_SRC="src/iosMain/native"
+set -euo pipefail
 
-# 2. 头文件路径 (包含 wasmtime.h)
-# 请确保 $PROJECT_ROOT/platforms/ios/include 下有 wasmtime.h
-INCLUDE_DIRS="-I$PROJECT_ROOT/wasmline-core/include \
-              -I$PROJECT_ROOT/wasmline-core/include/extensions \
-              -I$IOS_SRC \
-              -I$PROJECT_ROOT/platforms/ios/arm64/include"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+CORE_SRC="${PROJECT_ROOT}/wasmline-core/src"
+IOS_SRC="${SCRIPT_DIR}/src/iosMain/native"
 
-BUILD_DIR="build/ios"
-mkdir -p $BUILD_DIR
+TARGET_KIND="${1:-simulator-arm64}"
+case "$TARGET_KIND" in
+    simulator-arm64|simulator|sim)
+        SDK="iphonesimulator"
+        PLATFORM_DIR="${PROJECT_ROOT}/platforms/ios/simulator-arm64"
+        BUILD_DIR="${SCRIPT_DIR}/build/ios/simulator-arm64"
+        ;;
+    arm64|device|ios-arm64)
+        SDK="iphoneos"
+        PLATFORM_DIR="${PROJECT_ROOT}/platforms/ios/arm64"
+        BUILD_DIR="${SCRIPT_DIR}/build/ios/arm64"
+        ;;
+    *)
+        echo "Unsupported iOS target kind: ${TARGET_KIND}" >&2
+        echo "Supported values: simulator-arm64, arm64" >&2
+        exit 1
+        ;;
+esac
 
-SDK="iphonesimulator"
+HEADER_DIR="${PLATFORM_DIR}/include"
+LIB_DIR="${PLATFORM_DIR}/lib"
+if [ ! -f "${HEADER_DIR}/wasmtime.h" ]; then
+    echo "Missing wasmtime header: ${HEADER_DIR}/wasmtime.h" >&2
+    echo "Initialize iOS platform assets under platforms/ios before building." >&2
+    exit 1
+fi
+if [ ! -f "${LIB_DIR}/libwasmtime.a" ]; then
+    echo "Missing wasmtime static library: ${LIB_DIR}/libwasmtime.a" >&2
+    echo "Initialize iOS platform assets under platforms/ios before building." >&2
+    exit 1
+fi
+
+INCLUDE_DIRS="-I${PROJECT_ROOT}/wasmline-core/include \
+              -I${PROJECT_ROOT}/wasmline-core/include/extensions \
+              -I${IOS_SRC} \
+              -I${HEADER_DIR}"
+
+mkdir -p "${BUILD_DIR}"
+
 ARCH="arm64"
 
 SOURCES=(
@@ -28,7 +58,7 @@ SOURCES=(
     "$IOS_SRC/IosLogger.cpp"
 )
 
-echo "Compiling object files..."
+echo "Compiling object files for ${TARGET_KIND}..."
 
 OBJECTS=""
 
@@ -40,24 +70,19 @@ for src in "${SOURCES[@]}"; do
     echo "  Compiling $filename..."
 
     clang++ -c -std=c++17 -x c++ \
-        -arch $ARCH \
-        -isysroot $(xcrun --sdk $SDK --show-sdk-path) \
+        -arch "$ARCH" \
+        -isysroot "$(xcrun --sdk "$SDK" --show-sdk-path)" \
         $INCLUDE_DIRS \
         "$src" -o "$output"
-
-    if [ $? -ne 0 ]; then
-        echo "❌ Error compiling $filename"
-        exit 1
-    fi
 
     OBJECTS="$OBJECTS $output"
 done
 
 echo "Creating static library..."
-ar rcs $BUILD_DIR/libwasmline_core_ios.a $OBJECTS
+ar rcs "${BUILD_DIR}/libwasmline_core_ios.a" $OBJECTS
 
-if [ -f "$BUILD_DIR/libwasmline_core_ios.a" ]; then
-    echo "✅ Done. Library created at: $BUILD_DIR/libwasmline_core_ios.a"
+if [ -f "${BUILD_DIR}/libwasmline_core_ios.a" ]; then
+    echo "✅ Done. Library created at: ${BUILD_DIR}/libwasmline_core_ios.a"
 else
     echo "❌ Failed to create library."
     exit 1

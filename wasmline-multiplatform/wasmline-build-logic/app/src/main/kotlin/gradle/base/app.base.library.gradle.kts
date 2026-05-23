@@ -1,3 +1,6 @@
+import buildlogic.Config
+import buildlogic.libsEx
+
 plugins {
   id("com.android.library")
 }

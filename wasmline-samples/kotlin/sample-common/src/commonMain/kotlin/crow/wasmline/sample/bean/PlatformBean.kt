@@ -8,4 +8,8 @@ data class PlatformBean(
     val content: String,
     val timeStr: String,
     val timeMs: Long,
+    val hostPlatform: String? = null,
+    val hostContent: String? = null,
+    val hostTimeStr: String? = null,
+    val hostTimeMs: Long? = null,
 )

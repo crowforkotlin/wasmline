@@ -2,8 +2,6 @@ package extensions
 
 import Config
 import com.android.build.api.dsl.ApplicationExtension
-import com.android.build.gradle.AppExtension
-import com.android.build.gradle.internal.dsl.BaseAppModuleExtension
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.DependencyHandlerScope
 import org.gradle.kotlin.dsl.configure

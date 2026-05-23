@@ -49,14 +49,7 @@ namespace wasmline {
      * No locks are held inside this function.
      */
     wasmtime_module_t *Module::compileInternal(const std::string &key, const std::string &filePath) {
-        // 1. IO Operation
-        std::vector<uint8_t> data = Utils::readFile(filePath);
-        if (data.empty()) {
-            LOGE("[Wasmtime] Module --> Failed to read file: %s", filePath.c_str());
-            return nullptr;
-        }
-
-        // 2. Engine Check
+        // 1. Engine Check
         wasm_engine_t *engine = Engine::getInstance().getEngine();
         if (!engine) {
             LOGE("[Wasmtime] Module --> Engine not initialized.");
@@ -65,11 +58,17 @@ namespace wasmline {
 
         const bool rawWasm = hasSuffixIgnoreCase(filePath, ".wasm");
 
-        // 3. Compile raw wasm or deserialize precompiled artifacts
+        // 2. Compile raw wasm or deserialize precompiled artifacts
         wasmtime_module_t *module = nullptr;
         wasmtime_error_t *error = nullptr;
 
         if (rawWasm) {
+            std::vector<uint8_t> data = Utils::readFile(filePath);
+            if (data.empty()) {
+                LOGE("[Wasmtime] Module --> Failed to read file: %s", filePath.c_str());
+                return nullptr;
+            }
+
             LOGI("[Wasmtime] Module --> Compiling raw wasm module for %s", filePath.c_str());
             error = wasmtime_module_new(
                 engine,
@@ -79,10 +78,10 @@ namespace wasmline {
             );
         } else {
             LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
-            error = wasmtime_module_deserialize(engine, reinterpret_cast<const uint8_t*>(data.data()), data.size(), &module);
+            error = wasmtime_module_deserialize_file(engine, filePath.c_str(), &module);
         }
 
-        // 4. Error Handling
+        // 3. Error Handling
         if (error) {
             wasm_byte_vec_t msg;
             wasmtime_error_message(error, &msg);

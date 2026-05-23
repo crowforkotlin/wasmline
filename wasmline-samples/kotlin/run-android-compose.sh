@@ -13,7 +13,7 @@ ANDROID_COMPONENT="crow.wasmline/crow.wasmline.sample.MainActivity"
 print_help() {
     cat <<EOF
 Usage:
-  ./${SCRIPT_NAME} [--platform VALUE] [--device SERIAL]
+  ./${SCRIPT_NAME} [--platform VALUE] [--device SERIAL] [-q]
 
 Build and run the Compose Android sample on a connected device or emulator.
 
@@ -25,6 +25,7 @@ Options:
                        Windows: x86_64-windows
                      If omitted, auto-detect the current platform.
   --device SERIAL    Optional adb device serial. Uses the default connected device when omitted.
+  -q, --quiet        Suppress build output.
   -h, --help         Show this help and exit
 EOF
 }

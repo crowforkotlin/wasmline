@@ -15,6 +15,7 @@ PLATFORM=""
 ANDROID_DEVICE=""
 WASMTIME_VERSION=""
 WASMLINE_VERSION=""
+QUIET=0
 
 require_value() {
     local option="$1"
@@ -84,6 +85,16 @@ run_gradle() {
         cd "$directory"
         ./gradlew "$@"
     )
+}
+
+# Like run_gradle, but redirects output to /dev/null when QUIET=1.
+# Use this for build/publish steps where output is noise, not results.
+run_gradle_build() {
+    if [ "$QUIET" -eq 1 ]; then
+        run_gradle "$@" >/dev/null 2>&1
+    else
+        run_gradle "$@" >&2
+    fi
 }
 
 find_first_file() {
@@ -236,6 +247,10 @@ parse_common_args() {
                 print_help
                 exit 0
                 ;;
+            -q|--quiet)
+                QUIET=1
+                shift
+                ;;
             *)
                 echo "Unknown option: $1" >&2
                 echo "Run ./${SCRIPT_NAME} --help for usage." >&2
@@ -302,7 +317,7 @@ ensure_wasmtime_toolchain() {
             -a "${PLATFORM}" \
             -o "${SHARED_WASMTIME_ROOT}" \
         )"
-        run_gradle "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$download_args" >&2
+        run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$download_args"
         wasmtime_dir="$(resolve_wasmtime_dir "$PLATFORM" || true)"
         if [ -n "$wasmtime_dir" ]; then
             wasmtime_executable="$(find_wasmtime_executable "$wasmtime_dir")"
@@ -320,17 +335,21 @@ ensure_wasmtime_toolchain() {
 publish_local_artifacts() {
     local include_jvm_runtime="${1:-0}"
 
-    run_gradle "$MULTIPLATFORM_ROOT" :wasmline-kotlin-plugin:publishToMavenLocal :wasmline-gradle-plugin:publishToMavenLocal
+    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-kotlin-plugin:publishToMavenLocal :wasmline-gradle-plugin:publishToMavenLocal
 
     if [ "$include_jvm_runtime" -eq 1 ]; then
         require_command zig
         (
             cd "$WASMLINE_MODULE_ROOT"
-            zig build --release=small -p src/jvmMain/resources
+            if [ "$QUIET" -eq 1 ]; then
+                zig build --release=small -p src/jvmMain/resources >/dev/null 2>&1
+            else
+                zig build --release=small -p src/jvmMain/resources >&2
+            fi
         )
     fi
 
-    run_gradle "$MULTIPLATFORM_ROOT" :wasmline:publishToMavenLocal :wasmline-loader:publishToMavenLocal
+    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline:publishToMavenLocal :wasmline-loader:publishToMavenLocal
 }
 
 clean_plugin_builds() {
@@ -341,7 +360,7 @@ clean_plugin_builds() {
 
 build_plugin_raw_wasm() {
     clean_plugin_builds
-    run_gradle "$SAMPLE_ROOT" :sample-plugin:compileProductionLibraryKotlinWasmWasi >&2
+    run_gradle_build "$SAMPLE_ROOT" :sample-plugin:compileProductionLibraryKotlinWasmWasi
 
     local input_dir="${SAMPLE_PLUGIN_ROOT}/build/compileSync/wasmWasi/main/productionLibrary/kotlin"
     find_first_file "$input_dir" "*.wasm" "sample plugin wasm input"
@@ -349,7 +368,7 @@ build_plugin_raw_wasm() {
 
 build_plugin_optimized_wasm() {
     clean_plugin_builds
-    run_gradle "$SAMPLE_ROOT" :sample-plugin:compileProductionLibraryKotlinWasmWasiOptimize >&2
+    run_gradle_build "$SAMPLE_ROOT" :sample-plugin:compileProductionLibraryKotlinWasmWasiOptimize
 
     local input_dir="${SAMPLE_PLUGIN_ROOT}/build/compileSync/wasmWasi/main/productionLibrary/optimized"
     find_first_file "$input_dir" "*.wasm" "sample plugin wasm input"
@@ -372,7 +391,7 @@ build_plugin_pwasm() {
         -wt "$wasmtime_dir" \
         -a pulley64
     )"
-    run_gradle "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$compile_args" >&2
+    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$compile_args"
     find_first_file "$output_root" "*-pulley64.pwasm" "$artifact_description" 2
 }
 

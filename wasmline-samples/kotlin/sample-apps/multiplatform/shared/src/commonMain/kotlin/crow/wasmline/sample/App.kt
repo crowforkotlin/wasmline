@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,7 +68,10 @@ private val NavyDark   = Color(0xFF0F172A)
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 @Composable
-fun App(wasmPath: String) {
+fun App(
+    wasmPath: String,
+    autoExecute: Boolean = false,
+) {
     val scope            = rememberCoroutineScope()
     val basePlatformBean = remember { getPlatformBean() }
     val wasmLoader       = remember { WasmLoader() }
@@ -77,9 +81,32 @@ fun App(wasmPath: String) {
     var forceReload  by remember { mutableStateOf(false) }
     var activeTab    by remember { mutableStateOf(OutputTab.Result) }
     var report       by remember(wasmPath) { mutableStateOf(WasmExecutionReport.idle(wasmPath)) }
+    var hasAutoExecuted by remember(wasmPath) { mutableStateOf(false) }
 
     val previewPayload = remember(contentLabel) {
         basePlatformBean.copy(content = contentLabel.ifBlank { basePlatformBean.content })
+    }
+
+    fun execute() {
+        scope.launch {
+            report = WasmExecutionReport.running(artifactPath)
+            report = wasmLoader.execute(
+                WasmExecutionRequest(
+                    artifactPath = artifactPath,
+                    platform     = basePlatformBean.platform,
+                    content      = contentLabel,
+                    timeOffsetMs = 0L,
+                    forceReload  = forceReload,
+                )
+            )
+        }
+    }
+
+    LaunchedEffect(autoExecute, wasmPath) {
+        if (autoExecute && !hasAutoExecuted) {
+            hasAutoExecuted = true
+            execute()
+        }
     }
 
     Column(
@@ -105,20 +132,7 @@ fun App(wasmPath: String) {
 
         ExecuteButton(
             isRunning = report.status == WasmExecutionStatus.Running,
-            onExecute = {
-                scope.launch {
-                    report = WasmExecutionReport.running(artifactPath)
-                    report = wasmLoader.execute(
-                        WasmExecutionRequest(
-                            artifactPath = artifactPath,
-                            platform     = basePlatformBean.platform,
-                            content      = contentLabel,
-                            timeOffsetMs = 0L,
-                            forceReload  = forceReload,
-                        )
-                    )
-                }
-            },
+            onExecute = ::execute,
         )
 
         MetricsRow(report = report)
@@ -345,7 +359,7 @@ private fun ExecuteButton(isRunning: Boolean, onExecute: () -> Unit) {
         ),
     ) {
         Text(
-            text       = if (isRunning) "Running…" else "Execute  →",
+            text       = if (isRunning) "Running..." else "Execute ->",
             style      = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             maxLines   = 1,

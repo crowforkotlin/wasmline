@@ -1,6 +1,8 @@
 @file:Suppress("PackageDirectoryMismatch", "unused", "UnstableApiUsage")
 @file:OptIn(ExperimentalWasmDsl::class)
 
+import buildlogic.Config
+import buildlogic.libsEx
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.konan.target.HostManager
 

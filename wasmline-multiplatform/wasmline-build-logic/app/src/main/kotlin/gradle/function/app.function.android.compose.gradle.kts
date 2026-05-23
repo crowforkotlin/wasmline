@@ -1,3 +1,5 @@
+import buildlogic.libsEx
+
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.plugin.compose")
@@ -31,4 +33,3 @@ android {
     implementation(libsEx.`androidx-compose-ui-tooling-preview`)
   }
 }
-

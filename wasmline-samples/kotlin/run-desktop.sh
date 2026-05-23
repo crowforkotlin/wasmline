@@ -12,7 +12,7 @@ COMPILE_OUTPUT_ROOT="${SAMPLE_ROOT}/build/desktop-output"
 print_help() {
     cat <<EOF
 Usage:
-  ./${SCRIPT_NAME} [--platform VALUE]
+  ./${SCRIPT_NAME} [--platform VALUE] [-q]
 
 Build and run the desktop sample.
 
@@ -23,6 +23,7 @@ Options:
                        macOS:   aarch64-macos, x86_64-macos
                        Windows: x86_64-windows
                      If omitted, auto-detect the current platform.
+  -q, --quiet        Suppress build output; only show program results.
   -h, --help         Show this help and exit
 EOF
 }

@@ -1,26 +1,33 @@
-#include "Logger.h" // 确保引用了定义这些函数的头文件
-#include <cstdio>
+#include "Logger.h"
 #include <cstdarg>
+#include <cstdio>
+#include <os/log.h>
 
 namespace wasmline {
+    namespace {
+        void logWithType(os_log_type_t type, const char *prefix, const char *fmt, va_list args) {
+            char buffer[2048];
+            vsnprintf(buffer, sizeof(buffer), fmt, args);
+
+            FILE *stream = (type == OS_LOG_TYPE_ERROR || type == OS_LOG_TYPE_FAULT) ? stderr : stdout;
+            fprintf(stream, "%s%s\n", prefix, buffer);
+            fflush(stream);
+
+            os_log_with_type(OS_LOG_DEFAULT, type, "%{public}s%{public}s", prefix, buffer);
+        }
+    }
 
     void NativeLogI(const char* fmt, ...) {
         va_list args;
         va_start(args, fmt);
-        // iOS 模拟器/真机日志直接输出到 stdout 即可在 Xcode 控制台看到
-        printf("💙 [WasmLine] ");
-        vprintf(fmt, args);
-        printf("\n");
+        logWithType(OS_LOG_TYPE_INFO, "[WasmLine] ", fmt, args);
         va_end(args);
     }
 
     void NativeLogE(const char* fmt, ...) {
         va_list args;
         va_start(args, fmt);
-        // 错误输出到 stderr
-        fprintf(stderr, "❤️ [WasmLine ERROR] ");
-        vfprintf(stderr, fmt, args);
-        fprintf(stderr, "\n");
+        logWithType(OS_LOG_TYPE_ERROR, "[WasmLine ERROR] ", fmt, args);
         va_end(args);
     }
 }

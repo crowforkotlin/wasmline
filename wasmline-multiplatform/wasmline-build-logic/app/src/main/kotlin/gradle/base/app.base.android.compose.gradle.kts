@@ -1,3 +1,5 @@
+import buildlogic.libsEx
+
 plugins {
     id("app.base.android")
     id("org.jetbrains.kotlin.plugin.compose")

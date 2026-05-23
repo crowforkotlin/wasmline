@@ -36,19 +36,40 @@ kotlin {
         binaries.library()
     }
     apply {
-        val iosBuildDir = project.file("build/ios")
-        val wasmtimeLibDir = project.file("../../../platforms/ios/arm64/lib")
         val nativeHeaderDir = project.file("src/iosMain/native")
-        val wasmtimeHeaderDir = project.file("../../../platforms/ios/arm64/include")
+        fun iosPlatformRoot(targetName: String) = when (targetName) {
+            "iosSimulatorArm64" -> project.file("../../platforms/ios/simulator-arm64")
+            else -> project.file("../../platforms/ios/arm64")
+        }
+        fun iosBuildDir(targetName: String) = when (targetName) {
+            "iosSimulatorArm64" -> project.file("build/ios/simulator-arm64")
+            else -> project.file("build/ios/arm64")
+        }
+        fun buildNativeBridgeTask(
+            target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget,
+        ) = tasks.register(
+            "build${target.name.replaceFirstChar { it.uppercaseChar() }}NativeBridge",
+            Exec::class.java,
+        ) {
+            workingDir = project.projectDir
+            commandLine(
+                "bash",
+                "./compile_ios.sh",
+                if (target.name == "iosSimulatorArm64") "simulator-arm64" else "arm64",
+            )
+        }
         val configureCInterop = { target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget ->
+            val platformRoot = iosPlatformRoot(target.name)
+            val wasmtimeHeaderDir = platformRoot.resolve("include")
+            val wasmtimeLibDir = platformRoot.resolve("lib")
+            val coreLibAbsPath = iosBuildDir(target.name).resolve("libwasmline_core_ios.a").absolutePath
+            val wasmtimeLibAbsPath = wasmtimeLibDir.resolve("libwasmtime.a").absolutePath
             target.compilations.getByName("main") {
                 val wasmline by cinterops.creating {
                     defFile(project.file("src/iosMain/native/cinterop/wasmline.def"))
                     includeDirs(nativeHeaderDir)
                     includeDirs(wasmtimeHeaderDir)
                     compilerOpts("-I${nativeHeaderDir.absolutePath}", "-I${wasmtimeHeaderDir.absolutePath}")
-                    val coreLibAbsPath = iosBuildDir.resolve("libwasmline_core_ios.a").absolutePath
-                    val wasmtimeLibAbsPath = wasmtimeLibDir.resolve("libwasmtime.a").absolutePath
                     linkerOpts("-Wl,-force_load,${coreLibAbsPath}")
                     linkerOpts("-Wl,-force_load,${wasmtimeLibAbsPath}")
                     linkerOpts("-lc++")
@@ -59,12 +80,13 @@ kotlin {
         }
         if (HostManager.hostIsMac) {
             listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+                val nativeBridgeTask = buildNativeBridgeTask(target)
+                val coreLibAbsPath = iosBuildDir(target.name).resolve("libwasmline_core_ios.a").absolutePath
+                val wasmtimeLibAbsPath = iosPlatformRoot(target.name).resolve("lib/libwasmtime.a").absolutePath
                 configureCInterop(target)
                 target.binaries.framework {
                     isStatic = false
                     freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
-                    val coreLibAbsPath = iosBuildDir.resolve("libwasmline_core_ios.a").absolutePath
-                    val wasmtimeLibAbsPath = wasmtimeLibDir.resolve("libwasmtime.a").absolutePath
                     linkerOpts(
                         "-Wl,-force_load,${coreLibAbsPath}",
                         "-Wl,-force_load,${wasmtimeLibAbsPath}",
@@ -72,6 +94,9 @@ kotlin {
                         "-framework", "CoreFoundation",
                         "-framework", "Security"
                     )
+                    linkTaskProvider.configure {
+                        dependsOn(nativeBridgeTask)
+                    }
                 }
             }
         }

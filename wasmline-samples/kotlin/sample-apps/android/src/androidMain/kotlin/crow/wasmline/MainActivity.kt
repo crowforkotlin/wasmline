@@ -1,108 +1,30 @@
-@file:SuppressLint("SetTextI18n")
-@file:OptIn(ExperimentalSerializationApi::class)
-
 package crow.wasmline
 
-import android.annotation.SuppressLint
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
-import crow.apps.android.databinding.ActivityMainBinding
+import androidx.compose.material3.MaterialTheme
 import crow.wasmline.extensions.info
-import crow.wasmline.loader.loadWasmline
-import crow.wasmline.sample.bean.PlatformBean
-import crow.wasmline.sample.ir.EchoService
-import crow.wasmline.sample.ir.TimeSyncService
-import crow.wasmline.serialization.WasmlineSerializationConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import java.io.File
-import java.io.FileOutputStream
+import crow.wasmline.sample.AndroidApp
 import kotlin.system.measureTimeMillis
 
-class MainActivity : AppCompatActivity() {
-
-    private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
-    private val baseJson = Json { isLenient = true; prettyPrint = true; }
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContentView(binding.root)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-        init()
-    }
-
-    private fun init() {
         "[Android] Init wasmtime spend ${measureTimeMillis { Wasmline.init() }} ms".info()
-        binding.load.setOnClickListener {
-            binding.content.text = "Loading..."
-            runWasm()
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            window.navigationBarColor = Color.TRANSPARENT
         }
-    }
-
-    private fun runWasm() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                "==============================================".info()
-                val now = System.currentTimeMillis()
-                val data = PlatformBean(
-                    platform = "Android",
-                    content = "Hello from android",
-                    timeStr = now.toString(),
-                    timeMs = now,
-                )
-                val artifactFile = File(cacheDir, "plugin.pwasm")
-                "[Android] Artifact file : ${artifactFile.name}    ||    exists : ${artifactFile.exists()}    ||    path : ${artifactFile.absolutePath}".info()
-                if (!artifactFile.exists()) {
-                    assets.open(artifactFile.name).use { input ->
-                        FileOutputStream(artifactFile).use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                    }
-                var startMs = System.currentTimeMillis()
-                when (
-                    val loadState = loadWasmline(
-                        artifactPath = artifactFile.absolutePath,
-                        config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
-                    )
-                ) {
-                    is WasmlineLoadState.Failure -> { loadState.cause.info() }
-                    is WasmlineLoadState.Success -> {
-                        if (loadState.code == WasmlineLoadState.CODE_SUCCESS_PULLEY) {
-                            "[Wasmline] Load pulley success, spend ${System.currentTimeMillis() - startMs}  ms".info()
-                        } else if (loadState.code == WasmlineLoadState.CODE_SUCCESS_AOT) {
-                            "[Wasmline] Load aot success, spend ${System.currentTimeMillis() - startMs}  ms".info()
-                        }
-                        val module = loadState.wasmline
-                        module.bind(object : EchoService {
-                            override fun echo() {
-                                "[Android] Plugin invoked host echo()".info()
-                            }
-                        })
-                        startMs = System.currentTimeMillis()
-                        val result = module.link<TimeSyncService>().timeSync(data)
-                        val duration = System.currentTimeMillis() - startMs
-                        "[Android] MainActivity --> spend time invokeInbound function --------> $duration ms.".info()
-                        withContext(Dispatchers.Main) { binding.content.text = "Result : \n\n${baseJson.encodeToString(result)}\n\ncall function duration : $duration ms" }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    binding.content.text = "Error: ${e.message}"
-                }
+        setContent {
+            MaterialTheme {
+                AndroidApp()
             }
         }
     }

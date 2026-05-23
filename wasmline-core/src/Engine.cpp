@@ -9,8 +9,32 @@
 
 #include "Engine.h"
 #include "Logger.h"
+#include <array>
 
 namespace wasmline {
+    namespace {
+        bool configurePulleyTarget(wasm_config_t *conf) {
+            const auto targets = (sizeof(void*) == 8)
+                ? std::array<const char*, 2>{"pulley64", "pulley64-unknown-unknown-elf"}
+                : std::array<const char*, 2>{"pulley32", "pulley32-unknown-unknown-elf"};
+
+            for (const char *target : targets) {
+                wasmtime_error_t *error = wasmtime_config_target_set(conf, target);
+                if (!error) {
+                    LOGI("[Wasmtime] Engine --> Configured Pulley target: %s", target);
+                    return true;
+                }
+
+                wasm_byte_vec_t msg;
+                wasmtime_error_message(error, &msg);
+                LOGE("[Wasmtime] Engine --> Failed to set Pulley target to %s: %s", target, msg.data);
+                wasm_byte_vec_delete(&msg);
+                wasmtime_error_delete(error);
+            }
+
+            return false;
+        }
+    }
 
     // Singleton Instance Accessor
     Engine &Engine::getInstance() {
@@ -36,6 +60,8 @@ namespace wasmline {
 
         // Feature Flags for Kotlin/Wasm support
         wasmtime_config_wasm_gc_set(conf, true);
+        wasmtime_config_gc_support_set(conf, true);
+        wasmtime_config_wasm_reference_types_set(conf, true);
         wasmtime_config_wasm_function_references_set(conf, true);
         wasmtime_config_wasm_exceptions_set(conf, true);
 
@@ -53,21 +79,7 @@ namespace wasmline {
         // Set max stack size (512KB is usually sufficient for mobile logic)
         wasmtime_config_max_wasm_stack_set(conf, 512 * 1024);
 
-        // Automatically determine whether it is a 64-bit or 32-bit system
-        // Most Android/iOS are Little Endian (little endian)
-        const char* target_triple = (sizeof(void*) == 8) ? "pulley64" : "pulley32";
-
-        wasmtime_error_t *error = wasmtime_config_target_set(conf, target_triple);
-        if (error) {
-            wasm_byte_vec_t msg;
-            wasmtime_error_message(error, &msg);
-            LOGE("[Wasmtime] Engine --> Failed to set Pulley target to %s: %s", target_triple, msg.data);
-            wasm_byte_vec_delete(&msg);
-            wasmtime_error_delete(error);
-            // Note: If this fails, it usually means that libwasmtime.so was compiled without the pulley feature.
-        } else {
-            LOGI("[Wasmtime] Engine --> Configured for Pulley Interpreter (%s)", target_triple);
-        }
+        configurePulleyTarget(conf);
 
         // Compiler Optimization Strategy: Optimize for Speed and Binary Size
         wasmtime_config_cranelift_opt_level_set(conf, WASMTIME_OPT_LEVEL_NONE);
@@ -84,7 +96,10 @@ namespace wasmline {
             // Create the engine with the configuration
             engine = wasm_engine_new_with_config(conf);
             if (engine) {
-                LOGI("[Wasmtime] Engine --> Initialized successfully.");
+                LOGI(
+                    "[Wasmtime] Engine --> Initialized successfully. engine_is_pulley=%s",
+                    wasmtime_engine_is_pulley(engine) ? "true" : "false"
+                );
             } else {
                 LOGE("[Wasmtime] Engine --> Failed to initialize.");
             }

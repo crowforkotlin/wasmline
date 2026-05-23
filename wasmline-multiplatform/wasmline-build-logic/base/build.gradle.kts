@@ -39,6 +39,8 @@ fun getLibsClass(
 ) : String = """
 // 由 mordecaix-build-logic/base/build.gradle.kts 生成
 
+package buildlogic
+
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ExternalModuleDependencyBundle
 import org.gradle.api.artifacts.MinimalExternalModuleDependency

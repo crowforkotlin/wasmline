@@ -23,10 +23,14 @@ fun main() {
             wasmline.link<EchoService>().echo()
             println("[Kotlin Wasi] Plugin \"timeSync\" receive bean : ${platform}")
             return PlatformBean(
-                platform = "kotlin wasi plugin, host parms : $platform",
+                platform = "Kotlin WASI Plugin",
                 content = "hello from kotlin wasm.",
                 timeStr = "${Clock.System.now()}",
-                timeMs = Clock.System.now().toEpochMilliseconds()
+                timeMs = Clock.System.now().toEpochMilliseconds(),
+                hostPlatform = platform.platform,
+                hostContent = platform.content,
+                hostTimeStr = platform.timeStr,
+                hostTimeMs = platform.timeMs,
             ).also {
                 println("wasi wasm plugin return bean is : $it")
             }

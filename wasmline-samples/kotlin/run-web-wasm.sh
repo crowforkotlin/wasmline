@@ -11,9 +11,13 @@ WEB_RESOURCE_FILE="${SAMPLE_ROOT}/sample-apps/multiplatform/webApp/src/webMain/r
 print_help() {
     cat <<EOF
 Usage:
-  ./${SCRIPT_NAME}
+  ./${SCRIPT_NAME} [-q]
 
 Build the sample plugin wasm, copy it into the web resources directory, and start the Wasm browser dev server.
+
+Options:
+  -q, --quiet   Suppress build output.
+  -h, --help    Show this help and exit
 EOF
 }
 
