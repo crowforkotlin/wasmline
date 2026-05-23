@@ -1,218 +1,722 @@
-[中文文档](README_zh.md) | [English](README.md)
+<div align="center">
 
----
+<!-- Logo asset: replace src with actual path -->
+<!-- <img src="docs/public/images/logo.png" alt="Wasmline" width="96" /> -->
 
 # Wasmline
 
-A **Kotlin Multiplatform** plugin framework powered by [Wasmtime](https://wasmtime.dev/), enabling **WebAssembly (WASI)** plugin loading, packaging, and execution across Android, iOS, Desktop (macOS / Windows / Linux), and, in the future, Web.
+**Kotlin Multiplatform WebAssembly Plugin Framework · Cross-Platform WASI Execution Runtime**
 
-Plugins can be developed in **any language** that compiles to WASI — Kotlin, Rust, C/C++, Go, AssemblyScript, and more.
+[![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20--RC-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Wasmtime](https://img.shields.io/badge/Wasmtime-41.0.1-5C9BD6?style=flat-square)](https://wasmtime.dev)
+[![AGP](https://img.shields.io/badge/AGP-9.2.1-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/build/releases/gradle-plugin)
+[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Web-555555?style=flat-square)](#platform-support)
+[![WebAssembly](https://img.shields.io/badge/WebAssembly-WASI-654FF0?style=flat-square&logo=webassembly&logoColor=white)](https://wasi.dev)
+
+[中文文档](README_zh.md) · [English](README.md) · [Documentation](docs/) · [Samples](#sample-applications)
+
+</div>
+
+---
+
+## Introduction
+
+Wasmline is a **Kotlin Multiplatform WebAssembly plugin framework** providing a unified, type-safe
+execution interface for loading and dispatching WASI-compliant plugins across Android, iOS, Desktop,
+and Web targets within a single API surface.
+
+The framework is grounded in three foundational invariants:
+
+**Compile-time bridge synthesis.** Service contracts are expressed as Kotlin `interface` types
+extending `WasmlineService`. The Kotlin IR compiler plugin synthesizes all serialization, dispatch,
+and bridge infrastructure at build time, eliminating runtime reflection, annotation processing, and
+manual marshalling code.
+
+**Dual-path runtime architecture.** Native targets (Android, iOS, macOS, Linux, Windows) execute
+plugins through **Wasmtime v41.0.1 (C-API)** via the Zig 0.15.1-compiled `wasmline-core` native
+bridge, accessed over JNI or Kotlin/Native C Interop. Web targets (Kotlin/JS, Kotlin/WasmJS) execute
+plugins through the browser's native `WebAssembly.Module` / `WebAssembly.Instance` containers via a
+self-contained, lightweight inline JavaScript runtime — Wasmtime is not present in the browser
+execution path.
+
+**Language-agnostic plugin authoring.** Plugin binaries may be produced by any toolchain targeting
+WASI — including Kotlin, Rust, C/C++, Go, and AssemblyScript.
+
+---
 
 ## Platform Support
 
-| Platform | Architecture | Runtime | Status |
-|----------|-------------|---------|--------|
-| Android  | arm64-v8a   | Wasmtime (JNI) | :white_check_mark: Supported |
-| iOS      | arm64       | Wasmtime (C Interop) | :white_check_mark: Supported |
-| macOS    | arm64       | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
-| Linux    | x86_64      | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
-| Windows  | x86_64      | Wasmtime (JNI/Zig) | :white_check_mark: Supported |
-| Web      | wasm32-wasi | Kotlin/Wasi | :construction: Planned |
+### Runtime Architecture Matrix
 
-## Architecture
+| Platform          | Target Triple     | Runtime Engine            | Bridge Technology           | Artifact Support    | Thread-Safe Loading         | Module Loader           |
+|-------------------|-------------------|---------------------------|-----------------------------|---------------------|-----------------------------|-------------------------|
+| Android           | `arm64-v8a`       | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable (`threadSafe`) | `wasmline-core` Session |
+| iOS               | `arm64`           | Wasmtime v41.0.1 C-API    | C Interop (`.def` cinterop) | `.pwasm`            | Configurable                | `wasmline-core` Session |
+| macOS             | `arm64`           | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable                | `wasmline-core` Session |
+| Linux             | `x86_64`          | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable                | `wasmline-core` Session |
+| Windows           | `x86_64`          | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable                | `wasmline-core` Session |
+| Web - Kotlin/Js   | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Supported                   | Synchronous XHR fetch   |
+| Web - Kotlin/Wasm | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Supported                   | Synchronous XHR fetch   |
 
-![Wasmline architecture](docs/public/images/architecture.png)
+> [!IMPORTANT]
+> **Web targets operate independently of Wasmtime.** The browser execution path instantiates plugin
+> binaries exclusively through the browser-native `WebAssembly.Module` / `WebAssembly.Instance`
+> containers. A self-contained, lightweight WASI shim layer — encompassing `fd_write`, `random_get`,
+`clock_time_get`, and the Wasmline bridge protocol — is embedded as inline Kotlin JS interop (
+`js()`), producing no external JavaScript files, no native library binaries, and no npm
+> dependencies. Payload data crosses the Kotlin–JS linear memory boundary as Base64-encoded strings.
 
-_Wasmline architecture overview_
+> [!WARNING]
+> AOT compilation artifacts (`.cwasm`, `.pwasm`) produced by the CLI pipeline are **not valid inputs
+** for Web targets. The Web runtime accepts only raw `.wasm` binaries.
 
-### Module Structure
+---
 
-```text
-wasmline-multiplatform/
-├── wasmline/              # Core runtime — WASM module loading & execution
-├── wasmline-loader/       # Crypto & manifest — Ed25519/ECDSA-P256 signing, manifest serialization
-├── wasmline-cli/          # CLI toolchain — build, compile, manifest, download, key generation
-├── wasmline-android/      # Android native bindings (CMake / JNI C++)
-├── wasmline-kotlin-plugin/# Kotlin compiler plugin — IR-oriented typed glue generation
-├── wasmline-gradle-plugin/# Gradle integration for the Kotlin plugin and tooling
-├── wasmline-sample/       # Sample applications (plugin, Android, Desktop, Multiplatform Compose)
-└── wasmline-build-logic/  # Shared Gradle convention plugins
+## Sample Applications
+
+<details>
+<summary><strong>Application Screenshots</strong></summary>
+
+<table>
+  <tr>
+    <th align="center">macOS — Apps</th>
+    <th align="center">Arch Linux — Apps</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/public/images/wasmline_mac_apps.png" alt="macOS sample apps" width="100%" />
+      <br><em>Desktop · iOS · Android · Terminal · Web (Wasm)</em>
+    </td>
+    <td align="center">
+      <img src="docs/public/images/wasmline_archlinux_apps.png" alt="Arch Linux sample apps" width="100%" />
+      <br><em>Desktop · Android · Terminal · Web (JS)</em>
+    </td>
+  </tr>
+  <tr>
+    <th align="center">macOS — Build Terminals</th>
+    <th align="center">Arch Linux — Build Terminals</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/public/images/wasmline_mac_temrinal.png" alt="macOS build terminals" width="100%" />
+      <br><em>Build commands: Desktop · iOS · Android · Web (Wasm)</em>
+    </td>
+    <td align="center">
+      <img src="docs/public/images/wasmline_archlinux_temrinals.png" alt="Arch Linux build terminals" width="100%" />
+      <br><em>Build commands: Desktop · Android · Web (JS)</em>
+    </td>
+  </tr>
+</table>
+
+</details>
+
+Reference implementations are located under `wasmline-samples/kotlin/`:
+
+| Module                      | Description                                                                                         |
+|-----------------------------|-----------------------------------------------------------------------------------------------------|
+| `sample-common`             | Shared service contract interface definitions: `EchoService`, `TimeSyncService`, `WebBridgeService` |
+| `sample-plugin`             | Kotlin/WasmWasi plugin — registers implementations via `bind()`, invokes host services via `link()` |
+| `sample-apps/android`       | Android host — loads `.pwasm` artifact, registers host callbacks, invokes plugin services           |
+| `sample-apps/application`   | JVM headless desktop host                                                                           |
+| `sample-apps/multiplatform` | Compose Multiplatform application — Android and Desktop                                             |
+| `sample-apps/web`           | Web host — Kotlin/JS and Kotlin/WasmJS targets                                                      |
+
+---
+
+## Installation & Prerequisites
+
+### System Requirements
+
+| Component                        | Required Version                                                                                        | Applicable Scope                                           |
+|----------------------------------|---------------------------------------------------------------------------------------------------------|------------------------------------------------------------|
+| JDK / JBR                        | **21** ([JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases) mandatory for Compose Desktop) | All Gradle operations                                      |
+| Kotlin                           | **2.3.20-RC** minimum                                                                                   | Wasm GC, function references, exception-handling proposals |
+| Android Studio                   | **LTS**                                                                                                 | AGP 9.2.1 compatibility                                    |
+| Zig                              | **0.15.1**                                                                                              | `wasmline-core` JNI shared library compilation             |
+| Bash / Python 3.9+ / Node.js 18+ | Any one                                                                                                 | Platform runtime asset initialization                      |
+
+> [!NOTE]
+> When building or running project commands manually, a `local.properties` file is required in the
+> project root. Open the project in Android Studio — it will generate `local.properties`
+> automatically. Ensure this file exists before invoking any Gradle commands outside the IDE.
+
+> [!WARNING]
+> Gradle must not be invoked prior to confirming the active JVM environment. Execute the repository
+> preflight check before each build session:
+> ```bash
+> bash ./scripts/doctor.sh
+> # Append --compose-desktop for Compose Desktop or native library builds
+> ```
+> The script verifies JBR 21 availability, turns Zig 0.15.1 into a hard requirement when
+`--compose-desktop` is specified, and reports WARNINGs for missing Wasmtime platform/architecture
+> assets under `platforms/`.
+
+### Platform Runtime Asset Initialization
+
+> [!NOTE]
+> Asset initialization is required exclusively for **native target builds** (Android, iOS, Desktop).
+> Builds targeting Web exclusively do not require Wasmtime C-API assets.
+
+Wasmtime C-API headers and pre-built libraries must be present under `platforms/` before native
+target compilation proceeds. Execute one of the following equivalent scripts:
+
+```bash
+sh ./scripts/init.sh          # Bash — requires curl and tar/unzip
+python3 ./scripts/init.py     # Python 3.9+ — no third-party dependencies
+node ./scripts/init.mjs       # Node.js 18+  — no third-party dependencies
 ```
 
-**Dependency flow**: `wasmline-cli` → `wasmline-loader` → `wasmline` (core)
+All three scripts support interactive platform/architecture selection, configurable download
+concurrency, and an optional HTTP proxy as the first positional argument (e.g., `127.0.0.1:7890`).
 
-### Key Technologies
+---
 
-- **Kotlin Multiplatform** with custom source set hierarchy
-- **Wasmtime 41.0.1** as the underlying WASM runtime
-- **kotlinx.serialization** for JSON and Protobuf payloads
-- **Ed25519 / ECDSA-P256** for manifest signing and verification
-- **Clikt** for the CLI experience
-- **AOT compilation** — `.wasm` → `.cwasm` / `.pwasm`
-- **Kotlin compiler plugin (IR phase one)** for generated `Definition / Proxy / Adapter` glue
+## Integration Reference
 
-## Getting Started
+### Service Contract Definition
 
-### Prerequisites
+A service contract is a Kotlin `interface` extending `WasmlineService`, declared in shared source (
+`commonMain`). The contract defines the binary protocol boundary between host and plugin; method
+signatures are the basis for SHA-256 action identifier derivation.
 
-- **Java 21** or later for general builds; use **JBR 21** for Gradle tasks covered by `./.github/skills/wasmline/scripts/skill_preflight.sh` (especially Compose Desktop / desktop samples)
-- The Android toolchain may track newer **Gradle** / **AGP** alpha releases. If sync or Android builds fail in an older IDE, upgrade Android Studio to the version required by the current AGP line.
-  - Current repository baseline: `agp = 9.2.0-alpha07` in `wasmline-multiplatform/gradle/libs.versions.toml`
-  - Recommended Android Studio for that AGP baseline: **Android Studio Panda 4 | 2025.3.4 Canary 3** or newer
-  - Build: `AI-253.32098.37.2534.15136351` (built on April 2, 2026)
-  - Runtime: `21.0.10+-14961533-b1163.108 amd64`
-  - VM: `OpenJDK 64-Bit Server VM by JetBrains s.r.o.`
-- **Zig 0.15.1** (for native library builds)
-- a locally prepared Wasmtime toolchain when building AOT artifacts
+```kotlin
+// shared/src/commonMain/kotlin/com/example/EchoService.kt
+import crow.wasmline.WasmlineService
 
-### Initialization
-
-Initialize the required platform assets (pick one — all three are equivalent):
-
-```zsh
-sh ./scripts/init.sh            # Bash (requires curl + tar/unzip)
-python3 ./scripts/init.py       # Python 3.9+ (no third-party deps)
-node ./scripts/init.mjs         # Node.js 18+ (no third-party deps)
+interface EchoService : WasmlineService {
+    fun echo(message: String): String
+}
 ```
 
-### Build
+### Plugin Implementation — WASI Target
 
-All Gradle commands run from the `wasmline-multiplatform/` directory:
+The plugin binary registers service implementations through `Wasmline.current.bind(impl)`. The IR
+compiler plugin rewrites this call site to register the implementation into the generated
+`*_WasmlineBridge` at the IR level:
 
-Before running Gradle, verify the current shell with:
+```kotlin
+// plugin/src/wasmWasiMain/kotlin/Main.kt
+import crow.wasmline.Wasmline
+import crow.wasmline.bind
 
-```zsh
-bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+val wasmline = Wasmline.current
+
+fun main() {
+    wasmline.bind(object : EchoService {
+        override fun echo(message: String): String {
+            return "Response from WASI plugin: $message"
+        }
+    })
+}
 ```
 
-```zsh
-cd wasmline-multiplatform
+### Host-Side Module Loading and Service Invocation
 
-# Build everything
-./gradlew build
+The host loads a compiled plugin artifact through `loadWasmline`, registers host-side service
+implementations accessible to the plugin via `bind(impl)`, and obtains typed proxies for plugin-side
+services via `link<T>()`:
 
-# Run loader tests (manifest, crypto, verification, etc.)
-./gradlew :wasmline-loader:jvmTest
+```kotlin
+import crow.wasmline.WasmlineLoadState
+import crow.wasmline.link
+import crow.wasmline.bind
+import crow.wasmline.loader.loadWasmline
 
-# Run CLI tests
-./gradlew :wasmline-cli:test
+Wasmline.init()
 
-# Compile the WASM plugin sample
-./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+val state = loadWasmline(artifactPath = "/data/plugin.pwasm")
 
-# Run compiler-plugin IR box tests
-./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+when (state) {
+    is WasmlineLoadState.Failure -> error("Plugin load failed: ${state.cause}")
+    is WasmlineLoadState.Success -> {
+        val module = state.wasmline
+
+        module.bind(object : HostNotificationService {
+            override fun notify(event: String) { /* host-side handler */
+            }
+        })
+
+        val result = module.link<EchoService>().echo("ping")
+
+        module.close()
+    }
+}
 ```
 
-### Native (Zig) Build
+> [!IMPORTANT]
+> `link<T>()` and `bind(impl)` are **Kotlin IR compiler plugin rewrite targets**. The IR plugin
+> replaces each call site with a direct invocation of the synthesized `*_WasmlineBridge`. If the
+`wasmline-kotlin-plugin` is not applied to the compilation unit, these functions throw
+`UnsupportedOperationException` at runtime.
 
-Outputs JNI native libraries for the host platform:
+---
 
-```zsh
-cd wasmline-multiplatform/wasmline
+## CLI Reference
 
-zig build --release=small -p src/jvmMain/resources
-zig build -p src/jvmMain/resources
-```
+The `wasmline-cli` module implements the complete plugin build pipeline. All commands are dispatched
+via Gradle from `wasmline-multiplatform/`:
 
-## CLI Toolchain
-
-Wasmline provides a CLI for the full plugin build pipeline. All commands run through Gradle:
-
-```zsh
+```bash
 cd wasmline-multiplatform
 ./gradlew :wasmline-cli:run --args="<command> [options]"
 ```
 
-| Command | Description |
-|---------|-------------|
-| `download` | Download Wasmtime releases for target platforms |
-| `generate-key-pair` | Generate signing key pairs |
-| `compile` | Compile `.wasm` to AOT artifacts (`.cwasm` / `.pwasm`) |
-| `manifest` | Generate a signed manifest (`.wlm`) from compile output |
-| `build` | Full pipeline: compile → manifest → zip packaging |
+### Command Set
 
-### Example: Full Build Pipeline
+| Command             | Description                                                                                             |
+|---------------------|---------------------------------------------------------------------------------------------------------|
+| `download`          | Download Wasmtime release binaries for one or more target platforms                                     |
+| `generate-key-pair` | Generate an Ed25519 signing key pair                                                                    |
+| `compile`           | Compile a raw `.wasm` binary to platform-specific `.cwasm` artifacts and a portable `.pwasm` image      |
+| `manifest`          | Generate a cryptographically signed `.wlm` manifest (Protobuf + Ed25519) from the compiled artifact set |
+| `build`             | Execute the complete pipeline: `compile → manifest → zip packaging`                                     |
 
-```zsh
+### Pipeline Execution
+
+```bash
 cd wasmline-multiplatform
 
-# 1. Download Wasmtime
+# Download Wasmtime C-API binaries
 ./gradlew :wasmline-cli:run --args="download -v v41.0.1"
 
-# 2. Generate signing keys
+# Generate Ed25519 signing key pair
 ./gradlew :wasmline-cli:run --args="generate-key-pair --save"
 
-# 3. Build plugin (compile → sign → package)
-./gradlew :wasmline-cli:run --args="build -i plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos --key build/wasmline/keys/ed25519_private.key"
+# Execute the full build pipeline
+./gradlew :wasmline-cli:run --args="build \
+  -i plugin.wasm \
+  -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos \
+  --key build/wasmline/keys/ed25519_private.key"
 ```
 
-### Build Output
+### Build Output Layout
 
 ```text
 build/wasmline/
 ├── output/{name}-{version}/
-│   ├── manifest.wlm                # Signed manifest (Protobuf)
-│   ├── {name}-pulley64.pwasm       # Pulley portable bytecode
-│   ├── {name}-aarch64-android.cwasm
-│   ├── {name}-aarch64-macos.cwasm
-│   ├── {name}-aarch64-ios.cwasm
-│   ├── {name}-x86_64-linux.cwasm
-│   ├── {name}-x86_64-windows.cwasm
+│   ├── manifest.wlm                      # Signed manifest (Protobuf + Ed25519 signature)
+│   ├── {name}-pulley64.pwasm             # Pulley portable bytecode — all native Wasmtime targets
+│   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
+│   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
+│   ├── {name}-aarch64-ios.cwasm          # AOT — iOS arm64
+│   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
+│   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
 │   └── debug/
 │       ├── compile-result.json
-│       └── manifest.json           # Human-readable manifest
+│       └── manifest.json
 ├── dist/
-│   └── {name}-{version}.zip        # Distributable package
+│   └── {name}-{version}.zip
 └── keys/
     ├── ed25519_private.key
     └── ed25519_public.key
 ```
 
-See `wasmline-multiplatform/wasmline-cli` for command-level documentation.
+---
 
-## Samples
+## Architecture Overview
 
-![Android sample](docs/public/images/android_sample.png)
+<details>
+<summary><strong>Architecture Mind Map</strong></summary>
 
-_Android sample_
+<table>
+  <tr>
+    <th align="center">English</th>
+    <th align="center">中文</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/public/images/wasmline_mind_en.png" alt="Wasmline Architecture Mind Map" width="100%" />
+    </td>
+    <td align="center">
+      <img src="docs/public/images/wasmline_mind_zh.png" alt="Wasmline 架构思维导图" width="100%" />
+    </td>
+  </tr>
+</table>
 
-![Compose Desktop sample](docs/public/images/compose_desktop_mac.png)
+</details>
 
-_Compose Desktop (macOS)_
+### Dual-Path Execution Model
 
-Sample code lives in `wasmline-multiplatform/wasmline-sample`, including:
+Wasmline exposes a unified, platform-agnostic API surface (`commonMain` / `hostMain`) while routing
+execution through distinct engine stacks per target category.
 
-- a WASI plugin sample
-- Android host sample
-- desktop sample
-- multiplatform shared sample
+#### Native Target Stack — Android · iOS · macOS · Linux · Windows
 
-## Kotlin/Wasi Compatibility
+```
+Host Application  (commonMain / hostMain)
+        │
+        │  module.link<T>()      — IR-synthesized typed outbound proxy
+        │  module.bind(impl)     — IR-synthesized inbound dispatch registration
+        │
+        ▼
+Platform actual  (jniMain / iosMain)
+        │  JNI external declarations          — Android, macOS, Linux, Windows
+        │  Kotlin/Native C Interop (.def)     — iOS
+        ▼
+wasmline-core  (C/C++ · Zig 0.15.1)
+        │  Engine.cpp   — Wasmtime Engine singleton; global init / shutdown
+        │  Module.cpp   — AOT / Pulley module compilation; keyed module cache
+        │  Session.cpp  — Per-invocation isolated linear memory region; execution context
+        │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
+        ▼
+Wasmtime C-API  v41.0.1
+        │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
+        ▼
+Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
+```
 
-![Kotlin/Wasi support](docs/public/images/kotlin_support.png)
+#### Web Target Stack — Kotlin/JS · Kotlin/WasmJS
 
-_Kotlin/Wasi runtime support status_
+```
+Host Application  (commonMain / hostMain)
+        │
+        │  module.link<T>()      — identical IR-synthesized proxy
+        │  module.bind(impl)     — identical dispatch registration
+        │
+        ▼
+webMain / jsMain / wasmJsMain  actual
+        │  BrowserWasmlineRuntime · WasmlineWebModuleRegistry · WasmlineWebModule
+        ▼
+Inline JS runtime  (Kotlin js() interop — no external .js files emitted)
+        │
+        ▼
+Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
+        │
+        ├── Import namespace: wasi_snapshot_preview1
+        │     fd_write         — console.log (fd=1) / console.error (fd=2)
+        │     random_get       — globalThis.crypto.getRandomValues
+        │     clock_time_get   — Date.now() * 1_000_000  (nanosecond resolution)
+        │     proc_exit        — throws JS Error
+        │     all others       — ENOSYS stub
+        │
+        └── Import namespace: env  (Wasmline bridge protocol)
+              bridge_inbound_copy_params     — write action + payload into Wasm linear memory
+              bridge_inbound_set_response    — extract response bytes from Wasm linear memory
+              bridge_outbound_call_host      — synchronous plugin-to-host dispatch callback
+              bridge_outbound_get_response   — copy oversized outbound response to caller buffer
+        │
+        ▼
+Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding)
+```
 
-Wasmline currently expects **Kotlin 2.3.20-Beta1** or later for reliable Kotlin/Wasi support. Earlier versions or different runtimes may fail or miss required Wasm features such as GC, function references, and exception handling.
+### Module Dependency Graph
 
-## For Developers
+```
+wasmline-cli  ──────►  wasmline-loader  ──────►  wasmline  (core runtime)
+                                                       ▲
+                               wasmline-core  (C/C++) ─┘  (JNI / C Interop)
 
-If you are working on Wasmline itself, the most useful entry points are:
+wasmline-kotlin-plugin   (compile-time only; no runtime artifact)
+wasmline-gradle-plugin  ──►  wasmline-kotlin-plugin
+```
 
-- `wasmline-core` — native Wasmtime bridge
-- `wasmline-multiplatform/wasmline` — runtime SPI and public API
-- `wasmline-multiplatform/wasmline-kotlin-plugin` — Kotlin compiler plugin
-- `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/README_en.md` — IR box testData guide
-- `.github/skills/wasmline/SKILL.md` — repository workflow, preflight, and module routing guide
-- `.github/plans/ir-planv2.md` — current IR / runtime / platform V2 plan and implementation notes
+### Repository Structure
 
-## Resources
+```text
+wasmline/
+├── wasmline-core/                      # C/C++ Wasmtime bridge (Engine, Module, Session, Api)
+├── wasmline-multiplatform/
+│   ├── wasmline/                       # Core Kotlin runtime — loading, dispatch, serialization SPI
+│   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
+│   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
+│   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
+│   │   ├── iosMain/                    # iOS actual — Kotlin/Native C Interop
+│   │   ├── webMain/                    # Web actual — BrowserWasmlineRuntime + inline JS bridge
+│   │   ├── jsMain/                     # Kotlin/JS delegation → webMain
+│   │   ├── wasmJsMain/                 # Kotlin/WasmJS delegation → webMain
+│   │   └── wasmWasiMain/               # Plugin-side runtime — WasmlineRouter, WasmBridge
+│   ├── wasmline-loader/                # WasmlineLoader, .wlm manifest parsing, Ed25519/ECDSA-P256
+│   ├── wasmline-cli/                   # CLI: download, compile, manifest, build, generate-key-pair
+│   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
+│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — bridge synthesis, call-site rewriting
+│   ├── wasmline-gradle-plugin/         # Applies the IR plugin to consumer Gradle projects
+│   └── wasmline-build-logic/           # Shared Gradle convention plugins
+├── wasmline-samples/
+│   └── kotlin/
+│       ├── sample-common/              # Shared service contract interface definitions
+│       ├── sample-plugin/              # Kotlin/WasmWasi WASI plugin implementation
+│       └── sample-apps/               # Android, JVM desktop, Compose Multiplatform, and Web hosts
+├── wasmline-ci/                        # CI automation scripts
+├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
+├── platforms/                          # Wasmtime C-API assets (populated by init scripts; not committed)
+└── docs/                               # Documentation site (Next.js + Fumadocs)
+```
 
-- [wasm-kotlin-exploration](https://github.com/crowforkotlin/wasm-kotlin-exploration) — Wasm + Kotlin research and test cases
-- [Wasmtime on Android (JNI)](https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/) — Embedding Wasmtime on Android via JNI
-- [Wasm vs. Wasi Deep Dive](https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91%A8%E5%BA%86/) — Differences between Wasm and Wasi, and their lifecycles
+---
+
+## Kotlin/Wasm Compatibility
+
+<!-- Compatibility matrix placeholder -->
+![Kotlin/Wasm runtime support matrix](docs/public/images/kotlin_support.png)
+
+Wasmline requires **Kotlin 2.3.20-RC** or later. The Kotlin/WasmWasi compiler backend must provide
+complete implementations of the following WebAssembly proposals:
+
+| Proposal                | Requirement | Rationale                                                       |
+|-------------------------|-------------|-----------------------------------------------------------------|
+| GC (garbage collection) | Mandatory   | Kotlin managed-object allocation within Wasm linear memory      |
+| Function References     | Mandatory   | Interface vtable dispatch and closure representation            |
+| Exception Handling      | Mandatory   | Kotlin exception propagation across the Wasm execution boundary |
+| Tail Call Optimization  | Recommended | Stack overflow prevention in deep recursive call chains         |
+
+> [!IMPORTANT]
+> Downgrading the `kotlin` entry in `wasmline-multiplatform/gradle/libs.versions.toml` below
+`2.3.20-RC` may produce incomplete Wasm binaries. Absent GC or exception-handling support manifests
+> as plugin load failures or undefined behavior at the `Session.invoke` boundary.
+
+---
+
+## Developer Guide & Toolchain Setup
+
+### Environment Preflight
+
+The JBR 21 environment must be verified before initiating any Gradle operation:
+
+```bash
+bash ./scripts/doctor.sh
+
+# Extended verification: Zig 0.15.1 and desktop native assets
+bash ./scripts/doctor.sh --compose-desktop
+```
+
+### Gradle Build Reference
+
+All operations are executed from `wasmline-multiplatform/`:
+
+```bash
+cd wasmline-multiplatform
+
+# Full project build
+./gradlew build
+
+# wasmline-loader module tests (manifest parsing, cryptographic verification)
+./gradlew :wasmline-loader:jvmTest
+
+# wasmline-cli module tests
+./gradlew :wasmline-cli:test
+
+# Kotlin/WasmWasi plugin sample compilation
+./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+
+# IR compiler plugin — regenerate test runners from testData fixtures
+./gradlew :wasmline-kotlin-plugin:generateTests
+
+# IR compiler plugin — box test execution
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+
+# IR compiler plugin — diagnostic validation tests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
+```
+
+### Native Library Build (Zig 0.15.1)
+
+The JNI shared library for JVM-based native targets is compiled by the Zig build system. The `-p`
+flag redirects installation to `src/jvmMain/resources/jni/`:
+
+```bash
+cd wasmline-multiplatform/wasmline
+
+zig build --release=small -p src/jvmMain/resources   # Release (size-optimized)
+zig build -p src/jvmMain/resources                    # Debug
+```
+
+> [!WARNING]
+> Files under `zig-out/` are intermediate Zig build artifacts and must not be committed. The
+`-p src/jvmMain/resources` flag is required to redirect JNI library installation to the correct
+> classpath resource directory.
+
+---
+
+## Compiler Constraints & Validation
+
+### IR Transformation Pipeline
+
+The `wasmline-kotlin-plugin` operates at the **Kotlin IR compilation phase** — not through
+annotation processing (KSP) or source-level code generation. The transformation pipeline executes in
+four sequential steps:
+
+| Step                    | Class                              | Operation                                                                                                                                                        |
+|-------------------------|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 — Discovery           | `WasmlineIrGenerationExtension`    | Traverses all `IrDeclarationContainer` nodes; collects `IrClass` declarations with `WasmlineService` in the supertype hierarchy                                  |
+| 2 — Validation          | `WasmlineServiceContractValidator` | Validates each contract against the static constraint set; emits typed `WasmlineIrDiagnostics` on violation; aborts IR generation on any error                   |
+| 3 — Bridge synthesis    | `WasmlineBridgeGenerator`          | Synthesizes one `internal class {Contract}_WasmlineBridge : WasmlineGeneratedBridge` per validated contract; injects the class directly into the parent `IrFile` |
+| 4 — Call-site rewriting | `WasmlineTypedEntryPointRewriter`  | Locates all `link<T>()`, `bind(contract, impl)`, and `bind(impl)` call sites; replaces each with a direct bridge instantiation expression                        |
+
+### Static Contract Constraints
+
+The following constraints are enforced at compile time. Any violation is reported as a **compiler
+error** and prevents successful IR generation:
+
+| Constraint               | Requirement                                                                               |
+|--------------------------|-------------------------------------------------------------------------------------------|
+| Declaration kind         | Contract must be an `interface`; abstract classes, sealed types, and objects are rejected |
+| Member visibility        | All functions must be declared `public`                                                   |
+| Suspendability           | `suspend` modifier is not permitted on any contract function                              |
+| Parameter arity          | At most one regular value parameter per function                                          |
+| Generic type parameters  | Not permitted on the contract interface declaration                                       |
+| Method name uniqueness   | Overloaded method names within a single contract are not supported                        |
+| `vararg` parameters      | Not permitted                                                                             |
+| Default parameter values | Not permitted                                                                             |
+| Extension receivers      | Extension functions and properties are not supported as contract members                  |
+
+### SignatureHash — Action Identifier Derivation
+
+Each service method is assigned a stable action identifier computed as the **SHA-256 hash of its
+fully-qualified method signature**:
+
+```
+Input:  com.example.EchoService#echo(kotlin.String)
+Output: <lowercase hex SHA-256 digest>
+```
+
+The identifier remains stable across package reorganizations provided the fully-qualified class name
+and method signature are unchanged. It is embedded in the generated bridge dispatch table and must
+correspond to the `WasmlineRouter.register(action, handler)` invocation in the plugin binary.
+
+### IR Box Test Workflow
+
+Box test fixtures reside in `wasmline-kotlin-plugin/testData/box/`. Each fixture consists of a
+source file with a `fun box(): String` entry point returning `"OK"` on successful execution:
+
+```bash
+cd wasmline-multiplatform
+
+# 1. Author or modify a fixture in testData/box/{name}.kt
+# 2. Regenerate the test runner
+./gradlew :wasmline-kotlin-plugin:generateTests
+
+# 3. Execute — FIR and IR snapshots are generated on the first run
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+
+# 4. Review generated *.fir.txt and *.fir.ir.txt before committing
+```
+
+> [!WARNING]
+> The following files are **auto-generated build artifacts** and must never be edited manually:
+`test-gen/**`, `testData/box/*.fir.txt`, `testData/box/*.fir.ir.txt`,
+`testData/diagnostics/*.fir.txt`. Manual edits result in test failures on the subsequent generation
+> pass.
+
+---
+
+## Contributing Guidelines
+
+All contributions must satisfy the following requirements prior to pull request submission:
+
+1. **Branch strategy** — all changes must originate from a dedicated feature or fix branch based on
+   `main`.
+2. **Preflight verification** — JBR 21 availability must be confirmed via `./scripts/doctor.sh`
+   before executing any Gradle task.
+3. **Module boundary adherence** — each change must be scoped to the appropriate module.
+   Consult [Repository Structure](#repository-structure) and `.github/skills/wasmline/SKILL.md` for
+   module routing before modifying source files.
+4. **Generated artifact integrity** — IR snapshots, `test-gen/` sources, `platforms/` assets, and
+   all `build/` directories must not be committed or modified manually.
+5. **Test coverage** — behavioral changes to the IR compiler plugin must be accompanied by a
+   corresponding box test fixture or diagnostic test update.
+6. **Apple platform scope** — changes specific to macOS or iOS code paths require validation in a
+   macOS build environment; cross-compiled or otherwise unverified Apple platform changes must not
+   be marked complete.
+7. **Architectural proposals** — changes of architectural significance require an issue-level
+   discussion prior to implementation.
+
+---
+
+## Frequently Asked Questions
+
+<details>
+<summary><strong>How does the browser execution path instantiate plugins without Wasmtime?</strong></summary>
+
+The Web target implementation (`webMain` / `jsMain` / `wasmJsMain`) invokes `WebAssembly.Module` and
+`WebAssembly.Instance` directly through the browser's native WebAssembly runtime. A self-contained
+JavaScript runtime layer is embedded via Kotlin `js()` interop — no external JS files are emitted
+during compilation.
+
+The runtime layer provides:
+
+- **`wasi_snapshot_preview1` shims**: `fd_write` (stdout/stderr to `console.log`/`console.error`),
+  `random_get` (`crypto.getRandomValues`), `clock_time_get` (`Date.now()` at nanosecond resolution)
+- **Wasmline bridge protocol** (`env` namespace): `bridge_inbound_copy_params`,
+  `bridge_inbound_set_response`, `bridge_outbound_call_host`, `bridge_outbound_get_response`
+
+Payload data crosses the Kotlin–JS linear memory boundary as Base64-encoded strings (
+`BrowserPayloadEncoding`). AOT-compiled artifacts (`.cwasm`, `.pwasm`) are not accepted.
+
+</details>
+
+<details>
+<summary><strong>What distinguishes <code>.cwasm</code> from <code>.pwasm</code> artifacts — and why not raw <code>.wasm</code>?</strong></summary>
+
+All three artifact types involve Wasmtime, but they differ fundamentally in when compilation happens and what the compilation target is:
+
+| Artifact | Compiled | Execution | Version coupling |
+|---|---|---|---|
+| `.wasm` | At load time (JIT) by the host Wasmtime | Cranelift → native or Pulley, depending on configuration | **None** — portable across all Wasmtime versions |
+| `.cwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | Directly on native hardware (e.g., arm64 machine code) | Coupled to the Wasmtime version that compiled it |
+| `.pwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | Wasmtime **Pulley** interpreter | Coupled to the Wasmtime version that compiled it |
+
+**`.cwasm` (platform-specific AOT)** produces native machine code for a particular target triple (e.g., `aarch64-android`). Maximum throughput; requires one artifact per platform.
+
+**`.pwasm` (Pulley AOT)** is compiled through the same Cranelift pipeline as `.cwasm`, but targets Wasmtime's **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter then executes it at runtime. Critically, `.pwasm` is **not** a raw `.wasm` file being fed to an interpreter — it is a fully pre-compiled, Cranelift-produced artifact, identical in compilation path to `.cwasm`, only targeting a different backend. A single `.pwasm` artifact runs across all native Wasmtime targets because the Pulley ISA is platform-independent.
+
+Because `.wasm` is compiled at load time by whatever Wasmtime version the host uses, it carries no version dependency. Both `.cwasm` and `.pwasm` are pre-compiled outputs of a specific Wasmtime release — upgrading Wasmtime invalidates them and requires recompilation.
+
+While the Pulley interpreter can also load and JIT-compile raw `.wasm` at runtime, `.pwasm` is preferred in memory-constrained environments such as Android: that in-process compilation step incurs substantially higher memory overhead.
+
+> [!IMPORTANT]
+> Both `.cwasm` and `.pwasm` are **version-coupled to the Wasmtime compiler** that produced them. Upgrading the Wasmtime version invalidates all previously compiled artifacts — they must be recompiled. This version coupling is why every non-Web native target uses pre-compiled `.cwasm` or `.pwasm` rather than raw `.wasm`. The Web target is the sole exception, relying on the browser's own WebAssembly runtime with raw `.wasm` files.
+
+</details>
+
+<details>
+<summary><strong>Is the Kotlin IR compiler plugin mandatory for host integration?</strong></summary>
+
+The compiler plugin is not mandatory. The low-level `Wasmline.call(action, bytes): ByteArray` API is
+always available for manual dispatch. Without the `wasmline-kotlin-plugin` applied — typically via
+the `wasmline-gradle-plugin` — `link<T>()` and `bind(impl)` call sites throw
+`UnsupportedOperationException` at runtime.
+
+</details>
+
+<details>
+<summary><strong>What is the plugin execution isolation model?</strong></summary>
+
+On native targets, each plugin invocation executes within a dedicated `Session` instance maintaining
+its own Wasm linear memory region. Plugins have no access to host process memory, the host
+filesystem, or the network unless the host explicitly provisions WASI capabilities through the
+Wasmtime preopened-directory or socket-capability model. On Web targets, equivalent memory isolation
+is enforced by the browser's native WebAssembly sandbox.
+
+</details>
+
+---
+
+## References
+
+| Resource                                                                                                                                                                              | Description                                                          |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| [wasm-kotlin-exploration](https://github.com/crowforkotlin/wasm-kotlin-exploration)                                                                                                   | Research repository — WebAssembly and Kotlin integration experiments |
+| [Embedding Wasmtime on Android via JNI](https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/)                                      | Technical reference for the JNI bridge integration                   |
+| [WebAssembly vs. WASI — Architecture and Lifecycle](https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91A8%E5%BA%86/) | Architecture differentiation between WebAssembly and WASI            |
+| [Wasmtime Documentation](https://docs.wasmtime.dev/)                                                                                                                                  | Official Wasmtime runtime documentation                              |
+| [WebAssembly Specification](https://webassembly.github.io/spec/)                                                                                                                      | W3C WebAssembly core specification                                   |
+| [WASI Specification](https://github.com/WebAssembly/WASI)                                                                                                                             | WebAssembly System Interface specification                           |
+
+---
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+Wasmline is distributed under the **Apache License, Version 2.0**. See [LICENSE](LICENSE) for the
+complete license text.
+
+---
+
+<div align="center">
+
+[Back to top](#wasmline)
+
+</div>

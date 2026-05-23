@@ -5,195 +5,327 @@ description: 基于 Kotlin Multiplatform 的跨平台 WebAssembly (WASI) 插件�
 
 # WasmLine
 
-基于 [Wasmtime](https://wasmtime.dev/) 的 **Kotlin Multiplatform** 插件框架，支持在 Android、iOS、Desktop（macOS / Windows / Linux）和 Web 上加载并执行 **WebAssembly (WASI)** 插件。
+Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一的 API 表面下，为 Android、iOS、Desktop 和 Web 目标提供加载与分发符合 WASI 规范插件的统一、类型安全执行接口。
 
-插件可以用**任何**能编译到 WASI 的语言编写 —— Kotlin、Rust、C/C++、Go、AssemblyScript 等。
+项目建立在三个核心不变量之上：
 
----
+- **编译期桥接生成**：由 Kotlin IR 编译器插件完成
+- **双路径执行**：原生目标使用 Wasmtime，Web 使用浏览器原生 `WebAssembly`
+- **语言无关的插件编写**：任何可以产出 WASI 二进制的工具链都可以接入
 
 ## 平台支持
 
-| 平台 | 架构 | 运行时 | 状态 |
-|------|------|--------|------|
-| Android | arm64-v8a | Wasmtime (JNI) | :white_check_mark: 已支持 |
-| iOS | arm64 | Wasmtime (C Interop) | :white_check_mark: 已支持 |
-| macOS | arm64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
-| Linux | x86_64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
-| Windows | x86_64 | Wasmtime (JNI/Zig) | :white_check_mark: 已支持 |
-| Web | wasm32-wasi | Kotlin/Wasi | :construction: 计划中 |
+| 平台 | 宿主 / 目标 | 运行时引擎 | 桥接方式 | 产物支持 | 状态 | 模块加载器 |
+|---|---|---|---|---|---|---|
+| Android | `arm64-v8a` | Wasmtime v41.0.1 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| iOS | `arm64` | Wasmtime v41.0.1 C-API | C Interop（`.def` cinterop） | `.pwasm` | 已支持 | `wasmline-core` Session |
+| macOS | `arm64` | Wasmtime v41.0.1 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| Linux | `x86_64` | Wasmtime v41.0.1 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| Windows | `x86_64` | Wasmtime v41.0.1 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| Web — Kotlin/JS | 浏览器 JS 引擎 | 浏览器 WebAssembly API | Inline JS | 仅原始 `.wasm` | 已支持 | XHR fetch |
+| Web — Kotlin/WasmJS | 浏览器 JS 引擎 | 浏览器 WebAssembly API | Inline JS | 仅原始 `.wasm` | 已支持 | XHR fetch |
 
----
+<Callout type="info" title="Web 运行时路径">
+  Web 目标不会嵌入 Wasmtime。浏览器路径直接通过 `WebAssembly.Module` 与 `WebAssembly.Instance` 实例化插件，并由轻量级内联 JS 运行时提供 Wasmline bridge 协议与最小化 WASI shim。
+</Callout>
 
-## 架构
+<Callout type="warn" title="Web 产物限制">
+  CLI 流水线生成的 AOT 产物（`.cwasm`、`.pwasm`）不能用于 Web。Web 目标只接受原始 `.wasm` 二进制。
+</Callout>
 
-![WasmLine 架构](/images/architecture.png)
+## 示例应用
 
-### 模块结构
+<Tabs items={['macOS', 'Arch Linux']}>
+  <Tab value="macOS">
 
-```
-wasmline-multiplatform/
-├── wasmline/              # 核心运行时 — WASM 模块加载与执行
-├── wasmline-loader/       # 加密与清单 — Ed25519/ECDSA-P256 签名、清单序列化
-├── wasmline-cli/          # CLI 工具链 — 构建、编译、清单生成、下载、密钥生成
-├── wasmline-android/      # Android 原生绑定 (CMake / JNI C++)
-├── wasmline-sample/       # 示例应用 (插件, Android, Desktop, Multiplatform Compose)
-└── wasmline-build-logic/  # Gradle 约定插件
-```
+![macOS 应用](/images/wasmline_mac_apps.png)
 
-**依赖关系**: `wasmline-cli` → `wasmline-loader` → `wasmline` (核心)
+![macOS 构建终端](/images/wasmline_mac_temrinal.png)
 
-### 核心技术
+  </Tab>
+  <Tab value="Arch Linux">
 
-- **Kotlin Multiplatform** 采用自定义源集层级结构
-- **Wasmtime 41.0.1** 作为底层 WASM 运行时，平台特定的原生绑定（JNI via Zig、iOS C Interop）
-- **kotlinx.serialization** 同时支持 JSON 和 Protobuf 格式
-- **Ed25519** 数字签名用于强制性的清单签名与验证
-- **Clikt** 命令行框架
-- **AOT 编译** — `.wasm` → `.cwasm`（平台特定）/ `.pwasm`（Pulley 跨平台字节码）
+![Arch Linux 应用](/images/wasmline_archlinux_apps.png)
 
----
+![Arch Linux 构建终端](/images/wasmline_archlinux_temrinals.png)
 
-## 快速开始
+  </Tab>
+</Tabs>
 
-### 环境要求
+## 安装与先决条件
 
-- 至少使用 **Java 21**；对于依赖仓库预检的 Gradle 任务（尤其是 Compose Desktop / 桌面 sample），请使用 **JBR 21**
-- **Zig 0.15.1**（仅构建原生库时需要）
+### 系统要求
+
+| 组件 | 要求版本 | 适用范围 |
+|---|---|---|
+| JDK / JBR | **21**（Compose Desktop 必须使用 [JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases)） | 所有 Gradle 操作 |
+| Kotlin | 最低 **2.3.20-RC** | Wasm GC、函数引用、异常处理 |
+| Android Studio | **LTS** | AGP 9.2.1 兼容性 |
+| Zig | **0.15.1** | `wasmline-core` JNI 库构建 |
+| Bash / Python 3.9+ / Node.js 18+ | 任意一种 | 平台运行时资产初始化 |
+
+<Callout type="info" title="local.properties">
+  开发者指南与工具链配置 — 手动执行项目构建或运行相关命令时，项目根目录下需要 `local.properties` 文件。在 Android Studio 中打开项目后，AS 会自动创建该文件。请确认此文件存在后再在 IDE 外执行 Gradle 命令。
+</Callout>
+
+<Callout type="warn" title="必须先执行预检">
+  每次构建前都应运行 `bash ./scripts/doctor.sh`。Compose Desktop 或原生库构建请追加 `--compose-desktop`。
+</Callout>
+
+### 平台运行时资产初始化
+
+<Callout type="info" title="仅原生目标需要">
+  资产初始化仅用于原生目标构建（Android、iOS、Desktop）。仅构建 Web 时不需要 Wasmtime C-API 资产。
+</Callout>
 
 <Steps>
   <Step>
     ### 初始化环境
 
-    三选一，功能等价：
-
     ```bash
-    sh ./scripts/init.sh            # Bash（需要 curl + tar/unzip）
-    python3 ./scripts/init.py       # Python 3.9+（无第三方依赖）
-    node ./scripts/init.mjs         # Node.js 18+（无第三方依赖）
+    sh ./scripts/init.sh          # Bash — requires curl and tar/unzip
+    python3 ./scripts/init.py     # Python 3.9+ — no third-party dependencies
+    node ./scripts/init.mjs       # Node.js 18+  — no third-party dependencies
     ```
   </Step>
-
   <Step>
     ### 构建项目
 
-    运行 Gradle 前，先确认当前 shell：
-
     ```bash
-    bash ./.github/skills/wasmline/scripts/skill_preflight.sh
-    ```
-
-    所有 Gradle 命令在 `wasmline-multiplatform/` 目录下运行：
-
-    ```bash title="build.sh"
-    # 构建全部
+    bash ./scripts/doctor.sh
+    cd wasmline-multiplatform
     ./gradlew build
-
-    # 运行 loader 测试
     ./gradlew :wasmline-loader:jvmTest
-
-    # 运行 CLI 测试
     ./gradlew :wasmline-cli:test
-
-    # 编译 WASM 插件示例
     ./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
     ```
   </Step>
-
   <Step>
     ### 原生构建 (Zig)
 
-    输出当前平台的 JNI 原生库：
-
     ```bash
-    # 在 wasmline/ 目录下
-    zig build --release=small -p src/jvmMain/resources    # release
-    zig build -p src/jvmMain/resources                     # debug
+    cd wasmline-multiplatform/wasmline
+    zig build --release=small -p src/jvmMain/resources
+    zig build -p src/jvmMain/resources
     ```
   </Step>
 </Steps>
 
----
+## 集成参考
 
-## CLI 工具链
+### 服务契约定义
 
-WasmLine 提供了一套完整的插件构建流水线 CLI 工具，所有命令通过 Gradle 运行：
+服务契约是在共享源码（`commonMain`）中声明、并扩展 `WasmlineService` 的 Kotlin `interface`。方法签名构成了 SHA-256 动作标识符派生所依赖的稳定边界。
+
+```kotlin
+// shared/src/commonMain/kotlin/com/example/EchoService.kt
+import crow.wasmline.WasmlineService
+
+interface EchoService : WasmlineService {
+    fun echo(message: String): String
+}
+```
+
+### 宿主端模块加载与服务调用
+
+```kotlin
+import crow.wasmline.WasmlineLoadState
+import crow.wasmline.link
+import crow.wasmline.bind
+import crow.wasmline.loader.loadWasmline
+
+Wasmline.init()
+
+val state = loadWasmline(artifactPath = "/data/plugin.pwasm")
+
+when (state) {
+    is WasmlineLoadState.Failure -> error("Plugin load failed: ${state.cause}")
+    is WasmlineLoadState.Success -> {
+        val module = state.wasmline
+
+        module.bind(object : HostNotificationService {
+            override fun notify(event: String) { /* host-side handler */
+            }
+        })
+
+        val result = module.link<EchoService>().echo("ping")
+
+        module.close()
+    }
+}
+```
+
+<Callout type="info" title="IR 插件重写目标">
+  `link<T>()` 与 `bind(impl)` 会由 `wasmline-kotlin-plugin` 重写。若未应用该编译器插件，这两个便捷 API 会在运行时抛出 `UnsupportedOperationException`。
+</Callout>
+
+## CLI 参考
+
+所有 CLI 命令都从 `wasmline-multiplatform/` 通过 Gradle 分发：
 
 ```bash
+cd wasmline-multiplatform
 ./gradlew :wasmline-cli:run --args="<command> [options]"
 ```
 
-| 命令 | 描述 |
-|------|------|
-| `download` | 下载目标平台的 Wasmtime 发行版 |
-| `generate-key-pair` | 生成用于清单签名的 Ed25519 密钥对 |
-| `compile` | 将 `.wasm` 编译为平台特定的 AOT 产物（`.cwasm` / `.pwasm`） |
-| `manifest` | 从编译产物生成已签名的清单文件（`.wlm`） |
-| `build` | 完整流水线：编译 → 签名 → zip 打包 |
+### 命令集
 
-### 示例：完整构建流程
+| 命令 | 说明 |
+|---|---|
+| `download` | 下载一个或多个目标平台的 Wasmtime 发行版二进制 |
+| `generate-key-pair` | 生成 Ed25519 签名密钥对 |
+| `compile` | 将原始 `.wasm` 编译为平台特定 `.cwasm` 与可移植 `.pwasm` 产物 |
+| `manifest` | 从编译产物集合生成已签名的 `.wlm` 清单 |
+| `build` | 执行完整流水线：`compile → manifest → zip packaging` |
 
-```bash title="pipeline.sh"
-# 1. 下载 Wasmtime
+### 流水线执行
+
+```bash
+cd wasmline-multiplatform
+
+# Download Wasmtime C-API binaries
 ./gradlew :wasmline-cli:run --args="download -v v41.0.1"
 
-# 2. 生成签名密钥
+# Generate Ed25519 signing key pair
 ./gradlew :wasmline-cli:run --args="generate-key-pair --save"
 
-# 3. 构建插件（编译 → 签名 → 打包）
-./gradlew :wasmline-cli:run --args="build -i plugin.wasm -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos --key build/wasmline/keys/ed25519_private.key"
+# Execute the full build pipeline
+./gradlew :wasmline-cli:run --args="build \
+  -i plugin.wasm \
+  -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos \
+  --key build/wasmline/keys/ed25519_private.key"
 ```
 
-### 构建产物
+### 构建产物目录结构
 
-```
+```text
 build/wasmline/
 ├── output/{name}-{version}/
-│   ├── manifest.wlm                # 已签名清单（Protobuf）
-│   ├── {name}-pulley64.pwasm       # Pulley 跨平台字节码
-│   ├── {name}-aarch64-android.cwasm
-│   ├── {name}-aarch64-macos.cwasm
-│   ├── {name}-aarch64-ios.cwasm
-│   ├── {name}-x86_64-linux.cwasm
-│   ├── {name}-x86_64-windows.cwasm
+│   ├── manifest.wlm                      # Signed manifest (Protobuf + Ed25519 signature)
+│   ├── {name}-pulley64.pwasm             # Pulley portable bytecode — all native Wasmtime targets
+│   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
+│   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
+│   ├── {name}-aarch64-ios.cwasm          # AOT — iOS arm64
+│   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
+│   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
 │   └── debug/
 │       ├── compile-result.json
-│       └── manifest.json           # 可读清单
+│       └── manifest.json
 ├── dist/
-│   └── {name}-{version}.zip        # 可分发包
+│   └── {name}-{version}.zip
 └── keys/
     ├── ed25519_private.key
     └── ed25519_public.key
 ```
 
----
+## 架构总览
 
-## 示例
+![Architecture Mind Map EN](/images/wasmline_mind_en.png)
 
-<Tabs items={['Android', 'Compose Desktop']}>
-  <Tab value="Android">
-    ![Android](/images/android_sample.png)
-  </Tab>
-  <Tab value="Compose Desktop">
-    ![Compose Desktop](/images/compose_desktop_mac.png)
-  </Tab>
-</Tabs>
+![Architecture Mind Map ZH](/images/wasmline_mind_zh.png)
 
----
+### 双路径执行模型
 
-## Kotlin/Wasi 兼容性
+- **原生目标**（`jniMain` / `iosMain`）会经过 `wasmline-core`，再进入 Wasmtime C-API v41.0.1，并执行预编译的 `.cwasm` 或 `.pwasm` 产物。
+- **Web 目标**（`webMain` / `jsMain` / `wasmJsMain`）会经过 `BrowserWasmlineRuntime`、内联 JS `js()` interop 与浏览器原生 `WebAssembly` API，并且只接受原始 `.wasm` 文件。
 
-![Kotlin/Wasi 运行时支持状态](/images/kotlin_support.png)
+### 模块依赖关系图
 
-<Callout type="warn" title="Kotlin/Wasi 运行时要求">
-  WasmLine 需要 **Kotlin 2.3.20-Beta1** 或更高版本才能可靠支持 Kotlin/Wasi。更早版本或其他运行时可能会抛出错误，或缺少所需的 Wasm 特性支持（GC、函数引用、异常处理）。
+```text
+wasmline-cli  ──────►  wasmline-loader  ──────►  wasmline  (core runtime)
+                                                       ▲
+                               wasmline-core  (C/C++) ─┘  (JNI / C Interop)
+
+wasmline-kotlin-plugin   (compile-time only; no runtime artifact)
+wasmline-gradle-plugin  ──►  wasmline-kotlin-plugin
+```
+
+## Kotlin/Wasm 兼容性
+
+![Kotlin/Wasm runtime support matrix](/images/kotlin_support.png)
+
+| 提案 | 要求 | 原因 |
+|---|---|---|
+| GC（垃圾回收） | 必需 | Kotlin 托管对象在 Wasm 线性内存中的分配 |
+| Function References | 必需 | 接口 vtable 分发与闭包表示 |
+| Exception Handling | 必需 | Kotlin 异常跨 Wasm 边界传播 |
+| Tail Call Optimization | 推荐 | 限制深层递归链的栈增长 |
+
+<Callout type="warn" title="编译器基线">
+  Wasmline 需要 **Kotlin 2.3.20-RC** 或更高版本。将 `kotlin` 版本降到该基线以下，可能会生成不完整的 Wasm 二进制，并在 `Session.invoke` 边界触发未定义行为。
 </Callout>
 
----
+## 开发指南与工具链配置
 
-## 相关资源
+### 环境预检
+
+```bash
+bash ./scripts/doctor.sh
+bash ./scripts/doctor.sh --compose-desktop
+```
+
+### Gradle 构建参考
+
+```bash
+cd wasmline-multiplatform
+./gradlew build
+./gradlew :wasmline-loader:jvmTest
+./gradlew :wasmline-cli:test
+./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+./gradlew :wasmline-kotlin-plugin:generateTests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
+```
+
+### 原生库构建 (Zig 0.15.1)
+
+```bash
+cd wasmline-multiplatform/wasmline
+zig build --release=small -p src/jvmMain/resources   # Release (size-optimized)
+zig build -p src/jvmMain/resources                    # Debug
+```
+
+<Callout type="warn" title="不要提交 Zig 中间产物">
+  `zig-out/` 下的文件属于中间构建产物。请使用 `-p src/jvmMain/resources`，确保 JNI 库被安装到正确的 classpath 资源目录。
+</Callout>
+
+## 常见问题
+
+<details>
+<summary><strong>浏览器执行路径如何在没有 Wasmtime 的情况下实例化插件？</strong></summary>
+
+Web 实现会直接通过浏览器运行时调用 `WebAssembly.Module` 与 `WebAssembly.Instance`。通过 Kotlin `js()` interop 内嵌的自包含 JS 层提供 `wasi_snapshot_preview1` shim 以及 Wasmline `env` bridge 函数。payload 以 Base64 编码字符串跨越 Kotlin–JS 内存边界，AOT 产物不会被接受。
+
+</details>
+
+<details>
+<summary><strong><code>.cwasm</code> 与 <code>.pwasm</code> 有什么区别——为什么不用原始 <code>.wasm</code>？</strong></summary>
+
+| 产物 | 编译时机 | 执行方式 | 版本关联性 |
+|---|---|---|---|
+| `.wasm` | 在加载时（JIT）由宿主 Wasmtime 编译 | Cranelift → 原生代码或 Pulley，取决于配置 | **无 — 与所有 Wasmtime 版本兼容** |
+| `.cwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | 直接在原生硬件上执行 | 与编译它的 Wasmtime 版本关联 |
+| `.pwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | Wasmtime **Pulley** 解释器 | 与编译它的 Wasmtime 版本关联 |
+
+`.cwasm` 是针对具体 target triple 的原生机器码。`.pwasm` 同样由 Cranelift 预编译，但目标是平台无关的 Pulley ISA，因此一个产物可以跨全部原生 Wasmtime 宿主运行。
+
+由于 `.cwasm` 与 `.pwasm` 都由特定 Wasmtime 版本生成，升级 Wasmtime 后必须重新编译。Web 运行时则是唯一继续使用原始 `.wasm` 的路径。
+
+</details>
+
+## 参考资料
 
 <Cards>
-  <Card href="https://github.com/crowforkotlin/wasm-kotlin-exploration" title="Wasm/Kotlin 探索" description="Wasm + Kotlin 研究与测试用例" />
-  <Card href="https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/" title="Wasmtime 在 Android 上 (JNI)" description="通过 JNI 将 Wasmtime 嵌入 Android" />
-  <Card href="https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91%A8%E5%BA%86/" title="Wasm 与 Wasi 深度解析" description="Wasm 与 Wasi 的区别及其生命周期" />
+  <Card href="https://github.com/crowforkotlin/wasm-kotlin-exploration" title="wasm-kotlin-exploration" description="WebAssembly 与 Kotlin 实验研究仓库" />
+  <Card href="https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/" title="通过 JNI 在 Android 上嵌入 Wasmtime" description="JNI bridge 集成参考" />
+  <Card href="https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91%A8%E5%BA%86/" title="WebAssembly 与 WASI" description="架构与生命周期参考" />
+  <Card href="https://docs.wasmtime.dev/" title="Wasmtime Documentation" description="Wasmtime 运行时官方文档" />
+  <Card href="https://webassembly.github.io/spec/" title="WebAssembly Specification" description="WebAssembly 核心规范" />
+  <Card href="https://github.com/WebAssembly/WASI" title="WASI Specification" description="WebAssembly System Interface 规范" />
 </Cards>
+
+## 许可证
+
+Wasmline 基于 **Apache License, Version 2.0** 发布。完整许可证文本请参见 [LICENSE](LICENSE)。

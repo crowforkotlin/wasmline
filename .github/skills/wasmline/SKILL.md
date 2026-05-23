@@ -10,13 +10,11 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
 ## 目录约定
 
 ```
-.github/skills/wasmline/
-├── SKILL.md                        # 技能入口说明（本文件）
-└── scripts/
-    └── skill_preflight.sh          # 环境预检脚本
+scripts/
+└── doctor.sh                       # 环境预检脚本
 ```
 
-辅助脚本统一放在 `scripts/` 子目录中，便于维护，也更符合"技能说明与配套资源分离"的组织习惯。
+环境预检的实际实现位于仓库级 `scripts/doctor.sh`，这样技能说明、README 与仓库脚本都共享同一个入口。
 
 ## 目标
 
@@ -91,25 +89,26 @@ description: 用于在 Wasmline 仓库中进行环境预检、平台资产初始
 先运行：
 
 ```bash
-bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+bash ./scripts/doctor.sh
 ```
 
 预检重点如下：
 
 - **不要在未确认 Java/JBR 版本的情况下直接运行 Gradle。**
-- 预检脚本会优先检查当前 `JAVA_HOME`，必要时再结合 `java -version`、`<JAVA_HOME>/release` 与 shell 配置中的 JBR/JAVA_HOME 线索进行只读判断。
-- 预检脚本会只读检查 `~/.zshrc`、`~/.bashrc`、`~/.bash_profile` 中的 JBR/JAVA_HOME 线索。
+- `doctor.sh` 会优先检查当前 `JAVA_HOME`，必要时再结合 `java -version`、`<JAVA_HOME>/release` 与 shell 配置中的 JBR/JAVA_HOME 线索进行只读判断。
+- `doctor.sh` 会只读检查 `~/.zshrc`、`~/.bashrc`、`~/.bash_profile` 中的 JBR/JAVA_HOME 线索。
 - 这些 shell 配置文件**只能读取，不能修改**。
 - 如果当前 shell 未切到可用的 JBR 21，应先告知用户并**停止**后续 Gradle 编译/测试动作。
 - 不要把任何开发机上的本地 JBR 安装路径硬编码进技能文档、脚本或仓库说明中。
+- `doctor.sh` 会检查 `platforms/` 下各已知 Wasmtime 平台架构目录（如 `android/arm64-v8a`、`linux/x64`、`mac/aarch64` 等）；缺失项会给出 `WARNING`，但不会代替 JBR 21 的硬阻塞判断。
 
 如果任务涉及 **Compose Desktop** 或 **桌面 native** 产物，额外运行：
 
 ```bash
-bash ./.github/skills/wasmline/scripts/skill_preflight.sh --compose-desktop
+bash ./scripts/doctor.sh --compose-desktop
 ```
 
-该模式会额外检查 Zig 版本（要求 **0.15.1**）和桌面 JNI/native 产物状态。
+该模式会额外把 Zig 版本（要求 **0.15.1**）作为硬前置条件，并继续检查桌面 JNI/native 产物状态。
 
 ---
 
@@ -139,7 +138,7 @@ node ./scripts/init.mjs
 
 - `platforms/` 主要是下载或解压后的平台运行时资产（头文件 + 静态/动态库）。
 - 不要默认这些资产在任何机器上都已存在。
-- 如果预检脚本提示已检测到运行时资产，可跳过此步骤。
+- 如果 `doctor.sh` 提示目标平台资产已检测到，可跳过此步骤。
 
 ---
 
@@ -312,7 +311,7 @@ zig build --release=small -p src/jvmMain/resources
 ### 环境预检
 
 ```bash
-bash ./.github/skills/wasmline/scripts/skill_preflight.sh
+bash ./scripts/doctor.sh
 ```
 
 ### 初始化平台运行时

@@ -1,3 +1,3 @@
 - Prepare a usable JBR 21 for desktop builds.
-- Before running Gradle, verify the current shell with `bash ./.github/skills/wasmline/scripts/skill_preflight.sh`.
+- Before running Gradle, verify the current shell with `bash ./scripts/doctor.sh`.
 - The desktop sample toolchain sets `JvmVendorSpec.JETBRAINS`, so a plain non-JetBrains JDK 21 may still be insufficient.
