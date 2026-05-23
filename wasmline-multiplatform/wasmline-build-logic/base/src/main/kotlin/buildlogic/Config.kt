@@ -1,7 +1,8 @@
 @file:Suppress("SpellCheckingInspection", "ConstPropertyName")
 
-import org.gradle.api.Project
+package buildlogic
 
+import org.gradle.api.Project
 
 object Config {
 

@@ -1,6 +1,6 @@
 package extensions
 
-import Config
+import buildlogic.Config
 import com.android.build.api.dsl.ApplicationExtension
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.DependencyHandlerScope
