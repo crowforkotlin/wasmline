@@ -49,15 +49,15 @@ WASI — including Kotlin, Rust, C/C++, Go, and AssemblyScript.
 
 ### Runtime Architecture Matrix
 
-| Platform          | Target Triple     | Runtime Engine            | Bridge Technology           | Artifact Support    | Thread-Safe Loading         | Module Loader           |
-|-------------------|-------------------|---------------------------|-----------------------------|---------------------|-----------------------------|-------------------------|
-| Android           | `arm64-v8a`       | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable (`threadSafe`) | `wasmline-core` Session |
-| iOS               | `arm64`           | Wasmtime v41.0.1 C-API    | C Interop (`.def` cinterop) | `.pwasm`            | Configurable                | `wasmline-core` Session |
-| macOS             | `arm64`           | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable                | `wasmline-core` Session |
-| Linux             | `x86_64`          | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable                | `wasmline-core` Session |
-| Windows           | `x86_64`          | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | Configurable                | `wasmline-core` Session |
-| Web - Kotlin/Js   | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Supported                   | Synchronous XHR fetch   |
-| Web - Kotlin/Wasm | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Supported                   | Synchronous XHR fetch   |
+| Platform          | Target Triple     | Runtime Engine            | Bridge Technology           | Artifact Support    | Module Loader           |
+|-------------------|-------------------|---------------------------|-----------------------------|---------------------|-------------------------|
+| Android           | `arm64-v8a`       | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| iOS               | `arm64`           | Wasmtime v41.0.1 C-API    | C Interop (`.def` cinterop) | `.pwasm`            | `wasmline-core` Session |
+| macOS             | `arm64`           | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| Linux             | `x86_64`          | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| Windows           | `x86_64`          | Wasmtime v41.0.1 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| Web - Kotlin/Js   | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Synchronous XHR fetch   |
+| Web - Kotlin/Wasm | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Synchronous XHR fetch   |
 
 > [!IMPORTANT]
 > **Web targets operate independently of Wasmtime.** The browser execution path instantiates plugin

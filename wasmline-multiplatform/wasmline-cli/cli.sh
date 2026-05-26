@@ -7,12 +7,12 @@ WASM_INPUT_DIR="../wasmline-sample/plugin/build/compileSync/wasmWasi/main/produc
 WASM_INPUT_FILE_NAME="wasmline-multiplatform-wasmline-sample-plugin.wasm"
 OUTPUT_NAME="wasmline-multiplatform-wasmline-sample-plugin"
 VERSION="1.0.0"
-VERSION_ALT="1.2.0"
-VERSION_CODE_ALT="120"
-WASMTIME_VERSION="v43.0.2"
+VERSION_ALT="1.0.0"
+VERSION_CODE_ALT="1"
+WASMTIME_VERSION="v45.0.0"
 WASMTIME_TARGET="aarch64-macos"
 WASMTIME_DIR=""
-DOWNLOAD_EXTRA_VERSION="v40.0.0"
+DOWNLOAD_EXTRA_VERSION="v45.0.0"
 DOWNLOAD_ARCH="aarch64-macos"
 SELECTED_ARCHES="pulley64,aarch64-android"
 KEY_FILE="build/wasmline/keys/ed25519_private.key"
@@ -30,148 +30,148 @@ REPEATABLE_ARGS=()
 WASMTIME_TARGET_EXPLICIT=0
 
 SUPPORTED_DOWNLOAD_ARCHES=(
-    "all"
-    "aarch64-android"
-    "aarch64-ios"
-    "aarch64-ios-sim"
-    "aarch64-linux"
-    "aarch64-macos"
-    "x86_64-linux"
-    "x86_64-macos"
-    "x86_64-windows"
+  "all"
+  "aarch64-android"
+  "aarch64-ios"
+  "aarch64-ios-sim"
+  "aarch64-linux"
+  "aarch64-macos"
+  "x86_64-linux"
+  "x86_64-macos"
+  "x86_64-windows"
 )
 
 trim() {
-    local value="$1"
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-    printf '%s' "$value"
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
 }
 
 quote_token() {
-    local value="$1"
-    if [[ "$value" =~ ^[A-Za-z0-9_./,:=@+-]+$ ]]; then
-        printf '%s' "$value"
-    else
-        printf "'%s'" "${value//\'/\'\\\'\'}"
-    fi
+  local value="$1"
+  if [[ "$value" =~ ^[A-Za-z0-9_./,:=@+-]+$ ]]; then
+    printf '%s' "$value"
+  else
+    printf "'%s'" "${value//\'/\'\\\'\'}"
+  fi
 }
 
 escape_for_double_quotes() {
-    local value="$1"
-    value="${value//\\/\\\\}"
-    value="${value//\"/\\\"}"
-    printf '%s' "$value"
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '%s' "$value"
 }
 
 render_inner_command() {
-    local result=""
-    local token
-    for token in "$@"; do
-        if [ -n "$result" ]; then
-            result+=" "
-        fi
-        result+="$(quote_token "$token")"
-    done
-    printf '%s' "$result"
+  local result=""
+  local token
+  for token in "$@"; do
+    if [ -n "$result" ]; then
+      result+=" "
+    fi
+    result+="$(quote_token "$token")"
+  done
+  printf '%s' "$result"
 }
 
 gradle_cmd() {
-    local inner_command
-    inner_command="$(render_inner_command "$@")"
-    printf '%s"%s"' "$GRADLE" "$(escape_for_double_quotes "$inner_command")"
+  local inner_command
+  inner_command="$(render_inner_command "$@")"
+  printf '%s"%s"' "$GRADLE" "$(escape_for_double_quotes "$inner_command")"
 }
 
 set_repeatable_args() {
-    REPEATABLE_ARGS=()
-    local option="$1"
-    local csv="$2"
-    local item trimmed_item
+  REPEATABLE_ARGS=()
+  local option="$1"
+  local csv="$2"
+  local item trimmed_item
 
-    IFS=',' read -r -a items <<< "$csv"
-    for item in "${items[@]}"; do
-        trimmed_item="$(trim "$item")"
-        if [ -n "$trimmed_item" ]; then
-            REPEATABLE_ARGS+=("$option" "$trimmed_item")
-        fi
-    done
+  IFS=',' read -r -a items <<<"$csv"
+  for item in "${items[@]}"; do
+    trimmed_item="$(trim "$item")"
+    if [ -n "$trimmed_item" ]; then
+      REPEATABLE_ARGS+=("$option" "$trimmed_item")
+    fi
+  done
 }
 
 require_value() {
-    local option="$1"
-    local value="${2:-}"
-    if [ -z "$value" ]; then
-        echo "Missing value for ${option}" >&2
-        exit 1
-    fi
+  local option="$1"
+  local value="${2:-}"
+  if [ -z "$value" ]; then
+    echo "Missing value for ${option}" >&2
+    exit 1
+  fi
 }
 
 extract_release_arch() {
-    local value
-    value="$(trim "$1")"
-    value="${value##*/}"
-    value="${value%.tar.xz}"
-    value="${value%.zip}"
-    value="${value%-c-api}"
+  local value
+  value="$(trim "$1")"
+  value="${value##*/}"
+  value="${value%.tar.xz}"
+  value="${value%.zip}"
+  value="${value%-c-api}"
 
-    case "$value" in
-        wasmtime-v*-*)
-            printf '%s' "${value#wasmtime-v*-}"
-            ;;
-        *)
-            printf '%s' "$value"
-            ;;
-    esac
+  case "$value" in
+  wasmtime-v*-*)
+    printf '%s' "${value#wasmtime-v*-}"
+    ;;
+  *)
+    printf '%s' "$value"
+    ;;
+  esac
 }
 
 is_supported_download_arch() {
-    local expected="$1"
-    local candidate
-    for candidate in "${SUPPORTED_DOWNLOAD_ARCHES[@]}"; do
-        if [ "$candidate" = "$expected" ]; then
-            return 0
-        fi
-    done
-    return 1
+  local expected="$1"
+  local candidate
+  for candidate in "${SUPPORTED_DOWNLOAD_ARCHES[@]}"; do
+    if [ "$candidate" = "$expected" ]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 validate_download_arch() {
-    local raw_value="$1"
-    local normalized_arch="$2"
+  local raw_value="$1"
+  local normalized_arch="$2"
 
-    if is_supported_download_arch "$normalized_arch"; then
-        return 0
-    fi
+  if is_supported_download_arch "$normalized_arch"; then
+    return 0
+  fi
 
-    echo "Invalid download architecture: ${raw_value}" >&2
-    echo "Resolved architecture: ${normalized_arch}" >&2
-    echo "Supported values: ${SUPPORTED_DOWNLOAD_ARCHES[*]}" >&2
-    exit 1
+  echo "Invalid download architecture: ${raw_value}" >&2
+  echo "Resolved architecture: ${normalized_arch}" >&2
+  echo "Supported values: ${SUPPORTED_DOWNLOAD_ARCHES[*]}" >&2
+  exit 1
 }
 
 apply_derived_defaults() {
-    local raw_download_arch="$DOWNLOAD_ARCH"
-    DOWNLOAD_ARCH="$(extract_release_arch "$DOWNLOAD_ARCH")"
-    validate_download_arch "$raw_download_arch" "$DOWNLOAD_ARCH"
+  local raw_download_arch="$DOWNLOAD_ARCH"
+  DOWNLOAD_ARCH="$(extract_release_arch "$DOWNLOAD_ARCH")"
+  validate_download_arch "$raw_download_arch" "$DOWNLOAD_ARCH"
 
-    WASM_INPUT="${WASM_INPUT_DIR%/}/${WASM_INPUT_FILE_NAME}"
-    NAME="${OUTPUT_NAME}"
+  WASM_INPUT="${WASM_INPUT_DIR%/}/${WASM_INPUT_FILE_NAME}"
+  NAME="${OUTPUT_NAME}"
 
-    if [ "$WASMTIME_TARGET_EXPLICIT" -eq 0 ] && [ "$DOWNLOAD_ARCH" != "all" ]; then
-        WASMTIME_TARGET="$DOWNLOAD_ARCH"
-    fi
+  if [ "$WASMTIME_TARGET_EXPLICIT" -eq 0 ] && [ "$DOWNLOAD_ARCH" != "all" ]; then
+    WASMTIME_TARGET="$DOWNLOAD_ARCH"
+  fi
 
-    if [ -z "$WASMTIME_DIR" ]; then
-        WASMTIME_DIR="build/wasmline/wasmtime/wasmtime-${WASMTIME_VERSION}-${WASMTIME_TARGET}"
-    fi
+  if [ -z "$WASMTIME_DIR" ]; then
+    WASMTIME_DIR="build/wasmline/wasmtime/wasmtime-${WASMTIME_VERSION}-${WASMTIME_TARGET}"
+  fi
 
-    if [ -z "$PLUGIN_ID" ]; then
-        PLUGIN_ID="crow.wasmline.${NAME}"
-    fi
+  if [ -z "$PLUGIN_ID" ]; then
+    PLUGIN_ID="crow.wasmline.${NAME}"
+  fi
 }
 
 print_help() {
-    cat <<EOF
+  cat <<EOF
 Usage:
   ./cli.sh [options]
 
@@ -254,138 +254,138 @@ EOF
 }
 
 parse_args() {
-    while [ "$#" -gt 0 ]; do
-        case "$1" in
-            --wasm-input-dir)
-                require_value "$1" "${2:-}"
-                WASM_INPUT_DIR="$2"
-                shift 2
-                ;;
-            --wasm-input-file-name)
-                require_value "$1" "${2:-}"
-                WASM_INPUT_FILE_NAME="$2"
-                shift 2
-                ;;
-            --output-name)
-                require_value "$1" "${2:-}"
-                OUTPUT_NAME="$2"
-                shift 2
-                ;;
-            --version)
-                require_value "$1" "${2:-}"
-                VERSION="$2"
-                shift 2
-                ;;
-            --version-alt)
-                require_value "$1" "${2:-}"
-                VERSION_ALT="$2"
-                shift 2
-                ;;
-            --version-code-alt)
-                require_value "$1" "${2:-}"
-                VERSION_CODE_ALT="$2"
-                shift 2
-                ;;
-            --wasmtime-version)
-                require_value "$1" "${2:-}"
-                WASMTIME_VERSION="$2"
-                shift 2
-                ;;
-            --wasmtime-target)
-                require_value "$1" "${2:-}"
-                WASMTIME_TARGET="$2"
-                WASMTIME_TARGET_EXPLICIT=1
-                shift 2
-                ;;
-            --wasmtime-dir)
-                require_value "$1" "${2:-}"
-                WASMTIME_DIR="$2"
-                shift 2
-                ;;
-            --download-extra-version)
-                require_value "$1" "${2:-}"
-                DOWNLOAD_EXTRA_VERSION="$2"
-                shift 2
-                ;;
-            --download-arch)
-                require_value "$1" "${2:-}"
-                DOWNLOAD_ARCH="$2"
-                shift 2
-                ;;
-            --selected-arches)
-                require_value "$1" "${2:-}"
-                SELECTED_ARCHES="$2"
-                shift 2
-                ;;
-            --key-file)
-                require_value "$1" "${2:-}"
-                KEY_FILE="$2"
-                shift 2
-                ;;
-            --hex-key)
-                require_value "$1" "${2:-}"
-                HEX_KEY="$2"
-                shift 2
-                ;;
-            --plugin-id)
-                require_value "$1" "${2:-}"
-                PLUGIN_ID="$2"
-                shift 2
-                ;;
-            --author)
-                require_value "$1" "${2:-}"
-                AUTHOR="$2"
-                shift 2
-                ;;
-            --display-name)
-                require_value "$1" "${2:-}"
-                DISPLAY_NAME="$2"
-                shift 2
-                ;;
-            --description)
-                require_value "$1" "${2:-}"
-                DESCRIPTION="$2"
-                shift 2
-                ;;
-            --output-dir)
-                require_value "$1" "${2:-}"
-                OUTPUT_DIR="$2"
-                shift 2
-                ;;
-            --keys-dir)
-                require_value "$1" "${2:-}"
-                KEYS_DIR="$2"
-                shift 2
-                ;;
-            --key-algorithm)
-                require_value "$1" "${2:-}"
-                KEY_ALGORITHM="$2"
-                shift 2
-                ;;
-            --gradle)
-                require_value "$1" "${2:-}"
-                GRADLE="$2"
-                shift 2
-                ;;
-            -h|--help)
-                SHOW_HELP=1
-                shift
-                ;;
-            *)
-                echo "Unknown option: $1" >&2
-                echo "Run ./cli.sh --help for usage." >&2
-                exit 1
-                ;;
-        esac
-    done
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --wasm-input-dir)
+      require_value "$1" "${2:-}"
+      WASM_INPUT_DIR="$2"
+      shift 2
+      ;;
+    --wasm-input-file-name)
+      require_value "$1" "${2:-}"
+      WASM_INPUT_FILE_NAME="$2"
+      shift 2
+      ;;
+    --output-name)
+      require_value "$1" "${2:-}"
+      OUTPUT_NAME="$2"
+      shift 2
+      ;;
+    --version)
+      require_value "$1" "${2:-}"
+      VERSION="$2"
+      shift 2
+      ;;
+    --version-alt)
+      require_value "$1" "${2:-}"
+      VERSION_ALT="$2"
+      shift 2
+      ;;
+    --version-code-alt)
+      require_value "$1" "${2:-}"
+      VERSION_CODE_ALT="$2"
+      shift 2
+      ;;
+    --wasmtime-version)
+      require_value "$1" "${2:-}"
+      WASMTIME_VERSION="$2"
+      shift 2
+      ;;
+    --wasmtime-target)
+      require_value "$1" "${2:-}"
+      WASMTIME_TARGET="$2"
+      WASMTIME_TARGET_EXPLICIT=1
+      shift 2
+      ;;
+    --wasmtime-dir)
+      require_value "$1" "${2:-}"
+      WASMTIME_DIR="$2"
+      shift 2
+      ;;
+    --download-extra-version)
+      require_value "$1" "${2:-}"
+      DOWNLOAD_EXTRA_VERSION="$2"
+      shift 2
+      ;;
+    --download-arch)
+      require_value "$1" "${2:-}"
+      DOWNLOAD_ARCH="$2"
+      shift 2
+      ;;
+    --selected-arches)
+      require_value "$1" "${2:-}"
+      SELECTED_ARCHES="$2"
+      shift 2
+      ;;
+    --key-file)
+      require_value "$1" "${2:-}"
+      KEY_FILE="$2"
+      shift 2
+      ;;
+    --hex-key)
+      require_value "$1" "${2:-}"
+      HEX_KEY="$2"
+      shift 2
+      ;;
+    --plugin-id)
+      require_value "$1" "${2:-}"
+      PLUGIN_ID="$2"
+      shift 2
+      ;;
+    --author)
+      require_value "$1" "${2:-}"
+      AUTHOR="$2"
+      shift 2
+      ;;
+    --display-name)
+      require_value "$1" "${2:-}"
+      DISPLAY_NAME="$2"
+      shift 2
+      ;;
+    --description)
+      require_value "$1" "${2:-}"
+      DESCRIPTION="$2"
+      shift 2
+      ;;
+    --output-dir)
+      require_value "$1" "${2:-}"
+      OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    --keys-dir)
+      require_value "$1" "${2:-}"
+      KEYS_DIR="$2"
+      shift 2
+      ;;
+    --key-algorithm)
+      require_value "$1" "${2:-}"
+      KEY_ALGORITHM="$2"
+      shift 2
+      ;;
+    --gradle)
+      require_value "$1" "${2:-}"
+      GRADLE="$2"
+      shift 2
+      ;;
+    -h | --help)
+      SHOW_HELP=1
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      echo "Run ./cli.sh --help for usage." >&2
+      exit 1
+      ;;
+    esac
+  done
 }
 
 parse_args "$@"
 apply_derived_defaults
 
 if [ "$SHOW_HELP" -eq 1 ]; then
-    print_help
-    exit 0
+  print_help
+  exit 0
 fi
 
 set_repeatable_args "-a" "$SELECTED_ARCHES"
@@ -393,7 +393,7 @@ SELECTED_ARCH_ARGS=("${REPEATABLE_ARGS[@]}")
 
 echo "Generating documentation files in: ${SCRIPT_DIR}"
 
-cat > "${SCRIPT_DIR}/build.md" <<BUILDEOF
+cat >"${SCRIPT_DIR}/build.md" <<BUILDEOF
 # build
 
 ## build with all defaults (full pipeline: compile → manifest → package)
@@ -469,7 +469,7 @@ BUILDEOF
 
 echo "  build.md"
 
-cat > "${SCRIPT_DIR}/compile.md" <<COMPILEEOF
+cat >"${SCRIPT_DIR}/compile.md" <<COMPILEEOF
 # compile
 
 ## compile all default targets
@@ -541,7 +541,7 @@ COMPILEEOF
 
 echo "  compile.md"
 
-cat > "${SCRIPT_DIR}/manifest.md" <<MANIFESTEOF
+cat >"${SCRIPT_DIR}/manifest.md" <<MANIFESTEOF
 # manifest
 
 ## generate manifest from compile output
@@ -605,7 +605,7 @@ MANIFESTEOF
 
 echo "  manifest.md"
 
-cat > "${SCRIPT_DIR}/download.md" <<DOWNLOADEOF
+cat >"${SCRIPT_DIR}/download.md" <<DOWNLOADEOF
 # download
 
 ## download latest wasmtime for current platform
@@ -674,7 +674,7 @@ DOWNLOADEOF
 
 echo "  download.md"
 
-cat > "${SCRIPT_DIR}/keys.md" <<KEYSEOF
+cat >"${SCRIPT_DIR}/keys.md" <<KEYSEOF
 # generate-key-pair
 
 ## generate key pair and print to console

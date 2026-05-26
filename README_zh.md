@@ -38,15 +38,15 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 
 ### 运行时架构矩阵
 
-| 平台              | 目标三元组          | 运行时引擎                  | 桥接技术                      | 产物支持              | 线程安全加载                  | 模块加载器                |
-|-------------------|---------------------|-----------------------------|-------------------------------|-----------------------|-------------------------------|---------------------------|
-| Android           | `arm64-v8a`         | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | 可配置（`threadSafe`）        | `wasmline-core` Session   |
-| iOS               | `arm64`             | Wasmtime v41.0.1 C-API      | C Interop（`.def` cinterop）  | `.pwasm`              | 可配置                        | `wasmline-core` Session   |
-| macOS             | `arm64`             | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | 可配置                        | `wasmline-core` Session   |
-| Linux             | `x86_64`            | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | 可配置                        | `wasmline-core` Session   |
-| Windows           | `x86_64`            | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | 可配置                        | `wasmline-core` Session   |
-| Web - Kotlin/Js   | 浏览器 JS 引擎      | 浏览器 `WebAssembly` API    | Inline JS (`js()` interop)    | 仅原始 `.wasm`        | 已支持                        | Synchronous XHR fetch     |
-| Web - Kotlin/Wasm | 浏览器 JS 引擎      | 浏览器 `WebAssembly` API    | Inline JS (`js()` interop)    | 仅原始 `.wasm`        | 已支持                        | Synchronous XHR fetch     |
+| 平台              | 目标三元组          | 运行时引擎                  | 桥接技术                      | 产物支持              | 模块加载器                |
+|-------------------|---------------------|-----------------------------|-------------------------------|-----------------------|---------------------------|
+| Android           | `arm64-v8a`         | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| iOS               | `arm64`             | Wasmtime v41.0.1 C-API      | C Interop（`.def` cinterop）  | `.pwasm`              | `wasmline-core` Session   |
+| macOS             | `arm64`             | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| Linux             | `x86_64`            | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| Windows           | `x86_64`            | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| Web - Kotlin/Js   | 浏览器 JS 引擎      | 浏览器 `WebAssembly` API    | Inline JS (`js()` interop)    | 仅原始 `.wasm`        | Synchronous XHR fetch     |
+| Web - Kotlin/Wasm | 浏览器 JS 引擎      | 浏览器 `WebAssembly` API    | Inline JS (`js()` interop)    | 仅原始 `.wasm`        | Synchronous XHR fetch     |
 
 > [!IMPORTANT]
 > **Web 目标独立于 Wasmtime 运行。** 浏览器执行路径仅通过浏览器原生 `WebAssembly.Module` / `WebAssembly.Instance`
