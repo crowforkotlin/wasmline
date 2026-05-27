@@ -146,11 +146,9 @@ Reference implementations are located under `wasmline-samples/kotlin/`:
 > preflight check before each build session:
 > ```bash
 > bash ./scripts/doctor.sh
-> # Append --compose-desktop for Compose Desktop or native library builds
 > ```
-> The script verifies JBR 21 availability, turns Zig 0.15.1 into a hard requirement when
-`--compose-desktop` is specified, and reports WARNINGs for missing Wasmtime platform/architecture
-> assets under `platforms/`.
+> The script verifies JBR 21 availability, reports desktop Zig/JNI-native status, and reports WARNINGs for missing Wasmtime platform/architecture
+> assets under `build/platforms/`.
 
 ### Platform Runtime Asset Initialization
 
@@ -158,7 +156,7 @@ Reference implementations are located under `wasmline-samples/kotlin/`:
 > Asset initialization is required exclusively for **native target builds** (Android, iOS, Desktop).
 > Builds targeting Web exclusively do not require Wasmtime C-API assets.
 
-Wasmtime C-API headers and pre-built libraries must be present under `platforms/` before native
+Wasmtime C-API headers and pre-built libraries must be present under `build/platforms/` before native
 target compilation proceeds. Execute one of the following equivalent scripts:
 
 ```bash
@@ -439,7 +437,7 @@ wasmline/
 │       └── sample-apps/               # Android, JVM desktop, Compose Multiplatform, and Web hosts
 ├── wasmline-ci/                        # CI automation scripts
 ├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
-├── platforms/                          # Wasmtime C-API assets (populated by init scripts; not committed)
+├── build/                              # Root build outputs, including build/platforms/ Wasmtime C-API assets
 └── docs/                               # Documentation site (Next.js + Fumadocs)
 ```
 
@@ -475,9 +473,6 @@ The JBR 21 environment must be verified before initiating any Gradle operation:
 
 ```bash
 bash ./scripts/doctor.sh
-
-# Extended verification: Zig 0.15.1 and desktop native assets
-bash ./scripts/doctor.sh --compose-desktop
 ```
 
 ### Version Sync
@@ -623,7 +618,7 @@ All contributions must satisfy the following requirements prior to pull request 
 3. **Module boundary adherence** — each change must be scoped to the appropriate module.
    Consult [Repository Structure](#repository-structure) and `.github/skills/wasmline/SKILL.md` for
    module routing before modifying source files.
-4. **Generated artifact integrity** — IR snapshots, `test-gen/` sources, `platforms/` assets, and
+4. **Generated artifact integrity** — IR snapshots, `test-gen/` sources, `build/platforms/` assets, and
    all `build/` directories must not be committed or modified manually.
 5. **Test coverage** — behavioral changes to the IR compiler plugin must be accompanied by a
    corresponding box test fixture or diagnostic test update.

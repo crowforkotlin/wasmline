@@ -16,7 +16,8 @@ if [ -f "$STYLE_FILE" ]; then source "$STYLE_FILE"; else echo "Error: style.sh m
 
 # --- Project Structure ---
 export PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-export PLATFORMS_ROOT="${PROJECT_ROOT}/platforms"
+export BUILD_ROOT="${PROJECT_ROOT}/build"
+export PLATFORMS_ROOT="${BUILD_ROOT}/platforms"
 export TEMP_WORK_DIR="${PLATFORMS_ROOT}/.temp_work"
 
 # --- Environment ---

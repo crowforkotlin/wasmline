@@ -24,7 +24,7 @@ import { randomBytes } from "node:crypto";
 const __filename = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = dirname(__filename);
 const PROJECT_ROOT = resolve(SCRIPT_DIR, "..");
-const PLATFORMS_ROOT = join(PROJECT_ROOT, "platforms");
+const PLATFORMS_ROOT = join(PROJECT_ROOT, "build", "platforms");
 const REPO = "crowforkotlin/wasmtime";
 
 // ── Colors ──────────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ const TARGETS_BY_KEY = new Map(TARGETS.map((target) => [target.key, target]));
 
 function formatTargetSummary(target) {
   if (target.filter === "all") return target.name;
-  return `${target.name} -> platforms/${target.platform} [asset: ${target.filter}]`;
+  return `${target.name} -> build/platforms/${target.platform} [asset: ${target.filter}]`;
 }
 
 const PLATFORM_MAP = {

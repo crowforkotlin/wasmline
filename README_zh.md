@@ -130,17 +130,16 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 > 在确认当前 JVM 环境前，不得调用 Gradle。每次构建会话开始前都必须执行仓库预检：
 > ```bash
 > bash ./scripts/doctor.sh
-> # Compose Desktop 或原生库构建时追加 --compose-desktop
 > ```
-> 该脚本会验证 JBR 21 是否可用，在指定 `--compose-desktop` 时将 Zig 0.15.1 作为硬性要求，并报告
-> `platforms/` 下缺失的 Wasmtime 平台/架构资产 WARNING。
+> 该脚本会验证 JBR 21 是否可用，报告桌面 Zig/JNI-native 状态，并报告
+> `build/platforms/` 下缺失的 Wasmtime 平台/架构资产 WARNING。
 
 ### 平台运行时资产初始化
 
 > [!NOTE]
 > 资产初始化仅对 **原生目标构建**（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 Wasmtime C-API 资产。
 
-在开始原生目标编译前，`platforms/` 下必须存在 Wasmtime C-API 头文件与预编译库。执行以下任一等价脚本：
+在开始原生目标编译前，`build/platforms/` 下必须存在 Wasmtime C-API 头文件与预编译库。执行以下任一等价脚本：
 
 ```bash
 sh ./scripts/init.sh          # Bash — requires curl and tar/unzip
@@ -408,7 +407,7 @@ wasmline/
 │       └── sample-apps/               # Android, JVM desktop, Compose Multiplatform, and Web hosts
 ├── wasmline-ci/                        # CI automation scripts
 ├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
-├── platforms/                          # Wasmtime C-API assets (populated by init scripts; not committed)
+├── build/                              # 根级构建输出目录，包含 build/platforms/ Wasmtime C-API 资产
 └── docs/                               # Documentation site (Next.js + Fumadocs)
 ```
 
@@ -440,9 +439,6 @@ Wasmline 需要 **Kotlin 2.3.20-RC** 或更高版本。Kotlin/WasmWasi 编译器
 
 ```bash
 bash ./scripts/doctor.sh
-
-# Extended verification: Zig 0.15.1 and desktop native assets
-bash ./scripts/doctor.sh --compose-desktop
 ```
 
 ### 版本同步
@@ -571,7 +567,7 @@ cd wasmline-multiplatform
 1. **分支策略** —— 所有变更都必须基于 `main` 从专用 feature 或 fix 分支发起。
 2. **预检验证** —— 在执行任何 Gradle 任务前，必须通过 `./scripts/doctor.sh` 确认 JBR 21 可用。
 3. **遵守模块边界** —— 每项变更都必须限定在合适的模块内。修改源码前请先参考 [仓库目录结构](#仓库目录结构) 与 `.github/skills/wasmline/SKILL.md` 进行模块路由。
-4. **生成产物完整性** —— IR 快照、`test-gen/` 源码、`platforms/` 资产以及所有 `build/` 目录都不得提交，也不得手动修改。
+4. **生成产物完整性** —— IR 快照、`test-gen/` 源码、`build/platforms/` 资产以及所有 `build/` 目录都不得提交，也不得手动修改。
 5. **测试覆盖** —— 对 IR 编译器插件的行为变更必须伴随相应的 box 测试夹具或 diagnostic 测试更新。
 6. **Apple 平台范围** —— 涉及 macOS 或 iOS 代码路径的变更，必须在 macOS 构建环境中验证；未经验证的 Apple 平台变更不得标记为完成。
 7. **架构提案** —— 具有架构影响的变更，在实现前必须先进行 issue 级讨论。

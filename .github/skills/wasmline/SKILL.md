@@ -100,21 +100,15 @@ bash ./scripts/doctor.sh
 - 这些 shell 配置文件**只能读取，不能修改**。
 - 如果当前 shell 未切到可用的 JBR 21，应先告知用户并**停止**后续 Gradle 编译/测试动作。
 - 不要把任何开发机上的本地 JBR 安装路径硬编码进技能文档、脚本或仓库说明中。
-- `doctor.sh` 会检查 `platforms/` 下各已知 Wasmtime 平台架构目录（如 `android/arm64-v8a`、`linux/x64`、`mac/aarch64` 等）；缺失项会给出 `WARNING`，但不会代替 JBR 21 的硬阻塞判断。
+- `doctor.sh` 会检查 `build/platforms/` 下各已知 Wasmtime 平台架构目录（如 `android/arm64-v8a`、`linux/x64`、`mac/aarch64` 等）；缺失项会给出 `WARNING`，但不会代替 JBR 21 的硬阻塞判断。
 
-如果任务涉及 **Compose Desktop** 或 **桌面 native** 产物，额外运行：
-
-```bash
-bash ./scripts/doctor.sh --compose-desktop
-```
-
-该模式会额外把 Zig 版本（要求 **0.15.1**）作为硬前置条件，并继续检查桌面 JNI/native 产物状态。
+`doctor.sh` 会同时报告桌面 Zig（要求 **0.15.1**）与桌面 JNI/native 产物状态，作为 Compose Desktop / 桌面 native 排障参考。
 
 ---
 
 ## 第二步：按需初始化平台资产
 
-仓库依赖各平台的 Wasmtime C-API 运行时资产。如果 `platforms/` 尚未准备好，选择以下任一方式执行：
+仓库依赖各平台的 Wasmtime C-API 运行时资产。如果 `build/platforms/` 尚未准备好，选择以下任一方式执行：
 
 ```bash
 # Bash（需要 bash + curl + tar/unzip）
@@ -132,11 +126,11 @@ node ./scripts/init.mjs
 - 交互式选择目标平台与架构
 - 配置并发下载数
 - 可选代理（第一个参数，如 `127.0.0.1:7890`）
-- 下载后自动解压部署到 `platforms/` 目录
+- 下载后自动解压部署到 `build/platforms/` 目录
 
 说明：
 
-- `platforms/` 主要是下载或解压后的平台运行时资产（头文件 + 静态/动态库）。
+- `build/platforms/` 主要是下载或解压后的平台运行时资产（头文件 + 静态/动态库）。
 - 不要默认这些资产在任何机器上都已存在。
 - 如果 `doctor.sh` 提示目标平台资产已检测到，可跳过此步骤。
 
@@ -159,7 +153,7 @@ node ./scripts/init.mjs
 | `wasmline-multiplatform/wasmline-build-logic/` | 构建逻辑（convention plugins） |
 | `wasmline-ci/` | CI 与样例自动化脚本 |
 | `scripts/` | 仓库级初始化与辅助脚本 |
-| `platforms/` | 平台运行时资产（由 `scripts/init.sh` 初始化） |
+| `build/platforms/` | 平台运行时资产（由 `scripts/init.sh` 初始化） |
 | `docs/` | 文档站点资源 |
 
 ### Runtime / Bridge 相关
@@ -287,7 +281,7 @@ zig build --release=small -p src/jvmMain/resources
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.txt` — FIR 快照
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/box/*.fir.ir.txt` — FIR IR 快照
 - `wasmline-multiplatform/wasmline-kotlin-plugin/testData/diagnostics/*.fir.txt` — 诊断快照
-- `platforms/` — 平台运行时资产
+- `build/platforms/` — 平台运行时资产
 - `**/build/` — 构建产物
 
 关于 IR 测试，需要牢记：

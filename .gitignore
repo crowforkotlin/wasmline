@@ -53,6 +53,6 @@
 **/*.log
 
 /AGENTS.md
-/platforms/
+/build/platforms/
 /.cache/
 /commit_message.txt

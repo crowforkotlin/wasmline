@@ -30,7 +30,7 @@ from urllib.error import URLError
 # ── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-PLATFORMS_ROOT = PROJECT_ROOT / "platforms"
+PLATFORMS_ROOT = PROJECT_ROOT / "build" / "platforms"
 
 REPO = "crowforkotlin/wasmtime"
 
@@ -103,7 +103,7 @@ PLATFORM_MAP: dict[str, str] = {
 def format_target_summary(target: dict[str, str | None]) -> str:
     if target["filter"] == "all":
         return str(target["name"])
-    return f"{target['name']} -> platforms/{target['platform']} [asset: {target['filter']}]"
+    return f"{target['name']} -> build/platforms/{target['platform']} [asset: {target['filter']}]"
 
 
 def select_target() -> str:

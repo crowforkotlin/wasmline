@@ -38,8 +38,8 @@ kotlin {
     apply {
         val nativeHeaderDir = project.file("src/iosMain/native")
         fun iosPlatformRoot(targetName: String) = when (targetName) {
-            "iosSimulatorArm64" -> project.file("../../platforms/ios/simulator-arm64")
-            else -> project.file("../../platforms/ios/arm64")
+            "iosSimulatorArm64" -> project.file("../../build/platforms/ios/simulator-arm64")
+            else -> project.file("../../build/platforms/ios/arm64")
         }
         fun iosBuildDir(targetName: String) = when (targetName) {
             "iosSimulatorArm64" -> project.file("build/ios/simulator-arm64")

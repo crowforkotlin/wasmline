@@ -83,8 +83,8 @@ ensure_ios_prerequisites() {
     require_command open
     require_directory "$IOS_APP_ROOT" "ios sample app root"
     require_directory "$IOS_PROJECT_FILE" "ios sample Xcode project"
-    require_directory "${REPO_ROOT}/platforms/ios/simulator-arm64/include" "iOS simulator headers"
-    require_directory "${REPO_ROOT}/platforms/ios/simulator-arm64/lib" "iOS simulator libraries"
+    require_directory "${REPO_ROOT}/build/platforms/ios/simulator-arm64/include" "iOS simulator headers"
+    require_directory "${REPO_ROOT}/build/platforms/ios/simulator-arm64/lib" "iOS simulator libraries"
 }
 
 select_ios_simulator() {

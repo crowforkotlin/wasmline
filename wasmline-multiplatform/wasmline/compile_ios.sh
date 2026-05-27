@@ -11,12 +11,12 @@ TARGET_KIND="${1:-simulator-arm64}"
 case "$TARGET_KIND" in
     simulator-arm64|simulator|sim)
         SDK="iphonesimulator"
-        PLATFORM_DIR="${PROJECT_ROOT}/platforms/ios/simulator-arm64"
+        PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/ios/simulator-arm64"
         BUILD_DIR="${SCRIPT_DIR}/build/ios/simulator-arm64"
         ;;
     arm64|device|ios-arm64)
         SDK="iphoneos"
-        PLATFORM_DIR="${PROJECT_ROOT}/platforms/ios/arm64"
+        PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/ios/arm64"
         BUILD_DIR="${SCRIPT_DIR}/build/ios/arm64"
         ;;
     *)
@@ -30,12 +30,12 @@ HEADER_DIR="${PLATFORM_DIR}/include"
 LIB_DIR="${PLATFORM_DIR}/lib"
 if [ ! -f "${HEADER_DIR}/wasmtime.h" ]; then
     echo "Missing wasmtime header: ${HEADER_DIR}/wasmtime.h" >&2
-    echo "Initialize iOS platform assets under platforms/ios before building." >&2
+    echo "Initialize iOS platform assets under build/platforms/ios before building." >&2
     exit 1
 fi
 if [ ! -f "${LIB_DIR}/libwasmtime.a" ]; then
     echo "Missing wasmtime static library: ${LIB_DIR}/libwasmtime.a" >&2
-    echo "Initialize iOS platform assets under platforms/ios before building." >&2
+    echo "Initialize iOS platform assets under build/platforms/ios before building." >&2
     exit 1
 fi
 

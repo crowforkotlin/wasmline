@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 # 设置Library库
 get_filename_component(ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../" ABSOLUTE)
-get_filename_component(LIBRARY_DIR "${ROOT_DIR}/platforms/android" ABSOLUTE)
+get_filename_component(LIBRARY_DIR "${ROOT_DIR}/build/platforms/android" ABSOLUTE)
 
 # 打印信息
 message(STATUS "Wasmline CMakeLogcat --> Build Architecture : ${ANDROID_ABI}")

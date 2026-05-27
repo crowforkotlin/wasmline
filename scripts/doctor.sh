@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PLATFORMS_ROOT="${ROOT_DIR}/build/platforms"
 PROFILE_FILES=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile")
 PLATFORM_TARGETS=(
     "android/arm64-v8a|Android arm64-v8a|aarch64-android"
@@ -184,10 +185,9 @@ table_note() {
 usage() {
     cat <<'EOF'
 Usage:
-  bash ./scripts/doctor.sh [--compose-desktop]
+  bash ./scripts/doctor.sh
 
 Options:
-  --compose-desktop   Require Zig ${REQUIRED_ZIG_VERSION} for Compose Desktop and native builds.
   -h, --help          Show this help.
 EOF
 }
@@ -357,26 +357,26 @@ check_platform_assets() {
     local missing_count=0
     local entry relative_dir label asset_id asset_dir missing_parts missing_display
 
-    if [ ! -d "$ROOT_DIR/platforms" ]; then
-        table_row warn "platforms/" "Directory not found. No Wasmtime runtime assets are currently available."
+    if [ ! -d "$PLATFORMS_ROOT" ]; then
+        table_row warn "build/platforms/" "Directory not found. No Wasmtime runtime assets are currently available."
         table_note "Run sh ./scripts/init.sh when you need native or desktop targets."
         return 0
     fi
 
     for entry in "${PLATFORM_TARGETS[@]}"; do
         IFS='|' read -r relative_dir label asset_id <<< "$entry"
-        asset_dir="$ROOT_DIR/platforms/$relative_dir"
+        asset_dir="$PLATFORMS_ROOT/$relative_dir"
         missing_parts=""
         [ -d "$asset_dir/include" ] || missing_parts="${missing_parts}include,"
         [ -d "$asset_dir/lib" ] || missing_parts="${missing_parts}lib,"
 
         if [ -z "$missing_parts" ]; then
             available_count=$((available_count + 1))
-            table_row pass "$label" "path=platforms/$relative_dir; asset=$asset_id"
+            table_row pass "$label" "path=build/platforms/$relative_dir; asset=$asset_id"
         else
             missing_count=$((missing_count + 1))
             missing_display="${missing_parts%,}"
-            table_row warn "$label" "path=platforms/$relative_dir; missing=$missing_display; asset=$asset_id"
+            table_row warn "$label" "path=build/platforms/$relative_dir; missing=$missing_display; asset=$asset_id"
         fi
     done
 
@@ -406,29 +406,23 @@ check_zig() {
         return 1
     fi
 
+}
+
+check_desktop_native_outputs() {
     if find "$ROOT_DIR/wasmline-multiplatform/wasmline/src/jvmMain/resources" -type f \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) 2>/dev/null | grep -q .; then
         table_row pass "JNI/native outputs" "Desktop native libraries were found under wasmline/src/jvmMain/resources."
+        return 0
     else
         table_row warn "JNI/native outputs" "No desktop native libraries were found under wasmline/src/jvmMain/resources."
+        return 1
     fi
 }
 
 check_compose_native() {
-    local wants_compose="$1"
     section "$DESKTOP_ICON" "Compose Desktop / Native"
-
-    if [ "$wants_compose" -eq 1 ]; then
-        table_row info "Mode" "--compose-desktop is enabled. Zig ${REQUIRED_ZIG_VERSION} is a hard requirement." 0
-        if ! check_zig; then
-            table_row fail "Desktop gate" "Compose Desktop/native checks failed."
-            exit 3
-        fi
-        table_row pass "Desktop gate" "Compose Desktop/native prerequisites are satisfied."
-        return 0
-    fi
-
-    table_row info "Mode" "--compose-desktop is disabled. Desktop checks stay advisory." 0
+    table_row info "Mode" "Desktop checks are advisory and reported for visibility." 0
     check_zig || true
+    check_desktop_native_outputs || true
 }
 
 print_summary() {
@@ -444,13 +438,8 @@ print_summary() {
 
 main() {
     init_ui
-
-    local wants_compose=0
     case "${1:-}" in
         "")
-            ;;
-        --compose-desktop)
-            wants_compose=1
             ;;
         -h|--help)
             usage
@@ -466,7 +455,7 @@ main() {
     banner
     check_jbr
     check_platform_assets
-    check_compose_native "$wants_compose"
+    check_compose_native
     print_summary
 }
 

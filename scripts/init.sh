@@ -35,14 +35,14 @@ get_time_ms() {
 
 target_summary() {
     case "$1" in
-        aarch64-android)   printf '%s' 'Android / arm64-v8a -> platforms/android/arm64-v8a [asset: aarch64-android]' ;;
-        aarch64-ios-c-api) printf '%s' 'iOS Device / arm64 -> platforms/ios/arm64 [asset: aarch64-ios-c-api]' ;;
-        aarch64-ios-sim)   printf '%s' 'iOS Simulator / simulator-arm64 -> platforms/ios/simulator-arm64 [asset: aarch64-ios-sim]' ;;
-        aarch64-linux)     printf '%s' 'Linux / aarch64 -> platforms/linux/aarch64 [asset: aarch64-linux]' ;;
-        x86_64-linux)      printf '%s' 'Linux / x64 -> platforms/linux/x64 [asset: x86_64-linux]' ;;
-        aarch64-macos)     printf '%s' 'macOS / aarch64 -> platforms/mac/aarch64 [asset: aarch64-macos]' ;;
-        x86_64-macos)      printf '%s' 'macOS / x64 -> platforms/mac/x64 [asset: x86_64-macos]' ;;
-        x86_64-windows)    printf '%s' 'Windows / x64 -> platforms/windows/x64 [asset: x86_64-windows]' ;;
+        aarch64-android)   printf '%s' 'Android / arm64-v8a -> build/platforms/android/arm64-v8a [asset: aarch64-android]' ;;
+        aarch64-ios-c-api) printf '%s' 'iOS Device / arm64 -> build/platforms/ios/arm64 [asset: aarch64-ios-c-api]' ;;
+        aarch64-ios-sim)   printf '%s' 'iOS Simulator / simulator-arm64 -> build/platforms/ios/simulator-arm64 [asset: aarch64-ios-sim]' ;;
+        aarch64-linux)     printf '%s' 'Linux / aarch64 -> build/platforms/linux/aarch64 [asset: aarch64-linux]' ;;
+        x86_64-linux)      printf '%s' 'Linux / x64 -> build/platforms/linux/x64 [asset: x86_64-linux]' ;;
+        aarch64-macos)     printf '%s' 'macOS / aarch64 -> build/platforms/mac/aarch64 [asset: aarch64-macos]' ;;
+        x86_64-macos)      printf '%s' 'macOS / x64 -> build/platforms/mac/x64 [asset: x86_64-macos]' ;;
+        x86_64-windows)    printf '%s' 'Windows / x64 -> build/platforms/windows/x64 [asset: x86_64-windows]' ;;
         all)               printf '%s' 'All Platforms' ;;
         *)                 printf '%s' "$1" ;;
     esac
