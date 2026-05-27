@@ -12,7 +12,7 @@ VERSION_CODE_ALT="1"
 WASMTIME_VERSION="v45.0.0"
 WASMTIME_TARGET="aarch64-macos"
 WASMTIME_DIR=""
-DOWNLOAD_EXTRA_VERSION="v45.0.0"
+DOWNLOAD_EXTRA_VERSION="latest"
 DOWNLOAD_ARCH="aarch64-macos"
 SELECTED_ARCHES="pulley64,aarch64-android"
 KEY_FILE="build/wasmline/keys/ed25519_private.key"
@@ -188,7 +188,7 @@ Options:
   --wasmtime-target VALUE        Wasmtime target shown in examples, overrides auto-sync from --download-arch
   --wasmtime-dir VALUE           Wasmtime directory used by build/compile examples, defaults from version + target
   --download-extra-version VALUE Extra version used by download multi-version example
-  --download-arch VALUE          Download architecture or release asset name, e.g. x86_64-linux or wasmtime-v43.0.2-x86_64-linux.tar.xz
+  --download-arch VALUE          Download architecture or release asset name, e.g. x86_64-linux or wasmtime-${WASMTIME_VERSION}-x86_64-linux.tar.xz
   --selected-arches VALUE        Comma-separated arch list for build/compile arch examples
   --key-file VALUE               Private key file path used by build/manifest examples
   --hex-key VALUE                Hex private key used by build/manifest examples

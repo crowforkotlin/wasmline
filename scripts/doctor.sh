@@ -14,6 +14,8 @@ PLATFORM_TARGETS=(
     "mac/x64|macOS x64|x86_64-macos"
     "windows/x64|Windows x64|x86_64-windows"
 )
+REQUIRED_JBR_VERSION="21"
+REQUIRED_ZIG_VERSION="0.15.1"
 
 OK_COUNT=0
 WARN_COUNT=0
@@ -185,7 +187,7 @@ Usage:
   bash ./scripts/doctor.sh [--compose-desktop]
 
 Options:
-  --compose-desktop   Require Zig 0.15.1 for Compose Desktop and native builds.
+  --compose-desktop   Require Zig ${REQUIRED_ZIG_VERSION} for Compose Desktop and native builds.
   -h, --help          Show this help.
 EOF
 }
@@ -208,7 +210,7 @@ java_home_summary() {
     printf '%s|%s|%s\n' "$version_line" "$implementor" "$runtime_version"
 }
 
-is_jbr21_home() {
+is_required_jbr_home() {
     local java_home="$1"
     if [ -z "$java_home" ] || [ ! -x "$java_home/bin/java" ]; then
         return 1
@@ -222,7 +224,7 @@ is_jbr21_home() {
     runtime_version="${summary##*|}"
 
     case "$version_line $implementor $runtime_version $java_home" in
-        *21*JBR*|*21*JetBrains*|*21*jbr*|*21*jbrsdk*) return 0 ;;
+        *"${REQUIRED_JBR_VERSION}"*JBR*|*"${REQUIRED_JBR_VERSION}"*JetBrains*|*"${REQUIRED_JBR_VERSION}"*jbr*|*"${REQUIRED_JBR_VERSION}"*jbrsdk*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -276,7 +278,7 @@ collect_candidate_paths() {
 }
 
 check_jbr() {
-    section "$JAVA_ICON" "JBR 21 Gate"
+    section "$JAVA_ICON" "JBR ${REQUIRED_JBR_VERSION} Gate"
 
     local current_java_home="${JAVA_HOME:-}"
     local current_java_ok=0
@@ -292,12 +294,12 @@ check_jbr() {
     table_row info "Java home source" "$java_source" 0
 
     if [ -n "$current_java_home" ]; then
-        if is_jbr21_home "$current_java_home"; then
+        if is_required_jbr_home "$current_java_home"; then
             current_java_ok=1
-            table_row pass "Active JBR 21" "$current_java_home"
+            table_row pass "Active JBR ${REQUIRED_JBR_VERSION}" "$current_java_home"
         else
             table_row warn "Active Java home" "$current_java_home"
-            table_note "The current shell is not using JBR 21."
+            table_note "The current shell is not using JBR ${REQUIRED_JBR_VERSION}."
         fi
     else
         table_row warn "Active Java home" "No usable Java home was detected."
@@ -316,12 +318,12 @@ check_jbr() {
         while IFS= read -r candidate; do
             [ -n "$candidate" ] || continue
             if [ -d "$candidate" ]; then
-                if is_jbr21_home "$candidate"; then
+                if is_required_jbr_home "$candidate"; then
                     [ -n "$preferred_jbr_home" ] || preferred_jbr_home="$candidate"
                     table_row pass "Candidate JBR" "$candidate"
                 else
                     table_row warn "Candidate path" "$candidate"
-                    table_note "Path exists but is not a JBR 21 home."
+                    table_note "Path exists but is not a JBR ${REQUIRED_JBR_VERSION} home."
                 fi
             else
                 table_row warn "Candidate path" "$candidate"
@@ -333,17 +335,17 @@ check_jbr() {
     fi
 
     if [ "$current_java_ok" -eq 1 ]; then
-        table_row pass "Gradle gate" "JBR 21 is active in the current shell."
+        table_row pass "Gradle gate" "JBR ${REQUIRED_JBR_VERSION} is active in the current shell."
         return 0
     fi
 
-    table_row fail "Gradle gate" "JBR 21 is required before any Gradle build or test."
+    table_row fail "Gradle gate" "JBR ${REQUIRED_JBR_VERSION} is required before any Gradle build or test."
     if [ -n "$preferred_jbr_home" ]; then
         table_note "Recommended fix:"
         table_note "export JAVA_HOME=\"$preferred_jbr_home\""
         table_note "\"\$JAVA_HOME/bin/java\" -version"
     else
-        table_note "Install or locate a valid JBR 21 and export JAVA_HOME before continuing."
+        table_note "Install or locate a valid JBR ${REQUIRED_JBR_VERSION} and export JAVA_HOME before continuing."
     fi
     exit 2
 }
@@ -391,16 +393,16 @@ check_platform_assets() {
 
 check_zig() {
     if ! command -v zig >/dev/null 2>&1; then
-        table_row warn "Zig 0.15.1" "zig was not found in PATH."
+        table_row warn "Zig ${REQUIRED_ZIG_VERSION}" "zig was not found in PATH."
         return 1
     fi
 
     local version
     version="$(zig version 2>/dev/null || true)"
-    if [ "$version" = "0.15.1" ]; then
-        table_row pass "Zig 0.15.1" "Detected zig version $version."
+    if [ "$version" = "$REQUIRED_ZIG_VERSION" ]; then
+        table_row pass "Zig ${REQUIRED_ZIG_VERSION}" "Detected zig version $version."
     else
-        table_row warn "Zig version" "Detected $version. Version 0.15.1 is required for Compose Desktop/native."
+        table_row warn "Zig version" "Detected $version. Version ${REQUIRED_ZIG_VERSION} is required for Compose Desktop/native."
         return 1
     fi
 
@@ -416,7 +418,7 @@ check_compose_native() {
     section "$DESKTOP_ICON" "Compose Desktop / Native"
 
     if [ "$wants_compose" -eq 1 ]; then
-        table_row info "Mode" "--compose-desktop is enabled. Zig 0.15.1 is a hard requirement." 0
+        table_row info "Mode" "--compose-desktop is enabled. Zig ${REQUIRED_ZIG_VERSION} is a hard requirement." 0
         if ! check_zig; then
             table_row fail "Desktop gate" "Compose Desktop/native checks failed."
             exit 3
@@ -431,7 +433,7 @@ check_compose_native() {
 
 print_summary() {
     section "$SUMMARY_ICON" "Summary"
-    table_row pass "Hard gate" "JBR 21 is active; Gradle work may proceed." 0
+    table_row pass "Hard gate" "JBR ${REQUIRED_JBR_VERSION} is active; Gradle work may proceed." 0
     table_row info "Results" "$OK_COUNT pass, $WARN_COUNT warning, $FAIL_COUNT fail." 0
     if [ "$WARN_COUNT" -gt 0 ]; then
         table_row info "Next step" "Review warnings only for the platforms or desktop flow you actually need." 0

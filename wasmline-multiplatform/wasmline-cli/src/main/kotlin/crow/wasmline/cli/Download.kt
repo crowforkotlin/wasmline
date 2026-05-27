@@ -49,7 +49,7 @@ class Download : CliktCommand(name = "download") {
     private val downloadVersions by option("-v", "--versions")
         .multiple()
         .unique()
-        .help("default : lastest version, e.g : v41.0.1,v41.0.2")
+        .help("default : latest version, e.g : v${BuildConfig.WASMTIME_VERSION},latest")
 
     private val archOption by option("-a", "--arch")
         .help("default : current os arch")

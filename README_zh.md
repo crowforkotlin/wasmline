@@ -9,7 +9,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20--RC-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Wasmtime](https://img.shields.io/badge/Wasmtime-41.0.1-5C9BD6?style=flat-square)](https://wasmtime.dev)
+[![Wasmtime](https://img.shields.io/badge/Wasmtime-45.0.0-5C9BD6?style=flat-square)](https://wasmtime.dev)
 [![AGP](https://img.shields.io/badge/AGP-9.2.1-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/build/releases/gradle-plugin)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Web-555555?style=flat-square)](#platform-support)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-WASI-654FF0?style=flat-square&logo=webassembly&logoColor=white)](https://wasi.dev)
@@ -28,7 +28,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 
 **编译期桥接生成。** 服务契约以扩展 `WasmlineService` 的 Kotlin `interface` 类型表达。Kotlin IR 编译器插件在构建期生成全部序列化、分发与桥接基础设施，消除运行时反射、注解处理以及手工 marshalling 代码。
 
-**双路径运行时架构。** 原生目标（Android、iOS、macOS、Linux、Windows）通过 Zig 0.15.1 编译的 `wasmline-core` 原生桥接层，以 JNI 或 Kotlin/Native C Interop 方式调用 **Wasmtime v41.0.1 (C-API)** 执行插件。Web 目标（Kotlin/JS、Kotlin/WasmJS）则通过浏览器原生 `WebAssembly.Module` / `WebAssembly.Instance` 容器以及自包含、轻量级的内联 JavaScript 运行时执行插件——浏览器执行路径中不包含 Wasmtime。
+**双路径运行时架构。** 原生目标（Android、iOS、macOS、Linux、Windows）通过 Zig 0.15.1 编译的 `wasmline-core` 原生桥接层，以 JNI 或 Kotlin/Native C Interop 方式调用 **Wasmtime v45.0.0 (C-API)** 执行插件。Web 目标（Kotlin/JS、Kotlin/WasmJS）则通过浏览器原生 `WebAssembly.Module` / `WebAssembly.Instance` 容器以及自包含、轻量级的内联 JavaScript 运行时执行插件——浏览器执行路径中不包含 Wasmtime。
 
 **语言无关的插件编写。** 插件二进制可以由任何以 WASI 为目标的工具链生成，包括 Kotlin、Rust、C/C++、Go 和 AssemblyScript。
 
@@ -40,11 +40,11 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 
 | 平台              | 目标三元组          | 运行时引擎                  | 桥接技术                      | 产物支持              | 模块加载器                |
 |-------------------|---------------------|-----------------------------|-------------------------------|-----------------------|---------------------------|
-| Android           | `arm64-v8a`         | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
-| iOS               | `arm64`             | Wasmtime v41.0.1 C-API      | C Interop（`.def` cinterop）  | `.pwasm`              | `wasmline-core` Session   |
-| macOS             | `arm64`             | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
-| Linux             | `x86_64`            | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
-| Windows           | `x86_64`            | Wasmtime v41.0.1 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| Android           | `arm64-v8a`         | Wasmtime v45.0.0 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| iOS               | `arm64`             | Wasmtime v45.0.0 C-API      | C Interop（`.def` cinterop）  | `.pwasm`              | `wasmline-core` Session   |
+| macOS             | `arm64`             | Wasmtime v45.0.0 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| Linux             | `x86_64`            | Wasmtime v45.0.0 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
+| Windows           | `x86_64`            | Wasmtime v45.0.0 C-API      | JNI（Zig 0.15.1 编译）        | `.cwasm` / `.pwasm`   | `wasmline-core` Session   |
 | Web - Kotlin/Js   | 浏览器 JS 引擎      | 浏览器 `WebAssembly` API    | Inline JS (`js()` interop)    | 仅原始 `.wasm`        | Synchronous XHR fetch     |
 | Web - Kotlin/Wasm | 浏览器 JS 引擎      | 浏览器 `WebAssembly` API    | Inline JS (`js()` interop)    | 仅原始 `.wasm`        | Synchronous XHR fetch     |
 
@@ -248,7 +248,7 @@ cd wasmline-multiplatform
 cd wasmline-multiplatform
 
 # Download Wasmtime C-API binaries
-./gradlew :wasmline-cli:run --args="download -v v41.0.1"
+./gradlew :wasmline-cli:run --args="download -v v45.0.0"
 
 # Generate Ed25519 signing key pair
 ./gradlew :wasmline-cli:run --args="generate-key-pair --save"
@@ -256,7 +256,7 @@ cd wasmline-multiplatform
 # Execute the full build pipeline
 ./gradlew :wasmline-cli:run --args="build \
   -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v41.0.1-aarch64-macos \
+  -wt build/wasmline/wasmtime/wasmtime-v45.0.0-aarch64-macos \
   --key build/wasmline/keys/ed25519_private.key"
 ```
 
@@ -329,7 +329,7 @@ wasmline-core  (C/C++ · Zig 0.15.1)
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context
         │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
         ▼
-Wasmtime C-API  v41.0.1
+Wasmtime C-API  v45.0.0
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
 Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
@@ -443,6 +443,15 @@ bash ./scripts/doctor.sh
 
 # Extended verification: Zig 0.15.1 and desktop native assets
 bash ./scripts/doctor.sh --compose-desktop
+```
+
+### 版本同步
+
+文档和重复配置中的版本号统一由 `scripts/versions.json` 管理，并通过脚本同步：
+
+```bash
+python3 scripts/sync_versions.py --check
+python3 scripts/sync_versions.py --set wasmtime_version=<new-version>
 ```
 
 ### Gradle 构建参考
