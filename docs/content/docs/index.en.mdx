@@ -75,7 +75,7 @@ The project is built around three invariants:
 ### Platform Runtime Asset Initialization
 
 <Callout type="info" title="Native targets only">
-  Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only builds do not need Wasmtime C-API assets.
+  Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only builds do not need Wasmtime min C-API assets.
 </Callout>
 
 <Steps>
@@ -183,7 +183,7 @@ cd wasmline-multiplatform
 ```bash
 cd wasmline-multiplatform
 
-# Download Wasmtime C-API binaries
+# Download Wasmtime min toolchain binaries
 ./gradlew :wasmline-cli:run --args="download -v v45.0.0"
 
 # Generate Ed25519 signing key pair

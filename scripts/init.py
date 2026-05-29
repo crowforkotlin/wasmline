@@ -185,16 +185,17 @@ def deploy_platform(archive: Path, plat: str) -> None:
             with tarfile.open(archive) as tf:
                 tf.extractall(tmp_path)
 
-        # Find the directory containing include/
         include_dir = None
         for root, dirs, _ in os.walk(tmp_path):
-            if "include" in dirs:
-                include_dir = Path(root)
-                break
+            if "min" in dirs:
+                min_dir = Path(root) / "min"
+                if (min_dir / "include").is_dir() and (min_dir / "lib").is_dir():
+                    include_dir = min_dir
+                    break
 
         if include_dir is None:
-            log_err(f"Invalid structure: {archive.name}")
-            raise RuntimeError(f"No include/ found in {archive.name}")
+            log_err(f"Invalid min structure: {archive.name}")
+            raise RuntimeError(f"No min/include and min/lib found in {archive.name}")
 
         shutil.move(str(include_dir / "include"), str(target / "include"))
         shutil.move(str(include_dir / "lib"), str(target / "lib"))

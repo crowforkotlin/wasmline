@@ -288,12 +288,15 @@ resolve_wasmtime_dir() {
 
 find_wasmtime_executable() {
     local directory="$1"
+    local executable
 
     if [[ "$(uname -s)" == CYGWIN* || "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == Windows_NT ]]; then
-        find "$directory" -type f \( -name 'wasmtime.exe' -o -name 'wasmtime-min.exe' \) | sort | head -n 1
+        executable="$(find "$directory" -type f -name 'wasmtime-min.exe' | sort | head -n 1)"
     else
-        find "$directory" -type f \( -name 'wasmtime' -o -name 'wasmtime-min' \) | sort | head -n 1
+        executable="$(find "$directory" -type f -name 'wasmtime-min' | sort | head -n 1)"
     fi
+
+    printf '%s\n' "$executable"
 }
 
 ensure_wasmtime_toolchain() {
@@ -324,7 +327,7 @@ ensure_wasmtime_toolchain() {
         fi
     fi
     if [ -z "$wasmtime_executable" ] || [ -z "$wasmtime_dir" ]; then
-        echo "Wasmtime executable not found in shared toolchain cache for ${PLATFORM}." >&2
+        echo "wasmtime-min executable not found in shared toolchain cache for ${PLATFORM}." >&2
         echo "Tried cache root: ${SHARED_WASMTIME_ROOT}" >&2
         exit 1
     fi

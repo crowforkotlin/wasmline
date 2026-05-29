@@ -297,8 +297,14 @@ function findMsysTar() {
 
 function findIncludeDir(root) {
   const entries = readdirSync(root, { withFileTypes: true });
+  if (
+    entries.some((e) => e.isDirectory() && e.name === "min") &&
+    existsSync(join(root, "min", "include")) &&
+    existsSync(join(root, "min", "lib"))
+  ) {
+    return join(root, "min");
+  }
   for (const e of entries) {
-    if (e.isDirectory() && e.name === "include") return root;
     if (e.isDirectory()) {
       const found = findIncludeDir(join(root, e.name));
       if (found) return found;
@@ -321,7 +327,7 @@ function deployPlatform(archive, plat) {
   try {
     extractArchive(archive, tmp);
     const cRoot = findIncludeDir(tmp);
-    if (!cRoot) throw new Error(`Invalid structure: ${basename(archive)}`);
+    if (!cRoot) throw new Error(`Invalid min structure: ${basename(archive)}`);
 
     const srcInclude = join(cRoot, "include");
     const srcLib = join(cRoot, "lib");

@@ -75,7 +75,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 ### 平台运行时资产初始化
 
 <Callout type="info" title="仅原生目标需要">
-  资产初始化仅用于原生目标构建（Android、iOS、Desktop）。仅构建 Web 时不需要 Wasmtime C-API 资产。
+  资产初始化仅用于原生目标构建（Android、iOS、Desktop）。仅构建 Web 时不需要 Wasmtime min C-API 资产。
 </Callout>
 
 <Steps>
@@ -183,7 +183,7 @@ cd wasmline-multiplatform
 ```bash
 cd wasmline-multiplatform
 
-# Download Wasmtime C-API binaries
+# Download Wasmtime min toolchain binaries
 ./gradlew :wasmline-cli:run --args="download -v v45.0.0"
 
 # Generate Ed25519 signing key pair

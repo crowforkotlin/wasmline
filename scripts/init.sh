@@ -128,14 +128,16 @@ deploy_platform() {
         tar -xf "$arc" -C "$ex_dir"
     fi
 
-    local c_root=$(find "$ex_dir" -type d -name "include" 2>/dev/null | head -n 1)
-    if [ -n "$c_root" ]; then
-        c_root=$(dirname "$c_root")
+    local min_include_root
+    min_include_root=$(find "$ex_dir" -type d -path "*/min/include" 2>/dev/null | head -n 1)
+    local c_root=""
+    [ -n "$min_include_root" ] && c_root=$(dirname "$min_include_root")
+    if [ -n "$c_root" ] && [ -d "$c_root/lib" ]; then
         mv "$c_root/include" "$f_path/"
         mv "$c_root/lib" "$f_path/"
         log_success "Installed: ${plat}"
     else
-        log_error "Invalid structure: $fname"
+        log_error "Invalid min structure: $fname"
         touch "$ERROR_FLAG_FILE"
     fi
     rm -rf "$t_dir"

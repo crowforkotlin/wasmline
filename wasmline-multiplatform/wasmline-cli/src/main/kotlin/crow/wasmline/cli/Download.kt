@@ -125,7 +125,7 @@ class Download : CliktCommand(name = "download") {
             val folderName = fileName.removeSuffix(".tar.xz").removeSuffix(".zip")
             val targetFolder = File(outputDir, folderName)
             val successFile = File(targetFolder, ".success")
-            if (successFile.exists() && !forceDownload) {
+            if (successFile.exists() && !forceDownload && Compile.findWasmtimeExecutable(targetFolder) != null) {
                 println("Skipping: $fileName (Already exists and complete)")
                 return@forEach
             }
@@ -172,6 +172,10 @@ class Download : CliktCommand(name = "download") {
                         targetFolder.deleteRecursively()
                         throw IllegalStateException("Unsupported archive type for '$fileName'")
                     }
+                }
+                if (Compile.findWasmtimeExecutable(targetFolder) == null) {
+                    targetFolder.deleteRecursively()
+                    throw IllegalStateException("Downloaded asset '$fileName' did not contain wasmtime-min")
                 }
                 successFile.writeText("version=$version\nplatform=$platform\nurl=$downloadUrl")
             } catch (e: Exception) {

@@ -452,7 +452,7 @@ build/wasmline/
 | option              | required | default        | description                                  |
 |---------------------|----------|----------------|----------------------------------------------|
 | \`-i\`, \`--input\`     | yes      | -              | Input .wasm file path                        |
-| \`-wt\`, \`--wasmtime\` | yes      | -              | Directory containing the wasmtime executable |
+| \`-wt\`, \`--wasmtime\` | yes      | -              | Directory containing the wasmtime-min executable |
 | \`-k\`, \`--key\`       | yes      | -              | Ed25519 private key: file path or hex string |
 | \`-n\`, \`--name\`      | no       | input filename | Product name for output artifacts            |
 | \`-v\`, \`--version\`         | no       | \`1.0.0\`        | Semantic version                             |
@@ -522,7 +522,7 @@ ${OUTPUT_DIR}/{name}-{version}/
 | option              | required | default                 | description                                  |
 |---------------------|----------|-------------------------|----------------------------------------------|
 | \`-i\`, \`--input\`     | yes      | -                       | Input .wasm file path                        |
-| \`-wt\`, \`--wasmtime\` | yes      | -                       | Directory containing the wasmtime executable |
+| \`-wt\`, \`--wasmtime\` | yes      | -                       | Directory containing the wasmtime-min executable |
 | \`-n\`, \`--name\`      | no       | input filename          | Product name for output artifacts            |
 | \`-v\`, \`--version\`   | no       | \`1.0.0\`                 | Version string for output directory          |
 | \`-o\`, \`--output\`    | no       | \`${OUTPUT_DIR}\` | Output root directory                        |
@@ -608,7 +608,7 @@ echo "  manifest.md"
 cat >"${SCRIPT_DIR}/download.md" <<DOWNLOADEOF
 # download
 
-## download latest wasmtime for current platform
+## download latest wasmtime-min for current platform
 
 \`\`\`shell
 $(gradle_cmd download)
@@ -657,7 +657,7 @@ $(gradle_cmd download -v "$WASMTIME_VERSION" -f)
 \`\`\`
 build/wasmline/wasmtime/
 └── wasmtime-${WASMTIME_VERSION}-${WASMTIME_TARGET}/
-    ├── wasmtime
+  ├── wasmtime-min
     ├── ...
     └── .success
 \`\`\`

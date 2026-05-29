@@ -137,9 +137,9 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 ### 平台运行时资产初始化
 
 > [!NOTE]
-> 资产初始化仅对 **原生目标构建**（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 Wasmtime C-API 资产。
+> 资产初始化仅对 **原生目标构建**（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 Wasmtime min C-API 资产。
 
-在开始原生目标编译前，`build/platforms/` 下必须存在 Wasmtime C-API 头文件与预编译库。执行以下任一等价脚本：
+在开始原生目标编译前，`build/platforms/` 下必须存在 Wasmtime min C-API 头文件与预编译库。执行以下任一等价脚本：
 
 ```bash
 sh ./scripts/init.sh          # Bash — requires curl and tar/unzip
@@ -246,7 +246,7 @@ cd wasmline-multiplatform
 ```bash
 cd wasmline-multiplatform
 
-# Download Wasmtime C-API binaries
+# Download Wasmtime min toolchain binaries
 ./gradlew :wasmline-cli:run --args="download -v v45.0.0"
 
 # Generate Ed25519 signing key pair
@@ -407,7 +407,7 @@ wasmline/
 │       └── sample-apps/               # Android, JVM desktop, Compose Multiplatform, and Web hosts
 ├── wasmline-ci/                        # CI automation scripts
 ├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
-├── build/                              # 根级构建输出目录，包含 build/platforms/ Wasmtime C-API 资产
+├── build/                              # 根级构建输出目录，包含 build/platforms/ Wasmtime min C-API 资产
 └── docs/                               # Documentation site (Next.js + Fumadocs)
 ```
 

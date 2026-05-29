@@ -62,11 +62,11 @@ class Compile : CliktCommand(name = "compile") {
         .default(File("build/wasmline/output"))
         .help("Output root directory. Default: ./build/wasmline/output")
 
-    // -wt --wasmtime: The root directory where the wasmtime tool is located
+    // -wt --wasmtime: The root directory where the wasmtime-min tool is located
     val wasmtimeDir by option("-wt", "--wasmtime")
         .file(mustExist = true, canBeDir = true, canBeFile = false)
         .required()
-        .help("Directory containing the wasmtime executable (downloaded via download command)")
+        .help("Directory containing the wasmtime-min executable (downloaded via download command)")
 
     // -a --arch: target architecture, multiple selections possible
     val targets by option("-a", "--arch")
@@ -77,10 +77,10 @@ class Compile : CliktCommand(name = "compile") {
     override fun run() {
         val wasmtimeExec = findWasmtimeExecutable(wasmtimeDir)
         if (wasmtimeExec == null) {
-            echo("Error: Could not find 'wasmtime' executable in ${wasmtimeDir.absolutePath}", err = true)
+            echo("Error: Could not find 'wasmtime-min' executable in ${wasmtimeDir.absolutePath}", err = true)
             throw ProgramResult(1)
         }
-        echo("Using Wasmtime: ${wasmtimeExec.absolutePath}")
+        echo("Using Wasmtime min: ${wasmtimeExec.absolutePath}")
 
         val resolvedName = name ?: inputFile.nameWithoutExtension
         val outputDir = File(outputRoot, "$resolvedName-$version")
@@ -282,9 +282,9 @@ class Compile : CliktCommand(name = "compile") {
         fun findWasmtimeExecutable(directory: File): File? {
             val isWindows = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("win")
             val candidateNames = if (isWindows) {
-                listOf("wasmtime.exe", "wasmtime-min.exe")
+                listOf("wasmtime-min.exe")
             } else {
-                listOf("wasmtime", "wasmtime-min")
+                listOf("wasmtime-min")
             }
             return candidateNames.firstNotNullOfOrNull { targetName ->
                 directory.walk()

@@ -154,10 +154,10 @@ Reference implementations are located under `wasmline-samples/kotlin/`:
 
 > [!NOTE]
 > Asset initialization is required exclusively for **native target builds** (Android, iOS, Desktop).
-> Builds targeting Web exclusively do not require Wasmtime C-API assets.
+> Builds targeting Web exclusively do not require Wasmtime min C-API assets.
 
-Wasmtime C-API headers and pre-built libraries must be present under `build/platforms/` before native
-target compilation proceeds. Execute one of the following equivalent scripts:
+Wasmtime min C-API headers and pre-built libraries must be present under `build/platforms/` before
+native target compilation proceeds. Execute one of the following equivalent scripts:
 
 ```bash
 sh ./scripts/init.sh          # Bash — requires curl and tar/unzip
@@ -275,7 +275,7 @@ cd wasmline-multiplatform
 ```bash
 cd wasmline-multiplatform
 
-# Download Wasmtime C-API binaries
+# Download Wasmtime min toolchain binaries
 ./gradlew :wasmline-cli:run --args="download -v v45.0.0"
 
 # Generate Ed25519 signing key pair
@@ -437,7 +437,7 @@ wasmline/
 │       └── sample-apps/               # Android, JVM desktop, Compose Multiplatform, and Web hosts
 ├── wasmline-ci/                        # CI automation scripts
 ├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
-├── build/                              # Root build outputs, including build/platforms/ Wasmtime C-API assets
+├── build/                              # Root build outputs, including build/platforms/ Wasmtime min C-API assets
 └── docs/                               # Documentation site (Next.js + Fumadocs)
 ```
 
