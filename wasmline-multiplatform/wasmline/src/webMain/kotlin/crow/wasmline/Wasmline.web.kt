@@ -73,7 +73,7 @@ internal object BrowserWasmlineRuntime {
         )
     }
 
-    fun init() = Unit
+    fun bootstrap() = Unit
 
     fun shutdown() {
         WasmlineWebModuleRegistry.clear()

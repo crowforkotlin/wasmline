@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstdarg>
 
-// 如果你想保留相同的命名空间
+// Keep the logger helpers in the wasmline namespace.
 namespace wasmline {
 
     void NativeLogI(const char* fmt, ...) {

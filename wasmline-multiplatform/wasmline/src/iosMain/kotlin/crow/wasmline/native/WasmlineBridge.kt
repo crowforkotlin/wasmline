@@ -2,11 +2,14 @@
 
 package crow.wasmline.native
 
+import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.native.c.*
 import kotlinx.cinterop.*
 
 object WasmlineBridge {
-    fun init() {
-       wasmline_init_engine()
+    fun bootstrap() = Unit
+
+    fun warmup(mode: WasmlineWarmupMode) {
+       wasmline_warmup_engine(mode == WasmlineWarmupMode.PULLEY)
     }
 }

@@ -11,14 +11,48 @@
 #include "Engine.h"
 #include "Module.h"
 #include "Logger.h"
+#include <optional>
 
 namespace wasmline {
+    namespace {
+        bool hasSuffixIgnoreCase(const std::string &value, const std::string &suffix) {
+            if (value.size() < suffix.size()) return false;
+            return std::equal(
+                suffix.rbegin(),
+                suffix.rend(),
+                value.rbegin(),
+                [](char lhs, char rhs) {
+                    return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+                }
+            );
+        }
+
+        std::optional<bool> pulleyModeForArtifact(const std::string &path) {
+            if (hasSuffixIgnoreCase(path, ".pwasm")) return true;
+            if (hasSuffixIgnoreCase(path, ".cwasm")) return false;
+            return std::nullopt;
+        }
+    }
+
     // Static member initialization
     std::unordered_map<std::string, Session *> Api::sessionCache;
     std::shared_mutex Api::sessionMutex;
 
     void Api::initEngine() {
-        Engine::getInstance().init();
+        Engine::getInstance().init(true);
+    }
+
+    void Api::warmupEngine(bool usePulley) {
+        auto &engine = Engine::getInstance();
+        if (engine.isInitialized() && engine.isPulley() == usePulley) {
+            return;
+        }
+
+        if (engine.isInitialized()) {
+            releaseEngine();
+        }
+
+        engine.init(usePulley);
     }
 
     void Api::releaseEngine() {
@@ -39,13 +73,44 @@ namespace wasmline {
     }
 
     bool Api::loadModule(const std::string &key, const std::string &path) {
+        ensureEngineForArtifact(path);
         auto *mod = Module::getInstance().load(key, path);
         return (mod != nullptr);
     }
 
     bool Api::loadModuleUnsafe(const std::string &key, const std::string &path) {
+        ensureEngineForArtifact(path);
         auto *mod = Module::getInstance().loadUnsafe(key, path);
         return (mod != nullptr);
+    }
+
+    void Api::ensureEngineForArtifact(const std::string &path) {
+        auto desiredPulleyMode = pulleyModeForArtifact(path);
+        auto &engine = Engine::getInstance();
+
+        if (!desiredPulleyMode.has_value()) {
+            if (!engine.isInitialized()) {
+                engine.init(true);
+            }
+            return;
+        }
+
+        if (!engine.isInitialized()) {
+            engine.init(*desiredPulleyMode);
+            return;
+        }
+
+        if (engine.isPulley() == *desiredPulleyMode) {
+            return;
+        }
+
+        LOGI(
+            "[Wasmtime] Api --> Reinitializing engine for %s artifact: %s",
+            *desiredPulleyMode ? "pwasm" : "cwasm",
+            path.c_str()
+        );
+        releaseEngine();
+        engine.init(*desiredPulleyMode);
     }
 
 
@@ -63,7 +128,7 @@ namespace wasmline {
         Module::getInstance().release(key);
     }
 
-    // 增加注册方法
+    // Registers the outbound handler for the target session.
     void Api::setOutboundHandler(const std::string &key, std::unique_ptr<OutboundHandler> handler) {
         Session *session = getOrCreateSession(key);
         if (session) session->setOutboundHandler(std::move(handler));

@@ -21,7 +21,8 @@ class WasmlineHostApiCompileTest {
     ) {
         val loadState = loadWasmline(artifactPath = "plugin.pwasm")
 
-        Wasmline.init()
+        Wasmline.bootstrap()
+        Wasmline.warmup(WasmlineWarmupMode.PULLEY)
         Wasmline.shutdown()
 
         wasmline.bind(implementation)

@@ -136,7 +136,7 @@ namespace wasmline {
         wasi_config_set_stderr_custom(wasi, wasi_log_writer, nullptr, nullptr);
         wasmtime_error_t *wasiErr = wasmtime_context_set_wasi(context, wasi);
         if (wasiErr) {
-            // 1. 提取错误信息字符串
+            // Extract the error message string.
             wasm_byte_vec_t error_msg;
             wasmtime_error_message(wasiErr, &error_msg);
             LOGE("[Wasmtime] Session --> 1. Setup wasi failure: %s", error_msg.data);
@@ -533,8 +533,7 @@ namespace wasmline {
         // 4. fast path
         if (resultSize <= outCap) {
             if (resultSize > 0) {
-                // 这里 mem 指针需要重新获取吗？不需要，除非 onOutboundInvoke 内部导致了 Wasm 内存增长
-                // 为安全起见，再次获取 mem 指针是一个好习惯，虽有微小开销
+                // Re-acquire the memory pointer in case the host callback triggered memory growth.
                 uint8_t *current_mem = wasmtime_memory_data(ctx, &self->memory);
                 memcpy(current_mem + outPtr, resultData.data(), resultSize);
             }
@@ -566,7 +565,7 @@ namespace wasmline {
         uint8_t *mem = wasmtime_memory_data(self->context, &self->memory);
         int32_t ptr = args[0].of.i32;
 
-        // [关键] 把暂存的结果拷贝到 Wasm 指定的内存地址
+        // Copy the buffered host response into the target Wasm memory address.
         if (!self->outbound.responseBuffer.empty()) {
             memcpy(mem + ptr, self->outbound.responseBuffer.data(), self->outbound.responseBuffer.size());
         }

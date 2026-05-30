@@ -37,7 +37,7 @@ pub fn build(b: *std.Build) !void {
 
     // 2. Locate dependencies (Inputs)
     const platform_subdir = try getPlatformSubdir(b, target);
-    const wasmtime_dir = b.pathJoin(&.{ repo_root, "platforms", platform_subdir });
+    const wasmtime_dir = b.pathJoin(&.{ repo_root, "build", "platforms", platform_subdir });
     const core_dir = b.pathJoin(&.{ repo_root, "wasmline-core" });
     const java_home = try autoDetectJavaHome(b, target);
 

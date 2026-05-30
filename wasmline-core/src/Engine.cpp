@@ -55,7 +55,7 @@ namespace wasmline {
      * 2. Memory Guard Size = 0: To prevent VSS (Virtual Set Size) OOM on 32-bit or limited devices.
      * 3. GC / Exceptions: Enabled for Kotlin/Wasm support.
      */
-    wasm_config_t *Engine::createConfig() {
+    wasm_config_t *Engine::createConfig(bool usePulley) {
         wasm_config_t *conf = wasm_config_new();
 
         // Feature Flags for Kotlin/Wasm support
@@ -79,7 +79,9 @@ namespace wasmline {
         // Set max stack size (512KB is usually sufficient for mobile logic)
         wasmtime_config_max_wasm_stack_set(conf, 512 * 1024);
 
-        configurePulleyTarget(conf);
+        if (usePulley) {
+            configurePulleyTarget(conf);
+        }
 
         // Compiler Optimization Strategy: Optimize for Speed and Binary Size
         wasmtime_config_cranelift_opt_level_set(conf, WASMTIME_OPT_LEVEL_NONE);
@@ -89,10 +91,10 @@ namespace wasmline {
     }
 
     // Initialize the Engine
-    void Engine::init() {
+    void Engine::init(bool usePulley) {
         std::lock_guard<std::mutex> lock(engineMutex);
         if (!engine) {
-            auto conf = createConfig();
+            auto conf = createConfig(usePulley);
             // Create the engine with the configuration
             engine = wasm_engine_new_with_config(conf);
             if (engine) {
@@ -115,6 +117,16 @@ namespace wasmline {
             engine = nullptr;
             LOGI("[Wasmtime] Engine --> Released.");
         }
+    }
+
+    bool Engine::isInitialized() {
+        std::lock_guard<std::mutex> lock(engineMutex);
+        return engine != nullptr;
+    }
+
+    bool Engine::isPulley() {
+        std::lock_guard<std::mutex> lock(engineMutex);
+        return engine != nullptr && wasmtime_engine_is_pulley(engine);
     }
 
     // Getter for the raw engine pointer

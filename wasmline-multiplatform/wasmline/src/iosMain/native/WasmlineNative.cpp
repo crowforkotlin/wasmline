@@ -1,7 +1,11 @@
-// wasmline-multiplatform/wasmline/core/src/iosMain/native/WasmlineNative.cpp
+/**
+ * WasmlineNative.cpp
+ * iOS C bridge forwarding functions into the Wasmline API facade.
+ */
 #include "WasmlineNative.h"
 #include "Api.h"
 #include "OutboundHandler.h"
+#include <memory>
 #include <string>
 #include <cstring>
 #include <iostream>
@@ -33,6 +37,10 @@ void wasmline_init_engine() {
     Api::initEngine();
 }
 
+void wasmline_warmup_engine(bool usePulley) {
+    Api::warmupEngine(usePulley);
+}
+
 void wasmline_release_engine() {
     Api::releaseEngine();
 }
@@ -52,7 +60,7 @@ void wasmline_release_module(const char* key) {
 
 char* wasmline_invoke_inbound(const char* key,
                               const char* action, size_t actionLen,
-                              const void* data, // <--- 对应修改
+                              const void* data,
                               size_t dataLen,
                               size_t* outLen) {
 
@@ -82,8 +90,7 @@ void wasmline_free_memory(char* str) {
 }
 
 void wasmline_set_outbound_handler(const char* key, OutboundCallback callback) {
-    // 这里的 make_unique 会调用上面的类
-    auto handler = std::make_unique<IosOutboundHandler>(callback);
+    std::unique_ptr<OutboundHandler> handler(new IosOutboundHandler(callback));
     Api::setOutboundHandler(std::string(key), std::move(handler));
 }
 

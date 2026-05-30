@@ -134,7 +134,10 @@ import crow.wasmline.link
 import crow.wasmline.bind
 import crow.wasmline.loader.loadWasmline
 
-Wasmline.init()
+Wasmline.bootstrap()
+
+// Optional: eager warmup for the backend you know you will use first
+Wasmline.warmup(WasmlineWarmupMode.PULLEY)
 
 val state = loadWasmline(artifactPath = "/data/plugin.pwasm")
 

@@ -35,9 +35,66 @@ import org.jetbrains.jewel.window.styling.TitleBarStyle
 import java.awt.Dimension
 import java.io.File
 
+private const val artifactFormatProperty = "wasmline.artifact.format"
+private const val artifactFormatEnvironment = "WASMLINE_ARTIFACT_FORMAT"
+
+private val bundledPluginResources = listOf(
+    "plugin.cwasm",
+    "plugin.pwasm",
+    "plugin.generated.cwasm",
+    "plugin.generated.pwasm",
+)
+
+private fun requestedBundledArtifactFormat(): String? {
+    val rawFormat = System.getProperty(artifactFormatProperty)?.ifBlank { null }
+        ?: System.getenv(artifactFormatEnvironment)?.ifBlank { null }
+        ?: return null
+    val normalized = rawFormat.lowercase()
+    return when (normalized) {
+        "pwasm", "cwasm" -> normalized
+        else -> error("Unsupported runtime artifact format '$rawFormat'. Expected pwasm or cwasm.")
+    }
+}
+
+private fun findBundledPluginResource(vararg candidates: String): String? {
+    val classLoader = Thread.currentThread().contextClassLoader
+    return candidates.firstOrNull { classLoader.getResource(it) != null }
+}
+
+private fun resolveBundledPluginResourceNames(): List<String> {
+    val classLoader = Thread.currentThread().contextClassLoader
+    val requestedFormat = requestedBundledArtifactFormat()
+    if (requestedFormat != null) {
+        val selected = when (requestedFormat) {
+            "pwasm" -> findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm")
+            "cwasm" -> findBundledPluginResource("plugin.cwasm", "plugin.generated.cwasm")
+            else -> null
+        }
+        if (selected != null) {
+            return listOf(selected)
+        }
+
+        val available = bundledPluginResources.filter { classLoader.getResource(it) != null }
+        error(
+            "Requested ${requestedFormat} bundled artifact was not found. " +
+                "Available resources: ${available.ifEmpty { listOf("<none>") }.joinToString(", ")}"
+        )
+    }
+
+    val preferredResources = listOfNotNull(
+        findBundledPluginResource("plugin.cwasm", "plugin.generated.cwasm"),
+        findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm"),
+    )
+    if (preferredResources.isNotEmpty()) {
+        return preferredResources
+    }
+
+    error("Resource not found: ${bundledPluginResources.joinToString(" or ")}")
+}
+
 @OptIn(ExperimentalResourceApi::class)
 fun main() = application {
-    Wasmline.init()
+    Wasmline.bootstrap()
     val (resourceName, wasmFile) = extractPluginArtifactToTemp()
     println("Wasm extracted from $resourceName to: ${wasmFile.absolutePath}")
     AppWindows {
@@ -92,28 +149,50 @@ fun DecoratedWindowScope.DesktopTitleBar(
 }
 
 
-/**
- * 将 Compose 资源或 ClassLoader 资源提取到临时文件
- */
 @OptIn(ExperimentalResourceApi::class)
-fun extractResourceToTemp(resourcePath: String): File {
-    val suffix = "." + resourcePath.substringAfterLast('.', missingDelimiterValue = "bin")
-    val tempFile = File.createTempFile("wasmline_plugin", suffix)
-    tempFile.deleteOnExit() // 程序退出时自动删除
+fun copyResourceToFile(resourcePath: String, targetFile: File) {
+    targetFile.parentFile?.mkdirs()
     val stream = Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
         ?: error("Resource not found: $resourcePath")
     stream.use { input ->
-        tempFile.outputStream().use { output ->
+        targetFile.outputStream().use { output ->
             input.copyTo(output)
         }
     }
+}
+
+@OptIn(ExperimentalResourceApi::class)
+fun extractResourceToTemp(resourcePath: String): File {
+    val suffix = "." + resourcePath.substringAfterLast('.', missingDelimiterValue = "bin")
+    val prefix = "wasmline_plugin_${resourcePath.substringAfterLast('.', missingDelimiterValue = "bin")}_"
+    val tempFile = File.createTempFile(prefix, suffix)
+    tempFile.deleteOnExit()
+    copyResourceToFile(resourcePath, tempFile)
     return tempFile
 }
 
 @OptIn(ExperimentalResourceApi::class)
 fun extractPluginArtifactToTemp(): Pair<String, File> {
-    val resourceName = listOf("plugin.generated.pwasm", "plugin.pwasm")
-        .firstOrNull { Thread.currentThread().contextClassLoader.getResource(it) != null }
-        ?: error("Resource not found: plugin.generated.pwasm or plugin.pwasm")
-    return resourceName to extractResourceToTemp(resourceName)
+    val resourceNames = resolveBundledPluginResourceNames()
+    if (resourceNames.size == 1) {
+        val resourceName = resourceNames.single()
+        return resourceName to extractResourceToTemp(resourceName)
+    }
+
+    val markerFile = File.createTempFile("wasmline_plugin_bundle_", ".tmp")
+    val parentDir = markerFile.parentFile
+    val baseName = markerFile.name.removeSuffix(".tmp")
+    markerFile.delete()
+
+    val extractedFiles = linkedMapOf<String, File>()
+    for (resourceName in resourceNames) {
+        val suffix = "." + resourceName.substringAfterLast('.', missingDelimiterValue = "bin")
+        val targetFile = File(parentDir, baseName + suffix)
+        targetFile.deleteOnExit()
+        copyResourceToFile(resourceName, targetFile)
+        extractedFiles[resourceName] = targetFile
+    }
+
+    val primaryResourceName = resourceNames.first()
+    return primaryResourceName to checkNotNull(extractedFiles[primaryResourceName])
 }

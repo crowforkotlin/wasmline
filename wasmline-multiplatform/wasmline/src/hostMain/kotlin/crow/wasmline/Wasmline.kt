@@ -35,33 +35,54 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
         ): WasmlineLoadState
 
         /**
-         * Initialize the global Engine.
-         * It is recommended to call it in Application onCreate.
+         * Prepare the runtime bridge for host usage.
+         *
+         * On JVM/Android this ensures the native library is loaded. It does not
+         * eagerly create a Wasmtime engine. Engine creation remains lazy by
+         * default and happens during `load(...)` unless callers opt into
+         * [warmup].
          */
-        fun init()
+        fun bootstrap()
 
         /**
-         * Release the global Engine and all cached Modules.
-         * It is recommended to call Wasm when you are sure you are no longer using it, or Activity onDestroy.
+         * Optional eager warmup for a specific Wasmtime backend.
+         *
+         * This shifts engine creation cost earlier in the app lifecycle without
+         * changing the default artifact-based backend selection used by
+         * [load]. Browser hosts ignore this call.
+         */
+        fun warmup(mode: WasmlineWarmupMode)
+
+        /**
+         * Releases the global engine and clears cached modules.
+         *
+         * Call this when the current process is done using Wasmline, such as
+         * from an application shutdown hook or platform teardown callback.
          */
         fun shutdown()
     }
 
     /**
-     * Set callback
-     * The dispatcher will be retained by the runtime, so it is recommended to use a singleton or static instance.
+     * Registers the outbound host dispatcher for this module instance.
+     *
+     * The runtime retains the dispatcher, so prefer a singleton or another
+     * long-lived implementation.
      */
     internal fun setOutbound(dispatcher: WasmlineHostDispatcher)
 
     /**
-     * Execute Wasm function
-     * Supports concurrent calls, the bottom layer will automatically create an independent Session
+     * Invokes the module inbound entrypoint with the provided payload.
+     *
+     * Concurrent calls are supported. The runtime creates independent sessions
+     * as needed.
      */
     internal fun call(action: String, inputBytes: ByteArray): ByteArray
 
     /**
-     * Release the current module
-     * Will not affect the Engine, but will free the memory occupied by this module
+     * Releases the current module instance.
+     *
+     * This does not shut down the global engine, but it does free the
+     * resources owned by this module.
      */
     fun close()
 }

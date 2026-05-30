@@ -29,13 +29,24 @@ namespace wasmline {
          * Initializes the Wasmtime Engine with specific Android optimizations.
          * Must be called once before loading any modules.
          */
-        void init();
+        void init(bool usePulley = true);
 
         /**
          * Releases the Wasmtime Engine.
          * Should be called when the app is terminating or Wasm is no longer needed.
          */
         void release();
+
+        /**
+         * Returns whether the engine has been initialized.
+         */
+        bool isInitialized();
+
+        /**
+         * Returns whether the active engine targets Pulley.
+         * Only meaningful when initialized.
+         */
+        bool isPulley();
 
         /**
          * Returns the raw wasm_engine_t pointer.
@@ -51,7 +62,7 @@ namespace wasmline {
          * Creates the configuration object with critical settings.
          * (GC, SIMD, Signal handlers, etc.)
          */
-        wasm_config_t* createConfig();
+        wasm_config_t* createConfig(bool usePulley);
 
         // The raw Wasmtime engine handle
         wasm_engine_t* engine = nullptr;

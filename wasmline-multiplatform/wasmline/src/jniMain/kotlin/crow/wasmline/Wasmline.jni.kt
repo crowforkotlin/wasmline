@@ -12,8 +12,17 @@ actual class Wasmline internal actual constructor(
 ) {
 
     actual companion object {
+        @Volatile
+        private var bootstrapped = false
 
-        init { loadNativeLibrary() }
+        private fun ensureBootstrapped() {
+            if (bootstrapped) return
+            synchronized(this) {
+                if (bootstrapped) return
+                loadNativeLibrary()
+                bootstrapped = true
+            }
+        }
 
         /**
          * load module
@@ -24,6 +33,7 @@ actual class Wasmline internal actual constructor(
             threadSafe: Boolean,
             config: WasmlineConfig,
         ): WasmlineLoadState {
+            ensureBootstrapped()
             return WasmlineLocalArtifactBridge.load(
                 artifactPath = filepath,
                 config = config,
@@ -49,9 +59,19 @@ actual class Wasmline internal actual constructor(
             )
         }
 
-        actual fun init() { nativeInit() }
+        actual fun bootstrap() {
+            ensureBootstrapped()
+        }
 
-        actual fun shutdown() { nativeReleaseEngine() }
+        actual fun warmup(mode: WasmlineWarmupMode) {
+            ensureBootstrapped()
+            nativeWarmup(mode == WasmlineWarmupMode.PULLEY)
+        }
+
+        actual fun shutdown() {
+            ensureBootstrapped()
+            nativeReleaseEngine()
+        }
 
         // JNI Methods
         @JvmStatic private external fun nativeLoadAot(key: String, path: String): Boolean
@@ -59,7 +79,7 @@ actual class Wasmline internal actual constructor(
         @JvmStatic private external fun nativeReleaseModule(key: String)
         @JvmStatic private external fun nativeSetOutboundHandler(key: String, dispatcher: WasmlineHostDispatcher)
         @JvmStatic private external fun nativeInvokeInbound(key: String, action: String, protobufBytes: ByteArray): ByteArray
-        @JvmStatic private external fun nativeInit()
+        @JvmStatic private external fun nativeWarmup(usePulley: Boolean)
         @JvmStatic private external fun nativeReleaseEngine()
     }
 

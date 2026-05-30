@@ -22,7 +22,7 @@ EOF
 }
 
 load_wasmline_metadata
-parse_common_args 0 0 "$@"
+parse_common_args 0 0 0 "$@"
 publish_local_artifacts 0
 PLUGIN_WASM_FILE="$(build_plugin_raw_wasm)"
 copy_artifact "$PLUGIN_WASM_FILE" "$WEB_RESOURCE_FILE"

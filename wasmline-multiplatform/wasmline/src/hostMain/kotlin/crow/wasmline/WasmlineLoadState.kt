@@ -5,9 +5,9 @@ package crow.wasmline
 import kotlin.contracts.ExperimentalContracts
 
 /**
- * Wasmline load module state
+ * Wasmline load module state.
  *
- * 2026-01-02 19:31:34 周五 下午
+ * 2026-01-02
  * @author crowforkotlin
  */
 sealed class WasmlineLoadState {

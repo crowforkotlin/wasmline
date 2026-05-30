@@ -14,7 +14,7 @@ import kotlin.system.measureTimeMillis
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        "[Android] Init wasmtime spend ${measureTimeMillis { Wasmline.init() }} ms".info()
+        "[Android] Bootstrap wasmline spend ${measureTimeMillis { Wasmline.bootstrap() }} ms".info()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

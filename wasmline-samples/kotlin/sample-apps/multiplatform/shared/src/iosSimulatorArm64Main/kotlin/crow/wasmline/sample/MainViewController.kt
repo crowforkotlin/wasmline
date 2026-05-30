@@ -7,7 +7,7 @@ import crow.wasmline.Wasmline
 import platform.Foundation.NSBundle
 
 fun MainViewController() = run {
-    Wasmline.init()
+    Wasmline.bootstrap()
 
     ComposeUIViewController {
         MaterialTheme {

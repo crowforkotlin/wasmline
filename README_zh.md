@@ -196,7 +196,10 @@ import crow.wasmline.link
 import crow.wasmline.bind
 import crow.wasmline.loader.loadWasmline
 
-Wasmline.init()
+Wasmline.bootstrap()
+
+// 可选：如果你明确知道会优先加载哪种产物，可以提前预热对应 backend
+Wasmline.warmup(WasmlineWarmupMode.PULLEY)
 
 val state = loadWasmline(artifactPath = "/data/plugin.pwasm")
 

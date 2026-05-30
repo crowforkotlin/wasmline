@@ -17,7 +17,9 @@ actual class Wasmline internal actual constructor(
             return BrowserWasmlineRuntime.load(filepath, threadSafe, config, ::Wasmline)
         }
 
-        actual fun init() = BrowserWasmlineRuntime.init()
+        actual fun bootstrap() = BrowserWasmlineRuntime.bootstrap()
+
+        actual fun warmup(mode: WasmlineWarmupMode) = Unit
 
         actual fun shutdown() = BrowserWasmlineRuntime.shutdown()
     }

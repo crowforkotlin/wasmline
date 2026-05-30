@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <mutex>
 #include "OutboundHandler.h"
@@ -28,24 +29,24 @@ namespace wasmline {
         // Inbound Call (Host -> Wasm)
         std::string invokeInbound(const char *action, size_t actionLen, const char *data, size_t dataLen);
 
-        // 注入 Host 处理器
+        // Injects the outbound host handler.
         void setOutboundHandler(std::unique_ptr<OutboundHandler> handler);
 
     private:
 
-        // Inbound 通道状态 (由宿主填充，由 Wasm 读取)
+        // Inbound channel state populated by the host and read by Wasm.
         struct {
             const char *actionPtr = nullptr;
             size_t actionLen = 0;
             const char *dataPtr = nullptr;
             size_t dataLen = 0;
-            std::string responseBuffer; // Wasm 处理完后的结果存这里
+            std::string responseBuffer; // Stores the result produced by Wasm.
         } inbound;
 
-        // Outbound 通道状态 (由 Wasm 填充，由宿主处理)
+        // Outbound channel state populated by Wasm and resolved by the host.
         struct {
             std::unique_ptr<OutboundHandler> handler;
-            std::string responseBuffer; // 宿主处理完后的结果存这里，等待 Wasm 拉取
+            std::string responseBuffer; // Stores the host response until Wasm reads it.
         } outbound;
 
         std::string key;

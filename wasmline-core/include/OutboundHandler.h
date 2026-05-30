@@ -5,18 +5,19 @@
 
 namespace wasmline {
     /**
-     * 纯虚接口，代表宿主环境（Host）的处理能力。
-     * Session 通过此接口与外部通信，不关心外部是 Android(JNI), iOS(ObjC), 还是其他 C++ 模块。
+     * Pure virtual interface representing host-side outbound handling.
+     * Session uses this interface without depending on the concrete host bridge.
      */
     class OutboundHandler {
     public:
         virtual ~OutboundHandler() = default;
 
         /**
-         * 发送请求给 Host
-         * @param action 方法名
-         * @param payload 参数数据
-         * @return Host 执行后的结果数据
+         * Sends an outbound request to the host runtime.
+         *
+         * @param action Action name
+         * @param payload Serialized payload data
+         * @return Serialized host response payload
          */
         virtual std::string onOutboundInvoke(std::string_view action, std::string_view payload) = 0;
     };

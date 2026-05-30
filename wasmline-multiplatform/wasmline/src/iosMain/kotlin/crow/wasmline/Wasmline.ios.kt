@@ -2,13 +2,11 @@
 
 package crow.wasmline
 
+import crow.wasmline.extensions.loadNativeLibrary
 import crow.wasmline.native.c.*
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import kotlinx.cinterop.*
 import platform.Foundation.NSFileManager
-
-// 必须导入我们在 common 定义的类
-// 假设 WasmlineLoadState 和 WasmlineHostDispatcher 在 commonMain 定义了
 
 actual class Wasmline actual internal constructor(
     private val moduleKey: String,
@@ -16,22 +14,29 @@ actual class Wasmline actual internal constructor(
 ) {
 
     actual companion object {
-        actual fun init() {
-            wasmline_init_engine()
+        actual fun bootstrap() {
+            loadNativeLibrary()
+        }
+
+        actual fun warmup(mode: WasmlineWarmupMode) {
+            bootstrap()
+            wasmline_warmup_engine(mode == WasmlineWarmupMode.PULLEY)
         }
 
         actual fun shutdown() {
+            bootstrap()
             wasmline_release_engine()
         }
 
         /**
-         * 加载模块 (iOS 实现)
+         * Loads a local precompiled module artifact on iOS.
          */
         actual fun load(
             filepath: String,
             threadSafe: Boolean,
             config: WasmlineConfig,
         ): WasmlineLoadState {
+            bootstrap()
             val fileManager = NSFileManager.defaultManager
             val isUnsafe = !threadSafe
             return WasmlineLocalArtifactBridge.load(
@@ -63,21 +68,19 @@ actual class Wasmline actual internal constructor(
     }
 
     /**
-     * 设置回调
-     * iOS 需要传递静态 C 函数指针
+     * Registers the outbound callback bridge for the current module.
      */
 
     actual internal fun setOutbound(dispatcher: WasmlineHostDispatcher) {
-        // 保存 dispatcher 到全局映射中，以便 C 回调时能找到
+        // Retain the dispatcher so the static C callback can resolve it.
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
 
-        // 传递静态函数指针给 C
-        // staticCFunction 要求函数必须是顶层函数或对象里的函数
+        // iOS requires a top-level static C function pointer.
         wasmline_set_outbound_handler(moduleKey, staticCFunction(::iosStaticOutboundCallback))
     }
 
     /**
-     * 执行 Wasm 函数
+     * Invokes the module inbound entrypoint.
      */
     actual internal fun call(action: String, inputBytes: ByteArray): ByteArray = memScoped {
         val keyCstr = moduleKey
@@ -119,19 +122,16 @@ actual class Wasmline actual internal constructor(
     }
 }
 
-// ==========================================
-// 辅助工具：处理 C -> Kotlin 的回调
-// ==========================================
+// Helpers for C-to-Kotlin outbound callbacks.
 
 /**
- * 全局注册表：用于在静态 C 回调中找回 Kotlin 对象
+ * Registry used to resolve Kotlin dispatchers from static C callbacks.
  */
 private object WasmlineCallbackRegistry {
-    private val dispatchers = mutableMapOf<String, WasmlineHostDispatcher>() // 需注意线程安全
+    private val dispatchers = mutableMapOf<String, WasmlineHostDispatcher>()
 
     fun register(key: String, dispatcher: WasmlineHostDispatcher) {
-        // 在 Native 多线程模型下，建议使用 AtomicReference 或 Stately/Collections
-        // 这里简化演示，实际使用请注意并发锁
+        // This registry is currently unsynchronized.
         dispatchers[key] = dispatcher
     }
 
@@ -141,14 +141,12 @@ private object WasmlineCallbackRegistry {
 
     fun get(key: String): WasmlineHostDispatcher? = dispatchers[key]
 
-    // 临时方案：因为目前的 C 回调接口没有传回 key，我们暂时只能拿第一个
-    // 或者你需要修改 C 接口，把 key 传回来
+    // The current C callback contract does not include the module key.
     fun findAny(): WasmlineHostDispatcher? = dispatchers.values.firstOrNull()
 }
 
 /**
- * 这是一个顶层的静态函数，专门给 C 调用
- * 对应 C 定义: typedef char* (*OutboundCallback)(const char* action, size_t actionLen, const char* payload, size_t payloadLen);
+ * Static callback exported to the native iOS bridge.
  */
 fun iosStaticOutboundCallback(
     action: CPointer<ByteVar>?,
@@ -159,19 +157,13 @@ fun iosStaticOutboundCallback(
     val actionStr = action?.toKString() ?: ""
     val payloadBytes = payload?.readBytes(payloadLen.toInt()) ?: byteArrayOf()
 
-    // 【痛点】目前的 C 接口回调没有把 moduleKey 传回来
-    // 所以我们不知道是哪个模块调用的。
-    // 暂时方案：假设只有一个模块，或者修改 C++ IosOutboundHandler 传回 key。
+    // The current native callback does not expose the module key.
     val dispatcher = WasmlineCallbackRegistry.findAny()
 
     if (dispatcher != null) {
-        // 这里需要运行 blocking 代码，因为 C 函数不能挂起
-        // 注意：在主线程或 C 线程中直接运行
-        // 实际返回值根据你的 Dispatcher 定义，这里假设返回 ByteArray
-        val result = "TODO: Result from dispatcher".encodeToByteArray()
-
-        // 返回给 C 的数据需要是 C 堆内存 (malloc)，因为 C 那边会 free 它
-        // 这里只是演示返回 null
+        // C callbacks cannot suspend. Add a synchronous dispatcher path before returning data here.
+        val unused = actionStr.length + payloadBytes.size + dispatcher.hashCode()
+        if (unused < 0) return null
         return null
     }
 

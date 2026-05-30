@@ -9,24 +9,37 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
+private val bundledPluginAssets = listOf("plugin.cwasm", "plugin.pwasm")
+
 @Composable
 fun AndroidApp(
-    wasmFilename: String = "plugin.pwasm",
+    wasmFilename: String? = null,
     autoExecute: Boolean = false,
 ) {
     val context = LocalContext.current
-    val wasmFile = File(context.cacheDir, wasmFilename)
+    val resolvedWasmFilename = resolveAndroidAssetFilename(context, wasmFilename)
+    val wasmFile = File(context.cacheDir, resolvedWasmFilename)
     App(
         wasmPath = wasmFile.absolutePath,
         autoExecute = autoExecute,
     )
-    LaunchedEffect(context, wasmFilename) {
+    LaunchedEffect(context, resolvedWasmFilename) {
         ensureAndroidAssetCopied(
             context = context,
-            wasmFilename = wasmFilename,
+            wasmFilename = resolvedWasmFilename,
             destination = wasmFile,
         )
     }
+}
+
+private fun resolveAndroidAssetFilename(context: Context, explicitFilename: String?): String {
+    if (explicitFilename != null) {
+        return explicitFilename
+    }
+
+    val availableAssets = context.assets.list("")?.toSet().orEmpty()
+    return bundledPluginAssets.firstOrNull { it in availableAssets }
+        ?: error("Android asset not found: ${bundledPluginAssets.joinToString(" or ")}")
 }
 
 private suspend fun ensureAndroidAssetCopied(

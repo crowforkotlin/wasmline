@@ -11,6 +11,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <vector>
 #include <unordered_map>
 #include <shared_mutex>
@@ -23,6 +24,11 @@ namespace wasmline {
          * Initializes the Global Engine.
          */
         static void initEngine();
+
+        /**
+         * Eagerly initializes the global engine for a specific backend.
+         */
+        static void warmupEngine(bool usePulley);
 
         /**
          * Releases the Global Engine and all resources.
@@ -59,6 +65,8 @@ namespace wasmline {
         static void setOutboundHandler(const std::string& key, std::unique_ptr<OutboundHandler> handler);
 
     private:
+        static void ensureEngineForArtifact(const std::string &path);
+
         /**
          * Internal helper to get or create a session.
          * Thread-safe.

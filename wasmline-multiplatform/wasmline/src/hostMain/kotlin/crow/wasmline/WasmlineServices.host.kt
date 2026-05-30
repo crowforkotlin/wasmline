@@ -37,7 +37,9 @@ fun <T : WasmlineService> Wasmline.link(): T {
     error("Wasmline compiler plugin is not applied or failed to replace Wasmline.link<T>().")
 }
 
-/** Bind a local implementation using an explicit service contract. */
+/**
+ * Binds a local implementation using an explicit service contract.
+ */
 fun <T : WasmlineService> Wasmline.bind(contract: KClass<T>, implementation: T) {
     error("Wasmline compiler plugin is not applied or failed to replace Wasmline.bind(contract, implementation).")
 }

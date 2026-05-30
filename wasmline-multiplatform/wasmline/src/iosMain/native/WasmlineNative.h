@@ -1,4 +1,7 @@
-// wasmline-multiplatform/wasmline/core/src/iosMain/native/WasmlineNative.h
+/**
+ * WasmlineNative.h
+ * C bridge declarations for the iOS Wasmline host runtime.
+ */
 #ifndef WASMLINE_NATIVE_H
 #define WASMLINE_NATIVE_H
 
@@ -9,28 +12,53 @@
 extern "C" {
 #endif
 
-// 1. 引擎生命周期
+/**
+ * Initializes the global engine with the default backend.
+ */
 void wasmline_init_engine();
+
+/**
+ * Eagerly initializes the global engine for a specific backend.
+ */
+void wasmline_warmup_engine(bool usePulley);
+
+/**
+ * Releases the global engine and cached runtime state.
+ */
 void wasmline_release_engine();
 
-// 2. 模块加载
+/**
+ * Loads a prepared local module artifact.
+ */
 bool wasmline_load_module(const char* key, const char* path, bool isUnsafe);
 
-// 3. 释放模块
+/**
+ * Releases a previously loaded module.
+ */
 void wasmline_release_module(const char* key);
 
-// 4. 执行调用 (Inbound)
+/**
+ * Invokes the inbound entrypoint of a loaded module.
+ */
 char* wasmline_invoke_inbound(const char* key,
                               const char* action, size_t actionLen,
-                              const void* data, // <--- 改成 void*
+                              const void* data,
                               size_t dataLen,
                               size_t* outLen);
 
-// 5. 释放内存
+/**
+ * Releases memory returned by the native bridge.
+ */
 void wasmline_free_memory(char* ptr);
 
-// 6. Outbound 回调
+/**
+ * Native callback signature used for outbound host calls.
+ */
 typedef char* (*OutboundCallback)(const char* action, size_t actionLen, const char* payload, size_t payloadLen);
+
+/**
+ * Registers the outbound callback for a loaded module.
+ */
 void wasmline_set_outbound_handler(const char* key, OutboundCallback callback);
 
 #ifdef __cplusplus

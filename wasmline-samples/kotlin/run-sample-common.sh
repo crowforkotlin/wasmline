@@ -15,6 +15,7 @@ PLATFORM=""
 ANDROID_DEVICE=""
 WASMTIME_VERSION=""
 WASMLINE_VERSION=""
+ARTIFACT_FORMAT=""
 QUIET=0
 
 require_value() {
@@ -87,6 +88,20 @@ run_gradle() {
     )
 }
 
+run_gradle_with_runtime_format() {
+    local directory="$1"
+    shift
+
+    (
+        if [ -n "$ARTIFACT_FORMAT" ]; then
+            export WASMLINE_ARTIFACT_FORMAT="$ARTIFACT_FORMAT"
+        else
+            unset WASMLINE_ARTIFACT_FORMAT || true
+        fi
+        run_gradle "$directory" "$@"
+    )
+}
+
 # Like run_gradle, but redirects output to /dev/null when QUIET=1.
 # Use this for build/publish steps where output is noise, not results.
 run_gradle_build() {
@@ -135,6 +150,19 @@ normalize_platform() {
             ;;
         *)
             echo "Unsupported platform: $1" >&2
+            echo "Run ./${SCRIPT_NAME} --help for usage." >&2
+            exit 1
+            ;;
+    esac
+}
+
+normalize_artifact_format() {
+    case "$1" in
+        pwasm|cwasm)
+            printf '%s\n' "$1"
+            ;;
+        *)
+            echo "Unsupported artifact format: $1" >&2
             echo "Run ./${SCRIPT_NAME} --help for usage." >&2
             exit 1
             ;;
@@ -203,7 +231,8 @@ detect_current_platform() {
 parse_common_args() {
     local allow_platform="$1"
     local allow_device="$2"
-    shift 2
+    local allow_artifact_format="$3"
+    shift 3
 
     while [ "$#" -gt 0 ]; do
         case "$1" in
@@ -241,6 +270,24 @@ parse_common_args() {
                 fi
                 require_value "--device" "${1#*=}"
                 ANDROID_DEVICE="${1#*=}"
+                shift
+                ;;
+            -f|--format|--artifact-format)
+                if [ "$allow_artifact_format" -ne 1 ]; then
+                    echo "${SCRIPT_NAME} does not accept $1" >&2
+                    exit 1
+                fi
+                require_value "$1" "${2:-}"
+                ARTIFACT_FORMAT="$(normalize_artifact_format "$2")"
+                shift 2
+                ;;
+            --format=*|--artifact-format=*)
+                if [ "$allow_artifact_format" -ne 1 ]; then
+                    echo "${SCRIPT_NAME} does not accept ${1%%=*}" >&2
+                    exit 1
+                fi
+                require_value "${1%%=*}" "${1#*=}"
+                ARTIFACT_FORMAT="$(normalize_artifact_format "${1#*=}")"
                 shift
                 ;;
             -h|--help)
@@ -396,6 +443,159 @@ build_plugin_pwasm() {
     )"
     run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$compile_args"
     find_first_file "$output_root" "*-pulley64.pwasm" "$artifact_description" 2
+}
+
+build_plugin_cwasm() {
+    local output_root="$1"
+    local wasmtime_dir="$2"
+    local artifact_description="$3"
+    local target="$4"
+    local input_file
+    local compile_args
+
+    if [ -z "$target" ]; then
+        echo "Missing cwasm target for ${artifact_description}" >&2
+        exit 1
+    fi
+
+    rm -rf "$output_root"
+    input_file="$(build_plugin_optimized_wasm)"
+    compile_args="$(render_args \
+        compile \
+        -i "$input_file" \
+        -o "$output_root" \
+        -v "$WASMLINE_VERSION" \
+        -wt "$wasmtime_dir" \
+        -a "$target"
+    )"
+    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$compile_args"
+    find_first_file "$output_root" "*-${target}.cwasm" "$artifact_description" 2
+}
+
+build_plugin_runtime_artifact() {
+    local output_root="$1"
+    local wasmtime_dir="$2"
+    local artifact_description="$3"
+    local cwasm_target="$4"
+
+    if [ "$ARTIFACT_FORMAT" = "cwasm" ]; then
+        build_plugin_cwasm "$output_root" "$wasmtime_dir" "$artifact_description" "$cwasm_target"
+    else
+        build_plugin_pwasm "$output_root" "$wasmtime_dir" "$artifact_description"
+    fi
+}
+
+find_optional_file() {
+    local directory="$1"
+    local pattern="$2"
+    local maxdepth="${3:-1}"
+    local file
+
+    file="$(find "$directory" -maxdepth "$maxdepth" -type f -name "$pattern" | sort | head -n 1)"
+    printf '%s\n' "$file"
+}
+
+RUNTIME_PWASM_FILE=""
+RUNTIME_CWASM_FILE=""
+
+build_plugin_runtime_artifacts() {
+    local output_root="$1"
+    local wasmtime_dir="$2"
+    local artifact_description="$3"
+    local cwasm_target="$4"
+    local input_file
+    local compile_args=()
+    local targets=()
+    local target
+
+    RUNTIME_PWASM_FILE=""
+    RUNTIME_CWASM_FILE=""
+
+    rm -rf "$output_root"
+    input_file="$(build_plugin_optimized_wasm)"
+
+    if [ "$ARTIFACT_FORMAT" = "pwasm" ]; then
+        targets=("pulley64")
+    elif [ "$ARTIFACT_FORMAT" = "cwasm" ]; then
+        if [ -z "$cwasm_target" ]; then
+            echo "Missing cwasm target for ${artifact_description}" >&2
+            exit 1
+        fi
+        targets=("$cwasm_target")
+    else
+        targets=("pulley64")
+        if [ -n "$cwasm_target" ]; then
+            targets+=("$cwasm_target")
+        fi
+    fi
+
+    compile_args=(
+        compile
+        -i "$input_file"
+        -o "$output_root"
+        -v "$WASMLINE_VERSION"
+        -wt "$wasmtime_dir"
+    )
+    for target in "${targets[@]}"; do
+        compile_args+=( -a "$target" )
+    done
+
+    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$(render_args "${compile_args[@]}")"
+
+    if printf '%s\n' "${targets[@]}" | grep -Fxq 'pulley64'; then
+        RUNTIME_PWASM_FILE="$(find_optional_file "$output_root" '*-pulley64.pwasm' 2)"
+        if [ -z "$RUNTIME_PWASM_FILE" ]; then
+            echo "Unable to locate ${artifact_description} pwasm artifact under ${output_root}" >&2
+            exit 1
+        fi
+    fi
+
+    if [ -n "$cwasm_target" ] && printf '%s\n' "${targets[@]}" | grep -Fxq "$cwasm_target"; then
+        RUNTIME_CWASM_FILE="$(find_optional_file "$output_root" "*-${cwasm_target}.cwasm" 2)"
+        if [ -z "$RUNTIME_CWASM_FILE" ]; then
+            echo "Unable to locate ${artifact_description} cwasm artifact under ${output_root}" >&2
+            exit 1
+        fi
+    fi
+}
+
+sync_runtime_artifact() {
+    local source_file="$1"
+    local target_file="$2"
+    local target_dir
+    local target_base
+
+    target_dir="$(dirname "$target_file")"
+    target_base="$(basename "$target_file")"
+    target_base="${target_base%.*}"
+
+    mkdir -p "$target_dir"
+    rm -f "$target_dir/${target_base}.pwasm" "$target_dir/${target_base}.cwasm"
+    cp "$source_file" "$target_file"
+}
+
+sync_runtime_artifacts() {
+    local target_dir="$1"
+    local target_base="$2"
+    shift 2
+    local cleanup_bases=("$target_base" "$@")
+    local cleanup_base
+
+    mkdir -p "$target_dir"
+    for cleanup_base in "${cleanup_bases[@]}"; do
+        rm -f "$target_dir/${cleanup_base}.pwasm" "$target_dir/${cleanup_base}.cwasm"
+    done
+
+    if [ "$ARTIFACT_FORMAT" = "pwasm" ]; then
+        cp "$RUNTIME_PWASM_FILE" "$target_dir/${target_base}.pwasm"
+    elif [ "$ARTIFACT_FORMAT" = "cwasm" ]; then
+        cp "$RUNTIME_CWASM_FILE" "$target_dir/${target_base}.cwasm"
+    else
+        cp "$RUNTIME_PWASM_FILE" "$target_dir/${target_base}.pwasm"
+        if [ -n "$RUNTIME_CWASM_FILE" ]; then
+            cp "$RUNTIME_CWASM_FILE" "$target_dir/${target_base}.cwasm"
+        fi
+    fi
 }
 
 adb_command() {

@@ -25,8 +25,8 @@ extern "C" {
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeInit(JNIEnv *env, jclass thiz) {
-    wasmline::Api::initEngine();
+Java_crow_wasmline_Wasmline_nativeWarmup(JNIEnv *env, jclass thiz, jboolean usePulley) {
+    wasmline::Api::warmupEngine(usePulley == JNI_TRUE);
 }
 
 JNIEXPORT void JNICALL
@@ -60,22 +60,20 @@ Java_crow_wasmline_Wasmline_nativeInvokeInbound(JNIEnv *env, jclass thiz, jstrin
     jbyte* dataPtr = env->GetByteArrayElements(inputBytes, nullptr);
     jsize dataLen = env->GetArrayLength(inputBytes);
 
-    // Perform invokeInbound via API
-//    std::string resultData = wasmline::Api::invokeInbound(key, action, std::string((const char *) dataPtr, dataLen));
+    // Perform invokeInbound via API.
     std::string resultData = wasmline::Api::invokeInbound(key, action, (size_t)actionLen, (const char *)dataPtr, (size_t)dataLen);
 
-    // Cleanup input
+    // Clean up input buffers.
     env->ReleaseByteArrayElements(inputBytes, dataPtr, JNI_ABORT);
     env->ReleaseStringUTFChars(actionStr, action);
     env->ReleaseStringUTFChars(keyStr, key);
 
-
-    // 在这里打印 C++ 侧获取到的原始数据
+    // Log the raw native result bytes for debugging.
     size_t size = resultData.size();
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
     for (size_t i = 0; i < size; ++i) {
-        // 强制转换为 unsigned int 避免打印出 ffffff6b 这种情况
+        // Cast to unsigned int to avoid sign extension in the hex dump.
         ss << std::setw(2) << (static_cast<unsigned int>(resultData[i]) & 0xFF);
     }
     std::string hexStr = ss.str();
@@ -83,7 +81,7 @@ Java_crow_wasmline_Wasmline_nativeInvokeInbound(JNIEnv *env, jclass thiz, jstrin
     wasmline::NativeLogI("\n[JNI DEBUG] Result Size: %zu\n", size);
     wasmline::NativeLogI("[JNI DEBUG] Result Hex : %s\n\n", hexStr.c_str());
 
-    // Return result
+    // Return the result.
     if (!resultData.empty()) {
         jbyteArray retArr = env->NewByteArray((jsize)resultData.size());
         env->SetByteArrayRegion(retArr, 0, (jsize)resultData.size(), (const jbyte*)resultData.data());
@@ -93,7 +91,7 @@ Java_crow_wasmline_Wasmline_nativeInvokeInbound(JNIEnv *env, jclass thiz, jstrin
     }
 }
 
-// 注册分发器
+// Register the outbound dispatcher.
 JNIEXPORT void JNICALL
 Java_crow_wasmline_Wasmline_nativeSetOutboundHandler(JNIEnv *env, jclass thiz, jstring keyStr, jobject jDispatcher) {
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
