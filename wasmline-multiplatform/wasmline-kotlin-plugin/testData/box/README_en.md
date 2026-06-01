@@ -23,7 +23,6 @@ Current example:
 Keep the scope focused on **IR-plugin behavior**:
 
 - service contract discovery
-- phase-one validation rules
 - generated single `*_WasmlineBridge`
 - generated IR call shapes such as `endpoint.invoke(...)`
 - generated `bind(registerAction)` action registration shapes

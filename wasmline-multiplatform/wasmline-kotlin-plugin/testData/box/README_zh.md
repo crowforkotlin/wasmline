@@ -23,7 +23,6 @@
 范围请聚焦在 **IR 插件行为** 本身：
 
 - service contract 发现
-- phase-one 校验规则
 - 生成的单 `*_WasmlineBridge`
 - `endpoint.invoke(...)` 这类生成调用形状
 - `bind(registerAction)` 的 action 注册形状

@@ -35,7 +35,7 @@ abstract class AndroidExtension(val project: Project) {
             }
           }
         } catch (e: Exception) {
-          project.logger.warn("无法修改 APK 文件名: ${e.message}")
+          project.logger.warn("Unable to change APK file names:${e.message}")
         }
       }
       project.dependencies(dependencyHandlerScope)
