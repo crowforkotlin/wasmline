@@ -80,8 +80,10 @@ internal fun runApplicationSample() {
         when (
             val loadState = loadWasmline(
                 artifactPath = artifactFile.absolutePath,
-                threadSafe = false,
-                config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+                config = WasmlineConfig(
+                    serialization = WasmlineSerializationConfig.protobuf(),
+                    threadSafe = false,
+                ),
             )
         ) {
             is WasmlineLoadState.Failure -> {

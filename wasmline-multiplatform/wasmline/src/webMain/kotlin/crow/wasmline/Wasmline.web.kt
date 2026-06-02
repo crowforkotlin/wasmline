@@ -24,11 +24,10 @@ internal class BrowserWasmline(private val moduleKey: String) {
 internal object BrowserWasmlineRuntime {
     fun load(
         filepath: String,
-        threadSafe: Boolean,
         config: WasmlineConfig,
         createWasmline: (String, WasmlineConfig) -> Wasmline,
     ): WasmlineLoadState {
-        if (threadSafe) {
+        if (config.threadSafe) {
             return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,
                 cause = "[Wasmline] Browser web host does not support threadSafe loading yet.",

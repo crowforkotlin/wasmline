@@ -30,10 +30,10 @@ actual class Wasmline internal actual constructor(
          */
         actual fun load(
             filepath: String,
-            threadSafe: Boolean,
             config: WasmlineConfig,
         ): WasmlineLoadState {
             ensureBootstrapped()
+            val threadSafe = config.threadSafe
             return WasmlineLocalArtifactBridge.load(
                 artifactPath = filepath,
                 config = config,

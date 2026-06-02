@@ -19,3 +19,16 @@ internal actual fun resolveHostArtifactPath(manifestPath: String, artifactUrl: S
 }
 
 private val WINDOWS_ABSOLUTE_PATH = Regex("^[A-Za-z]:[\\\\/].*")
+
+internal actual fun writeHostFileBytes(path: String, bytes: ByteArray): Boolean {
+    return runCatching {
+        val file = File(path)
+        file.parentFile?.mkdirs()
+        file.writeBytes(bytes)
+        true
+    }.getOrDefault(false)
+}
+
+internal actual fun hostMkdirs(path: String): Boolean {
+    return runCatching { File(path).mkdirs() || File(path).isDirectory }.getOrDefault(false)
+}

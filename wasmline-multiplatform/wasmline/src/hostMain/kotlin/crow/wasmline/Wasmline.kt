@@ -30,7 +30,6 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
          */
         fun load(
             filepath: String,
-            threadSafe: Boolean = false,
             config: WasmlineConfig = WasmlineConfig(),
         ): WasmlineLoadState
 

@@ -14,10 +14,14 @@ import crow.wasmline.WasmlineLoadState
  */
 data class WasmlineLoadRequest(
     val source: WasmlineSource,
-    val threadSafe: Boolean = false,
     val config: WasmlineConfig = WasmlineConfig(),
     val metadata: Map<String, String> = emptyMap(),
     val resolvers: WasmlineSourceResolvers = WasmlineSourceResolvers(),
+    /**
+     * Loader-specific configuration for remote package resolution,
+     * caching, and signature verification.
+     */
+    val loaderConfig: WasmlineLoaderConfig = WasmlineLoaderConfig(),
 )
 
 /**

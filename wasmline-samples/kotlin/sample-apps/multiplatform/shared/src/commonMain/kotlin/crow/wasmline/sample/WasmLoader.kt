@@ -136,8 +136,10 @@ internal class WasmLoader {
             val duration = measureTime {
                 loadState = loadWasmline(
                     artifactPath = request.artifactPath,
-                    threadSafe = false,
-                    config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+                    config = WasmlineConfig(
+                        serialization = WasmlineSerializationConfig.protobuf(),
+                        threadSafe = false,
+                    ),
                 )
             }
             loadDurationMs = duration.inWholeMilliseconds

@@ -11,10 +11,9 @@ actual class Wasmline internal actual constructor(
     actual companion object {
         actual fun load(
             filepath: String,
-            threadSafe: Boolean,
             config: WasmlineConfig,
         ): WasmlineLoadState {
-            return BrowserWasmlineRuntime.load(filepath, threadSafe, config, ::Wasmline)
+            return BrowserWasmlineRuntime.load(filepath, config, ::Wasmline)
         }
 
         actual fun bootstrap() = BrowserWasmlineRuntime.bootstrap()

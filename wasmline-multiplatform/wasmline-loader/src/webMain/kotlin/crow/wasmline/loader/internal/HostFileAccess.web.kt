@@ -7,3 +7,7 @@ internal fun browserReadHostFileBytes(path: String): Nothing? = null
 internal fun browserResolveHostArtifactPath(manifestPath: String, artifactUrl: String): String {
     return artifactUrl
 }
+
+internal fun browserWriteHostFileBytes(path: String, bytes: ByteArray): Boolean = false
+
+internal fun browserHostMkdirs(path: String): Boolean = false

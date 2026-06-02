@@ -37,7 +37,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `remote package source is rejected until remote loading is implemented`() {
+    fun `remote package source without networkClient or resolver returns failure`() {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemotePackageUrl(url = "https://example.com/plugin.wlm"),
@@ -47,7 +47,7 @@ class DefaultWasmlineLoaderTest {
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
         assertTrue(failure.cause.contains("Remote package source 'https://example.com/plugin.wlm'"))
-        assertTrue(failure.cause.contains("request.resolvers.remotePackage"))
+        assertTrue(failure.cause.contains("request.resolvers.remotePackage or request.loaderConfig.networkClient"))
     }
 
     @Test

@@ -3,6 +3,7 @@ package crow.wasmline.loader
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
 
 /**
  * Public host-side loader SPI.
@@ -36,14 +37,12 @@ fun loadWasmline(
  */
 fun loadWasmline(
     artifactPath: String,
-    threadSafe: Boolean = false,
     config: WasmlineConfig = WasmlineConfig(),
     loader: WasmlineLoader = DefaultWasmlineLoader,
 ): WasmlineLoadState {
     return loadWasmline(
         request = WasmlineLoadRequest(
             source = WasmlineSource.LocalArtifactFile(path = artifactPath),
-            threadSafe = threadSafe,
             config = config,
         ),
         loader = loader,
@@ -84,7 +83,6 @@ object DefaultWasmlineLoader : WasmlineLoader {
         return when (source) {
             is WasmlineSource.LocalArtifactFile -> Wasmline.load(
                 filepath = source.path,
-                threadSafe = request.threadSafe,
                 config = request.config,
             )
 
@@ -96,13 +94,37 @@ object DefaultWasmlineLoader : WasmlineLoader {
                 resolutionDepth = resolutionDepth,
             )
 
-            is WasmlineSource.RemotePackageUrl -> resolveSource(
-                request = request,
-                resolution = request.resolvers.remotePackage?.resolve(source, request),
-                description = "Remote package source '${source.url}'",
-                resolverHint = "request.resolvers.remotePackage",
-                resolutionDepth = resolutionDepth,
-            )
+            is WasmlineSource.RemotePackageUrl -> {
+                // Priority 1: caller's custom resolver
+                val customResolution = request.resolvers.remotePackage?.resolve(source, request)
+                if (customResolution != null) {
+                    resolveSource(
+                        request = request,
+                        resolution = customResolution,
+                        description = "Remote package source '${source.url}'",
+                        resolverHint = "request.resolvers.remotePackage",
+                        resolutionDepth = resolutionDepth,
+                    )
+                }
+                // Priority 2: built-in remote resolution (when networkClient provided)
+                else if (request.loaderConfig.networkClient != null) {
+                    val builtInResolution = WasmlineRemotePackageResolution.resolve(source, request)
+                    resolveSource(
+                        request = request,
+                        resolution = builtInResolution,
+                        description = "Remote package source '${source.url}'",
+                        resolverHint = "request.loaderConfig.networkClient",
+                        resolutionDepth = resolutionDepth,
+                    )
+                }
+                // Fallback: existing error
+                else {
+                    unsupportedSourceFailure(
+                        description = "Remote package source '${source.url}'",
+                        resolverHint = "request.resolvers.remotePackage or request.loaderConfig.networkClient",
+                    )
+                }
+            }
         }
     }
 

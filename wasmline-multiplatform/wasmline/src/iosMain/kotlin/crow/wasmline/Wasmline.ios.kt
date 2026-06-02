@@ -33,12 +33,11 @@ actual class Wasmline actual internal constructor(
          */
         actual fun load(
             filepath: String,
-            threadSafe: Boolean,
             config: WasmlineConfig,
         ): WasmlineLoadState {
             bootstrap()
             val fileManager = NSFileManager.defaultManager
-            val isUnsafe = !threadSafe
+            val isUnsafe = !config.threadSafe
             return WasmlineLocalArtifactBridge.load(
                 artifactPath = filepath,
                 config = config,

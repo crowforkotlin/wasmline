@@ -1,0 +1,83 @@
+@file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
+
+import org.jetbrains.kotlin.konan.target.HostManager
+
+plugins {
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.library.kmp)
+    alias(libs.plugins.maven.publish)
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+kotlin {
+    jvm()
+    androidLibrary {
+        namespace = "crow.wasmline.network.ktor"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+    wasmJs {
+        browser()
+        binaries.library()
+    }
+    js {
+        browser()
+        binaries.library()
+    }
+    if (HostManager.hostIsMac) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64(),
+        ).forEach { target ->
+            target.binaries.framework {
+                isStatic = false
+            }
+        }
+    }
+    applyDefaultHierarchyTemplate()
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                api(projects.wasmlineLoader)
+                implementation(libs.ktor.client.core)
+                implementation(libs.kotlinx.coroutines)
+            }
+        }
+        val jniMain by creating { dependsOn(commonMain) }
+        val androidMain by getting { dependsOn(jniMain) }
+        val jvmMain by getting {
+            dependsOn(jniMain)
+            dependencies {
+                implementation(libs.ktor.client.cio)
+            }
+        }
+        val jsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
+            }
+        }
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+            }
+        }
+
+        if (HostManager.hostIsMac) {
+            val iosMain by getting {
+                dependencies {
+                    implementation(libs.ktor.client.darwin)
+                }
+            }
+        }
+    }
+}

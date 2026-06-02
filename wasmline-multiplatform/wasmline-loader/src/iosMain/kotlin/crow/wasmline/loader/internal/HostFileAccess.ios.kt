@@ -39,3 +39,22 @@ internal actual fun resolveHostArtifactPath(manifestPath: String, artifactUrl: S
         "$manifestDirectory/$artifactUrl"
     }
 }
+
+internal actual fun writeHostFileBytes(path: String, bytes: ByteArray): Boolean {
+    return runCatching {
+        val nsData = bytes.usePinned { pinned ->
+            platform.Foundation.NSData.create(
+                bytes = pinned.addressOf(0),
+                length = bytes.size.toULong(),
+            )
+        }
+        fileManager.createFileAtPath(path, nsData, null)
+    }.getOrDefault(false)
+}
+
+internal actual fun hostMkdirs(path: String): Boolean {
+    if (fileManager.fileExistsAtPath(path)) return true
+    return runCatching {
+        fileManager.createDirectoryAtPath(path, withIntermediateDirectories = true, attributes = null, error = null)
+    }.getOrDefault(false)
+}
