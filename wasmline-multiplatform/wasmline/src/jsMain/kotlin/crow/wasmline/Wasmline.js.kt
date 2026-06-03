@@ -8,21 +8,6 @@ actual class Wasmline internal actual constructor(
 ) {
     private val delegate = BrowserWasmline(moduleKey)
 
-    actual companion object {
-        actual fun load(
-            filepath: String,
-            config: WasmlineConfig,
-        ): WasmlineLoadState {
-            return BrowserWasmlineRuntime.load(filepath, config, ::Wasmline)
-        }
-
-        actual fun bootstrap() = BrowserWasmlineRuntime.bootstrap()
-
-        actual fun warmup(mode: WasmlineWarmupMode) = Unit
-
-        actual fun shutdown() = BrowserWasmlineRuntime.shutdown()
-    }
-
     actual internal fun setOutbound(dispatcher: WasmlineHostDispatcher) {
         delegate.setOutbound { action, payloadBase64 ->
             dispatcher.dispatch(action, payloadBase64.decodeBase64Payload()).encodeBase64Payload()
@@ -37,3 +22,9 @@ actual class Wasmline internal actual constructor(
         delegate.close()
     }
 }
+
+internal actual fun wasmlineBootstrap() = browserWasmlineBootstrap()
+internal actual fun wasmlineShutdown() = browserWasmlineShutdown()
+internal actual fun wasmlineWarmup(mode: WasmlineWarmupMode) = browserWasmlineWarmup(mode)
+internal actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
+    browserWasmlineLoadArtifact(filepath, config)

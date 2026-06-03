@@ -13,7 +13,7 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.toByteString
 
 internal object WasmlineLocalPackageResolution {
-    fun resolve(source: WasmlineSource.LocalPackageFile): WasmlineSourceResolution {
+    fun resolve(source: WasmlineSource.LocalManifestPath): WasmlineSourceResolution {
         val manifestPath = source.path
         if (!hostPathExists(manifestPath)) {
             return failure("Local package manifest not found: ${source.path}")
@@ -43,7 +43,7 @@ internal object WasmlineLocalPackageResolution {
         }
 
         return WasmlineSourceResolution.ContinueWith(
-            WasmlineSource.LocalArtifactFile(path = artifactPath),
+            WasmlineSource.LocalArtifactPath(path = artifactPath),
         )
     }
 

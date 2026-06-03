@@ -9,8 +9,8 @@ import crow.wasmline.serialization.WasmlineProtobufSerializationFactory
 /**
  * Plugin-side runtime handle.
  *
- * `Wasmline.current` represents the current Wasmline execution context inside the running plugin,
- * not a process-wide global engine singleton.
+ * `Wasmline.get()` returns the current Wasmline execution context inside the running plugin.
+ * Since the plugin IS the wasm module, no loading is needed — the instance is always available.
  */
 class Wasmline private constructor() {
     var serializationFactory: WasmlineSerializationFactory = WasmlineProtobufSerializationFactory
@@ -35,10 +35,9 @@ class Wasmline private constructor() {
     fun close() = Unit
 
     companion object {
-        private val currentHandle = Wasmline()
+        private val instance = Wasmline()
 
-        val current: Wasmline
-            get() = currentHandle
+        fun get(): Wasmline = instance
     }
 }
 

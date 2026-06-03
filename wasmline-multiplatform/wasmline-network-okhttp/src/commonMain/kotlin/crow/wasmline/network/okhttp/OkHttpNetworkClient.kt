@@ -1,7 +1,7 @@
 package crow.wasmline.network.okhttp
 
-import crow.wasmline.loader.WasmlineHttpResponse
-import crow.wasmline.loader.WasmlineNetworkClient
+import crow.wasmline.WasmlineHttpResponse
+import crow.wasmline.WasmlineNetworkClient
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -15,7 +15,7 @@ import okhttp3.Request
  * ```kotlin
  * val result = loadWasmline(
  *     WasmlineLoadRequest(
- *         source = WasmlineSource.RemotePackageUrl("https://example.com/plugin"),
+ *         source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin"),
  *         networkClient = OkHttpNetworkClient(),
  *     ),
  * )

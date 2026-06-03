@@ -13,7 +13,7 @@ import crow.wasmline.serialization.WasmlineProtobufSerializationFactory
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.time.Clock
 
-val wasmline = Wasmline.current.configure { serialization(WasmlineProtobufSerializationFactory) }
+val wasmline = Wasmline.get().configure { serialization(WasmlineProtobufSerializationFactory) }
 
 fun main() {
 

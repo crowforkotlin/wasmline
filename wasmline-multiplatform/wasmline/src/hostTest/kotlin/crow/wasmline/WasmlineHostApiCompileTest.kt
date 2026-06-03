@@ -1,6 +1,6 @@
 package crow.wasmline
 
-import crow.wasmline.loader.loadWasmline
+import crow.wasmline.loader.WasmlineLoader
 import kotlin.reflect.KClass
 
 @Suppress("unused")
@@ -13,17 +13,17 @@ class WasmlineHostApiCompileTest {
         override fun echo(payload: ByteArray): ByteArray = payload
     }
 
-    @Suppress("UNUSED_VARIABLE")
+    @Suppress("UNUSED_VARIABLE", "DEPRECATION")
     private fun compileAgainstHostApi(
         wasmline: Wasmline,
         implementation: EchoService,
         contract: KClass<EchoService> = EchoService::class,
     ) {
-        val loadState = loadWasmline(artifactPath = "plugin.pwasm")
+        val result = WasmlineLoader.load(pathOrUrl = "plugin.pwasm")
 
-        Wasmline.bootstrap()
-        Wasmline.warmup(WasmlineWarmupMode.PULLEY)
-        Wasmline.shutdown()
+        WasmlineLoader.bootstrap()
+        WasmlineLoader.warmup(WasmlineWarmupMode.PULLEY)
+        WasmlineLoader.shutdown()
 
         wasmline.bind(implementation)
         wasmline.bind(contract, implementation)

@@ -2,14 +2,14 @@
 
 package crow.wasmline.loader.internal
 
+import crow.wasmline.WasmlineCache
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.loader.WasmlineCache
+import crow.wasmline.WasmlineNetworkClient
+import crow.wasmline.WasmlineNoOpCache
+import crow.wasmline.WasmlineTrustedKeys
 import crow.wasmline.loader.WasmlineLoadRequest
-import crow.wasmline.loader.WasmlineNetworkClient
-import crow.wasmline.loader.WasmlineNoOpCache
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
-import crow.wasmline.loader.WasmlineTrustedKeys
 import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
@@ -28,19 +28,19 @@ import okio.ByteString.Companion.toByteString
 internal object WasmlineRemotePackageResolution {
 
     fun resolve(
-        source: WasmlineSource.RemotePackageUrl,
+        source: WasmlineSource.RemoteManifestUrl,
         request: WasmlineLoadRequest,
     ): WasmlineSourceResolution {
-        val networkClient = request.loaderConfig.networkClient
-            ?: return failure("No network client configured for remote package '${source.url}'. Provide request.loaderConfig.networkClient.")
+        val networkClient = request.config.networkClient
+            ?: return failure("No network client configured for remote package '${source.url}'. Provide request.config.networkClient.")
 
-        val cache = request.loaderConfig.cache ?: defaultCacheOrNull()
+        val cache = request.config.cache ?: defaultCacheOrNull()
 
         // Step 1: Determine manifest URL
         val manifestUrl = resolveManifestUrl(source.url)
 
         // Step 2: Check cache for manifest
-        val manifestCacheKey = "manifest_${sha256Hex(manifestUrl.toByteArray())}"
+        val manifestCacheKey = "manifest_${sha256Hex(bytes = manifestUrl.toByteArray())}"
         val manifestBytes = cache?.get(manifestCacheKey) ?: fetchBytes(
             networkClient = networkClient,
             url = manifestUrl,
@@ -60,7 +60,7 @@ internal object WasmlineRemotePackageResolution {
         }
 
         // Step 5: Verify signature (if trustedKeys provided)
-        val signatureResult = verifySignatureIfNeeded(envelope, request.loaderConfig.trustedKeys, manifestUrl)
+        val signatureResult = verifySignatureIfNeeded(envelope, request.config.trustedKeys, manifestUrl)
         if (signatureResult != null) return signatureResult
 
         // Step 6: Select compatible artifact
@@ -107,7 +107,7 @@ internal object WasmlineRemotePackageResolution {
             ?: return failure("Failed to write cached artifact to local file system.")
 
         return WasmlineSourceResolution.ContinueWith(
-            WasmlineSource.LocalArtifactFile(path = localPath),
+            WasmlineSource.LocalArtifactPath(path = localPath),
         )
     }
 

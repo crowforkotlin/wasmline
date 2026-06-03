@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
 internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFactory = serializationFactory
 
 @PublishedApi
-internal fun currentGeneratedSerializationFactory(): WasmlineSerializationFactory = Wasmline.current.serializationFactory
+internal fun currentGeneratedSerializationFactory(): WasmlineSerializationFactory = Wasmline.get().serializationFactory
 
 @PublishedApi
 internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
@@ -25,7 +25,7 @@ internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
 
 @PublishedApi
 internal fun bindGenerated(bridge: WasmlineGeneratedBridge) {
-    Wasmline.current.bindGenerated(bridge)
+    Wasmline.get().bindGenerated(bridge)
 }
 
 fun <T : WasmlineService> Wasmline.link(): T {
@@ -41,9 +41,9 @@ fun Wasmline.bind(implementation: WasmlineService) {
 }
 
 fun <T : WasmlineService> bind(contract: KClass<T>, implementation: T) {
-    Wasmline.current.bind(contract, implementation)
+    Wasmline.get().bind(contract, implementation)
 }
 
 fun bind(implementation: WasmlineService) {
-    Wasmline.current.bind(implementation)
+    Wasmline.get().bind(implementation)
 }

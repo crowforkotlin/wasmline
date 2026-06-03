@@ -109,8 +109,8 @@ class Build : CliktCommand(name = "build") {
         .help("Ed25519 private key: file path or hex string")
 
     override fun run() {
-        // ======== Phase 1: Compile ========
-        echo("========== Phase 1: Compile ==========")
+        // ======== Step: Compile ========
+        echo("========== Compile ==========")
 
         val wasmtimeExec = Compile.findWasmtimeExecutable(wasmtimeDir)
         if (wasmtimeExec == null) {
@@ -177,8 +177,8 @@ class Build : CliktCommand(name = "build") {
         jsonFile.writeText(baseJson.encodeToString(envelope))
         echo("JSON written to: ${jsonFile.absolutePath}")
 
-        // ======== Phase 3: Package ========
-        echo("========== Phase 3: Package ==========")
+        // ======== Step: Package ========
+        echo("========== Package ==========")
 
         val distDir = File("build/wasmline/dist")
         if (!distDir.exists()) distDir.mkdirs()

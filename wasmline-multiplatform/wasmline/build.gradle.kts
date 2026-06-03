@@ -102,7 +102,9 @@ kotlin {
         }
     }
 
-    compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
     applyDefaultHierarchyTemplate()
     sourceSets {
 

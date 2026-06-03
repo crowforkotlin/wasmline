@@ -2,12 +2,12 @@
 
 package crow.wasmline.sample
 
-import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
-import crow.wasmline.loader.loadWasmline
+import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.getPlatformBean
@@ -132,34 +132,33 @@ internal class WasmLoader {
 
         if (current == null) {
             reloadOccurred = true
-            var loadState: WasmlineLoadState? = null
+            var result: WasmlineLoadResult? = null
             val duration = measureTime {
-                loadState = loadWasmline(
-                    artifactPath = request.artifactPath,
+                result = WasmlineLoader.load(
+                    pathOrUrl = request.artifactPath,
                     config = WasmlineConfig(
                         serialization = WasmlineSerializationConfig.protobuf(),
-                        threadSafe = false,
                     ),
                 )
             }
             loadDurationMs = duration.inWholeMilliseconds
 
-            when (val state = loadState ?: error("Wasmline load state is null.")) {
-                is WasmlineLoadState.Success -> {
-                    state.wasmline.bind(object : EchoService {
+            when (val r = result ?: error("Wasmline load result is null.")) {
+                is WasmlineLoadResult.Success -> {
+                    r.wasmline.bind(object : EchoService {
                         override fun echo() {
                             log("[WasmLoader] plugin invoked host echo()")
                         }
                     })
-                    current = state.wasmline
-                    wasmline = state.wasmline
+                    current = r.wasmline
+                    wasmline = r.wasmline
                     loadedArtifactPath = request.artifactPath
-                    loadedBackendCode = state.code
-                    log("[WasmLoader] load success backend=${backendLabel(state.code)} in ${loadDurationMs} ms")
+                    loadedBackendCode = null
+                    log("[WasmLoader] load success in ${loadDurationMs} ms")
                 }
 
-                is WasmlineLoadState.Failure -> {
-                    log("[WasmLoader] load failure: ${state.cause}")
+                is WasmlineLoadResult.Failure -> {
+                    log("[WasmLoader] load failure: ${r.cause}")
                     return WasmExecutionReport(
                         status = WasmExecutionStatus.Failure,
                         headline = "Execution failed",

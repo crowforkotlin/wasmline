@@ -3,18 +3,22 @@ package crow.wasmline
 import crow.wasmline.serialization.WasmlineSerializationConfig
 
 /**
- * Host-side runtime configuration for one loaded Wasmline module.
+ * Unified configuration for loading and running a Wasmline module.
  *
- * Keep host configuration extensible here so future runtime switches do not need
- * to keep expanding `load(...)` or the Wasmline constructor surface directly.
+ * @property serialization Serialization format for bridge communication.
+ * @property supportConcurrent Whether the loading path should support concurrent access.
+ *           When `true`, the runtime enables internal mutex for thread-safe loading.
+ *           When `false` (default), the loading path is lock-free.
+ * @property networkClient HTTP transport for remote package loading. Null means no remote loading.
+ * @property trustedKeys Trusted public keys for manifest signature verification.
+ *           When null, signature verification is skipped (permissive mode).
+ * @property cache Cache for downloaded manifests and artifacts.
+ *           When null, a platform-default file-system cache is used.
  */
 data class WasmlineConfig(
     val serialization: WasmlineSerializationConfig = WasmlineSerializationConfig.protobuf(),
-    /**
-     * Whether the loaded module should support concurrent access from
-     * multiple threads. When `true`, the runtime uses read/write locks
-     * for thread safety. When `false` (default), the module is optimized
-     * for single-threaded usage.
-     */
-    val threadSafe: Boolean = false,
+    val supportConcurrent: Boolean = false,
+    val networkClient: WasmlineNetworkClient? = null,
+    val trustedKeys: WasmlineTrustedKeys? = null,
+    val cache: WasmlineCache? = null,
 )

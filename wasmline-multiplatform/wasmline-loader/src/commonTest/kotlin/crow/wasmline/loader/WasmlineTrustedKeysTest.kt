@@ -1,5 +1,7 @@
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineTrustedKeySet
+import crow.wasmline.WasmlineTrustedKeys
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertNull

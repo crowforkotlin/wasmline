@@ -2,10 +2,12 @@ package crow.wasmline.sample.application
 
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
-import crow.wasmline.loader.loadWasmline
+import crow.wasmline.loader.WasmlineLoadRequest
+import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toJsonString
@@ -72,27 +74,26 @@ private fun resolveBundledPluginResourceNames(): List<String> {
 }
 
 internal fun runApplicationSample() {
-    Wasmline.bootstrap()
+    WasmlineLoader.bootstrap()
     val (resourceName, artifactFile) = extractBundledPluginArtifact()
     println("[Application] Loading bundled artifact ($resourceName) from: ${artifactFile.absolutePath}")
 
     try {
         when (
-            val loadState = loadWasmline(
-                artifactPath = artifactFile.absolutePath,
+            val result = WasmlineLoader.load(
+                pathOrUrl = artifactFile.absolutePath,
                 config = WasmlineConfig(
                     serialization = WasmlineSerializationConfig.protobuf(),
-                    threadSafe = false,
                 ),
             )
         ) {
-            is WasmlineLoadState.Failure -> {
-                error("[Application] Failed to load wasm: ${loadState.cause}")
+            is WasmlineLoadResult.Failure -> {
+                error("[Application] Failed to load wasm: ${result.cause}")
             }
 
-            is WasmlineLoadState.Success -> {
-                println("[Application] Wasm load success: ${loadState.code}")
-                val module = loadState.wasmline
+            is WasmlineLoadResult.Success -> {
+                println("[Application] Wasm load success")
+                val module = result.wasmline
                 module.bind(object : EchoService {
                     override fun echo() {
                         println("[Application] Plugin invoked host echo()")
@@ -113,7 +114,7 @@ internal fun runApplicationSample() {
             }
         }
     } finally {
-        Wasmline.shutdown()
+        WasmlineLoader.shutdown()
     }
 }
 

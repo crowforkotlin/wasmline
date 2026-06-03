@@ -27,10 +27,10 @@ internal object BrowserWasmlineRuntime {
         config: WasmlineConfig,
         createWasmline: (String, WasmlineConfig) -> Wasmline,
     ): WasmlineLoadState {
-        if (config.threadSafe) {
+        if (config.supportConcurrent) {
             return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,
-                cause = "[Wasmline] Browser web host does not support threadSafe loading yet.",
+                cause = "[Wasmline] Browser web host does not support concurrent loading yet.",
             )
         }
 
@@ -77,6 +77,15 @@ internal object BrowserWasmlineRuntime {
     fun shutdown() {
         WasmlineWebModuleRegistry.clear()
     }
+}
+
+// ========== Web bridge helpers for standalone actual functions ==========
+
+internal fun browserWasmlineBootstrap() = BrowserWasmlineRuntime.bootstrap()
+internal fun browserWasmlineShutdown() = BrowserWasmlineRuntime.shutdown()
+internal fun browserWasmlineWarmup(@Suppress("UNUSED_PARAMETER") mode: WasmlineWarmupMode) = Unit
+internal fun browserWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {
+    return BrowserWasmlineRuntime.load(filepath, config, ::Wasmline)
 }
 
 private object WasmlineWebModuleRegistry {

@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
  * Host-side serialization selection attached to one loaded Wasmline module.
  *
  * This value is only stored on the host/runtime side. Plugin-side code configures
- * its local factory through `Wasmline.current`.
+ * its local factory through `Wasmline.get()`.
  */
 @Serializable
 data class WasmlineSerializationConfig(

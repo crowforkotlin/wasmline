@@ -1,163 +1,107 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.Wasmline
+import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
+import crow.wasmline.WasmlineWarmupMode
+import crow.wasmline.wasmlineBootstrap
+import crow.wasmline.wasmlineShutdown
+import crow.wasmline.wasmlineWarmup
 
 /**
- * Public host-side loader SPI.
+ * Primary entry point for loading and managing Wasmline modules on the host side.
  *
- * This interface belongs to the loader layer because Host-facing load
- * workflows should no longer be modeled as raw `Wasmline.load(path)` calls.
+ * Lifecycle:
+ * ```kotlin
+ * WasmlineLoader.bootstrap()  // Initialize the runtime engine
  *
- * 2026-04-08
- * @author crowforkotlin
+ * val result = WasmlineLoader.load(
+ *     source = WasmlineSource.LocalArtifactPath("plugin.pwasm"),
+ *     config = WasmlineConfig(networkClient = KtorNetworkClient()),
+ * )
+ *
+ * when (result) {
+ *     is WasmlineLoadResult.Success -> result.wasmline.use { it.bind(...) }
+ *     is WasmlineLoadResult.Failure -> println(result.cause)
+ * }
+ *
+ * WasmlineLoader.shutdown()  // Release the engine
+ * ```
  */
-fun interface WasmlineLoader {
-    fun load(request: WasmlineLoadRequest): WasmlineLoadState
-}
+object WasmlineLoader {
 
-/**
- * Preferred Host-side loading entrypoint for V2.
- *
- * Callers may supply a custom [WasmlineLoader], but the default path delegates
- * to [DefaultWasmlineLoader] so Host code can migrate away from directly
- * calling `Wasmline.load(path)`.
- */
-fun loadWasmline(
-    request: WasmlineLoadRequest,
-    loader: WasmlineLoader = DefaultWasmlineLoader,
-): WasmlineLoadState {
-    return loader.load(request)
-}
-
-/**
- * Convenience overload for the current local precompiled-artifact workflow.
- */
-fun loadWasmline(
-    artifactPath: String,
-    config: WasmlineConfig = WasmlineConfig(),
-    loader: WasmlineLoader = DefaultWasmlineLoader,
-): WasmlineLoadState {
-    return loadWasmline(
-        request = WasmlineLoadRequest(
-            source = WasmlineSource.LocalArtifactFile(path = artifactPath),
-            config = config,
-        ),
-        loader = loader,
-    )
-}
-
-/**
- * Minimal Host loader for the current V2 phase.
- *
- * Package workflows still resolve to local host-compatible artifacts.
- * Browser hosts consume raw `.wasm`, while Wasmtime-based hosts resolve to
- * precompiled `.cwasm` / `.pwasm`.
- *
- * 2026-04-08
- * @author crowforkotlin
- */
-object DefaultWasmlineLoader : WasmlineLoader {
-    override fun load(request: WasmlineLoadRequest): WasmlineLoadState {
-        return loadSource(
-            request = request,
-            source = request.source,
-            resolutionDepth = 0,
-        )
+    /**
+     * Initialize the Wasmline runtime engine.
+     *
+     * On JVM/Android this ensures the native library is loaded.
+     * Safe to call multiple times — subsequent calls are no-ops.
+     */
+    fun bootstrap() {
+        wasmlineBootstrap()
     }
 
-    private fun loadSource(
-        request: WasmlineLoadRequest,
+    /**
+     * Release the global engine and clear cached modules.
+     */
+    fun shutdown() {
+        wasmlineShutdown()
+    }
+
+    /**
+     * Eagerly warm up the runtime engine for a specific backend.
+     */
+    fun warmup(mode: WasmlineWarmupMode) {
+        wasmlineWarmup(mode)
+    }
+
+    /**
+     * Load a Wasmline module from the given source.
+     *
+     * @param source Where to load from (local file, local package, or remote URL).
+     * @param config Unified configuration for runtime, network, cache, and trusted keys.
+     * @return [WasmlineLoadResult.Success] with a [Wasmline] instance, or [WasmlineLoadResult.Failure].
+     */
+    fun load(
         source: WasmlineSource,
-        resolutionDepth: Int,
-    ): WasmlineLoadState {
-        if (resolutionDepth > MAX_SOURCE_RESOLUTION_DEPTH) {
-            return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = "Wasmline load source resolution exceeded $MAX_SOURCE_RESOLUTION_DEPTH steps. Check resolver chaining for loops.",
-            )
-        }
-
-        return when (source) {
-            is WasmlineSource.LocalArtifactFile -> Wasmline.load(
-                filepath = source.path,
-                config = request.config,
-            )
-
-            is WasmlineSource.LocalPackageFile -> resolveSource(
-                request = request,
-                resolution = request.resolvers.localPackage?.resolve(source, request),
-                description = "Local package source '${source.path}'",
-                resolverHint = "request.resolvers.localPackage",
-                resolutionDepth = resolutionDepth,
-            )
-
-            is WasmlineSource.RemotePackageUrl -> {
-                // Priority 1: caller's custom resolver
-                val customResolution = request.resolvers.remotePackage?.resolve(source, request)
-                if (customResolution != null) {
-                    resolveSource(
-                        request = request,
-                        resolution = customResolution,
-                        description = "Remote package source '${source.url}'",
-                        resolverHint = "request.resolvers.remotePackage",
-                        resolutionDepth = resolutionDepth,
-                    )
-                }
-                // Priority 2: built-in remote resolution (when networkClient provided)
-                else if (request.loaderConfig.networkClient != null) {
-                    val builtInResolution = WasmlineRemotePackageResolution.resolve(source, request)
-                    resolveSource(
-                        request = request,
-                        resolution = builtInResolution,
-                        description = "Remote package source '${source.url}'",
-                        resolverHint = "request.loaderConfig.networkClient",
-                        resolutionDepth = resolutionDepth,
-                    )
-                }
-                // Fallback: existing error
-                else {
-                    unsupportedSourceFailure(
-                        description = "Remote package source '${source.url}'",
-                        resolverHint = "request.resolvers.remotePackage or request.loaderConfig.networkClient",
-                    )
-                }
-            }
-        }
+        config: WasmlineConfig = WasmlineConfig(),
+    ): WasmlineLoadResult {
+        val request = WasmlineLoadRequest(source = source, config = config)
+        return loadInternal(request).toResult()
     }
 
-    private fun resolveSource(
-        request: WasmlineLoadRequest,
-        resolution: WasmlineSourceResolution?,
-        description: String,
-        resolverHint: String,
-        resolutionDepth: Int,
-    ): WasmlineLoadState {
-        val resolved = resolution ?: return unsupportedSourceFailure(
-            description = description,
-            resolverHint = resolverHint,
-        )
-        return when (resolved) {
-            is WasmlineSourceResolution.Complete -> resolved.state
-            is WasmlineSourceResolution.ContinueWith -> loadSource(
-                request = request,
-                source = resolved.source,
-                resolutionDepth = resolutionDepth + 1,
-            )
+    /**
+     * Load a Wasmline module by auto-detecting the source type from the input string.
+     *
+     * - Starts with `http://` or `https://` → [WasmlineSource.RemoteManifestUrl]
+     * - Ends with `.pwasm`, `.cwasm`, or `.wasm` → [WasmlineSource.LocalArtifactPath]
+     * - Otherwise → [WasmlineSource.LocalManifestPath]
+     */
+    fun load(
+        pathOrUrl: String,
+        config: WasmlineConfig = WasmlineConfig(),
+    ): WasmlineLoadResult {
+        val source = when {
+            pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") ->
+                WasmlineSource.RemoteManifestUrl(url = pathOrUrl)
+            pathOrUrl.endsWith(".pwasm") || pathOrUrl.endsWith(".cwasm") || pathOrUrl.endsWith(".wasm") ->
+                WasmlineSource.LocalArtifactPath(path = pathOrUrl)
+            else ->
+                WasmlineSource.LocalManifestPath(path = pathOrUrl)
         }
+        return load(source = source, config = config)
     }
 
-    private fun unsupportedSourceFailure(
-        description: String,
-        resolverHint: String,
-    ): WasmlineLoadState.Failure {
-        return WasmlineLoadState.Failure(
-            code = WasmlineLoadState.CODE_FAILURE,
-            cause = "$description is not supported yet. Provide $resolverHint to resolve it into a local host-compatible artifact for the current runtime.",
-        )
+    private fun loadInternal(request: WasmlineLoadRequest): WasmlineLoadState {
+        return DefaultWasmlineLoader.load(request)
     }
 }
 
-private const val MAX_SOURCE_RESOLUTION_DEPTH = 8
+/**
+ * Convert internal [WasmlineLoadState] to public [WasmlineLoadResult].
+ */
+private fun WasmlineLoadState.toResult(): WasmlineLoadResult {
+    return when (this) {
+        is WasmlineLoadState.Success -> WasmlineLoadResult.Success(wasmline = this.wasmline)
+        is WasmlineLoadState.Failure -> WasmlineLoadResult.Failure(cause = this.cause)
+    }
+}
