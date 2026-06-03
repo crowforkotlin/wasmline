@@ -44,23 +44,6 @@ kotlin {
         }
     }
 
-    // Kotlin Friend Modules: declare wasmline (core) as friend for internal access.
-    // Use jar/klib file paths (not directories) for -Xfriend-paths.
-    val coreProject = project(":wasmline")
-    val coreBuildDir = coreProject.layout.buildDirectory.asFile.get()
-    val friendPathsValue = listOf(
-        File(coreBuildDir, "libs/wasmline-jvm-1.0.0.jar").absolutePath,
-    ).joinToString(",")
-    targets.configureEach {
-        compilations.configureEach {
-            compileTaskProvider.configure {
-                compilerOptions {
-                    freeCompilerArgs.add("-Xfriend-paths=$friendPathsValue")
-                }
-            }
-        }
-    }
-
     applyDefaultHierarchyTemplate()
     sourceSets {
         val commonMain by getting {

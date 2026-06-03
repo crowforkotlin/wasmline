@@ -64,21 +64,21 @@ private fun iosBootstrap() {
     loadNativeLibrary()
 }
 
-internal actual fun wasmlineBootstrap() {
+actual fun wasmlineBootstrap() {
     iosBootstrap()
 }
 
-internal actual fun wasmlineShutdown() {
+actual fun wasmlineShutdown() {
     iosBootstrap()
     wasmline_release_engine()
 }
 
-internal actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
+actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     iosBootstrap()
     wasmline_warmup_engine(mode == WasmlineWarmupMode.PULLEY)
 }
 
-internal actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {
+actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {
     iosBootstrap()
     val fileManager = NSFileManager.defaultManager
     val isUnsafe = !config.supportConcurrent
@@ -125,7 +125,7 @@ private object WasmlineCallbackRegistry {
     fun findAny(): WasmlineHostDispatcher? = dispatchers.values.firstOrNull()
 }
 
-fun iosStaticOutboundCallback(
+internal fun iosStaticOutboundCallback(
     action: CPointer<ByteVar>?,
     actionLen: ULong,
     payload: CPointer<ByteVar>?,

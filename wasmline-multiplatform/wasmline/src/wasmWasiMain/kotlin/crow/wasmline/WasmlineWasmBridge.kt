@@ -14,11 +14,11 @@ import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
 /** Copies inbound host data of the requested kind into the provided linear-memory buffer. */
 @WasmImport("env", "bridge_inbound_copy_params")
-external fun bridge_inbound_copy_params(type: Int, ptr: Int, len: Int)
+internal external fun bridge_inbound_copy_params(type: Int, ptr: Int, len: Int)
 
 /** Publishes the wasm response bytes stored at the provided linear-memory address. */
 @WasmImport("env", "bridge_inbound_set_response")
-external fun bridge_inbound_set_response(ptr: Int, len: Int)
+internal external fun bridge_inbound_set_response(ptr: Int, len: Int)
 
 // Outbound bridge imports.
 
@@ -28,11 +28,11 @@ external fun bridge_inbound_set_response(ptr: Int, len: Int)
  * slow-path API.
  */
 @WasmImport("env", "bridge_outbound_call_host")
-external fun bridge_outbound_call_host(aPtr: Int, aLen: Int, pPtr: Int, pLen: Int, outPtr: Int, outLen: Int): Int
+internal external fun bridge_outbound_call_host(aPtr: Int, aLen: Int, pPtr: Int, pLen: Int, outPtr: Int, outLen: Int): Int
 
 /** Copies the full outbound host response into the provided linear-memory buffer. */
 @WasmImport("env", "bridge_outbound_get_response")
-external fun bridge_outbound_get_response(ptr: Int)
+internal external fun bridge_outbound_get_response(ptr: Int)
 
 /**
  * Wasm-side bridge utilities for exchanging inbound and outbound payloads with the host runtime.
@@ -44,7 +44,7 @@ internal object WasmlineWasmBridge {
     private const val PRE_ALLOC_SIZE = 1024
 
     /** Reads a host-owned inbound buffer into a wasm-managed [ByteArray]. */
-    fun readBytesFromHost(type: Int, size: Int): ByteArray {
+    internal fun readBytesFromHost(type: Int, size: Int): ByteArray {
         if (size <= 0) return ByteArray(0)
 
         // ScopedAllocator allocates linear-memory pages on the stack with minimal overhead.
@@ -60,7 +60,7 @@ internal object WasmlineWasmBridge {
     }
 
     /** Writes the wasm result buffer back to the host runtime. */
-    fun  sendResult(result: ByteArray) {
+    internal fun sendResult(result: ByteArray) {
         if (result.isEmpty()) {
             bridge_inbound_set_response(0, 0)
             return
@@ -84,7 +84,7 @@ internal object WasmlineWasmBridge {
      * @param payload the outbound request payload.
      * @return the host response payload.
      */
-    fun callHost(action: String, payload: ByteArray): ByteArray {
+    internal fun callHost(action: String, payload: ByteArray): ByteArray {
         val actionBytes = action.encodeToByteArray()
 
         withScopedMemoryAllocator { allocator ->

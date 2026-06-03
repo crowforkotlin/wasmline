@@ -23,8 +23,8 @@ actual class Wasmline internal actual constructor(
     }
 }
 
-internal actual fun wasmlineBootstrap() = browserWasmlineBootstrap()
-internal actual fun wasmlineShutdown() = browserWasmlineShutdown()
-internal actual fun wasmlineWarmup(mode: WasmlineWarmupMode) = browserWasmlineWarmup(mode)
-internal actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
+actual fun wasmlineBootstrap() = browserWasmlineBootstrap()
+actual fun wasmlineShutdown() = browserWasmlineShutdown()
+actual fun wasmlineWarmup(mode: WasmlineWarmupMode) = browserWasmlineWarmup(mode)
+actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     browserWasmlineLoadArtifact(filepath, config)

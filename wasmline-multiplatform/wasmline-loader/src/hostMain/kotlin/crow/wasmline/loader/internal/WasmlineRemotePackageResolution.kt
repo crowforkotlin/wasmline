@@ -40,7 +40,7 @@ internal object WasmlineRemotePackageResolution {
         val manifestUrl = resolveManifestUrl(source.url)
 
         // Step 2: Check cache for manifest
-        val manifestCacheKey = "manifest_${sha256Hex(bytes = manifestUrl.toByteArray())}"
+        val manifestCacheKey = "manifest_${sha256Hex(bytes = manifestUrl.encodeToByteArray())}"
         val manifestBytes = cache?.get(manifestCacheKey) ?: fetchBytes(
             networkClient = networkClient,
             url = manifestUrl,

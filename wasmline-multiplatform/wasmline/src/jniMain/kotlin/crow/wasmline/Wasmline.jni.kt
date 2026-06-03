@@ -52,21 +52,21 @@ private fun ensureBootstrapped() {
     }
 }
 
-internal actual fun wasmlineBootstrap() {
+actual fun wasmlineBootstrap() {
     ensureBootstrapped()
 }
 
-internal actual fun wasmlineShutdown() {
+actual fun wasmlineShutdown() {
     ensureBootstrapped()
     Wasmline.releaseEngine()
 }
 
-internal actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
+actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     ensureBootstrapped()
     Wasmline.warmupEngine(mode == WasmlineWarmupMode.PULLEY)
 }
 
-internal actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {
+actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {
     ensureBootstrapped()
     val supportConcurrent = config.supportConcurrent
     return WasmlineLocalArtifactBridge.load(

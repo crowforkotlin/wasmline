@@ -6,7 +6,7 @@ import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.native.c.*
 import kotlinx.cinterop.*
 
-object WasmlineBridge {
+internal object WasmlineBridge {
     fun bootstrap() = Unit
 
     fun warmup(mode: WasmlineWarmupMode) {

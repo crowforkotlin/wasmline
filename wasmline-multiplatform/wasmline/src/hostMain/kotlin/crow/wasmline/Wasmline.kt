@@ -22,10 +22,12 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
 }
 
 /**
- * Runtime bridge functions used exclusively by WasmlineLoader (friend module).
- * These are internal and not visible to external consumers.
+ * Host-side engine lifecycle functions for Wasmline runtime management.
+ *
+ * These are low-level runtime operations used primarily by `WasmlineLoader`.
+ * Application code should prefer using `WasmlineLoader` instead of calling these directly.
  */
-internal expect fun wasmlineBootstrap()
-internal expect fun wasmlineShutdown()
-internal expect fun wasmlineWarmup(mode: WasmlineWarmupMode)
-internal expect fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState
+expect fun wasmlineBootstrap()
+expect fun wasmlineShutdown()
+expect fun wasmlineWarmup(mode: WasmlineWarmupMode)
+expect fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState
