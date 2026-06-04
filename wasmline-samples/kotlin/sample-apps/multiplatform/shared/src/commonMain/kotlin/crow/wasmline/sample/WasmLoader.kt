@@ -2,6 +2,7 @@
 
 package crow.wasmline.sample
 
+import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
@@ -174,7 +175,7 @@ internal class WasmLoader {
                         totalDurationMs = totalMark.elapsedNow().inWholeMilliseconds,
                         inputPayload = inputPayload,
                         inputJson = toJsonString(inputPayload),
-                        errorMessage = state.cause,
+                        errorMessage = r.cause,
                         logs = logs,
                     )
                 }
@@ -233,12 +234,7 @@ internal class WasmLoader {
 }
 
 private fun backendLabel(code: Byte?): String {
-    return when (code) {
-        WasmlineLoadState.CODE_SUCCESS_PULLEY -> "Pulley .pwasm"
-        WasmlineLoadState.CODE_SUCCESS_AOT -> "AOT .cwasm"
-        WasmlineLoadState.CODE_SUCCESS_WASM -> "Browser .wasm"
-        else -> "Unknown backend"
-    }
+    return "Wasmline"
 }
 
 private fun String.fileName(): String {

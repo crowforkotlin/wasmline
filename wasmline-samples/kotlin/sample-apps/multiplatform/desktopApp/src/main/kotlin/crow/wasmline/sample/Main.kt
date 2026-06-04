@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
-import crow.wasmline.Wasmline
+import crow.wasmline.loader.WasmlineLoader
 import kotlinx.serialization.ExperimentalSerializationApi
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.InternalResourceApi
@@ -94,7 +94,7 @@ private fun resolveBundledPluginResourceNames(): List<String> {
 
 @OptIn(ExperimentalResourceApi::class)
 fun main() = application {
-    Wasmline.bootstrap()
+    WasmlineLoader.bootstrap()
     val (resourceName, wasmFile) = extractPluginArtifactToTemp()
     println("Wasm extracted from $resourceName to: ${wasmFile.absolutePath}")
     AppWindows {

@@ -3,17 +3,17 @@ package crow.wasmline.sample
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.window.ComposeUIViewController
-import crow.wasmline.Wasmline
+import crow.wasmline.loader.WasmlineLoader
 import platform.Foundation.NSBundle
 
 fun MainViewController() = run {
-    Wasmline.bootstrap()
+    WasmlineLoader.bootstrap()
 
     ComposeUIViewController {
         MaterialTheme {
             DisposableEffect(Unit) {
                 onDispose {
-                    Wasmline.shutdown()
+                    WasmlineLoader.shutdown()
                 }
             }
 

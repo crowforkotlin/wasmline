@@ -22,6 +22,7 @@ fun AndroidApp(
     App(
         wasmPath = wasmFile.absolutePath,
         autoExecute = autoExecute,
+        execDispatcher = Dispatchers.Main
     )
     LaunchedEffect(context, resolvedWasmFilename) {
         ensureAndroidAssetCopied(

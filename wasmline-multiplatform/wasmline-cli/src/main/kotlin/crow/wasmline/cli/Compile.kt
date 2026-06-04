@@ -110,6 +110,26 @@ class Compile : CliktCommand(name = "compile") {
     companion object {
         const val COMPILE_RESULT_FILE = "compile-result.json"
 
+        /**
+         * Maps shorthand target names (used in shell scripts and CLI args) to
+         * standard Rust/LLVM target triples required by `wasmtime compile --target`.
+         *
+         * Without this mapping, shorthand names like `aarch64-android` are parsed by
+         * wasmtime as `{arch}-{vendor}` with no OS, producing cwasm artifacts whose
+         * metadata says `os=unknown` — causing "Module was compiled for operating
+         * system 'unknown'" errors on the target device.
+         */
+        private val TARGET_ALIASES = mapOf(
+            "x86_64-linux" to "x86_64-unknown-linux-gnu",
+            "aarch64-linux" to "aarch64-unknown-linux-gnu",
+            "aarch64-android" to "aarch64-linux-android",
+            "aarch64-macos" to "aarch64-apple-darwin",
+            "x86_64-macos" to "x86_64-apple-darwin",
+            "aarch64-ios" to "aarch64-apple-ios",
+            "aarch64-ios-sim" to "aarch64-apple-ios-sim",
+            "x86_64-windows" to "x86_64-pc-windows-msvc",
+        )
+
         val DEFAULT_TARGETS = listOf(
             "pulley64",
             "x86_64-linux",
@@ -119,6 +139,14 @@ class Compile : CliktCommand(name = "compile") {
             "aarch64-ios",
             "x86_64-windows"
         )
+
+        /**
+         * Resolve a shorthand target name to a standard Rust/LLVM triple.
+         * If the input is already a full triple (or `pulley64`), it is returned as-is.
+         */
+        fun normalizeTarget(target: String): String {
+            return TARGET_ALIASES[target] ?: target
+        }
 
         /**
          * Prepare the browser `.wasm` artifact and compile native target artifacts.
@@ -196,12 +224,14 @@ class Compile : CliktCommand(name = "compile") {
             echo("Compiling for target: $target")
             echo("Output: ${outFile.absolutePath}")
 
+            val wasmtimeTarget = normalizeTarget(target)
+
             val command = mutableListOf(
                 executable.absolutePath,
                 "compile",
                 inputFile.absolutePath,
                 "-o", outFile.absolutePath,
-                "--target", target,
+                "--target", wasmtimeTarget,
                 "-W", "gc=y",
                 "-W", "function-references=y",
                 "-W", "exceptions=y",
@@ -263,8 +293,29 @@ class Compile : CliktCommand(name = "compile") {
         }
 
         fun parseTarget(target: String): Pair<String, String?> {
-            val parts = target.split("-", limit = 2)
-            return if (parts.size == 2) parts[0] to parts[1] else target to null
+            val normalized = normalizeTarget(target)
+            if (normalized == "pulley64") return "pulley64" to "pulley"
+            val parts = normalized.split("-")
+            val cpu = parts[0]
+            // Standard triple: {arch}-{vendor}-{os}[-{env}], OS is the 3rd segment.
+            // Fallback for 2-segment input: treat parts[1] as OS.
+            val rawOs = when {
+                parts.size >= 3 -> parts[2]
+                parts.size == 2 -> parts[1]
+                else -> return cpu to null
+            }
+            return cpu to normalizeOs(rawOs)
+        }
+
+        private fun normalizeOs(raw: String): String {
+            return when {
+                "android" in raw -> "android"
+                "darwin" in raw -> "macos"
+                "ios" in raw -> "ios"
+                "linux" in raw -> "linux"
+                "windows" in raw -> "windows"
+                else -> raw
+            }
         }
 
         fun sha256Hex(file: File): String {

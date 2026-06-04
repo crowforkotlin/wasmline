@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.getPlatformBean
 import crow.wasmline.sample.extensions.toJsonString
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -53,17 +55,17 @@ private enum class OutputTab { Result, Request, Log }
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
 private val CoolGrayBg = Color(0xFFF1F5F9)
-private val White      = Color(0xFFFFFFFF)
-private val Slate900   = Color(0xFF0F172A)
-private val Slate700   = Color(0xFF334155)
-private val Slate500   = Color(0xFF64748B)
-private val Slate200   = Color(0xFFE2E8F0)
-private val Slate100   = Color(0xFFF1F5F9)
-private val Indigo600  = Color(0xFF4F46E5)
-private val Green500   = Color(0xFF10B981)
-private val Red500     = Color(0xFFEF4444)
-private val SkyBlue    = Color(0xFF38BDF8)
-private val NavyDark   = Color(0xFF0F172A)
+private val White = Color(0xFFFFFFFF)
+private val Slate900 = Color(0xFF0F172A)
+private val Slate700 = Color(0xFF334155)
+private val Slate500 = Color(0xFF64748B)
+private val Slate200 = Color(0xFFE2E8F0)
+private val Slate100 = Color(0xFFF1F5F9)
+private val Indigo600 = Color(0xFF4F46E5)
+private val Green500 = Color(0xFF10B981)
+private val Red500 = Color(0xFFEF4444)
+private val SkyBlue = Color(0xFF38BDF8)
+private val NavyDark = Color(0xFF0F172A)
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -71,16 +73,17 @@ private val NavyDark   = Color(0xFF0F172A)
 fun App(
     wasmPath: String,
     autoExecute: Boolean = false,
+    execDispatcher: CoroutineDispatcher = Dispatchers.Main
 ) {
-    val scope            = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
     val basePlatformBean = remember { getPlatformBean() }
-    val wasmLoader       = remember { WasmLoader() }
+    val wasmLoader = remember { WasmLoader() }
 
     var artifactPath by remember(wasmPath) { mutableStateOf(wasmPath) }
     var contentLabel by remember { mutableStateOf(basePlatformBean.content) }
-    var forceReload  by remember { mutableStateOf(false) }
-    var activeTab    by remember { mutableStateOf(OutputTab.Result) }
-    var report       by remember(wasmPath) { mutableStateOf(WasmExecutionReport.idle(wasmPath)) }
+    var forceReload by remember { mutableStateOf(false) }
+    var activeTab by remember { mutableStateOf(OutputTab.Result) }
+    var report by remember(wasmPath) { mutableStateOf(WasmExecutionReport.idle(wasmPath)) }
     var hasAutoExecuted by remember(wasmPath) { mutableStateOf(false) }
 
     val previewPayload = remember(contentLabel) {
@@ -88,15 +91,15 @@ fun App(
     }
 
     fun execute() {
-        scope.launch {
+        scope.launch(execDispatcher) {
             report = WasmExecutionReport.running(artifactPath)
             report = wasmLoader.execute(
                 WasmExecutionRequest(
                     artifactPath = artifactPath,
-                    platform     = basePlatformBean.platform,
-                    content      = contentLabel,
+                    platform = basePlatformBean.platform,
+                    content = contentLabel,
                     timeOffsetMs = 0L,
-                    forceReload  = forceReload,
+                    forceReload = forceReload,
                 )
             )
         }
@@ -121,13 +124,13 @@ fun App(
         AppHeader(report = report)
 
         InputCard(
-            report               = report,
-            contentLabel         = contentLabel,
-            artifactPath         = artifactPath,
-            forceReload          = forceReload,
-            onContentChange      = { contentLabel = it },
+            report = report,
+            contentLabel = contentLabel,
+            artifactPath = artifactPath,
+            forceReload = forceReload,
+            onContentChange = { contentLabel = it },
             onArtifactPathChange = { artifactPath = it },
-            onForceReloadChange  = { forceReload  = it },
+            onForceReloadChange = { forceReload = it },
         )
 
         ExecuteButton(
@@ -138,11 +141,11 @@ fun App(
         MetricsRow(report = report)
 
         ConsoleCard(
-            modifier       = Modifier.weight(1f),
-            report         = report,
+            modifier = Modifier.weight(1f),
+            report = report,
             previewPayload = previewPayload,
-            activeTab      = activeTab,
-            onTabChange    = { activeTab = it },
+            activeTab = activeTab,
+            onTabChange = { activeTab = it },
         )
     }
 }
@@ -153,13 +156,13 @@ fun App(
 private fun AppHeader(report: WasmExecutionReport) {
     val dotColor = when (report.status) {
         WasmExecutionStatus.Running, WasmExecutionStatus.Success -> Green500
-        WasmExecutionStatus.Failure                              -> Red500
-        WasmExecutionStatus.Idle                                 -> Slate500
+        WasmExecutionStatus.Failure -> Red500
+        WasmExecutionStatus.Idle -> Slate500
     }
 
     Row(
-        modifier              = Modifier.fillMaxWidth(),
-        verticalAlignment     = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
@@ -168,10 +171,10 @@ private fun AppHeader(report: WasmExecutionReport) {
                 .background(dotColor, CircleShape)
         )
         Text(
-            text       = "Wasmline",
-            style      = MaterialTheme.typography.titleLarge,
+            text = "Wasmline",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color      = Slate900,
+            color = Slate900,
         )
     }
 }
@@ -179,27 +182,27 @@ private fun AppHeader(report: WasmExecutionReport) {
 @Composable
 private fun MetaBadge(label: String, value: String, monospace: Boolean = false) {
     Surface(
-        shape  = RoundedCornerShape(999.dp),
-        color  = White,
+        shape = RoundedCornerShape(999.dp),
+        color = White,
         border = BorderStroke(1.dp, Slate200),
     ) {
         Row(
-            modifier             = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment    = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text  = label,
+                text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = Slate500,
             )
             Text(
-                text       = value,
-                style      = MaterialTheme.typography.labelSmall,
-                color      = Slate700,
+                text = value,
+                style = MaterialTheme.typography.labelSmall,
+                color = Slate700,
                 fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
-                maxLines   = 1,
-                overflow   = TextOverflow.Ellipsis,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -209,22 +212,22 @@ private fun MetaBadge(label: String, value: String, monospace: Boolean = false) 
 
 @Composable
 private fun InputCard(
-    report              : WasmExecutionReport,
-    contentLabel        : String,
-    artifactPath        : String,
-    forceReload         : Boolean,
-    onContentChange     : (String) -> Unit,
+    report: WasmExecutionReport,
+    contentLabel: String,
+    artifactPath: String,
+    forceReload: Boolean,
+    onContentChange: (String) -> Unit,
     onArtifactPathChange: (String) -> Unit,
-    onForceReloadChange : (Boolean) -> Unit,
+    onForceReloadChange: (Boolean) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp),
-        color    = White,
-        border   = BorderStroke(1.dp, Slate200),
+        shape = RoundedCornerShape(12.dp),
+        color = White,
+        border = BorderStroke(1.dp, Slate200),
     ) {
         Column(
-            modifier            = Modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -232,9 +235,9 @@ private fun InputCard(
             // ForceReload chip + file badge in same scrollable row
             val badgeScroll = rememberScrollState()
             Row(
-                modifier              = Modifier.horizontalScroll(badgeScroll),
+                modifier = Modifier.horizontalScroll(badgeScroll),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment     = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 ForceReloadChip(checked = forceReload, onToggle = onForceReloadChange)
                 val fileName = artifactPath
@@ -245,18 +248,18 @@ private fun InputCard(
             // Payload content
             FieldLabel(text = "Payload")
             InlineTextField(
-                value         = contentLabel,
+                value = contentLabel,
                 onValueChange = onContentChange,
-                placeholder   = "Describe the request payload",
+                placeholder = "Describe the request payload",
             )
 
             // Artifact path
             FieldLabel(text = "Artifact Path")
             InlineTextField(
-                value         = artifactPath,
+                value = artifactPath,
                 onValueChange = onArtifactPathChange,
-                placeholder   = "Path to .wasm / .pwasm file",
-                monospace     = true,
+                placeholder = "Path to .wasm / .pwasm file",
+                monospace = true,
             )
         }
     }
@@ -265,35 +268,35 @@ private fun InputCard(
 @Composable
 private fun FieldLabel(text: String) {
     Text(
-        text    = text,
-        style   = MaterialTheme.typography.labelSmall,
-        color   = Slate500,
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = Slate500,
         maxLines = 1,
     )
 }
 
 @Composable
 private fun ForceReloadChip(checked: Boolean, onToggle: (Boolean) -> Unit) {
-    val bgColor     = if (checked) Color(0xFFFFF7ED) else Slate100
+    val bgColor = if (checked) Color(0xFFFFF7ED) else Slate100
     val borderColor = if (checked) Color(0xFFFBBF24) else Slate200
-    val textColor   = if (checked) Color(0xFF92400E) else Slate500
-    val dotColor    = if (checked) Color(0xFFFBBF24) else Slate200
+    val textColor = if (checked) Color(0xFF92400E) else Slate500
+    val dotColor = if (checked) Color(0xFFFBBF24) else Slate200
     Surface(
-        onClick  = { onToggle(!checked) },
-        shape    = RoundedCornerShape(999.dp),
-        color    = bgColor,
-        border   = BorderStroke(1.dp, borderColor),
+        onClick = { onToggle(!checked) },
+        shape = RoundedCornerShape(999.dp),
+        color = bgColor,
+        border = BorderStroke(1.dp, borderColor),
     ) {
         Row(
-            modifier              = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment     = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(modifier = Modifier.size(6.dp).background(dotColor, CircleShape))
             Text(
-                text     = "Force Reload",
-                style    = MaterialTheme.typography.labelSmall,
-                color    = textColor,
+                text = "Force Reload",
+                style = MaterialTheme.typography.labelSmall,
+                color = textColor,
                 maxLines = 1,
             )
         }
@@ -302,40 +305,40 @@ private fun ForceReloadChip(checked: Boolean, onToggle: (Boolean) -> Unit) {
 
 @Composable
 private fun InlineTextField(
-    value       : String,
+    value: String,
     onValueChange: (String) -> Unit,
-    placeholder : String,
-    monospace   : Boolean = false,
+    placeholder: String,
+    monospace: Boolean = false,
 ) {
     TextField(
-        value       = value,
+        value = value,
         onValueChange = onValueChange,
-        modifier    = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         placeholder = {
             Text(
-                text     = placeholder,
-                style    = MaterialTheme.typography.bodySmall,
-                color    = Slate500,
+                text = placeholder,
+                style = MaterialTheme.typography.bodySmall,
+                color = Slate500,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         },
-        singleLine  = true,
-        shape       = RoundedCornerShape(8.dp),
-        textStyle   = MaterialTheme.typography.bodySmall.copy(
+        singleLine = true,
+        shape = RoundedCornerShape(8.dp),
+        textStyle = MaterialTheme.typography.bodySmall.copy(
             fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
-            color      = Slate900,
+            color = Slate900,
         ),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor    = Slate100,
-            unfocusedContainerColor  = Slate100,
-            disabledContainerColor   = Slate100,
-            focusedIndicatorColor    = Color.Transparent,
-            unfocusedIndicatorColor  = Color.Transparent,
-            disabledIndicatorColor   = Color.Transparent,
-            cursorColor              = Indigo600,
-            focusedTextColor         = Slate900,
-            unfocusedTextColor       = Slate900,
+            focusedContainerColor = Slate100,
+            unfocusedContainerColor = Slate100,
+            disabledContainerColor = Slate100,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            cursorColor = Indigo600,
+            focusedTextColor = Slate900,
+            unfocusedTextColor = Slate900,
         ),
     )
 }
@@ -345,24 +348,24 @@ private fun InlineTextField(
 @Composable
 private fun ExecuteButton(isRunning: Boolean, onExecute: () -> Unit) {
     Button(
-        onClick  = onExecute,
-        enabled  = !isRunning,
+        onClick = onExecute,
+        enabled = !isRunning,
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),
-        shape  = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor         = Slate900,
-            contentColor           = White,
+            containerColor = Slate900,
+            contentColor = White,
             disabledContainerColor = Slate500,
-            disabledContentColor   = White,
+            disabledContentColor = White,
         ),
     ) {
         Text(
-            text       = if (isRunning) "Running..." else "Execute ->",
-            style      = MaterialTheme.typography.titleSmall,
+            text = if (isRunning) "Running..." else "Execute ->",
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            maxLines   = 1,
+            maxLines = 1,
         )
     }
 }
@@ -372,40 +375,53 @@ private fun ExecuteButton(isRunning: Boolean, onExecute: () -> Unit) {
 @Composable
 private fun MetricsRow(report: WasmExecutionReport) {
     Row(
-        modifier             = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        MetricCell(modifier = Modifier.weight(1f), label = "Load",   value = formatDuration(report.loadDurationMs))
-        MetricCell(modifier = Modifier.weight(1f), label = "Invoke", value = formatDuration(report.invokeDurationMs))
-        MetricCell(modifier = Modifier.weight(1f), label = "Total",  value = formatDuration(report.totalDurationMs), accent = Green500)
+        MetricCell(
+            modifier = Modifier.weight(1f),
+            label = "Load",
+            value = formatDuration(report.loadDurationMs)
+        )
+        MetricCell(
+            modifier = Modifier.weight(1f),
+            label = "Invoke",
+            value = formatDuration(report.invokeDurationMs)
+        )
+        MetricCell(
+            modifier = Modifier.weight(1f),
+            label = "Total",
+            value = formatDuration(report.totalDurationMs),
+            accent = Green500
+        )
     }
 }
 
 @Composable
 private fun MetricCell(
-    label   : String,
-    value   : String,
+    label: String,
+    value: String,
     modifier: Modifier = Modifier,
-    accent  : Color = Slate900,
+    accent: Color = Slate900,
 ) {
     Surface(
         modifier = modifier,
-        shape    = RoundedCornerShape(12.dp),
-        color    = White,
-        border   = BorderStroke(1.dp, Slate200),
+        shape = RoundedCornerShape(12.dp),
+        color = White,
+        border = BorderStroke(1.dp, Slate200),
     ) {
         Column(
-            modifier             = Modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(text = label, style = MaterialTheme.typography.labelSmall, color = Slate500)
             Text(
-                text       = value,
-                style      = MaterialTheme.typography.titleSmall,
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color      = accent,
+                color = accent,
             )
         }
     }
@@ -415,35 +431,35 @@ private fun MetricCell(
 
 @Composable
 private fun ConsoleCard(
-    modifier      : Modifier,
-    report        : WasmExecutionReport,
+    modifier: Modifier,
+    report: WasmExecutionReport,
     previewPayload: PlatformBean,
-    activeTab     : OutputTab,
-    onTabChange   : (OutputTab) -> Unit,
+    activeTab: OutputTab,
+    onTabChange: (OutputTab) -> Unit,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp),
-        color    = NavyDark,
+        shape = RoundedCornerShape(12.dp),
+        color = NavyDark,
     ) {
         Column(
-            modifier             = Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // Tab bar + runtime status tag
             Row(
-                modifier             = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment    = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutputTab.entries.forEach { tab ->
                         ConsoleTabChip(
-                            text     = tab.displayName(),
+                            text = tab.displayName(),
                             selected = tab == activeTab,
-                            onClick  = { onTabChange(tab) },
+                            onClick = { onTabChange(tab) },
                         )
                     }
                 }
@@ -463,12 +479,12 @@ private fun ConsoleCard(
                             .verticalScroll(vScroll)
                     ) {
                         Text(
-                            text       = resolveConsoleContent(report, previewPayload, activeTab),
-                            color      = SkyBlue,
+                            text = resolveConsoleContent(report, previewPayload, activeTab),
+                            color = SkyBlue,
                             fontFamily = FontFamily.Monospace,
-                            style      = MaterialTheme.typography.labelSmall,
-                            fontSize   = 10.sp,
-                            softWrap   = false,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            softWrap = false,
                         )
                     }
                 }
@@ -481,15 +497,15 @@ private fun ConsoleCard(
 private fun ConsoleTabChip(text: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape   = RoundedCornerShape(999.dp),
-        color   = if (selected) White.copy(alpha = 0.12f) else Color.Transparent,
-        border  = BorderStroke(1.dp, if (selected) White.copy(alpha = 0.20f) else Color.Transparent),
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) White.copy(alpha = 0.12f) else Color.Transparent,
+        border = BorderStroke(1.dp, if (selected) White.copy(alpha = 0.20f) else Color.Transparent),
     ) {
         Text(
-            text     = text,
+            text = text,
             modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp),
-            style    = MaterialTheme.typography.labelSmall,
-            color    = if (selected) White else Slate500,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) White else Slate500,
             maxLines = 1,
         )
     }
@@ -498,15 +514,15 @@ private fun ConsoleTabChip(text: String, selected: Boolean, onClick: () -> Unit)
 @Composable
 private fun ConsoleStatusTag(text: String, accent: Color) {
     Surface(
-        shape  = RoundedCornerShape(999.dp),
-        color  = accent.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(999.dp),
+        color = accent.copy(alpha = 0.12f),
         border = BorderStroke(1.dp, accent.copy(alpha = 0.20f)),
     ) {
         Text(
-            text     = text,
+            text = text,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            style    = MaterialTheme.typography.labelSmall,
-            color    = accent,
+            style = MaterialTheme.typography.labelSmall,
+            color = accent,
             maxLines = 1,
         )
     }
@@ -515,36 +531,37 @@ private fun ConsoleStatusTag(text: String, accent: Color) {
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 private fun OutputTab.displayName(): String = when (this) {
-    OutputTab.Result  -> "Result"
+    OutputTab.Result -> "Result"
     OutputTab.Request -> "Request"
-    OutputTab.Log     -> "Log"
+    OutputTab.Log -> "Log"
 }
 
 private fun statusInfo(report: WasmExecutionReport): Pair<String, Color> = when (report.status) {
-    WasmExecutionStatus.Idle    -> Pair("idle",    Slate500)
+    WasmExecutionStatus.Idle -> Pair("idle", Slate500)
     WasmExecutionStatus.Running -> Pair("running", Green500)
     WasmExecutionStatus.Success -> Pair("success", Green500)
-    WasmExecutionStatus.Failure -> Pair("error",   Red500)
+    WasmExecutionStatus.Failure -> Pair("error", Red500)
 }
 
 private fun resolveConsoleContent(
-    report        : WasmExecutionReport,
+    report: WasmExecutionReport,
     previewPayload: PlatformBean,
-    activeTab     : OutputTab,
+    activeTab: OutputTab,
 ): String = when (activeTab) {
-    OutputTab.Result  -> report.outputJson.ifBlank {
+    OutputTab.Result -> report.outputJson.ifBlank {
         if (report.errorMessage.isNotBlank()) {
             "// error\n${report.errorMessage}"
         } else {
             "// waiting for result\n// current request preview:\n${toJsonString(previewPayload)}"
         }
     }
+
     OutputTab.Request -> report.inputJson.ifBlank { toJsonString(previewPayload) }
-    OutputTab.Log     -> report.consoleLog
+    OutputTab.Log -> report.consoleLog
 }
 
 private fun formatDuration(ms: Long): String = when {
-    ms <= 0L   -> "0 ms"
+    ms <= 0L -> "0 ms"
     ms < 1_000L -> "$ms ms"
-    else        -> "${ms / 1000}.${(ms % 1000) / 10}s"
+    else -> "${ms / 1000}.${(ms % 1000) / 10}s"
 }

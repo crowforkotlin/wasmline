@@ -156,6 +156,24 @@ normalize_platform() {
     esac
 }
 
+# Maps shorthand platform names to standard Rust/LLVM target triples
+# required by `wasmtime compile --target`. Without this, wasmtime parses
+# e.g. "aarch64-android" as arch=aarch64, vendor=android, os=unknown.
+normalize_compile_target() {
+    case "$1" in
+        aarch64-android)   printf '%s\n' "aarch64-linux-android" ;;
+        aarch64-linux)     printf '%s\n' "aarch64-unknown-linux-gnu" ;;
+        x86_64-linux)      printf '%s\n' "x86_64-unknown-linux-gnu" ;;
+        aarch64-macos)     printf '%s\n' "aarch64-apple-darwin" ;;
+        x86_64-macos)      printf '%s\n' "x86_64-apple-darwin" ;;
+        aarch64-ios)       printf '%s\n' "aarch64-apple-ios" ;;
+        aarch64-ios-sim)   printf '%s\n' "aarch64-apple-ios-sim" ;;
+        x86_64-windows)    printf '%s\n' "x86_64-pc-windows-msvc" ;;
+        pulley64)          printf '%s\n' "pulley64" ;;
+        *)                 printf '%s\n' "$1" ;;
+    esac
+}
+
 normalize_artifact_format() {
     case "$1" in
         pwasm|cwasm)
@@ -521,11 +539,11 @@ build_plugin_runtime_artifacts() {
             echo "Missing cwasm target for ${artifact_description}" >&2
             exit 1
         fi
-        targets=("$cwasm_target")
+        targets=("$(normalize_compile_target "$cwasm_target")")
     else
         targets=("pulley64")
         if [ -n "$cwasm_target" ]; then
-            targets+=("$cwasm_target")
+            targets+=("$(normalize_compile_target "$cwasm_target")")
         fi
     fi
 
@@ -550,8 +568,10 @@ build_plugin_runtime_artifacts() {
         fi
     fi
 
-    if [ -n "$cwasm_target" ] && printf '%s\n' "${targets[@]}" | grep -Fxq "$cwasm_target"; then
-        RUNTIME_CWASM_FILE="$(find_optional_file "$output_root" "*-${cwasm_target}.cwasm" 2)"
+    local normalized_cwasm_target
+    normalized_cwasm_target="$(normalize_compile_target "$cwasm_target")"
+    if [ -n "$cwasm_target" ] && printf '%s\n' "${targets[@]}" | grep -Fxq "$normalized_cwasm_target"; then
+        RUNTIME_CWASM_FILE="$(find_optional_file "$output_root" "*-${normalized_cwasm_target}.cwasm" 2)"
         if [ -z "$RUNTIME_CWASM_FILE" ]; then
             echo "Unable to locate ${artifact_description} cwasm artifact under ${output_root}" >&2
             exit 1
