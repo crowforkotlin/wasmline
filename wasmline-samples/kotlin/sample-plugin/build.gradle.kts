@@ -32,3 +32,23 @@ kotlin {
         }
     }
 }
+
+// Repo root: wasmline-samples/kotlin -> wasmline-samples -> wasmline
+val repoRoot = rootDir.parentFile.parentFile
+
+wasmline {
+    manifest {
+        pluginId = "crow.wasmline.demo"
+        version = "1.0.0"
+        signingKey = file("../keys/private.key")
+    }
+    wasmtime {
+        // wasmtime-min is downloaded by the CLI `download` command into
+        // {repoRoot}/build/wasmline/wasmtime/wasmtime-v{VERSION}-{platform}/
+        directory = file("$repoRoot/build/wasmline/wasmtime/wasmtime-v45.0.0-x86_64-linux")
+    }
+    server {
+        port = 18080
+    }
+    serverDeployVariant = "debug"
+}

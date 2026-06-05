@@ -56,9 +56,18 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
 
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
+
     implementation(libs.okio.core)
 
     testImplementation(libs.kotlin.test)
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
+    }
 }
 
 gradlePlugin {
