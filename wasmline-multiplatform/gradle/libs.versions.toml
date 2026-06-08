@@ -302,6 +302,7 @@ jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "j
 
 crow-wasmline = { module = "crow.wasmline:wasmline", version.ref = "wasmline" }
 crow-wasmline-loader = { module = "crow.wasmline:wasmline-loader", version.ref = "wasmline" }
+crow-wasmline-network-ktor = { module = "crow.wasmline:wasmline-network-ktor", version.ref = "wasmline" }
 
 
 

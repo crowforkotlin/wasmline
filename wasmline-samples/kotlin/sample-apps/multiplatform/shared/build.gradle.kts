@@ -24,6 +24,7 @@ kotlin {
             dependencies {
                 api(libs.crow.wasmline)
                 api(libs.crow.wasmline.loader)
+                api(libs.crow.wasmline.network.ktor)
 
                 api(projects.sampleCommon)
 
@@ -50,6 +51,7 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 api(libs.androidx.activity.compose)
+                api(libs.ktor.client.okhttp)
             }
         }
         val desktopMain by getting {
@@ -57,10 +59,15 @@ kotlin {
                 api(compose.desktop.currentOs)
                 api(libs.jetbrains.jewel.decorated)
                 api(libs.conveyor)
+                api(libs.ktor.client.cio)
             }
         }
         if (HostManager.hostIsMac) {
-            val iosSimulatorArm64Main by getting { }
+            val iosSimulatorArm64Main by getting {
+                dependencies {
+                    api(libs.ktor.client.darwin)
+                }
+            }
         }
     }
 }

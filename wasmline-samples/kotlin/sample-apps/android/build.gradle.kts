@@ -27,4 +27,5 @@ dependencies {
 
     api(libs.crow.wasmline)
     api(libs.crow.wasmline.loader)
+    api(libs.ktor.client.okhttp)
 }

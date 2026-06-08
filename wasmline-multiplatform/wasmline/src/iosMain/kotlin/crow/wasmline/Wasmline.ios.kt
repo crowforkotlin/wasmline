@@ -75,7 +75,10 @@ actual fun wasmlineShutdown() {
 
 actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     iosBootstrap()
-    wasmline_warmup_engine(mode == WasmlineWarmupMode.PULLEY)
+    if (mode == WasmlineWarmupMode.AOT) {
+        println("[Wasmline] Warning: iOS does not support AOT mode (JIT restricted). Forcing PULLEY.")
+    }
+    wasmline_warmup_engine(true)
 }
 
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {

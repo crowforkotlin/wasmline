@@ -48,7 +48,7 @@ wasmline {
         directory = file("$repoRoot/build/wasmline/wasmtime/wasmtime-v45.0.0-x86_64-linux")
     }
     server {
-        port = 18080
+        port = 8080
     }
     serverDeployVariant = "debug"
 }

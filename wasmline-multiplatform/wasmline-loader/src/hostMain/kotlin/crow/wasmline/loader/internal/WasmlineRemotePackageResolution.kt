@@ -112,10 +112,11 @@ internal object WasmlineRemotePackageResolution {
     }
 
     private fun resolveManifestUrl(sourceUrl: String): String {
-        return if (sourceUrl.endsWith(".wlm")) {
-            sourceUrl
+        val url = sourceUrl.trim()
+        return if (url.endsWith(".wlm")) {
+            url
         } else {
-            sourceUrl.trimEnd('/') + "/$MANIFEST_FILE_NAME"
+            url.trimEnd('/') + "/$MANIFEST_FILE_NAME"
         }
     }
 

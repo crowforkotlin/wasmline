@@ -9,6 +9,7 @@ import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.serialization.WasmlineSerializationConfig
+import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
@@ -18,6 +19,8 @@ import java.time.Instant
 
 private const val artifactFormatProperty = "wasmline.artifact.format"
 private const val artifactFormatEnvironment = "WASMLINE_ARTIFACT_FORMAT"
+private const val artifactUrlProperty = "wasmline.artifact.url"
+private const val artifactUrlEnvironment = "WASMLINE_ARTIFACT_URL"
 
 private val bundledPluginResources = listOf(
     "plugin.cwasm",
@@ -73,17 +76,32 @@ private fun resolveBundledPluginResourceNames(): List<String> {
     error("[Application] Resource not found: ${bundledPluginResources.joinToString(" or ")}")
 }
 
+private fun resolveRemoteWlmUrl(): String? {
+    return System.getProperty(artifactUrlProperty)?.ifBlank { null }
+        ?: System.getenv(artifactUrlEnvironment)?.ifBlank { null }
+}
+
 internal fun runApplicationSample() {
     WasmlineLoader.bootstrap()
-    val (resourceName, artifactFile) = extractBundledPluginArtifact()
-    println("[Application] Loading bundled artifact ($resourceName) from: ${artifactFile.absolutePath}")
+
+    val remoteUrl = resolveRemoteWlmUrl()
+    val pathOrUrl: String
+    if (remoteUrl != null) {
+        println("[Application] Loading from remote WLM URL: $remoteUrl")
+        pathOrUrl = remoteUrl
+    } else {
+        val (resourceName, artifactFile) = extractBundledPluginArtifact()
+        println("[Application] Loading bundled artifact ($resourceName) from: ${artifactFile.absolutePath}")
+        pathOrUrl = artifactFile.absolutePath
+    }
 
     try {
         when (
             val result = WasmlineLoader.load(
-                pathOrUrl = artifactFile.absolutePath,
+                pathOrUrl = pathOrUrl,
                 config = WasmlineConfig(
                     serialization = WasmlineSerializationConfig.protobuf(),
+                    networkClient = KtorNetworkClient(),
                 ),
             )
         ) {

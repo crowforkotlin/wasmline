@@ -10,6 +10,7 @@ import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.serialization.WasmlineSerializationConfig
+import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.getPlatformBean
 import crow.wasmline.sample.extensions.info
@@ -139,6 +140,7 @@ internal class WasmLoader {
                     pathOrUrl = request.artifactPath,
                     config = WasmlineConfig(
                         serialization = WasmlineSerializationConfig.protobuf(),
+                        networkClient = KtorNetworkClient(),
                     ),
                 )
             }

@@ -80,13 +80,14 @@ object WasmlineLoader {
         pathOrUrl: String,
         config: WasmlineConfig = WasmlineConfig(),
     ): WasmlineLoadResult {
+        val input = pathOrUrl.trim()
         val source = when {
-            pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") ->
-                WasmlineSource.RemoteManifestUrl(url = pathOrUrl)
-            pathOrUrl.endsWith(".pwasm") || pathOrUrl.endsWith(".cwasm") || pathOrUrl.endsWith(".wasm") ->
-                WasmlineSource.LocalArtifactPath(path = pathOrUrl)
+            input.startsWith("http://") || input.startsWith("https://") ->
+                WasmlineSource.RemoteManifestUrl(url = input)
+            input.endsWith(".pwasm") || input.endsWith(".cwasm") || input.endsWith(".wasm") ->
+                WasmlineSource.LocalArtifactPath(path = input)
             else ->
-                WasmlineSource.LocalManifestPath(path = pathOrUrl)
+                WasmlineSource.LocalManifestPath(path = input)
         }
         return load(source = source, config = config)
     }
