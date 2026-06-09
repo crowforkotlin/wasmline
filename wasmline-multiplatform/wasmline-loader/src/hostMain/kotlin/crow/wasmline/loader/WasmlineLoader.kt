@@ -77,19 +77,19 @@ object WasmlineLoader {
      * - Otherwise → [WasmlineSource.LocalManifestPath]
      */
     fun load(
-        pathOrUrl: String,
+        source: String,
         config: WasmlineConfig = WasmlineConfig(),
     ): WasmlineLoadResult {
-        val input = pathOrUrl.trim()
-        val source = when {
-            input.startsWith("http://") || input.startsWith("https://") ->
+        val input = source.trim()
+        val wasmlineSource = when {
+            input.startsWith(prefix=  "http://") || input.startsWith("https://") ->
                 WasmlineSource.RemoteManifestUrl(url = input)
             input.endsWith(".pwasm") || input.endsWith(".cwasm") || input.endsWith(".wasm") ->
                 WasmlineSource.LocalArtifactPath(path = input)
             else ->
                 WasmlineSource.LocalManifestPath(path = input)
         }
-        return load(source = source, config = config)
+        return load(source = wasmlineSource, config = config)
     }
 
     private fun loadInternal(request: WasmlineLoadRequest): WasmlineLoadState {

@@ -24,7 +24,6 @@ kotlin {
             dependencies {
                 api(libs.crow.wasmline)
                 api(libs.crow.wasmline.loader)
-                api(libs.crow.wasmline.network.ktor)
 
                 api(projects.sampleCommon)
 

@@ -1,13 +1,10 @@
 package crow.wasmline.sample.application
 
-import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
-import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.sample.bean.PlatformBean
@@ -85,20 +82,20 @@ internal fun runApplicationSample() {
     WasmlineLoader.bootstrap()
 
     val remoteUrl = resolveRemoteWlmUrl()
-    val pathOrUrl: String
+    val source: String
     if (remoteUrl != null) {
         println("[Application] Loading from remote WLM URL: $remoteUrl")
-        pathOrUrl = remoteUrl
+        source = remoteUrl
     } else {
         val (resourceName, artifactFile) = extractBundledPluginArtifact()
         println("[Application] Loading bundled artifact ($resourceName) from: ${artifactFile.absolutePath}")
-        pathOrUrl = artifactFile.absolutePath
+        source = artifactFile.absolutePath
     }
 
     try {
         when (
             val result = WasmlineLoader.load(
-                pathOrUrl = pathOrUrl,
+                source = source,
                 config = WasmlineConfig(
                     serialization = WasmlineSerializationConfig.protobuf(),
                     networkClient = KtorNetworkClient(),

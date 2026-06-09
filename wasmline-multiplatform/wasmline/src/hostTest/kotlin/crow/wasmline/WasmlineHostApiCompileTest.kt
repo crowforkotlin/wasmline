@@ -19,7 +19,7 @@ class WasmlineHostApiCompileTest {
         implementation: EchoService,
         contract: KClass<EchoService> = EchoService::class,
     ) {
-        val result = WasmlineLoader.load(pathOrUrl = "plugin.pwasm")
+        val result = WasmlineLoader.load(source = "plugin.pwasm")
 
         WasmlineLoader.bootstrap()
         WasmlineLoader.warmup(WasmlineWarmupMode.PULLEY)

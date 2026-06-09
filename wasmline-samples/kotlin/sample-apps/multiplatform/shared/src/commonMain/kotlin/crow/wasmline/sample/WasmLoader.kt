@@ -8,15 +8,13 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineSource
-import crow.wasmline.serialization.WasmlineSerializationConfig
-import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.getPlatformBean
 import crow.wasmline.sample.extensions.info
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
+import crow.wasmline.serialization.WasmlineSerializationConfig
 import kotlin.time.TimeSource
 import kotlin.time.measureTime
 
@@ -137,10 +135,9 @@ internal class WasmLoader {
             var result: WasmlineLoadResult? = null
             val duration = measureTime {
                 result = WasmlineLoader.load(
-                    pathOrUrl = request.artifactPath,
+                    source = request.artifactPath,
                     config = WasmlineConfig(
                         serialization = WasmlineSerializationConfig.protobuf(),
-                        networkClient = KtorNetworkClient(),
                     ),
                 )
             }
