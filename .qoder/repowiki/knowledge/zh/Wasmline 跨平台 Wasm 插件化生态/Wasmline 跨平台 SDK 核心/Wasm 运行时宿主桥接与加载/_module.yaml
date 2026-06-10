@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_sdk/host_runtime
+title: Wasm 运行时宿主桥接与加载
+scope:
+    - wasmline-multiplatform/wasmline/src/hostMain/kotlin/crow/wasmline/
+source_files: []
+depends_on: []
+related_to:
+    - path: wasmline_multiplatform/wasmline_sdk/platform_bindings

@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_build_logic
+title: Gradle 构建逻辑与多平台配置封装
+scope:
+    - wasmline-multiplatform/wasmline-build-logic/
+source_files: []
+depends_on: []
+related_to: []

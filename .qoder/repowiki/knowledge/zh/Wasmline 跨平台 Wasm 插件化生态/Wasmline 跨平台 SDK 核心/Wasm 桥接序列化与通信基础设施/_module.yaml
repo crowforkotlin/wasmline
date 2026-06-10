@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_sdk/bridge_serialization
+title: Wasm 桥接序列化与通信基础设施
+scope:
+    - wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/
+    - wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/serialization/
+    - wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineConfig.kt
+    - wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineTrustedKeys.kt
+    - wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineCache.kt
+source_files: []
+depends_on: []
+related_to:
+    - path: wasmline_multiplatform/wasmline_kotlin_plugin

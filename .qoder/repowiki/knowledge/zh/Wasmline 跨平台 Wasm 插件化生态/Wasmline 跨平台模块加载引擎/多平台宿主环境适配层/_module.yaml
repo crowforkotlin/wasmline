@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_loader/loader_platform_impl
+title: 多平台宿主环境适配层
+scope:
+    - wasmline-multiplatform/wasmline-loader/src/androidMain/kotlin/crow/wasmline/loader/internal/
+    - wasmline-multiplatform/wasmline-loader/src/iosMain/kotlin/crow/wasmline/loader/internal/
+    - wasmline-multiplatform/wasmline-loader/src/jniMain/kotlin/crow/wasmline/loader/internal/
+    - wasmline-multiplatform/wasmline-loader/src/jsMain/kotlin/crow/wasmline/loader/internal/
+    - wasmline-multiplatform/wasmline-loader/src/jvmMain/kotlin/crow/wasmline/loader/internal/
+    - wasmline-multiplatform/wasmline-loader/src/wasmJsMain/kotlin/crow/wasmline/loader/internal/
+    - wasmline-multiplatform/wasmline-loader/src/webMain/kotlin/crow/wasmline/loader/internal/
+source_files: []
+depends_on: []
+related_to:
+    - path: wasmline_multiplatform/wasmline_loader/loader_host

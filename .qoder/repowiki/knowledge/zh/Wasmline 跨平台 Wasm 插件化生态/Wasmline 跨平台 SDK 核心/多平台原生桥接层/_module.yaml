@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_sdk/platform_bindings
+title: 多平台原生桥接层
+scope:
+    - wasmline-multiplatform/wasmline/src/iosMain/
+    - wasmline-multiplatform/wasmline/src/jniMain/
+source_files: []
+depends_on: []
+related_to:
+    - path: wasmline_multiplatform/wasmline_sdk/host_runtime

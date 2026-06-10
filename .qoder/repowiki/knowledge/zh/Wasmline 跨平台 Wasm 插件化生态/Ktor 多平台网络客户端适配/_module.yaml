@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_network_ktor
+title: Ktor 多平台网络客户端适配
+scope:
+    - wasmline-multiplatform/wasmline-network-ktor/
+source_files: []
+depends_on: []
+related_to:
+    - path: wasmline_multiplatform/wasmline_loader/loader_host

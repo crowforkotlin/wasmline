@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: wasmline_multiplatform
+title: Wasmline 跨平台 Wasm 插件化生态
+scope:
+    - wasmline-multiplatform/
+source_files: []
+depends_on: []
+related_to: []

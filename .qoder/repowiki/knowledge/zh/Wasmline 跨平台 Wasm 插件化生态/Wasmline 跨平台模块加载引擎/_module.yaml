@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_loader
+title: Wasmline 跨平台模块加载引擎
+scope:
+    - wasmline-multiplatform/wasmline-loader/
+source_files: []
+depends_on: []
+related_to: []

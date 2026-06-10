@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: wasmline_multiplatform/wasmline_loader/loader_host
+title: Wasmline 主机端模块加载器
+scope:
+    - wasmline-multiplatform/wasmline-loader/src/hostMain/kotlin/crow/wasmline/loader/
+source_files: []
+depends_on: []
+related_to:
+    - path: wasmline_multiplatform/wasmline_loader/loader_platform_impl
+    - path: wasmline_multiplatform/wasmline_network_ktor

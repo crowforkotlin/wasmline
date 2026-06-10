@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: wasmline_multiplatform/ios_app
+title: iOS 应用宿主与 Kotlin Multiplatform 集成
+scope:
+    - wasmline-multiplatform/iosApp/
+source_files: []
+depends_on: []
+related_to: []
