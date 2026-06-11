@@ -15,6 +15,10 @@ import crow.wasmline.serialization.WasmlineSerializationConfig
  *           When null, signature verification is skipped (permissive mode).
  * @property cache Cache for downloaded manifests and artifacts.
  *           When null, a platform-default file-system cache is used.
+ * @property manifestTtlMs Time-to-live for cached manifests in milliseconds.
+ *           When `0`, manifests are always re-fetched from the network.
+ *           Artifacts are content-addressed and never expire.
+ *           Default is `3_600_000` (1 hour).
  */
 data class WasmlineConfig(
     val serialization: WasmlineSerializationConfig = WasmlineSerializationConfig.protobuf(),
@@ -22,4 +26,5 @@ data class WasmlineConfig(
     val networkClient: WasmlineNetworkClient? = null,
     val trustedKeys: WasmlineTrustedKeys? = null,
     val cache: WasmlineCache? = null,
+    val manifestTtlMs: Long = 3_600_000L,
 )

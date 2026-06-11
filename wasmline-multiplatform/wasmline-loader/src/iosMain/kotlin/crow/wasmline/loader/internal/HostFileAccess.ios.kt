@@ -5,7 +5,9 @@ package crow.wasmline.loader.internal
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
+import platform.Foundation.NSDate
 import platform.Foundation.NSFileManager
+import platform.Foundation.timeIntervalSince1970
 import platform.posix.SEEK_SET
 import platform.posix.fclose
 import platform.posix.fopen
@@ -64,4 +66,15 @@ internal actual fun hostMkdirs(path: String): Boolean {
     return runCatching {
         fileManager.createDirectoryAtPath(path, withIntermediateDirectories = true, attributes = null, error = null)
     }.getOrDefault(false)
+}
+
+internal actual fun hostDeleteFile(path: String): Boolean {
+    if (!fileManager.fileExistsAtPath(path)) return false
+    return runCatching {
+        fileManager.removeItemAtPath(path, error = null)
+    }.getOrDefault(false)
+}
+
+internal actual fun hostCurrentTimeMs(): Long {
+    return (NSDate().timeIntervalSince1970 * 1000).toLong()
 }

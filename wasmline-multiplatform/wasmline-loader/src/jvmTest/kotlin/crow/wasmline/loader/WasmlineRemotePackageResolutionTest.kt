@@ -332,7 +332,8 @@ class WasmlineRemotePackageResolutionTest {
 
         val cache = InMemoryCache()
         val manifestUrl = "https://example.com/plugin.wlm"
-        val manifestCacheKey = "manifest_${manifestUrl.toByteArray().toByteString().sha256().hex()}"
+        val manifestHash = crow.wasmline.loader.internal.Djb2.hashToHex8(manifestUrl.encodeToByteArray())
+        val manifestCacheKey = "m_$manifestHash"
         cache.put(manifestCacheKey, envelopeBytes)
 
         var fetchCount = 0

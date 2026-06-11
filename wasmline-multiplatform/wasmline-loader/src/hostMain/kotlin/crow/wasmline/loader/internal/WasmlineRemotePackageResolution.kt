@@ -34,74 +34,78 @@ internal object WasmlineRemotePackageResolution {
             ?: return failure("No network client configured for remote package '${source.url}'. Provide request.config.networkClient.")
 
         val cache = request.config.cache ?: defaultCacheOrNull()
+        val fileCache = cache as? WasmlineFileCache
+        val manifestTtlMs = request.config.manifestTtlMs
 
         // Step 1: Determine manifest URL
         val manifestUrl = resolveManifestUrl(source.url)
 
-        // Step 2: Check cache for manifest
-        val manifestCacheKey = "manifest_${sha256Hex(bytes = manifestUrl.encodeToByteArray())}"
-        val manifestBytes = cache?.get(manifestCacheKey) ?: fetchBytes(
+        // Step 2: Resolve manifest (with TTL-aware cache)
+        val manifestHash = Djb2.hashToHex8(manifestUrl.encodeToByteArray())
+        val manifestCacheKey = "m_$manifestHash"
+        val manifestTsKey = "m_$manifestHash.ts"
+
+        val manifestBytes = resolveManifestCached(
+            cache = cache,
+            fileCache = fileCache,
+            manifestCacheKey = manifestCacheKey,
+            manifestTsKey = manifestTsKey,
+            manifestTtlMs = manifestTtlMs,
             networkClient = networkClient,
-            url = manifestUrl,
-            description = "manifest",
+            manifestUrl = manifestUrl,
         ) ?: return failure("Failed to fetch manifest from '$manifestUrl'.")
 
-        // Step 3: Cache manifest if freshly downloaded
-        if (cache != null && !cache.exists(manifestCacheKey)) {
-            cache.put(manifestCacheKey, manifestBytes)
-        }
-
-        // Step 4: Parse manifest envelope
+        // Step 3: Parse manifest envelope
         val envelope = try {
             ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
         } catch (_: Exception) {
             return failure("Failed to parse manifest envelope from '$manifestUrl'.")
         }
 
-        // Step 5: Verify signature (if trustedKeys provided)
+        // Step 4: Verify signature (if trustedKeys provided)
         val signatureResult = verifySignatureIfNeeded(envelope, request.config.trustedKeys, manifestUrl)
         if (signatureResult != null) return signatureResult
 
-        // Step 6: Select compatible artifact
+        // Step 5: Select compatible artifact
         val artifact = WasmlineLocalPackageResolution.selectArtifact(envelope.manifest.artifacts)
             ?: return failure(
                 "No compatible artifact found in remote package '$manifestUrl' " +
                     "for host ${describe(currentHostArtifactTarget)}.",
             )
 
-        // Step 7: Resolve artifact URL
+        // Step 6: Resolve artifact URL
         val artifactUrl = resolveArtifactUrl(manifestUrl, artifact.url)
 
-        // Step 8: Check cache for artifact
-        val artifactCacheKey = "artifact_${artifact.sha256}"
+        // Step 7: Check cache for artifact (content-addressed, no TTL)
+        val artifactHash = Djb2.hashToHex8(artifact.sha256.encodeToByteArray())
+        val artifactCacheKey = "a_$artifactHash"
         val cachedArtifact = cache?.get(artifactCacheKey)
 
         val artifactBytes = if (cachedArtifact != null) {
             cachedArtifact
         } else {
-            // Step 9: Fetch artifact
+            // Step 8: Fetch artifact
             val downloaded = fetchBytes(
                 networkClient = networkClient,
                 url = artifactUrl,
                 description = "artifact '${artifact.url}'",
             ) ?: return failure("Failed to fetch artifact from '$artifactUrl'.")
 
-            // Step 10: Cache artifact
+            // Step 9: Cache artifact
             cache?.put(artifactCacheKey, downloaded)
             downloaded
         }
 
-        // Step 11: Verify SHA256
+        // Step 10: Verify SHA256
         val actualSha256 = artifactBytes.toByteString().sha256().hex()
         if (!actualSha256.equals(artifact.sha256, ignoreCase = true)) {
-            // Invalidate bad cache entry
             return failure(
                 "Artifact '${artifact.url}' from '$artifactUrl' failed sha256 verification. " +
                     "Expected ${artifact.sha256}, actual $actualSha256.",
             )
         }
 
-        // Step 12: Write artifact to local file
+        // Step 11: Write artifact to local file
         val localPath = writeCachedArtifact(artifactBytes, artifact, artifactCacheKey)
             ?: return failure("Failed to write cached artifact to local file system.")
 
@@ -109,6 +113,74 @@ internal object WasmlineRemotePackageResolution {
             WasmlineSource.LocalArtifactPath(path = localPath),
         )
     }
+
+    /**
+     * Resolve manifest bytes with TTL-aware caching.
+     *
+     * Cache file: `m_{hash}` — manifest bytes
+     * Timestamp file: `m_{hash}.ts` — "{fetchTimeMs}_{ttlMs}" (only with [WasmlineFileCache])
+     */
+    private fun resolveManifestCached(
+        cache: WasmlineCache?,
+        fileCache: WasmlineFileCache?,
+        manifestCacheKey: String,
+        manifestTsKey: String,
+        manifestTtlMs: Long,
+        networkClient: WasmlineNetworkClient,
+        manifestUrl: String,
+    ): ByteArray? {
+        // Try reading from cache
+        if (cache != null) {
+            val cached = cache.get(manifestCacheKey)
+            if (cached != null) {
+                // TTL check only when WasmlineFileCache is available
+                if (fileCache != null && manifestTtlMs > 0) {
+                    val tsData = fileCache.get(manifestTsKey)
+                    if (tsData != null) {
+                        val ts = parseTimestamp(tsData)
+                        if (ts != null && (currentTimeMs() - ts.fetchTimeMs) <= ts.ttlMs) {
+                            return cached  // Cache hit, not expired
+                        }
+                    }
+                    // Stale — invalidate
+                    fileCache.delete(manifestCacheKey)
+                    fileCache.delete(manifestTsKey)
+                } else {
+                    return cached  // No TTL checking, cache hit
+                }
+            }
+        }
+
+        // Fetch from network
+        val bytes = fetchBytes(
+            networkClient = networkClient,
+            url = manifestUrl,
+            description = "manifest",
+        ) ?: return null
+
+        // Store in cache with timestamp
+        if (cache != null) {
+            cache.put(manifestCacheKey, bytes)
+            if (fileCache != null && manifestTtlMs > 0) {
+                val tsValue = "${currentTimeMs()}_$manifestTtlMs"
+                fileCache.put(manifestTsKey, tsValue.encodeToByteArray())
+            }
+        }
+
+        return bytes
+    }
+
+    private data class CacheTimestamp(val fetchTimeMs: Long, val ttlMs: Long)
+
+    private fun parseTimestamp(data: ByteArray): CacheTimestamp? {
+        val parts = data.decodeToString().split('_')
+        if (parts.size != 2) return null
+        val fetchTime = parts[0].toLongOrNull() ?: return null
+        val ttl = parts[1].toLongOrNull() ?: return null
+        return CacheTimestamp(fetchTime, ttl)
+    }
+
+    private fun currentTimeMs(): Long = hostCurrentTimeMs()
 
     private fun resolveManifestUrl(sourceUrl: String): String {
         val url = sourceUrl.trim()
@@ -200,10 +272,6 @@ internal object WasmlineRemotePackageResolution {
     private fun defaultCacheOrNull(): WasmlineCache? {
         val dir = defaultCacheDirectory() ?: return null
         return WasmlineFileCache(cacheDirectory = dir)
-    }
-
-    private fun sha256Hex(bytes: ByteArray): String {
-        return bytes.toByteString().sha256().hex()
     }
 
     private fun describe(target: WasmlineHostArtifactTarget): String {

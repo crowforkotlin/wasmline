@@ -11,3 +11,7 @@ internal fun browserResolveHostArtifactPath(manifestPath: String, artifactUrl: S
 internal fun browserWriteHostFileBytes(path: String, bytes: ByteArray): Boolean = false
 
 internal fun browserHostMkdirs(path: String): Boolean = false
+
+internal fun browserHostDeleteFile(path: String): Boolean = false
+
+internal fun browserHostCurrentTimeMs(): Long = 0L

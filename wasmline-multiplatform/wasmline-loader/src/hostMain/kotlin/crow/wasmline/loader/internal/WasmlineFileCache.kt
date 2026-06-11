@@ -28,7 +28,11 @@ internal class WasmlineFileCache(
         return hostPathExists(path = resolvePath(key))
     }
 
-    private fun resolvePath(key: String): String {
+    fun delete(key: String): Boolean {
+        return hostDeleteFile(path = resolvePath(key))
+    }
+
+    fun resolvePath(key: String): String {
         return "$cacheDirectory/$key"
     }
 }

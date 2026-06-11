@@ -13,3 +13,9 @@ internal actual fun writeHostFileBytes(path: String, bytes: ByteArray): Boolean 
 
 internal actual fun hostMkdirs(path: String): Boolean =
     browserHostMkdirs(path)
+
+internal actual fun hostDeleteFile(path: String): Boolean =
+    browserHostDeleteFile(path)
+
+internal actual fun hostCurrentTimeMs(): Long =
+    browserHostCurrentTimeMs()

@@ -32,3 +32,9 @@ internal actual fun writeHostFileBytes(path: String, bytes: ByteArray): Boolean 
 internal actual fun hostMkdirs(path: String): Boolean {
     return runCatching { File(path).mkdirs() || File(path).isDirectory }.getOrDefault(false)
 }
+
+internal actual fun hostDeleteFile(path: String): Boolean {
+    return runCatching { File(path).delete() }.getOrDefault(false)
+}
+
+internal actual fun hostCurrentTimeMs(): Long = System.currentTimeMillis()

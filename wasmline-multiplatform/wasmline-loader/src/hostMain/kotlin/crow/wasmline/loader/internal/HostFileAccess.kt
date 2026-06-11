@@ -17,3 +17,13 @@ internal expect fun writeHostFileBytes(path: String, bytes: ByteArray): Boolean
  * Returns `true` if the directory exists after the call, `false` otherwise.
  */
 internal expect fun hostMkdirs(path: String): Boolean
+
+/**
+ * Delete the file at [path]. Returns `true` if the file was deleted, `false` otherwise.
+ */
+internal expect fun hostDeleteFile(path: String): Boolean
+
+/**
+ * Returns the current wall-clock time in milliseconds since epoch.
+ */
+internal expect fun hostCurrentTimeMs(): Long
