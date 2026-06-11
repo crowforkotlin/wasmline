@@ -16,16 +16,16 @@ internal class WasmlineFileCache(
 ) : WasmlineCache {
 
     override fun get(key: String): ByteArray? {
-        return readHostFileBytes(resolvePath(key))
+        return readHostFileBytes(path = resolvePath(key))
     }
 
     override fun put(key: String, bytes: ByteArray) {
-        hostMkdirs(cacheDirectory)
-        writeHostFileBytes(resolvePath(key), bytes)
+        hostMkdirs(path = cacheDirectory)
+        writeHostFileBytes(path = resolvePath(key), bytes)
     }
 
     override fun exists(key: String): Boolean {
-        return hostPathExists(resolvePath(key))
+        return hostPathExists(path = resolvePath(key))
     }
 
     private fun resolvePath(key: String): String {

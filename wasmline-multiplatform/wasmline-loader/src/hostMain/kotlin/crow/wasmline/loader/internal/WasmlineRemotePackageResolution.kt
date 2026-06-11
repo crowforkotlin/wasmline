@@ -199,7 +199,7 @@ internal object WasmlineRemotePackageResolution {
 
     private fun defaultCacheOrNull(): WasmlineCache? {
         val dir = defaultCacheDirectory() ?: return null
-        return WasmlineFileCache(dir)
+        return WasmlineFileCache(cacheDirectory = dir)
     }
 
     private fun sha256Hex(bytes: ByteArray): String {
