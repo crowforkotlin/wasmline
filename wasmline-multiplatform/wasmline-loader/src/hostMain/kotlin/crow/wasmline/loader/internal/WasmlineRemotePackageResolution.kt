@@ -4,8 +4,7 @@ package crow.wasmline.loader.internal
 
 import crow.wasmline.WasmlineCache
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineNetworkClient
-import crow.wasmline.WasmlineNoOpCache
+import crow.wasmline.network.WasmlineNetworkClient
 import crow.wasmline.WasmlineTrustedKeys
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource

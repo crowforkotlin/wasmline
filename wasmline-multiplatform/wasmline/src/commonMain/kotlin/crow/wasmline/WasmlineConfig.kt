@@ -1,5 +1,6 @@
 package crow.wasmline
 
+import crow.wasmline.network.WasmlineNetworkClient
 import crow.wasmline.serialization.WasmlineSerializationConfig
 
 /**

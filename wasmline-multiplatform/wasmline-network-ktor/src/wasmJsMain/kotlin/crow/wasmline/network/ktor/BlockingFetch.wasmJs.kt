@@ -1,6 +1,6 @@
 package crow.wasmline.network.ktor
 
-import crow.wasmline.WasmlineHttpResponse
+import crow.wasmline.network.WasmlineHttpResponse
 import io.ktor.client.HttpClient
 
 internal actual fun blockingKtorFetch(client: HttpClient, url: String): WasmlineHttpResponse =

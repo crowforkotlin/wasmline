@@ -1,7 +1,7 @@
 package crow.wasmline.network.okhttp
 
-import crow.wasmline.WasmlineHttpResponse
-import crow.wasmline.WasmlineNetworkClient
+import crow.wasmline.network.WasmlineHttpResponse
+import crow.wasmline.network.WasmlineNetworkClient
 import okhttp3.OkHttpClient
 import okhttp3.Request
 

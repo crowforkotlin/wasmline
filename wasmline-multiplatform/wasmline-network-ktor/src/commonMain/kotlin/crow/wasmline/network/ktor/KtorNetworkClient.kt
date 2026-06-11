@@ -1,7 +1,7 @@
 package crow.wasmline.network.ktor
 
-import crow.wasmline.WasmlineHttpResponse
-import crow.wasmline.WasmlineNetworkClient
+import crow.wasmline.network.WasmlineHttpResponse
+import crow.wasmline.network.WasmlineNetworkClient
 import io.ktor.client.HttpClient
 
 /**

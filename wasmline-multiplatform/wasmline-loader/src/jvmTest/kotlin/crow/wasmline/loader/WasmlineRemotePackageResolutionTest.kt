@@ -4,9 +4,9 @@ package crow.wasmline.loader
 
 import crow.wasmline.WasmlineCache
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineHttpResponse
+import crow.wasmline.network.WasmlineHttpResponse
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineNetworkClient
+import crow.wasmline.network.WasmlineNetworkClient
 import crow.wasmline.WasmlineNoOpCache
 import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.extensions.Keys
