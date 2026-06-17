@@ -4,6 +4,7 @@ package crow.wasmline.loader.internal
 
 import crow.wasmline.WasmlineCache
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineLog
 import crow.wasmline.network.WasmlineNetworkClient
 import crow.wasmline.WasmlineTrustedKeys
 import crow.wasmline.loader.WasmlineLoadRequest
@@ -25,6 +26,7 @@ import okio.ByteString.Companion.toByteString
  * the artifact, caches it locally, and hands off to the runtime loader.
  */
 internal object WasmlineRemotePackageResolution {
+    private const val P = "[WasmlineRemotePackageResolution]"
 
     fun resolve(
         source: WasmlineSource.RemoteManifestUrl,
@@ -39,6 +41,7 @@ internal object WasmlineRemotePackageResolution {
 
         // Step 1: Determine manifest URL
         val manifestUrl = resolveManifestUrl(source.url)
+        WasmlineLog.logger?.info("$P Resolving remote package: $manifestUrl")
 
         // Step 2: Resolve manifest (with TTL-aware cache)
         val manifestHash = Djb2.hashToHex8(manifestUrl.encodeToByteArray())
@@ -82,13 +85,14 @@ internal object WasmlineRemotePackageResolution {
         val cachedArtifact = cache?.get(artifactCacheKey)
 
         val artifactBytes = if (cachedArtifact != null) {
+            WasmlineLog.logger?.debug("$P Artifact cache hit: $artifactCacheKey")
             cachedArtifact
         } else {
+            WasmlineLog.logger?.debug("$P Artifact cache miss, fetching: $artifactUrl")
             // Step 8: Fetch artifact
             val downloaded = fetchBytes(
                 networkClient = networkClient,
                 url = artifactUrl,
-                description = "artifact '${artifact.url}'",
             ) ?: return failure("Failed to fetch artifact from '$artifactUrl'.")
 
             // Step 9: Cache artifact
@@ -129,6 +133,7 @@ internal object WasmlineRemotePackageResolution {
         networkClient: WasmlineNetworkClient,
         manifestUrl: String,
     ): ByteArray? {
+        val log = WasmlineLog.logger
         // Try reading from cache
         if (cache != null) {
             val cached = cache.get(manifestCacheKey)
@@ -139,23 +144,26 @@ internal object WasmlineRemotePackageResolution {
                     if (tsData != null) {
                         val ts = parseTimestamp(tsData)
                         if (ts != null && (currentTimeMs() - ts.fetchTimeMs) <= ts.ttlMs) {
+                            log?.debug("$P Manifest cache hit: $manifestCacheKey")
                             return cached  // Cache hit, not expired
                         }
                     }
                     // Stale — invalidate
+                    log?.debug("$P Manifest cache expired: $manifestCacheKey")
                     fileCache.delete(manifestCacheKey)
                     fileCache.delete(manifestTsKey)
                 } else {
+                    log?.debug("$P Manifest cache hit: $manifestCacheKey")
                     return cached  // No TTL checking, cache hit
                 }
             }
         }
 
+        log?.debug("$P Manifest cache miss, fetching: $manifestUrl")
         // Fetch from network
         val bytes = fetchBytes(
             networkClient = networkClient,
             url = manifestUrl,
-            description = "manifest",
         ) ?: return null
 
         // Store in cache with timestamp
@@ -194,13 +202,16 @@ internal object WasmlineRemotePackageResolution {
     private fun fetchBytes(
         networkClient: WasmlineNetworkClient,
         url: String,
-        description: String,
     ): ByteArray? {
         return try {
             val response = networkClient.fetch(url)
-            if (!response.isSuccess) return null
+            if (!response.isSuccess) {
+                WasmlineLog.logger?.warn("$P HTTP ${response.statusCode} for $url")
+                return null
+            }
             response.bytes
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            WasmlineLog.logger?.error("$P Network error fetching $url: ${e.message}")
             null
         }
     }
@@ -210,20 +221,28 @@ internal object WasmlineRemotePackageResolution {
         trustedKeys: WasmlineTrustedKeys?,
         manifestUrl: String,
     ): WasmlineSourceResolution.Complete? {
+        val log = WasmlineLog.logger
         // No trusted keys = permissive mode (skip verification)
-        if (trustedKeys == null) return null
+        if (trustedKeys == null) {
+            log?.debug("$P Signature verification skipped (permissive mode)")
+            return null
+        }
 
         val algorithmId = try {
             SignatureAlgorithmId.valueOf(envelope.algorithm)
         } catch (_: IllegalArgumentException) {
+            log?.warn("$P Unknown signature algorithm: ${envelope.algorithm}")
             return failure("Unknown signature algorithm '${envelope.algorithm}' in manifest from '$manifestUrl'.")
         }
 
         val publicKey = trustedKeys.getPublicKey(envelope.algorithm, envelope.publicKeyId)
-            ?: return failure(
-                "No trusted key found for algorithm='${envelope.algorithm}', " +
-                    "keyId='${envelope.publicKeyId}' in manifest from '$manifestUrl'.",
-            )
+            ?: run {
+                log?.warn("$P No trusted key for algorithm=${envelope.algorithm}, keyId=${envelope.publicKeyId}")
+                return failure(
+                    "No trusted key found for algorithm='${envelope.algorithm}', " +
+                        "keyId='${envelope.publicKeyId}' in manifest from '$manifestUrl'.",
+                )
+            }
 
         val algorithm = algorithmId.get()
         val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), envelope.manifest)
@@ -234,8 +253,10 @@ internal object WasmlineRemotePackageResolution {
         )
 
         return if (verified) {
+            log?.info("$P Manifest signature verified for $manifestUrl")
             null
         } else {
+            log?.error("$P Signature verification failed for $manifestUrl")
             failure("Manifest signature verification failed for '$manifestUrl'.")
         }
     }

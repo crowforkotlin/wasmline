@@ -14,31 +14,43 @@ internal data class ResolvedPrecompiledArtifact(
  * final local artifact validation and host load flow used by platform actuals.
  */
 internal object WasmlineLocalArtifactBridge {
+
     internal fun load(
         artifactPath: String,
         config: WasmlineConfig,
         platform: WasmlinePlatformArtifactBridge
     ): WasmlineLoadState {
+        val log = WasmlineLog.logger
         val resolvedArtifact = platform.resolveArtifact(artifactPath)
-            ?: return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = "[Wasmline] Load failure, artifact file not found: $artifactPath",
-            )
+            ?: run {
+                log?.warn("[WasmlineLocalArtifactBridge] Artifact file not found: $artifactPath")
+                return WasmlineLoadState.Failure(
+                    code = WasmlineLoadState.CODE_FAILURE,
+                    cause = "[Wasmline] Load failure, artifact file not found: $artifactPath",
+                )
+            }
 
         val resolvedArtifactPath = resolvedArtifact.artifactPath
         val code = platform.backendCodeOrNull(resolvedArtifactPath)
-            ?: return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = platform.unsupportedArtifactMessage(resolvedArtifactPath),
-            )
+            ?: run {
+                val msg = platform.unsupportedArtifactMessage(resolvedArtifactPath)
+                log?.warn("[WasmlineLocalArtifactBridge] $msg")
+                return WasmlineLoadState.Failure(
+                    code = WasmlineLoadState.CODE_FAILURE,
+                    cause = msg,
+                )
+            }
 
         if (!platform.loadPrecompiled(resolvedArtifact.moduleKey, resolvedArtifactPath)) {
+            val msg = platform.loadFailureMessage(resolvedArtifactPath)
+            log?.error("[WasmlineLocalArtifactBridge] $msg")
             return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,
-                cause = platform.loadFailureMessage(resolvedArtifactPath),
+                cause = msg,
             )
         }
 
+        log?.info("[WasmlineLocalArtifactBridge] Module loaded: ${resolvedArtifact.moduleKey}")
         return WasmlineLoadState.Success(
             code = code,
             wasmline = platform.createWasmline(resolvedArtifact.moduleKey, config),

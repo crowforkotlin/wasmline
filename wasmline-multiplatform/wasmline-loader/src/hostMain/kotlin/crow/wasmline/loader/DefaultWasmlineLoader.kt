@@ -1,6 +1,7 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineLog
 import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
 import crow.wasmline.wasmlineLoadArtifact
 
@@ -11,7 +12,10 @@ import crow.wasmline.wasmlineLoadArtifact
  * network client support. Called by [WasmlineLoader].
  */
 internal object DefaultWasmlineLoader {
+    private const val P = "[DefaultWasmlineLoader]"
+
     fun load(request: WasmlineLoadRequest): WasmlineLoadState {
+        WasmlineLog.logger?.info("$P Loading from source: ${request.source}")
         return loadSource(
             request = request,
             source = request.source,
@@ -25,6 +29,7 @@ internal object DefaultWasmlineLoader {
         resolutionDepth: Int,
     ): WasmlineLoadState {
         if (resolutionDepth > MAX_SOURCE_RESOLUTION_DEPTH) {
+            WasmlineLog.logger?.error("$P Source resolution exceeded max depth ($MAX_SOURCE_RESOLUTION_DEPTH)")
             return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,
                 cause = "Wasmline load source resolution exceeded $MAX_SOURCE_RESOLUTION_DEPTH steps. Check resolver chaining for loops.",
@@ -46,6 +51,7 @@ internal object DefaultWasmlineLoader {
             )
 
             is WasmlineSource.RemoteManifestUrl -> {
+                WasmlineLog.logger?.debug("$P Resolving remote source: ${source.url}")
                 val customResolution = request.resolvers.remotePackage?.resolve(source, request)
                 if (customResolution != null) {
                     resolveSource(
