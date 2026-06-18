@@ -5,9 +5,9 @@ description: A Kotlin Multiplatform WebAssembly (WASI) plugin framework powered 
 
 # WasmLine
 
-Wasmline is a **Kotlin Multiplatform WebAssembly plugin framework** with a unified, type-safe API for loading and dispatching WASI-compliant plugins across Android, iOS, Desktop, and Web.
+Wasmline is a **Kotlin Multiplatform WebAssembly plugin framework** with an API for loading and dispatching WASI-compliant plugins across Android, iOS, Desktop, and Web.
 
-The project is built around three invariants:
+Core design decisions:
 
 - **Compile-time bridge synthesis** through the Kotlin IR compiler plugin
 - **Dual-path execution**: Wasmtime on native targets, browser-native `WebAssembly` on Web
@@ -26,7 +26,7 @@ The project is built around three invariants:
 | Web — Kotlin/WasmJS | Browser JS engine | Browser WebAssembly API | Inline JS | Raw `.wasm` only | Supported | XHR fetch |
 
 <Callout type="info" title="Web runtime path">
-  Web targets do not embed Wasmtime. The browser path instantiates plugins directly with `WebAssembly.Module` and `WebAssembly.Instance`, while a lightweight inline JS runtime provides the Wasmline bridge protocol and a minimal WASI shim.
+  Web targets do not embed Wasmtime. The browser path instantiates plugins directly with `WebAssembly.Module` and `WebAssembly.Instance`, while an inline JS runtime provides the Wasmline bridge protocol and a minimal WASI shim.
 </Callout>
 
 <Callout type="warn" title="Web artifact constraint">
@@ -74,9 +74,7 @@ The project is built around three invariants:
 
 ### Platform Runtime Asset Initialization
 
-<Callout type="info" title="Native targets only">
-  Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only builds do not need Wasmtime min C-API assets.
-</Callout>
+Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only builds do not need Wasmtime min C-API assets.
 
 <Steps>
   <Step>
@@ -305,7 +303,7 @@ zig build -p src/jvmMain/resources                    # Debug
 <details>
 <summary><strong>How does the browser execution path instantiate plugins without Wasmtime?</strong></summary>
 
-The Web implementation invokes `WebAssembly.Module` and `WebAssembly.Instance` directly through the browser runtime. A self-contained JS layer embedded via Kotlin `js()` interop provides `wasi_snapshot_preview1` shims plus the Wasmline `env` bridge functions. Payloads cross the Kotlin–JS memory boundary as Base64-encoded strings, and AOT artifacts are rejected.
+The Web implementation invokes `WebAssembly.Module` and `WebAssembly.Instance` directly through the browser runtime. A JS layer embedded via Kotlin `js()` interop provides `wasi_snapshot_preview1` shims plus the Wasmline `env` bridge functions. Payloads cross the Kotlin–JS memory boundary as Base64-encoded strings, and AOT artifacts are rejected.
 
 </details>
 

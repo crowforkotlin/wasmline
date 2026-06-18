@@ -22,22 +22,21 @@
 
 ## Introduction
 
-Wasmline is a **Kotlin Multiplatform WebAssembly plugin framework** providing a unified, type-safe
-execution interface for loading and dispatching WASI-compliant plugins across Android, iOS, Desktop,
-and Web targets within a single API surface.
+Wasmline is a **Kotlin Multiplatform WebAssembly plugin framework** for loading and dispatching
+WASI-compliant plugins across Android, iOS, Desktop, and Web targets.
 
-The framework is grounded in three foundational invariants:
+Core design decisions:
 
 **Compile-time bridge synthesis.** Service contracts are expressed as Kotlin `interface` types
 extending `WasmlineService`. The Kotlin IR compiler plugin synthesizes all serialization, dispatch,
-and bridge infrastructure at build time, eliminating runtime reflection, annotation processing, and
+and bridge infrastructure at build time, without runtime reflection, annotation processing, or
 manual marshalling code.
 
 **Dual-path runtime architecture.** Native targets (Android, iOS, macOS, Linux, Windows) execute
 plugins through **Wasmtime v45.0.0 (C-API)** via the Zig 0.15.1-compiled `wasmline-core` native
 bridge, accessed over JNI or Kotlin/Native C Interop. Web targets (Kotlin/JS, Kotlin/WasmJS) execute
 plugins through the browser's native `WebAssembly.Module` / `WebAssembly.Instance` containers via a
-self-contained, lightweight inline JavaScript runtime — Wasmtime is not present in the browser
+inline JavaScript runtime — Wasmtime is not present in the browser
 execution path.
 
 **Language-agnostic plugin authoring.** Plugin binaries may be produced by any toolchain targeting
@@ -62,7 +61,7 @@ WASI — including Kotlin, Rust, C/C++, Go, and AssemblyScript.
 > [!IMPORTANT]
 > **Web targets operate independently of Wasmtime.** The browser execution path instantiates plugin
 > binaries exclusively through the browser-native `WebAssembly.Module` / `WebAssembly.Instance`
-> containers. A self-contained, lightweight WASI shim layer — encompassing `fd_write`, `random_get`,
+> containers. A WASI shim layer — encompassing `fd_write`, `random_get`,
 `clock_time_get`, and the Wasmline bridge protocol — is embedded as inline Kotlin JS interop (
 `js()`), producing no external JavaScript files, no native library binaries, and no npm
 > dependencies. Payload data crosses the Kotlin–JS linear memory boundary as Base64-encoded strings.
@@ -152,9 +151,8 @@ Reference implementations are located under `wasmline-samples/kotlin/`:
 
 ### Platform Runtime Asset Initialization
 
-> [!NOTE]
-> Asset initialization is required exclusively for **native target builds** (Android, iOS, Desktop).
-> Builds targeting Web exclusively do not require Wasmtime min C-API assets.
+> Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only
+> builds do not require Wasmtime min C-API assets.
 
 Wasmtime min C-API headers and pre-built libraries must be present under `build/platforms/` before
 native target compilation proceeds. Execute one of the following equivalent scripts:
@@ -339,8 +337,7 @@ build/wasmline/
 
 ### Dual-Path Execution Model
 
-Wasmline exposes a unified, platform-agnostic API surface (`commonMain` / `hostMain`) while routing
-execution through distinct engine stacks per target category.
+Wasmline exposes a single API from `commonMain` / `hostMain`, routing execution through distinct engine stacks per target category.
 
 #### Native Target Stack — Android · iOS · macOS · Linux · Windows
 
@@ -372,8 +369,8 @@ Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable 
 ```
 Host Application  (commonMain / hostMain)
         │
-        │  module.link<T>()      — identical IR-synthesized proxy
-        │  module.bind(impl)     — identical dispatch registration
+        │  module.link<T>()      — IR-synthesized proxy (same IR pipeline as native)
+        │  module.bind(impl)     — dispatch registration (same IR pipeline as native)
         │
         ▼
 webMain / jsMain / wasmJsMain  actual
@@ -639,9 +636,9 @@ All contributions must satisfy the following requirements prior to pull request 
 <summary><strong>How does the browser execution path instantiate plugins without Wasmtime?</strong></summary>
 
 The Web target implementation (`webMain` / `jsMain` / `wasmJsMain`) invokes `WebAssembly.Module` and
-`WebAssembly.Instance` directly through the browser's native WebAssembly runtime. A self-contained
-JavaScript runtime layer is embedded via Kotlin `js()` interop — no external JS files are emitted
-during compilation.
+`WebAssembly.Instance` directly through the browser's native WebAssembly runtime. A JavaScript
+runtime layer is embedded via Kotlin `js()` interop — no external JS files are emitted during
+compilation.
 
 The runtime layer provides:
 

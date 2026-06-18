@@ -5,9 +5,9 @@ description: 基于 Kotlin Multiplatform 的跨平台 WebAssembly (WASI) 插件�
 
 # WasmLine
 
-Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一的 API 表面下，为 Android、iOS、Desktop 和 Web 目标提供加载与分发符合 WASI 规范插件的统一、类型安全执行接口。
+Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，为 Android、iOS、Desktop 和 Web 目标提供加载与分发符合 WASI 规范插件的执行接口。
 
-项目建立在三个核心不变量之上：
+核心设计决策：
 
 - **编译期桥接生成**：由 Kotlin IR 编译器插件完成
 - **双路径执行**：原生目标使用 Wasmtime，Web 使用浏览器原生 `WebAssembly`
@@ -26,7 +26,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 | Web — Kotlin/WasmJS | 浏览器 JS 引擎 | 浏览器 WebAssembly API | Inline JS | 仅原始 `.wasm` | 已支持 | XHR fetch |
 
 <Callout type="info" title="Web 运行时路径">
-  Web 目标不会嵌入 Wasmtime。浏览器路径直接通过 `WebAssembly.Module` 与 `WebAssembly.Instance` 实例化插件，并由轻量级内联 JS 运行时提供 Wasmline bridge 协议与最小化 WASI shim。
+  Web 目标不会嵌入 Wasmtime。浏览器路径直接通过 `WebAssembly.Module` 与 `WebAssembly.Instance` 实例化插件，并由内联 JS 运行时提供 Wasmline bridge 协议与最小化 WASI shim。
 </Callout>
 
 <Callout type="warn" title="Web 产物限制">
@@ -74,9 +74,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 
 ### 平台运行时资产初始化
 
-<Callout type="info" title="仅原生目标需要">
-  资产初始化仅用于原生目标构建（Android、iOS、Desktop）。仅构建 Web 时不需要 Wasmtime min C-API 资产。
-</Callout>
+资产初始化仅用于原生目标构建（Android、iOS、Desktop）。仅构建 Web 时不需要 Wasmtime min C-API 资产。
 
 <Steps>
   <Step>
@@ -305,7 +303,7 @@ zig build -p src/jvmMain/resources                    # Debug
 <details>
 <summary><strong>浏览器执行路径如何在没有 Wasmtime 的情况下实例化插件？</strong></summary>
 
-Web 实现会直接通过浏览器运行时调用 `WebAssembly.Module` 与 `WebAssembly.Instance`。通过 Kotlin `js()` interop 内嵌的自包含 JS 层提供 `wasi_snapshot_preview1` shim 以及 Wasmline `env` bridge 函数。payload 以 Base64 编码字符串跨越 Kotlin–JS 内存边界，AOT 产物不会被接受。
+Web 实现会直接通过浏览器运行时调用 `WebAssembly.Module` 与 `WebAssembly.Instance`。通过 Kotlin `js()` interop 内嵌的 JS 层提供 `wasi_snapshot_preview1` shim 以及 Wasmline `env` bridge 函数。payload 以 Base64 编码字符串跨越 Kotlin–JS 内存边界，AOT 产物不会被接受。
 
 </details>
 

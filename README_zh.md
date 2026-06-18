@@ -22,13 +22,13 @@
 
 ## 简介
 
-Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一的 API 表面下，为 Android、iOS、Desktop 和 Web 目标提供加载与分发符合 WASI 规范插件的统一、类型安全执行接口。
+Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，为 Android、iOS、Desktop 和 Web 目标提供加载与分发符合 WASI 规范插件的执行接口。
 
-该框架建立在三个基础不变量之上：
+核心设计决策：
 
-**编译期桥接生成。** 服务契约以扩展 `WasmlineService` 的 Kotlin `interface` 类型表达。Kotlin IR 编译器插件在构建期生成全部序列化、分发与桥接基础设施，消除运行时反射、注解处理以及手工 marshalling 代码。
+**编译期桥接生成。** 服务契约以扩展 `WasmlineService` 的 Kotlin `interface` 类型表达。Kotlin IR 编译器插件在构建期生成全部序列化、分发与桥接基础设施，不依赖运行时反射、注解处理或手工 marshalling 代码。
 
-**双路径运行时架构。** 原生目标（Android、iOS、macOS、Linux、Windows）通过 Zig 0.15.1 编译的 `wasmline-core` 原生桥接层，以 JNI 或 Kotlin/Native C Interop 方式调用 **Wasmtime v45.0.0 (C-API)** 执行插件。Web 目标（Kotlin/JS、Kotlin/WasmJS）则通过浏览器原生 `WebAssembly.Module` / `WebAssembly.Instance` 容器以及自包含、轻量级的内联 JavaScript 运行时执行插件——浏览器执行路径中不包含 Wasmtime。
+**双路径运行时架构。** 原生目标（Android、iOS、macOS、Linux、Windows）通过 Zig 0.15.1 编译的 `wasmline-core` 原生桥接层，以 JNI 或 Kotlin/Native C Interop 方式调用 **Wasmtime v45.0.0 (C-API)** 执行插件。Web 目标（Kotlin/JS、Kotlin/WasmJS）则通过浏览器原生 `WebAssembly.Module` / `WebAssembly.Instance` 容器以及内联 JavaScript 运行时执行插件——浏览器执行路径中不包含 Wasmtime。
 
 **语言无关的插件编写。** 插件二进制可以由任何以 WASI 为目标的工具链生成，包括 Kotlin、Rust、C/C++、Go 和 AssemblyScript。
 
@@ -50,7 +50,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 
 > [!IMPORTANT]
 > **Web 目标独立于 Wasmtime 运行。** 浏览器执行路径仅通过浏览器原生 `WebAssembly.Module` / `WebAssembly.Instance`
-> 容器实例化插件二进制。一个自包含、轻量级的 WASI shim 层——包括 `fd_write`、`random_get`、
+> 容器实例化插件二进制。WASI shim 层——包括 `fd_write`、`random_get`、
 > `clock_time_get` 以及 Wasmline bridge 协议——以内联 Kotlin JS interop（`js()`）形式嵌入，不会生成
 > 外部 JavaScript 文件、原生库二进制或 npm 依赖。payload 数据以 Base64 编码字符串跨越 Kotlin–JS
 > 线性内存边界。
@@ -136,8 +136,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，在统一
 
 ### 平台运行时资产初始化
 
-> [!NOTE]
-> 资产初始化仅对 **原生目标构建**（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 Wasmtime min C-API 资产。
+资产初始化仅对原生目标构建（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 Wasmtime min C-API 资产。
 
 在开始原生目标编译前，`build/platforms/` 下必须存在 Wasmtime min C-API 头文件与预编译库。执行以下任一等价脚本：
 
@@ -310,7 +309,7 @@ build/wasmline/
 
 ### 双路径执行模型
 
-Wasmline 对外暴露统一、与平台无关的 API 表面（`commonMain` / `hostMain`），但会根据目标类别将执行路由到不同的引擎栈。
+Wasmline 从 `commonMain` / `hostMain` 提供单一 API，并根据目标类别将执行路由到不同的引擎栈。
 
 #### 原生目标栈 — Android · iOS · macOS · Linux · Windows
 
@@ -582,7 +581,7 @@ cd wasmline-multiplatform
 <details>
 <summary><strong>浏览器执行路径如何在没有 Wasmtime 的情况下实例化插件？</strong></summary>
 
-Web 目标实现（`webMain` / `jsMain` / `wasmJsMain`）通过浏览器原生 WebAssembly 运行时，直接调用 `WebAssembly.Module` 和 `WebAssembly.Instance`。运行时层通过 Kotlin `js()` interop 内嵌为自包含的 JavaScript 代码——编译过程中不会生成外部 JS 文件。
+Web 目标实现（`webMain` / `jsMain` / `wasmJsMain`）通过浏览器原生 WebAssembly 运行时，直接调用 `WebAssembly.Module` 和 `WebAssembly.Instance`。运行时层通过 Kotlin `js()` interop 内嵌为 JavaScript 代码——编译过程中不会生成外部 JS 文件。
 
 该运行时层提供：
 
