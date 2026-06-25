@@ -20,22 +20,40 @@ actual fun loadNativeLibrary() {
         throw IllegalStateException("Unsupported OS: $osName")
     }
     val candidateArchs = archCandidates(osArch)
-    val nativeLibraryJarPath = candidateArchs
+
+    // 1. Load wasmtime engine first (from engine module's classpath resources)
+    val wasmtimeJarPath = candidateArchs
+        .map { "/jni/$it/libwasmtime.$extension" }
+        .firstOrNull { Wasmline::class.java.getResource(it) != null }
+        ?: throw IllegalStateException(
+            "Unable to find libwasmtime in JAR. Make sure an engine module (wasmline-engine-pulley or " +
+                "wasmline-engine-cranelift) is on the classpath. os.name=$osName, os.arch=${System.getProperty("os.arch")}, " +
+                "normalizedArch=$osArch, tried=${candidateArchs.joinToString()}"
+        )
+    extractAndLoad(Wasmline::class.java, wasmtimeJarPath)
+
+    // 2. Load wasmline bridge (from core module's classpath resources)
+    val wasmlineJarPath = candidateArchs
         .map { "/jni/$it/libwasmline.$extension" }
         .firstOrNull { Wasmline::class.java.getResource(it) != null }
         ?: throw IllegalStateException(
             "Unable to read native wasmline library from JAR. os.name=$osName, os.arch=${System.getProperty("os.arch")}, normalizedArch=$osArch, tried=${candidateArchs.joinToString()}"
         )
-    val nativeLibraryUrl = Wasmline::class.java.getResource(nativeLibraryJarPath)!!
-    val nativeLibraryFile: Path
-    try {
-        nativeLibraryFile = Files.createTempFile("quickjs", null)
-        nativeLibraryFile.toFile().deleteOnExit()
-        nativeLibraryUrl.openStream().use { nativeLibrary -> Files.copy(nativeLibrary, nativeLibraryFile, REPLACE_EXISTING) }
+    extractAndLoad(Wasmline::class.java, wasmlineJarPath)
+}
+
+private fun extractAndLoad(loaderClass: Class<*>, jarPath: String) {
+    val url = loaderClass.getResource(jarPath)
+        ?: throw IllegalStateException("Native library not found in JAR: $jarPath")
+    val file: Path = try {
+        val tmp = Files.createTempFile("wasmline-native", null)
+        tmp.toFile().deleteOnExit()
+        url.openStream().use { input -> Files.copy(input, tmp, REPLACE_EXISTING) }
+        tmp
     } catch (e: IOException) {
-        throw RuntimeException("Unable to extract native library from JAR", e)
+        throw RuntimeException("Unable to extract native library from JAR: $jarPath", e)
     }
-    System.load(nativeLibraryFile.toAbsolutePath().toString())
+    System.load(file.toAbsolutePath().toString())
 }
 
 private fun normalizeArch(osArch: String): String = when (osArch.lowercase(US)) {
@@ -49,4 +67,3 @@ private fun archCandidates(normalizedArch: String): List<String> = when (normali
     "aarch64" -> listOf("aarch64", "arm64")
     else -> listOf(normalizedArch)
 }
-

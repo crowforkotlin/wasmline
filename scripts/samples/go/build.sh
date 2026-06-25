@@ -49,26 +49,31 @@ EXE_SUFFIX=""
 
 echo "[shell go.sh] --> Detecting Platform: $OS_NAME ($ARCH_NAME)"
 
+# Resolve wasmtime version and variant
+WASMTIME_VER=$(resolve_wasmtime_version)
+WASMTIME_VARIANT="${WASMTIME_VARIANT:-pulley}"
+PLATFORM_BASE="$PLATFORMS_ROOT/$WASMTIME_VER/$WASMTIME_VARIANT"
+
 if [[ "$OS_NAME" == "Darwin" ]]; then
     # MacOS
     LIB_DST_NAME="libwasmtime.dylib"
     if [[ "$ARCH_NAME" == "arm64" ]]; then
-        LIB_SRC="$PLATFORMS_ROOT/mac/aarch64/lib/$LIB_DST_NAME"
+        LIB_SRC="$PLATFORM_BASE/mac/aarch64/lib/$LIB_DST_NAME"
     else
-        LIB_SRC="$PLATFORMS_ROOT/mac/x86_64/lib/$LIB_DST_NAME"
+        LIB_SRC="$PLATFORM_BASE/mac/x86_64/lib/$LIB_DST_NAME"
     fi
 elif [[ "$OS_NAME" == "Linux" ]]; then
     # Linux
     LIB_DST_NAME="libwasmtime.so"
     if [[ "$ARCH_NAME" == "aarch64" ]]; then
-        LIB_SRC="$PLATFORMS_ROOT/linux/aarch64/lib/$LIB_DST_NAME"
+        LIB_SRC="$PLATFORM_BASE/linux/aarch64/lib/$LIB_DST_NAME"
     else
-        LIB_SRC="$PLATFORMS_ROOT/linux/x64/lib/$LIB_DST_NAME"
+        LIB_SRC="$PLATFORM_BASE/linux/x64/lib/$LIB_DST_NAME"
     fi
 elif [[ "$OS_NAME" == CYGWIN* ]] || [[ "$OS_NAME" == MINGW* ]] || [[ "$OS_NAME" == MSYS* ]] || [[ "$OS_NAME" == Windows* ]]; then
     # Windows
     LIB_DST_NAME="wasmtime.dll"
-    LIB_SRC="$PLATFORMS_ROOT/windows/x64/lib/$LIB_DST_NAME"
+    LIB_SRC="$PLATFORM_BASE/windows/x64/lib/$LIB_DST_NAME"
     EXE_SUFFIX=".exe"
 else
     echo "Error: Unsupported OS: $OS_NAME"

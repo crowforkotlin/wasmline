@@ -37,9 +37,12 @@ kotlin {
     }
     apply {
         val nativeHeaderDir = project.file("src/iosMain/native")
+        val wasmtimeVersion = project.property("wasmtime.version") as String
+        val wasmtimeReleaseTag = "release-v$wasmtimeVersion"
+        // iOS only supports pulley engine variant
         fun iosPlatformRoot(targetName: String) = when (targetName) {
-            "iosSimulatorArm64" -> project.file("../../build/platforms/ios/simulator-arm64")
-            else -> project.file("../../build/platforms/ios/arm64")
+            "iosSimulatorArm64" -> project.file("../../build/platforms/$wasmtimeReleaseTag/pulley/ios/simulator-arm64")
+            else -> project.file("../../build/platforms/$wasmtimeReleaseTag/pulley/ios/arm64")
         }
         fun iosBuildDir(targetName: String) = when (targetName) {
             "iosSimulatorArm64" -> project.file("build/ios/simulator-arm64")

@@ -37,15 +37,20 @@ pub fn build(b: *std.Build) !void {
 
     // 2. Locate dependencies (Inputs)
     const platform_subdir = try getPlatformSubdir(b, target);
-    const wasmtime_dir = b.pathJoin(&.{ repo_root, "build", "platforms", platform_subdir });
+    const wasmtime_version = b.option([]const u8, "wasmtime-version", "Wasmtime release tag (e.g. release-v45.0.5)") orelse
+        try readWasmtimeVersion(b, repo_root);
+    const wasmtime_variant = b.option([]const u8, "wasmtime-variant", "Engine variant (pulley or cranelift)") orelse "pulley";
+    const wasmtime_dir = b.pathJoin(&.{ repo_root, "build", "platforms", wasmtime_version, wasmtime_variant, platform_subdir });
     const core_dir = b.pathJoin(&.{ repo_root, "wasmline-core" });
     const java_home = try autoDetectJavaHome(b, target);
 
     // Print debug info
     std.debug.print("\n[Debug] Repo Root: {s}\n", .{repo_root});
+    std.debug.print("[Config] Wasmtime Version: {s}\n", .{wasmtime_version});
+    std.debug.print("[Config] Wasmtime Variant: {s}\n", .{wasmtime_variant});
     std.debug.print("[Config] Input Lib Dir: {s}\n", .{wasmtime_dir});
 
-    // 3. Define Dynamic Library
+    // 3. Define Dynamic Library (libwasmline — bridge code, no wasmtime engine)
     const lib = createDynamicLibrary(b, target, optimize);
 
     // 4. Configure Optimization (Release settings)
@@ -57,13 +62,16 @@ pub fn build(b: *std.Build) !void {
     // 6. Add Include Paths
     addIncludePaths(b, lib, core_dir, wasmtime_dir, java_home, target);
 
-    // 7. Link Libraries
-    try linkDependencies(b, lib, wasmtime_dir, target);
+    // 7. Link system dependencies only (wasmtime engine loaded at runtime via engine module)
+    linkSystemDependencies(b, lib, target);
 
-    // 8. Install Artifacts (Output)
-    try installArtifacts(b, lib, target);
+    // 8. Define libwasmtime shared library (wraps static libwasmtime.a from platform assets)
+    const wasmtime_shared = try createWasmtimeSharedLibrary(b, target, optimize, wasmtime_dir);
 
-    // 9. Integrate compilation database generation (for editor tooling like clangd/marksman)
+    // 9. Install Artifacts (Output)
+    try installArtifacts(b, lib, wasmtime_shared, target);
+
+    // 10. Integrate compilation database generation (for editor tooling like clangd/marksman)
     var compile_steps_to_include = std.ArrayList(*std.Build.Step.Compile){};
     try compile_steps_to_include.append(b.allocator, lib);
     const cdb_internal_step = zcc.createStep(b, "generate_compile_commands_internal", compile_steps_to_include.items);
@@ -155,21 +163,9 @@ fn addIncludePaths(
     lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include", jni_plat_dir }) });
 }
 
-fn linkDependencies(b: *std.Build, lib: *std.Build.Step.Compile, wasmtime_dir: []const u8, target: std.Build.ResolvedTarget) !void {
-    const lib_name = if (target.result.os.tag == .windows) blk: {
-        if (target.result.abi == .gnu) break :blk "libwasmtime.a";
-        break :blk "wasmtime.lib";
-    } else "libwasmtime.a";
-
-    const lib_path = b.pathJoin(&.{ wasmtime_dir, "lib", lib_name });
-    std.debug.print("[Debug] Checking library path: {s}\n", .{lib_path});
-    std.fs.cwd().access(lib_path, .{}) catch {
-        std.debug.print("Error: Library file not found at {s}\n", .{lib_path});
-        return error.FileNotFound;
-    };
-
-    lib.addObjectFile(.{ .cwd_relative = lib_path });
-
+/// Link only system dependencies (no wasmtime). The wasmtime engine is loaded at runtime
+/// from the separate engine module (wasmline-engine-pulley / wasmline-engine-cranelift).
+fn linkSystemDependencies(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
     if (target.result.os.tag == .windows) {
         // Enforce MINGW_PATH environment variable
         const mingw_path = std.process.getEnvVarOwned(b.allocator, "MINGW_PATH") catch {
@@ -182,7 +178,7 @@ fn linkDependencies(b: *std.Build, lib: *std.Build.Step.Compile, wasmtime_dir: [
                 \\- https://github.com/mstorsjo/llvm-mingw/releases
                 \\
             , .{});
-            return error.MingwPathNotFound;
+            @panic("MINGW_PATH environment variable not set");
         };
         const mingw_lib = b.pathJoin(&.{ mingw_path, "x86_64-w64-mingw32/lib" });
         lib.addLibraryPath(.{ .cwd_relative = mingw_lib });
@@ -197,7 +193,71 @@ fn linkDependencies(b: *std.Build, lib: *std.Build.Step.Compile, wasmtime_dir: [
     }
 }
 
-fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) !void {
+/// Read wasmtime version from scripts/versions.json.
+fn readWasmtimeVersion(b: *std.Build, repo_root: []const u8) ![]const u8 {
+    const versions_path = b.pathJoin(&.{ repo_root, "scripts", "versions.json" });
+    const file = std.fs.cwd().openFile(versions_path, .{}) catch {
+        std.debug.print("[Warn] Could not open {s}, using default version\n", .{versions_path});
+        return "release-v45.0.5";
+    };
+    defer file.close();
+    const content = file.readToEndAlloc(b.allocator, 1024 * 1024) catch return "release-v45.0.5";
+    // Simple JSON parsing: find "wasmtime_version": "X.Y.Z"
+    const needle = "\"wasmtime_version\"";
+    if (std.mem.indexOf(u8, content, needle)) |idx| {
+        const after_key = content[idx + needle.len ..];
+        // Skip to the value string
+        if (std.mem.indexOf(u8, after_key, "\"")) |v1| {
+            const value_start = after_key[v1 + 1 ..];
+            if (std.mem.indexOf(u8, value_start, "\"")) |v2| {
+                const version = value_start[0..v2];
+                return b.fmt("release-v{s}", .{version});
+            }
+        }
+    }
+    return "release-v45.0.5";
+}
+
+/// Create a shared library from the static libwasmtime.a, for use by engine modules.
+fn createWasmtimeSharedLibrary(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    wasmtime_dir: []const u8,
+) !*std.Build.Step.Compile {
+    const lib_name = if (target.result.os.tag == .windows) blk: {
+        if (target.result.abi == .gnu) break :blk "libwasmtime.a";
+        break :blk "wasmtime.lib";
+    } else "libwasmtime.a";
+
+    const lib_path = b.pathJoin(&.{ wasmtime_dir, "lib", lib_name });
+    std.debug.print("[Debug] Wasmtime static lib: {s}\n", .{lib_path});
+    std.fs.cwd().access(lib_path, .{}) catch {
+        std.debug.print("Error: Wasmtime library not found at {s}\n", .{lib_path});
+        return error.FileNotFound;
+    };
+
+    const wasmtime_shared = b.addLibrary(.{
+        .name = "wasmtime",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
+        .linkage = .dynamic,
+    });
+    wasmtime_shared.addObjectFile(.{ .cwd_relative = lib_path });
+
+    if (target.result.os.tag != .windows) {
+        wasmtime_shared.linkSystemLibrary("m");
+        wasmtime_shared.linkSystemLibrary("dl");
+        wasmtime_shared.linkSystemLibrary("pthread");
+    }
+
+    return wasmtime_shared;
+}
+
+fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, wasmtime_shared: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) !void {
     // Calculate output directory name (architecture only)
     const install_subdir = if (target.result.abi == .android)
         switch (target.result.cpu.arch) {
@@ -219,13 +279,19 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
         .macos => ".dylib",
         else => ".so",
     };
-    const final_name = b.fmt("libwasmline{s}", .{ext});
 
-    const install_action = b.addInstallFileWithDir(lib.getEmittedBin(), .{ .custom = install_subdir }, final_name);
+    // Install libwasmline (bridge code)
+    const wasmline_name = b.fmt("libwasmline{s}", .{ext});
+    const install_wasmline = b.addInstallFileWithDir(lib.getEmittedBin(), .{ .custom = install_subdir }, wasmline_name);
+
+    // Install libwasmtime (engine, for engine modules)
+    const wasmtime_name = b.fmt("libwasmtime{s}", .{ext});
+    const install_wasmtime = b.addInstallFileWithDir(wasmtime_shared.getEmittedBin(), .{ .custom = install_subdir }, wasmtime_name);
 
     const lib_dir_path = b.getInstallPath(.prefix, "lib");
     const deleteLib = b.addRemoveDirTree(.{ .cwd_relative = lib_dir_path });
-    deleteLib.step.dependOn(&install_action.step);
+    deleteLib.step.dependOn(&install_wasmline.step);
+    deleteLib.step.dependOn(&install_wasmtime.step);
     b.getInstallStep().dependOn(&deleteLib.step);
 }
 

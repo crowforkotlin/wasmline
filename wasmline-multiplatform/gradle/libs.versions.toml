@@ -33,7 +33,7 @@ junit = "4.13.2"
 
 # https://github.com/JetBrains/kotlin
 #kotlin = "2.3.0"
-kotlin = "2.3.20"
+kotlin = "2.3.20-RC"
 
 # https://github.com/google/ksp
 ksp = "2.3.4"
@@ -303,6 +303,8 @@ jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "j
 crow-wasmline = { module = "crow.wasmline:wasmline", version.ref = "wasmline" }
 crow-wasmline-loader = { module = "crow.wasmline:wasmline-loader", version.ref = "wasmline" }
 crow-wasmline-network-ktor = { module = "crow.wasmline:wasmline-network-ktor", version.ref = "wasmline" }
+crow-wasmline-engine-pulley = { module = "crow.wasmline:wasmline-engine-pulley", version.ref = "wasmline" }
+crow-wasmline-engine-cranelift = { module = "crow.wasmline:wasmline-engine-cranelift", version.ref = "wasmline" }
 
 
 

@@ -6,20 +6,43 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PLATFORMS_ROOT="${ROOT_DIR}/build/platforms"
 PROFILE_FILES=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile")
 PLATFORM_TARGETS=(
-    "android/arm64-v8a|Android arm64-v8a|aarch64-android"
-    "android/armeabi-v7a|Android armeabi-v7a|armv7-android"
-    "android/x86_64|Android x86_64|x86_64-android"
-    "android/x86|Android x86 (32-bit)|x86-android"
-    "ios/arm64|iOS arm64 device|aarch64-ios-pulley-min-c-api"
-    "ios/simulator-arm64|iOS arm64 simulator|aarch64-ios-sim-pulley-min-c-api"
-    "linux/aarch64|Linux aarch64|aarch64-linux"
-    "linux/x64|Linux x64|x86_64-linux"
-    "mac/aarch64|macOS aarch64|aarch64-macos"
-    "mac/x64|macOS x64|x86_64-macos"
-    "windows/x64|Windows x64|x86_64-windows"
+    # Format: "variant|relative_dir|label|asset_id"
+    # Cranelift targets (7 platforms)
+    "cranelift|android/arm64-v8a|Android arm64-v8a (Cranelift)|aarch64-android"
+    "cranelift|android/x86_64|Android x86_64 (Cranelift)|x86_64-android"
+    "cranelift|linux/aarch64|Linux aarch64 (Cranelift)|aarch64-linux"
+    "cranelift|linux/x64|Linux x64 (Cranelift)|x86_64-linux"
+    "cranelift|mac/aarch64|macOS aarch64 (Cranelift)|aarch64-macos"
+    "cranelift|mac/x64|macOS x64 (Cranelift)|x86_64-macos"
+    "cranelift|windows/x64|Windows x64 (Cranelift)|x86_64-windows"
+    # Pulley targets (11 platforms)
+    "pulley|android/arm64-v8a|Android arm64-v8a (Pulley)|aarch64-android-pulley"
+    "pulley|android/armeabi-v7a|Android armeabi-v7a (Pulley)|armv7-android-pulley"
+    "pulley|android/x86_64|Android x86_64 (Pulley)|x86_64-android-pulley"
+    "pulley|android/x86|Android x86 (Pulley)|x86-android-pulley"
+    "pulley|ios/arm64|iOS arm64 device (Pulley)|aarch64-ios-pulley"
+    "pulley|ios/simulator-arm64|iOS arm64 simulator (Pulley)|aarch64-ios-sim-pulley"
+    "pulley|linux/aarch64|Linux aarch64 (Pulley)|aarch64-linux-pulley"
+    "pulley|linux/x64|Linux x64 (Pulley)|x86_64-linux-pulley"
+    "pulley|mac/aarch64|macOS aarch64 (Pulley)|aarch64-macos-pulley"
+    "pulley|mac/x64|macOS x64 (Pulley)|x86_64-macos-pulley"
+    "pulley|windows/x64|Windows x64 (Pulley)|x86_64-windows-pulley"
 )
 REQUIRED_JBR_VERSION="21"
 REQUIRED_ZIG_VERSION="0.15.1"
+
+# Inline version resolution (doctor.sh is standalone, does not source context.sh)
+resolve_wasmtime_version() {
+    if [ -n "${WASMTIME_VERSION:-}" ]; then
+        printf '%s\n' "$WASMTIME_VERSION"; return
+    fi
+    if [ -f "$ROOT_DIR/scripts/versions.json" ]; then
+        local ver
+        ver=$(python3 -c "import json;print('release-v'+json.load(open('$ROOT_DIR/scripts/versions.json'))['versions']['wasmtime_version'])" 2>/dev/null || true)
+        if [ -n "$ver" ]; then printf '%s\n' "$ver"; return; fi
+    fi
+    ls -1d "$PLATFORMS_ROOT"/release-v* 2>/dev/null | sort -V | tail -1 | xargs basename
+}
 
 OK_COUNT=0
 WARN_COUNT=0
@@ -358,7 +381,7 @@ check_platform_assets() {
 
     local available_count=0
     local missing_count=0
-    local entry relative_dir label asset_id asset_dir missing_parts missing_display
+    local entry variant relative_dir label asset_id asset_dir missing_parts missing_display
 
     if [ ! -d "$PLATFORMS_ROOT" ]; then
         table_row warn "build/platforms/" "Directory not found. No Wasmtime runtime assets are currently available."
@@ -366,20 +389,29 @@ check_platform_assets() {
         return 0
     fi
 
+    # Resolve wasmtime version directory
+    local version_dir
+    version_dir=$(resolve_wasmtime_version)
+    if [ -z "$version_dir" ] || [ ! -d "$PLATFORMS_ROOT/$version_dir" ]; then
+        table_row warn "build/platforms/" "Version directory not found: $version_dir"
+        table_note "Run sh ./scripts/init.sh to download Wasmtime assets."
+        return 0
+    fi
+
     for entry in "${PLATFORM_TARGETS[@]}"; do
-        IFS='|' read -r relative_dir label asset_id <<< "$entry"
-        asset_dir="$PLATFORMS_ROOT/$relative_dir"
+        IFS='|' read -r variant relative_dir label asset_id <<< "$entry"
+        asset_dir="$PLATFORMS_ROOT/$version_dir/$variant/$relative_dir"
         missing_parts=""
         [ -d "$asset_dir/include" ] || missing_parts="${missing_parts}include,"
         [ -d "$asset_dir/lib" ] || missing_parts="${missing_parts}lib,"
 
         if [ -z "$missing_parts" ]; then
             available_count=$((available_count + 1))
-            table_row pass "$label" "path=build/platforms/$relative_dir; asset=$asset_id"
+            table_row pass "$label" "path=build/platforms/$version_dir/$variant/$relative_dir"
         else
             missing_count=$((missing_count + 1))
             missing_display="${missing_parts%,}"
-            table_row warn "$label" "path=build/platforms/$relative_dir; missing=$missing_display; asset=$asset_id"
+            table_row warn "$label" "path=build/platforms/$version_dir/$variant/$relative_dir; missing=$missing_display"
         fi
     done
 

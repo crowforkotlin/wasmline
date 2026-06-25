@@ -72,58 +72,145 @@ function tmpDir() {
 
 // ── Targets ─────────────────────────────────────────────────────────────────
 
+// Ordered, grouped by platform family.
 const TARGETS = [
-  { key: "1", name: "Android / arm64-v8a", filter: "aarch64-android", platform: "android/arm64-v8a" },
-  { key: "2", name: "iOS Device / arm64", filter: "aarch64-ios-pulley-min-c-api", platform: "ios/arm64" },
-  { key: "3", name: "iOS Simulator / simulator-arm64", filter: "aarch64-ios-sim-pulley-min-c-api", platform: "ios/simulator-arm64" },
-  { key: "4", name: "Linux / aarch64", filter: "aarch64-linux", platform: "linux/aarch64" },
-  { key: "5", name: "Linux / x64", filter: "x86_64-linux", platform: "linux/x64" },
-  { key: "6", name: "macOS / aarch64", filter: "aarch64-macos", platform: "mac/aarch64" },
-  { key: "7", name: "macOS / x64", filter: "x86_64-macos", platform: "mac/x64" },
-  { key: "8", name: "Windows / x64", filter: "x86_64-windows", platform: "windows/x64" },
-  { key: "9", name: "Android / armeabi-v7a", filter: "armv7-android", platform: "android/armeabi-v7a" },
-  { key: "x", name: "Android / x86 (32-bit)", filter: "x86-android", platform: "android/x86" },
-  { key: "0", name: "Android / x86_64", filter: "x86_64-android", platform: "android/x86_64" },
-  { key: "a", name: "All Platforms", filter: "all", platform: null },
+  // Android
+  { key: "1", name: "Android   arm64-v8a",          filter: "aarch64-android",                platform: "android/arm64-v8a" },
+  { key: "2", name: "Android   armeabi-v7a  [pulley only]", filter: "armv7-android",           platform: "android/armeabi-v7a" },
+  { key: "3", name: "Android   x86          [pulley only]", filter: "x86-android",             platform: "android/x86" },
+  { key: "4", name: "Android   x86_64",             filter: "x86_64-android",                 platform: "android/x86_64" },
+  // iOS
+  { key: "5", name: "iOS       arm64 (Device)   [pulley only]", filter: "aarch64-ios-pulley-min-c-api",   platform: "ios/arm64" },
+  { key: "6", name: "iOS       arm64 (Simulator)[pulley only]", filter: "aarch64-ios-sim-pulley-min-c-api", platform: "ios/simulator-arm64" },
+  // Linux
+  { key: "7", name: "Linux     aarch64",            filter: "aarch64-linux",                  platform: "linux/aarch64" },
+  { key: "8", name: "Linux     x64",                filter: "x86_64-linux",                   platform: "linux/x64" },
+  // macOS
+  { key: "9", name: "macOS     aarch64",            filter: "aarch64-macos",                  platform: "mac/aarch64" },
+  { key: "0", name: "macOS     x64",                filter: "x86_64-macos",                   platform: "mac/x64" },
+  // Windows
+  { key: "x", name: "Windows   x64",                filter: "x86_64-windows",                 platform: "windows/x64" },
+  // Other
+  { key: "a", name: "All Platforms (cranelift + pulley)", filter: "all",                      platform: null },
+];
+
+// Group definitions for menu rendering: [label, [indices into TARGETS]]
+const TARGET_GROUPS = [
+  ["Android", [0, 1, 2, 3]],
+  ["iOS",     [4, 5]],
+  ["Linux",   [6, 7]],
+  ["macOS",   [8, 9]],
+  ["Windows", [10]],
+  ["Other",   [11]],
 ];
 
 const TARGETS_BY_KEY = new Map(TARGETS.map((target) => [target.key, target]));
 
-function formatTargetSummary(target) {
-  if (target.filter === "all") return target.name;
-  return `${target.name} -> build/platforms/${target.platform} [asset: ${target.filter}]`;
-}
-
 const PLATFORM_MAP = {
+  // Short keys — variant-agnostic (work for both pulley and cranelift assets)
   "aarch64-android": "android/arm64-v8a",
-  "aarch64-ios-sim-pulley-min-c-api": "ios/simulator-arm64",
-  "aarch64-ios-pulley-min-c-api": "ios/arm64",
-  "aarch64-linux": "linux/aarch64",
-  "x86_64-linux": "linux/x64",
-  "aarch64-macos": "mac/aarch64",
-  "x86_64-macos": "mac/x64",
-  "x86_64-windows": "windows/x64",
-  "armv7-android": "android/armeabi-v7a",
-  "x86-android": "android/x86",
-  "x86_64-android": "android/x86_64",
+  "aarch64-ios-sim": "ios/simulator-arm64",
+  "aarch64-ios":     "ios/arm64",
+  "aarch64-linux":   "linux/aarch64",
+  "x86_64-linux":    "linux/x64",
+  "aarch64-macos":   "mac/aarch64",
+  "x86_64-macos":    "mac/x64",
+  "x86_64-windows":  "windows/x64",
+  "armv7-android":   "android/armeabi-v7a",
+  "x86-android":     "android/x86",
+  "x86_64-android":  "android/x86_64",
 };
+
+// Pulley-only platforms (iOS, armeabi-v7a, x86) — Cranelift not available.
+const PULLEY_ONLY_FILTERS = new Set([
+  "aarch64-ios-pulley-min-c-api",
+  "aarch64-ios-sim-pulley-min-c-api",
+  "armv7-android",
+  "x86-android",
+]);
 
 async function selectTarget() {
   console.log();
   logHeader("Platform & Architecture Selection");
-  console.log("Select specific target:");
-  for (const target of TARGETS) {
-    console.log(`  ${white(target.key + ")")} ${formatTargetSummary(target)}`);
-  }
   console.log();
+
+  const nameW = Math.max(...TARGETS.map((t) => t.name.length), 22);
+
+  for (const [groupLabel, indices] of TARGET_GROUPS) {
+    console.log(`  ${gray(`── ${groupLabel} ──`)}`);
+    for (const i of indices) {
+      const t = TARGETS[i];
+      const padded = t.name.padEnd(nameW);
+      const pathStr = t.platform ? `build/platforms/${t.platform}` : "—";
+      console.log(`  ${white(t.key + ")")} ${padded}  ${gray(`→ ${pathStr}`)}`);
+    }
+    console.log();
+  }
+
   while (true) {
-    const choice = (await ask(`${cyan("Choice [1-9, 0, x, a]: ")}`)).toLowerCase();
+    const choice = (await ask(`  ${cyan("Enter choice [1-9, 0, x, a]:")} `)).toLowerCase();
     const target = TARGETS_BY_KEY.get(choice);
     if (target) {
-      logOk(`Target: ${white(formatTargetSummary(target))}`);
+      console.log();
+      logOk(`Target: ${white(target.name)}`);
       return target.filter;
     }
-    console.log(red("Invalid input."));
+    console.log(`  ${red("Invalid input, please try again.")}`);
+  }
+}
+
+async function selectVariant(userFilter) {
+  console.log();
+  logHeader("Runtime Variant Selection");
+
+  let variant;
+  if (userFilter === "all") {
+    variant = "both";
+    logInfo("All Platforms: downloading both Cranelift and Pulley assets.");
+  } else if (PULLEY_ONLY_FILTERS.has(userFilter)) {
+    variant = "pulley";
+    logInfo("Platform requires Pulley runtime (no Cranelift support).");
+  } else {
+    console.log(`  ${white("1)")} Cranelift — .pwasm + .cwasm AOT  ${gray("(default, larger binary)")}`);
+    console.log(`  ${white("2)")} Pulley    — .pwasm only            ${gray("(smaller binary)")}`);
+    console.log();
+    while (true) {
+      const v = (await ask(`  ${cyan("Choice [1/2] (default: 1):")} `)).trim();
+      if (v === "" || v === "1") { variant = "cranelift"; break; }
+      if (v === "2") { variant = "pulley"; break; }
+      console.log(`  ${red("Invalid input, please try again.")}`);
+    }
+  }
+
+  console.log();
+  logOk(`Variant: ${white(variant)}`);
+  return variant;
+}
+
+async function selectVersion(releases) {
+  console.log();
+  logHeader("Version Selection");
+
+  const tags = releases.map((r) => r.tag_name).filter(Boolean);
+  if (tags.length === 0) { logErr("No versions found."); process.exit(1); }
+  if (tags.length === 1) {
+    logInfo(`Only one version available: ${green(tags[0])}`);
+    return tags[0];
+  }
+
+  console.log("  Available versions:");
+  for (let i = 0; i < tags.length; i++) {
+    const marker = i === 0 ? `${green("►")} ` : "  ";
+    console.log(`  ${white(String(i + 1) + ")")} ${marker}${tags[i]}`);
+  }
+  console.log();
+
+  while (true) {
+    const raw = (await ask(`  ${cyan(`Choice [1-${tags.length}] (default: 1 = latest):`)} `)).trim();
+    if (raw === "") return tags[0];
+    const n = parseInt(raw, 10);
+    if (Number.isInteger(n) && n >= 1 && n <= tags.length) return tags[n - 1];
+    console.log(`  ${red("Invalid input, please try again.")}`);
   }
 }
 
@@ -340,9 +427,9 @@ function findIncludeDirFallback(root) {
 
 // ── Deploy ──────────────────────────────────────────────────────────────────
 
-function deployPlatform(archive, plat) {
-  const target = join(PLATFORMS_ROOT, plat);
-  logStep(`Deploying: ${white(plat)}`);
+function deployPlatform(archive, plat, version, variant) {
+  const target = join(PLATFORMS_ROOT, version, variant, plat);
+  logStep(`Deploying: ${white(`${variant}/${plat}`)}`);
   logDetail(`Archive: ${cyan(basename(archive))}`);
 
   if (existsSync(target)) rmSync(target, { recursive: true, force: true });
@@ -370,23 +457,26 @@ function deployPlatform(archive, plat) {
 
 function matchesFilter(fname, filter) {
   if (filter === "all") return true;
-  if (filter === "aarch64-ios-pulley-min-c-api") {
-    return fname.includes(filter) && !fname.includes("sim");
-  }
-  return fname.includes(filter);
+  // Map long filter IDs to short substrings for variant-agnostic matching
+  const shortMap = {
+    "aarch64-ios-pulley-min-c-api": "aarch64-ios",
+    "aarch64-ios-sim-pulley-min-c-api": "aarch64-ios",
+  };
+  const short = shortMap[filter] || filter;
+  if (!fname.includes(short)) return false;
+  // iOS: exclude simulator when selecting device, and vice versa
+  if (filter === "aarch64-ios-pulley-min-c-api" && fname.includes("sim")) return false;
+  if (filter === "aarch64-ios-sim-pulley-min-c-api" && !fname.includes("sim")) return false;
+  return true;
 }
 
 function fnameToPlatform(fname) {
-  // Exclude pulley variants on 64-bit desktop/Android (keep for 32-bit + iOS)
-  if (fname.includes("-pulley-")) {
-    if (!["armv7-android", "x86-android", "aarch64-ios"].some((k) => fname.includes(k))) {
-      return null;
-    }
-  }
+  // Strip variant suffix to get a variant-agnostic core name
+  const core = fname.replace(/(-pulley)?-min-c-api.*/, "");
   // Order matters: more specific patterns first
   const keys = [
-    "aarch64-ios-sim-pulley-min-c-api",
-    "aarch64-ios-pulley-min-c-api",
+    "aarch64-ios-sim",
+    "aarch64-ios",
     "armv7-android",
     "x86_64-android",
     "x86-android",
@@ -398,7 +488,7 @@ function fnameToPlatform(fname) {
     "x86_64-windows",
   ];
   for (const k of keys) {
-    if (fname.includes(k)) return PLATFORM_MAP[k];
+    if (core.includes(k)) return PLATFORM_MAP[k];
   }
   return null;
 }
@@ -412,35 +502,55 @@ async function main() {
   logHeader("Wasmtime SDK Init");
   setupProxy(process.argv[2] || null);
 
-  // 1. Fetch release info
+  // 1. Fetch releases
   logInfo("Fetching releases...");
-  let data;
+  let allReleases;
   try {
-    data = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/latest`);
+    allReleases = await fetchJSON(`https://api.github.com/repos/${REPO}/releases?per_page=10`);
   } catch (e) {
     logErr(`Fetch failed: ${e.message}`);
     process.exit(1);
   }
 
+  // 2. Version selection
+  const selectedVersion = await selectVersion(allReleases);
+
+  // Fetch the specific version's release details for asset URLs
+  let data;
+  try {
+    data = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/tags/${selectedVersion}`);
+  } catch (e) {
+    logErr(`Failed to fetch release: ${e.message}`);
+    process.exit(1);
+  }
   const tag = data.tag_name || "";
   if (!tag) { logErr("Fetch failed: no tag_name."); process.exit(1); }
   logInfo(`Version: ${green(tag)}`);
 
-  // 2. Interactive selections
+  // 3. Interactive selections
   const userFilter = await selectTarget();
+  const variant = await selectVariant(userFilter);
   const maxConcurrent = await configureConcurrency();
 
   // 3. Collect download URLs
   logInfo("Analyzing targets...");
-  /** @type {{url:string, fname:string, plat:string}[]} */
+  /** @type {{url:string, fname:string, plat:string, variant:string}[]} */
   const jobs = [];
   for (const asset of data.assets || []) {
     const url = asset.browser_download_url || "";
     const fname = basename(url);
+    // Must be a min-c-api asset
     if (!fname.includes("-min-c-api")) continue;
+    // Determine per-asset variant from filename
+    const assetVariant = fname.includes("-pulley-min-c-api") ? "pulley" : "cranelift";
+    // Filter by variant (skip when "both")
+    if (variant !== "both") {
+      if (variant === "pulley" && assetVariant !== "pulley") continue;
+      if (variant === "cranelift" && assetVariant !== "cranelift") continue;
+    }
     if (!matchesFilter(fname, userFilter)) continue;
     const plat = fnameToPlatform(fname);
-    if (plat) jobs.push({ url, fname, plat });
+    if (plat) jobs.push({ url, fname, plat, variant: assetVariant });
   }
 
   if (jobs.length === 0) { logWarn("No assets found."); process.exit(0); }
@@ -449,10 +559,10 @@ async function main() {
 
   // 4. Download with concurrency control
   const errors = [];
-  /** @type {{plat:string, archive:string}[]} */
+  /** @type {{plat:string, archive:string, variant:string}[]} */
   const downloaded = [];
 
-  async function doDownload({ url, fname, plat }) {
+  async function doDownload({ url, fname, plat, variant: assetVariant }) {
     const tmp = tmpDir();
     const dest = join(tmp, fname);
     const t0 = performance.now();
@@ -460,8 +570,9 @@ async function main() {
       await downloadFile(url, dest);
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
       const size = formatSize(statSync(dest).size);
-      logOk(`${plat.padEnd(18)}  ${size.padStart(10)}  ${String(elapsed).padStart(5)}s  ${cyan(fname)}`);
-      downloaded.push({ plat, archive: dest });
+      const label = `${assetVariant}/${plat}`;
+      logOk(`${label.padEnd(28)}  ${size.padStart(10)}  ${String(elapsed).padStart(5)}s  ${cyan(fname)}`);
+      downloaded.push({ plat, archive: dest, variant: assetVariant });
     } catch (e) {
       errors.push(`${fname}: ${e.message}`);
       logErr(`${plat.padEnd(18)}  FAILED  ${fname}`);
@@ -494,9 +605,9 @@ async function main() {
 
   // 5. Deploy
   logInfo("Deploying...");
-  for (const { plat, archive } of downloaded) {
+  for (const { plat, archive, variant: assetVariant } of downloaded) {
     try {
-      deployPlatform(archive, plat);
+      deployPlatform(archive, plat, selectedVersion, assetVariant);
     } catch (e) {
       errors.push(e.message);
     }
@@ -512,7 +623,7 @@ async function main() {
   }
 
   logHeader("Success");
-  console.log(`Location: ${PLATFORMS_ROOT}/`);
+  console.log(`Location: ${PLATFORMS_ROOT}/${selectedVersion}/`);
 }
 
 main().catch((e) => { logErr(e.message); process.exit(1); });

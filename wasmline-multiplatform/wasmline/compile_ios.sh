@@ -7,16 +7,21 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORE_SRC="${PROJECT_ROOT}/wasmline-core/src"
 IOS_SRC="${SCRIPT_DIR}/src/iosMain/native"
 
+# Resolve wasmtime version tag (e.g. "release-v45.0.5")
+if [ -z "${WASMTIME_VERSION:-}" ]; then
+    WASMTIME_VERSION=$(python3 -c "import json;print('release-v'+json.load(open('${PROJECT_ROOT}/scripts/versions.json'))['versions']['wasmtime_version'])" 2>/dev/null || echo "release-v45.0.5")
+fi
+
 TARGET_KIND="${1:-simulator-arm64}"
 case "$TARGET_KIND" in
     simulator-arm64|simulator|sim)
         SDK="iphonesimulator"
-        PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/ios/simulator-arm64"
+        PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/${WASMTIME_VERSION}/pulley/ios/simulator-arm64"
         BUILD_DIR="${SCRIPT_DIR}/build/ios/simulator-arm64"
         ;;
     arm64|device|ios-arm64)
         SDK="iphoneos"
-        PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/ios/arm64"
+        PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/${WASMTIME_VERSION}/pulley/ios/arm64"
         BUILD_DIR="${SCRIPT_DIR}/build/ios/arm64"
         ;;
     *)

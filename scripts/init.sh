@@ -33,72 +33,234 @@ get_time_ms() {
     if [[ "$OSTYPE" == "darwin"* ]]; then date +%s000; else echo $(($(date +%s%N)/1000000)); fi
 }
 
-target_summary() {
-    case "$1" in
-        aarch64-android)   printf '%s' 'Android / arm64-v8a -> build/platforms/android/arm64-v8a [asset: aarch64-android-pulley-min-c-api]' ;;
-        aarch64-ios-pulley-min-c-api) printf '%s' 'iOS Device / arm64 -> build/platforms/ios/arm64 [asset: aarch64-ios-pulley-min-c-api]' ;;
-        aarch64-ios-sim-pulley-min-c-api) printf '%s' 'iOS Simulator / simulator-arm64 -> build/platforms/ios/simulator-arm64 [asset: aarch64-ios-sim-pulley-min-c-api]' ;;
-        aarch64-linux)     printf '%s' 'Linux / aarch64 -> build/platforms/linux/aarch64 [asset: aarch64-linux-pulley-min-c-api]' ;;
-        x86_64-linux)      printf '%s' 'Linux / x64 -> build/platforms/linux/x64 [asset: x86_64-linux-pulley-min-c-api]' ;;
-        aarch64-macos)     printf '%s' 'macOS / aarch64 -> build/platforms/mac/aarch64 [asset: aarch64-macos-pulley-min-c-api]' ;;
-        x86_64-macos)      printf '%s' 'macOS / x64 -> build/platforms/mac/x64 [asset: x86_64-macos-pulley-min-c-api]' ;;
-        x86_64-windows)    printf '%s' 'Windows / x64 -> build/platforms/windows/x64 [asset: x86_64-windows-pulley-min-c-api]' ;;
-        armv7-android)     printf '%s' 'Android / armeabi-v7a -> build/platforms/android/armeabi-v7a [asset: armv7-android-pulley-min-c-api]' ;;
-        x86-android)       printf '%s' 'Android / x86 (32-bit) -> build/platforms/android/x86 [asset: x86-android-pulley-min-c-api]' ;;
-        x86_64-android)    printf '%s' 'Android / x86_64 -> build/platforms/android/x86_64 [asset: x86_64-android-pulley-min-c-api]' ;;
-        all)               printf '%s' 'All Platforms' ;;
-        *)                 printf '%s' "$1" ;;
-    esac
-}
+# Ordered target definitions: key | filter_id | display_name | install_path
+# Grouped by platform family for clean menu rendering.
+TARGET_KEYS=(1 2 3 4 5 6 7 8 9 0 x a)
+TARGET_FILTERS=(
+    "aarch64-android"
+    "armv7-android"
+    "x86-android"
+    "x86_64-android"
+    "aarch64-ios-pulley-min-c-api"
+    "aarch64-ios-sim-pulley-min-c-api"
+    "aarch64-linux"
+    "x86_64-linux"
+    "aarch64-macos"
+    "x86_64-macos"
+    "x86_64-windows"
+    "all"
+)
+TARGET_NAMES=(
+    "Android   arm64-v8a"
+    "Android   armeabi-v7a  [pulley only]"
+    "Android   x86          [pulley only]"
+    "Android   x86_64"
+    "iOS       arm64 (Device)   [pulley only]"
+    "iOS       arm64 (Simulator)[pulley only]"
+    "Linux     aarch64"
+    "Linux     x64"
+    "macOS     aarch64"
+    "macOS     x64"
+    "Windows   x64"
+    "All Platforms (cranelift + pulley)"
+)
+TARGET_PATHS=(
+    "build/platforms/android/arm64-v8a"
+    "build/platforms/android/armeabi-v7a"
+    "build/platforms/android/x86"
+    "build/platforms/android/x86_64"
+    "build/platforms/ios/arm64"
+    "build/platforms/ios/simulator-arm64"
+    "build/platforms/linux/aarch64"
+    "build/platforms/linux/x64"
+    "build/platforms/mac/aarch64"
+    "build/platforms/mac/x64"
+    "build/platforms/windows/x64"
+    "—"
+)
+# Group boundaries: each entry is "group_label|start_index|count"
+TARGET_GROUPS=(
+    "Android|0|4"
+    "iOS|4|2"
+    "Linux|6|2"
+    "macOS|8|2"
+    "Windows|10|1"
+    "Other|11|1"
+)
 
-print_target_option() {
-    local key="$1"
-    local filter="$2"
-    printf "  ${WHITE}%s)${NC} %s\n" "$key" "$(target_summary "$filter")"
+target_summary() {
+    local filter="$1"
+    for i in "${!TARGET_FILTERS[@]}"; do
+        if [ "${TARGET_FILTERS[$i]}" = "$filter" ]; then
+            printf '%s' "${TARGET_NAMES[$i]}"
+            return
+        fi
+    done
+    printf '%s' "$filter"
 }
 
 select_target() {
     echo ""
     log_header "Platform & Architecture Selection"
-    printf "Select specific target:\n"
-    
-    print_target_option "1" "aarch64-android"
-    print_target_option "2" "aarch64-ios-pulley-min-c-api"
-    print_target_option "3" "aarch64-ios-sim-pulley-min-c-api"
-    print_target_option "4" "aarch64-linux"
-    print_target_option "5" "x86_64-linux"
-    print_target_option "6" "aarch64-macos"
-    print_target_option "7" "x86_64-macos"
-    print_target_option "8" "x86_64-windows"
-    print_target_option "9" "armv7-android"
-    print_target_option "x" "x86-android"
-    print_target_option "0" "x86_64-android"
-    print_target_option "a" "all"
-    printf "\n"
+    echo ""
+
+    # Calculate column widths for aligned output
+    local key_w=3
+    local name_w=0
+    for n in "${TARGET_NAMES[@]}"; do
+        (( ${#n} > name_w )) && name_w=${#n}
+    done
+    (( name_w < 22 )) && name_w=22
+
+    local group_idx=0
+    local global_idx=0
+
+    while [ $group_idx -lt ${#TARGET_GROUPS[@]} ]; do
+        IFS='|' read -r g_label g_start g_count <<< "${TARGET_GROUPS[$group_idx]}"
+
+        # Print group header
+        printf "  ${GRAY}── %s ──${NC}\n" "$g_label"
+
+        local j=0
+        while [ $j -lt "$g_count" ]; do
+            local idx=$((g_start + j))
+            local key="${TARGET_KEYS[$idx]}"
+            local name="${TARGET_NAMES[$idx]}"
+            local path="${TARGET_PATHS[$idx]}"
+
+            # Pad name to fixed width
+            local padded_name
+            padded_name=$(printf "%-${name_w}s" "$name")
+
+            printf "  ${WHITE}%s)${NC} %s  ${GRAY}→ %s${NC}\n" "$key" "$padded_name" "$path"
+
+            j=$((j + 1))
+            global_idx=$((global_idx + 1))
+        done
+
+        group_idx=$((group_idx + 1))
+        echo ""
+    done
 
     local valid=false
     while [ "$valid" = false ]; do
-        printf "${CYAN}Choice [1-9, 0, x, a]: ${NC}"
+        printf "  ${CYAN}Enter choice [1-9, 0, x, a]:${NC} "
         read c
         case "$c" in
-            # 这里的标识符将用于后续的文件名匹配
             1) USER_FILTER="aarch64-android"; valid=true ;;
-            2) USER_FILTER="aarch64-ios-pulley-min-c-api"; valid=true ;;
-            3) USER_FILTER="aarch64-ios-sim-pulley-min-c-api"; valid=true ;;
-            4) USER_FILTER="aarch64-linux";   valid=true ;;
-            5) USER_FILTER="x86_64-linux";    valid=true ;;
-            6) USER_FILTER="aarch64-macos";   valid=true ;;
-            7) USER_FILTER="x86_64-macos";    valid=true ;;
-            8) USER_FILTER="x86_64-windows";  valid=true ;;
-            9) USER_FILTER="armv7-android";    valid=true ;;
-            x|X) USER_FILTER="x86-android";    valid=true ;;
-            0) USER_FILTER="x86_64-android";  valid=true ;;
-            a|A) USER_FILTER="all";           valid=true ;;
-            *) printf "${RED}Invalid input.${NC}\n" ;;
+            2) USER_FILTER="armv7-android";    valid=true ;;
+            3) USER_FILTER="x86-android";      valid=true ;;
+            4) USER_FILTER="x86_64-android";   valid=true ;;
+            5) USER_FILTER="aarch64-ios-pulley-min-c-api"; valid=true ;;
+            6) USER_FILTER="aarch64-ios-sim-pulley-min-c-api"; valid=true ;;
+            7) USER_FILTER="aarch64-linux";    valid=true ;;
+            8) USER_FILTER="x86_64-linux";     valid=true ;;
+            9) USER_FILTER="aarch64-macos";    valid=true ;;
+            0) USER_FILTER="x86_64-macos";     valid=true ;;
+            x|X) USER_FILTER="x86_64-windows"; valid=true ;;
+            a|A) USER_FILTER="all";            valid=true ;;
+            *) printf "  ${RED}Invalid input, please try again.${NC}\n" ;;
         esac
     done
-    
+
+    echo ""
     log_success "Target: ${WHITE}$(target_summary "$USER_FILTER")${NC}"
+}
+
+# Runtime variant selection (Cranelift vs Pulley)
+# Cranelift-min is a superset of Pulley-min: supports .cwasm AOT + .pwasm.
+# Pulley-min is smaller but only supports .pwasm interpretation.
+select_variant() {
+    echo ""
+    log_header "Runtime Variant Selection"
+
+    # Determine if variant selection is available
+    local can_choose=false
+    case "$USER_FILTER" in
+        all)
+            VARIANT="both"
+            log_info "All Platforms: downloading both Cranelift and Pulley assets."
+            ;;
+        aarch64-ios-pulley-min-c-api|aarch64-ios-sim-pulley-min-c-api|armv7-android|x86-android)
+            VARIANT="pulley"
+            log_info "Platform requires Pulley runtime (no Cranelift support)."
+            ;;
+        *)
+            can_choose=true
+            VARIANT="cranelift"
+            ;;
+    esac
+
+    if [ "$can_choose" = true ]; then
+        printf "  ${WHITE}1)${NC} Cranelift — .pwasm + .cwasm AOT  ${GRAY}(default, larger binary)${NC}\n"
+        printf "  ${WHITE}2)${NC} Pulley    — .pwasm only            ${GRAY}(smaller binary)${NC}\n"
+        echo ""
+        local valid=false
+        while [ "$valid" = false ]; do
+            printf "  ${CYAN}Choice [1/2] (default: 1):${NC} "
+            read v
+            case "$v" in
+                ""|1) VARIANT="cranelift"; valid=true ;;
+                2)    VARIANT="pulley";    valid=true ;;
+                *) printf "  ${RED}Invalid input, please try again.${NC}\n" ;;
+            esac
+        done
+    fi
+
+    echo ""
+    log_success "Variant: ${WHITE}${VARIANT}${NC}"
+}
+
+# Version selection — pick a specific Wasmtime release
+select_version() {
+    local all_resp="$1"
+    echo ""
+    log_header "Version Selection"
+
+    # Extract up to 10 recent version tags
+    local tags
+    tags=$(echo "$all_resp" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | head -10)
+    local count=0
+    local -a tag_list
+    while IFS= read -r t; do
+        [ -n "$t" ] && tag_list+=("$t") && count=$((count + 1))
+    done <<< "$tags"
+
+    if [ "$count" -le 1 ]; then
+        SELECTED_VERSION="${tag_list[0]:-unknown}"
+        log_info "Only one version available: ${GREEN}${SELECTED_VERSION}${NC}"
+        return
+    fi
+
+    printf "  Available versions:\n"
+    local i=0
+    while [ $i -lt $count ]; do
+        local marker="  "
+        [ $i -eq 0 ] && marker="${GREEN}►${NC} "
+        printf "  ${WHITE}%d)${NC} %s%s\n" "$((i + 1))" "$marker" "${tag_list[$i]}"
+        i=$((i + 1))
+    done
+    echo ""
+
+    local valid=false
+    while [ "$valid" = false ]; do
+        printf "  ${CYAN}Choice [1-%d] (default: 1 = latest):${NC} " "$count"
+        read c
+        case "$c" in
+            "") SELECTED_VERSION="${tag_list[0]}"; valid=true ;;
+            *)
+                if [[ "$c" =~ ^[1-9][0-9]*$ ]] && [ "$c" -ge 1 ] && [ "$c" -le "$count" ]; then
+                    SELECTED_VERSION="${tag_list[$((c - 1))]}"
+                    valid=true
+                else
+                    printf "  ${RED}Invalid input, please try again.${NC}\n"
+                fi
+                ;;
+        esac
+    done
+
+    echo ""
+    log_success "Version: ${WHITE}${SELECTED_VERSION}${NC}"
 }
 
 # [NEW] Configure Concurrency
@@ -120,10 +282,11 @@ configure_settings() {
 deploy_platform() {
     local arc=$1
     local plat=$2
+    local variant=$3
     local fname=$(basename "$arc")
     local t_dir=$(dirname "$arc")
     local ex_dir="$t_dir/extracted"
-    local f_path="${PLATFORMS_ROOT}/${plat}"
+    local f_path="${PLATFORMS_ROOT}/${SELECTED_VERSION}/${variant}/${plat}"
 
     log_step "Deploying: ${WHITE}${plat}${NC}"
     log_detail "Archive: ${CYAN}${fname}${NC}"
@@ -173,22 +336,42 @@ mkdir -p "$TEMP_WORK_DIR" "$PLATFORMS_ROOT"
 log_header "Wasmtime SDK Init"
 setup_proxy "$1"
 
-# 1. Fetch Info
+# 1. Fetch releases
 log_info "Fetching releases..."
-RESP=$(curl -s --retry 3 --connect-timeout 10 "https://api.github.com/repos/$REPO/releases/latest")
-TAG=$(echo "$RESP" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-if [ -z "$TAG" ]; then log_error "Fetch failed."; exit 1; fi
-log_info "Version: ${GREEN}${TAG}${NC}"
+ALL_RELEASES=$(curl -s --retry 3 --connect-timeout 10 "https://api.github.com/repos/$REPO/releases?per_page=10")
+if [ -z "$ALL_RELEASES" ] || echo "$ALL_RELEASES" | grep -q '"message":.*Not Found'; then
+    log_error "Fetch failed."
+    exit 1
+fi
 
 # 2. Interactions
+select_version "$ALL_RELEASES"
+
+# Fetch the specific version's release details for asset URLs
+RESP=$(curl -s --retry 3 --connect-timeout 10 "https://api.github.com/repos/$REPO/releases/tags/${SELECTED_VERSION}")
+if [ -z "$RESP" ] || echo "$RESP" | grep -q '"message":.*Not Found'; then
+    log_error "Failed to fetch release: ${SELECTED_VERSION}"
+    exit 1
+fi
+log_info "Version: ${GREEN}${SELECTED_VERSION}${NC}"
+
 select_target
+select_variant
 configure_settings
 
 # 3. Analyze (Async Probing)
 log_info "Analyzing targets..."
-D_URLS=$(echo "$RESP" | grep '"browser_download_url":' | grep '\-pulley-min-c-api' | sed -E 's/.*"([^"]+)".*/\1/')
+# All min-c-api assets (both pulley and cranelift match "-min-c-api").
+# For cranelift: exclude pulley variants. For pulley: only pulley variants. For both: all.
+if [ "$VARIANT" = "both" ]; then
+    D_URLS=$(echo "$RESP" | grep '"browser_download_url":' | grep '\-min-c-api' | sed -E 's/.*"([^"]+)".*/\1/')
+elif [ "$VARIANT" = "pulley" ]; then
+    D_URLS=$(echo "$RESP" | grep '"browser_download_url":' | grep '\-pulley-min-c-api' | sed -E 's/.*"([^"]+)".*/\1/')
+else
+    D_URLS=$(echo "$RESP" | grep '"browser_download_url":' | grep '\-min-c-api' | grep -v '\-pulley-min-c-api' | sed -E 's/.*"([^"]+)".*/\1/')
+fi
 
-declare -a URLS FILES PLATFORMS TOTALS CURRENTS PREV_SIZES LAST_TIMES SPEEDS ETAS JOB_STATUS
+declare -a URLS FILES PLATFORMS VARIANTS TOTALS CURRENTS PREV_SIZES LAST_TIMES SPEEDS ETAS JOB_STATUS
 # JOB_STATUS: 0=Pending, 1=Running, 2=Done
 count=0
 
@@ -198,42 +381,52 @@ for url in $D_URLS; do
     
     # --- 过滤器逻辑 (Filter Logic) ---
     if [ "$USER_FILTER" != "all" ]; then
-        if [ "$USER_FILTER" == "aarch64-ios-pulley-min-c-api" ]; then
-             if [[ "$fname" != *"$USER_FILTER"* ]] || [[ "$fname" == *"sim"* ]]; then continue; fi
-        else
-             if [[ "$fname" != *"$USER_FILTER"* ]]; then continue; fi
-        fi
+        # Use short filter IDs that are substrings of both pulley and cranelift asset names
+        local short_filter
+        case "$USER_FILTER" in
+            aarch64-ios-pulley-min-c-api)     short_filter="aarch64-ios" ;;
+            aarch64-ios-sim-pulley-min-c-api) short_filter="aarch64-ios" ;;
+            *)                                short_filter="$USER_FILTER" ;;
+        esac
+        if [[ "$fname" != *"$short_filter"* ]]; then continue; fi
+        # iOS: exclude simulator when selecting device, and vice versa
+        if [ "$USER_FILTER" = "aarch64-ios-pulley-min-c-api" ] && [[ "$fname" == *"sim"* ]]; then continue; fi
+        if [ "$USER_FILTER" = "aarch64-ios-sim-pulley-min-c-api" ] && [[ "$fname" != *"sim"* ]]; then continue; fi
     fi
 
     # --- 路径映射逻辑 (Path Mapping) ---
-    # 根据文件名特征，精确拆分到不同目录
+    # Strip variant suffix to get a variant-agnostic core name for matching.
+    #   cranelift: ...-min-c-api.tar.xz  → strip "-min-c-api"
+    #   pulley:    ...-pulley-min-c-api.tar.xz → strip "-pulley-min-c-api"
+    local core_name
+    core_name=$(echo "$fname" | sed -E 's/(-pulley)?-min-c-api.*//')
     plat=""
-    case "$fname" in
-        *armv7-android-pulley-min*)        plat="android/armeabi-v7a" ;;
-        *x86_64-android-pulley-min*)       plat="android/x86_64" ;;
-        *x86-android-pulley-min*)          plat="android/x86" ;;
-        *aarch64-android-pulley-min*)      plat="android/arm64-v8a" ;;
-        
-        # iOS 拆分
-        *aarch64-ios-sim-pulley-min*)      plat="ios/simulator-arm64" ;;
-        *aarch64-ios-pulley-min-c-api*)    plat="ios/arm64" ;; 
-        
-        # Linux 拆分
-        *aarch64-linux-pulley-min*)        plat="linux/aarch64" ;;
-        *x86_64-linux-pulley-min*)         plat="linux/x64" ;;
-        
-        # macOS 拆分
-        *aarch64-macos-pulley-min*)        plat="mac/aarch64" ;;
-        *x86_64-macos-pulley-min*)         plat="mac/x64" ;;
-        
-        # Windows
-        *x86_64-windows-pulley-min*)       plat="windows/x64" ;;
+    case "$core_name" in
+        *armv7-android*)        plat="android/armeabi-v7a" ;;
+        *x86_64-android*)       plat="android/x86_64" ;;
+        *x86-android*)          plat="android/x86" ;;
+        *aarch64-android*)      plat="android/arm64-v8a" ;;
+        *aarch64-ios-sim*)      plat="ios/simulator-arm64" ;;
+        *aarch64-ios*)          plat="ios/arm64" ;;
+        *aarch64-linux*)        plat="linux/aarch64" ;;
+        *x86_64-linux*)         plat="linux/x64" ;;
+        *aarch64-macos*)        plat="mac/aarch64" ;;
+        *x86_64-macos*)         plat="mac/x64" ;;
+        *x86_64-windows*)       plat="windows/x64" ;;
     esac
 
     if [ -n "$plat" ]; then
+        # Determine per-asset variant from filename
+        local asset_variant
+        if [[ "$fname" == *"-pulley-min-c-api"* ]]; then
+            asset_variant="pulley"
+        else
+            asset_variant="cranelift"
+        fi
         URLS[$count]=$url
         FILES[$count]="${TEMP_WORK_DIR}/job_${count}/${fname}"
         PLATFORMS[$count]=$plat
+        VARIANTS[$count]=$asset_variant
         CURRENTS[$count]=0; PREV_SIZES[$count]=0; SPEEDS[$count]=0; ETAS[$count]="--:--"
         JOB_STATUS[$count]=0
         LAST_TIMES[$count]=$(get_time_ms)
@@ -355,7 +548,7 @@ while [ "$completed_jobs" -lt "$count" ]; do
             status_txt="${cur_s}/${tot_s} | ${YELLOW}$(format_size ${SPEEDS[$i]})/s${NC} | ETA ${CYAN}${ETAS[$i]}${NC}"
         fi
 
-        pad_plat=$(printf "%-18s" "${PLATFORMS[$i]}")
+        pad_plat=$(printf "%-28s" "${VARIANTS[$i]}/${PLATFORMS[$i]}")
         FRAME_BUF+="${pad_plat} ${bar} ${WHITE}${perc}%${NC} | ${status_txt}\033[K\n"
     done
 
@@ -375,7 +568,7 @@ echo ""
 # 5. Deploy
 log_info "Deploying..."
 for ((i=0; i<count; i++)); do
-    [ -f "${FILES[$i]}" ] && deploy_platform "${FILES[$i]}" "${PLATFORMS[$i]}"
+    [ -f "${FILES[$i]}" ] && deploy_platform "${FILES[$i]}" "${PLATFORMS[$i]}" "${VARIANTS[$i]}"
     echo ""
 done
 
@@ -384,7 +577,7 @@ if [ -f "$ERROR_FLAG_FILE" ]; then
     exit 1
 else
     log_header "Success"
-    echo -e "Location: ${PLATFORMS_ROOT}/"
+    echo -e "Location: ${PLATFORMS_ROOT}/${SELECTED_VERSION}/"
     rm -rf "$TEMP_WORK_DIR"
     exit 0
 fi

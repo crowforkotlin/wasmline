@@ -74,69 +74,157 @@ def format_size(n: int) -> str:
 
 # ── Target menu ──────────────────────────────────────────────────────────────
 
+# Ordered, grouped by platform family.  Each entry: key, display_name, filter_id, install_path.
 TARGETS = [
-    {"key": "1", "name": "Android / arm64-v8a", "filter": "aarch64-android", "platform": "android/arm64-v8a", "asset": "aarch64-android-pulley-min-c-api"},
-    {"key": "2", "name": "iOS Device / arm64", "filter": "aarch64-ios-pulley-min-c-api", "platform": "ios/arm64", "asset": "aarch64-ios-pulley-min-c-api"},
-    {"key": "3", "name": "iOS Simulator / simulator-arm64", "filter": "aarch64-ios-sim-pulley-min-c-api", "platform": "ios/simulator-arm64", "asset": "aarch64-ios-sim-pulley-min-c-api"},
-    {"key": "4", "name": "Linux / aarch64", "filter": "aarch64-linux", "platform": "linux/aarch64", "asset": "aarch64-linux-pulley-min-c-api"},
-    {"key": "5", "name": "Linux / x64", "filter": "x86_64-linux", "platform": "linux/x64", "asset": "x86_64-linux-pulley-min-c-api"},
-    {"key": "6", "name": "macOS / aarch64", "filter": "aarch64-macos", "platform": "mac/aarch64", "asset": "aarch64-macos-pulley-min-c-api"},
-    {"key": "7", "name": "macOS / x64", "filter": "x86_64-macos", "platform": "mac/x64", "asset": "x86_64-macos-pulley-min-c-api"},
-    {"key": "8", "name": "Windows / x64", "filter": "x86_64-windows", "platform": "windows/x64", "asset": "x86_64-windows-pulley-min-c-api"},
-    {"key": "9", "name": "Android / armeabi-v7a", "filter": "armv7-android", "platform": "android/armeabi-v7a", "asset": "armv7-android-pulley-min-c-api"},
-    {"key": "x", "name": "Android / x86 (32-bit)", "filter": "x86-android", "platform": "android/x86", "asset": "x86-android-pulley-min-c-api"},
-    {"key": "0", "name": "Android / x86_64", "filter": "x86_64-android", "platform": "android/x86_64", "asset": "x86_64-android-pulley-min-c-api"},
-    {"key": "a", "name": "All Platforms", "filter": "all", "platform": None, "asset": None},
+    # Android
+    {"key": "1", "name": "Android   arm64-v8a",              "filter": "aarch64-android",                "platform": "android/arm64-v8a"},
+    {"key": "2", "name": "Android   armeabi-v7a  [pulley only]", "filter": "armv7-android",              "platform": "android/armeabi-v7a"},
+    {"key": "3", "name": "Android   x86          [pulley only]", "filter": "x86-android",                "platform": "android/x86"},
+    {"key": "4", "name": "Android   x86_64",                  "filter": "x86_64-android",                 "platform": "android/x86_64"},
+    # iOS
+    {"key": "5", "name": "iOS       arm64 (Device)   [pulley only]", "filter": "aarch64-ios-pulley-min-c-api",   "platform": "ios/arm64"},
+    {"key": "6", "name": "iOS       arm64 (Simulator)[pulley only]", "filter": "aarch64-ios-sim-pulley-min-c-api","platform": "ios/simulator-arm64"},
+    # Linux
+    {"key": "7", "name": "Linux     aarch64",                 "filter": "aarch64-linux",                  "platform": "linux/aarch64"},
+    {"key": "8", "name": "Linux     x64",                     "filter": "x86_64-linux",                   "platform": "linux/x64"},
+    # macOS
+    {"key": "9", "name": "macOS     aarch64",                 "filter": "aarch64-macos",                  "platform": "mac/aarch64"},
+    {"key": "0", "name": "macOS     x64",                     "filter": "x86_64-macos",                   "platform": "mac/x64"},
+    # Windows
+    {"key": "x", "name": "Windows   x64",                     "filter": "x86_64-windows",                 "platform": "windows/x64"},
+    # Other
+    {"key": "a", "name": "All Platforms (cranelift + pulley)", "filter": "all",                           "platform": None},
+]
+
+# Group definitions for menu rendering: (label, [indices into TARGETS])
+TARGET_GROUPS = [
+    ("Android", [0, 1, 2, 3]),
+    ("iOS",     [4, 5]),
+    ("Linux",   [6, 7]),
+    ("macOS",   [8, 9]),
+    ("Windows", [10]),
+    ("Other",   [11]),
 ]
 
 TARGETS_BY_KEY = {target["key"]: target for target in TARGETS}
 
+# Module-level state for variant/version selection flow
+_current_filter: str = ""
+_selected_version: str = ""
+
 PLATFORM_MAP: dict[str, str] = {
+    # Short keys — variant-agnostic (work for both pulley and cranelift assets)
     "aarch64-android":    "android/arm64-v8a",
-    "aarch64-ios-sim-pulley-min-c-api": "ios/simulator-arm64",
-    "aarch64-ios-pulley-min-c-api": "ios/arm64",
+    "aarch64-ios-sim":    "ios/simulator-arm64",
+    "aarch64-ios":        "ios/arm64",
     "aarch64-linux":      "linux/aarch64",
     "x86_64-linux":       "linux/x64",
     "aarch64-macos":      "mac/aarch64",
     "x86_64-macos":       "mac/x64",
     "x86_64-windows":     "windows/x64",
     "armv7-android":      "android/armeabi-v7a",
-    "x86_64-android":     "android/x86_64",
     "x86-android":        "android/x86",
-    # Pulley-min aliases (same platform paths)
-    "aarch64-android-pulley-min-c-api":  "android/arm64-v8a",
-    "x86_64-android-pulley-min-c-api":   "android/x86_64",
-    "x86-android-pulley-min-c-api":      "android/x86",
-    "armv7-android-pulley-min-c-api":    "android/armeabi-v7a",
-    "aarch64-linux-pulley-min-c-api":    "linux/aarch64",
-    "x86_64-linux-pulley-min-c-api":     "linux/x64",
-    "aarch64-macos-pulley-min-c-api":    "mac/aarch64",
-    "x86_64-macos-pulley-min-c-api":     "mac/x64",
-    "x86_64-windows-pulley-min-c-api":   "windows/x64",
+    "x86_64-android":     "android/x86_64",
 }
-
-
-def format_target_summary(target: dict[str, str | None]) -> str:
-    if target["filter"] == "all":
-        return str(target["name"])
-    asset = target.get("asset", target["filter"])
-    return f"{target['name']} -> build/platforms/{target['platform']} [asset: {asset}]"
 
 
 def select_target() -> str:
     print()
     log_header("Platform & Architecture Selection")
-    print("Select specific target:")
-    for target in TARGETS:
-        print(f"  {white(str(target['key']) + ')')} {format_target_summary(target)}")
     print()
+
+    name_w = max(len(t["name"]) for t in TARGETS)
+    name_w = max(name_w, 22)
+
+    for group_label, indices in TARGET_GROUPS:
+        print(f"  {gray(f'── {group_label} ──')}")
+        for i in indices:
+            t = TARGETS[i]
+            padded = t["name"].ljust(name_w)
+            path_str = f"build/platforms/{t['platform']}" if t["platform"] else "—"
+            print(f"  {white(str(t['key']) + ')')} {padded}  {gray(f'→ {path_str}')}")
+        print()
+
     while True:
-        choice = input(f"{cyan('Choice [1-9, 0, x, a]: ')}").strip().lower()
+        choice = input(f"  {cyan('Enter choice [1-9, 0, x, a]:')} ").strip().lower()
         target = TARGETS_BY_KEY.get(choice)
         if target is not None:
-            log_ok(f"Target: {white(format_target_summary(target))}")
+            print()
+            log_ok(f"Target: {white(target['name'])}")
             return str(target["filter"])
-        print(f"{red('Invalid input.')}")
+        print(f"  {red('Invalid input, please try again.')}")
+
+
+# Pulley-only platforms (iOS, armeabi-v7a, x86) — Cranelift not available.
+PULLEY_ONLY_FILTERS = {
+    "aarch64-ios-pulley-min-c-api",
+    "aarch64-ios-sim-pulley-min-c-api",
+    "armv7-android",
+    "x86-android",
+}
+
+
+def select_variant() -> str:
+    """Ask user to choose runtime variant. Returns 'cranelift', 'pulley', or 'both'."""
+    print()
+    log_header("Runtime Variant Selection")
+    global _current_filter
+
+    if _current_filter == "all":
+        variant = "both"
+        log_info("All Platforms: downloading both Cranelift and Pulley assets.")
+    elif _current_filter in PULLEY_ONLY_FILTERS:
+        variant = "pulley"
+        log_info("Platform requires Pulley runtime (no Cranelift support).")
+    else:
+        print(f"  {white('1)')} Cranelift — .pwasm + .cwasm AOT  {gray('(default, larger binary)')}")
+        print(f"  {white('2)')} Pulley    — .pwasm only            {gray('(smaller binary)')}")
+        print()
+        while True:
+            v = input(f"  {cyan('Choice [1/2] (default: 1):')} ").strip()
+            if v in ("", "1"):
+                variant = "cranelift"
+                break
+            if v == "2":
+                variant = "pulley"
+                break
+            print(f"  {red('Invalid input, please try again.')}")
+
+    print()
+    log_ok(f"Variant: {white(variant)}")
+    return variant
+
+
+def select_version(releases: list[dict]) -> str:
+    """Ask user to choose a Wasmtime release version."""
+    print()
+    log_header("Version Selection")
+
+    tags = [r.get("tag_name", "") for r in releases if r.get("tag_name")]
+    if not tags:
+        log_err("No versions found.")
+        sys.exit(1)
+    if len(tags) == 1:
+        log_info(f"Only one version available: {green(tags[0])}")
+        return tags[0]
+
+    print("  Available versions:")
+    for i, tag in enumerate(tags):
+        marker = f"{green('►')} " if i == 0 else "  "
+        print(f"  {white(str(i + 1) + ')')} {marker}{tag}")
+    print()
+
+    while True:
+        raw = input(f"  {cyan(f'Choice [1-{len(tags)}] (default: 1 = latest):')} ").strip()
+        if raw == "":
+            return tags[0]
+        try:
+            n = int(raw)
+            if 1 <= n <= len(tags):
+                return tags[n - 1]
+        except ValueError:
+            pass
+        print(f"  {red('Invalid input, please try again.')}")
 
 
 def configure_concurrency() -> int:
@@ -184,9 +272,9 @@ def download_file(url: str, dest: Path) -> None:
 
 # ── Deploy ───────────────────────────────────────────────────────────────────
 
-def deploy_platform(archive: Path, plat: str) -> None:
-    target = PLATFORMS_ROOT / plat
-    log_step(f"Deploying: {white(plat)}")
+def deploy_platform(archive: Path, plat: str, variant: str) -> None:
+    target = PLATFORMS_ROOT / _selected_version / variant / plat
+    log_step(f"Deploying: {white(f'{variant}/{plat}')}")
     log_detail(f"Archive: {cyan(archive.name)}")
 
     if target.exists():
@@ -229,39 +317,58 @@ def deploy_platform(archive: Path, plat: str) -> None:
 
 # ── Filename → filter matching ───────────────────────────────────────────────
 
-def matches_filter(fname: str, user_filter: str) -> bool:
+def matches_filter(fname: str, user_filter: str, variant: str) -> bool:
+    """Check if an asset filename matches the user's platform filter.
+
+    Uses short filter IDs that are substrings of both pulley and cranelift asset names.
+    """
     if user_filter == "all":
         return True
-    if user_filter == "aarch64-ios-pulley-min-c-api":
-        return user_filter in fname and "sim" not in fname
-    if user_filter in fname:
-        return True
-    return False
+    # Map long filter IDs to short substrings for variant-agnostic matching
+    short_map = {
+        "aarch64-ios-pulley-min-c-api": "aarch64-ios",
+        "aarch64-ios-sim-pulley-min-c-api": "aarch64-ios",
+    }
+    short = short_map.get(user_filter, user_filter)
+    if short not in fname:
+        return False
+    # iOS: exclude simulator when selecting device, and vice versa
+    if user_filter == "aarch64-ios-pulley-min-c-api" and "sim" in fname:
+        return False
+    if user_filter == "aarch64-ios-sim-pulley-min-c-api" and "sim" not in fname:
+        return False
+    return True
 
 
 def fname_to_platform(fname: str) -> str | None:
-    # All matched files are pulley-min-c-api; map filename to platform path.
-    if "aarch64-ios-sim-pulley-min" in fname:
-        return PLATFORM_MAP["aarch64-ios-sim-pulley-min-c-api"]
-    if "aarch64-ios-pulley-min-c-api" in fname:
-        return PLATFORM_MAP["aarch64-ios-pulley-min-c-api"]
-    if "armv7-android-pulley-min" in fname:
+    """Map an asset filename to a platform path, variant-agnostic.
+
+    Strips the variant suffix (-pulley-min-c-api or -min-c-api) to get a
+    core name, then matches against known platform patterns.
+    """
+    import re
+    core = re.sub(r"(-pulley)?-min-c-api.*", "", fname)
+    if "aarch64-ios-sim" in core:
+        return PLATFORM_MAP["aarch64-ios-sim"]
+    if "aarch64-ios" in core:
+        return PLATFORM_MAP["aarch64-ios"]
+    if "armv7-android" in core:
         return PLATFORM_MAP["armv7-android"]
-    if "x86_64-android-pulley-min" in fname:
+    if "x86_64-android" in core:
         return PLATFORM_MAP["x86_64-android"]
-    if "x86-android-pulley-min" in fname:
+    if "x86-android" in core:
         return PLATFORM_MAP["x86-android"]
-    if "aarch64-android-pulley-min" in fname:
+    if "aarch64-android" in core:
         return PLATFORM_MAP["aarch64-android"]
-    if "aarch64-linux-pulley-min" in fname:
+    if "aarch64-linux" in core:
         return PLATFORM_MAP["aarch64-linux"]
-    if "x86_64-linux-pulley-min" in fname:
+    if "x86_64-linux" in core:
         return PLATFORM_MAP["x86_64-linux"]
-    if "aarch64-macos-pulley-min" in fname:
+    if "aarch64-macos" in core:
         return PLATFORM_MAP["aarch64-macos"]
-    if "x86_64-macos-pulley-min" in fname:
+    if "x86_64-macos" in core:
         return PLATFORM_MAP["x86_64-macos"]
-    if "x86_64-windows-pulley-min" in fname:
+    if "x86_64-windows" in core:
         return PLATFORM_MAP["x86_64-windows"]
     return None
 
@@ -275,39 +382,61 @@ def main() -> None:
     log_header("Wasmtime SDK Init")
     setup_proxy(sys.argv[1] if len(sys.argv) > 1 else None)
 
-    # 1. Fetch release info
+    # 1. Fetch releases
     log_info("Fetching releases...")
     try:
-        data = api_get_json(f"https://api.github.com/repos/{REPO}/releases/latest")
+        all_releases = api_get_json(f"https://api.github.com/repos/{REPO}/releases?per_page=10")
     except (URLError, OSError) as exc:
         log_err(f"Fetch failed: {exc}")
         sys.exit(1)
 
+    # 2. Version selection
+    global _selected_version
+    _selected_version = select_version(all_releases)
+
+    # Fetch the specific version's release details for asset URLs
+    try:
+        data = api_get_json(f"https://api.github.com/repos/{REPO}/releases/tags/{_selected_version}")
+    except (URLError, OSError) as exc:
+        log_err(f"Failed to fetch release: {exc}")
+        sys.exit(1)
     tag = data.get("tag_name", "")
     if not tag:
         log_err("Fetch failed: no tag_name in response.")
         sys.exit(1)
     log_info(f"Version: {green(tag)}")
 
-    # 2. Interactive selections
+    # 3. Interactive selections
+    global _current_filter
     user_filter = select_target()
+    _current_filter = user_filter
+    variant = select_variant()
     max_concurrent = configure_concurrency()
 
     # 3. Collect download URLs
     log_info("Analyzing targets...")
     assets = data.get("assets", [])
-    jobs: list[tuple[str, str, str]] = []  # (url, fname, plat)
+    jobs: list[tuple[str, str, str, str]] = []  # (url, fname, plat, variant)
 
     for asset in assets:
         url: str = asset.get("browser_download_url", "")
         fname = url.rsplit("/", 1)[-1] if url else ""
-        if "-pulley-min-c-api" not in fname:
+        # Must be a min-c-api asset
+        if "-min-c-api" not in fname:
             continue
-        if not matches_filter(fname, user_filter):
+        # Determine per-asset variant from filename
+        asset_variant = "pulley" if "-pulley-min-c-api" in fname else "cranelift"
+        # Filter by variant (skip when "both")
+        if variant != "both":
+            if variant == "pulley" and asset_variant != "pulley":
+                continue
+            if variant == "cranelift" and asset_variant != "cranelift":
+                continue
+        if not matches_filter(fname, user_filter, variant):
             continue
         plat = fname_to_platform(fname)
         if plat:
-            jobs.append((url, fname, plat))
+            jobs.append((url, fname, plat, asset_variant))
 
     if not jobs:
         log_warn("No assets found.")
@@ -319,7 +448,7 @@ def main() -> None:
     # 4. Download
     errors: list[str] = []
 
-    def do_download(url: str, fname: str, plat: str) -> tuple[str, Path]:
+    def do_download(url: str, fname: str, plat: str, asset_variant: str) -> tuple[str, Path, str]:
         tmp = Path(tempfile.mkdtemp(dir=PLATFORMS_ROOT))
         dest = tmp / fname
         t0 = time.monotonic()
@@ -327,17 +456,18 @@ def main() -> None:
             download_file(url, dest)
             elapsed = time.monotonic() - t0
             size_str = format_size(dest.stat().st_size)
-            log_ok(f"{plat:18s}  {size_str:>10s}  {elapsed:5.1f}s  {cyan(fname)}")
+            label = f"{asset_variant}/{plat}"
+            log_ok(f"{label:28s}  {size_str:>10s}  {elapsed:5.1f}s  {cyan(fname)}")
         except Exception as exc:
             errors.append(f"{fname}: {exc}")
             log_err(f"{plat:18s}  FAILED  {fname}")
             shutil.rmtree(tmp, ignore_errors=True)
             raise
-        return plat, dest
+        return plat, dest, asset_variant
 
-    downloaded: list[tuple[str, Path]] = []
+    downloaded: list[tuple[str, Path, str]] = []
     with ThreadPoolExecutor(max_workers=max_concurrent) as pool:
-        futures = {pool.submit(do_download, url, fname, plat): plat for url, fname, plat in jobs}
+        futures = {pool.submit(do_download, url, fname, plat, av): plat for url, fname, plat, av in jobs}
         for fut in as_completed(futures):
             try:
                 downloaded.append(fut.result())
@@ -350,9 +480,9 @@ def main() -> None:
 
     # 5. Deploy
     log_info("Deploying...")
-    for plat, archive in downloaded:
+    for plat, archive, asset_variant in downloaded:
         try:
-            deploy_platform(archive, plat)
+            deploy_platform(archive, plat, asset_variant)
         except Exception as exc:
             errors.append(str(exc))
         # Clean temp dir containing the archive
@@ -366,7 +496,7 @@ def main() -> None:
         sys.exit(1)
 
     log_header("Success")
-    print(f"Location: {PLATFORMS_ROOT}/")
+    print(f"Location: {PLATFORMS_ROOT / _selected_version}/")
 
 
 if __name__ == "__main__":
