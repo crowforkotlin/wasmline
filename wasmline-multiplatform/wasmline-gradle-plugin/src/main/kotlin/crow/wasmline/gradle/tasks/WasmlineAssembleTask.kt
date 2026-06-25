@@ -25,7 +25,7 @@ import java.util.zip.ZipOutputStream
  *
  * The task performs the following steps:
  * 1. Locate the `.wasm` file produced by the Kotlin/WasmWasi compilation task.
- * 2. Run `wasmtime-min` AOT compilation for each configured target architecture.
+ * 2. Run `wasmtime` AOT compilation for each configured target architecture.
  * 3. Build and sign the `manifest.wlm` (Protobuf-encoded + Ed25519).
  * 4. Package all artifacts into a distributable `.zip`.
  *
@@ -93,7 +93,7 @@ abstract class WasmlineAssembleTask : DefaultTask() {
 
     // ==================== Wasmtime config ====================
 
-    /** Directory containing the `wasmtime-min` executable. */
+    /** Directory containing the `wasmtime` executable. */
     @get:InputDirectory
     abstract val wasmtimeDirectory: DirectoryProperty
 
@@ -146,7 +146,7 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         logger.lifecycle("========== Step 1: Wasmtime Compile ==========")
 
         val wasmtimeExec = WasmtimeCompiler.resolveExecutable(wasmtimeDirectory.get().asFile)
-        logger.lifecycle("Using wasmtime-min: ${wasmtimeExec.absolutePath}")
+        logger.lifecycle("Using wasmtime: ${wasmtimeExec.absolutePath}")
 
         val artifacts = WasmtimeCompiler.compileAll(
             wasmtimeExec = wasmtimeExec,
@@ -158,7 +158,7 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         )
 
         if (artifacts.isEmpty()) {
-            throw GradleException("No artifacts produced by wasmtime compilation. Check wasmtime-min installation.")
+            throw GradleException("No artifacts produced by wasmtime compilation. Check wasmtime installation.")
         }
 
         WasmtimeCompiler.writeCompileResult(wasmFile, debugDir, artifacts)

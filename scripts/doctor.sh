@@ -7,8 +7,11 @@ PLATFORMS_ROOT="${ROOT_DIR}/build/platforms"
 PROFILE_FILES=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile")
 PLATFORM_TARGETS=(
     "android/arm64-v8a|Android arm64-v8a|aarch64-android"
-    "ios/arm64|iOS arm64 device|aarch64-ios-c-api"
-    "ios/simulator-arm64|iOS arm64 simulator|aarch64-ios-sim"
+    "android/armeabi-v7a|Android armeabi-v7a|armv7-android"
+    "android/x86_64|Android x86_64|x86_64-android"
+    "android/x86|Android x86 (32-bit)|x86-android"
+    "ios/arm64|iOS arm64 device|aarch64-ios-pulley-min-c-api"
+    "ios/simulator-arm64|iOS arm64 simulator|aarch64-ios-sim-pulley-min-c-api"
     "linux/aarch64|Linux aarch64|aarch64-linux"
     "linux/x64|Linux x64|x86_64-linux"
     "mac/aarch64|macOS aarch64|aarch64-macos"

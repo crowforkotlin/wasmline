@@ -74,13 +74,16 @@ function tmpDir() {
 
 const TARGETS = [
   { key: "1", name: "Android / arm64-v8a", filter: "aarch64-android", platform: "android/arm64-v8a" },
-  { key: "2", name: "iOS Device / arm64", filter: "aarch64-ios-c-api", platform: "ios/arm64" },
-  { key: "3", name: "iOS Simulator / simulator-arm64", filter: "aarch64-ios-sim", platform: "ios/simulator-arm64" },
+  { key: "2", name: "iOS Device / arm64", filter: "aarch64-ios-pulley-min-c-api", platform: "ios/arm64" },
+  { key: "3", name: "iOS Simulator / simulator-arm64", filter: "aarch64-ios-sim-pulley-min-c-api", platform: "ios/simulator-arm64" },
   { key: "4", name: "Linux / aarch64", filter: "aarch64-linux", platform: "linux/aarch64" },
   { key: "5", name: "Linux / x64", filter: "x86_64-linux", platform: "linux/x64" },
   { key: "6", name: "macOS / aarch64", filter: "aarch64-macos", platform: "mac/aarch64" },
   { key: "7", name: "macOS / x64", filter: "x86_64-macos", platform: "mac/x64" },
   { key: "8", name: "Windows / x64", filter: "x86_64-windows", platform: "windows/x64" },
+  { key: "9", name: "Android / armeabi-v7a", filter: "armv7-android", platform: "android/armeabi-v7a" },
+  { key: "x", name: "Android / x86 (32-bit)", filter: "x86-android", platform: "android/x86" },
+  { key: "0", name: "Android / x86_64", filter: "x86_64-android", platform: "android/x86_64" },
   { key: "a", name: "All Platforms", filter: "all", platform: null },
 ];
 
@@ -93,13 +96,16 @@ function formatTargetSummary(target) {
 
 const PLATFORM_MAP = {
   "aarch64-android": "android/arm64-v8a",
-  "aarch64-ios-sim": "ios/simulator-arm64",
-  "aarch64-ios-c-api": "ios/arm64",
+  "aarch64-ios-sim-pulley-min-c-api": "ios/simulator-arm64",
+  "aarch64-ios-pulley-min-c-api": "ios/arm64",
   "aarch64-linux": "linux/aarch64",
   "x86_64-linux": "linux/x64",
   "aarch64-macos": "mac/aarch64",
   "x86_64-macos": "mac/x64",
   "x86_64-windows": "windows/x64",
+  "armv7-android": "android/armeabi-v7a",
+  "x86-android": "android/x86",
+  "x86_64-android": "android/x86_64",
 };
 
 async function selectTarget() {
@@ -111,7 +117,7 @@ async function selectTarget() {
   }
   console.log();
   while (true) {
-    const choice = (await ask(`${cyan("Choice [1-8, a]: ")}`)).toLowerCase();
+    const choice = (await ask(`${cyan("Choice [1-9, 0, x, a]: ")}`)).toLowerCase();
     const target = TARGETS_BY_KEY.get(choice);
     if (target) {
       logOk(`Target: ${white(formatTargetSummary(target))}`);
@@ -297,6 +303,7 @@ function findMsysTar() {
 
 function findIncludeDir(root) {
   const entries = readdirSync(root, { withFileTypes: true });
+  // Check for min/ subdirectory first (min variant structure)
   if (
     entries.some((e) => e.isDirectory() && e.name === "min") &&
     existsSync(join(root, "min", "include")) &&
@@ -305,8 +312,26 @@ function findIncludeDir(root) {
     return join(root, "min");
   }
   for (const e of entries) {
-    if (e.isDirectory()) {
+    if (e.isDirectory() && e.name !== "min") {
       const found = findIncludeDir(join(root, e.name));
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** Find include/lib at any level (non-min variant fallback). */
+function findIncludeDirFallback(root) {
+  const entries = readdirSync(root, { withFileTypes: true });
+  if (
+    entries.some((e) => e.isDirectory() && e.name === "include") &&
+    entries.some((e) => e.isDirectory() && e.name === "lib")
+  ) {
+    return root;
+  }
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      const found = findIncludeDirFallback(join(root, e.name));
       if (found) return found;
     }
   }
@@ -326,8 +351,9 @@ function deployPlatform(archive, plat) {
   const tmp = tmpDir();
   try {
     extractArchive(archive, tmp);
-    const cRoot = findIncludeDir(tmp);
-    if (!cRoot) throw new Error(`Invalid min structure: ${basename(archive)}`);
+    let cRoot = findIncludeDir(tmp);
+    if (!cRoot) cRoot = findIncludeDirFallback(tmp);
+    if (!cRoot) throw new Error(`Invalid artifact structure: ${basename(archive)}`);
 
     const srcInclude = join(cRoot, "include");
     const srcLib = join(cRoot, "lib");
@@ -344,17 +370,26 @@ function deployPlatform(archive, plat) {
 
 function matchesFilter(fname, filter) {
   if (filter === "all") return true;
-  if (filter === "aarch64-ios-c-api") {
+  if (filter === "aarch64-ios-pulley-min-c-api") {
     return fname.includes(filter) && !fname.includes("sim");
   }
   return fname.includes(filter);
 }
 
 function fnameToPlatform(fname) {
-  // Order matters: sim before generic ios
+  // Exclude pulley variants on 64-bit desktop/Android (keep for 32-bit + iOS)
+  if (fname.includes("-pulley-")) {
+    if (!["armv7-android", "x86-android", "aarch64-ios"].some((k) => fname.includes(k))) {
+      return null;
+    }
+  }
+  // Order matters: more specific patterns first
   const keys = [
-    "aarch64-ios-sim",
-    "aarch64-ios-c-api",
+    "aarch64-ios-sim-pulley-min-c-api",
+    "aarch64-ios-pulley-min-c-api",
+    "armv7-android",
+    "x86_64-android",
+    "x86-android",
     "aarch64-android",
     "aarch64-linux",
     "x86_64-linux",
@@ -402,7 +437,7 @@ async function main() {
   for (const asset of data.assets || []) {
     const url = asset.browser_download_url || "";
     const fname = basename(url);
-    if (!fname.includes("c-api")) continue;
+    if (!fname.includes("-min-c-api")) continue;
     if (!matchesFilter(fname, userFilter)) continue;
     const plat = fnameToPlatform(fname);
     if (plat) jobs.push({ url, fname, plat });

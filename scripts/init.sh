@@ -35,14 +35,17 @@ get_time_ms() {
 
 target_summary() {
     case "$1" in
-        aarch64-android)   printf '%s' 'Android / arm64-v8a -> build/platforms/android/arm64-v8a [asset: aarch64-android]' ;;
-        aarch64-ios-c-api) printf '%s' 'iOS Device / arm64 -> build/platforms/ios/arm64 [asset: aarch64-ios-c-api]' ;;
-        aarch64-ios-sim)   printf '%s' 'iOS Simulator / simulator-arm64 -> build/platforms/ios/simulator-arm64 [asset: aarch64-ios-sim]' ;;
-        aarch64-linux)     printf '%s' 'Linux / aarch64 -> build/platforms/linux/aarch64 [asset: aarch64-linux]' ;;
-        x86_64-linux)      printf '%s' 'Linux / x64 -> build/platforms/linux/x64 [asset: x86_64-linux]' ;;
-        aarch64-macos)     printf '%s' 'macOS / aarch64 -> build/platforms/mac/aarch64 [asset: aarch64-macos]' ;;
-        x86_64-macos)      printf '%s' 'macOS / x64 -> build/platforms/mac/x64 [asset: x86_64-macos]' ;;
-        x86_64-windows)    printf '%s' 'Windows / x64 -> build/platforms/windows/x64 [asset: x86_64-windows]' ;;
+        aarch64-android)   printf '%s' 'Android / arm64-v8a -> build/platforms/android/arm64-v8a [asset: aarch64-android-pulley-min-c-api]' ;;
+        aarch64-ios-pulley-min-c-api) printf '%s' 'iOS Device / arm64 -> build/platforms/ios/arm64 [asset: aarch64-ios-pulley-min-c-api]' ;;
+        aarch64-ios-sim-pulley-min-c-api) printf '%s' 'iOS Simulator / simulator-arm64 -> build/platforms/ios/simulator-arm64 [asset: aarch64-ios-sim-pulley-min-c-api]' ;;
+        aarch64-linux)     printf '%s' 'Linux / aarch64 -> build/platforms/linux/aarch64 [asset: aarch64-linux-pulley-min-c-api]' ;;
+        x86_64-linux)      printf '%s' 'Linux / x64 -> build/platforms/linux/x64 [asset: x86_64-linux-pulley-min-c-api]' ;;
+        aarch64-macos)     printf '%s' 'macOS / aarch64 -> build/platforms/mac/aarch64 [asset: aarch64-macos-pulley-min-c-api]' ;;
+        x86_64-macos)      printf '%s' 'macOS / x64 -> build/platforms/mac/x64 [asset: x86_64-macos-pulley-min-c-api]' ;;
+        x86_64-windows)    printf '%s' 'Windows / x64 -> build/platforms/windows/x64 [asset: x86_64-windows-pulley-min-c-api]' ;;
+        armv7-android)     printf '%s' 'Android / armeabi-v7a -> build/platforms/android/armeabi-v7a [asset: armv7-android-pulley-min-c-api]' ;;
+        x86-android)       printf '%s' 'Android / x86 (32-bit) -> build/platforms/android/x86 [asset: x86-android-pulley-min-c-api]' ;;
+        x86_64-android)    printf '%s' 'Android / x86_64 -> build/platforms/android/x86_64 [asset: x86_64-android-pulley-min-c-api]' ;;
         all)               printf '%s' 'All Platforms' ;;
         *)                 printf '%s' "$1" ;;
     esac
@@ -60,30 +63,36 @@ select_target() {
     printf "Select specific target:\n"
     
     print_target_option "1" "aarch64-android"
-    print_target_option "2" "aarch64-ios-c-api"
-    print_target_option "3" "aarch64-ios-sim"
+    print_target_option "2" "aarch64-ios-pulley-min-c-api"
+    print_target_option "3" "aarch64-ios-sim-pulley-min-c-api"
     print_target_option "4" "aarch64-linux"
     print_target_option "5" "x86_64-linux"
     print_target_option "6" "aarch64-macos"
     print_target_option "7" "x86_64-macos"
     print_target_option "8" "x86_64-windows"
+    print_target_option "9" "armv7-android"
+    print_target_option "x" "x86-android"
+    print_target_option "0" "x86_64-android"
     print_target_option "a" "all"
     printf "\n"
 
     local valid=false
     while [ "$valid" = false ]; do
-        printf "${CYAN}Choice [1-8, a]: ${NC}"
+        printf "${CYAN}Choice [1-9, 0, x, a]: ${NC}"
         read c
         case "$c" in
             # 这里的标识符将用于后续的文件名匹配
             1) USER_FILTER="aarch64-android"; valid=true ;;
-            2) USER_FILTER="aarch64-ios-c-api"; valid=true ;; # 特殊处理：需排除 sim
-            3) USER_FILTER="aarch64-ios-sim"; valid=true ;;
+            2) USER_FILTER="aarch64-ios-pulley-min-c-api"; valid=true ;;
+            3) USER_FILTER="aarch64-ios-sim-pulley-min-c-api"; valid=true ;;
             4) USER_FILTER="aarch64-linux";   valid=true ;;
             5) USER_FILTER="x86_64-linux";    valid=true ;;
             6) USER_FILTER="aarch64-macos";   valid=true ;;
             7) USER_FILTER="x86_64-macos";    valid=true ;;
             8) USER_FILTER="x86_64-windows";  valid=true ;;
+            9) USER_FILTER="armv7-android";    valid=true ;;
+            x|X) USER_FILTER="x86-android";    valid=true ;;
+            0) USER_FILTER="x86_64-android";  valid=true ;;
             a|A) USER_FILTER="all";           valid=true ;;
             *) printf "${RED}Invalid input.${NC}\n" ;;
         esac
@@ -137,8 +146,19 @@ deploy_platform() {
         mv "$c_root/lib" "$f_path/"
         log_success "Installed: ${plat}"
     else
-        log_error "Invalid min structure: $fname"
-        touch "$ERROR_FLAG_FILE"
+        # Fallback: non-min structure (include/ and lib/ at top level)
+        local inc_dir
+        inc_dir=$(find "$ex_dir" -maxdepth 3 -type d -name "include" ! -path "*/min/*" 2>/dev/null | head -n 1)
+        local lib_dir
+        lib_dir=$(find "$ex_dir" -maxdepth 3 -type d -name "lib" ! -path "*/min/*" 2>/dev/null | head -n 1)
+        if [ -n "$inc_dir" ] && [ -n "$lib_dir" ]; then
+            mv "$inc_dir" "$f_path/"
+            mv "$lib_dir" "$f_path/"
+            log_success "Installed: ${plat} (non-min)"
+        else
+            log_error "Invalid artifact structure: $fname"
+            touch "$ERROR_FLAG_FILE"
+        fi
     fi
     rm -rf "$t_dir"
 }
@@ -166,7 +186,7 @@ configure_settings
 
 # 3. Analyze (Async Probing)
 log_info "Analyzing targets..."
-D_URLS=$(echo "$RESP" | grep '"browser_download_url":' | grep '\-c-api' | sed -E 's/.*"([^"]+)".*/\1/')
+D_URLS=$(echo "$RESP" | grep '"browser_download_url":' | grep '\-pulley-min-c-api' | sed -E 's/.*"([^"]+)".*/\1/')
 
 declare -a URLS FILES PLATFORMS TOTALS CURRENTS PREV_SIZES LAST_TIMES SPEEDS ETAS JOB_STATUS
 # JOB_STATUS: 0=Pending, 1=Running, 2=Done
@@ -178,12 +198,9 @@ for url in $D_URLS; do
     
     # --- 过滤器逻辑 (Filter Logic) ---
     if [ "$USER_FILTER" != "all" ]; then
-        # 特殊处理 iOS：因为 'aarch64-ios-c-api' 字符串同时也存在于 sim 的文件名中
-        # 如果用户选了 iOS Device (2)，我们需要排除带 'sim' 的文件
-        if [ "$USER_FILTER" == "aarch64-ios-c-api" ]; then
+        if [ "$USER_FILTER" == "aarch64-ios-pulley-min-c-api" ]; then
              if [[ "$fname" != *"$USER_FILTER"* ]] || [[ "$fname" == *"sim"* ]]; then continue; fi
         else
-             # 常规匹配
              if [[ "$fname" != *"$USER_FILTER"* ]]; then continue; fi
         fi
     fi
@@ -192,22 +209,25 @@ for url in $D_URLS; do
     # 根据文件名特征，精确拆分到不同目录
     plat=""
     case "$fname" in
-        *aarch64-android*)      plat="android/arm64-v8a" ;;
+        *armv7-android-pulley-min*)        plat="android/armeabi-v7a" ;;
+        *x86_64-android-pulley-min*)       plat="android/x86_64" ;;
+        *x86-android-pulley-min*)          plat="android/x86" ;;
+        *aarch64-android-pulley-min*)      plat="android/arm64-v8a" ;;
         
         # iOS 拆分
-        *aarch64-ios-sim*)      plat="ios/simulator-arm64" ;;
-        *aarch64-ios-c-api*)    plat="ios/arm64" ;; 
+        *aarch64-ios-sim-pulley-min*)      plat="ios/simulator-arm64" ;;
+        *aarch64-ios-pulley-min-c-api*)    plat="ios/arm64" ;; 
         
         # Linux 拆分
-        *aarch64-linux*)        plat="linux/aarch64" ;;
-        *x86_64-linux*)         plat="linux/x64" ;;
+        *aarch64-linux-pulley-min*)        plat="linux/aarch64" ;;
+        *x86_64-linux-pulley-min*)         plat="linux/x64" ;;
         
         # macOS 拆分
-        *aarch64-macos*)        plat="mac/aarch64" ;;
-        *x86_64-macos*)         plat="mac/x64" ;;
+        *aarch64-macos-pulley-min*)        plat="mac/aarch64" ;;
+        *x86_64-macos-pulley-min*)         plat="mac/x64" ;;
         
         # Windows
-        *x86_64-windows*)       plat="windows/x64" ;;
+        *x86_64-windows-pulley-min*)       plat="windows/x64" ;;
     esac
 
     if [ -n "$plat" ]; then

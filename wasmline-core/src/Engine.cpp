@@ -76,6 +76,15 @@ namespace wasmline {
         // [CRITICAL] Set guard pages to 0 to minimize Virtual Memory usage (prevents OOM)
         wasmtime_config_memory_guard_size_set(conf, 0);
 
+#ifdef WASMTIME_FEATURE_COMPONENT_MODEL_ASYNC
+        // Enable concurrency support to match the compiler-side configuration.
+        // The CLI compile step enables the component-model-async cargo feature,
+        // which sets concurrency_support=true in the serialized .pwasm artifact.
+        // The host must match this or deserialization will fail with:
+        // "Module was compiled with concurrency support but it is not enabled for the host"
+        wasmtime_config_concurrency_support_set(conf, true);
+#endif
+
         // Set max stack size (512KB is usually sufficient for mobile logic)
         wasmtime_config_max_wasm_stack_set(conf, 512 * 1024);
 
@@ -83,9 +92,11 @@ namespace wasmline {
             configurePulleyTarget(conf);
         }
 
+#ifdef WASMTIME_FEATURE_COMPILER
         // Compiler Optimization Strategy: Optimize for Speed and Binary Size
         wasmtime_config_cranelift_opt_level_set(conf, WASMTIME_OPT_LEVEL_NONE);
         wasmtime_config_cranelift_debug_verifier_set(conf, false);
+#endif
 
         return conf;
     }

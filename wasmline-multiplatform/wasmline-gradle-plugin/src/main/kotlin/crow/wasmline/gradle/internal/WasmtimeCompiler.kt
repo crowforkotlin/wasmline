@@ -17,7 +17,7 @@ import java.util.Locale
 /**
  * Wasmtime AOT compiler wrapper used by [crow.wasmline.gradle.tasks.WasmlineAssembleTask].
  *
- * This class encapsulates the logic for invoking `wasmtime-min compile` to produce
+ * This class encapsulates the logic for invoking `wasmtime compile` to produce
  * platform-specific AOT (.cwasm) and Pulley (.pwasm) artifacts from a raw `.wasm` file.
  *
  * 2026/6/5
@@ -56,13 +56,16 @@ internal object WasmtimeCompiler {
     )
 
     /**
-     * Locate the `wasmtime-min` executable inside [directory].
+     * Locate the `wasmtime` executable inside [directory].
+     *
+     * Prefers `wasmtime-min` (v45.0.0 and earlier) and falls back to `wasmtime`
+     * (v45.0.3+ where the min artifact only ships a single binary).
      *
      * @throws GradleException if the executable cannot be found.
      */
     fun resolveExecutable(directory: File): File {
         val isWindows = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("win")
-        val candidateNames = if (isWindows) listOf("wasmtime-min.exe") else listOf("wasmtime-min")
+        val candidateNames = if (isWindows) listOf("wasmtime-min.exe", "wasmtime.exe") else listOf("wasmtime-min", "wasmtime")
 
         val executable = candidateNames.firstNotNullOfOrNull { name ->
             directory.walk()
@@ -74,7 +77,7 @@ internal object WasmtimeCompiler {
 
         return executable
             ?: throw GradleException(
-                "wasmtime-min executable not found in '${directory.absolutePath}'. " +
+                "wasmtime executable not found in '${directory.absolutePath}'. " +
                     "Run the 'wasmline download' CLI command first or configure the wasmtime directory " +
                     "via the wasmline { wasmtime { directory = file(\"...\") } } DSL block."
             )

@@ -45,7 +45,7 @@ wasmline {
     wasmtime {
         // wasmtime-min is downloaded by the CLI `download` command into
         // {repoRoot}/build/wasmline/wasmtime/wasmtime-v{VERSION}-{platform}/
-        directory = file("$repoRoot/build/wasmline/wasmtime/wasmtime-v45.0.0-x86_64-linux")
+        directory = file("$repoRoot/build/wasmline/wasmtime/wasmtime-v45.0.3-x86_64-linux-min")
     }
     server {
         port = 8080

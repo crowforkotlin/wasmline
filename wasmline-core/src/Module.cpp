@@ -63,6 +63,7 @@ namespace wasmline {
         wasmtime_error_t *error = nullptr;
 
         if (rawWasm) {
+#ifdef WASMTIME_FEATURE_COMPILER
             std::vector<uint8_t> data = Utils::readFile(filePath);
             if (data.empty()) {
                 LOGE("[Wasmtime] Module --> Failed to read file: %s", filePath.c_str());
@@ -76,6 +77,10 @@ namespace wasmline {
                 data.size(),
                 &module
             );
+#else
+            LOGE("[Wasmtime] Module --> Raw wasm compilation not available (no compiler). Use precompiled .pwasm artifacts. file=%s", filePath.c_str());
+            return nullptr;
+#endif
         } else {
             LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
             error = wasmtime_module_deserialize_file(engine, filePath.c_str(), &module);

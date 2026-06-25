@@ -4,9 +4,7 @@ package crow.wasmline.sample
 
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineHttpResponse
 import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineNetworkClient
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader

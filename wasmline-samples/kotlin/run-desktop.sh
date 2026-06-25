@@ -12,7 +12,7 @@ COMPILE_OUTPUT_ROOT="${SAMPLE_ROOT}/build/desktop-output"
 print_help() {
     cat <<EOF
 Usage:
-  ./${SCRIPT_NAME} [--platform VALUE] [-f pwasm|cwasm] [-q]
+  ./${SCRIPT_NAME} [--platform VALUE] [-f pwasm32|pwasm64|cwasm] [-q]
 
 Build and run the desktop sample.
 
@@ -24,7 +24,9 @@ Options:
                        Windows: x86_64-windows
                      If omitted, auto-detect the current platform.
   -f, --format VALUE Runtime artifact format.
-                     Supported values: pwasm, cwasm.
+                     Supported values: pwasm32, pwasm64, cwasm.
+                     pwasm32 builds the pulley32 (32-bit) runtime artifact.
+                     pwasm64 builds the pulley64 (64-bit) runtime artifact.
                      If omitted, copies both plugin.pwasm and plugin.cwasm.
                      When omitted, runtime prefers plugin.cwasm.
                      When provided, the same format is selected at runtime.

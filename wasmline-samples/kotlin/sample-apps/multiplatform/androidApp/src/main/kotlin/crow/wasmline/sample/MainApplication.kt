@@ -2,6 +2,8 @@ package crow.wasmline.sample
 
 import android.app.Application
 import crow.wasmline.Wasmline
+import crow.wasmline.WasmlineWarmupMode
+import crow.wasmline.loader.WasmlineLoader
 
 /**
  * ● 
@@ -13,6 +15,7 @@ import crow.wasmline.Wasmline
 class MainApplication: Application() {
     override fun onCreate() {
         super.onCreate()
-        Wasmline.Companion.init()
+        WasmlineLoader.bootstrap()
+        WasmlineLoader.warmup(WasmlineWarmupMode.PULLEY)
     }
 }

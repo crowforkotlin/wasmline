@@ -13,7 +13,7 @@ ANDROID_COMPONENT="crow.wasmline/crow.wasmline.sample.MainActivity"
 print_help() {
     cat <<EOF
 Usage:
-  ./${SCRIPT_NAME} [--platform VALUE] [--device SERIAL] [-f pwasm|cwasm] [-q]
+  ./${SCRIPT_NAME} [--platform VALUE] [--device SERIAL] [-f pwasm32|pwasm64|cwasm] [-q]
 
 Build and run the Compose Android sample on a connected device or emulator.
 
@@ -26,7 +26,9 @@ Options:
                      If omitted, auto-detect the current platform.
   --device SERIAL    Optional adb device serial. Uses the default connected device when omitted.
   -f, --format VALUE Runtime artifact format.
-                     Supported values: pwasm, cwasm.
+                     Supported values: pwasm32, pwasm64, cwasm.
+                     pwasm32 builds the pulley32 (32-bit) runtime artifact.
+                     pwasm64 builds the pulley64 (64-bit) runtime artifact.
                      cwasm builds the Android arm64 runtime artifact.
                      If omitted, copies both plugin.pwasm and plugin.cwasm.
                      When omitted, runtime prefers plugin.cwasm.

@@ -5,7 +5,7 @@ plugins {
 
 android {
     defaultConfig {
-        ndk { abiFilters.add("arm64-v8a") }
+        ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")) }
     }
     externalNativeBuild {
         cmake {

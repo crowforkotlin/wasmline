@@ -64,7 +64,7 @@ class Build : CliktCommand(name = "build") {
     private val wasmtimeDir by option("-wt", "--wasmtime")
         .file(mustExist = true, canBeDir = true, canBeFile = false)
         .required()
-        .help("Directory containing the wasmtime-min executable")
+        .help("Directory containing the wasmtime executable")
 
     private val targets by option("-a", "--arch")
         .multiple()
@@ -114,7 +114,7 @@ class Build : CliktCommand(name = "build") {
 
         val wasmtimeExec = Compile.findWasmtimeExecutable(wasmtimeDir)
         if (wasmtimeExec == null) {
-            echo("Error: Could not find 'wasmtime-min' executable in ${wasmtimeDir.absolutePath}", err = true)
+            echo("Error: Could not find 'wasmtime' executable in ${wasmtimeDir.absolutePath}", err = true)
             throw ProgramResult(1)
         }
         echo("Using Wasmtime min: ${wasmtimeExec.absolutePath}")

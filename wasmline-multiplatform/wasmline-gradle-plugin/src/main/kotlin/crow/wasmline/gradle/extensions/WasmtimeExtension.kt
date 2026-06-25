@@ -8,7 +8,7 @@ import org.gradle.api.provider.ListProperty
 import javax.inject.Inject
 
 /**
- * DSL extension for configuring the wasmtime-min AOT compiler used
+ * DSL extension for configuring the wasmtime AOT compiler used
  * during the assembly tasks.
  *
  * ```kotlin
@@ -26,7 +26,7 @@ import javax.inject.Inject
 abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
 
     /**
-     * Directory containing the `wasmtime-min` executable. This tool is
+     * Directory containing the `wasmtime` executable. This tool is
      * typically downloaded via the `wasmline download` CLI command.
      */
     val directory: DirectoryProperty = objects.directoryProperty()

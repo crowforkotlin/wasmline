@@ -62,11 +62,11 @@ class Compile : CliktCommand(name = "compile") {
         .default(File("build/wasmline/output"))
         .help("Output root directory. Default: ./build/wasmline/output")
 
-    // -wt --wasmtime: The root directory where the wasmtime-min tool is located
+    // -wt --wasmtime: The root directory where the wasmtime tool is located
     val wasmtimeDir by option("-wt", "--wasmtime")
         .file(mustExist = true, canBeDir = true, canBeFile = false)
         .required()
-        .help("Directory containing the wasmtime-min executable (downloaded via download command)")
+        .help("Directory containing the wasmtime executable (downloaded via download command)")
 
     // -a --arch: target architecture, multiple selections possible
     val targets by option("-a", "--arch")
@@ -77,7 +77,7 @@ class Compile : CliktCommand(name = "compile") {
     override fun run() {
         val wasmtimeExec = findWasmtimeExecutable(wasmtimeDir)
         if (wasmtimeExec == null) {
-            echo("Error: Could not find 'wasmtime-min' executable in ${wasmtimeDir.absolutePath}", err = true)
+            echo("Error: Could not find 'wasmtime' executable in ${wasmtimeDir.absolutePath}", err = true)
             throw ProgramResult(1)
         }
         echo("Using Wasmtime min: ${wasmtimeExec.absolutePath}")
@@ -123,6 +123,9 @@ class Compile : CliktCommand(name = "compile") {
             "x86_64-linux" to "x86_64-unknown-linux-gnu",
             "aarch64-linux" to "aarch64-unknown-linux-gnu",
             "aarch64-android" to "aarch64-linux-android",
+            "armv7-android" to "armv7-linux-androideabi",
+            "x86-android" to "i686-linux-android",
+            "x86_64-android" to "x86_64-linux-android",
             "aarch64-macos" to "aarch64-apple-darwin",
             "x86_64-macos" to "x86_64-apple-darwin",
             "aarch64-ios" to "aarch64-apple-ios",
@@ -135,6 +138,8 @@ class Compile : CliktCommand(name = "compile") {
             "x86_64-linux",
             "aarch64-linux",
             "aarch64-android",
+            "armv7-android",
+            "x86-android",
             "aarch64-macos",
             "aarch64-ios",
             "x86_64-windows"
@@ -333,9 +338,9 @@ class Compile : CliktCommand(name = "compile") {
         fun findWasmtimeExecutable(directory: File): File? {
             val isWindows = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("win")
             val candidateNames = if (isWindows) {
-                listOf("wasmtime-min.exe")
+                listOf("wasmtime-min.exe", "wasmtime.exe")
             } else {
-                listOf("wasmtime-min")
+                listOf("wasmtime-min", "wasmtime")
             }
             return candidateNames.firstNotNullOfOrNull { targetName ->
                 directory.walk()

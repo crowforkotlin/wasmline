@@ -9,7 +9,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20--RC-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Wasmtime](https://img.shields.io/badge/Wasmtime-45.0.0-5C9BD6?style=flat-square)](https://wasmtime.dev)
+[![Wasmtime](https://img.shields.io/badge/Wasmtime-45.0.3-5C9BD6?style=flat-square)](https://wasmtime.dev)
 [![AGP](https://img.shields.io/badge/AGP-9.2.1-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/build/releases/gradle-plugin)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Web-555555?style=flat-square)](#platform-support)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-WASI-654FF0?style=flat-square&logo=webassembly&logoColor=white)](https://wasi.dev)
@@ -33,7 +33,7 @@ and bridge infrastructure at build time, without runtime reflection, annotation 
 manual marshalling code.
 
 **Dual-path runtime architecture.** Native targets (Android, iOS, macOS, Linux, Windows) execute
-plugins through **Wasmtime v45.0.0 (C-API)** via the Zig 0.15.1-compiled `wasmline-core` native
+plugins through **Wasmtime v45.0.3 (C-API)** via the Zig 0.15.1-compiled `wasmline-core` native
 bridge, accessed over JNI or Kotlin/Native C Interop. Web targets (Kotlin/JS, Kotlin/WasmJS) execute
 plugins through the browser's native `WebAssembly.Module` / `WebAssembly.Instance` containers via a
 inline JavaScript runtime — Wasmtime is not present in the browser
@@ -50,11 +50,11 @@ WASI — including Kotlin, Rust, C/C++, Go, and AssemblyScript.
 
 | Platform          | Target Triple     | Runtime Engine            | Bridge Technology           | Artifact Support    | Module Loader           |
 |-------------------|-------------------|---------------------------|-----------------------------|---------------------|-------------------------|
-| Android           | `arm64-v8a`       | Wasmtime v45.0.0 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
-| iOS               | `arm64`           | Wasmtime v45.0.0 C-API    | C Interop (`.def` cinterop) | `.pwasm`            | `wasmline-core` Session |
-| macOS             | `arm64`           | Wasmtime v45.0.0 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
-| Linux             | `x86_64`          | Wasmtime v45.0.0 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
-| Windows           | `x86_64`          | Wasmtime v45.0.0 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| Android           | `arm64-v8a`       | Wasmtime v45.0.3 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| iOS               | `arm64`           | Wasmtime v45.0.3 C-API    | C Interop (`.def` cinterop) | `.pwasm`            | `wasmline-core` Session |
+| macOS             | `arm64`           | Wasmtime v45.0.3 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| Linux             | `x86_64`          | Wasmtime v45.0.3 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
+| Windows           | `x86_64`          | Wasmtime v45.0.3 C-API    | JNI (Zig 0.15.1 compiled)   | `.cwasm` / `.pwasm` | `wasmline-core` Session |
 | Web - Kotlin/Js   | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Synchronous XHR fetch   |
 | Web - Kotlin/Wasm | Browser JS engine | Browser `WebAssembly` API | Inline JS (`js()` interop)  | Raw `.wasm` only    | Synchronous XHR fetch   |
 
@@ -285,7 +285,7 @@ cd wasmline-multiplatform
 # Execute the full build pipeline
 ./gradlew :wasmline-cli:run --args="build \
   -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v45.0.0-aarch64-macos \
+  -wt build/wasmline/wasmtime/wasmtime-v45.0.3-aarch64-macos \
   --key build/wasmline/keys/ed25519_private.key"
 ```
 
@@ -358,7 +358,7 @@ wasmline-core  (C/C++ · Zig 0.15.1)
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context
         │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
         ▼
-Wasmtime C-API  v45.0.0
+Wasmtime C-API  v45.0.3
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
 Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)

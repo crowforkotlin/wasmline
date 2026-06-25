@@ -17,11 +17,11 @@ Core design decisions:
 
 | Platform | Host / Target | Runtime Engine | Bridge | Artifact Support | Status | Module Loader |
 |---|---|---|---|---|---|---|
-| Android | `arm64-v8a` | Wasmtime v45.0.0 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
-| iOS | `arm64` | Wasmtime v45.0.0 C-API | C Interop (`.def` cinterop) | `.pwasm` | Supported | `wasmline-core` Session |
-| macOS | `arm64` | Wasmtime v45.0.0 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
-| Linux | `x86_64` | Wasmtime v45.0.0 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
-| Windows | `x86_64` | Wasmtime v45.0.0 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
+| Android | `arm64-v8a` | Wasmtime v45.0.3 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
+| iOS | `arm64` | Wasmtime v45.0.3 C-API | C Interop (`.def` cinterop) | `.pwasm` | Supported | `wasmline-core` Session |
+| macOS | `arm64` | Wasmtime v45.0.3 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
+| Linux | `x86_64` | Wasmtime v45.0.3 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
+| Windows | `x86_64` | Wasmtime v45.0.3 C-API | JNI (Zig 0.15.1 compiled) | `.cwasm` / `.pwasm` | Supported | `wasmline-core` Session |
 | Web — Kotlin/JS | Browser JS engine | Browser WebAssembly API | Inline JS | Raw `.wasm` only | Supported | XHR fetch |
 | Web — Kotlin/WasmJS | Browser JS engine | Browser WebAssembly API | Inline JS | Raw `.wasm` only | Supported | XHR fetch |
 
@@ -193,7 +193,7 @@ cd wasmline-multiplatform
 # Execute the full build pipeline
 ./gradlew :wasmline-cli:run --args="build \
   -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v45.0.0-aarch64-macos \
+  -wt build/wasmline/wasmtime/wasmtime-v45.0.3-aarch64-macos \
   --key build/wasmline/keys/ed25519_private.key"
 ```
 
@@ -227,7 +227,7 @@ build/wasmline/
 
 ### Dual-Path Execution Model
 
-- **Native targets** (`jniMain` / `iosMain`) route through `wasmline-core`, then Wasmtime C-API  v45.0.0, and execute precompiled `.cwasm` or `.pwasm` artifacts.
+- **Native targets** (`jniMain` / `iosMain`) route through `wasmline-core`, then Wasmtime C-API  v45.0.3, and execute precompiled `.cwasm` or `.pwasm` artifacts.
 - **Web targets** (`webMain` / `jsMain` / `wasmJsMain`) route through `BrowserWasmlineRuntime`, inline JS `js()` interop, and the browser-native `WebAssembly` API using raw `.wasm` files only.
 
 ### Module Dependency Graph

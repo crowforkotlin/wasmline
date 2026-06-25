@@ -225,6 +225,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r"Zig 版本（要求 \*\*[0-9.]+\*\*）",
                     lambda v: f"Zig 版本（要求 **{v['zig_version']}**）",
+                    min_count=0,
                 ),
                 Rule(
                     r"Zig 版本为 \*\*[0-9.]+\*\*",
@@ -233,6 +234,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r"需要 Zig [0-9]+\.[0-9]+\.[0-9]+",
                     lambda v: f"需要 Zig {v['zig_version']}",
+                    min_count=0,
                 ),
             ),
         ),

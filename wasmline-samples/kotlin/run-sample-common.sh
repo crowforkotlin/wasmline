@@ -93,11 +93,18 @@ run_gradle_with_runtime_format() {
     shift
 
     (
-        if [ -n "$ARTIFACT_FORMAT" ]; then
-            export WASMLINE_ARTIFACT_FORMAT="$ARTIFACT_FORMAT"
-        else
-            unset WASMLINE_ARTIFACT_FORMAT || true
-        fi
+        case "$ARTIFACT_FORMAT" in
+            pwasm|pwasm64|pwasm32)
+                export WASMLINE_ARTIFACT_FORMAT="pwasm"
+                ;;
+            *)
+                if [ -n "$ARTIFACT_FORMAT" ]; then
+                    export WASMLINE_ARTIFACT_FORMAT="$ARTIFACT_FORMAT"
+                else
+                    unset WASMLINE_ARTIFACT_FORMAT || true
+                fi
+                ;;
+        esac
         run_gradle "$directory" "$@"
     )
 }
@@ -162,6 +169,9 @@ normalize_platform() {
 normalize_compile_target() {
     case "$1" in
         aarch64-android)   printf '%s\n' "aarch64-linux-android" ;;
+        armv7-android)     printf '%s\n' "armv7-linux-androideabi" ;;
+        x86-android)       printf '%s\n' "i686-linux-android" ;;
+        x86_64-android)    printf '%s\n' "x86_64-linux-android" ;;
         aarch64-linux)     printf '%s\n' "aarch64-unknown-linux-gnu" ;;
         x86_64-linux)      printf '%s\n' "x86_64-unknown-linux-gnu" ;;
         aarch64-macos)     printf '%s\n' "aarch64-apple-darwin" ;;
@@ -169,6 +179,7 @@ normalize_compile_target() {
         aarch64-ios)       printf '%s\n' "aarch64-apple-ios" ;;
         aarch64-ios-sim)   printf '%s\n' "aarch64-apple-ios-sim" ;;
         x86_64-windows)    printf '%s\n' "x86_64-pc-windows-msvc" ;;
+        pulley32)          printf '%s\n' "pulley32" ;;
         pulley64)          printf '%s\n' "pulley64" ;;
         *)                 printf '%s\n' "$1" ;;
     esac
@@ -176,7 +187,13 @@ normalize_compile_target() {
 
 normalize_artifact_format() {
     case "$1" in
-        pwasm|cwasm)
+        pwasm|pwasm64)
+            printf '%s\n' "pwasm64"
+            ;;
+        pwasm32)
+            printf '%s\n' "pwasm32"
+            ;;
+        cwasm)
             printf '%s\n' "$1"
             ;;
         *)
@@ -348,6 +365,12 @@ resolve_wasmtime_dir() {
         printf '%s\n' "$candidate"
         return 0
     fi
+    # v45.0.3+ min artifact extracts to a -min suffixed directory
+    local min_candidate="${SHARED_WASMTIME_ROOT}/${wasmtime_dir_name}-min"
+    if [ -d "$min_candidate" ]; then
+        printf '%s\n' "$min_candidate"
+        return 0
+    fi
     return 1
 }
 
@@ -357,8 +380,14 @@ find_wasmtime_executable() {
 
     if [[ "$(uname -s)" == CYGWIN* || "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == Windows_NT ]]; then
         executable="$(find "$directory" -type f -name 'wasmtime-min.exe' | sort | head -n 1)"
+        if [ -z "$executable" ]; then
+            executable="$(find "$directory" -type f -name 'wasmtime.exe' | sort | head -n 1)"
+        fi
     else
         executable="$(find "$directory" -type f -name 'wasmtime-min' | sort | head -n 1)"
+        if [ -z "$executable" ]; then
+            executable="$(find "$directory" -type f -name 'wasmtime' | sort | head -n 1)"
+        fi
     fi
 
     printf '%s\n' "$executable"
@@ -392,7 +421,7 @@ ensure_wasmtime_toolchain() {
         fi
     fi
     if [ -z "$wasmtime_executable" ] || [ -z "$wasmtime_dir" ]; then
-        echo "wasmtime-min executable not found in shared toolchain cache for ${PLATFORM}." >&2
+        echo "wasmtime executable not found in shared toolchain cache for ${PLATFORM}." >&2
         echo "Tried cache root: ${SHARED_WASMTIME_ROOT}" >&2
         exit 1
     fi
@@ -446,6 +475,7 @@ build_plugin_pwasm() {
     local output_root="$1"
     local wasmtime_dir="$2"
     local artifact_description="$3"
+    local pulley_target="${4:-pulley64}"
     local input_file
     local compile_args
 
@@ -457,10 +487,10 @@ build_plugin_pwasm() {
         -o "$output_root" \
         -v "$WASMLINE_VERSION" \
         -wt "$wasmtime_dir" \
-        -a pulley64
+        -a "$pulley_target"
     )"
     run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$compile_args"
-    find_first_file "$output_root" "*-pulley64.pwasm" "$artifact_description" 2
+    find_first_file "$output_root" "*-${pulley_target}.pwasm" "$artifact_description" 2
 }
 
 build_plugin_cwasm() {
@@ -496,11 +526,17 @@ build_plugin_runtime_artifact() {
     local artifact_description="$3"
     local cwasm_target="$4"
 
-    if [ "$ARTIFACT_FORMAT" = "cwasm" ]; then
-        build_plugin_cwasm "$output_root" "$wasmtime_dir" "$artifact_description" "$cwasm_target"
-    else
-        build_plugin_pwasm "$output_root" "$wasmtime_dir" "$artifact_description"
-    fi
+    case "$ARTIFACT_FORMAT" in
+        cwasm)
+            build_plugin_cwasm "$output_root" "$wasmtime_dir" "$artifact_description" "$cwasm_target"
+            ;;
+        pwasm32)
+            build_plugin_pwasm "$output_root" "$wasmtime_dir" "$artifact_description" "pulley32"
+            ;;
+        *)
+            build_plugin_pwasm "$output_root" "$wasmtime_dir" "$artifact_description" "pulley64"
+            ;;
+    esac
 }
 
 find_optional_file() {
@@ -532,20 +568,27 @@ build_plugin_runtime_artifacts() {
     rm -rf "$output_root"
     input_file="$(build_plugin_optimized_wasm)"
 
-    if [ "$ARTIFACT_FORMAT" = "pwasm" ]; then
-        targets=("pulley64")
-    elif [ "$ARTIFACT_FORMAT" = "cwasm" ]; then
-        if [ -z "$cwasm_target" ]; then
-            echo "Missing cwasm target for ${artifact_description}" >&2
-            exit 1
-        fi
-        targets=("$(normalize_compile_target "$cwasm_target")")
-    else
-        targets=("pulley64")
-        if [ -n "$cwasm_target" ]; then
-            targets+=("$(normalize_compile_target "$cwasm_target")")
-        fi
-    fi
+    case "$ARTIFACT_FORMAT" in
+        pwasm32)
+            targets=("pulley32")
+            ;;
+        pwasm|pwasm64)
+            targets=("pulley64")
+            ;;
+        cwasm)
+            if [ -z "$cwasm_target" ]; then
+                echo "Missing cwasm target for ${artifact_description}" >&2
+                exit 1
+            fi
+            targets=("$(normalize_compile_target "$cwasm_target")")
+            ;;
+        *)
+            targets=("pulley64")
+            if [ -n "$cwasm_target" ]; then
+                targets+=("$(normalize_compile_target "$cwasm_target")")
+            fi
+            ;;
+    esac
 
     compile_args=(
         compile
@@ -563,7 +606,15 @@ build_plugin_runtime_artifacts() {
     if printf '%s\n' "${targets[@]}" | grep -Fxq 'pulley64'; then
         RUNTIME_PWASM_FILE="$(find_optional_file "$output_root" '*-pulley64.pwasm' 2)"
         if [ -z "$RUNTIME_PWASM_FILE" ]; then
-            echo "Unable to locate ${artifact_description} pwasm artifact under ${output_root}" >&2
+            echo "Unable to locate ${artifact_description} pwasm64 artifact under ${output_root}" >&2
+            exit 1
+        fi
+    fi
+
+    if printf '%s\n' "${targets[@]}" | grep -Fxq 'pulley32'; then
+        RUNTIME_PWASM_FILE="$(find_optional_file "$output_root" '*-pulley32.pwasm' 2)"
+        if [ -z "$RUNTIME_PWASM_FILE" ]; then
+            echo "Unable to locate ${artifact_description} pwasm32 artifact under ${output_root}" >&2
             exit 1
         fi
     fi
@@ -606,16 +657,20 @@ sync_runtime_artifacts() {
         rm -f "$target_dir/${cleanup_base}.pwasm" "$target_dir/${cleanup_base}.cwasm"
     done
 
-    if [ "$ARTIFACT_FORMAT" = "pwasm" ]; then
-        cp "$RUNTIME_PWASM_FILE" "$target_dir/${target_base}.pwasm"
-    elif [ "$ARTIFACT_FORMAT" = "cwasm" ]; then
-        cp "$RUNTIME_CWASM_FILE" "$target_dir/${target_base}.cwasm"
-    else
-        cp "$RUNTIME_PWASM_FILE" "$target_dir/${target_base}.pwasm"
-        if [ -n "$RUNTIME_CWASM_FILE" ]; then
+    case "$ARTIFACT_FORMAT" in
+        pwasm|pwasm64|pwasm32)
+            cp "$RUNTIME_PWASM_FILE" "$target_dir/${target_base}.pwasm"
+            ;;
+        cwasm)
             cp "$RUNTIME_CWASM_FILE" "$target_dir/${target_base}.cwasm"
-        fi
-    fi
+            ;;
+        *)
+            cp "$RUNTIME_PWASM_FILE" "$target_dir/${target_base}.pwasm"
+            if [ -n "$RUNTIME_CWASM_FILE" ]; then
+                cp "$RUNTIME_CWASM_FILE" "$target_dir/${target_base}.cwasm"
+            fi
+            ;;
+    esac
 }
 
 adb_command() {

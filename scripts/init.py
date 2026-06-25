@@ -75,35 +75,52 @@ def format_size(n: int) -> str:
 # ── Target menu ──────────────────────────────────────────────────────────────
 
 TARGETS = [
-    {"key": "1", "name": "Android / arm64-v8a", "filter": "aarch64-android", "platform": "android/arm64-v8a"},
-    {"key": "2", "name": "iOS Device / arm64", "filter": "aarch64-ios-c-api", "platform": "ios/arm64"},
-    {"key": "3", "name": "iOS Simulator / simulator-arm64", "filter": "aarch64-ios-sim", "platform": "ios/simulator-arm64"},
-    {"key": "4", "name": "Linux / aarch64", "filter": "aarch64-linux", "platform": "linux/aarch64"},
-    {"key": "5", "name": "Linux / x64", "filter": "x86_64-linux", "platform": "linux/x64"},
-    {"key": "6", "name": "macOS / aarch64", "filter": "aarch64-macos", "platform": "mac/aarch64"},
-    {"key": "7", "name": "macOS / x64", "filter": "x86_64-macos", "platform": "mac/x64"},
-    {"key": "8", "name": "Windows / x64", "filter": "x86_64-windows", "platform": "windows/x64"},
-    {"key": "a", "name": "All Platforms", "filter": "all", "platform": None},
+    {"key": "1", "name": "Android / arm64-v8a", "filter": "aarch64-android", "platform": "android/arm64-v8a", "asset": "aarch64-android-pulley-min-c-api"},
+    {"key": "2", "name": "iOS Device / arm64", "filter": "aarch64-ios-pulley-min-c-api", "platform": "ios/arm64", "asset": "aarch64-ios-pulley-min-c-api"},
+    {"key": "3", "name": "iOS Simulator / simulator-arm64", "filter": "aarch64-ios-sim-pulley-min-c-api", "platform": "ios/simulator-arm64", "asset": "aarch64-ios-sim-pulley-min-c-api"},
+    {"key": "4", "name": "Linux / aarch64", "filter": "aarch64-linux", "platform": "linux/aarch64", "asset": "aarch64-linux-pulley-min-c-api"},
+    {"key": "5", "name": "Linux / x64", "filter": "x86_64-linux", "platform": "linux/x64", "asset": "x86_64-linux-pulley-min-c-api"},
+    {"key": "6", "name": "macOS / aarch64", "filter": "aarch64-macos", "platform": "mac/aarch64", "asset": "aarch64-macos-pulley-min-c-api"},
+    {"key": "7", "name": "macOS / x64", "filter": "x86_64-macos", "platform": "mac/x64", "asset": "x86_64-macos-pulley-min-c-api"},
+    {"key": "8", "name": "Windows / x64", "filter": "x86_64-windows", "platform": "windows/x64", "asset": "x86_64-windows-pulley-min-c-api"},
+    {"key": "9", "name": "Android / armeabi-v7a", "filter": "armv7-android", "platform": "android/armeabi-v7a", "asset": "armv7-android-pulley-min-c-api"},
+    {"key": "x", "name": "Android / x86 (32-bit)", "filter": "x86-android", "platform": "android/x86", "asset": "x86-android-pulley-min-c-api"},
+    {"key": "0", "name": "Android / x86_64", "filter": "x86_64-android", "platform": "android/x86_64", "asset": "x86_64-android-pulley-min-c-api"},
+    {"key": "a", "name": "All Platforms", "filter": "all", "platform": None, "asset": None},
 ]
 
 TARGETS_BY_KEY = {target["key"]: target for target in TARGETS}
 
 PLATFORM_MAP: dict[str, str] = {
     "aarch64-android":    "android/arm64-v8a",
-    "aarch64-ios-sim":    "ios/simulator-arm64",
-    "aarch64-ios-c-api":  "ios/arm64",
+    "aarch64-ios-sim-pulley-min-c-api": "ios/simulator-arm64",
+    "aarch64-ios-pulley-min-c-api": "ios/arm64",
     "aarch64-linux":      "linux/aarch64",
     "x86_64-linux":       "linux/x64",
     "aarch64-macos":      "mac/aarch64",
     "x86_64-macos":       "mac/x64",
     "x86_64-windows":     "windows/x64",
+    "armv7-android":      "android/armeabi-v7a",
+    "x86_64-android":     "android/x86_64",
+    "x86-android":        "android/x86",
+    # Pulley-min aliases (same platform paths)
+    "aarch64-android-pulley-min-c-api":  "android/arm64-v8a",
+    "x86_64-android-pulley-min-c-api":   "android/x86_64",
+    "x86-android-pulley-min-c-api":      "android/x86",
+    "armv7-android-pulley-min-c-api":    "android/armeabi-v7a",
+    "aarch64-linux-pulley-min-c-api":    "linux/aarch64",
+    "x86_64-linux-pulley-min-c-api":     "linux/x64",
+    "aarch64-macos-pulley-min-c-api":    "mac/aarch64",
+    "x86_64-macos-pulley-min-c-api":     "mac/x64",
+    "x86_64-windows-pulley-min-c-api":   "windows/x64",
 }
 
 
 def format_target_summary(target: dict[str, str | None]) -> str:
     if target["filter"] == "all":
         return str(target["name"])
-    return f"{target['name']} -> build/platforms/{target['platform']} [asset: {target['filter']}]"
+    asset = target.get("asset", target["filter"])
+    return f"{target['name']} -> build/platforms/{target['platform']} [asset: {asset}]"
 
 
 def select_target() -> str:
@@ -114,7 +131,7 @@ def select_target() -> str:
         print(f"  {white(str(target['key']) + ')')} {format_target_summary(target)}")
     print()
     while True:
-        choice = input(f"{cyan('Choice [1-8, a]: ')}").strip().lower()
+        choice = input(f"{cyan('Choice [1-9, 0, x, a]: ')}").strip().lower()
         target = TARGETS_BY_KEY.get(choice)
         if target is not None:
             log_ok(f"Target: {white(format_target_summary(target))}")
@@ -194,8 +211,16 @@ def deploy_platform(archive: Path, plat: str) -> None:
                     break
 
         if include_dir is None:
-            log_err(f"Invalid min structure: {archive.name}")
-            raise RuntimeError(f"No min/include and min/lib found in {archive.name}")
+            # Fallback: non-min structure (include/ and lib/ at top level)
+            for root, dirs, _ in os.walk(tmp_path):
+                if "include" in dirs and "lib" in dirs:
+                    candidate = Path(root)
+                    if "min" not in str(candidate):
+                        include_dir = candidate
+                        break
+            if include_dir is None:
+                log_err(f"Invalid artifact structure: {archive.name}")
+                raise RuntimeError(f"No include/lib found in {archive.name}")
 
         shutil.move(str(include_dir / "include"), str(target / "include"))
         shutil.move(str(include_dir / "lib"), str(target / "lib"))
@@ -207,30 +232,36 @@ def deploy_platform(archive: Path, plat: str) -> None:
 def matches_filter(fname: str, user_filter: str) -> bool:
     if user_filter == "all":
         return True
-    if user_filter == "aarch64-ios-c-api":
+    if user_filter == "aarch64-ios-pulley-min-c-api":
         return user_filter in fname and "sim" not in fname
-    return user_filter in fname
+    if user_filter in fname:
+        return True
+    return False
 
 
 def fname_to_platform(fname: str) -> str | None:
-    for key, plat in PLATFORM_MAP.items():
-        # iOS device needs special ordering: check sim first
-        pass
-    if "aarch64-ios-sim" in fname:
-        return PLATFORM_MAP["aarch64-ios-sim"]
-    if "aarch64-ios-c-api" in fname:
-        return PLATFORM_MAP["aarch64-ios-c-api"]
-    if "aarch64-android" in fname:
+    # All matched files are pulley-min-c-api; map filename to platform path.
+    if "aarch64-ios-sim-pulley-min" in fname:
+        return PLATFORM_MAP["aarch64-ios-sim-pulley-min-c-api"]
+    if "aarch64-ios-pulley-min-c-api" in fname:
+        return PLATFORM_MAP["aarch64-ios-pulley-min-c-api"]
+    if "armv7-android-pulley-min" in fname:
+        return PLATFORM_MAP["armv7-android"]
+    if "x86_64-android-pulley-min" in fname:
+        return PLATFORM_MAP["x86_64-android"]
+    if "x86-android-pulley-min" in fname:
+        return PLATFORM_MAP["x86-android"]
+    if "aarch64-android-pulley-min" in fname:
         return PLATFORM_MAP["aarch64-android"]
-    if "aarch64-linux" in fname:
+    if "aarch64-linux-pulley-min" in fname:
         return PLATFORM_MAP["aarch64-linux"]
-    if "x86_64-linux" in fname:
+    if "x86_64-linux-pulley-min" in fname:
         return PLATFORM_MAP["x86_64-linux"]
-    if "aarch64-macos" in fname:
+    if "aarch64-macos-pulley-min" in fname:
         return PLATFORM_MAP["aarch64-macos"]
-    if "x86_64-macos" in fname:
+    if "x86_64-macos-pulley-min" in fname:
         return PLATFORM_MAP["x86_64-macos"]
-    if "x86_64-windows" in fname:
+    if "x86_64-windows-pulley-min" in fname:
         return PLATFORM_MAP["x86_64-windows"]
     return None
 
@@ -270,7 +301,7 @@ def main() -> None:
     for asset in assets:
         url: str = asset.get("browser_download_url", "")
         fname = url.rsplit("/", 1)[-1] if url else ""
-        if "c-api" not in fname:
+        if "-pulley-min-c-api" not in fname:
             continue
         if not matches_filter(fname, user_filter):
             continue

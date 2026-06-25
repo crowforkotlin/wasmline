@@ -14,6 +14,7 @@ import com.github.ajalt.clikt.parameters.types.file
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
+import io.ktor.client.request.prepareRequest
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.contentLength
@@ -33,6 +34,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
 
 /**
@@ -109,8 +111,10 @@ class Download : CliktCommand(name = "download") {
         val filteredAssets = assets.map { it.jsonObject }.filter { asset ->
             val name = asset["name"]?.jsonPrimitive?.content ?: ""
             val isNotCApi = !name.contains("c-api")
+            val isNotPulley = !name.contains("-pulley")
+            val isMin = name.contains("-min")
             val matchesPlatform = platform == "all" || name.contains(platform)
-            isNotCApi && matchesPlatform
+            isNotCApi && isNotPulley && isMin && matchesPlatform
         }
 
         if (filteredAssets.isEmpty()) {
@@ -122,7 +126,10 @@ class Download : CliktCommand(name = "download") {
                 ?: throw IllegalStateException("Missing asset name in release metadata")
             val downloadUrl = asset["browser_download_url"]?.jsonPrimitive?.content
                 ?: throw IllegalStateException("Missing download url for asset '$fileName'")
-            val folderName = fileName.removeSuffix(".tar.xz").removeSuffix(".zip")
+            val folderName = fileName
+                .removeSuffix(".tar.xz")
+                .removeSuffix(".tar.gz")
+                .removeSuffix(".zip")
             val targetFolder = File(outputDir, folderName)
             val successFile = File(targetFolder, ".success")
             if (successFile.exists() && !forceDownload && Compile.findWasmtimeExecutable(targetFolder) != null) {
@@ -135,6 +142,8 @@ class Download : CliktCommand(name = "download") {
             targetFolder.mkdirs()
 
             val tempFile = File(outputDir, fileName)
+            // Guard against stale directory with the same name as the archive
+            if (tempFile.isDirectory) tempFile.deleteRecursively()
             println("Downloading: $fileName")
 
             val response = client.get(downloadUrl)
@@ -164,6 +173,10 @@ class Download : CliktCommand(name = "download") {
                         println("Extracting TAR.XZ: $fileName...")
                         extractTarXz(tempFile, outputDir)
                     }
+                    fileName.endsWith(".tar.gz") -> {
+                        println("Extracting TAR.GZ: $fileName...")
+                        extractTarGz(tempFile, outputDir)
+                    }
                     fileName.endsWith(".zip") -> {
                         println("Extracting ZIP: $fileName...")
                         extractZip(tempFile, outputDir)
@@ -175,7 +188,7 @@ class Download : CliktCommand(name = "download") {
                 }
                 if (Compile.findWasmtimeExecutable(targetFolder) == null) {
                     targetFolder.deleteRecursively()
-                    throw IllegalStateException("Downloaded asset '$fileName' did not contain wasmtime-min")
+                    throw IllegalStateException("Downloaded asset '$fileName' did not contain wasmtime executable")
                 }
                 successFile.writeText("version=$version\nplatform=$platform\nurl=$downloadUrl")
             } catch (e: Exception) {
@@ -196,18 +209,33 @@ class Download : CliktCommand(name = "download") {
         }
 
         val failures = mutableListOf<String>()
-        urls.forEach { url ->
-            val response = client.get(url)
-            if (!response.status.isSuccess()) {
-                failures += "$url -> HTTP ${response.status.value}"
-                return@forEach
+        for (url in urls) {
+            var result: JsonObject? = null
+            try {
+                client.prepareRequest(url).execute { response ->
+                    if (!response.status.isSuccess()) {
+                        failures += "$url -> HTTP ${response.status.value}"
+                        return@execute
+                    }
+                    val channel = response.bodyAsChannel()
+                    val sb = StringBuilder()
+                    val buf = ByteArray(8192)
+                    while (!channel.isClosedForRead) {
+                        val n = channel.readAvailable(buf)
+                        if (n <= 0) break
+                        sb.append(String(buf, 0, n))
+                    }
+                    val releaseJson = Json.decodeFromString<JsonObject>(sb.toString())
+                    if (releaseJson["assets"] != null) {
+                        result = releaseJson
+                    } else {
+                        failures += "$url -> missing assets"
+                    }
+                }
+            } catch (e: Exception) {
+                failures += "$url -> ${e.message}"
             }
-            val body = response.bodyAsText()
-            val releaseJson = Json.decodeFromString<JsonObject>(body)
-            if (releaseJson["assets"] != null) {
-                return releaseJson
-            }
-            failures += "$url -> missing assets"
+            if (result != null) return result
         }
         throw IllegalStateException(
             "Unable to resolve wasmtime release for '$version'. Tried: ${failures.joinToString("; ")}"
@@ -218,10 +246,10 @@ class Download : CliktCommand(name = "download") {
         val raw = version.trim()
         val base = raw.removePrefix("release-").removePrefix("v")
         return listOf(
-            raw,
+            "release-v$base",
             "v$base",
-            "release-$raw",
-            "release-v$base"
+            raw,
+            "release-$raw"
         ).distinct()
     }
 
@@ -245,6 +273,30 @@ class Download : CliktCommand(name = "download") {
                 }
                 zis.closeEntry()
                 entry = zis.nextEntry
+            }
+        }
+    }
+
+    /**
+     * Extract TAR.GZ archives to target directory
+     */
+    private fun extractTarGz(archive: File, targetDir: File) {
+        archive.inputStream().use { fis ->
+            GZIPInputStream(fis).use { gzis ->
+                TarArchiveInputStream(gzis).use { tais ->
+                    var entry = tais.nextEntry
+                    while (entry != null) {
+                        val outputFile = File(targetDir, entry.name)
+                        if (entry.isDirectory) {
+                            outputFile.mkdirs()
+                        } else {
+                            outputFile.parentFile.mkdirs()
+                            Files.copy(tais, outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                            if (entry.mode != 0) outputFile.setExecutable(true)
+                        }
+                        entry = tais.nextEntry
+                    }
+                }
             }
         }
     }
