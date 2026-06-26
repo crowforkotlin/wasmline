@@ -1,10 +1,14 @@
 #!/bin/bash
 
+# ==============================================================================
+# Run all sample programs (C++ and Go)
+# ==============================================================================
+
 # Exit on any error
 set -e
 
 
-# Import environment variables
+# Source environment context
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
     source "$(dirname $(dirname "${BASH_SOURCE[0]}"))/context.sh"
 fi

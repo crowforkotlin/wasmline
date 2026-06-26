@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # ==============================================================================
-# Wasmtime C-API Init Script (Thread Pool & Frame Buffer)
+# Wasmtime SDK Init Script
+# Download and deploy Wasmtime C-API platform assets with concurrent downloads
 # ==============================================================================
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
@@ -212,9 +213,9 @@ select_variant() {
 }
 
 # Version selection — pick a specific Wasmtime release
+# Simple input: type number or version string, Enter = latest
 select_version() {
     local all_resp="$1"
-    echo ""
     log_header "Version Selection"
 
     # Extract up to 10 recent version tags
@@ -232,38 +233,46 @@ select_version() {
         return
     fi
 
-    printf "  Available versions:\n"
+    # List versions
+    echo ""
+    echo "  Available versions:"
     local i=0
     while [ $i -lt $count ]; do
-        local marker="  "
-        [ $i -eq 0 ] && marker="${GREEN}►${NC} "
-        printf "  ${WHITE}%d)${NC} %s%s\n" "$((i + 1))" "$marker" "${tag_list[$i]}"
+        echo "    $((i + 1))) ${tag_list[$i]}"
         i=$((i + 1))
     done
-    echo ""
 
-    local valid=false
-    while [ "$valid" = false ]; do
-        printf "  ${CYAN}Choice [1-%d] (default: 1 = latest):${NC} " "$count"
-        read c
-        case "$c" in
-            "") SELECTED_VERSION="${tag_list[0]}"; valid=true ;;
-            *)
-                if [[ "$c" =~ ^[1-9][0-9]*$ ]] && [ "$c" -ge 1 ] && [ "$c" -le "$count" ]; then
-                    SELECTED_VERSION="${tag_list[$((c - 1))]}"
-                    valid=true
-                else
-                    printf "  ${RED}Invalid input, please try again.${NC}\n"
-                fi
-                ;;
-        esac
-    done
+    echo ""
+    printf "  ${CYAN}Choice [1-%d or version, Enter=latest]:${NC} " "$count"
+    read -r input
+
+    if [ -z "$input" ]; then
+        SELECTED_VERSION="${tag_list[0]}"
+    elif [[ "$input" =~ ^[1-9][0-9]*$ ]] && [ "$input" -ge 1 ] && [ "$input" -le "$count" ]; then
+        SELECTED_VERSION="${tag_list[$((input - 1))]}"
+    else
+        # Try as direct version string match
+        local found=false
+        local j=0
+        while [ $j -lt $count ]; do
+            if [ "${tag_list[$j]}" = "$input" ]; then
+                SELECTED_VERSION="$input"
+                found=true
+                break
+            fi
+            j=$((j + 1))
+        done
+        if [ "$found" = false ]; then
+            log_warn "Input not matched, using latest: ${GREEN}${tag_list[0]}${NC}"
+            SELECTED_VERSION="${tag_list[0]}"
+        fi
+    fi
 
     echo ""
     log_success "Version: ${WHITE}${SELECTED_VERSION}${NC}"
 }
 
-# [NEW] Configure Concurrency
+# Configure concurrency
 configure_settings() {
     echo ""
     log_header "Download Settings"
@@ -379,10 +388,9 @@ count=0
 for url in $D_URLS; do
     fname=$(basename "$url")
     
-    # --- 过滤器逻辑 (Filter Logic) ---
+    # --- Filter logic ---
     if [ "$USER_FILTER" != "all" ]; then
         # Use short filter IDs that are substrings of both pulley and cranelift asset names
-        local short_filter
         case "$USER_FILTER" in
             aarch64-ios-pulley-min-c-api)     short_filter="aarch64-ios" ;;
             aarch64-ios-sim-pulley-min-c-api) short_filter="aarch64-ios" ;;
@@ -394,11 +402,10 @@ for url in $D_URLS; do
         if [ "$USER_FILTER" = "aarch64-ios-sim-pulley-min-c-api" ] && [[ "$fname" != *"sim"* ]]; then continue; fi
     fi
 
-    # --- 路径映射逻辑 (Path Mapping) ---
+    # --- Path mapping ---
     # Strip variant suffix to get a variant-agnostic core name for matching.
     #   cranelift: ...-min-c-api.tar.xz  → strip "-min-c-api"
     #   pulley:    ...-pulley-min-c-api.tar.xz → strip "-pulley-min-c-api"
-    local core_name
     core_name=$(echo "$fname" | sed -E 's/(-pulley)?-min-c-api.*//')
     plat=""
     case "$core_name" in
@@ -417,7 +424,6 @@ for url in $D_URLS; do
 
     if [ -n "$plat" ]; then
         # Determine per-asset variant from filename
-        local asset_variant
         if [[ "$fname" == *"-pulley-min-c-api"* ]]; then
             asset_variant="pulley"
         else

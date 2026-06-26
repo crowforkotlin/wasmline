@@ -31,6 +31,12 @@ namespace wasmline {
         static void warmupEngine(bool usePulley);
 
         /**
+         * Returns true if this build includes the Cranelift compiler (AOT support).
+         * Determined at compile time by the WASMTIME_FEATURE_COMPILER macro.
+         */
+        static bool supportsAot();
+
+        /**
          * Releases the Global Engine and all resources.
          */
         static void releaseEngine();

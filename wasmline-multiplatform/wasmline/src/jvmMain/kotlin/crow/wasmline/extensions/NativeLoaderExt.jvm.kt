@@ -20,19 +20,6 @@ actual fun loadNativeLibrary() {
         throw IllegalStateException("Unsupported OS: $osName")
     }
     val candidateArchs = archCandidates(osArch)
-
-    // 1. Load wasmtime engine first (from engine module's classpath resources)
-    val wasmtimeJarPath = candidateArchs
-        .map { "/jni/$it/libwasmtime.$extension" }
-        .firstOrNull { Wasmline::class.java.getResource(it) != null }
-        ?: throw IllegalStateException(
-            "Unable to find libwasmtime in JAR. Make sure an engine module (wasmline-engine-pulley or " +
-                "wasmline-engine-cranelift) is on the classpath. os.name=$osName, os.arch=${System.getProperty("os.arch")}, " +
-                "normalizedArch=$osArch, tried=${candidateArchs.joinToString()}"
-        )
-    extractAndLoad(Wasmline::class.java, wasmtimeJarPath)
-
-    // 2. Load wasmline bridge (from core module's classpath resources)
     val wasmlineJarPath = candidateArchs
         .map { "/jni/$it/libwasmline.$extension" }
         .firstOrNull { Wasmline::class.java.getResource(it) != null }

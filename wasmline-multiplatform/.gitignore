@@ -9,3 +9,11 @@
 /wasmline-cli/manifest.md
 /wasmline-cli/download.md
 /wasmline-cli/compile.md
+
+# Engine 模块预编译 native 库（由 build-native-assets.sh 生成）
+wasmline-engine-pulley/src/androidMain/jniLibs/**/*.so
+wasmline-engine-pulley/src/jvmMain/resources/jni/**
+wasmline-engine-cranelift/src/androidMain/jniLibs/**/*.so
+wasmline-engine-cranelift/src/jvmMain/resources/jni/**
+!wasmline-engine-*/src/**/jniLibs/**/.gitkeep
+!wasmline-engine-*/src/**/resources/jni/**/.gitkeep

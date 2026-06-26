@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# ==============================================================================
+# Compile wasmline core static library for iOS targets
+# ==============================================================================
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

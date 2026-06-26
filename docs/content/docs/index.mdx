@@ -17,11 +17,11 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，为 Andro
 
 | 平台 | 宿主 / 目标 | 运行时引擎 | 桥接方式 | 产物支持 | 状态 | 模块加载器 |
 |---|---|---|---|---|---|---|
-| Android | `arm64-v8a` | Wasmtime v45.0.5 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
-| iOS | `arm64` | Wasmtime v45.0.5 C-API | C Interop（`.def` cinterop） | `.pwasm` | 已支持 | `wasmline-core` Session |
-| macOS | `arm64` | Wasmtime v45.0.5 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
-| Linux | `x86_64` | Wasmtime v45.0.5 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
-| Windows | `x86_64` | Wasmtime v45.0.5 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| Android | `arm64-v8a` | Wasmtime v45.0.6 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| iOS | `arm64` | Wasmtime v45.0.6 C-API | C Interop（`.def` cinterop） | `.pwasm` | 已支持 | `wasmline-core` Session |
+| macOS | `arm64` | Wasmtime v45.0.6 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| Linux | `x86_64` | Wasmtime v45.0.6 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
+| Windows | `x86_64` | Wasmtime v45.0.6 C-API | JNI（Zig 0.15.1 编译） | `.cwasm` / `.pwasm` | 已支持 | `wasmline-core` Session |
 | Web — Kotlin/JS | 浏览器 JS 引擎 | 浏览器 WebAssembly API | Inline JS | 仅原始 `.wasm` | 已支持 | XHR fetch |
 | Web — Kotlin/WasmJS | 浏览器 JS 引擎 | 浏览器 WebAssembly API | Inline JS | 仅原始 `.wasm` | 已支持 | XHR fetch |
 
@@ -193,7 +193,7 @@ cd wasmline-multiplatform
 # Execute the full build pipeline
 ./gradlew :wasmline-cli:run --args="build \
   -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v45.0.5-aarch64-macos \
+  -wt build/wasmline/wasmtime/wasmtime-v45.0.6-aarch64-macos \
   --key build/wasmline/keys/ed25519_private.key"
 ```
 
@@ -227,7 +227,7 @@ build/wasmline/
 
 ### 双路径执行模型
 
-- **原生目标**（`jniMain` / `iosMain`）会经过 `wasmline-core`，再进入 Wasmtime C-API  v45.0.5，并执行预编译的 `.cwasm` 或 `.pwasm` 产物。
+- **原生目标**（`jniMain` / `iosMain`）会经过 `wasmline-core`，再进入 Wasmtime C-API  v45.0.6，并执行预编译的 `.cwasm` 或 `.pwasm` 产物。
 - **Web 目标**（`webMain` / `jsMain` / `wasmJsMain`）会经过 `BrowserWasmlineRuntime`、内联 JS `js()` interop 与浏览器原生 `WebAssembly` API，并且只接受原始 `.wasm` 文件。
 
 ### 模块依赖关系图

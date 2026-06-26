@@ -429,25 +429,6 @@ ensure_wasmtime_toolchain() {
     printf '%s\n' "$wasmtime_dir"
 }
 
-publish_local_artifacts() {
-    local include_jvm_runtime="${1:-0}"
-
-    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-kotlin-plugin:publishToMavenLocal :wasmline-gradle-plugin:publishToMavenLocal
-
-    if [ "$include_jvm_runtime" -eq 1 ]; then
-        require_command zig
-        (
-            cd "$WASMLINE_MODULE_ROOT"
-            if [ "$QUIET" -eq 1 ]; then
-                zig build --release=small -p src/jvmMain/resources >/dev/null 2>&1
-            else
-                zig build --release=small -p src/jvmMain/resources >&2
-            fi
-        )
-    fi
-
-    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline:publishToMavenLocal :wasmline-loader:publishToMavenLocal
-}
 
 clean_plugin_builds() {
     rm -rf "${WASMLINE_MODULE_ROOT}/build/kotlin/compileKotlinWasmWasi"

@@ -201,7 +201,6 @@ load_wasmline_metadata
 parse_ios_args "$@"
 ensure_ios_prerequisites
 WASMTIME_DIR="$(ensure_wasmtime_toolchain)"
-publish_local_artifacts 0
 build_ios_frameworks
 PLUGIN_OUTPUT_FILE="$(build_plugin_pwasm "$COMPILE_OUTPUT_ROOT" "$WASMTIME_DIR" "ios plugin artifact")"
 copy_artifact "$PLUGIN_OUTPUT_FILE" "$IOS_RESOURCE_FILE"

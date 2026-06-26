@@ -55,6 +55,14 @@ namespace wasmline {
         engine.init(usePulley);
     }
 
+    bool Api::supportsAot() {
+#ifdef WASMTIME_FEATURE_COMPILER
+        return true;
+#else
+        return false;
+#endif
+    }
+
     void Api::releaseEngine() {
         // 1. Release all sessions first
         {

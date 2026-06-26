@@ -4,9 +4,9 @@
 set -e
 
 # ==============================================================================
-# 1. 引入环境上下文 (Reuse context.sh)
+# 1. Source environment context (Reuse context.sh)
 # ==============================================================================
-# 路径推导：scripts/samples/go/go.sh -> scripts/context.sh (向上3层)
+# Path resolution: scripts/samples/cpp/run.sh -> scripts/context.sh (3 levels up)
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
     source "$(dirname $(dirname $(dirname "${BASH_SOURCE[0]}")))/context.sh"
 fi
@@ -27,14 +27,14 @@ sh ${SCRIPT_ROOT}/samples/cpp/build.sh
 cd ${SAMPLE_ROOT}/cpp/build
 
 echo "[shell run.sh] --> -----------------------------"
-# 'uname' 命令可以获取操作系统的名称。
+# Detect OS name
 OS_NAME=$(uname -s)
 case "$OS_NAME" in
     Linux*)
         echo "Detected: Linux"
         ./WasmtimeSample
         ;;
-    # 识别 macOS 系统
+    # Detect macOS
     Darwin*)
         echo "Detected: macOS"
         ./WasmtimeSample
@@ -42,25 +42,24 @@ case "$OS_NAME" in
     CYGWIN*|MINGW*|MSYS*|Windows*)
         echo "Detected: Windows (via shell like Git Bash/MSYS)"
         # =======================================================
-        # 【核心逻辑】智能清洗 PATH (Smart Path Cleaning)
-        # 目标：去除 Git/MSYS 注入的路径，保留系统和用户的原生配置， gitbash可能会引入gitbash和msys2的环境，清除后采用默认环境去运行，防止出现问题
+        # Core logic: Smart PATH cleaning for Windows
+        # Remove Git/MSYS-injected paths to retain native system
+        # and user configuration, preventing environment conflicts.
         # =======================================================
         echo "[Setup] Cleaning PATH for Windows CMD..."
         
         CLEAN_PATH=""
         
-        # 将 Bash 的 $PATH (以冒号分隔) 读入数组
+        # Split Bash $PATH (colon-delimited) into an array
         IFS=':' read -r -a PATH_ARRAY <<< "$PATH"
         
         for p in "${PATH_ARRAY[@]}"; do
-            # 1. 使用 cygpath 将 /d/msys/... 转为 D:\msys\... 格式，方便关键词匹配
-            #    2>/dev/null 防止转换失败报错
+            # Convert /d/msys/... to D:\msys\... via cygpath for keyword matching
+            # 2>/dev/null suppresses conversion errors
             WIN_P=$(cygpath -w "$p" 2>/dev/null || echo "$p")
             
-            # 2. 关键词过滤 (忽略大小写)
-            #    剔除包含 "Git", "msys", "cygwin" 的路径
-            #    注意：如果你独立的 MinGW 安装在 "D:\Git_Stuff\MinGW"，这里可能会误杀，
-            #    但在标准安装下，这能精准剔除 Shell 注入的层。
+            # Filter out paths containing "Git", "msys", or "cygwin" (case-insensitive)
+            # Note: standalone MinGW installations under matching names may also be removed
             if [[ "$WIN_P" =~ [Gg][Ii][Tt] ]] || \
                [[ "$WIN_P" =~ [Mm][Ss][Yy][Ss] ]] || \
                [[ "$WIN_P" =~ [Cc][Yy][Gg][Ww][Ii][Nn] ]]; then
@@ -68,19 +67,19 @@ case "$OS_NAME" in
                 continue
             fi
             
-            # 3. 拼接保留下来的路径 (分号分隔)
+            # Assemble retained paths (semicolon-delimited)
             CLEAN_PATH="${CLEAN_PATH}${WIN_P};"
         done
         
-        # 去掉最后一个多余的分号
+        # Remove trailing semicolon
         CLEAN_PATH=${CLEAN_PATH%;}
 
         # =======================================================
-        # 生成 exec.bat
+        # Generate exec.bat
         # =======================================================
         BAT_FILE="exec.bat"
         echo "@echo off" > "$BAT_FILE"
-        # 设置清洗后的 PATH (当前目录优先级最高，确保找到 dll)
+        # Set cleaned PATH (current directory first to ensure DLL resolution)
         echo "set PATH=.;${CLEAN_PATH}" >> "$BAT_FILE"
         echo "echo [BAT] Path Cleaned. Starting Go Sample..." >> "$BAT_FILE"
         echo "echo ==============================================================" >> "$BAT_FILE"
@@ -96,7 +95,7 @@ case "$OS_NAME" in
         echo "pause" >> "$BAT_FILE"
 
         # =======================================================
-        # 弹窗运行
+        # Launch in external console
         # =======================================================
         if [ -f "WasmtimeSample.exe" ]; then
             cmd //c "start "$BAT_FILE""
@@ -105,10 +104,10 @@ case "$OS_NAME" in
             exit 1
         fi
         ;;
-    # 其他操作系统 (如 FreeBSD, SunOS 等)
+    # Other operating systems (e.g. FreeBSD, SunOS)
     *)
         echo "Detected: Other OS ($OS_NAME)"
-        # 默认执行无后缀版本
+        # Default: execute the unsuffixed binary
         ./WasmtimeSample
         ;;
 esac

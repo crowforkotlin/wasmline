@@ -4,9 +4,9 @@
 set -e
 
 # ==============================================================================
-# 1. 引入环境上下文 (Reuse context.sh)
+# 1. Source environment context (Reuse context.sh)
 # ==============================================================================
-# 路径推导：scripts/samples/go/go.sh -> scripts/context.sh (向上3层)
+# Path resolution: scripts/samples/go/run.sh -> scripts/context.sh (3 levels up)
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
     source "$(dirname $(dirname $(dirname "${BASH_SOURCE[0]}")))/context.sh"
 fi
@@ -21,11 +21,11 @@ BUILD_ROOT="$GO_ROOT/build"
 TARGET_BIN_NAME="WasmtimeSample"
 
 # ==============================================================================
-# 6. 运行 (Run) - 集成 run.sh 的 Windows 逻辑
+# 2. Run - Platform-specific execution logic
 # ==============================================================================
 echo "[shell run.sh] --> Launching Application..."
 
-# 切换到 build 目录准备运行
+# Switch to build directory for execution
 cd "$BUILD_ROOT"
 OS_NAME=$(uname -s)
 ARCH_NAME=$(uname -m)
@@ -33,13 +33,13 @@ case "$OS_NAME" in
     CYGWIN*|MINGW*|MSYS*|Windows*)
         echo "Detected: Windows (via shell like Git Bash/MSYS)"
         
-        # --- 复用 run.sh 的 PATH 清洗逻辑 ---
+        # --- Reuse PATH cleaning logic from run.sh ---
         echo "[Setup] Cleaning PATH for Windows CMD..."
         CLEAN_PATH=""
         IFS=':' read -r -a PATH_ARRAY <<< "$PATH"
         for p in "${PATH_ARRAY[@]}"; do
             WIN_P=$(cygpath -w "$p" 2>/dev/null || echo "$p")
-            # 过滤 Git, MSYS, Cygwin 防止环境干扰
+            # Filter out Git, MSYS, Cygwin paths to prevent environment conflicts
             if [[ "$WIN_P" =~ [Gg][Ii][Tt] ]] || \
                [[ "$WIN_P" =~ [Mm][Ss][Yy][Ss] ]] || \
                [[ "$WIN_P" =~ [Cc][Yy][Gg][Ww][Ii][Nn] ]]; then
@@ -49,10 +49,10 @@ case "$OS_NAME" in
         done
         CLEAN_PATH=${CLEAN_PATH%;}
 
-        # --- 生成 exec.bat ---
+        # --- Generate exec.bat ---
         BAT_FILE="exec.bat"
         echo "@echo off" > "$BAT_FILE"
-        # 设置清洗后的 PATH (当前目录优先级最高，确保找到 dll)
+        # Set cleaned PATH (current directory first to ensure DLL resolution)
         echo "set PATH=.;${CLEAN_PATH}" >> "$BAT_FILE"
         echo "echo [BAT] Path Cleaned. Starting Go Sample..." >> "$BAT_FILE"
         echo "echo ==============================================================">> "$BAT_FILE"
@@ -60,7 +60,7 @@ case "$OS_NAME" in
         echo "echo ^> Go" >>"$BAT_FILE"
         echo "echo ==============================================================">> "$BAT_FILE"
         echo "echo ==============================================================">> "$BAT_FILE"
-        # 运行 exe，传入 wasm 参数
+        # Run exe with wasm argument
         echo "$TARGET_BIN_NAME$EXE_SUFFIX plugin.wasm" >> "$BAT_FILE"
         echo "if %errorlevel% neq 0 (" >> "$BAT_FILE"
         echo "    echo." >> "$BAT_FILE"
@@ -69,7 +69,7 @@ case "$OS_NAME" in
         echo "echo ---------------------------------------------------" >> "$BAT_FILE"
         echo "pause" >> "$BAT_FILE"
 
-        # --- 弹窗运行 ---
+        # --- Launch in external console ---
         if [ -f "$TARGET_BIN_NAME$EXE_SUFFIX" ]; then
             echo "    [RUN] Opening external console..."
             cmd //c "start $BAT_FILE"

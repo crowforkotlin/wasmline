@@ -51,6 +51,8 @@ kotlin {
             dependencies {
                 api(libs.androidx.activity.compose)
                 api(libs.ktor.client.okhttp)
+                // Engine module provides native libwasmline.so for Android via variant publishing
+                implementation(libs.crow.wasmline.engine.pulley)
             }
         }
         val desktopMain by getting {
@@ -59,6 +61,8 @@ kotlin {
                 api(libs.jetbrains.jewel.decorated)
                 api(libs.conveyor)
                 api(libs.ktor.client.cio)
+                // Engine module provides native libwasmline.so/dylib/dll for JVM via variant publishing
+                implementation(libs.crow.wasmline.engine.pulley)
             }
         }
         if (HostManager.hostIsMac) {

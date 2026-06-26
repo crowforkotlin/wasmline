@@ -3,7 +3,7 @@
 # Exit on any error
 set -e
 
-# Import environment variables
+# Source environment context
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
     source "$(dirname $(dirname $(dirname "${BASH_SOURCE[0]}")))/context.sh"
 fi

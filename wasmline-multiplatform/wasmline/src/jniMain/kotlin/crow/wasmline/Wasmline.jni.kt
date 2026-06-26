@@ -19,12 +19,14 @@ actual class Wasmline internal actual constructor(
         @JvmStatic private external fun nativeSetOutboundHandler(key: String, dispatcher: WasmlineHostDispatcher)
         @JvmStatic private external fun nativeInvokeInbound(key: String, action: String, protobufBytes: ByteArray): ByteArray
         @JvmStatic private external fun nativeWarmup(usePulley: Boolean)
+        @JvmStatic private external fun nativeSupportsAot(): Boolean
         @JvmStatic private external fun nativeReleaseEngine()
 
         // Internal wrappers for use by standalone bridge functions.
         fun loadAot(key: String, path: String): Boolean = nativeLoadAot(key, path)
         fun loadAotUnsafe(key: String, path: String): Boolean = nativeLoadAotUnsafe(key, path)
         fun warmupEngine(usePulley: Boolean) = nativeWarmup(usePulley)
+        fun supportsAot(): Boolean = nativeSupportsAot()
         fun releaseEngine() = nativeReleaseEngine()
     }
 
@@ -63,7 +65,17 @@ actual fun wasmlineShutdown() {
 
 actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     ensureBootstrapped()
-    Wasmline.warmupEngine(mode == WasmlineWarmupMode.PULLEY)
+    val effectiveMode = when {
+        mode == WasmlineWarmupMode.CRANELIFT && !Wasmline.supportsAot() -> {
+            WasmlineLog.logger?.warn(
+                "[Wasmline] CRANELIFT warmup requested but the current engine does not include the Cranelift compiler. " +
+                    "Falling back to PULLEY. To use CRANELIFT warmup, switch to wasmline-engine-cranelift."
+            )
+            WasmlineWarmupMode.PULLEY
+        }
+        else -> mode
+    }
+    Wasmline.warmupEngine(effectiveMode == WasmlineWarmupMode.PULLEY)
 }
 
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {

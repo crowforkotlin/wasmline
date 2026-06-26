@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+# ==============================================================================
+# Generate wasmline-cli markdown documentation with configurable sample values
+# ==============================================================================
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,7 +14,7 @@ OUTPUT_NAME="wasmline-multiplatform-wasmline-sample-plugin"
 VERSION="1.0.0"
 VERSION_ALT="1.0.0"
 VERSION_CODE_ALT="1"
-WASMTIME_VERSION="v45.0.5"
+WASMTIME_VERSION="v45.0.6"
 WASMTIME_TARGET="aarch64-macos"
 WASMTIME_DIR=""
 DOWNLOAD_EXTRA_VERSION="latest"

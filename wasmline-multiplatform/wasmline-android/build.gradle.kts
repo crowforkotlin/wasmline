@@ -3,22 +3,9 @@ plugins {
     alias(libs.plugins.maven.publish)
 }
 
-android {
-    defaultConfig {
-        ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")) }
-        externalNativeBuild {
-            cmake {
-                arguments(
-                    "-DWASMTIME_VERSION=release-v${project.property("wasmtime.version")}",
-                    "-DWASMTIME_VARIANT=${project.findProperty("wasmtime.variant") ?: "pulley"}"
-                )
-            }
-        }
-    }
-    externalNativeBuild {
-        cmake {
-            path = file("src/androidMain/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-}
+// NDK/CMake 已移除：libwasmline.so 由 engine 模块（wasmline-engine-pulley / cranelift）
+// 预编译后通过 jniLibs 提供，消费者无需本地编译 native 代码。
+//
+// 如需重新编译 libwasmline.so（开发/CI），使用以下任一方式：
+//   - Android: bash scripts/build-native-android.sh
+//   - Desktop: zig build (在 wasmline/ 目录下)

@@ -4,9 +4,9 @@
 set -e
 
 # ==============================================================================
-# 1. 引入环境上下文 (Reuse context.sh)
+# 1. Source environment context (Reuse context.sh)
 # ==============================================================================
-# 路径推导：scripts/samples/go/go.sh -> scripts/context.sh (向上3层)
+# Path resolution: scripts/samples/go/build.sh -> scripts/context.sh (3 levels up)
 if [ "$ENV_SOURCED_MARKER" != "true" ]; then
     source "$(dirname $(dirname $(dirname "${BASH_SOURCE[0]}")))/context.sh"
 fi
@@ -14,7 +14,7 @@ fi
 echo "[shell go.sh] --> ---------------------------------"
 
 # ==============================================================================
-# 2. 变量定义
+# 2. Variable definitions
 # ==============================================================================
 GO_ROOT="$SAMPLE_ROOT/go"
 BUILD_ROOT="$GO_ROOT/build"
@@ -25,7 +25,7 @@ echo "[shell go.sh] Go Root     : $GO_ROOT"
 echo "[shell go.sh] Build Dir   : $BUILD_ROOT"
 
 # ==============================================================================
-# 3. 清理与初始化 (Configure & Clean)
+# 3. Configure and clean
 # ==============================================================================
 echo "[shell go.sh] --> Cleaning build directory..."
 if [ -d "$BUILD_ROOT" ]; then
@@ -33,12 +33,12 @@ if [ -d "$BUILD_ROOT" ]; then
 fi
 mkdir -p "$BUILD_ROOT"
 
-# 复制 Wasm 资源
+# Copy Wasm resources
 echo "[shell go.sh] --> Copying Wasm resources..."
 cp "$WASM_ROOT"/*.wasm "$BUILD_ROOT/"
 
 # ==============================================================================
-# 4. 平台检测与库文件分发 (Platform Detection)
+# 4. Platform detection and library distribution
 # ==============================================================================
 OS_NAME=$(uname -s)
 ARCH_NAME=$(uname -m)
@@ -55,7 +55,7 @@ WASMTIME_VARIANT="${WASMTIME_VARIANT:-pulley}"
 PLATFORM_BASE="$PLATFORMS_ROOT/$WASMTIME_VER/$WASMTIME_VARIANT"
 
 if [[ "$OS_NAME" == "Darwin" ]]; then
-    # MacOS
+    # macOS
     LIB_DST_NAME="libwasmtime.dylib"
     if [[ "$ARCH_NAME" == "arm64" ]]; then
         LIB_SRC="$PLATFORM_BASE/mac/aarch64/lib/$LIB_DST_NAME"
@@ -80,7 +80,7 @@ else
     exit 1
 fi
 
-# 复制库文件
+# Copy library files
 if [ -f "$LIB_SRC" ]; then
     cp "$LIB_SRC" "$BUILD_ROOT/"
     echo "    [OK] Copied Runtime: $LIB_DST_NAME"
@@ -90,14 +90,14 @@ else
 fi
 
 # ==============================================================================
-# 5. 编译 (Build)
+# 5. Build
 # ==============================================================================
 echo "[shell go.sh] --> Compiling Go Binary..."
 
-# 切换到 Go 源码目录进行编译
+# Switch to Go source directory for compilation
 cd "$GO_ROOT"
 
-# 编译输出到 build 目录
+# Build output to build directory
 go build -o "$BUILD_ROOT/$TARGET_BIN_NAME$EXE_SUFFIX" .
 
 if [ $? -eq 0 ]; then

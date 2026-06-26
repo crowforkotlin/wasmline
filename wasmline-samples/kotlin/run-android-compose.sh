@@ -42,7 +42,6 @@ EOF
 load_wasmline_metadata
 parse_common_args 1 1 1 "$@"
 WASMTIME_DIR="$(ensure_wasmtime_toolchain)"
-publish_local_artifacts 0
 build_plugin_runtime_artifacts "$COMPILE_OUTPUT_ROOT" "$WASMTIME_DIR" "android compose plugin artifact" "aarch64-linux-android"
 sync_runtime_artifacts "$ANDROID_RESOURCE_DIR" "plugin"
 ensure_android_device

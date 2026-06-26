@@ -29,6 +29,11 @@ Java_crow_wasmline_Wasmline_nativeWarmup(JNIEnv *env, jclass thiz, jboolean useP
     wasmline::Api::warmupEngine(usePulley == JNI_TRUE);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmline_Wasmline_nativeSupportsAot(JNIEnv *env, jclass thiz) {
+    return wasmline::Api::supportsAot() ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT void JNICALL
 Java_crow_wasmline_Wasmline_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
     wasmline::Api::releaseEngine();

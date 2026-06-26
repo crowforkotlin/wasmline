@@ -43,7 +43,6 @@ if [ -z "$PLATFORM" ]; then
   PLATFORM="$(detect_current_platform)"
 fi
 WASMTIME_DIR="$(ensure_wasmtime_toolchain)"
-publish_local_artifacts 1
 build_plugin_runtime_artifacts "$COMPILE_OUTPUT_ROOT" "$WASMTIME_DIR" "desktop plugin artifact" "$PLATFORM"
 sync_runtime_artifacts "$DESKTOP_RESOURCE_DIR" "plugin" "plugin.generated"
 run_gradle_with_runtime_format "$SAMPLE_ROOT" :sample-apps:multiplatform:desktopApp:run

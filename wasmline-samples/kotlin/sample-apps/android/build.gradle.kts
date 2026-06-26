@@ -27,5 +27,7 @@ dependencies {
 
     api(libs.crow.wasmline)
     api(libs.crow.wasmline.loader)
+    // Engine module provides native libwasmline.so for Android via variant publishing
+    implementation(libs.crow.wasmline.engine.pulley)
     api(libs.ktor.client.okhttp)
 }
