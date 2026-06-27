@@ -1,3 +1,5 @@
+@file:Suppress("unused", "SpellCheckingInspection")
+
 package crow.wasmline.engine.cranelift
 
 /**
@@ -20,6 +22,6 @@ package crow.wasmline.engine.cranelift
  *
  * @see <a href="https://github.com/crowforkotlin/wasmline">Wasmline</a>
  */
-public object CraneliftEngine {
-    public const val ENGINE_NAME: String = "cranelift"
+object CraneliftEngine {
+    const val ENGINE_NAME: String = "cranelift"
 }

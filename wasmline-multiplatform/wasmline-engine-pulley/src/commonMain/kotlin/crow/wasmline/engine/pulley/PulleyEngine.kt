@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package crow.wasmline.engine.pulley
 
 /**
@@ -17,6 +19,6 @@ package crow.wasmline.engine.pulley
  *
  * @see <a href="https://github.com/crowforkotlin/wasmline">Wasmline</a>
  */
-public object PulleyEngine {
-    public const val ENGINE_NAME: String = "pulley"
+object PulleyEngine {
+    const val ENGINE_NAME: String = "pulley"
 }

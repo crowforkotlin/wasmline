@@ -328,7 +328,6 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
 github-fourlastor-construo = { id = "io.github.fourlastor.construo", version.ref = "construo" }
-zipline = { id = "io.github.crowforkotlin.zipline", version.ref = "zipline" }
 conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 maven-publish = { id = "com.vanniktech.maven.publish.base", version.ref = "maven-publish" }
 
