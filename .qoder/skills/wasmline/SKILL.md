@@ -131,7 +131,8 @@ node ./scripts/init.mjs
 | `wasmline-samples/kotlin/sample-apps/multiplatform/` | Compose Multiplatform 示例（androidApp / desktopApp / shared / webApp） |
 | `wasmline-samples/kotlin/sample-common/` | 示例工程共用逻辑 |
 | `wasmline-samples/kotlin/sample-plugin/` | 示例 Wasmline 插件工程 |
-| `wasmline-ci/` | CI 及样例自动化脚本 |
+| `wasmline-multiplatform/ci/` | CI 构建与测试脚本 |
+| `wasmline-multiplatform/docs/` | 模块级文档（构建指南、设计文档等） |
 | `scripts/` | 仓库级初始化与辅助脚本 |
 | `build/platforms/` | 平台运行时资产（由 `scripts/init.sh` 初始化） |
 | `docs/` | 文档站点资源 |
@@ -247,7 +248,7 @@ node ./scripts/init.mjs
 
 涉及 Compose Desktop、JNI 或本地库时，优先参阅以下文件：
 
-- `wasmline-multiplatform/wasmline/zig-build.md`
+- `wasmline-multiplatform/docs/zig-build.md`
 - `wasmline-multiplatform/wasmline/build.zig`
 - `wasmline-samples/kotlin/sample-apps/multiplatform/shared/src/desktopMain/Requirement.md`
 - `wasmline-multiplatform/wasmline/src/jniMain/native/`

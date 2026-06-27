@@ -435,7 +435,6 @@ wasmline/
 │       ├── sample-common/              # Shared service contract interface definitions
 │       ├── sample-plugin/              # Kotlin/WasmWasi WASI plugin implementation
 │       └── sample-apps/               # Android, JVM desktop, Compose Multiplatform, and Web hosts
-├── wasmline-ci/                        # CI automation scripts
 ├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
 ├── build/                              # Root build outputs, including build/platforms/ Wasmtime min C-API assets
 └── docs/                               # Documentation site (Next.js + Fumadocs)

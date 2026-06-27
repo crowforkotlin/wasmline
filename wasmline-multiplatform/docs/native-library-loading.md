@@ -178,7 +178,9 @@ tasks.withType<GenerateModuleMetadata>().configureEach {
                 "org.gradle.libraryelements" to "jar",
                 "org.jetbrains.kotlin.platform.type" to "jvm",
                 "org.gradle.native.operating-system" to "linux",
-                "org.gradle.native.architecture" to "x86-64"
+                "org.gradle.native.architecture" to "x86-64",
+                "crow.wasmline.os" to "linux",
+                "crow.wasmline.arch" to "x86_64"
             ),
             "files" to listOf(mapOf(
                 "name" to "wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar",
@@ -189,10 +191,11 @@ tasks.withType<GenerateModuleMetadata>().configureEach {
 }
 ```
 
-The attributes serve two purposes:
+The attributes serve three purposes:
 
 - **Standard JVM attributes** (first five) — tell Gradle this is a standard JVM library.
-- **Native attributes** (last two) — tell Gradle which OS and architecture this variant targets.
+- **Native attributes** (next two) — standard Gradle OS/arch attributes for backward compatibility.
+- **Custom wasmline attributes** (last two) — `crow.wasmline.os` and `crow.wasmline.arch` used by the `crow.wasmline` Gradle plugin for automatic variant-aware resolution.
 
 ---
 
@@ -211,38 +214,24 @@ The main JVM JAR (`wasmline-engine-pulley-jvm-1.0.0.jar`) contains no native lib
 
 ### Consumer Dependency Configuration
 
-For JVM/Desktop targets, the consumer adds two dependencies:
+With the `crow.wasmline` Gradle plugin applied, consumers only need a single dependency declaration. The plugin automatically configures JVM runtime configurations with OS/architecture attributes, enabling Gradle's variant-aware resolution to select the correct platform-specific native JAR:
 
 ```kotlin
 val desktopMain by getting {
     dependencies {
-        // 1. Base engine module (Kotlin code, no native libs)
+        // Single dependency — the `crow.wasmline` plugin handles native variant resolution
         implementation(libs.crow.wasmline.engine.pulley)
-
-        // 2. Platform-specific native JAR (detected at build time)
-        val currentOs = System.getProperty("os.name").lowercase()
-        val currentArch = when (System.getProperty("os.arch")) {
-            "amd64", "x86_64" -> "x86_64"
-            "aarch64", "arm64" -> "aarch64"
-            else -> System.getProperty("os.arch")
-        }
-        val osDir = when {
-            currentOs.contains("linux") -> "linux"
-            currentOs.contains("mac") || currentOs.contains("darwin") -> "darwin"
-            currentOs.contains("windows") -> "windows"
-            else -> currentOs
-        }
-        implementation(mapOf(
-            "group" to "crow.wasmline",
-            "name" to "wasmline-engine-pulley-jvm",
-            "version" to libs.versions.wasmline.get(),
-            "classifier" to "$osDir-$currentArch"
-        ))
     }
 }
 ```
 
-The first dependency provides the Kotlin code. The second pulls the native JAR for the current build machine's platform using Maven classifier notation.
+The `crow.wasmline` Gradle plugin:
+1. Detects the current build machine's OS and architecture.
+2. Sets `crow.wasmline.os` and `crow.wasmline.arch` attributes on JVM runtime classpath configurations.
+3. Registers compatibility rules so non-wasmline dependencies (which lack these attributes) remain compatible.
+4. Registers disambiguation rules to pick the correct variant when multiple are available.
+
+Gradle then automatically resolves the matching native JAR from the module metadata — no manual classifier configuration required.
 
 For Android targets, the engine module provides native libraries through `androidMain/jniLibs/`, which Android's build system handles automatically:
 
@@ -370,11 +359,13 @@ Build time:
 Resolution time:
   Consumer build.gradle.kts
        ↓
-  implementation(classifier = "linux-x86_64")
+  implementation(libs.crow.wasmline.engine.pulley)
        ↓
-  Gradle downloads → {artifactId}-jvm-{version}-linux-x86_64.jar
+  `crow.wasmline` plugin sets crow.wasmline.os/arch attributes
        ↓
-  JAR added to runtime classpath
+  Gradle variant-aware resolution selects matching native JAR
+       ↓
+  {artifactId}-jvm-{version}-linux-x86_64.jar added to classpath
 
 Runtime:
   NativeLoaderExt.loadNativeLibrary()

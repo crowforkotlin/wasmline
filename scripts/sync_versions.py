@@ -291,55 +291,7 @@ def file_specs() -> tuple[FileSpec, ...]:
         FileSpec("docs/content/docs/index.en.mdx", docs_rules_en),
         FileSpec("docs/content/docs/index.mdx", docs_rules_zh),
         FileSpec(
-            "wasmline-multiplatform/wasmline-cli/download.md",
-            (
-                Rule(
-                    r'download -v v[0-9]+\.[0-9]+\.[0-9]+,(?:v[0-9]+\.[0-9]+\.[0-9]+|latest)"',
-                    lambda v: f'download -v v{v["wasmtime_version"]},latest"',
-                ),
-                Rule(
-                    r"v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"v{v['wasmtime_version']}",
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-cli/build.md",
-            (
-                Rule(
-                    r"v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"v{v['wasmtime_version']}",
-                ),
-                Rule(
-                    r"1\.0\.0",
-                    lambda v: v["sample_plugin_version"],
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-cli/compile.md",
-            (
-                Rule(
-                    r"v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"v{v['wasmtime_version']}",
-                ),
-                Rule(
-                    r"1\.0\.0",
-                    lambda v: v["sample_plugin_version"],
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-cli/manifest.md",
-            (
-                Rule(
-                    r"1\.0\.0",
-                    lambda v: v["sample_plugin_version"],
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline/zig-build.md",
+            "wasmline-multiplatform/docs/zig-build.md",
             (
                 Rule(
                     r"Zig Version : [0-9]+\.[0-9]+\.[0-9]+",
@@ -348,7 +300,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/mind.md",
+            "wasmline-multiplatform/docs/design-mind.md",
             (
                 Rule(
                     r"Zig [0-9]+\.[0-9]+\.[0-9]+",

@@ -169,7 +169,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
     private fun shouldEnableWasiInitExport(kotlinCompilation: KotlinCompilation<*>): Boolean {
         return kotlinCompilation.target.platformType == KotlinPlatformType.wasm &&
-            kotlinCompilation.defaultSourceSet.name == "wasmWasiMain"
+                kotlinCompilation.defaultSourceSet.name == "wasmWasiMain"
     }
 
     private fun createGenerateKeyPairTasks(project: Project) {

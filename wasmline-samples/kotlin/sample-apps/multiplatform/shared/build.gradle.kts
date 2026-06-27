@@ -61,26 +61,9 @@ kotlin {
                 api(libs.jetbrains.jewel.decorated)
                 api(libs.conveyor)
                 api(libs.ktor.client.cio)
-                // Engine module: base dependency + platform-specific native JAR
+                // Engine module: the `crow.wasmline` plugin automatically resolves
+                // the correct platform-specific native JAR via variant-aware resolution
                 implementation(libs.crow.wasmline.engine.pulley)
-                val currentOs = System.getProperty("os.name").lowercase()
-                val currentArch = when (System.getProperty("os.arch")) {
-                    "amd64", "x86_64" -> "x86_64"
-                    "aarch64", "arm64" -> "aarch64"
-                    else -> System.getProperty("os.arch")
-                }
-                val osDir = when {
-                    currentOs.contains("linux") -> "linux"
-                    currentOs.contains("mac") || currentOs.contains("darwin") -> "darwin"
-                    currentOs.contains("windows") -> "windows"
-                    else -> currentOs
-                }
-                implementation(mapOf(
-                    "group" to "crow.wasmline",
-                    "name" to "wasmline-engine-pulley-jvm",
-                    "version" to libs.versions.wasmline.get(),
-                    "classifier" to "$osDir-$currentArch"
-                ))
             }
         }
         if (HostManager.hostIsMac) {
