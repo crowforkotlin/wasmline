@@ -1,4 +1,5 @@
 import buildlogic.libsEx
+import gradle.kotlin.dsl.accessors._fb079f171776054018bb93a43cbfc29b.composeCompiler
 
 plugins {
   id("com.android.application")
@@ -15,8 +16,10 @@ composeCompiler {
   // 对 Compose 配置外部类的稳定性
   // 只允许配置已有第三方库里面的类，如果是自己的类请打上 @Stable 注解
   // 配置规则可以查看 https://android-review.googlesource.com/c/platform/frameworks/support/+/2668595
-  stabilityConfigurationFile.set(
-    rootDir.resolve("config").resolve("compose-stability-config.txt")
+  stabilityConfigurationFiles.set(
+    listOf(
+      layout.projectDirectory.file(rootDir.resolve("config/compose-stability-config.txt").absolutePath)
+    )
   )
 }
 

@@ -10,6 +10,7 @@ import java.util.Locale.US
 actual fun loadNativeLibrary() {
     val osName = System.getProperty("os.name").lowercase(US)
     val osArch = normalizeArch(System.getProperty("os.arch"))
+    val platform = normalizePlatform(osName)
     val extension = if (osName.contains("linux")) {
         "so"
     } else if (osName.contains("mac")) {
@@ -21,10 +22,10 @@ actual fun loadNativeLibrary() {
     }
     val candidateArchs = archCandidates(osArch)
     val wasmlineJarPath = candidateArchs
-        .map { "/jni/$it/libwasmline.$extension" }
+        .map { "/jni/$platform/$it/libwasmline.$extension" }
         .firstOrNull { Wasmline::class.java.getResource(it) != null }
         ?: throw IllegalStateException(
-            "Unable to read native wasmline library from JAR. os.name=$osName, os.arch=${System.getProperty("os.arch")}, normalizedArch=$osArch, tried=${candidateArchs.joinToString()}"
+            "Unable to read native wasmline library from JAR. os.name=$osName, os.arch=${System.getProperty("os.arch")}, platform=$platform, normalizedArch=$osArch, tried=${candidateArchs.joinToString()}"
         )
     extractAndLoad(Wasmline::class.java, wasmlineJarPath)
 }
@@ -47,6 +48,13 @@ private fun normalizeArch(osArch: String): String = when (osArch.lowercase(US)) 
     "amd64", "x86_64" -> "x86_64"
     "arm64", "aarch64" -> "aarch64"
     else -> osArch.lowercase(US)
+}
+
+private fun normalizePlatform(osName: String): String = when {
+    osName.contains("linux") -> "linux"
+    osName.contains("mac") || osName.contains("darwin") -> "darwin"
+    osName.contains("windows") -> "windows"
+    else -> throw IllegalStateException("Unsupported platform: $osName")
 }
 
 private fun archCandidates(normalizedArch: String): List<String> = when (normalizedArch) {

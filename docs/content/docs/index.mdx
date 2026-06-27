@@ -59,7 +59,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，为 Andro
 | 组件 | 要求版本 | 适用范围 |
 |---|---|---|
 | JDK / JBR | **21**（Compose Desktop 必须使用 [JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases)） | 所有 Gradle 操作 |
-| Kotlin | 最低 **2.3.20-RC** | Wasm GC、函数引用、异常处理 |
+| Kotlin | 最低 **2.4.0** | Wasm GC、函数引用、异常处理 |
 | Android Studio | **LTS** | AGP 9.2.1 兼容性 |
 | Zig | **0.15.1** | `wasmline-core` JNI 库构建 |
 | Bash / Python 3.9+ / Node.js 18+ | 任意一种 | 平台运行时资产初始化 |
@@ -253,7 +253,7 @@ wasmline-gradle-plugin  ──►  wasmline-kotlin-plugin
 | Tail Call Optimization | 推荐 | 限制深层递归链的栈增长 |
 
 <Callout type="warn" title="编译器基线">
-  Wasmline 需要 **Kotlin 2.3.20-RC** 或更高版本。将 `kotlin` 版本降到该基线以下，可能会生成不完整的 Wasm 二进制，并在 `Session.invoke` 边界触发未定义行为。
+  Wasmline 需要 **Kotlin 2.4.0** 或更高版本。将 `kotlin` 版本降到该基线以下，可能会生成不完整的 Wasm 二进制，并在 `Session.invoke` 边界触发未定义行为。
 </Callout>
 
 ## 开发指南与工具链配置

@@ -46,7 +46,7 @@ internal class EcdsaP256(
     val keyPairGenerator = KeyPairGenerator.getInstance("EC")
     keyPairGenerator.initialize(ECGenParameterSpec("secp256r1"), random)
     val keyPair = keyPairGenerator.generateKeyPair()
-    return _root_ide_package_.crow.wasmline.loader.internal.crypto.KeyPair(
+    return KeyPair(
         publicKey = (keyPair.public as ECPublicKey).encodeAnsiX963(),
         privateKey = keyPair.private.encoded.toByteString(),
     )

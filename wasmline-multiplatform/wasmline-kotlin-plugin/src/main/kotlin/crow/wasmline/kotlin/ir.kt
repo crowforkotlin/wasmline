@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:OptIn(UnsafeDuringIrConstructionAPI::class)
+
 package crow.wasmline.kotlin
 
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
@@ -70,6 +72,7 @@ import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrReturnTargetSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrPropertySymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
@@ -475,10 +478,12 @@ fun IrBuilderWithScope.irInvoke(
   val returnType = typeHint ?: callee.owner.returnType
   val call = irCall(callee, type = returnType)
   if (dispatchReceiver != null) {
-    call.insertDispatchReceiver(dispatchReceiver)
+    val dispatchReceiverParam = callee.owner.parameters.single { it.kind == IrParameterKind.DispatchReceiver }
+    call.arguments[dispatchReceiverParam.indexInParameters] = dispatchReceiver
   }
   if (extensionReceiver != null) {
-    call.insertExtensionReceiver(extensionReceiver)
+    val extensionReceiverParam = callee.owner.parameters.single { it.kind == IrParameterKind.ExtensionReceiver }
+    call.arguments[extensionReceiverParam.indexInParameters] = extensionReceiver
   }
   val valueParameters = callee.owner.parameters.filter {
     it.kind != IrParameterKind.DispatchReceiver && it.kind != IrParameterKind.ExtensionReceiver

@@ -64,6 +64,8 @@ platformMap.forEach { (platform, archs) ->
 
         publishing.publications {
             register<MavenPublication>("$taskName") {
+                // Publish under the JVM module's artifactId so files land in the correct Maven directory
+                artifactId = "${project.name}-jvm"
                 artifact(jarTask)
                 pom {
                     name.set("Wasmline Engine Cranelift ($platform-$archDir)")
@@ -87,7 +89,8 @@ tasks.withType<org.gradle.api.publish.tasks.GenerateModuleMetadata>().configureE
         val variants = json["variants"] as? MutableList<Any> ?: return@doLast
 
         val groupId = project.group.toString()
-        val artifactId = project.name
+        // Use JVM module artifactId since native JARs are published under the -jvm Maven coordinates
+        val artifactId = "${project.name}-jvm"
         val version = project.version.toString()
 
         nativeVariants.forEach { v ->
@@ -97,6 +100,9 @@ tasks.withType<org.gradle.api.publish.tasks.GenerateModuleMetadata>().configureE
                     "attributes" to mapOf(
                         "org.gradle.category" to "library",
                         "org.gradle.usage" to "java-runtime",
+                        "org.gradle.jvm.environment" to "standard-jvm",
+                        "org.gradle.libraryelements" to "jar",
+                        "org.jetbrains.kotlin.platform.type" to "jvm",
                         "org.gradle.native.operating-system" to v.platform,
                         "org.gradle.native.architecture" to v.archAttr
                     ),

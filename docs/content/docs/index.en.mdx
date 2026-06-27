@@ -59,7 +59,7 @@ Core design decisions:
 | Component | Required Version | Scope |
 |---|---|---|
 | JDK / JBR | **21** ([JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases) required for Compose Desktop) | All Gradle operations |
-| Kotlin | **2.3.20-RC** minimum | Wasm GC, function references, exception handling |
+| Kotlin | **2.4.0** minimum | Wasm GC, function references, exception handling |
 | Android Studio | **LTS** | AGP 9.2.1 compatibility |
 | Zig | **0.15.1** | `wasmline-core` JNI library builds |
 | Bash / Python 3.9+ / Node.js 18+ | Any one | Platform runtime asset initialization |
@@ -253,7 +253,7 @@ wasmline-gradle-plugin  ──►  wasmline-kotlin-plugin
 | Tail Call Optimization | Recommended | Limits stack growth in deep recursive chains |
 
 <Callout type="warn" title="Compiler baseline">
-  Wasmline requires **Kotlin 2.3.20-RC** or later. Downgrading the `kotlin` version below that baseline can produce incomplete Wasm binaries and undefined behavior at `Session.invoke`.
+  Wasmline requires **Kotlin 2.4.0** or later. Downgrading the `kotlin` version below that baseline can produce incomplete Wasm binaries and undefined behavior at `Session.invoke`.
 </Callout>
 
 ## Developer Guide & Toolchain Setup

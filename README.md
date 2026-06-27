@@ -8,7 +8,7 @@
 **Kotlin Multiplatform WebAssembly Plugin Framework · Cross-Platform WASI Execution Runtime**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20--RC-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Wasmtime](https://img.shields.io/badge/Wasmtime-45.0.6-5C9BD6?style=flat-square)](https://wasmtime.dev)
 [![AGP](https://img.shields.io/badge/AGP-9.2.1-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/build/releases/gradle-plugin)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Web-555555?style=flat-square)](#platform-support)
@@ -130,7 +130,7 @@ Reference implementations are located under `wasmline-samples/kotlin/`:
 | Component                        | Required Version                                                                                        | Applicable Scope                                           |
 |----------------------------------|---------------------------------------------------------------------------------------------------------|------------------------------------------------------------|
 | JDK / JBR                        | **21** ([JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases) mandatory for Compose Desktop) | All Gradle operations                                      |
-| Kotlin                           | **2.3.20-RC** minimum                                                                                   | Wasm GC, function references, exception-handling proposals |
+| Kotlin                           | **2.4.0** minimum                                                                                   | Wasm GC, function references, exception-handling proposals |
 | Android Studio                   | **LTS**                                                                                                 | AGP 9.2.1 compatibility                                    |
 | Zig                              | **0.15.1**                                                                                              | `wasmline-core` JNI shared library compilation             |
 | Bash / Python 3.9+ / Node.js 18+ | Any one                                                                                                 | Platform runtime asset initialization                      |
@@ -448,7 +448,7 @@ wasmline/
 <!-- Compatibility matrix placeholder -->
 ![Kotlin/Wasm runtime support matrix](docs/public/images/kotlin_support.png)
 
-Wasmline requires **Kotlin 2.3.20-RC** or later. The Kotlin/WasmWasi compiler backend must provide
+Wasmline requires **Kotlin 2.4.0** or later. The Kotlin/WasmWasi compiler backend must provide
 complete implementations of the following WebAssembly proposals:
 
 | Proposal                | Requirement | Rationale                                                       |
@@ -460,7 +460,7 @@ complete implementations of the following WebAssembly proposals:
 
 > [!IMPORTANT]
 > Downgrading the `kotlin` entry in `wasmline-multiplatform/gradle/libs.versions.toml` below
-`2.3.20-RC` may produce incomplete Wasm binaries. Absent GC or exception-handling support manifests
+`2.4.0` may produce incomplete Wasm binaries. Absent GC or exception-handling support manifests
 > as plugin load failures or undefined behavior at the `Session.invoke` boundary.
 
 ---

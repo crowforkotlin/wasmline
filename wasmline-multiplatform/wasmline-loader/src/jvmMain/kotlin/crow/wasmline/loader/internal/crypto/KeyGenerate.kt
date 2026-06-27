@@ -16,7 +16,7 @@ import okio.ByteString.Companion.toByteString
 internal fun generateEd25519KeyPair(): KeyPair {
     val secretSeed = ByteArray(Field25519.FIELD_LEN)
     secureRandom().nextBytes(secretSeed)
-    return _root_ide_package_.crow.wasmline.loader.internal.crypto.newKeyPairFromSeed(secretSeed.toByteString())
+    return newKeyPairFromSeed(secretSeed.toByteString())
 }
 
 internal fun generateKeyPair(signatureAlgorithmId: SignatureAlgorithmId): KeyPair {

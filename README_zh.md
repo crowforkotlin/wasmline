@@ -8,7 +8,7 @@
 **Kotlin Multiplatform WebAssembly Plugin Framework · Cross-Platform WASI Execution Runtime**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.20--RC-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Wasmtime](https://img.shields.io/badge/Wasmtime-45.0.6-5C9BD6?style=flat-square)](https://wasmtime.dev)
 [![AGP](https://img.shields.io/badge/AGP-9.2.1-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/build/releases/gradle-plugin)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Web-555555?style=flat-square)](#platform-support)
@@ -118,7 +118,7 @@ Wasmline 是一个 **Kotlin Multiplatform WebAssembly 插件框架**，为 Andro
 | 组件                             | 要求版本                                                                                         | 适用范围                                                |
 |----------------------------------|--------------------------------------------------------------------------------------------------|---------------------------------------------------------|
 | JDK / JBR                        | **21**（Compose Desktop 必须使用 [JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases)） | 所有 Gradle 操作                                         |
-| Kotlin                           | 最低 **2.3.20-RC**                                                                               | Wasm GC、函数引用、异常处理提案                          |
+| Kotlin                           | 最低 **2.4.0**                                                                               | Wasm GC、函数引用、异常处理提案                          |
 | Android Studio                   | **LTS**                                                                                          | AGP 9.2.1 兼容性                                         |
 | Zig                              | **0.15.1**                                                                                       | `wasmline-core` JNI 共享库编译                           |
 | Bash / Python 3.9+ / Node.js 18+ | 任意一种                                                                                         | 平台运行时资产初始化                                     |
@@ -419,7 +419,7 @@ wasmline/
 
 ![Kotlin/Wasm 运行时支持矩阵](docs/public/images/kotlin_support.png)
 
-Wasmline 需要 **Kotlin 2.3.20-RC** 或更高版本。Kotlin/WasmWasi 编译器后端必须完整实现以下 WebAssembly 提案：
+Wasmline 需要 **Kotlin 2.4.0** 或更高版本。Kotlin/WasmWasi 编译器后端必须完整实现以下 WebAssembly 提案：
 
 | 提案                     | 要求     | 原因                                                      |
 |--------------------------|----------|-----------------------------------------------------------|
@@ -429,7 +429,7 @@ Wasmline 需要 **Kotlin 2.3.20-RC** 或更高版本。Kotlin/WasmWasi 编译器
 | Tail Call Optimization   | 推荐     | 防止深层递归调用链中的栈溢出                              |
 
 > [!IMPORTANT]
-> 将 `wasmline-multiplatform/gradle/libs.versions.toml` 中的 `kotlin` 版本降到 `2.3.20-RC` 以下，可能会生成不完整的 Wasm 二进制。缺失 GC 或异常处理支持通常会表现为插件加载失败，或在 `Session.invoke` 边界出现未定义行为。
+> 将 `wasmline-multiplatform/gradle/libs.versions.toml` 中的 `kotlin` 版本降到 `2.4.0` 以下，可能会生成不完整的 Wasm 二进制。缺失 GC 或异常处理支持通常会表现为插件加载失败，或在 `Session.invoke` 边界出现未定义行为。
 
 ---
 

@@ -24,14 +24,6 @@ buildConfig {
     useKotlinOutput { internalVisibility = true }
     packageName("crow.wasmline.gradle")
     val compilerPlugin = projects.wasmlineKotlinPlugin
-    println("""
-        ---------------------------------
-        wasmline group is : ${compilerPlugin.group}
-        wasmline name is : ${compilerPlugin.name}
-        wasmline version is : ${compilerPlugin.version}
-        wasmline id is : ${libs.plugins.wasmline.kotlin.get()}
-        ---------------------------------
-    """.trimIndent())
     buildConfigField("String", "KOTLIN_PLUGIN_ID", "\"${libs.plugins.wasmline.kotlin.get()}\"")
     buildConfigField("String", "KOTLIN_PLUGIN_GROUP", "\"${compilerPlugin.group}\"")
     buildConfigField("String", "KOTLIN_PLUGIN_NAME", "\"${compilerPlugin.name}\"")

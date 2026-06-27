@@ -11,16 +11,20 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
+import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.name.Name
@@ -53,8 +57,8 @@ internal fun generateWasiEntryExport(
                 pluginContext = pluginContext,
                 targetFile = initTargetFile,
                 userMain = userMain,
-                wasmExportConstructor = runtimeSymbols.wasmExportAnnotationConstructor
-                    ?: error("WasmExport annotation constructor is required when generating wasm exports"),
+                wasmExportAnnotationClass = runtimeSymbols.wasmExportAnnotationClass
+                    ?: error("WasmExport annotation class is required when generating wasm exports"),
             )
             messageCollector.report(
                 CompilerMessageSeverity.INFO,
@@ -100,7 +104,7 @@ private fun createWasmlineInitFunction(
     pluginContext: IrPluginContext,
     targetFile: IrFile,
     userMain: IrSimpleFunction,
-    wasmExportConstructor: org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol,
+    wasmExportAnnotationClass: IrClassSymbol,
 ): IrSimpleFunction {
     val generatedFunction = pluginContext.irFactory.createSimpleFunction(
         startOffset = SYNTHETIC_OFFSET,
@@ -125,7 +129,14 @@ private fun createWasmlineInitFunction(
     }
 
     val functionBuilder = DeclarationIrBuilder(pluginContext, generatedFunction.symbol, SYNTHETIC_OFFSET, SYNTHETIC_OFFSET)
-    generatedFunction.annotations += functionBuilder.irCallConstructor(wasmExportConstructor, emptyList()).apply {
+    generatedFunction.annotations += IrAnnotationImpl.fromSymbolOwner(
+        wasmExportAnnotationClass.defaultType,
+        wasmExportAnnotationClass.owner.declarations
+            .filterIsInstance<IrConstructor>()
+            .single { constructor ->
+                constructor.parameters.count { parameter -> parameter.kind == IrParameterKind.Regular } == 1
+            }.symbol
+    ).apply {
         arguments[0] = functionBuilder.irString(WASMLINE_INIT_EXPORT_NAME)
     }
     generatedFunction.irFunctionBody(
@@ -167,9 +178,16 @@ private fun createWasmlineEntryFunction(
     val actionLenParameter = generatedFunction.addValueParameter("actionLen", pluginContext.irBuiltIns.intType)
     val inputLenParameter = generatedFunction.addValueParameter("inputLen", pluginContext.irBuiltIns.intType)
     val functionBuilder = DeclarationIrBuilder(pluginContext, generatedFunction.symbol, SYNTHETIC_OFFSET, SYNTHETIC_OFFSET)
-    val wasmExportConstructor = runtimeSymbols.wasmExportAnnotationConstructor
-        ?: error("WasmExport annotation constructor is required when generating the wasm entry export")
-    generatedFunction.annotations += functionBuilder.irCallConstructor(wasmExportConstructor, emptyList()).apply {
+    val wasmExportAnnotationClass = runtimeSymbols.wasmExportAnnotationClass
+        ?: error("WasmExport annotation class is required when generating the wasm entry export")
+    generatedFunction.annotations += IrAnnotationImpl.fromSymbolOwner(
+        wasmExportAnnotationClass.defaultType,
+        wasmExportAnnotationClass.owner.declarations
+            .filterIsInstance<IrConstructor>()
+            .single { constructor ->
+                constructor.parameters.count { parameter -> parameter.kind == IrParameterKind.Regular } == 1
+            }.symbol
+    ).apply {
         arguments[0] = functionBuilder.irString(WASMLINE_ENTRY_EXPORT_NAME)
     }
 
