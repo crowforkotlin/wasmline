@@ -63,7 +63,7 @@ kotlin {
                 api(libs.ktor.client.cio)
                 // Engine module: the `crow.wasmline` plugin automatically resolves
                 // the correct platform-specific native JAR via variant-aware resolution
-                implementation(libs.crow.wasmline.engine.pulley)
+                implementation(libs.crow.wasmline.engine.cranelift)
             }
         }
         if (HostManager.hostIsMac) {

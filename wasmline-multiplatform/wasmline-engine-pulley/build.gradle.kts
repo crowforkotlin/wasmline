@@ -72,6 +72,7 @@ data class NativeVariant(
     val gradleOs: String,
     val gradleArch: String,
     val taskName: String,
+    val jarTask: org.gradle.api.tasks.TaskProvider<Jar>,
 )
 
 val nativeVariants = mutableListOf<NativeVariant>()
@@ -90,19 +91,19 @@ platformMap.forEach { (platform, archs) ->
             into("jni/$platform/$archDir")
         }
 
-        // Publish each native JAR as a standalone Maven artifact (classified JAR of the JVM sub-module)
-        publishing.publications {
-            register<MavenPublication>(taskName) {
-                artifactId = "${project.name}-jvm"
-                artifact(jarTask)
-                pom {
-                    name.set("Wasmline Engine Pulley ($platform-$archDir)")
-                    description.set("Pulley native library for $platform $archDir")
-                }
-            }
-        }
+        // Collect native JAR tasks for attaching to the jvm publication below
+        nativeVariants.add(NativeVariant(platform, archDir, gradleOs, gradleArch, taskName, jarTask))
+    }
+}
 
-        nativeVariants.add(NativeVariant(platform, archDir, gradleOs, gradleArch, taskName))
+// Attach native library JARs as classified artifacts to the existing jvm publication
+// (auto-created by the KMP plugin). This avoids creating separate MavenPublication
+// instances that would target the same coordinates and overwrite each other's metadata.
+afterEvaluate {
+    publishing.publications.named<MavenPublication>("jvm") {
+        nativeVariants.forEach { v ->
+            artifact(v.jarTask)
+        }
     }
 }
 
