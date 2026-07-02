@@ -97,9 +97,11 @@ fun main() = application {
     WasmlineLoader.bootstrap()
     val (resourceName, wasmFile) = extractPluginArtifactToTemp()
     println("Wasm extracted from $resourceName to: ${wasmFile.absolutePath}")
+    val refresher = remember(resourceName) { DesktopAssetRefresher(resourceName) }
     AppWindows {
         App(
             wasmPath = wasmFile.absolutePath,
+            assetRefresher = refresher,
         )
     }
 }
@@ -195,4 +197,21 @@ fun extractPluginArtifactToTemp(): Pair<String, File> {
 
     val primaryResourceName = resourceNames.first()
     return primaryResourceName to checkNotNull(extractedFiles[primaryResourceName])
+}
+
+/**
+ * Desktop implementation of [AssetRefresher].
+ * Deletes the current temp file and re-extracts from classpath resources.
+ */
+@OptIn(ExperimentalResourceApi::class)
+private class DesktopAssetRefresher(
+    private val primaryResourceName: String,
+) : AssetRefresher {
+    override suspend fun refresh(wasmPath: String): String {
+        val oldFile = File(wasmPath)
+        oldFile.delete()
+        val newFile = extractResourceToTemp(primaryResourceName)
+        println("[DesktopAssetRefresher] Re-extracted to: ${newFile.absolutePath}")
+        return newFile.absolutePath
+    }
 }

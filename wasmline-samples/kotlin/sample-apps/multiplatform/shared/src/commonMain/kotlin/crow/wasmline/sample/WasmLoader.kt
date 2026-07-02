@@ -31,6 +31,7 @@ internal data class WasmExecutionRequest(
     val content: String,
     val timeOffsetMs: Long,
     val forceReload: Boolean,
+    val freshMode: Boolean = false,
     val executedAction: String = "TimeSyncService.timeSync",
 )
 
@@ -192,6 +193,7 @@ internal class WasmLoader {
         val totalDurationMs = totalMark.elapsedNow().inWholeMilliseconds
         val backend = backendLabel(loadedBackendCode)
         val loadMode = when {
+            reloadOccurred && request.freshMode -> "Fresh mode reload"
             reloadOccurred && request.forceReload -> "Forced reload"
             reloadOccurred -> "Fresh load"
             else -> "Reused cached runtime"

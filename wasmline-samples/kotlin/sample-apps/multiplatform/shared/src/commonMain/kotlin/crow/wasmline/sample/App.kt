@@ -73,7 +73,8 @@ private val NavyDark = Color(0xFF0F172A)
 fun App(
     wasmPath: String,
     autoExecute: Boolean = false,
-    execDispatcher: CoroutineDispatcher = Dispatchers.Main
+    execDispatcher: CoroutineDispatcher = Dispatchers.Main,
+    assetRefresher: AssetRefresher = NoOpAssetRefresher,
 ) {
     val scope = rememberCoroutineScope()
     val basePlatformBean = remember { getPlatformBean() }
@@ -82,6 +83,7 @@ fun App(
     var artifactPath by remember(wasmPath) { mutableStateOf(wasmPath) }
     var contentLabel by remember { mutableStateOf(basePlatformBean.content) }
     var forceReload by remember { mutableStateOf(false) }
+    var freshMode by remember { mutableStateOf(false) }
     var activeTab by remember { mutableStateOf(OutputTab.Result) }
     var report by remember(wasmPath) { mutableStateOf(WasmExecutionReport.idle(wasmPath)) }
     var hasAutoExecuted by remember(wasmPath) { mutableStateOf(false) }
@@ -93,13 +95,28 @@ fun App(
     fun execute() {
         scope.launch(execDispatcher) {
             report = WasmExecutionReport.running(artifactPath)
+
+            // Fresh Mode: refresh on-disk assets before loading
+            val effectivePath = if (freshMode) {
+                assetRefresher.refresh(artifactPath)
+            } else {
+                artifactPath
+            }
+            if (effectivePath != artifactPath) {
+                artifactPath = effectivePath
+            }
+
+            // Fresh Mode implies force reload
+            val effectiveForceReload = forceReload || freshMode
+
             report = wasmLoader.execute(
                 WasmExecutionRequest(
-                    artifactPath = artifactPath,
+                    artifactPath = effectivePath,
                     platform = basePlatformBean.platform,
                     content = contentLabel,
                     timeOffsetMs = 0L,
-                    forceReload = forceReload,
+                    forceReload = effectiveForceReload,
+                    freshMode = freshMode,
                 )
             )
         }
@@ -128,9 +145,11 @@ fun App(
             contentLabel = contentLabel,
             artifactPath = artifactPath,
             forceReload = forceReload,
+            freshMode = freshMode,
             onContentChange = { contentLabel = it },
             onArtifactPathChange = { artifactPath = it },
             onForceReloadChange = { forceReload = it },
+            onFreshModeChange = { freshMode = it },
         )
 
         ExecuteButton(
@@ -216,9 +235,11 @@ private fun InputCard(
     contentLabel: String,
     artifactPath: String,
     forceReload: Boolean,
+    freshMode: Boolean,
     onContentChange: (String) -> Unit,
     onArtifactPathChange: (String) -> Unit,
     onForceReloadChange: (Boolean) -> Unit,
+    onFreshModeChange: (Boolean) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -232,7 +253,7 @@ private fun InputCard(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // ForceReload chip + file badge in same scrollable row
+            // ForceReload + FreshMode chips + file badge in same scrollable row
             val badgeScroll = rememberScrollState()
             Row(
                 modifier = Modifier.horizontalScroll(badgeScroll),
@@ -240,6 +261,7 @@ private fun InputCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ForceReloadChip(checked = forceReload, onToggle = onForceReloadChange)
+                FreshModeChip(checked = freshMode, onToggle = onFreshModeChange)
                 val fileName = artifactPath
                     .substringAfterLast('/').substringAfterLast('\\').ifBlank { "—" }
                 MetaBadge(label = "file", value = fileName)
@@ -295,6 +317,34 @@ private fun ForceReloadChip(checked: Boolean, onToggle: (Boolean) -> Unit) {
             Box(modifier = Modifier.size(6.dp).background(dotColor, CircleShape))
             Text(
                 text = "Force Reload",
+                style = MaterialTheme.typography.labelSmall,
+                color = textColor,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FreshModeChip(checked: Boolean, onToggle: (Boolean) -> Unit) {
+    val bgColor = if (checked) Color(0xFFECFDF5) else Slate100
+    val borderColor = if (checked) Color(0xFF34D399) else Slate200
+    val textColor = if (checked) Color(0xFF065F46) else Slate500
+    val dotColor = if (checked) Color(0xFF10B981) else Slate200
+    Surface(
+        onClick = { onToggle(!checked) },
+        shape = RoundedCornerShape(999.dp),
+        color = bgColor,
+        border = BorderStroke(1.dp, borderColor),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(modifier = Modifier.size(6.dp).background(dotColor, CircleShape))
+            Text(
+                text = "Fresh Mode",
                 style = MaterialTheme.typography.labelSmall,
                 color = textColor,
                 maxLines = 1,

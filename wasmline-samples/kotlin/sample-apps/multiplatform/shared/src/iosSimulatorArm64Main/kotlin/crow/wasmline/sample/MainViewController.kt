@@ -20,6 +20,7 @@ fun MainViewController() = run {
             App(
                 wasmPath = NSBundle.mainBundle.pathForResource("plugin", "pwasm") ?: return@MaterialTheme,
                 autoExecute = true,
+                assetRefresher = NoOpAssetRefresher,
             )
         }
     }

@@ -3,6 +3,7 @@ package crow.wasmline.sample
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,10 +20,12 @@ fun AndroidApp(
     val context = LocalContext.current
     val resolvedWasmFilename = resolveAndroidAssetFilename(context, wasmFilename)
     val wasmFile = File(context.cacheDir, resolvedWasmFilename)
+    val refresher = remember(context) { AndroidAssetRefresher(context) }
     App(
         wasmPath = wasmFile.absolutePath,
         autoExecute = autoExecute,
-        execDispatcher = Dispatchers.Main
+        execDispatcher = Dispatchers.Main,
+        assetRefresher = refresher,
     )
     LaunchedEffect(context, resolvedWasmFilename) {
         ensureAndroidAssetCopied(
@@ -47,8 +50,9 @@ private suspend fun ensureAndroidAssetCopied(
     context: Context,
     wasmFilename: String,
     destination: File,
+    forceOverwrite: Boolean = false,
 ) {
-    if (destination.exists()) {
+    if (destination.exists() && !forceOverwrite) {
         return
     }
     withContext(Dispatchers.IO) {
@@ -57,5 +61,27 @@ private suspend fun ensureAndroidAssetCopied(
                 input.copyTo(output)
             }
         }
+    }
+}
+
+/**
+ * Android implementation of [AssetRefresher].
+ * Deletes the cached wasm file and re-copies it from APK assets.
+ */
+private class AndroidAssetRefresher(
+    private val context: Context,
+) : AssetRefresher {
+    override suspend fun refresh(wasmPath: String): String {
+        val file = File(wasmPath)
+        val filename = file.name
+        withContext(Dispatchers.IO) {
+            file.delete()
+            context.assets.open(filename).use { input ->
+                FileOutputStream(file).use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+        return wasmPath
     }
 }
