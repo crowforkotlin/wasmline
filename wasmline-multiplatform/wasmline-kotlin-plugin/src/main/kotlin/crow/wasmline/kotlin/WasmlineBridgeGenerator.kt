@@ -16,10 +16,12 @@ import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildReceiverParameter
+import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irEquals
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irIfThen
+import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
@@ -32,21 +34,27 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
+import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetObjectValueImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.makeNullable
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -101,6 +109,36 @@ internal fun generateBridge(
     bridgeClass.declarations += implementationField
     bridgeClass.declarations += serializationFactoryField
 
+    val multiParamFields = linkedMapOf<IrSimpleFunction, Pair<IrField, IrField>>()
+    val kSerializerClass = runtimeSymbols.kSerializerClass
+    val hasMultiParamSupport = kSerializerClass != null
+    if (hasMultiParamSupport) {
+        val kSerializerStarType = kSerializerClass.starProjectedType
+        val arrayOfKSerializerStarType = pluginContext.irBuiltIns.arrayClass.typeWith(kSerializerStarType)
+
+        contractFunctions.forEach { contractFunction ->
+            val regularParams = contractFunction.parameters.filter { it.kind == IrParameterKind.Regular }
+            if (regularParams.size >= 2) {
+                val methodName = contractFunction.name.asString()
+                val serializersField = createPrivateField(
+                    owner = bridgeClass,
+                    pluginContext = pluginContext,
+                    type = arrayOfKSerializerStarType,
+                    name = Name.identifier("${methodName}_serializers"),
+                )
+                val descriptorField = createPrivateField(
+                    owner = bridgeClass,
+                    pluginContext = pluginContext,
+                    type = pluginContext.referenceClass(ClassId(FqName("kotlinx.serialization.descriptors"), Name.identifier("SerialDescriptor")))!!.owner.defaultType,
+                    name = Name.identifier("${methodName}_descriptor"),
+                )
+                bridgeClass.declarations += serializersField
+                bridgeClass.declarations += descriptorField
+                multiParamFields[contractFunction] = Pair(serializersField, descriptorField)
+            }
+        }
+    }
+
     addBridgeConstructor(
         bridgeClass,
         contract,
@@ -109,6 +147,9 @@ internal fun generateBridge(
         serializationFactoryField,
         pluginContext,
         runtimeSymbols,
+        contractFunctions,
+        multiParamFields,
+        fqName,
     )
 
     contractFunctions.forEach { contractFunction ->
@@ -120,6 +161,7 @@ internal fun generateBridge(
             pluginContext = pluginContext,
             runtimeSymbols = runtimeSymbols,
             fqName = fqName,
+            multiParamFields = multiParamFields,
         )
     }
     bridgeClass.declarations += generateBridgeBindMethod(
@@ -138,6 +180,7 @@ internal fun generateBridge(
         pluginContext = pluginContext,
         runtimeSymbols = runtimeSymbols,
         fqName = fqName,
+        multiParamFields = multiParamFields,
     )
 
     file.declarations += bridgeClass
@@ -164,6 +207,9 @@ private fun addBridgeConstructor(
     serializationFactoryField: IrField,
     pluginContext: IrPluginContext,
     runtimeSymbols: WasmlineRuntimeSymbols,
+    contractFunctions: List<IrSimpleFunction>,
+    multiParamFields: Map<IrSimpleFunction, Pair<IrField, IrField>>,
+    fqName: String,
 ) {
     bridgeClass.addConstructor {
         initDefaults(contract)
@@ -184,6 +230,33 @@ private fun addBridgeConstructor(
                 serializationFactoryValue = irGet(serializationFactoryParameter),
                 statements = statements,
             )
+            contractFunctions.forEach { contractFunction ->
+                val fields = multiParamFields[contractFunction] ?: return@forEach
+                val (serializersField, descriptorField) = fields
+                val regularParams = contractFunction.parameters.filter { it.kind == IrParameterKind.Regular }
+                val action = "$fqName#${contractFunction.name.asString()}"
+
+                val serializerCalls = regularParams.map { param ->
+                    irSerializerCall(this@irConstructorBody, param.type, runtimeSymbols)
+                }
+                val arrayOfSerializers = irArrayOfSerializersCall(this@irConstructorBody, serializerCalls, runtimeSymbols)
+                statements += irSetField(
+                    receiver = irGet(bridgeClass.thisReceiver!!),
+                    field = serializersField,
+                    value = arrayOfSerializers,
+                )
+                val buildDescriptorCall = irInvoke(
+                    dispatchReceiver = null,
+                    callee = runtimeSymbols.buildParamsDescriptorFunction,
+                    irString(action),
+                    irGetField(irGet(bridgeClass.thisReceiver!!), serializersField),
+                )
+                statements += irSetField(
+                    receiver = irGet(bridgeClass.thisReceiver!!),
+                    field = descriptorField,
+                    value = buildDescriptorCall,
+                )
+            }
         }
     }
 }
@@ -197,6 +270,7 @@ private fun generateBridgeContractMethod(
     pluginContext: IrPluginContext,
     runtimeSymbols: WasmlineRuntimeSymbols,
     fqName: String,
+    multiParamFields: Map<IrSimpleFunction, Pair<IrField, IrField>>,
 ): IrSimpleFunction {
     val action = "$fqName#${contractFunction.name.asString()}"
     return createBridgeSimpleFunction(
@@ -222,29 +296,38 @@ private fun generateBridgeContractMethod(
             context = pluginContext,
             scopeOwnerSymbol = symbol,
         ) {
-            val endpoint = irGetField(
-                irGet(dispatchReceiverParameter!!),
-                endpointField,
-            )
-            val serializationFactory = irGetField(
-                irGet(dispatchReceiverParameter!!),
-                serializationFactoryField,
-            )
+            val bridgeThis = dispatchReceiverParameter!!
             val payload = when (regularParameters.size) {
                 0 -> irInvoke(null, runtimeSymbols.emptyPayloadFunction)
-                else -> irInvoke(
+                1 -> irInvoke(
                     dispatchReceiver = null,
                     callee = runtimeSymbols.encodeGeneratedValueFunction,
                     typeArguments = listOf(regularParameters.single().type),
                     valueArguments = listOf(
-                        serializationFactory,
+                        irGetField(irGet(bridgeThis), serializationFactoryField),
                         irGet(regularParameters.single()),
                     ),
                     returnTypeHint = runtimeSymbols.byteArrayClass.owner.defaultType,
                 )
+                else -> {
+                    val (serializersField, descriptorField) = multiParamFields[contractFunction]!!
+                    val arrayOfParams = irArrayOfParamsCall(
+                        this,
+                        regularParameters.map { irGet(it) },
+                        runtimeSymbols,
+                    )
+                    irInvoke(
+                        dispatchReceiver = null,
+                        callee = runtimeSymbols.encodeMultiParamsFunction,
+                        irGetField(irGet(bridgeThis), serializationFactoryField),
+                        irGetField(irGet(bridgeThis), descriptorField),
+                        irGetField(irGet(bridgeThis), serializersField),
+                        arrayOfParams,
+                    )
+                }
             }
             val invokeCall = irInvoke(
-                endpoint,
+                irGetField(irGet(bridgeThis), endpointField),
                 runtimeSymbols.endpointInvokeFunction,
                 irString(action),
                 payload,
@@ -257,7 +340,7 @@ private fun generateBridgeContractMethod(
                         dispatchReceiver = null,
                         callee = runtimeSymbols.decodeGeneratedValueFunction,
                         typeArguments = listOf(contractFunction.returnType),
-                        valueArguments = listOf(serializationFactory, invokeCall),
+                        valueArguments = listOf(irGetField(irGet(bridgeThis), serializationFactoryField), invokeCall),
                         returnTypeHint = contractFunction.returnType,
                     ),
                     returnTargetSymbol = symbol,
@@ -372,6 +455,7 @@ private fun generateBridgeDispatcherMethod(
     pluginContext: IrPluginContext,
     runtimeSymbols: WasmlineRuntimeSymbols,
     fqName: String,
+    multiParamFields: Map<IrSimpleFunction, Pair<IrField, IrField>>,
 ): IrSimpleFunction {
     return createBridgeSimpleFunction(
         pluginContext = pluginContext,
@@ -391,7 +475,7 @@ private fun generateBridgeDispatcherMethod(
             context = pluginContext,
             scopeOwnerSymbol = symbol,
         ) {
-            val bridgeThis = irGet(dispatchReceiverParameter!!)
+            val bridgeThisParam = dispatchReceiverParameter!!
             contractFunctions.forEach { contractFunction ->
                 val action = "$fqName#${contractFunction.name.asString()}"
                 +irIfThen(
@@ -399,7 +483,7 @@ private fun generateBridgeDispatcherMethod(
                     condition = irEquals(irGet(actionParameter), irString(action)),
                     thenPart = irReturn(
                         value = dispatcherResultExpression(
-                            bridgeThis = bridgeThis,
+                            bridgeThisParam = bridgeThisParam,
                             implementationField = implementationField,
                             serializationFactoryField = serializationFactoryField,
                             contract = contract,
@@ -407,6 +491,7 @@ private fun generateBridgeDispatcherMethod(
                             payloadParameter = payloadParameter,
                             runtimeSymbols = runtimeSymbols,
                             fqName = fqName,
+                            multiParamFields = multiParamFields,
                         ),
                         returnTargetSymbol = symbol,
                     ),
@@ -427,7 +512,7 @@ private fun generateBridgeDispatcherMethod(
 
 /** Builds the dispatcher result expression for one generated action branch. */
 private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResultExpression(
-    bridgeThis: IrExpression,
+    bridgeThisParam: IrValueParameter,
     implementationField: IrField,
     serializationFactoryField: IrField,
     contract: IrClass,
@@ -435,36 +520,59 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResult
     payloadParameter: IrValueParameter,
     runtimeSymbols: WasmlineRuntimeSymbols,
     fqName: String,
+    multiParamFields: Map<IrSimpleFunction, Pair<IrField, IrField>>,
 ): IrExpression {
     val implementation = irInvoke(
         dispatchReceiver = null,
         callee = runtimeSymbols.requireGeneratedImplementationFunction,
         typeArguments = listOf(contract.defaultType),
         valueArguments = listOf(
-            irGetField(bridgeThis, implementationField),
+            irGetField(irGet(bridgeThisParam), implementationField),
             irString(fqName),
         ),
         returnTypeHint = contract.defaultType,
     )
     val regularParameters = contractFunction.parameters.filter { it.kind == IrParameterKind.Regular }
-    val serializationFactory = irGetField(bridgeThis, serializationFactoryField)
     val implementationCall = when (regularParameters.size) {
         0 -> irInvoke(
             implementation,
             contractFunction.symbol,
         )
 
-        else -> irInvoke(
+        1 -> irInvoke(
             implementation,
             contractFunction.symbol,
             irInvoke(
                 dispatchReceiver = null,
                 callee = runtimeSymbols.decodeGeneratedValueFunction,
                 typeArguments = listOf(regularParameters.single().type),
-                valueArguments = listOf(serializationFactory, irGet(payloadParameter)),
+                valueArguments = listOf(
+                    irGetField(irGet(bridgeThisParam), serializationFactoryField),
+                    irGet(payloadParameter),
+                ),
                 returnTypeHint = regularParameters.single().type,
             ),
         )
+
+        else -> {
+            val (serializersField, descriptorField) = multiParamFields[contractFunction]!!
+            val decodedArgs = irInvoke(
+                dispatchReceiver = null,
+                callee = runtimeSymbols.decodeMultiParamsFunction,
+                irGetField(irGet(bridgeThisParam), serializationFactoryField),
+                irGetField(irGet(bridgeThisParam), descriptorField),
+                irGetField(irGet(bridgeThisParam), serializersField),
+                irGet(payloadParameter),
+            )
+            val castArgs = regularParameters.mapIndexed { index, param ->
+                val call = irCall(runtimeSymbols.getMultiParamFunction)
+                call.typeArguments[0] = param.type
+                call.arguments[0] = decodedArgs
+                call.arguments[1] = irInt(index)
+                call
+            }
+            irInvoke(implementation, contractFunction.symbol, *castArgs.toTypedArray())
+        }
     }
     return if (contractFunction.returnType.isKotlinUnitType()) {
         IrBlockImpl(
@@ -481,7 +589,10 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResult
             dispatchReceiver = null,
             callee = runtimeSymbols.encodeGeneratedValueFunction,
             typeArguments = listOf(contractFunction.returnType),
-            valueArguments = listOf(serializationFactory, implementationCall),
+            valueArguments = listOf(
+                irGetField(irGet(bridgeThisParam), serializationFactoryField),
+                implementationCall,
+            ),
             returnTypeHint = runtimeSymbols.byteArrayClass.owner.defaultType,
         )
     }
@@ -588,4 +699,57 @@ private fun irGetObject(symbol: IrClassSymbol): IrExpression {
         type = symbol.owner.defaultType,
         symbol = symbol,
     )
+}
+
+/** Generates `serializer<T>()` for a given parameter type. */
+private fun irSerializerCall(
+    builder: org.jetbrains.kotlin.ir.builders.IrBuilderWithScope,
+    paramType: IrType,
+    runtimeSymbols: WasmlineRuntimeSymbols,
+): IrMemberAccessExpression<*> {
+    val call = builder.irCall(runtimeSymbols.serializerFunction!!)
+    call.typeArguments[0] = paramType
+    return call
+}
+
+/** Generates `arrayOf(serializer<T1>(), serializer<T2>(), ...)` with vararg KSerializer elements. */
+private fun irArrayOfSerializersCall(
+    builder: org.jetbrains.kotlin.ir.builders.IrBuilderWithScope,
+    serializerCalls: List<IrExpression>,
+    runtimeSymbols: WasmlineRuntimeSymbols,
+): IrMemberAccessExpression<*> {
+    val kSerializerStarType = runtimeSymbols.kSerializerClass!!.starProjectedType
+    val arrayOfKSerializerType = builder.context.irBuiltIns.arrayClass.typeWith(kSerializerStarType)
+    val vararg = IrVarargImpl(
+        startOffset = builder.startOffset,
+        endOffset = builder.endOffset,
+        type = arrayOfKSerializerType,
+        varargElementType = kSerializerStarType,
+        elements = serializerCalls,
+    )
+    val arrayOfCall = builder.irCall(runtimeSymbols.arrayOfFunction!!)
+    arrayOfCall.typeArguments[0] = kSerializerStarType
+    arrayOfCall.arguments[0] = vararg
+    return arrayOfCall
+}
+
+/** Generates `arrayOf(param0, param1, ...)` for parameter values (returns Array<Any?>). */
+private fun irArrayOfParamsCall(
+    builder: org.jetbrains.kotlin.ir.builders.IrBuilderWithScope,
+    paramValues: List<IrExpression>,
+    runtimeSymbols: WasmlineRuntimeSymbols,
+): IrExpression {
+    val anyNullableType = builder.context.irBuiltIns.anyNType
+    val arrayOfAnyNullableType = builder.context.irBuiltIns.arrayClass.typeWith(anyNullableType)
+    val vararg = IrVarargImpl(
+        startOffset = builder.startOffset,
+        endOffset = builder.endOffset,
+        type = arrayOfAnyNullableType,
+        varargElementType = anyNullableType,
+        elements = paramValues,
+    )
+    val arrayOfCall = builder.irCall(runtimeSymbols.arrayOfFunction!!)
+    arrayOfCall.typeArguments[0] = anyNullableType
+    arrayOfCall.arguments[0] = vararg
+    return arrayOfCall
 }

@@ -1,0 +1,139 @@
+FILE: multiParamServiceRoundTrip.kt
+    package test.box
+
+    public abstract interface GreetingService : R|crow/wasmline/WasmlineService| {
+        public abstract fun greet(name: R|kotlin/String|, greeting: R|kotlin/String|): R|kotlin/String|
+
+        public abstract fun log(message: R|kotlin/String|, level: R|kotlin/Int|, tag: R|kotlin/String|): R|kotlin/Unit|
+
+    }
+    private final class GreetingServiceImpl : R|test/box/GreetingService| {
+        public constructor(): R|test/box/GreetingServiceImpl| {
+            super<R|kotlin/Any|>()
+        }
+
+        public open override fun greet(name: R|kotlin/String|, greeting: R|kotlin/String|): R|kotlin/String| {
+            ^greet <strcat>(R|<local>/greeting|, String(, ), R|<local>/name|, String(!))
+        }
+
+        public open override fun log(message: R|kotlin/String|, level: R|kotlin/Int|, tag: R|kotlin/String|): R|kotlin/Unit| {
+        }
+
+    }
+    public final fun box(): R|kotlin/String| {
+        lval bridgeClass: R|java/lang/Class<*>!| = Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.box.GreetingService_WasmlineBridge))
+        when () {
+            <getClass>(Q|test/box/GreetingService|).R|kotlin/jvm/java|<R|test/box/GreetingService|>.R|SubstitutionOverride<java/lang/Class.isAssignableFrom: R|kotlin/Boolean|>|(R|<local>/bridgeClass|).R|kotlin/Boolean.not|() ->  {
+                ^box <strcat>(String(Fail bridgeContractType=), R|<local>/bridgeClass|.R|java/lang/Class.name|)
+            }
+        }
+
+        lval constructors: R|ft<kotlin/Array<java/lang/reflect/Constructor<*>!>, kotlin/Array<out java/lang/reflect/Constructor<*>!>?>| = R|<local>/bridgeClass|.R|java/lang/Class.declaredConstructors|
+        lval endpointCtor: R|java/lang/reflect/Constructor<*>| = R|<local>/constructors|.R|kotlin/collections/firstOrNull|<R|java/lang/reflect/Constructor<*>!|>(<L> = firstOrNull@fun <anonymous>(ctor: R|java/lang/reflect/Constructor<*>!|): R|kotlin/Boolean| <inline=Inline, kind=UNKNOWN>  {
+            ^ ==(R|<local>/ctor|.R|java/lang/reflect/Constructor.parameterTypes|.R|SubstitutionOverride<kotlin/Array.size: R|kotlin/Int|>|, Int(3)) && ==(R|<local>/ctor|.R|java/lang/reflect/Constructor.parameterTypes|.R|SubstitutionOverride<kotlin/Array.get: R|java/lang/Class<*>!|>|(Int(0)).R|java/lang/Class.name|, String(crow.wasmline.internal.bridge.WasmlineEndpoint))
+        }
+        ) ?: ^box <strcat>(String(Fail missingEndpointCtor (found: ), R|<local>/constructors|.R|kotlin/collections/map|<R|java/lang/reflect/Constructor<*>!|, R|kotlin/collections/List<java/lang/Class<*>!>|>(<L> = map@fun <anonymous>(it: R|java/lang/reflect/Constructor<*>!|): R|kotlin/collections/List<java/lang/Class<*>!>| <inline=Inline, kind=UNKNOWN>  {
+            ^ R|<local>/it|.R|java/lang/reflect/Constructor.parameterTypes|.R|kotlin/collections/toList|<R|java/lang/Class<*>!|>()
+        }
+        ), String()))
+        lval endpointType: R|java/lang/Class<*>!| = R|<local>/endpointCtor|.R|java/lang/reflect/Constructor.parameterTypes|.R|SubstitutionOverride<kotlin/Array.get: R|java/lang/Class<*>!|>|(Int(0))
+        lval factory: R|crow/wasmline/serialization/WasmlineProtobufSerializationFactory| = Q|crow/wasmline/serialization/WasmlineProtobufSerializationFactory|
+        lvar capturedAction: R|kotlin/String?| = Null(null)
+        lvar capturedPayload: R|kotlin/ByteArray?| = Null(null)
+        lval linkedEndpoint: R|kotlin/Any!| = Q|java/lang/reflect/Proxy|.R|java/lang/reflect/Proxy.newProxyInstance*s|(R|<local>/endpointType|.R|java/lang/Class.classLoader|, R|kotlin/arrayOf|<R|java/lang/Class<*>!|>(vararg(R|<local>/endpointType|)), R|java/lang/reflect/InvocationHandler|(<L> = InvocationHandler@fun <anonymous>(<unused var>: R|kotlin/Any!|, method: R|java/lang/reflect/Method!|, args: R|ft<kotlin/Array<kotlin/Any!>, kotlin/Array<out kotlin/Any!>?>|): R|kotlin/Any!| <inline=NoInline>  {
+            ^ when (lval <when-subject>: R|kotlin/String!| = R|<local>/method|.R|java/lang/reflect/Method.name|) {
+                ==($subj$, String(invoke)) ->  {
+                    R|<local>/capturedAction| = (R|<local>/args|!!.R|SubstitutionOverride<kotlin/Array.get: R|kotlin/Any!|>|(Int(0)) as R|kotlin/String|)
+                    R|<local>/capturedPayload| = (R|<local>/args|.R|SubstitutionOverride<kotlin/Array.get: R|kotlin/Any!|>|(Int(1)) as R|kotlin/ByteArray|).R|kotlin/collections/copyOf|()
+                    String(Hello back!).R|kotlin/text/encodeToByteArray|()
+                }
+                else ->  {
+                    R|kotlin/error|(<strcat>(String(Unexpected endpoint method ), R|<local>/method|.R|java/lang/reflect/Method.name|))
+                }
+            }
+
+        }
+        ))
+        lval proxy: R|test/box/GreetingService| = (R|<local>/endpointCtor|.R|SubstitutionOverride<java/lang/reflect/Constructor.newInstance: R|CapturedType(*)!|>|(vararg(R|<local>/linkedEndpoint|, Null(null), R|<local>/factory|)) as R|test/box/GreetingService|)
+        when () {
+            !=(<getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|, String(test.box.GreetingService_WasmlineBridge)) ->  {
+                ^box <strcat>(String(Fail proxyType=), <getClass>(R|<local>/proxy|).R|SubstitutionOverride<kotlin/reflect/KClass.qualifiedName: R|kotlin/String?|>|)
+            }
+        }
+
+        lval greetResult: R|kotlin/String| = R|<local>/proxy|.R|test/box/GreetingService.greet|(String(Alice), String(Hi))
+        when () {
+            !=(R|<local>/capturedAction|, String(test.box.GreetingService#greet)) ->  {
+                ^box <strcat>(String(Fail greetAction=), R|<local>/capturedAction|)
+            }
+        }
+
+        when () {
+            ==(R|<local>/capturedPayload|, Null(null)) || R|<local>/capturedPayload|!!.R|kotlin/collections/isEmpty|() ->  {
+                ^box String(Fail emptyGreetPayload)
+            }
+        }
+
+        R|<local>/proxy|.R|test/box/GreetingService.log|(String(test message), Int(3), String(APP))
+        when () {
+            !=(R|<local>/capturedAction|, String(test.box.GreetingService#log)) ->  {
+                ^box <strcat>(String(Fail logAction=), R|<local>/capturedAction|)
+            }
+        }
+
+        lval implementationCtor: R|java/lang/reflect/Constructor<*>| = R|<local>/constructors|.R|kotlin/collections/firstOrNull|<R|java/lang/reflect/Constructor<*>!|>(<L> = firstOrNull@fun <anonymous>(ctor: R|java/lang/reflect/Constructor<*>!|): R|kotlin/Boolean| <inline=Inline, kind=UNKNOWN>  {
+            ^ ==(R|<local>/ctor|.R|java/lang/reflect/Constructor.parameterTypes|.R|SubstitutionOverride<kotlin/Array.size: R|kotlin/Int|>|, Int(3)) && R|<local>/ctor|.R|java/lang/reflect/Constructor.parameterTypes|.R|SubstitutionOverride<kotlin/Array.get: R|java/lang/Class<*>!|>|(Int(0)).R|java/lang/Class.name|.R|kotlin/text/contains|(String(GreetingService))
+        }
+        ) ?: ^box String(Fail missingImplementationCtor)
+        lval bindMethod: R|java/lang/reflect/Method| = R|<local>/bridgeClass|.R|java/lang/Class.methods|.R|kotlin/collections/singleOrNull|<R|java/lang/reflect/Method!|>(<L> = singleOrNull@fun <anonymous>(it: R|java/lang/reflect/Method!|): R|kotlin/Boolean| <inline=Inline, kind=UNKNOWN>  {
+            ^ ==(R|<local>/it|.R|java/lang/reflect/Method.name|, String(bind)) && ==(R|<local>/it|.R|java/lang/reflect/Method.parameterCount|, Int(1))
+        }
+        ) ?: ^box String(Fail missingBindMethod)
+        lval boundHandlers: R|{kotlin/collections/LinkedHashMap<kotlin/String, kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>>=} java/util/LinkedHashMap<kotlin/String, kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>>| = R|kotlin/collections/linkedMapOf|<R|kotlin/String|, R|kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>|>()
+        lval registerAction: R|test/box/<anonymous>| = object : R|kotlin/jvm/functions/Function2<kotlin/String, kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>, kotlin/Unit>| {
+            private constructor(): R|test/box/<anonymous>| {
+                super<R|kotlin/Any|>()
+            }
+
+            public open override operator fun invoke(registeredAction: R|kotlin/String|, handler: R|kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>|): R|kotlin/Unit| {
+                R|<local>/boundHandlers|.R|kotlin/collections/set|<R|kotlin/String|, R|kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>|>(R|<local>/registeredAction|, R|<local>/handler|)
+                Unit
+            }
+
+        }
+
+        lval binderBridge: R|kotlin/Any!| = R|<local>/implementationCtor|.R|SubstitutionOverride<java/lang/reflect/Constructor.newInstance: R|CapturedType(*)!|>|(vararg(Null(null), R|test/box/GreetingServiceImpl.GreetingServiceImpl|(), R|<local>/factory|))
+        R|<local>/bindMethod|.R|java/lang/reflect/Method.invoke|(R|<local>/binderBridge|, vararg(R|<local>/registerAction|))
+        lval expectedActions: R|kotlin/collections/Set<kotlin/String>| = R|kotlin/collections/setOf|<R|kotlin/String|>(vararg(String(test.box.GreetingService#greet), String(test.box.GreetingService#log)))
+        when () {
+            !=(R|<local>/boundHandlers|.R|SubstitutionOverride<java/util/LinkedHashMap.keys: R|@EnhancedNullability kotlin/collections/MutableSet<@EnhancedNullability kotlin/String>|>|, R|<local>/expectedActions|) ->  {
+                ^box <strcat>(String(Fail boundActions=), R|<local>/boundHandlers|.R|SubstitutionOverride<java/util/LinkedHashMap.keys: R|@EnhancedNullability kotlin/collections/MutableSet<@EnhancedNullability kotlin/String>|>|)
+            }
+        }
+
+        lval boundEndpoint: R|kotlin/Any!| = Q|java/lang/reflect/Proxy|.R|java/lang/reflect/Proxy.newProxyInstance*s|(R|<local>/endpointType|.R|java/lang/Class.classLoader|, R|kotlin/arrayOf|<R|java/lang/Class<*>!|>(vararg(R|<local>/endpointType|)), R|java/lang/reflect/InvocationHandler|(<L> = InvocationHandler@fun <anonymous>(<unused var>: R|kotlin/Any!|, method: R|java/lang/reflect/Method!|, args: R|ft<kotlin/Array<kotlin/Any!>, kotlin/Array<out kotlin/Any!>?>|): R|kotlin/Any!| <inline=NoInline>  {
+            ^ when (lval <when-subject>: R|kotlin/String!| = R|<local>/method|.R|java/lang/reflect/Method.name|) {
+                ==($subj$, String(invoke)) ->  {
+                    lval invokedAction: R|kotlin/String| = (R|<local>/args|!!.R|SubstitutionOverride<kotlin/Array.get: R|kotlin/Any!|>|(Int(0)) as R|kotlin/String|)
+                    lval invokedPayload: R|kotlin/ByteArray| = (R|<local>/args|.R|SubstitutionOverride<kotlin/Array.get: R|kotlin/Any!|>|(Int(1)) as R|kotlin/ByteArray|)
+                    lval handler: R|kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>| = R|<local>/boundHandlers|.R|SubstitutionOverride<java/util/LinkedHashMap.get: R|@EnhancedNullability kotlin/jvm/functions/Function1<kotlin/ByteArray, kotlin/ByteArray>?|>|(R|<local>/invokedAction|) ?: R|kotlin/error|(<strcat>(String(Missing handler ), R|<local>/invokedAction|))
+                    R|<local>/handler|.R|SubstitutionOverride<kotlin/jvm/functions/Function1.invoke: R|kotlin/ByteArray|>|(R|<local>/invokedPayload|)
+                }
+                else ->  {
+                    R|kotlin/error|(<strcat>(String(Unexpected endpoint method ), R|<local>/method|.R|java/lang/reflect/Method.name|))
+                }
+            }
+
+        }
+        ))
+        lval boundProxy: R|test/box/GreetingService| = (R|<local>/endpointCtor|.R|SubstitutionOverride<java/lang/reflect/Constructor.newInstance: R|CapturedType(*)!|>|(vararg(R|<local>/boundEndpoint|, Null(null), R|<local>/factory|)) as R|test/box/GreetingService|)
+        lval boundGreetResult: R|kotlin/String| = R|<local>/boundProxy|.R|test/box/GreetingService.greet|(String(Bob), String(Hello))
+        when () {
+            !=(R|<local>/boundGreetResult|, String(Hello, Bob!)) ->  {
+                ^box <strcat>(String(Fail boundGreetResult=), R|<local>/boundGreetResult|)
+            }
+        }
+
+        R|<local>/boundProxy|.R|test/box/GreetingService.log|(String(bound test), Int(1), String(BOUND))
+        ^box String(OK)
+    }

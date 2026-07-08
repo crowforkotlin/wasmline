@@ -122,11 +122,6 @@ internal class WasmlineServiceContractValidator(
             }
         }
 
-        if (regularParameters.size > 1) {
-            isValid = false
-            reportError(messageCollector, file, function, "Wasmline service methods currently support at most one regular parameter.")
-        }
-
         if (function.returnType.isWasmlineServiceType()) {
             isValid = false
             reportError(messageCollector, file, function, "Returning service contracts is not supported yet.")

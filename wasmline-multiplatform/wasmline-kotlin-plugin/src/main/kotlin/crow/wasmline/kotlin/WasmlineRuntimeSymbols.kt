@@ -78,6 +78,35 @@ internal class WasmlineRuntimeSymbols(
         functionName = "decodeGeneratedValue",
         regularParameterCount = 2,
     )
+    val encodeMultiParamsFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "encodeMultiParams",
+        regularParameterCount = 4,
+    )
+    val decodeMultiParamsFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "decodeMultiParams",
+        regularParameterCount = 4,
+    )
+    val buildParamsDescriptorFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "buildParamsDescriptor",
+        regularParameterCount = 2,
+    )
+    val getMultiParamFunction: IrSimpleFunctionSymbol = requireTopLevelFunction(
+        packageName = SPI_PACKAGE,
+        functionName = "getMultiParam",
+        regularParameterCount = 2,
+    )
+    val kSerializerClass: IrClassSymbol? = referenceClass("kotlinx.serialization", "KSerializer")
+    val serializerFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
+        callableId = CallableId(FqName("kotlinx.serialization"), Name.identifier("serializer")),
+        regularParameterCount = 0,
+    )
+    val arrayOfFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
+        callableId = CallableId(FqName("kotlin"), Name.identifier("arrayOf")),
+        regularParameterCount = 1,
+    )
     val hostBindSingleFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
         packageName = MAIN_PACKAGE,
         functionName = "bind",
