@@ -63,7 +63,7 @@ internal data class WasmExecutionReport(
             return WasmExecutionReport(
                 status = WasmExecutionStatus.Idle,
                 headline = "Ready to execute",
-                detail = "调整参数后即可触发 TimeSyncService.timeSync。",
+                detail = "Adjust parameters to trigger TimeSyncService.timeSync.",
                 artifactPath = artifactPath,
                 artifactName = artifactPath.fileName(),
                 executedAction = "TimeSyncService.timeSync",
@@ -81,7 +81,7 @@ internal data class WasmExecutionReport(
             return WasmExecutionReport(
                 status = WasmExecutionStatus.Running,
                 headline = "Executing request...",
-                detail = "正在加载 artifact 并调用 TimeSyncService.timeSync。",
+                detail = "Loading artifact and invoking TimeSyncService.timeSync.",
                 artifactPath = artifactPath,
                 artifactName = artifactPath.fileName(),
                 executedAction = "TimeSyncService.timeSync",
@@ -163,7 +163,7 @@ internal class WasmLoader {
                     return WasmExecutionReport(
                         status = WasmExecutionStatus.Failure,
                         headline = "Execution failed",
-                        detail = "运行时加载失败，未能进入 service 调用阶段。",
+                        detail = "Runtime load failed; unable to proceed to service invocation.",
                         artifactPath = request.artifactPath,
                         artifactName = artifactName,
                         executedAction = request.executedAction,
@@ -205,7 +205,7 @@ internal class WasmLoader {
         return WasmExecutionReport(
             status = WasmExecutionStatus.Success,
             headline = "Execution completed",
-            detail = "成功完成 artifact 加载与 service 调用。",
+            detail = "Artifact loaded and service invocation completed successfully.",
             artifactPath = request.artifactPath,
             artifactName = artifactName,
             executedAction = request.executedAction,

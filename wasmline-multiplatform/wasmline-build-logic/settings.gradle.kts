@@ -5,7 +5,7 @@ pluginManagement {
         gradlePluginPortal()
         google()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") // mavenCentral 快照仓库
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") // mavenCentral snapshot repository
     }
 }
 
@@ -15,7 +15,7 @@ dependencyResolutionManagement {
         mavenCentral()
         google()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") // mavenCentral 快照仓库
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") // mavenCentral snapshot repository
     }
     versionCatalogs {
         create("libs") {

@@ -3,9 +3,9 @@ plugins {
     alias(libs.plugins.maven.publish)
 }
 
-// NDK/CMake 已移除：libwasmline.so 由 engine 模块（wasmline-engine-pulley / cranelift）
-// 预编译后通过 jniLibs 提供，消费者无需本地编译 native 代码。
+// NDK/CMake removed: libwasmline.so is pre-compiled by the engine module (wasmline-engine-pulley / cranelift)
+// and distributed via jniLibs; consumers do not need native compilation.
 //
-// 如需重新编译 libwasmline.so（开发/CI），使用以下任一方式：
+// To recompile libwasmline.so (dev/CI), use one of:
 //   - Android: bash scripts/build-native-android.sh
-//   - Desktop: zig build (在 wasmline/ 目录下)
+//   - Desktop: zig build (in wasmline/ directory)

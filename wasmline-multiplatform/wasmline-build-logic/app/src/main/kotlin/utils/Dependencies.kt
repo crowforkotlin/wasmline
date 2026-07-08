@@ -18,6 +18,6 @@ fun DependencyHandlerScope.kspMultiplatform(
   add("kspIosArm64", dependencyNotation)
   add("kspIosSimulatorArm64", dependencyNotation)
 
-  // wasm 等待第三方依赖完善
+  // Wasm support pending third-party dependency completion
 //  add("kspWasmJs", dependencyNotation)
 }

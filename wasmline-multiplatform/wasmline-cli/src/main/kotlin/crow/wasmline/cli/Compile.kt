@@ -157,7 +157,7 @@ class Compile : CliktCommand(name = "compile") {
          * Prepare the browser `.wasm` artifact and compile native target artifacts.
          *
          * 2026-02-12 02:46:56
-         * @param productName 产物名称前缀（如 "manga"），生成文件名为 manga-target.cwasm
+         * @param productName artifact name prefix (e.g., "manga"), output file name is manga-target.cwasm
          * @author crowforkotlin
          */
         fun compileAll(

@@ -15,9 +15,6 @@ object Config {
    * ├── android-compose/
    * └── android/
    * getBaseName ... => TestCompose、TestAndroid
-   *
-   * time: 2025-09-12 11:50:03 上午 星期五
-   * @author:crow
    */
   fun getBaseName(project: Project): String {
     var baseName = ""
@@ -33,12 +30,9 @@ object Config {
    * mordecaix-test/
    * ├── android-compose/
    * └── android/
-   * 取模块分割'-'后的最后一个昵称
+   * Extracts the last segment after splitting module name by '-'
    *
-   * getNamespace... => $GROUP$namespace => crow.wasmline.test.compose、crow.wasmline.test.android
-   *
-   * time: 2025-09-12 11:50:11 上午 星期五
-   * @author:crow
+   * getNamespace... => $GROUP$namespace => crow.wasmline.test.compose, crow.wasmline.test.android
    */
   fun getNamespace(project: Project): String {
     var namespace = ""

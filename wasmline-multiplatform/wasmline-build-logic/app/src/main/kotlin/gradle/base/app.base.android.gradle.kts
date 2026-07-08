@@ -7,7 +7,7 @@ import kotlin.jvm.java
 plugins { id("com.android.application") }
 
 /**
- * 该插件封装了大部分模版配置，其余配置由 [AndroidExtension] 配置
+ * This plugin encapsulates most template configuration; remaining configuration is provided by [AndroidExtension]
  */
 
 extensions.create("androidApplication", AndroidExtension::class.java, project)

@@ -7,15 +7,15 @@ plugins {
 }
 
 composeCompiler {
-  // 输出 compose 稳定性报告，执行 outputCompilerReports 任务
+  // Emit Compose stability report; run outputCompilerReports task
   // https://developer.android.com/jetpack/compose/performance/stability/diagnose#compose-compiler
   reportsDestination.set(
     layout.buildDirectory.get().asFile.resolve("compose_compiler")
   )
 
-  // 对 Compose 配置外部类的稳定性
-  // 只允许配置已有第三方库里面的类，如果是自己的类请打上 @Stable 注解
-  // 配置规则可以查看 https://android-review.googlesource.com/c/platform/frameworks/support/+/2668595
+  // Configure stability for external classes used in Compose
+  // Only classes from existing third-party libraries are allowed; for your own classes, annotate with @Stable
+  // See https://android-review.googlesource.com/c/platform/frameworks/support/+/2668595 for configuration rules
   stabilityConfigurationFiles.set(
     listOf(
       layout.projectDirectory.file(rootDir.resolve("config/compose-stability-config.txt").absolutePath)
@@ -26,7 +26,7 @@ composeCompiler {
 android {
   dependencies {
 
-    // 相当于stdlib 必不可少的
+    // Essential dependencies, equivalent to stdlib
     implementation(libsEx.`androidx-compose-runtime`)
     implementation(libsEx.`androidx-compose-foundation`)
     implementation(libsEx.`androidx-compose-ui`)

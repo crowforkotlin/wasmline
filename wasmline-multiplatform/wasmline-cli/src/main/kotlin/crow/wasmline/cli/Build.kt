@@ -51,7 +51,7 @@ import java.util.zip.ZipOutputStream
  */
 class Build : CliktCommand(name = "build") {
 
-    // ==================== Compile 参数 ====================
+    // ==================== Compile Parameters ====================
 
     private val inputFile by option("-i", "--input")
         .file(mustExist = true, canBeFile = true, canBeDir = false)
@@ -71,7 +71,7 @@ class Build : CliktCommand(name = "build") {
         .unique()
         .help("Target architectures. Default: all common targets")
 
-    // ==================== Manifest 参数 ====================
+    // ==================== Manifest Parameters ====================
 
     private val pluginId by option("--plugin-id")
         .help("Plugin unique identifier (e.g., crow.wasmline.demo)")

@@ -20,16 +20,16 @@ abstract class ApplicationExtension(val project: Project) {
   /**
    * Config
    *
-   * @param versionCode 版本号
-   * @param versionName 版本名称
-   * @param enableJs 是否启用WebJs
-   * @param enableWasmJs 是否启用WebWasmJs
-   * @param desktopMainClass 主程序类包路径
-   * @param jsModuleName JS模块名称
-   * @param jsOutputFileName JS文件产物名称
-   * @param desktopConfig 桌面端配置 详情看 [DesktopExtension]
-   * @param wasmJsConfig WasmJS配置 详情看 [KotlinWasmJsTargetDsl]
-   * @param jsConfig  WasmJS配置 详情看 [KotlinJsTargetDsl]
+   * @param versionCode version code
+   * @param versionName version name
+   * @param enableJs whether to enable WebJs
+   * @param enableWasmJs whether to enable WebWasmJs
+   * @param desktopMainClass main class package path
+   * @param jsModuleName JS module name
+   * @param jsOutputFileName JS output file name
+   * @param desktopConfig desktop configuration, see [DesktopExtension]
+   * @param wasmJsConfig WasmJS configuration, see [KotlinWasmJsTargetDsl]
+   * @param jsConfig WasmJS configuration, see [KotlinJsTargetDsl]
    * @receiver
    * @receiver
    * @receiver
