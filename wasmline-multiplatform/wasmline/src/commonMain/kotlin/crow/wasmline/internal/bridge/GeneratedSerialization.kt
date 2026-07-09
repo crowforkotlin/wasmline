@@ -50,10 +50,16 @@ private class ArrayBackedSerializer(
     override fun deserialize(decoder: Decoder): Array<Any?> {
         return decoder.decodeStructure(descriptor) {
             val result = arrayOfNulls<Any>(serializers.size)
-            while (true) {
-                val index = decodeElementIndex(descriptor)
-                if (index == DECODE_DONE) break
-                result[index] = decodeSerializableElement(descriptor, index, serializers[index])
+            if (decodeSequentially()) {
+                for (i in serializers.indices) {
+                    result[i] = decodeSerializableElement(descriptor, i, serializers[i])
+                }
+            } else {
+                while (true) {
+                    val index = decodeElementIndex(descriptor)
+                    if (index == DECODE_DONE) break
+                    result[index] = decodeSerializableElement(descriptor, index, serializers[index])
+                }
             }
             result
         }

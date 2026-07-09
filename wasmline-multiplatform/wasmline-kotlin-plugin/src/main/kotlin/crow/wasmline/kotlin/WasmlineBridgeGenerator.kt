@@ -12,6 +12,8 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.IrBlockBuilder
+import org.jetbrains.kotlin.ir.builders.Scope
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
@@ -25,6 +27,7 @@ import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -35,9 +38,11 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
+import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetObjectValueImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrTypeOperatorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -556,22 +561,35 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResult
 
         else -> {
             val (serializersField, descriptorField) = multiParamFields[contractFunction]!!
-            val decodedArgs = irInvoke(
-                dispatchReceiver = null,
-                callee = runtimeSymbols.decodeMultiParamsFunction,
-                irGetField(irGet(bridgeThisParam), serializationFactoryField),
-                irGetField(irGet(bridgeThisParam), descriptorField),
-                irGetField(irGet(bridgeThisParam), serializersField),
-                irGet(payloadParameter),
-            )
-            val castArgs = regularParameters.mapIndexed { index, param ->
-                val call = irCall(runtimeSymbols.getMultiParamFunction)
-                call.typeArguments[0] = param.type
-                call.arguments[0] = decodedArgs
-                call.arguments[1] = irInt(index)
-                call
+            val arrayGetFunction = runtimeSymbols.arrayGetFunction
+            IrBlockBuilder(context, Scope(scope.scopeOwnerSymbol), startOffset, endOffset).block {
+                val decodedArgsVar = irTemporary(
+                    value = irInvoke(
+                        dispatchReceiver = null,
+                        callee = runtimeSymbols.decodeMultiParamsFunction,
+                        irGetField(irGet(bridgeThisParam), serializationFactoryField),
+                        irGetField(irGet(bridgeThisParam), descriptorField),
+                        irGetField(irGet(bridgeThisParam), serializersField),
+                        irGet(payloadParameter),
+                    ),
+                    nameHint = "decodedArgs",
+                ).apply { origin = IrDeclarationOrigin.DEFINED }
+                val castArgs = regularParameters.mapIndexed { index, param ->
+                    val arrayGetCall = irCall(arrayGetFunction).apply {
+                        dispatchReceiver = irGet(decodedArgsVar)
+                        arguments[1] = irInt(index)
+                    }
+                    IrTypeOperatorCallImpl(
+                        startOffset = startOffset,
+                        endOffset = endOffset,
+                        type = param.type,
+                        operator = IrTypeOperator.CAST,
+                        typeOperand = param.type,
+                        argument = arrayGetCall,
+                    )
+                }
+                +irInvoke(implementation, contractFunction.symbol, *castArgs.toTypedArray())
             }
-            irInvoke(implementation, contractFunction.symbol, *castArgs.toTypedArray())
         }
     }
     return if (contractFunction.returnType.isKotlinUnitType()) {

@@ -107,6 +107,10 @@ internal class WasmlineRuntimeSymbols(
         callableId = CallableId(FqName("kotlin"), Name.identifier("arrayOf")),
         regularParameterCount = 1,
     )
+    val arrayGetFunction: IrSimpleFunctionSymbol = pluginContext.irBuiltIns.arrayClass.owner.declarations
+        .filterIsInstance<IrSimpleFunction>()
+        .single { it.name.asString() == "get" && it.parameters.count { p -> p.kind == IrParameterKind.Regular } == 1 }
+        .symbol
     val hostBindSingleFunction: IrSimpleFunctionSymbol? = referenceTopLevelExtensionFunction(
         packageName = MAIN_PACKAGE,
         functionName = "bind",

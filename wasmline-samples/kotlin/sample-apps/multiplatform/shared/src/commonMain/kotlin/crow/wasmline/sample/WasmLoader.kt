@@ -186,8 +186,13 @@ internal class WasmLoader {
 
         val runtime = checkNotNull(current) { "Wasmline runtime is unavailable after load." }
         var outputPayload: PlatformBean? = null
+        var echoResult: String? = null
+        val timeSyncService = runtime.link<TimeSyncService>()
         val invokeDuration = measureTime {
-            outputPayload = runtime.link<TimeSyncService>().timeSync(inputPayload)
+            outputPayload = timeSyncService.timeSync(inputPayload)
+        }
+        val echoDuration = measureTime {
+            echoResult = timeSyncService.echo(inputPayload, "wasmline")
         }
         invokeDurationMs = invokeDuration.inWholeMilliseconds
         val totalDurationMs = totalMark.elapsedNow().inWholeMilliseconds
@@ -199,8 +204,9 @@ internal class WasmLoader {
             else -> "Reused cached runtime"
         }
 
-        log("[WasmLoader] invoke success in ${invokeDurationMs} ms")
-        log("[WasmLoader] output=${toJsonString(outputPayload)}")
+        log("[WasmLoader] invoke success in ${invokeDurationMs} ms, ${echoDuration} ms.")
+        log("[WasmLoader] output timesync=${toJsonString(outputPayload)}")
+        log("[WasmLoader] output echo=${toJsonString(echoResult)}")
 
         return WasmExecutionReport(
             status = WasmExecutionStatus.Success,

@@ -7,6 +7,7 @@ import crow.wasmline.Wasmline
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.sample.bean.PlatformBean
+import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
 import crow.wasmline.serialization.WasmlineProtobufSerializationFactory
@@ -34,6 +35,10 @@ fun main() {
             ).also {
                 println("wasi wasm plugin return bean is : $it")
             }
+        }
+
+        override fun echo(platform: PlatformBean, tag: String): String {
+            return toJsonString(platform) + "wasm tag is : $tag"
         }
     })
 }

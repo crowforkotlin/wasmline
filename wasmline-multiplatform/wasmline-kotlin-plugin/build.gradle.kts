@@ -140,6 +140,7 @@ dependencies {
     testArtifacts(libs.kotlin.test)
     testArtifacts(libs.kotlin.script.runtime)
     testArtifacts(libs.jetbrains.annotations)
+    testArtifacts(libs.kotlinx.serialization.protobuf)
 }
 
 /**

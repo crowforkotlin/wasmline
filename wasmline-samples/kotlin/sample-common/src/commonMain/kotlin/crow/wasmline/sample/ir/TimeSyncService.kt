@@ -5,5 +5,6 @@ import crow.wasmline.sample.bean.PlatformBean
 
 interface TimeSyncService : WasmlineService {
     fun timeSync(platform: PlatformBean): PlatformBean
+    fun echo(platform: PlatformBean, tag: String): String
 }
 

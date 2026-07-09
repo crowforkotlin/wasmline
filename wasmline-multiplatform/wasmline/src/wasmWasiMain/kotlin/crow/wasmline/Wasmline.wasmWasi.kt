@@ -40,20 +40,3 @@ class Wasmline private constructor() {
         fun get(): Wasmline = instance
     }
 }
-
-class WasmlineConfigurationBuilder internal constructor(
-    var serializationFactory: WasmlineSerializationFactory,
-) {
-    fun serialization(factory: WasmlineSerializationFactory) {
-        serializationFactory = factory
-    }
-}
-
-@PublishedApi
-internal class GeneratedWasmlineHostEndpoint(
-    private val wasmline: Wasmline,
-) : WasmlineEndpoint {
-    override fun invoke(action: String, payload: ByteArray): ByteArray {
-        return wasmline.call(action, payload)
-    }
-}
