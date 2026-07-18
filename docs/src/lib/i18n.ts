@@ -2,6 +2,6 @@
 import type { I18nConfig } from 'fumadocs-core/i18n';
 
 export const i18n: I18nConfig = {
-  defaultLanguage: 'zh', // 默认语言
-  languages: ['zh', 'en'], // 支持的语言列表
+  defaultLanguage: 'en', // 默认语言（无内容后缀的 .mdx 视为英文）
+  languages: ['en', 'zh'], // 支持的语言列表
 };

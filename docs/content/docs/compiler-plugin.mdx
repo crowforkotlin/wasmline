@@ -1,83 +1,83 @@
 ---
-title: 编译器插件
-description: IR 变换流水线、静态契约约束、动作标识符派生与测试工作流
+title: Compiler Plugin
+description: IR transformation pipeline, static contract constraints, action identifier derivation, and test workflows
 ---
 
-# 编译器插件
+# Compiler Plugin
 
-## IR 变换流水线
+## IR Transformation Pipeline
 
-`wasmline-kotlin-plugin` 运行在 **Kotlin IR 编译阶段**，而不是通过注解处理（KSP）或源码级代码生成。变换流水线按顺序执行四个步骤：
+The `wasmline-kotlin-plugin` operates at the **Kotlin IR compilation phase** — not through annotation processing (KSP) or source-level code generation. The transformation pipeline executes in four sequential steps:
 
-| 步骤 | 类 | 操作 |
+| Step | Class | Operation |
 |---|---|---|
-| 1 — 发现 | `WasmlineIrGenerationExtension` | 遍历所有 `IrDeclarationContainer` 节点；收集在超类型层级中包含 `WasmlineService` 的 `IrClass` 声明 |
-| 2 — 校验 | `WasmlineServiceContractValidator` | 根据静态约束集验证每个契约；违反规则时发出带类型的 `WasmlineIrDiagnostics`；存在任何错误都会中止 IR 生成 |
-| 3 — 桥接生成 | `WasmlineBridgeGenerator` | 为每个通过验证的契约生成一个 `internal class {Contract}_WasmlineBridge : WasmlineGeneratedBridge`，并将该类直接注入父级 `IrFile` |
-| 4 — 调用点重写 | `WasmlineTypedEntryPointRewriter` | 定位所有 `link<T>()`、`bind(contract, impl)` 与 `bind(impl)` 调用点，并将其替换为直接实例化桥接类的表达式 |
+| 1 — Discovery | `WasmlineIrGenerationExtension` | Traverses all `IrDeclarationContainer` nodes; collects `IrClass` declarations with `WasmlineService` in the supertype hierarchy |
+| 2 — Validation | `WasmlineServiceContractValidator` | Validates each contract against the static constraint set; emits typed `WasmlineIrDiagnostics` on violation; aborts IR generation on any error |
+| 3 — Bridge synthesis | `WasmlineBridgeGenerator` | Synthesizes one `internal class {Contract}_WasmlineBridge : WasmlineGeneratedBridge` per validated contract; injects the class directly into the parent `IrFile` |
+| 4 — Call-site rewriting | `WasmlineTypedEntryPointRewriter` | Locates all `link<T>()`, `bind(contract, impl)`, and `bind(impl)` call sites; replaces each with a direct bridge instantiation expression |
 
-## 静态契约约束
+## Static Contract Constraints
 
-以下约束在编译期强制执行。任何违反都会被报告为**编译器错误**，并阻止 IR 成功生成：
+The following constraints are enforced at compile time. Any violation is reported as a **compiler error** and prevents successful IR generation:
 
-| 约束 | 要求 |
+| Constraint | Requirement |
 |---|---|
-| 声明种类 | 契约必须是 `interface`；抽象类、sealed 类型和 object 都会被拒绝 |
-| 成员可见性 | 所有函数都必须声明为 `public` |
-| suspend 能力 | 任何契约函数都不允许使用 `suspend` 修饰符 |
-| 参数数量 | 每个函数最多只能有一个普通值参数 |
-| 泛型类型参数 | 契约接口声明上不允许出现泛型类型参数 |
-| 方法名唯一性 | 单个契约内不支持同名重载方法 |
-| `vararg` 参数 | 不允许 |
-| 默认参数值 | 不允许 |
-| 扩展接收者 | 不支持把扩展函数或扩展属性声明为契约成员 |
+| Declaration kind | Contract must be an `interface`; abstract classes, sealed types, and objects are rejected |
+| Member visibility | All functions must be declared `public` |
+| Suspendability | `suspend` modifier is not permitted on any contract function |
+| Parameter arity | At most one regular value parameter per function |
+| Generic type parameters | Not permitted on the contract interface declaration |
+| Method name uniqueness | Overloaded method names within a single contract are not supported |
+| `vararg` parameters | Not permitted |
+| Default parameter values | Not permitted |
+| Extension receivers | Extension functions and properties are not supported as contract members |
 
-## SignatureHash — 动作标识符派生
+## SignatureHash — Action Identifier Derivation
 
-每个服务方法都会被赋予一个稳定的动作标识符，其计算方式为：**对其完全限定方法签名进行 SHA-256 哈希**：
+Each service method is assigned a stable action identifier computed as the **SHA-256 hash of its fully-qualified method signature**:
 
 ```text
 Input:  com.example.EchoService#echo(kotlin.String)
 Output: <lowercase hex SHA-256 digest>
 ```
 
-只要完全限定类名和方法签名保持不变，即使包结构重组，该标识符也保持稳定。它会被嵌入生成的 bridge dispatch table 中，并且必须与插件二进制中 `WasmlineRouter.register(action, handler)` 的调用保持一致。
+The identifier remains stable across package reorganizations provided the fully-qualified class name and method signature are unchanged. It is embedded in the generated bridge dispatch table and must correspond to the `WasmlineRouter.register(action, handler)` invocation in the plugin binary.
 
-## IR Box 测试工作流
+## IR Box Test Workflow
 
-Box 测试夹具位于 `wasmline-kotlin-plugin/testData/box/`。每个夹具都是一个包含 `fun box(): String` 入口点的源码文件，并在成功执行时返回 `"OK"`：
+Box test fixtures reside in `wasmline-kotlin-plugin/testData/box/`. Each fixture consists of a source file with a `fun box(): String` entry point returning `"OK"` on successful execution:
 
 ```bash
 cd wasmline-multiplatform
 
-# 1. 在 testData/box/{name}.kt 中编写或修改夹具
-# 2. 重新生成测试运行器
+# 1. Author or modify a fixture in testData/box/{name}.kt
+# 2. Regenerate the test runner
 ./gradlew :wasmline-kotlin-plugin:generateTests
 
-# 3. 执行 — 首次运行会生成 FIR 与 IR 快照
+# 3. Execute — FIR and IR snapshots are generated on the first run
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
 
-# 4. 提交前检查生成的 *.fir.txt 与 *.fir.ir.txt
+# 4. Review generated *.fir.txt and *.fir.ir.txt before committing
 ```
 
-<Callout type="warn" title="自动生成的构建产物">
-  以下文件属于**自动生成的构建产物**，绝不能手动编辑：`test-gen/**`、`testData/box/*.fir.txt`、`testData/box/*.fir.ir.txt`、`testData/diagnostics/*.fir.txt`。手工修改会在下一次生成流程中导致测试失败。
+<Callout type="warn" title="Auto-generated build artifacts">
+  The following files are **auto-generated build artifacts** and must never be edited manually: `test-gen/**`, `testData/box/*.fir.txt`, `testData/box/*.fir.ir.txt`, `testData/diagnostics/*.fir.txt`. Manual edits result in test failures on the subsequent generation pass.
 </Callout>
 
-## 相关 Gradle 任务
+## Related Gradle Tasks
 
 ```bash
 cd wasmline-multiplatform
 
-# 重新生成测试运行器
+# Regenerate the test runners
 ./gradlew :wasmline-kotlin-plugin:generateTests
 
-# box 测试
+# Box tests
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
 
-# 诊断校验测试
+# Diagnostic validation tests
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
 ```

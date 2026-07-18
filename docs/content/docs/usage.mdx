@@ -1,15 +1,15 @@
 ---
-title: 使用指南
-description: 服务契约定义、插件实现与宿主端模块加载
+title: Usage Guide
+description: Service contract definition, plugin implementation, and host-side module loading
 ---
 
-# 使用指南
+# Usage Guide
 
-以下示例展示完整的集成流程：定义服务契约、在插件中实现契约、在宿主中加载插件并调用其服务。
+The following example walks through the complete integration flow: define a service contract, implement it in a plugin, then load the plugin and invoke its services from the host.
 
-## 定义服务契约
+## Define the Service Contract
 
-服务契约是在共享源码（`commonMain`）中声明的 Kotlin `interface`，并扩展 `WasmlineService`。该契约定义了宿主与插件之间的二进制协议边界；方法签名是 SHA-256 动作标识符派生的基础。
+A service contract is a Kotlin `interface` extending `WasmlineService`, declared in shared source (`commonMain`). The contract defines the binary protocol boundary between host and plugin; method signatures are the basis for SHA-256 action identifier derivation.
 
 ```kotlin
 // shared/src/commonMain/kotlin/com/example/EchoService.kt
@@ -20,9 +20,9 @@ interface EchoService : WasmlineService {
 }
 ```
 
-## 实现插件（WASI 目标）
+## Implement the Plugin (WASI Target)
 
-插件二进制通过 `Wasmline.current.bind(impl)` 注册服务实现。IR 编译器插件会在 IR 层将该调用点重写为把实现注册到生成的 `*_WasmlineBridge` 中：
+The plugin binary registers service implementations through `Wasmline.current.bind(impl)`. The IR compiler plugin rewrites this call site to register the implementation into the generated `*_WasmlineBridge` at the IR level:
 
 ```kotlin
 // plugin/src/wasmWasiMain/kotlin/Main.kt
@@ -40,9 +40,9 @@ fun main() {
 }
 ```
 
-## 宿主端模块加载与服务调用
+## Host-Side Module Loading and Service Invocation
 
-宿主通过 `WasmlineLoader.load()` 加载插件——传入本地路径（`.pwasm` / `.cwasm` / `.wasm` / `manifest.wlm`）或远程 URL 均可，`http(s)://` 地址会自动按远程 manifest 下载并校验。加载后通过 `bind(impl)` 注册插件可访问的宿主侧服务实现，并通过 `link<T>()` 获取插件侧服务的类型安全代理：
+The host loads a plugin through `WasmlineLoader.load()` — both local paths (`.pwasm` / `.cwasm` / `.wasm` / `manifest.wlm`) and remote URLs are accepted, and `http(s)://` addresses are automatically downloaded and verified as remote manifests. The host then registers host-side service implementations accessible to the plugin via `bind(impl)`, and obtains typed proxies for plugin-side services via `link<T>()`:
 
 ```kotlin
 import crow.wasmline.WasmlineConfig
@@ -70,19 +70,19 @@ val response = module.link<EchoService>().echo("ping")
 module.close()
 ```
 
-<Callout type="info" title="IR 插件重写目标">
-  `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。IR 插件会将每个调用点替换为对生成的 `*_WasmlineBridge` 的直接调用。如果编译单元未应用 `wasmline-kotlin-plugin`，这些函数会在运行时抛出 `UnsupportedOperationException`。
+<Callout type="info" title="IR plugin rewrite targets">
+  `link<T>()` and `bind(impl)` are Kotlin IR compiler plugin rewrite targets. The IR plugin replaces each call site with a direct invocation of the synthesized `*_WasmlineBridge`. If the `wasmline-kotlin-plugin` is not applied to the compilation unit, these functions throw `UnsupportedOperationException` at runtime.
 </Callout>
 
-## 示例应用
+## Sample Applications
 
-参考实现位于 `wasmline-samples/kotlin/`：
+Reference implementations are located under `wasmline-samples/kotlin/`:
 
-| 模块 | 说明 |
+| Module | Description |
 |---|---|
-| `sample-common` | 共享服务契约接口定义：`EchoService`、`TimeSyncService`、`WebBridgeService` |
-| `sample-plugin` | Kotlin/WasmWasi 插件——通过 `bind()` 注册实现，通过 `link()` 调用宿主服务 |
-| `sample-apps/android` | Android 宿主——加载 `.pwasm` 产物，注册宿主回调，并调用插件服务 |
-| `sample-apps/application` | JVM 无界面桌面宿主 |
-| `sample-apps/multiplatform` | Compose Multiplatform 应用——Android 与 Desktop |
-| `sample-apps/web` | Web 宿主——Kotlin/JS 与 Kotlin/WasmJS 目标 |
+| `sample-common` | Shared service contract interface definitions: `EchoService`, `TimeSyncService`, `WebBridgeService` |
+| `sample-plugin` | Kotlin/WasmWasi plugin — registers implementations via `bind()`, invokes host services via `link()` |
+| `sample-apps/android` | Android host — loads `.pwasm` artifact, registers host callbacks, invokes plugin services |
+| `sample-apps/application` | JVM headless desktop host |
+| `sample-apps/multiplatform` | Compose Multiplatform application — Android and Desktop |
+| `sample-apps/web` | Web host — Kotlin/JS and Kotlin/WasmJS targets |

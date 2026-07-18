@@ -1,59 +1,63 @@
 ---
-title: 安装与先决条件
-description: 系统要求、Kotlin 版本要求、环境预检与平台运行时资产初始化
+title: Installation
+description: Add Wasmline to your project with Gradle — plugin application and Maven dependencies
 ---
 
-# 安装与先决条件
+# Installation
 
-## 系统要求
+Wasmline is consumed as Maven artifacts in your own Gradle project. If you want to build the framework itself from source or contribute to it, see [Building from Source](/en/docs/building-from-source).
 
-| 组件 | 要求版本 | 适用范围 |
-|---|---|---|
-| JDK / JBR | **21**（Compose Desktop 必须使用 [JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases)） | 所有 Gradle 操作 |
-| Kotlin | 最低 **2.3.0-RC2** | Wasm GC、函数引用、异常处理提案 |
-| Android Studio | **LTS** | AGP 9.2.1 兼容性 |
-| Zig | **0.15.1** | `wasmline-core` JNI 共享库编译 |
-| Bash / Python 3.9+ / Node.js 18+ | 任意一种 | 平台运行时资产初始化 |
+## Requirements
 
-<Callout type="warn" title="Kotlin 版本要求">
-  最低需要 **Kotlin 2.3.0-RC2** 版本。低于该版本时，Kotlin/WasmWasi 编译器后端可能生成不完整的 Wasm 二进制，表现为插件加载失败，或在 `Session.invoke` 边界出现未定义行为。
+- JDK / JBR **21**
+- Kotlin **2.3.0-RC2** or later
 
-  ![Kotlin/Wasm 运行时支持矩阵](/images/kotlin_support.png)
+<Callout type="warn" title="Kotlin version requirement">
+  The minimum required Kotlin version is **2.3.0-RC2**. Below this version, the Kotlin/WasmWasi compiler backend may produce incomplete Wasm binaries, manifesting as plugin load failures or undefined behavior at the `Session.invoke` boundary.
+
+  ![Kotlin/Wasm runtime support matrix](/images/kotlin_support.png)
 </Callout>
 
-Kotlin/WasmWasi 编译器后端必须完整实现以下 WebAssembly 提案：
+## Apply the Gradle Plugin
 
-| 提案 | 要求 | 原因 |
-|---|---|---|
-| GC（垃圾回收） | 必需 | Kotlin 托管对象在 Wasm 线性内存中的分配 |
-| Function References | 必需 | 接口 vtable 分发与闭包表示 |
-| Exception Handling | 必需 | Kotlin 异常跨 Wasm 执行边界传播 |
-| Tail Call Optimization | 推荐 | 防止深层递归调用链中的栈溢出 |
-
-## 环境预检
-
-在确认当前 JVM 环境前，不得调用 Gradle。每次构建会话开始前都必须执行仓库预检：
-
-```bash
-bash ./scripts/doctor.sh
+```kotlin
+// build.gradle.kts
+plugins {
+    id("crow.wasmline") version "1.0.0"
+}
 ```
 
-该脚本会验证 JBR 21 是否可用，报告桌面 Zig/JNI-native 状态，并报告 `build/platforms/` 下缺失的 wasmtime 平台/架构资产。
+The plugin applies the `wasmline-kotlin-plugin` IR compiler plugin to the current compilation unit, rewriting `link<T>()` and `bind(impl)` call sites at compile time. Without it, those calls throw `UnsupportedOperationException` at runtime.
 
-<Callout type="info" title="local.properties">
-  手动执行项目构建或运行相关命令时，项目根目录下需要 `local.properties` 文件。在 Android Studio 中打开项目后会自动创建该文件。请确认此文件存在后再在 IDE 外执行 Gradle 命令。
+## Add Dependencies
+
+```kotlin
+dependencies {
+    // Core loader — manifest parsing, signature verification, module loading
+    implementation("crow.wasmline:wasmline-loader:1.0.0")
+
+    // HTTP client for remote manifest loading (Ktor or OkHttp implementation)
+    implementation("crow.wasmline:wasmline-network-ktor:1.0.0")
+
+    // Engine backend — provides the native runtime library per platform variant
+    implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+}
+```
+
+| Artifact | Description |
+|---|---|
+| `crow.wasmline:wasmline` | Core runtime — loading, dispatch, serialization SPI |
+| `crow.wasmline:wasmline-loader` | `WasmlineLoader`, `.wlm` manifest parsing, Ed25519/ECDSA-P256 verification |
+| `crow.wasmline:wasmline-network-ktor` | HTTP network client backed by Ktor (remote manifest loading) |
+| `crow.wasmline:wasmline-network-okhttp` | HTTP network client backed by OkHttp 5.x (JVM/Android) |
+| `crow.wasmline:wasmline-engine-pulley` | Pulley backend — portable bytecode, all native targets |
+| `crow.wasmline:wasmline-engine-cranelift` | Cranelift backend — platform-specific AOT machine code |
+
+<Callout type="info" title="Distribution status">
+  Wasmline is under active development. Artifacts are currently distributed through `mavenLocal()` — run `./gradlew publishToMavenLocal` in `wasmline-multiplatform/` to install them locally. Maven Central publishing is in progress.
 </Callout>
 
-## 平台运行时资产初始化
+## Next Steps
 
-资产初始化仅对原生目标构建（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 wasmtime min C-API 资产。
-
-在开始原生目标编译前，`build/platforms/` 下必须存在 wasmtime min C-API 头文件与预编译库。执行以下任一等价脚本：
-
-```bash
-sh ./scripts/init.sh          # Bash — 需要 curl 和 tar/unzip
-python3 ./scripts/init.py     # Python 3.9+ — 无第三方依赖
-node ./scripts/init.mjs       # Node.js 18+ — 无第三方依赖
-```
-
-三个脚本都支持交互式平台/架构选择、可配置的下载并发数，以及作为第一个位置参数传入的可选 HTTP 代理（例如 `127.0.0.1:7890`）。
+- [Usage Guide](/en/docs/usage) — define a service contract, implement a plugin, and invoke it from the host.
+- [CLI Reference](/en/docs/cli) — compile and package plugin binaries for distribution.

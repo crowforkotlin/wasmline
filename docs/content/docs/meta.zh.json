@@ -1,4 +1,4 @@
 {
-  "title": "Docs",
+  "title": "文档",
   "pages": ["index", "installation", "building-from-source", "usage", "cli", "architecture", "compiler-plugin", "faq", "mdx-compponent"]
 }

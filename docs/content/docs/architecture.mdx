@@ -1,19 +1,19 @@
 ---
-title: 平台架构
-description: 各平台执行栈、模块依赖关系与仓库目录结构
+title: Platform Architecture
+description: Per-platform execution stacks, module dependencies, and repository structure
 ---
 
-# 平台架构
+# Platform Architecture
 
-## 架构思维导图
+## Architecture Mind Map
 
-![Wasmline 架构思维导图](/images/wasmline_mind_zh.png)
+![Wasmline Architecture Mind Map](/images/wasmline_mind_en.png)
 
-## 执行栈
+## Execution Stacks
 
-Wasmline 从 `commonMain` / `hostMain` 暴露统一 API，并按目标平台选择执行路径：原生目标（Android、iOS、macOS、Linux、Windows）经 `wasmline-core`（C/C++，Zig 0.15.1 编译）调用 wasmtime C-API 执行插件；Web 目标（Kotlin/JS、Kotlin/WasmJS）经内联 JS 运行时调用浏览器原生 WebAssembly API 执行插件，不经过 wasmtime。
+Wasmline exposes a single API from `commonMain` / `hostMain` and selects an execution path per target platform. On native targets (Android, iOS, macOS, Linux, Windows), plugins execute through `wasmline-core` (C/C++, compiled with Zig 0.15.1) into the wasmtime C-API. On Web targets (Kotlin/JS, Kotlin/WasmJS), plugins execute through an inline JS runtime on the browser-native WebAssembly API — wasmtime is not involved.
 
-### 原生目标栈 — Android · iOS · macOS · Linux · Windows
+### Native Target Stack — Android · iOS · macOS · Linux · Windows
 
 ```text
 Host Application  (commonMain / hostMain)
@@ -38,7 +38,7 @@ wasmtime C-API  v45.0.6
 Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
 ```
 
-### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
+### Web Target Stack — Kotlin/JS · Kotlin/WasmJS
 
 ```text
 Host Application  (commonMain / hostMain)
@@ -72,7 +72,7 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
 Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding)
 ```
 
-## 模块依赖关系图
+## Module Dependency Graph
 
 ```text
 wasmline-cli  ──────►  wasmline-loader  ──────►  wasmline  (core runtime)
@@ -83,7 +83,7 @@ wasmline-kotlin-plugin   (compile-time only; no runtime artifact)
 wasmline-gradle-plugin  ──►  wasmline-kotlin-plugin
 ```
 
-## 仓库目录结构
+## Repository Structure
 
 ```text
 wasmline/

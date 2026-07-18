@@ -1,18 +1,18 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { i18n } from '@/lib/i18n';
 
-export function baseOptions(): BaseLayoutProps {
+export function baseOptions(lang: string): BaseLayoutProps {
   return {
     nav: {
       title: 'wasmline',
     },
-    i18n: i18n,
+    i18n: true,
+    githubUrl: 'https://github.com/crowforkotlin/wasmline',
     links: [
-    {
-      text: 'Documentation',
-      url: '/en/docs',
-      active: 'nested-url',
-    },
-  ],
+      {
+        text: lang === 'zh' ? '文档' : 'Docs',
+        url: `/${lang}/docs`,
+        active: 'nested-url',
+      },
+    ],
   };
 }

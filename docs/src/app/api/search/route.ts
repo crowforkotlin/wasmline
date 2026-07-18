@@ -18,7 +18,7 @@ export async function GET() {
     // 必填字段
     content: page.data.description ?? '',
     // 语言标记
-    tag: (page as any).file?.locale || 'zh',
+    tag: page.locale ?? 'en',
   }));
 
   // ✅ 3. 直接返回 JSON

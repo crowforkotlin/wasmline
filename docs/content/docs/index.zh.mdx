@@ -1,0 +1,55 @@
+---
+title: wasmline 概览
+description: 基于 Kotlin Multiplatform 的跨平台 WebAssembly (WASI) 插件框架
+---
+
+# wasmline
+
+Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Desktop 与 Web 应用中加载并调用符合 WASI 规范的 WebAssembly 插件。服务契约以 Kotlin `interface` 声明，序列化与分发代码由内置的 Kotlin IR 编译器插件在编译期生成。
+
+## 平台支持
+
+| 平台 | 架构 | 产物支持 | 加载方式 |
+|---|---|---|---|
+| Android | v8a、x86_64 | `.cwasm` / `.pwasm` | wasmtime |
+| Android | v7a、x86 | 仅 `.pwasm` | wasmtime |
+| iOS | arm64 | `.pwasm` | wasmtime |
+| macOS | arm64 | `.cwasm` / `.pwasm` | wasmtime |
+| Linux | x86_64 | `.cwasm` / `.pwasm` | wasmtime |
+| Windows | x86_64 | `.cwasm` / `.pwasm` | wasmtime |
+| Web（Kotlin/JS · Kotlin/WasmJS） | 浏览器 JS 引擎 | 仅原始 `.wasm` | web |
+
+<Callout type="warn" title="Web 产物限制">
+  CLI 流水线生成的 AOT 产物（`.cwasm`、`.pwasm`）不能用于 Web。Web 目标只接受原始 `.wasm` 二进制。
+</Callout>
+
+## 示例应用
+
+<Tabs items={['macOS', 'Arch Linux']}>
+  <Tab value="macOS">
+
+![macOS 应用](/images/wasmline_mac_apps.png)
+
+![macOS 构建终端](/images/wasmline_mac_temrinal.png)
+
+  </Tab>
+  <Tab value="Arch Linux">
+
+![Arch Linux 应用](/images/wasmline_archlinux_apps.png)
+
+![Arch Linux 构建终端](/images/wasmline_archlinux_temrinals.png)
+
+  </Tab>
+</Tabs>
+
+## 文档导航
+
+<Cards>
+  <Card href="/zh/docs/installation" title="安装" description="在使用方项目中通过 Gradle 引入 Wasmline — 插件应用与 Maven 依赖" />
+  <Card href="/zh/docs/building-from-source" title="从源码编译" description="面向贡献者的工具链要求与构建工作流" />
+  <Card href="/zh/docs/usage" title="使用指南" description="服务契约定义、插件实现与宿主端模块加载" />
+  <Card href="/zh/docs/cli" title="CLI 参考" description="插件构建流水线命令与构建产物布局" />
+  <Card href="/zh/docs/architecture" title="平台架构" description="各平台执行栈、模块依赖关系与仓库目录结构" />
+  <Card href="/zh/docs/compiler-plugin" title="编译器插件" description="IR 变换流水线、静态契约约束与测试工作流" />
+  <Card href="/zh/docs/faq" title="常见问题" description="浏览器执行路径、产物格式差异与插件隔离模型" />
+</Cards>

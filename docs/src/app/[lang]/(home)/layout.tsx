@@ -1,13 +1,19 @@
+import type { ReactNode } from 'react';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { baseOptions } from '@/lib/layout.shared';
 import { PageTransition } from '@/components/page-transition';
 
-export default function Layout({ children }: LayoutProps<'/'>) {
+export default async function Layout({
+  children,
+  params,
+}: {
+  children: ReactNode;
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
   return (
-    <HomeLayout {...baseOptions()}>
-      <PageTransition>
-        {children}
-      </PageTransition>
+    <HomeLayout {...baseOptions(lang)}>
+      <PageTransition>{children}</PageTransition>
     </HomeLayout>
   );
 }

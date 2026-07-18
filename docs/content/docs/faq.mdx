@@ -1,70 +1,70 @@
 ---
-title: 常见问题
-description: 浏览器执行路径、产物格式差异、编译器插件必要性与插件隔离模型
+title: Frequently Asked Questions
+description: Browser execution path, artifact format differences, compiler plugin necessity, and the plugin isolation model
 ---
 
-# 常见问题
+# Frequently Asked Questions
 
 <details>
-<summary><strong>浏览器执行路径如何在没有 wasmtime 的情况下实例化插件？</strong></summary>
+<summary><strong>How does the browser execution path instantiate plugins without wasmtime?</strong></summary>
 
-Web 目标实现（`webMain` / `jsMain` / `wasmJsMain`）通过浏览器原生 WebAssembly 运行时，直接调用 `WebAssembly.Module` 和 `WebAssembly.Instance`。运行时层通过 Kotlin `js()` interop 内嵌为 JavaScript 代码——编译过程中不会生成外部 JS 文件。
+The Web target implementation (`webMain` / `jsMain` / `wasmJsMain`) invokes `WebAssembly.Module` and `WebAssembly.Instance` directly through the browser's native WebAssembly runtime. A JavaScript runtime layer is embedded via Kotlin `js()` interop — no external JS files are emitted during compilation.
 
-该运行时层提供：
+The runtime layer provides:
 
-- **`wasi_snapshot_preview1` shim**：`fd_write`（stdout/stderr 映射到 `console.log`/`console.error`）、`random_get`（`crypto.getRandomValues`）、`clock_time_get`（以纳秒精度使用 `Date.now()`）
-- **Wasmline bridge 协议**（`env` 命名空间）：`bridge_inbound_copy_params`、`bridge_inbound_set_response`、`bridge_outbound_call_host`、`bridge_outbound_get_response`
+- **`wasi_snapshot_preview1` shims**: `fd_write` (stdout/stderr to `console.log`/`console.error`), `random_get` (`crypto.getRandomValues`), `clock_time_get` (`Date.now()` at nanosecond resolution)
+- **Wasmline bridge protocol** (`env` namespace): `bridge_inbound_copy_params`, `bridge_inbound_set_response`, `bridge_outbound_call_host`, `bridge_outbound_get_response`
 
-payload 数据以 Base64 编码字符串跨越 Kotlin–JS 线性内存边界（`BrowserPayloadEncoding`）。AOT 编译产物（`.cwasm`、`.pwasm`）不被接受。
+Payload data crosses the Kotlin–JS linear memory boundary as Base64-encoded strings (`BrowserPayloadEncoding`). AOT-compiled artifacts (`.cwasm`, `.pwasm`) are not accepted.
 
 </details>
 
 <details>
-<summary><strong><code>.cwasm</code> 与 <code>.pwasm</code> 产物有什么区别——为什么不用原始 <code>.wasm</code>？</strong></summary>
+<summary><strong>What distinguishes <code>.cwasm</code> from <code>.pwasm</code> artifacts — and why not raw <code>.wasm</code>?</strong></summary>
 
-这三种产物类型都与 wasmtime 有关，但它们在**编译发生的时机**以及**编译目标**上有根本区别：
+All three artifact types involve wasmtime, but they differ fundamentally in when compilation happens and what the compilation target is:
 
-| 产物 | 编译时机 | 执行方式 | 版本关联性 |
+| Artifact | Compiled | Execution | Version coupling |
 |---|---|---|---|
-| `.wasm` | 在加载时（JIT）由宿主 wasmtime 编译 | Cranelift → 原生代码或 Pulley，取决于配置 | **无 — 与所有 wasmtime 版本兼容** |
-| `.cwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | 直接在原生硬件上执行（例如 arm64 machine code） | 与编译它的 wasmtime 版本关联 |
-| `.pwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | wasmtime **Pulley** 解释器 | 与编译它的 wasmtime 版本关联 |
+| `.wasm` | At load time (JIT) by the host wasmtime | Cranelift → native or Pulley, depending on configuration | **None** — portable across all wasmtime versions |
+| `.cwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | Directly on native hardware (e.g., arm64 machine code) | Coupled to the wasmtime version that compiled it |
+| `.pwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | wasmtime **Pulley** interpreter | Coupled to the wasmtime version that compiled it |
 
-**`.cwasm`（平台特定 AOT）** 会为特定 target triple（例如 `aarch64-android`）生成原生机器码。吞吐量最高；但每个平台都需要单独产物。
+**`.cwasm` (platform-specific AOT)** produces native machine code for a particular target triple (e.g., `aarch64-android`). Maximum throughput; requires one artifact per platform.
 
-**`.pwasm`（Pulley AOT）** 与 `.cwasm` 一样，都是通过相同的 Cranelift 流水线编译而来，但其目标不是原生机器码，而是 wasmtime 的 **Pulley** 字节码 ISA，运行时再由 Pulley 解释器执行。关键在于，`.pwasm` **不是**把原始 `.wasm` 文件交给解释器运行——它是一个完整的、由 Cranelift 预编译得到的产物，与 `.cwasm` 走的是相同编译路径，只是目标后端不同。由于 Pulley ISA 与平台无关，单个 `.pwasm` 产物可以在所有原生 wasmtime 目标上运行。
+**`.pwasm` (Pulley AOT)** is compiled through the same Cranelift pipeline as `.cwasm`, but targets wasmtime's **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter then executes it at runtime. Critically, `.pwasm` is **not** a raw `.wasm` file being fed to an interpreter — it is a fully pre-compiled, Cranelift-produced artifact, identical in compilation path to `.cwasm`, only targeting a different backend. A single `.pwasm` artifact runs across all native wasmtime targets because the Pulley ISA is platform-independent.
 
-由于 `.wasm` 会在加载时由宿主正在使用的 wasmtime 版本即时编译，因此它没有版本依赖。`.cwasm` 与 `.pwasm` 都是某个特定 wasmtime 发行版的预编译输出——升级 wasmtime 后，这些产物会失效，必须重新编译。
+Because `.wasm` is compiled at load time by whatever wasmtime version the host uses, it carries no version dependency. Both `.cwasm` and `.pwasm` are pre-compiled outputs of a specific wasmtime release — upgrading wasmtime invalidates them and requires recompilation.
 
-尽管 Pulley 解释器也可以在运行时加载并 JIT 编译原始 `.wasm`，但在 Android 这类内存受限环境中更推荐 `.pwasm`：进程内编译步骤会带来显著更高的内存开销。
+While the Pulley interpreter can also load and JIT-compile raw `.wasm` at runtime, `.pwasm` is preferred in memory-constrained environments such as Android: that in-process compilation step incurs substantially higher memory overhead.
 
-<Callout type="info" title="版本绑定">
-  `.cwasm` 与 `.pwasm` 都**与生成它们的 wasmtime 编译器版本绑定**。一旦升级 wasmtime 版本，所有已编译产物都会失效，必须重新编译。正因如此，除 Web 外的所有原生目标都使用预编译的 `.cwasm` 或 `.pwasm`，而不是原始 `.wasm`。Web 是唯一的例外，它依赖浏览器自身的 WebAssembly 运行时并使用原始 `.wasm` 文件。
+<Callout type="info" title="Version coupling">
+  Both `.cwasm` and `.pwasm` are **version-coupled to the wasmtime compiler** that produced them. Upgrading the wasmtime version invalidates all previously compiled artifacts — they must be recompiled. This version coupling is why every non-Web native target uses pre-compiled `.cwasm` or `.pwasm` rather than raw `.wasm`. The Web target is the sole exception, relying on the browser's own WebAssembly runtime with raw `.wasm` files.
 </Callout>
 
 </details>
 
 <details>
-<summary><strong>Kotlin IR 编译器插件是宿主集成的必需项吗？</strong></summary>
+<summary><strong>Is the Kotlin IR compiler plugin mandatory for host integration?</strong></summary>
 
-编译器插件并非必需。底层 `Wasmline.call(action, bytes): ByteArray` API 始终可用于手动分发。如果未应用 `wasmline-kotlin-plugin`——通常通过 `wasmline-gradle-plugin` 间接应用——`link<T>()` 与 `bind(impl)` 调用点会在运行时抛出 `UnsupportedOperationException`。
+The compiler plugin is not mandatory. The low-level `Wasmline.call(action, bytes): ByteArray` API is always available for manual dispatch. Without the `wasmline-kotlin-plugin` applied — typically via the `wasmline-gradle-plugin` — `link<T>()` and `bind(impl)` call sites throw `UnsupportedOperationException` at runtime.
 
 </details>
 
 <details>
-<summary><strong>插件执行的隔离模型是什么？</strong></summary>
+<summary><strong>What is the plugin execution isolation model?</strong></summary>
 
-在原生目标上，每次插件调用都在独立的 `Session` 实例中执行，并维护其自己的 Wasm 线性内存区域。除非宿主通过 wasmtime 的 preopened-directory 或 socket-capability 模型显式授予能力，否则插件无法访问宿主进程内存、宿主文件系统或网络。在 Web 目标上，对等的内存隔离由浏览器原生 WebAssembly 沙箱提供。
+On native targets, each plugin invocation executes within a dedicated `Session` instance maintaining its own Wasm linear memory region. Plugins have no access to host process memory, the host filesystem, or the network unless the host explicitly provisions WASI capabilities through the wasmtime preopened-directory or socket-capability model. On Web targets, equivalent memory isolation is enforced by the browser's native WebAssembly sandbox.
 
 </details>
 
-## 参考资料
+## References
 
 <Cards>
-  <Card href="https://github.com/crowforkotlin/wasm-kotlin-exploration" title="wasm-kotlin-exploration" description="WebAssembly 与 Kotlin 实验研究仓库" />
-  <Card href="https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/" title="通过 JNI 在 Android 上嵌入 wasmtime" description="JNI bridge 集成参考" />
-  <Card href="https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91%A8%E5%BA%86/" title="WebAssembly 与 WASI" description="架构与生命周期参考" />
-  <Card href="https://docs.wasmtime.dev/" title="wasmtime Documentation" description="wasmtime 运行时官方文档" />
-  <Card href="https://webassembly.github.io/spec/" title="WebAssembly Specification" description="WebAssembly 核心规范" />
-  <Card href="https://github.com/WebAssembly/WASI" title="WASI Specification" description="WebAssembly System Interface 规范" />
+  <Card href="https://github.com/crowforkotlin/wasm-kotlin-exploration" title="wasm-kotlin-exploration" description="Research repo for WebAssembly and Kotlin experiments" />
+  <Card href="https://crowforkotlin.github.io/2025/11/27/Wasm/Android%E4%BD%BF%E7%94%A8JNI%E5%B5%8C%E5%85%A5Wasmtime/" title="wasmtime on Android via JNI" description="JNI bridge integration reference" />
+  <Card href="https://crowforkotlin.github.io/2025/11/25/Wasm/Wasm%E5%92%8CWasi%E5%8C%BA%E5%88%AB%E5%92%8C%E7%94%9F%E5%91%BD%E5%91%A8%E5%BA%86/" title="WebAssembly vs. WASI" description="Architecture and lifecycle reference" />
+  <Card href="https://docs.wasmtime.dev/" title="wasmtime Documentation" description="Official wasmtime runtime documentation" />
+  <Card href="https://webassembly.github.io/spec/" title="WebAssembly Specification" description="Core WebAssembly specification" />
+  <Card href="https://github.com/WebAssembly/WASI" title="WASI Specification" description="WebAssembly System Interface specification" />
 </Cards>

@@ -1,0 +1,63 @@
+---
+title: 安装
+description: 在使用方项目中通过 Gradle 引入 Wasmline — 插件应用与 Maven 依赖
+---
+
+# 安装
+
+Wasmline 以 Maven 构件形式分发，在使用方的 Gradle 项目中直接引入即可。如果你希望从源码构建框架本身或参与贡献，请参阅 [从源码编译](/zh/docs/building-from-source)。
+
+## 环境要求
+
+- JDK / JBR **21**
+- Kotlin **2.3.0-RC2** 或更高版本
+
+<Callout type="warn" title="Kotlin 版本要求">
+  最低需要 **Kotlin 2.3.0-RC2** 版本。低于该版本时，Kotlin/WasmWasi 编译器后端可能生成不完整的 Wasm 二进制，表现为插件加载失败，或在 `Session.invoke` 边界出现未定义行为。
+
+  ![Kotlin/Wasm 运行时支持矩阵](/images/kotlin_support.png)
+</Callout>
+
+## 应用 Gradle 插件
+
+```kotlin
+// build.gradle.kts
+plugins {
+    id("crow.wasmline") version "1.0.0"
+}
+```
+
+该插件会将 `wasmline-kotlin-plugin` IR 编译器插件应用到当前编译单元，在编译期重写 `link<T>()` 与 `bind(impl)` 调用点。未应用时，这些调用会在运行时抛出 `UnsupportedOperationException`。
+
+## 添加依赖
+
+```kotlin
+dependencies {
+    // 核心加载器 — 清单解析、签名校验、模块加载
+    implementation("crow.wasmline:wasmline-loader:1.0.0")
+
+    // 远程 manifest 加载所需的 HTTP 客户端（Ktor 或 OkHttp 实现）
+    implementation("crow.wasmline:wasmline-network-ktor:1.0.0")
+
+    // 引擎后端 — 按平台变体提供原生运行时库
+    implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+}
+```
+
+| 构件 | 说明 |
+|---|---|
+| `crow.wasmline:wasmline` | 核心运行时——加载、分发、序列化 SPI |
+| `crow.wasmline:wasmline-loader` | `WasmlineLoader`、`.wlm` 清单解析、Ed25519/ECDSA-P256 校验 |
+| `crow.wasmline:wasmline-network-ktor` | 基于 Ktor 的 HTTP 网络客户端（远程 manifest 加载） |
+| `crow.wasmline:wasmline-network-okhttp` | 基于 OkHttp 5.x 的 HTTP 网络客户端（JVM/Android） |
+| `crow.wasmline:wasmline-engine-pulley` | Pulley 后端——可移植字节码，覆盖所有原生目标 |
+| `crow.wasmline:wasmline-engine-cranelift` | Cranelift 后端——平台特定 AOT 机器码 |
+
+<Callout type="info" title="分发状态">
+  Wasmline 目前处于开发阶段，构件通过 `mavenLocal()` 分发——在 `wasmline-multiplatform/` 下执行 `./gradlew publishToMavenLocal` 即可安装到本地仓库。Maven Central 发布正在筹备中。
+</Callout>
+
+## 下一步
+
+- [使用指南](/zh/docs/usage)——定义服务契约、实现插件并在宿主中调用。
+- [CLI 参考](/zh/docs/cli)——编译并打包用于分发的插件二进制。

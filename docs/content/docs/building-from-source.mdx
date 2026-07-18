@@ -1,9 +1,11 @@
 ---
-title: Installation & Prerequisites
-description: System requirements, Kotlin version requirement, environment preflight, and platform runtime asset initialization
+title: Building from Source
+description: Toolchain requirements and build workflows for contributors working on the Wasmline repository itself
 ---
 
-# Installation & Prerequisites
+# Building from Source
+
+This page is for developers who want to build the Wasmline framework itself — for example, to fork the repository, modify the runtime or compiler plugin, and submit a pull request. If you only want to **use** Wasmline in your own project, see [Installation](/en/docs/installation).
 
 ## System Requirements
 
@@ -14,12 +16,6 @@ description: System requirements, Kotlin version requirement, environment prefli
 | Android Studio | **LTS** | AGP 9.2.1 compatibility |
 | Zig | **0.15.1** | `wasmline-core` JNI shared library compilation |
 | Bash / Python 3.9+ / Node.js 18+ | Any one | Platform runtime asset initialization |
-
-<Callout type="warn" title="Kotlin version requirement">
-  The minimum required Kotlin version is **2.3.0-RC2**. Below this version, the Kotlin/WasmWasi compiler backend may produce incomplete Wasm binaries, manifesting as plugin load failures or undefined behavior at the `Session.invoke` boundary.
-
-  ![Kotlin/Wasm runtime support matrix](/images/kotlin_support.png)
-</Callout>
 
 The Kotlin/WasmWasi compiler backend must provide complete implementations of the following WebAssembly proposals:
 
@@ -57,3 +53,61 @@ node ./scripts/init.mjs       # Node.js 18+ — no third-party dependencies
 ```
 
 All three scripts support interactive platform/architecture selection, configurable download concurrency, and an optional HTTP proxy as the first positional argument (e.g., `127.0.0.1:7890`).
+
+## Gradle Build Reference
+
+All operations are executed from `wasmline-multiplatform/`:
+
+```bash
+cd wasmline-multiplatform
+
+# Full project build
+./gradlew build
+
+# wasmline-loader module tests (manifest parsing, cryptographic verification)
+./gradlew :wasmline-loader:jvmTest
+
+# wasmline-cli module tests
+./gradlew :wasmline-cli:test
+
+# Kotlin/WasmWasi plugin sample compilation
+./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+
+# IR compiler plugin — regenerate test runners from testData fixtures
+./gradlew :wasmline-kotlin-plugin:generateTests
+
+# IR compiler plugin — box test execution
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+
+# IR compiler plugin — diagnostic validation tests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
+
+# Install all modules to the local Maven repository (mavenLocal)
+./gradlew publishToMavenLocal
+```
+
+## Native Library Build (Zig 0.15.1)
+
+The JNI shared library for JVM-based native targets is compiled by the Zig build system. The `-p` flag redirects installation to `src/jvmMain/resources/jni/`:
+
+```bash
+cd wasmline-multiplatform/wasmline
+
+zig build --release=small -p src/jvmMain/resources   # Release (size-optimized)
+zig build -p src/jvmMain/resources                    # Debug
+```
+
+<Callout type="warn" title="Do not commit Zig intermediates">
+  Files under `zig-out/` are intermediate Zig build artifacts and must not be committed. The `-p src/jvmMain/resources` flag is required to redirect JNI library installation to the correct classpath resource directory.
+</Callout>
+
+## Version Sync
+
+Shared documentation and duplicated config version strings are synchronized from `scripts/versions.json`:
+
+```bash
+python3 scripts/sync_versions.py --check
+python3 scripts/sync_versions.py --set wasmtime_version=<new-version>
+```

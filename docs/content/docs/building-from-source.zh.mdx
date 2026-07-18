@@ -1,0 +1,113 @@
+---
+title: 从源码编译
+description: 面向贡献者的工具链要求与构建工作流 — 适用于 fork 仓库并修改 Wasmline 本身的开发者
+---
+
+# 从源码编译
+
+本页面向希望构建 Wasmline 框架本身的开发者——例如 fork 仓库、修改运行时或编译器插件并提交 pull request。如果你只是想在自己的项目中**使用** Wasmline，请参阅 [安装](/zh/docs/installation)。
+
+## 系统要求
+
+| 组件 | 要求版本 | 适用范围 |
+|---|---|---|
+| JDK / JBR | **21**（Compose Desktop 必须使用 [JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases)） | 所有 Gradle 操作 |
+| Kotlin | 最低 **2.3.0-RC2** | Wasm GC、函数引用、异常处理提案 |
+| Android Studio | **LTS** | AGP 9.2.1 兼容性 |
+| Zig | **0.15.1** | `wasmline-core` JNI 共享库编译 |
+| Bash / Python 3.9+ / Node.js 18+ | 任意一种 | 平台运行时资产初始化 |
+
+Kotlin/WasmWasi 编译器后端必须完整实现以下 WebAssembly 提案：
+
+| 提案 | 要求 | 原因 |
+|---|---|---|
+| GC（垃圾回收） | 必需 | Kotlin 托管对象在 Wasm 线性内存中的分配 |
+| Function References | 必需 | 接口 vtable 分发与闭包表示 |
+| Exception Handling | 必需 | Kotlin 异常跨 Wasm 执行边界传播 |
+| Tail Call Optimization | 推荐 | 防止深层递归调用链中的栈溢出 |
+
+## 环境预检
+
+在确认当前 JVM 环境前，不得调用 Gradle。每次构建会话开始前都必须执行仓库预检：
+
+```bash
+bash ./scripts/doctor.sh
+```
+
+该脚本会验证 JBR 21 是否可用，报告桌面 Zig/JNI-native 状态，并报告 `build/platforms/` 下缺失的 wasmtime 平台/架构资产。
+
+<Callout type="info" title="local.properties">
+  手动执行项目构建或运行相关命令时，项目根目录下需要 `local.properties` 文件。在 Android Studio 中打开项目后会自动创建该文件。请确认此文件存在后再在 IDE 外执行 Gradle 命令。
+</Callout>
+
+## 平台运行时资产初始化
+
+资产初始化仅对原生目标构建（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 wasmtime min C-API 资产。
+
+在开始原生目标编译前，`build/platforms/` 下必须存在 wasmtime min C-API 头文件与预编译库。执行以下任一等价脚本：
+
+```bash
+sh ./scripts/init.sh          # Bash — 需要 curl 和 tar/unzip
+python3 ./scripts/init.py     # Python 3.9+ — 无第三方依赖
+node ./scripts/init.mjs       # Node.js 18+ — 无第三方依赖
+```
+
+三个脚本都支持交互式平台/架构选择、可配置的下载并发数，以及作为第一个位置参数传入的可选 HTTP 代理（例如 `127.0.0.1:7890`）。
+
+## Gradle 构建参考
+
+所有操作都在 `wasmline-multiplatform/` 下执行：
+
+```bash
+cd wasmline-multiplatform
+
+# 完整项目构建
+./gradlew build
+
+# wasmline-loader 模块测试（清单解析、签名校验）
+./gradlew :wasmline-loader:jvmTest
+
+# wasmline-cli 模块测试
+./gradlew :wasmline-cli:test
+
+# Kotlin/WasmWasi 插件示例编译
+./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
+
+# IR 编译器插件 — 从 testData 夹具重新生成测试运行器
+./gradlew :wasmline-kotlin-plugin:generateTests
+
+# IR 编译器插件 — box 测试
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+
+# IR 编译器插件 — 诊断校验测试
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
+
+# 将全部模块安装到本地 Maven 仓库（mavenLocal）
+./gradlew publishToMavenLocal
+```
+
+## 原生库构建 (Zig 0.15.1)
+
+JVM 原生目标所需的 JNI 共享库由 Zig 构建系统编译。`-p` 参数会将安装目录重定向到 `src/jvmMain/resources/jni/`：
+
+```bash
+cd wasmline-multiplatform/wasmline
+
+zig build --release=small -p src/jvmMain/resources   # Release（体积优化）
+zig build -p src/jvmMain/resources                    # Debug
+```
+
+<Callout type="warn" title="不要提交 Zig 中间产物">
+  `zig-out/` 下的文件属于 Zig 构建的中间产物，绝不能提交。必须使用 `-p src/jvmMain/resources` 参数，才能将 JNI 库安装到正确的 classpath 资源目录。
+</Callout>
+
+## 版本同步
+
+文档和重复配置中的版本号统一由 `scripts/versions.json` 管理，并通过脚本同步：
+
+```bash
+python3 scripts/sync_versions.py --check
+python3 scripts/sync_versions.py --set wasmtime_version=<new-version>
+```

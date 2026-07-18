@@ -1,0 +1,88 @@
+---
+title: 使用指南
+description: 服务契约定义、插件实现与宿主端模块加载
+---
+
+# 使用指南
+
+以下示例展示完整的集成流程：定义服务契约、在插件中实现契约、在宿主中加载插件并调用其服务。
+
+## 定义服务契约
+
+服务契约是在共享源码（`commonMain`）中声明的 Kotlin `interface`，并扩展 `WasmlineService`。该契约定义了宿主与插件之间的二进制协议边界；方法签名是 SHA-256 动作标识符派生的基础。
+
+```kotlin
+// shared/src/commonMain/kotlin/com/example/EchoService.kt
+import crow.wasmline.WasmlineService
+
+interface EchoService : WasmlineService {
+    fun echo(message: String): String
+}
+```
+
+## 实现插件（WASI 目标）
+
+插件二进制通过 `Wasmline.current.bind(impl)` 注册服务实现。IR 编译器插件会在 IR 层将该调用点重写为把实现注册到生成的 `*_WasmlineBridge` 中：
+
+```kotlin
+// plugin/src/wasmWasiMain/kotlin/Main.kt
+import crow.wasmline.Wasmline
+import crow.wasmline.bind
+
+val wasmline = Wasmline.current
+
+fun main() {
+    wasmline.bind(object : EchoService {
+        override fun echo(message: String): String {
+            return "Response from WASI plugin: $message"
+        }
+    })
+}
+```
+
+## 宿主端模块加载与服务调用
+
+宿主通过 `WasmlineLoader.load()` 加载插件——传入本地路径（`.pwasm` / `.cwasm` / `.wasm` / `manifest.wlm`）或远程 URL 均可，`http(s)://` 地址会自动按远程 manifest 下载并校验。加载后通过 `bind(impl)` 注册插件可访问的宿主侧服务实现，并通过 `link<T>()` 获取插件侧服务的类型安全代理：
+
+```kotlin
+import crow.wasmline.WasmlineConfig
+import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.bind
+import crow.wasmline.link
+import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.network.ktor.KtorNetworkClient
+
+WasmlineLoader.bootstrap()
+
+val module = when (val result = WasmlineLoader.load(
+    source = "https://example.com/plugin/manifest.wlm",
+    config = WasmlineConfig(networkClient = KtorNetworkClient()),
+)) {
+    is WasmlineLoadResult.Success -> result.wasmline
+    is WasmlineLoadResult.Failure -> error(result.cause)
+}
+
+module.bind(object : HostNotificationService {
+    override fun notify(event: String) { /* host-side handler */ }
+})
+
+val response = module.link<EchoService>().echo("ping")
+module.close()
+```
+
+<Callout type="info" title="IR 插件重写目标">
+  `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。IR 插件会将每个调用点替换为对生成的 `*_WasmlineBridge` 的直接调用。如果编译单元未应用 `wasmline-kotlin-plugin`，这些函数会在运行时抛出 `UnsupportedOperationException`。
+</Callout>
+
+## 示例应用
+
+参考实现位于 `wasmline-samples/kotlin/`：
+
+| 模块 | 说明 |
+|---|---|
+| `sample-common` | 共享服务契约接口定义：`EchoService`、`TimeSyncService`、`WebBridgeService` |
+| `sample-plugin` | Kotlin/WasmWasi 插件——通过 `bind()` 注册实现，通过 `link()` 调用宿主服务 |
+| `sample-apps/android` | Android 宿主——加载 `.pwasm` 产物，注册宿主回调，并调用插件服务 |
+| `sample-apps/application` | JVM 无界面桌面宿主 |
+| `sample-apps/multiplatform` | Compose Multiplatform 应用——Android 与 Desktop |
+| `sample-apps/web` | Web 宿主——Kotlin/JS 与 Kotlin/WasmJS 目标 |

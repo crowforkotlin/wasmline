@@ -1,52 +1,52 @@
 ---
-title: CLI Reference
-description: Plugin build pipeline commands and build output layout
+title: CLI 参考
+description: 插件构建流水线命令与构建产物布局
 ---
 
-# CLI Reference
+# CLI 参考
 
-The `wasmline-cli` module implements the complete plugin build pipeline. All commands are dispatched via Gradle from `wasmline-multiplatform/`:
+`wasmline-cli` 模块实现了完整的插件构建流水线。所有命令都从 `wasmline-multiplatform/` 通过 Gradle 分发：
 
 ```bash
 cd wasmline-multiplatform
 ./gradlew :wasmline-cli:run --args="<command> [options]"
 ```
 
-## Command Set
+## 命令集
 
-| Command | Description |
+| 命令 | 说明 |
 |---|---|
-| `download` | Download wasmtime release binaries for one or more target platforms |
-| `generate-key-pair` | Generate an Ed25519 signing key pair |
-| `compile` | Compile a raw `.wasm` binary to platform-specific `.cwasm` artifacts and a portable `.pwasm` image |
-| `manifest` | Generate a cryptographically signed `.wlm` manifest (Protobuf + Ed25519) from the compiled artifact set |
-| `build` | Execute the complete pipeline: `compile → manifest → zip packaging` |
+| `download` | 下载一个或多个目标平台的 wasmtime 发行版二进制 |
+| `generate-key-pair` | 生成 Ed25519 签名密钥对 |
+| `compile` | 将原始 `.wasm` 二进制编译为平台特定 `.cwasm` 产物以及一个可移植 `.pwasm` 镜像 |
+| `manifest` | 从已编译产物集合生成带密码学签名的 `.wlm` 清单（Protobuf + Ed25519） |
+| `build` | 执行完整流水线：`compile → manifest → zip packaging` |
 
-## Pipeline Execution
+## 流水线执行
 
 ```bash
 cd wasmline-multiplatform
 
-# Download wasmtime min toolchain binaries
+# 下载 wasmtime min 工具链二进制
 ./gradlew :wasmline-cli:run --args="download -v v45.0.0"
 
-# Generate Ed25519 signing key pair
+# 生成 Ed25519 签名密钥对
 ./gradlew :wasmline-cli:run --args="generate-key-pair --save"
 
-# Execute the full build pipeline
+# 执行完整构建流水线
 ./gradlew :wasmline-cli:run --args="build \
   -i plugin.wasm \
   -wt build/wasmline/wasmtime/wasmtime-v45.0.6-aarch64-macos \
   --key build/wasmline/keys/ed25519_private.key"
 ```
 
-## Build Output Layout
+## 构建产物目录结构
 
 ```text
 build/wasmline/
 ├── output/{name}-{version}/
-│   ├── manifest.wlm                      # Signed manifest (Protobuf + Ed25519 signature)
-│   ├── {name}-pulley64.pwasm             # Pulley portable bytecode — all native wasmtime targets
+│   ├── manifest.wlm                      # 已签名清单（Protobuf + Ed25519 签名）
+│   ├── {name}-pulley64.pwasm             # Pulley 可移植字节码 — 所有原生 wasmtime 目标
 │   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
 │   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
 │   ├── {name}-aarch64-ios.cwasm          # AOT — iOS arm64
