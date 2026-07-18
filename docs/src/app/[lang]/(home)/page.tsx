@@ -7,7 +7,6 @@ import {
   Bug,
   Github,
   Layers,
-  Mail,
   ShieldCheck,
   Zap,
 } from 'lucide-react';
@@ -21,9 +20,9 @@ const GITHUB_URL = 'https://github.com/crowforkotlin/wasmline';
 const content = {
   en: {
     badge: 'Kotlin Multiplatform · WASI Plugin Framework',
-    subtitle: 'Run WebAssembly plugins anywhere Kotlin runs.',
+    subtitle: 'Load and run WebAssembly plugins in Android, iOS, Desktop, and Web apps',
     description:
-      'Wasmline is a Kotlin Multiplatform framework for loading and calling WASI-compliant WebAssembly plugins in Android, iOS, Desktop, and Web applications. All bridge code is generated at compile time by a Kotlin IR compiler plugin — no reflection, no annotation processing.',
+      'All bridge code is generated at compile time by a Kotlin IR compiler plugin — no reflection, no annotation processing. Native targets are powered by wasmtime; Web targets run inside the browser sandbox.',
     getStarted: 'Get Started',
     features: [
       { icon: 'zap', label: 'Compile-time bridge synthesis' },
@@ -39,10 +38,10 @@ const content = {
         internal: true,
       },
       {
-        icon: 'github',
-        title: 'GitHub',
-        description: 'Source code, releases, and contribution guidelines.',
-        href: GITHUB_URL,
+        icon: 'zap',
+        title: 'Runtime',
+        description: 'Native targets are powered by the wasmtime WebAssembly runtime.',
+        href: 'https://wasmtime.dev',
       },
       {
         icon: 'bug',
@@ -50,31 +49,19 @@ const content = {
         description: 'Found a bug or have a feature request? Let us know.',
         href: `${GITHUB_URL}/issues`,
       },
-      {
-        icon: 'mail',
-        title: 'Contact',
-        description: 'Questions, discussions, and community support.',
-        href: 'https://github.com/crowforkotlin',
-      },
-      {
-        icon: 'zap',
-        title: 'wasmtime',
-        description: 'Native targets are powered by the wasmtime WebAssembly runtime.',
-        href: 'https://wasmtime.dev',
-      },
     ],
     footer: 'Licensed under Apache-2.0',
   },
   zh: {
     badge: 'Kotlin Multiplatform · WASI 插件框架',
-    subtitle: '在 Kotlin 运行的任何地方执行 WebAssembly 插件。',
+    subtitle: '在 Android、iOS、Desktop 与 Web 应用中加载并运行 WebAssembly 插件',
     description:
-      'Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Desktop 与 Web 应用中加载并调用符合 WASI 规范的 WebAssembly 插件。全部桥接代码由 Kotlin IR 编译器插件在编译期生成——无反射、无注解处理。',
+      '全部桥接代码由 Kotlin IR 编译器插件在编译期生成——无反射、无注解处理；原生端由 wasmtime 驱动，Web 端运行于浏览器沙箱。',
     getStarted: '快速开始',
     features: [
       { icon: 'zap', label: '编译期桥接生成' },
       { icon: 'layers', label: 'Android · iOS · Desktop · Web' },
-      { icon: 'shield', label: 'wasmtime 与浏览器沙箱隔离' },
+      { icon: 'shield', label: 'wasmtime与浏览器沙箱隔离' },
     ],
     cards: [
       {
@@ -85,28 +72,16 @@ const content = {
         internal: true,
       },
       {
-        icon: 'github',
-        title: 'GitHub',
-        description: '源码、发行版与贡献指南。',
-        href: GITHUB_URL,
+        icon: 'zap',
+        title: '运行时',
+        description: '原生目标由 wasmtime WebAssembly 运行时驱动。',
+        href: 'https://wasmtime.dev',
       },
       {
         icon: 'bug',
         title: '问题反馈',
         description: '发现了 Bug 或有功能建议？告诉我们。',
         href: `${GITHUB_URL}/issues`,
-      },
-      {
-        icon: 'mail',
-        title: '联系方式',
-        description: '问题讨论与社区交流。',
-        href: 'https://github.com/crowforkotlin',
-      },
-      {
-        icon: 'zap',
-        title: 'wasmtime',
-        description: '原生目标由 wasmtime WebAssembly 运行时驱动。',
-        href: 'https://wasmtime.dev',
       },
     ],
     footer: '基于 Apache-2.0 许可证发布',
@@ -118,9 +93,7 @@ const iconMap = {
   layers: Layers,
   shield: ShieldCheck,
   docs: BookOpen,
-  github: Github,
   bug: Bug,
-  mail: Mail,
 };
 
 export default async function HomePage({
