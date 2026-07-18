@@ -1,0 +1,115 @@
+---
+title: 平台架构
+description: 各平台执行栈、模块依赖关系与仓库目录结构
+---
+
+# 平台架构
+
+## 架构思维导图
+
+![Wasmline 架构思维导图](/images/wasmline_mind_zh.png)
+
+## 执行栈
+
+Wasmline 从 `commonMain` / `hostMain` 暴露统一 API，并按目标平台选择执行路径：原生目标（Android、iOS、macOS、Linux、Windows）经 `wasmline-core`（C/C++，Zig 0.15.1 编译）调用 wasmtime C-API 执行插件；Web 目标（Kotlin/JS、Kotlin/WasmJS）经内联 JS 运行时调用浏览器原生 WebAssembly API 执行插件，不经过 wasmtime。
+
+### 原生目标栈 — Android · iOS · macOS · Linux · Windows
+
+```text
+Host Application  (commonMain / hostMain)
+        │
+        │  module.link<T>()      — IR-synthesized typed outbound proxy
+        │  module.bind(impl)     — IR-synthesized inbound dispatch registration
+        │
+        ▼
+Platform actual  (jniMain / iosMain)
+        │  JNI external declarations          — Android, macOS, Linux, Windows
+        │  Kotlin/Native C Interop (.def)     — iOS
+        ▼
+wasmline-core  (C/C++ · Zig 0.15.1)
+        │  Engine.cpp   — wasmtime Engine singleton; global init / shutdown
+        │  Module.cpp   — AOT / Pulley module compilation; keyed module cache
+        │  Session.cpp  — Per-invocation isolated linear memory region; execution context
+        │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
+        ▼
+wasmtime C-API  v45.0.6
+        │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
+        ▼
+Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
+```
+
+### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
+
+```text
+Host Application  (commonMain / hostMain)
+        │
+        │  module.link<T>()      — IR-synthesized proxy (same IR pipeline as native)
+        │  module.bind(impl)     — dispatch registration (same IR pipeline as native)
+        │
+        ▼
+webMain / jsMain / wasmJsMain  actual
+        │  BrowserWasmlineRuntime · WasmlineWebModuleRegistry · WasmlineWebModule
+        ▼
+Inline JS runtime  (Kotlin js() interop — no external .js files emitted)
+        │
+        ▼
+Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
+        │
+        ├── Import namespace: wasi_snapshot_preview1
+        │     fd_write         — console.log (fd=1) / console.error (fd=2)
+        │     random_get       — globalThis.crypto.getRandomValues
+        │     clock_time_get   — Date.now() * 1_000_000  (nanosecond resolution)
+        │     proc_exit        — throws JS Error
+        │     all others       — ENOSYS stub
+        │
+        └── Import namespace: env  (Wasmline bridge protocol)
+              bridge_inbound_copy_params     — write action + payload into Wasm linear memory
+              bridge_inbound_set_response    — extract response bytes from Wasm linear memory
+              bridge_outbound_call_host      — synchronous plugin-to-host dispatch callback
+              bridge_outbound_get_response   — copy oversized outbound response to caller buffer
+        │
+        ▼
+Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding)
+```
+
+## 模块依赖关系图
+
+```text
+wasmline-cli  ──────►  wasmline-loader  ──────►  wasmline  (core runtime)
+                                                       ▲
+                               wasmline-core  (C/C++) ─┘  (JNI / C Interop)
+
+wasmline-kotlin-plugin   (compile-time only; no runtime artifact)
+wasmline-gradle-plugin  ──►  wasmline-kotlin-plugin
+```
+
+## 仓库目录结构
+
+```text
+wasmline/
+├── wasmline-core/                      # C/C++ wasmtime bridge (Engine, Module, Session, Api)
+├── wasmline-multiplatform/
+│   ├── wasmline/                       # Core Kotlin runtime — loading, dispatch, serialization SPI
+│   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
+│   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
+│   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
+│   │   ├── iosMain/                    # iOS actual — Kotlin/Native C Interop
+│   │   ├── webMain/                    # Web actual — BrowserWasmlineRuntime + inline JS bridge
+│   │   ├── jsMain/                     # Kotlin/JS delegation → webMain
+│   │   ├── wasmJsMain/                 # Kotlin/WasmJS delegation → webMain
+│   │   └── wasmWasiMain/               # Plugin-side runtime — WasmlineRouter, WasmBridge
+│   ├── wasmline-loader/                # WasmlineLoader, .wlm manifest parsing, Ed25519/ECDSA-P256
+│   ├── wasmline-cli/                   # CLI: download, compile, manifest, build, generate-key-pair
+│   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
+│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — bridge synthesis, call-site rewriting
+│   ├── wasmline-gradle-plugin/         # Applies the IR plugin to consumer Gradle projects
+│   └── wasmline-build-logic/           # Shared Gradle convention plugins
+├── wasmline-samples/
+│   └── kotlin/
+│       ├── sample-common/              # Shared service contract interface definitions
+│       ├── sample-plugin/              # Kotlin/WasmWasi WASI plugin implementation
+│       └── sample-apps/                # Android, JVM desktop, Compose Multiplatform, and Web hosts
+├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
+├── build/                              # Root build outputs, including build/platforms/ wasmtime min C-API assets
+└── docs/                               # Documentation site (Next.js + Fumadocs)
+```

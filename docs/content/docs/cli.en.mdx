@@ -1,0 +1,63 @@
+---
+title: CLI Reference
+description: Plugin build pipeline commands and build output layout
+---
+
+# CLI Reference
+
+The `wasmline-cli` module implements the complete plugin build pipeline. All commands are dispatched via Gradle from `wasmline-multiplatform/`:
+
+```bash
+cd wasmline-multiplatform
+./gradlew :wasmline-cli:run --args="<command> [options]"
+```
+
+## Command Set
+
+| Command | Description |
+|---|---|
+| `download` | Download wasmtime release binaries for one or more target platforms |
+| `generate-key-pair` | Generate an Ed25519 signing key pair |
+| `compile` | Compile a raw `.wasm` binary to platform-specific `.cwasm` artifacts and a portable `.pwasm` image |
+| `manifest` | Generate a cryptographically signed `.wlm` manifest (Protobuf + Ed25519) from the compiled artifact set |
+| `build` | Execute the complete pipeline: `compile → manifest → zip packaging` |
+
+## Pipeline Execution
+
+```bash
+cd wasmline-multiplatform
+
+# Download wasmtime min toolchain binaries
+./gradlew :wasmline-cli:run --args="download -v v45.0.0"
+
+# Generate Ed25519 signing key pair
+./gradlew :wasmline-cli:run --args="generate-key-pair --save"
+
+# Execute the full build pipeline
+./gradlew :wasmline-cli:run --args="build \
+  -i plugin.wasm \
+  -wt build/wasmline/wasmtime/wasmtime-v45.0.6-aarch64-macos \
+  --key build/wasmline/keys/ed25519_private.key"
+```
+
+## Build Output Layout
+
+```text
+build/wasmline/
+├── output/{name}-{version}/
+│   ├── manifest.wlm                      # Signed manifest (Protobuf + Ed25519 signature)
+│   ├── {name}-pulley64.pwasm             # Pulley portable bytecode — all native wasmtime targets
+│   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
+│   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
+│   ├── {name}-aarch64-ios.cwasm          # AOT — iOS arm64
+│   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
+│   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
+│   └── debug/
+│       ├── compile-result.json
+│       └── manifest.json
+├── dist/
+│   └── {name}-{version}.zip
+└── keys/
+    ├── ed25519_private.key
+    └── ed25519_public.key
+```

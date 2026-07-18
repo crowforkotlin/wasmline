@@ -1,0 +1,63 @@
+---
+title: CLI 参考
+description: 插件构建流水线命令与构建产物布局
+---
+
+# CLI 参考
+
+`wasmline-cli` 模块实现了完整的插件构建流水线。所有命令都从 `wasmline-multiplatform/` 通过 Gradle 分发：
+
+```bash
+cd wasmline-multiplatform
+./gradlew :wasmline-cli:run --args="<command> [options]"
+```
+
+## 命令集
+
+| 命令 | 说明 |
+|---|---|
+| `download` | 下载一个或多个目标平台的 wasmtime 发行版二进制 |
+| `generate-key-pair` | 生成 Ed25519 签名密钥对 |
+| `compile` | 将原始 `.wasm` 二进制编译为平台特定 `.cwasm` 产物以及一个可移植 `.pwasm` 镜像 |
+| `manifest` | 从已编译产物集合生成带密码学签名的 `.wlm` 清单（Protobuf + Ed25519） |
+| `build` | 执行完整流水线：`compile → manifest → zip packaging` |
+
+## 流水线执行
+
+```bash
+cd wasmline-multiplatform
+
+# 下载 wasmtime min 工具链二进制
+./gradlew :wasmline-cli:run --args="download -v v45.0.0"
+
+# 生成 Ed25519 签名密钥对
+./gradlew :wasmline-cli:run --args="generate-key-pair --save"
+
+# 执行完整构建流水线
+./gradlew :wasmline-cli:run --args="build \
+  -i plugin.wasm \
+  -wt build/wasmline/wasmtime/wasmtime-v45.0.6-aarch64-macos \
+  --key build/wasmline/keys/ed25519_private.key"
+```
+
+## 构建产物目录结构
+
+```text
+build/wasmline/
+├── output/{name}-{version}/
+│   ├── manifest.wlm                      # 已签名清单（Protobuf + Ed25519 签名）
+│   ├── {name}-pulley64.pwasm             # Pulley 可移植字节码 — 所有原生 wasmtime 目标
+│   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
+│   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
+│   ├── {name}-aarch64-ios.cwasm          # AOT — iOS arm64
+│   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
+│   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
+│   └── debug/
+│       ├── compile-result.json
+│       └── manifest.json
+├── dist/
+│   └── {name}-{version}.zip
+└── keys/
+    ├── ed25519_private.key
+    └── ed25519_public.key
+```

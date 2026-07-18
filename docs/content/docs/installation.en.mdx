@@ -1,0 +1,59 @@
+---
+title: Installation & Prerequisites
+description: System requirements, Kotlin version requirement, environment preflight, and platform runtime asset initialization
+---
+
+# Installation & Prerequisites
+
+## System Requirements
+
+| Component | Required Version | Scope |
+|---|---|---|
+| JDK / JBR | **21** ([JBR 21](https://github.com/JetBrains/JetBrainsRuntime/releases) mandatory for Compose Desktop) | All Gradle operations |
+| Kotlin | **2.3.0-RC2** minimum | Wasm GC, function references, exception-handling proposals |
+| Android Studio | **LTS** | AGP 9.2.1 compatibility |
+| Zig | **0.15.1** | `wasmline-core` JNI shared library compilation |
+| Bash / Python 3.9+ / Node.js 18+ | Any one | Platform runtime asset initialization |
+
+<Callout type="warn" title="Kotlin version requirement">
+  The minimum required Kotlin version is **2.3.0-RC2**. Below this version, the Kotlin/WasmWasi compiler backend may produce incomplete Wasm binaries, manifesting as plugin load failures or undefined behavior at the `Session.invoke` boundary.
+
+  ![Kotlin/Wasm runtime support matrix](/images/kotlin_support.png)
+</Callout>
+
+The Kotlin/WasmWasi compiler backend must provide complete implementations of the following WebAssembly proposals:
+
+| Proposal | Requirement | Rationale |
+|---|---|---|
+| GC (garbage collection) | Mandatory | Kotlin managed-object allocation within Wasm linear memory |
+| Function References | Mandatory | Interface vtable dispatch and closure representation |
+| Exception Handling | Mandatory | Kotlin exception propagation across the Wasm execution boundary |
+| Tail Call Optimization | Recommended | Stack overflow prevention in deep recursive call chains |
+
+## Environment Preflight
+
+Gradle must not be invoked prior to confirming the active JVM environment. Execute the repository preflight check before each build session:
+
+```bash
+bash ./scripts/doctor.sh
+```
+
+The script verifies JBR 21 availability, reports desktop Zig/JNI-native status, and reports WARNINGs for missing wasmtime platform/architecture assets under `build/platforms/`.
+
+<Callout type="info" title="local.properties">
+  When building or running project commands manually, a `local.properties` file is required in the project root. Open the project in Android Studio and it will generate the file automatically. Ensure this file exists before invoking any Gradle commands outside the IDE.
+</Callout>
+
+## Platform Runtime Asset Initialization
+
+Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only builds do not require wasmtime min C-API assets.
+
+wasmtime min C-API headers and pre-built libraries must be present under `build/platforms/` before native target compilation proceeds. Execute one of the following equivalent scripts:
+
+```bash
+sh ./scripts/init.sh          # Bash — requires curl and tar/unzip
+python3 ./scripts/init.py     # Python 3.9+ — no third-party dependencies
+node ./scripts/init.mjs       # Node.js 18+ — no third-party dependencies
+```
+
+All three scripts support interactive platform/architecture selection, configurable download concurrency, and an optional HTTP proxy as the first positional argument (e.g., `127.0.0.1:7890`).
