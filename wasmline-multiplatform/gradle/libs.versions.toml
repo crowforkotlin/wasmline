@@ -2,7 +2,7 @@
 
 
 [versions]
-agp = "9.2.1"
+agp = "9.3.0"
 android-compileSdk = "37"
 android-minSdk = "23"
 android-targetSdk = "36"
@@ -23,7 +23,7 @@ androidx-compose = "1.11.3"
 compose-plugin = "1.11.1"
 
 # https://developer.android.com/jetpack/androidx/releases/compose-material3
-material3="1.5.0-alpha11"
+material3 = "1.5.0-alpha11"
 
 # https://github.com/JetBrains/skiko [warning : do not update!]
 skiko = "0.9.37.3"
@@ -144,9 +144,9 @@ slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 
 okio-core = { module = "com.squareup.okio:okio", version.ref = "okio" }
 
-zipline = { module = "io.github.crowforkotlin.zipline:zipline", version.ref = "zipline"}
-zipline-loader = { module = "io.github.crowforkotlin.zipline:zipline-loader", version.ref = "zipline"}
-zipline-profiler = { module = "io.github.crowforkotlin.zipline:zipline-profiler", version.ref = "zipline"}
+zipline = { module = "io.github.crowforkotlin.zipline:zipline", version.ref = "zipline" }
+zipline-loader = { module = "io.github.crowforkotlin.zipline:zipline-loader", version.ref = "zipline" }
+zipline-profiler = { module = "io.github.crowforkotlin.zipline:zipline-profiler", version.ref = "zipline" }
 
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 
@@ -156,7 +156,7 @@ kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-script-runtime = { module = "org.jetbrains.kotlin:kotlin-script-runtime", version.ref = "kotlin" }
 kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
-kotlin-wrapper-js = { module = "org.jetbrains.kotlin-wrappers:kotlin-js", version= "2025.8.19" }
+kotlin-wrapper-js = { module = "org.jetbrains.kotlin-wrappers:kotlin-js", version = "2025.8.19" }
 kotlin-compiler-embeddable = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin" }
 kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler", version.ref = "kotlin" }
 kotlin-compiler-internal-test-framework = { module = "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework", version.ref = "kotlin" }
@@ -169,8 +169,8 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-compose-material-ripple = { group = "androidx.compose.material", name = "material-ripple", version.ref = "androidx-compose" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "androidx-compose" }
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "androidx-compose" }
-androidx-compose-ui-tooling= { module = "androidx.compose.ui:ui-tooling", version.ref = "androidx-compose" }
-androidx-compose-ui-tooling-preview= { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "androidx-compose" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "androidx-compose" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "androidx-compose" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "androidx-compose" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "androidx-compose" }
@@ -201,7 +201,7 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "kotlinx-coroutines"}
+kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "kotlinx-coroutines" }
 
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 
@@ -210,7 +210,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
 kotlinx-collections = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections" }
 
-kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu-wasm-wasi", version.ref = "kotlinx-atomicfu"}
+kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu-wasm-wasi", version.ref = "kotlinx-atomicfu" }
 
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
@@ -285,11 +285,11 @@ moko-compose = { module = "dev.icerock.moko:permissions-compose", version.ref = 
 sonner = { module = "io.github.dokar3:sonner", version.ref = "sonner" }
 
 # mac package
-conveyor = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref= "conveyor-control" }
+conveyor = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref = "conveyor-control" }
 
 # tar, gz
-compress-apache-common = { module = "org.apache.commons:commons-compress", version.ref = "compress-apache-common"}
-compress-tukaani-xz = { module = "org.tukaani:xz", version.ref = "compress-tukaani-xz"}
+compress-apache-common = { module = "org.apache.commons:commons-compress", version.ref = "compress-apache-common" }
+compress-tukaani-xz = { module = "org.tukaani:xz", version.ref = "compress-tukaani-xz" }
 
 gradle-ksp-plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
 gradle-compose-plugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "compose-plugin" }
@@ -307,11 +307,10 @@ crow-wasmline-engine-pulley = { module = "crow.wasmline:wasmline-engine-pulley",
 crow-wasmline-engine-cranelift = { module = "crow.wasmline:wasmline-engine-cranelift", version.ref = "wasmline" }
 
 
-
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-android-library-kmp = { id = "com.android.kotlin.multiplatform.library", version.ref="agp" }
+android-library-kmp = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 androidx-room = { id = "androidx.room", version.ref = "androidx-room" }
 
 jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
@@ -337,3 +336,4 @@ wasmline-kotlin = { id = "crow.wasmline.kotlin" }
 app-base-multiplatform-library = { id = "app.base.multiplatform.library" }
 app-base-library = { id = "app.base.library" }
 app-base-android = { id = "app.base.android" }
+

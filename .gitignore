@@ -63,3 +63,4 @@
 /build/platforms/
 /.cache/
 /commit_message.txt
+/.java-version

@@ -32,7 +32,7 @@ WASMTIME_TAG="release-v$WASMTIME_VERSION"
 echo "==> Wasmtime version: $WASMTIME_TAG"
 
 # ── Parse parameters ──────────────────────────────────────────────
-VARIANT="${1:-pulley}"
+VARIANT="${1:-both}"
 
 # ── Android ABIs per variant ──────────────────────────────
 get_android_abis() {

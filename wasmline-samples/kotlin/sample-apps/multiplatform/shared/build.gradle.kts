@@ -61,9 +61,13 @@ kotlin {
                 api(libs.jetbrains.jewel.decorated)
                 api(libs.conveyor)
                 api(libs.ktor.client.cio)
-                // Engine module: the `crow.wasmline` plugin automatically resolves
-                // the correct platform-specific native JAR via variant-aware resolution
-                implementation(libs.crow.wasmline.engine.cranelift)
+                // Engine module: selected via `wasmline.engine` property in gradle.properties
+                val engine = project.findProperty("wasmline.engine") as? String ?: "pulley"
+                if (engine == "cranelift") {
+                    implementation(libs.crow.wasmline.engine.cranelift)
+                } else {
+                    implementation(libs.crow.wasmline.engine.pulley)
+                }
             }
         }
         if (HostManager.hostIsMac) {

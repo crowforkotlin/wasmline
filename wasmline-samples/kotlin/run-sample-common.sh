@@ -16,6 +16,7 @@ ANDROID_DEVICE=""
 WASMTIME_VERSION=""
 WASMLINE_VERSION=""
 ARTIFACT_FORMAT=""
+ENGINE=""
 QUIET=0
 
 require_value() {
@@ -92,6 +93,11 @@ run_gradle_with_runtime_format() {
     local directory="$1"
     shift
 
+    local gradle_extra_args=()
+    if [ -n "$ENGINE" ]; then
+        gradle_extra_args+=("-Pwasmline.engine=$ENGINE")
+    fi
+
     (
         case "$ARTIFACT_FORMAT" in
             pwasm|pwasm64|pwasm32)
@@ -105,7 +111,7 @@ run_gradle_with_runtime_format() {
                 fi
                 ;;
         esac
-        run_gradle "$directory" "$@"
+        run_gradle "$directory" "${gradle_extra_args[@]}" "$@"
     )
 }
 
@@ -323,6 +329,28 @@ parse_common_args() {
                 fi
                 require_value "${1%%=*}" "${1#*=}"
                 ARTIFACT_FORMAT="$(normalize_artifact_format "${1#*=}")"
+                shift
+                ;;
+            -e|--engine)
+                require_value "$1" "${2:-}"
+                case "$2" in
+                    pulley|cranelift) ENGINE="$2" ;;
+                    *)
+                        echo "Unsupported engine: $2 (expected: pulley or cranelift)" >&2
+                        exit 1
+                        ;;
+                esac
+                shift 2
+                ;;
+            --engine=*)
+                require_value "--engine" "${1#*=}"
+                case "${1#*=}" in
+                    pulley|cranelift) ENGINE="${1#*=}" ;;
+                    *)
+                        echo "Unsupported engine: ${1#*=} (expected: pulley or cranelift)" >&2
+                        exit 1
+                        ;;
+                esac
                 shift
                 ;;
             -h|--help)

@@ -12,7 +12,7 @@ COMPILE_OUTPUT_ROOT="${SAMPLE_ROOT}/build/desktop-output"
 print_help() {
     cat <<EOF
 Usage:
-  ./${SCRIPT_NAME} [--platform VALUE] [-f pwasm32|pwasm64|cwasm] [-q]
+  ./${SCRIPT_NAME} [--platform VALUE] [-f pwasm32|pwasm64|cwasm] [-e pulley|cranelift] [-q]
 
 Build and run the desktop sample.
 
@@ -32,6 +32,9 @@ Options:
                      When provided, the same format is selected at runtime.
   --artifact-format VALUE
                      Backward-compatible alias for --format.
+  -e, --engine VALUE Desktop Wasmtime engine variant.
+                     Supported values: pulley, cranelift.
+                     If omitted, uses wasmline.engine from gradle.properties (default: pulley).
   -q, --quiet        Suppress build output; only show program results.
   -h, --help         Show this help and exit
 EOF
