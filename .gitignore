@@ -15,6 +15,10 @@
 *.tar.xz
 *.pbxuser
 *.xcworkspace
+*.class
+*.pyc
+*.pyo
+*.pyd
 
 **/.cxx/
 **/build/
@@ -23,13 +27,18 @@
 **/.kotlin/
 **/.zig-out/
 **/.zig-cache/
+**/zig-out/
 **/.gradle/
-**/build/
-**/release/
-**/debug/
 **/.idea/
 **/.vscode/
 **/.cache/
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
+**/.mypy_cache/
+**/target/
+**/dist/
+**/*.egg-info/
 
 **/local.properties
 **/*.wasm
@@ -44,11 +53,9 @@
 **/*.dylib
 **/*.exe
 **/*.bin
-**/.DS_Stor
+**/.DS_Store
 **/compile_commands.json
 **/*.db
-**/*.cwasm
-**/*.wasm
 **/*.tar.xz
 **/*.log
 
