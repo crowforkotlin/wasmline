@@ -2,14 +2,14 @@
 /**
  * Wasmtime C-API Init Script (Node.js / ESM)
  * ============================================
- * Equivalent to init.sh — downloads and deploys Wasmtime C-API platform assets.
+ * Equivalent to init-wasmtime.sh — downloads and deploys Wasmtime C-API platform assets.
  *
  * Usage:
- *   node scripts/init.mjs [proxy]
+ *   node scripts/init-wasmtime.mjs [proxy]
  *
  * Examples:
- *   node scripts/init.mjs
- *   node scripts/init.mjs 127.0.0.1:7890
+ *   node scripts/init-wasmtime.mjs
+ *   node scripts/init-wasmtime.mjs 127.0.0.1:7890
  */
 
 import { createWriteStream, cpSync, existsSync, mkdirSync, rmSync, statSync, readdirSync } from "node:fs";

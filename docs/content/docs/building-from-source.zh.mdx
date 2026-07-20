@@ -26,6 +26,31 @@ Kotlin/WasmWasi 编译器后端必须完整实现以下 WebAssembly 提案：
 | Exception Handling | 必需 | Kotlin 异常跨 Wasm 执行边界传播 |
 | Tail Call Optimization | 推荐 | 防止深层递归调用链中的栈溢出 |
 
+## 环境变量
+
+构建项目前需配置以下环境变量：
+
+```bash
+# Android SDK 路径（Gradle 编译必需）
+export ANDROID_HOME="/home/<user>/Android/Sdk"
+
+# Android NDK 路径（构建 Android native 库必需）
+export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638"
+
+# MinGW-w64 工具链路径（Zig 交叉编译 Windows 目标必需）
+export MINGW_PATH="/usr/x86_64-w64-mingw32"
+```
+
+| 变量 | 用途 |
+|---|---|
+| `ANDROID_HOME` | Gradle 构建 Android 目标时定位 SDK |
+| `ANDROID_NDK_HOME` | `build-native-assets.sh` 构建 Android ABI 时定位 NDK 工具链 |
+| `MINGW_PATH` | `build.zig` 交叉编译 `x86_64-windows-gnu` 时定位 MinGW sysroot |
+
+<Callout type="info" title="MINGW_PATH 仅 Windows 交叉编译需要">
+  如果不需要构建 Windows 产物，可不设置 `MINGW_PATH`。`build-native-assets.sh` 会跳过失败的目标并继续构建其余平台。
+</Callout>
+
 ## 环境预检
 
 在确认当前 JVM 环境前，不得调用 Gradle。每次构建会话开始前都必须执行仓库预检：
@@ -47,9 +72,9 @@ bash ./scripts/doctor.sh
 在开始原生目标编译前，`build/platforms/` 下必须存在 wasmtime min C-API 头文件与预编译库。执行以下任一等价脚本：
 
 ```bash
-sh ./scripts/init.sh          # Bash — 需要 curl 和 tar/unzip
-python3 ./scripts/init.py     # Python 3.9+ — 无第三方依赖
-node ./scripts/init.mjs       # Node.js 18+ — 无第三方依赖
+sh ./scripts/init-wasmtime.sh          # Bash — 需要 curl 和 tar/unzip
+python3 ./scripts/init-wasmtime.py     # Python 3.9+ — 无第三方依赖
+node ./scripts/init-wasmtime.mjs       # Node.js 18+ — 无第三方依赖
 ```
 
 三个脚本都支持交互式平台/架构选择、可配置的下载并发数，以及作为第一个位置参数传入的可选 HTTP 代理（例如 `127.0.0.1:7890`）。
@@ -88,9 +113,35 @@ cd wasmline-multiplatform
 ./gradlew publishToMavenLocal
 ```
 
-## 原生库构建 (Zig 0.15.1)
+## 原生库构建
 
-JVM 原生目标所需的 JNI 共享库由 Zig 构建系统编译。`-p` 参数会将安装目录重定向到 `src/jvmMain/resources/jni/`：
+原生库构建通过 `build-native-assets.sh` 统一完成，该脚本会编译 Android（CMake + NDK）和 JVM Desktop（Zig）的全部目标平台产物，并部署到对应引擎模块的 `jniLibs` / `resources` 目录。
+
+```bash
+# 默认同时构建 pulley 和 cranelift 两个变体
+bash scripts/build-native-assets.sh
+
+# 仅构建指定变体
+bash scripts/build-native-assets.sh pulley
+bash scripts/build-native-assets.sh cranelift
+```
+
+前置条件：
+- 已执行 `init-wasmtime.sh` 下载平台运行时资产
+- 已设置 `ANDROID_NDK_HOME`（Android 目标）
+- 已安装 Zig 0.15.1（JVM Desktop 目标）
+- 已设置 `MINGW_PATH`（Windows 交叉编译，可选）
+
+构建完成后执行发布：
+
+```bash
+cd wasmline-multiplatform
+./gradlew publishToMavenLocal
+```
+
+### 手动 Zig 构建（仅 Desktop）
+
+如需单独构建 JVM Desktop 的 JNI 共享库，可直接调用 Zig：
 
 ```bash
 cd wasmline-multiplatform/wasmline

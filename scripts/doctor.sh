@@ -385,7 +385,7 @@ check_platform_assets() {
 
     if [ ! -d "$PLATFORMS_ROOT" ]; then
         table_row warn "build/platforms/" "Directory not found. No Wasmtime runtime assets are currently available."
-        table_note "Run sh ./scripts/init.sh when you need native or desktop targets."
+        table_note "Run sh ./scripts/init-wasmtime.sh when you need native or desktop targets."
         return 0
     fi
 
@@ -394,7 +394,7 @@ check_platform_assets() {
     version_dir=$(resolve_wasmtime_version)
     if [ -z "$version_dir" ] || [ ! -d "$PLATFORMS_ROOT/$version_dir" ]; then
         table_row warn "build/platforms/" "Version directory not found: $version_dir"
-        table_note "Run sh ./scripts/init.sh to download Wasmtime assets."
+        table_note "Run sh ./scripts/init-wasmtime.sh to download Wasmtime assets."
         return 0
     fi
 
@@ -417,7 +417,7 @@ check_platform_assets() {
 
     if [ "$available_count" -eq 0 ]; then
         table_row warn "Coverage" "0/${#PLATFORM_TARGETS[@]} targets are ready." 0
-        table_note "Run sh ./scripts/init.sh before native builds."
+        table_note "Run sh ./scripts/init-wasmtime.sh before native builds."
     elif [ "$missing_count" -gt 0 ]; then
         table_row info "Coverage" "$available_count/${#PLATFORM_TARGETS[@]} targets are ready. Missing targets stay as warnings." 0
         table_note "Warnings are usually safe to ignore for web-only work."

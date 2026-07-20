@@ -9,7 +9,7 @@
 #   bash scripts/build-native-assets.sh [pulley|cranelift|both]
 #
 # Prerequisites:
-#   1. Run init.mjs to download wasmtime assets to build/platforms/
+#   1. Run init-wasmtime.sh to download wasmtime assets to build/platforms/
 #   2. Android NDK installed (ANDROID_NDK_HOME or ndk.dir configured)
 #   3. zig installed (for JVM desktop builds)
 #
@@ -81,7 +81,7 @@ build_android() {
 
   local platforms_dir="$PLATFORMS_ROOT/$WASMTIME_TAG/$variant/android"
   if [[ ! -d "$platforms_dir" ]]; then
-    echo "SKIP: $platforms_dir not found; run init.mjs first"
+    echo "SKIP: $platforms_dir not found; run init-wasmtime.sh first"
     return
   fi
 
@@ -160,7 +160,7 @@ build_jvm() {
 
     # Skip if platform assets not downloaded
     if [[ ! -d "$platforms_dir/$plat_subdir" ]]; then
-      echo "  SKIP: $variant/$plat_subdir (run init.mjs to download)"
+      echo "  SKIP: $variant/$plat_subdir (run init-wasmtime.sh to download)"
       continue
     fi
 

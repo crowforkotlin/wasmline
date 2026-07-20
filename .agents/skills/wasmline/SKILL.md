@@ -86,13 +86,13 @@ This repository depends on per-platform Wasmtime C-API runtime assets. If `build
 
 ```bash
 # Bash (requires bash + curl + tar/unzip)
-sh ./scripts/init.sh
+sh ./scripts/init-wasmtime.sh
 
 # Python 3 (requires Python 3.9+, no third-party dependencies)
-python3 ./scripts/init.py
+python3 ./scripts/init-wasmtime.py
 
 # Node.js (requires Node.js 18+, no third-party dependencies)
-node ./scripts/init.mjs
+node ./scripts/init-wasmtime.mjs
 ```
 
 All three scripts are functionally equivalent and support:
@@ -134,7 +134,7 @@ Notes:
 | `wasmline-multiplatform/ci/` | CI build and test scripts |
 | `wasmline-multiplatform/docs/` | Module-level documentation (build guides, design docs, etc.) |
 | `scripts/` | Repository-level initialization and utility scripts |
-| `build/platforms/` | Platform runtime assets (initialized by `scripts/init.sh`) |
+| `build/platforms/` | Platform runtime assets (initialized by `scripts/init-wasmtime.sh`) |
 | `docs/` | Documentation site resources |
 
 > **Note**: `wasmline-samples/kotlin/` is a standalone Gradle Composite Build that depends on `wasmline-multiplatform` via `includeBuild`; it is not a sub-module of the `wasmline-multiplatform` project. The original `wasmline-multiplatform/wasmline-sample/` has been deprecated and removed from `settings.gradle.kts`.
@@ -307,9 +307,9 @@ bash ./scripts/doctor.sh
 ### Initialize Platform Runtime
 
 ```bash
-sh ./scripts/init.sh            # Bash
-python3 ./scripts/init.py       # Python 3.9+
-node ./scripts/init.mjs         # Node.js 18+
+sh ./scripts/init-wasmtime.sh            # Bash
+python3 ./scripts/init-wasmtime.py       # Python 3.9+
+node ./scripts/init-wasmtime.mjs         # Node.js 18+
 ```
 
 ### Generate Plugin Tests and Run Box Tests
@@ -348,7 +348,7 @@ When approaching this repository for the first time, follow this order:
 
 1. `README_zh.md` / `README.md` — Project overview
 2. `.github/skills/wasmline/SKILL.md` — This file
-3. `scripts/init.sh` — Platform asset initialization flow
+3. `scripts/init-wasmtime.sh` — Platform asset initialization flow
 4. `wasmline-multiplatform/settings.gradle.kts` — Main project module structure
 5. `wasmline-samples/kotlin/settings.gradle.kts` — Sample project Composite Build structure
 6. `wasmline-core/` — C/C++ Bridge layer implementation

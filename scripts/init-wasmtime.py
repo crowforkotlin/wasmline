@@ -2,14 +2,14 @@
 """
 Wasmtime C-API Init Script (Python)
 ====================================
-Equivalent to init.sh — downloads and deploys Wasmtime C-API platform assets.
+Equivalent to init-wasmtime.sh — downloads and deploys Wasmtime C-API platform assets.
 
 Usage:
-    python3 scripts/init.py [proxy]
+    python3 scripts/init-wasmtime.py [proxy]
 
 Examples:
-    python3 scripts/init.py
-    python3 scripts/init.py 127.0.0.1:7890
+    python3 scripts/init-wasmtime.py
+    python3 scripts/init-wasmtime.py 127.0.0.1:7890
 """
 
 from __future__ import annotations
