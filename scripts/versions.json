@@ -2,9 +2,10 @@
   "versions": {
     "wasmline_version": "1.0.0",
     "sample_plugin_version": "1.0.0",
-    "wasmtime_version": "45.0.6",
+    "wasmtime_version": "47.0.2",
     "kotlin_version": "2.4.0",
-    "agp_version": "9.2.1",
+    "kotlin_min_version": "2.3.0-RC2",
+    "agp_version": "9.3.0",
     "zig_version": "0.15.1",
     "jbr_version": "21"
   }

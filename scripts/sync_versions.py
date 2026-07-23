@@ -30,6 +30,7 @@ REQUIRED_KEYS = (
     "sample_plugin_version",
     "wasmtime_version",
     "kotlin_version",
+    "kotlin_min_version",
     "agp_version",
     "zig_version",
     "jbr_version",
@@ -113,7 +114,7 @@ def apply_rules(text: str, spec: FileSpec, versions: VersionMap) -> str:
     return updated
 
 
-def shared_doc_rules() -> tuple[Rule, ...]:
+def badge_rules() -> tuple[Rule, ...]:
     return (
         Rule(
             r"https://img\.shields\.io/badge/Kotlin-.*?-7F52FF\?style=flat-square&logo=kotlin&logoColor=white",
@@ -125,9 +126,9 @@ def shared_doc_rules() -> tuple[Rule, ...]:
             min_count=0,
         ),
         Rule(
-            r"https://img\.shields\.io/badge/Wasmtime-.*?-5C9BD6\?style=flat-square",
+            r"https://img\.shields\.io/badge/wasmtime-.*?-5C9BD6\?style=flat-square",
             lambda v: (
-                "https://img.shields.io/badge/Wasmtime-"
+                "https://img.shields.io/badge/wasmtime-"
                 f"{v['wasmtime_version']}-5C9BD6?style=flat-square"
             ),
             min_count=0,
@@ -140,67 +141,97 @@ def shared_doc_rules() -> tuple[Rule, ...]:
             ),
             min_count=0,
         ),
-        Rule(
-            r"Wasmtime v[0-9]+\.[0-9]+\.[0-9]+",
-            lambda v: f"Wasmtime v{v['wasmtime_version']}",
-        ),
-        Rule(
-            r"wasmtime-v[0-9]+\.[0-9]+\.[0-9]+-aarch64-macos",
-            lambda v: f"wasmtime-v{v['wasmtime_version']}-aarch64-macos",
-        ),
-        Rule(
-            r"Wasmtime C-API\s+v[0-9]+\.[0-9]+\.[0-9]+",
-            lambda v: f"Wasmtime C-API  v{v['wasmtime_version']}",
-        ),
-        Rule(
-            r"Kotlin [0-9][0-9A-Za-z.\-]*",
-            lambda v: f"Kotlin {v['kotlin_version']}",
-        ),
-        Rule(
-            r"AGP [0-9]+\.[0-9]+\.[0-9]+",
-            lambda v: f"AGP {v['agp_version']}",
-        ),
-        Rule(
-            r"Zig [0-9]+\.[0-9]+\.[0-9]+",
-            lambda v: f"Zig {v['zig_version']}",
-        ),
-        Rule(
-            r"JBR [0-9]+",
-            lambda v: f"JBR {v['jbr_version']}",
-        ),
     )
 
 
 def file_specs() -> tuple[FileSpec, ...]:
-    docs_rules_en = shared_doc_rules() + (
+    readme_en = badge_rules() + (
         Rule(
-            r"\*\*[0-9][0-9A-Za-z.\-]*\*\* minimum",
-            lambda v: f"**{v['kotlin_version']}** minimum",
+            r"minimum required Kotlin version is \*\*[0-9A-Za-z.\-]+\*\*",
+            lambda v: f"minimum required Kotlin version is **{v['kotlin_min_version']}**",
         ),
+    )
+    readme_zh = badge_rules() + (
         Rule(
-            r"`[0-9][0-9A-Za-z.\-]*` may produce incomplete Wasm binaries\.",
-            lambda v: f"`{v['kotlin_version']}` may produce incomplete Wasm binaries.",
-            min_count=0,
+            r"最低需要 \*\*Kotlin [0-9A-Za-z.\-]+\*\* 版本",
+            lambda v: f"最低需要 **Kotlin {v['kotlin_min_version']}** 版本",
         ),
+    )
+
+    building_from_source_en = (
         Rule(
             r"\*\*[0-9]+\*\*(?= \(\[JBR [0-9]+\])",
             lambda v: f"**{v['jbr_version']}**",
         ),
+        Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
+        Rule(
+            r"\*\*[0-9A-Za-z.\-]+\*\* minimum",
+            lambda v: f"**{v['kotlin_min_version']}** minimum",
+        ),
+        Rule(r"AGP [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"AGP {v['agp_version']}"),
+        Rule(
+            r"(\| Zig \| )\*\*[0-9.]+\*\*",
+            lambda v: rf"\1**{v['zig_version']}**",
+        ),
+        Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}"),
     )
-
-    docs_rules_zh = shared_doc_rules() + (
-        Rule(
-            r"最低 \*\*[0-9][0-9A-Za-z.\-]*\*\*",
-            lambda v: f"最低 **{v['kotlin_version']}**",
-        ),
-        Rule(
-            r"`[0-9][0-9A-Za-z.\-]*` 以下，可能会生成不完整的 Wasm 二进制。",
-            lambda v: f"`{v['kotlin_version']}` 以下，可能会生成不完整的 Wasm 二进制。",
-            min_count=0,
-        ),
+    building_from_source_zh = (
         Rule(
             r"\*\*[0-9]+\*\*(?=（Compose Desktop 必须使用 \[JBR [0-9]+\])",
             lambda v: f"**{v['jbr_version']}**",
+        ),
+        Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
+        Rule(
+            r"最低 \*\*[0-9A-Za-z.\-]+\*\*",
+            lambda v: f"最低 **{v['kotlin_min_version']}**",
+        ),
+        Rule(r"AGP [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"AGP {v['agp_version']}"),
+        Rule(
+            r"(\| Zig \| )\*\*[0-9.]+\*\*",
+            lambda v: rf"\1**{v['zig_version']}**",
+        ),
+        Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}"),
+    )
+
+    installation_en = (
+        Rule(r"JBR \*\*[0-9]+\*\*", lambda v: f"JBR **{v['jbr_version']}**"),
+        Rule(
+            r"Kotlin \*\*[0-9A-Za-z.\-]+\*\* or later",
+            lambda v: f"Kotlin **{v['kotlin_min_version']}** or later",
+        ),
+        Rule(
+            r"minimum required Kotlin version is \*\*[0-9A-Za-z.\-]+\*\*",
+            lambda v: f"minimum required Kotlin version is **{v['kotlin_min_version']}**",
+        ),
+    )
+    installation_zh = (
+        Rule(r"JBR \*\*[0-9]+\*\*", lambda v: f"JBR **{v['jbr_version']}**"),
+        Rule(
+            r"Kotlin \*\*[0-9A-Za-z.\-]+\*\* 或更高版本",
+            lambda v: f"Kotlin **{v['kotlin_min_version']}** 或更高版本",
+        ),
+        Rule(
+            r"最低需要 \*\*Kotlin [0-9A-Za-z.\-]+\*\* 版本",
+            lambda v: f"最低需要 **Kotlin {v['kotlin_min_version']}** 版本",
+        ),
+    )
+
+    architecture_rules = (
+        Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}"),
+        Rule(
+            r"wasmtime C-API\s+v[0-9]+\.[0-9]+\.[0-9]+",
+            lambda v: f"wasmtime C-API  v{v['wasmtime_version']}",
+        ),
+    )
+
+    cli_docs_rules = (
+        Rule(
+            r"download -v v[0-9]+\.[0-9]+\.[0-9]+",
+            lambda v: f"download -v v{v['wasmtime_version']}",
+        ),
+        Rule(
+            r"wasmtime-v[0-9]+\.[0-9]+\.[0-9]+-aarch64-macos",
+            lambda v: f"wasmtime-v{v['wasmtime_version']}-aarch64-macos",
         ),
     )
 
@@ -218,23 +249,21 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            ".github/skills/wasmline/SKILL.md",
+            ".agents/skills/wasmline/SKILL.md",
             (
                 Rule(r"Java [0-9]+", lambda v: f"Java {v['jbr_version']}"),
                 Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
                 Rule(
-                    r"Zig 版本（要求 \*\*[0-9.]+\*\*）",
-                    lambda v: f"Zig 版本（要求 **{v['zig_version']}**）",
-                    min_count=0,
+                    r"Zig version \(requires \*\*[0-9.]+\*\*\)",
+                    lambda v: f"Zig version (requires **{v['zig_version']}**)",
                 ),
                 Rule(
-                    r"Zig 版本为 \*\*[0-9.]+\*\*",
-                    lambda v: f"Zig 版本为 **{v['zig_version']}**",
+                    r"Zig version \*\*[0-9.]+\*\*",
+                    lambda v: f"Zig version **{v['zig_version']}**",
                 ),
                 Rule(
-                    r"需要 Zig [0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"需要 Zig {v['zig_version']}",
-                    min_count=0,
+                    r"requires Zig [0-9]+\.[0-9]+\.[0-9]+",
+                    lambda v: f"requires Zig {v['zig_version']}",
                 ),
             ),
         ),
@@ -247,7 +276,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                 ),
                 Rule(
                     r"(?m)^wasmtime\.version\s*=.*$",
-                    lambda v: f"wasmtime.version ={v['wasmtime_version']}",
+                    lambda v: f"wasmtime.version={v['wasmtime_version']}",
                 ),
             ),
         ),
@@ -260,7 +289,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                 ),
                 Rule(
                     r"(?m)^wasmtime\.version\s*=.*$",
-                    lambda v: f"wasmtime.version ={v['wasmtime_version']}",
+                    lambda v: f"wasmtime.version={v['wasmtime_version']}",
                 ),
             ),
         ),
@@ -286,10 +315,16 @@ def file_specs() -> tuple[FileSpec, ...]:
                 ),
             ),
         ),
-        FileSpec("README.md", docs_rules_en),
-        FileSpec("README_zh.md", docs_rules_zh),
-        FileSpec("docs/content/docs/index.en.mdx", docs_rules_en),
-        FileSpec("docs/content/docs/index.mdx", docs_rules_zh),
+        FileSpec("README.md", readme_en),
+        FileSpec("README_zh.md", readme_zh),
+        FileSpec("docs/content/docs/building-from-source.mdx", building_from_source_en),
+        FileSpec("docs/content/docs/building-from-source.zh.mdx", building_from_source_zh),
+        FileSpec("docs/content/docs/installation.mdx", installation_en),
+        FileSpec("docs/content/docs/installation.zh.mdx", installation_zh),
+        FileSpec("docs/content/docs/architecture.mdx", architecture_rules),
+        FileSpec("docs/content/docs/architecture.zh.mdx", architecture_rules),
+        FileSpec("docs/content/docs/cli.mdx", cli_docs_rules),
+        FileSpec("docs/content/docs/cli.zh.mdx", cli_docs_rules),
         FileSpec(
             "wasmline-multiplatform/docs/zig-build.md",
             (
@@ -301,15 +336,6 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         FileSpec(
             "wasmline-multiplatform/docs/design-mind.md",
-            (
-                Rule(
-                    r"Zig [0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"Zig {v['zig_version']}",
-                ),
-            ),
-        ),
-        FileSpec(
-            ".github/docs/mind.md",
             (
                 Rule(
                     r"Zig [0-9]+\.[0-9]+\.[0-9]+",

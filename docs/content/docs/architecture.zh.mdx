@@ -32,7 +32,7 @@ wasmline-core  (C/C++ · Zig 0.15.1)
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context
         │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
         ▼
-wasmtime C-API  v45.0.6
+wasmtime C-API  v47.0.2
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
 Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
@@ -109,7 +109,7 @@ wasmline/
 │       ├── sample-common/              # Shared service contract interface definitions
 │       ├── sample-plugin/              # Kotlin/WasmWasi WASI plugin implementation
 │       └── sample-apps/                # Android, JVM desktop, Compose Multiplatform, and Web hosts
-├── scripts/                            # Asset initialization: init.sh / init.py / init.mjs
+├── scripts/                            # Asset initialization: init-wasmtime.sh / init-wasmtime.py / init-wasmtime.mjs
 ├── build/                              # Root build outputs, including build/platforms/ wasmtime min C-API assets
 └── docs/                               # Documentation site (Next.js + Fumadocs)
 ```
