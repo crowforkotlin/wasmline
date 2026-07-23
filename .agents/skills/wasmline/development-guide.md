@@ -155,6 +155,9 @@ bash ./scripts/doctor.sh
 # Initialize platform assets
 sh ./scripts/init-wasmtime.sh
 
+# Build native libraries (requires init-wasmtime first)
+bash scripts/build-native-assets.sh
+
 # Generate + run box tests (requires explicit user instruction)
 cd wasmline-multiplatform
 ./gradlew :wasmline-kotlin-plugin:generateTests
@@ -166,7 +169,48 @@ cd wasmline-multiplatform
 # Desktop JNI (requires Zig 0.15.1, explicit instruction)
 cd wasmline-multiplatform/wasmline
 zig build --release=small -p src/jvmMain/resources
+
+# Format check
+./gradlew ktlintCheck
+find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+# Format fix
+./gradlew ktlintFormat
+find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | xargs clang-format -i
 ```
+
+---
+
+## Code Formatting
+
+| Language | Tool | Config |
+|----------|------|--------|
+| Kotlin | ktlint (via `org.jlleitschuh.gradle.ktlint`) | `wasmline-multiplatform/.editorconfig` |
+| C/C++ | clang-format | `wasmline-core/.clang-format` |
+
+- ktlint is applied to **all modules** via root `build.gradle.kts` `allprojects {}`.
+- Run `./gradlew ktlintCheck` before committing Kotlin changes.
+- Run `clang-format --dry-run --Werror` before committing C++ changes.
+- CI enforces both checks on every PR.
+
+---
+
+## CI Pipeline
+
+Workflow: `.github/workflows/ci.yml`
+
+**Trigger:** push to `main` / PR to `main` (ignores docs-only changes)
+
+**Single Ubuntu runner, sequential steps:**
+
+1. Setup toolchain (JBR 21, Zig 0.15.1, MinGW-w64, Android NDK)
+2. Download wasmtime platform assets (`init-wasmtime.sh`)
+3. Build native libraries (`build-native-assets.sh`)
+4. Format check (ktlint + clang-format)
+5. Compile all targets (JVM, Desktop, Android, WasmJs, Js, WasmWasi)
+6. Run tests (kotlin-plugin box/diagnostics + loader jvmTest)
+
+> `publishToMavenCentral` is NOT part of CI at this stage (project in development).
 
 ---
 

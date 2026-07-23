@@ -17,11 +17,15 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.buildconfig) apply false
     alias(libs.plugins.maven.publish) apply false
+    alias(libs.plugins.ktlint)
 }
 
 allprojects {
     group = "crow.wasmline"
     version = project.property("wasmline.version") as String
+
+    apply(plugin = "org.jlleitschuh.gradle.ktlint")
+
     pluginManager.withPlugin("com.vanniktech.maven.publish") {
         configure<MavenPublishBaseExtension> {
             publishToMavenCentral(automaticRelease = true)

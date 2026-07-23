@@ -79,6 +79,40 @@ node ./scripts/init-wasmtime.mjs       # Node.js 18+ — 无第三方依赖
 
 三个脚本都支持交互式平台/架构选择、可配置的下载并发数，以及作为第一个位置参数传入的可选 HTTP 代理（例如 `127.0.0.1:7890`）。
 
+## 原生库构建
+
+原生库构建通过 `build-native-assets.sh` 统一完成，该脚本会编译 Android（CMake + NDK）和 JVM Desktop（Zig）的全部目标平台产物，并部署到对应引擎模块的 `jniLibs` / `resources` 目录。
+
+```bash
+# 默认同时构建 pulley 和 cranelift 两个变体
+bash scripts/build-native-assets.sh
+
+# 仅构建指定变体
+bash scripts/build-native-assets.sh pulley
+bash scripts/build-native-assets.sh cranelift
+```
+
+前置条件：
+- 已执行 `init-wasmtime.sh` 下载平台运行时资产
+- 已设置 `ANDROID_NDK_HOME`（Android 目标）
+- 已安装 Zig 0.15.1（JVM Desktop 目标）
+- 已设置 `MINGW_PATH`（Windows 交叉编译，可选）
+
+### 手动 Zig 构建（仅 Desktop）
+
+如需单独构建 JVM Desktop 的 JNI 共享库，可直接调用 Zig：
+
+```bash
+cd wasmline-multiplatform/wasmline
+
+zig build --release=small -p src/jvmMain/resources   # Release（体积优化）
+zig build -p src/jvmMain/resources                    # Debug
+```
+
+<Callout type="warn" title="不要提交 Zig 中间产物">
+  `zig-out/` 下的文件属于 Zig 构建的中间产物，绝不能提交。必须使用 `-p src/jvmMain/resources` 参数，才能将 JNI 库安装到正确的 classpath 资源目录。
+</Callout>
+
 ## Gradle 构建参考
 
 所有操作都在 `wasmline-multiplatform/` 下执行：
@@ -112,47 +146,6 @@ cd wasmline-multiplatform
 # 将全部模块安装到本地 Maven 仓库（mavenLocal）
 ./gradlew publishToMavenLocal
 ```
-
-## 原生库构建
-
-原生库构建通过 `build-native-assets.sh` 统一完成，该脚本会编译 Android（CMake + NDK）和 JVM Desktop（Zig）的全部目标平台产物，并部署到对应引擎模块的 `jniLibs` / `resources` 目录。
-
-```bash
-# 默认同时构建 pulley 和 cranelift 两个变体
-bash scripts/build-native-assets.sh
-
-# 仅构建指定变体
-bash scripts/build-native-assets.sh pulley
-bash scripts/build-native-assets.sh cranelift
-```
-
-前置条件：
-- 已执行 `init-wasmtime.sh` 下载平台运行时资产
-- 已设置 `ANDROID_NDK_HOME`（Android 目标）
-- 已安装 Zig 0.15.1（JVM Desktop 目标）
-- 已设置 `MINGW_PATH`（Windows 交叉编译，可选）
-
-构建完成后执行发布：
-
-```bash
-cd wasmline-multiplatform
-./gradlew publishToMavenLocal
-```
-
-### 手动 Zig 构建（仅 Desktop）
-
-如需单独构建 JVM Desktop 的 JNI 共享库，可直接调用 Zig：
-
-```bash
-cd wasmline-multiplatform/wasmline
-
-zig build --release=small -p src/jvmMain/resources   # Release（体积优化）
-zig build -p src/jvmMain/resources                    # Debug
-```
-
-<Callout type="warn" title="不要提交 Zig 中间产物">
-  `zig-out/` 下的文件属于 Zig 构建的中间产物，绝不能提交。必须使用 `-p src/jvmMain/resources` 参数，才能将 JNI 库安装到正确的 classpath 资源目录。
-</Callout>
 
 ## 版本同步
 

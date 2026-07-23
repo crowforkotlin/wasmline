@@ -79,6 +79,40 @@ node ./scripts/init-wasmtime.mjs       # Node.js 18+ — no third-party dependen
 
 All three scripts support interactive platform/architecture selection, configurable download concurrency, and an optional HTTP proxy as the first positional argument (e.g., `127.0.0.1:7890`).
 
+## Native Library Build
+
+Native library compilation is handled by `build-native-assets.sh`. This script builds all target platform artifacts for Android (CMake + NDK) and JVM Desktop (Zig), then deploys them to the corresponding engine module's `jniLibs` / `resources` directory.
+
+```bash
+# Builds both pulley and cranelift variants by default
+bash scripts/build-native-assets.sh
+
+# Build a specific variant only
+bash scripts/build-native-assets.sh pulley
+bash scripts/build-native-assets.sh cranelift
+```
+
+Prerequisites:
+- `init-wasmtime.sh` has been executed to download platform runtime assets
+- `ANDROID_NDK_HOME` is set (Android targets)
+- Zig 0.15.1 is installed (JVM Desktop targets)
+- `MINGW_PATH` is set (Windows cross-compilation, optional)
+
+### Manual Zig Build (Desktop Only)
+
+To build the JVM Desktop JNI shared library in isolation, invoke Zig directly:
+
+```bash
+cd wasmline-multiplatform/wasmline
+
+zig build --release=small -p src/jvmMain/resources   # Release (size-optimized)
+zig build -p src/jvmMain/resources                    # Debug
+```
+
+<Callout type="warn" title="Do not commit Zig intermediates">
+  Files under `zig-out/` are intermediate Zig build artifacts and must not be committed. The `-p src/jvmMain/resources` flag is required to redirect JNI library installation to the correct classpath resource directory.
+</Callout>
+
 ## Gradle Build Reference
 
 All operations are executed from `wasmline-multiplatform/`:
@@ -112,47 +146,6 @@ cd wasmline-multiplatform
 # Install all modules to the local Maven repository (mavenLocal)
 ./gradlew publishToMavenLocal
 ```
-
-## Native Library Build
-
-Native library compilation is handled by `build-native-assets.sh`. This script builds all target platform artifacts for Android (CMake + NDK) and JVM Desktop (Zig), then deploys them to the corresponding engine module's `jniLibs` / `resources` directory.
-
-```bash
-# Builds both pulley and cranelift variants by default
-bash scripts/build-native-assets.sh
-
-# Build a specific variant only
-bash scripts/build-native-assets.sh pulley
-bash scripts/build-native-assets.sh cranelift
-```
-
-Prerequisites:
-- `init-wasmtime.sh` has been executed to download platform runtime assets
-- `ANDROID_NDK_HOME` is set (Android targets)
-- Zig 0.15.1 is installed (JVM Desktop targets)
-- `MINGW_PATH` is set (Windows cross-compilation, optional)
-
-After building, publish to local Maven:
-
-```bash
-cd wasmline-multiplatform
-./gradlew publishToMavenLocal
-```
-
-### Manual Zig Build (Desktop Only)
-
-To build the JVM Desktop JNI shared library in isolation, invoke Zig directly:
-
-```bash
-cd wasmline-multiplatform/wasmline
-
-zig build --release=small -p src/jvmMain/resources   # Release (size-optimized)
-zig build -p src/jvmMain/resources                    # Debug
-```
-
-<Callout type="warn" title="Do not commit Zig intermediates">
-  Files under `zig-out/` are intermediate Zig build artifacts and must not be committed. The `-p src/jvmMain/resources` flag is required to redirect JNI library installation to the correct classpath resource directory.
-</Callout>
 
 ## Version Sync
 

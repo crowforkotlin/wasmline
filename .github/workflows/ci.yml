@@ -1,0 +1,109 @@
+# CI: Compile, Test, Format Check
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore: ["docs/**", "*.md", ".agents/**"]
+  pull_request:
+    branches: ["main"]
+    paths-ignore: ["docs/**", "*.md", ".agents/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ZIG_VERSION: "0.15.1"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Toolchain Setup ──────────────────────────────────────────
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: jetbrains
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Install MinGW-w64 and clang-format
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mingw-w64 clang-format
+
+      - name: Setup Android NDK
+        run: |
+          NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NDK_DIR" ]; then
+            sdkmanager --install "ndk;27.0.12077973"
+            NDK_DIR="$ANDROID_HOME/ndk/27.0.12077973"
+          fi
+          echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "Using NDK: $NDK_DIR"
+
+      # ── Environment Variables ────────────────────────────────────
+
+      - name: Export build environment
+        run: |
+          echo "MINGW_PATH=/usr/x86_64-w64-mingw32" >> "$GITHUB_ENV"
+
+      # ── Native Asset Build ───────────────────────────────────────
+
+      - name: Initialize Wasmtime platform assets
+        run: printf "\na\n\n" | bash scripts/init-wasmtime.sh
+
+      - name: Build native libraries
+        run: bash scripts/build-native-assets.sh
+
+      # ── Format Check ─────────────────────────────────────────────
+
+      - name: ktlint check
+        working-directory: wasmline-multiplatform
+        run: ./gradlew ktlintCheck --no-daemon
+
+      - name: clang-format check
+        run: |
+          find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | \
+            xargs clang-format --dry-run --Werror
+
+      # ── Compilation ──────────────────────────────────────────────
+
+      - name: Compile all targets
+        working-directory: wasmline-multiplatform
+        run: |
+          ./gradlew compileKotlinJvm \
+                      compileKotlinDesktop \
+                      compileDebugKotlinAndroid \
+                      compileKotlinWasmJs \
+                      compileKotlinJs \
+                      compileKotlinWasmWasi \
+                      --no-daemon
+
+      # ── Tests ────────────────────────────────────────────────────
+
+      - name: Kotlin compiler plugin tests
+        working-directory: wasmline-multiplatform
+        run: |
+          ./gradlew :wasmline-kotlin-plugin:generateTests \
+                    :wasmline-kotlin-plugin:test \
+                    --no-daemon
+
+      - name: Loader module tests
+        working-directory: wasmline-multiplatform
+        run: ./gradlew :wasmline-loader:jvmTest --no-daemon
