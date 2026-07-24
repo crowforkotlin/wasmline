@@ -148,6 +148,18 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Initialize Wasmtime platform assets
+        run: printf "\na\n\n" | bash scripts/init-wasmtime.sh
+
+      - name: Build native libraries
+        timeout-minutes: 5
+        run: bash scripts/build-native-assets.sh
+
       - name: Kotlin compiler plugin box tests
         working-directory: wasmline-multiplatform
         run: |
