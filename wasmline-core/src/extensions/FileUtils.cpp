@@ -11,7 +11,7 @@
 
 namespace wasmline {
     bool Utils::exists(const std::string& path) {
-        struct stat buffer{};
+        struct stat buffer = {};
         return (stat(path.c_str(), &buffer) == 0);
     }
 
