@@ -21,4 +21,4 @@ namespace wasmline {
          */
         virtual std::string onOutboundInvoke(std::string_view action, std::string_view payload) = 0;
     };
-}
+} // namespace wasmline

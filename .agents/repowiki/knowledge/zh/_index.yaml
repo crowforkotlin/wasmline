@@ -8,7 +8,7 @@ modules:
         dir_name: Wasmline 跨平台 Wasm 插件框架
         title: Wasmline 跨平台 Wasm 插件框架
         scope:
-            - README.md
+            - BOX_IR.md
             - README_zh.md
             - .gitignore
             - .qoderignore

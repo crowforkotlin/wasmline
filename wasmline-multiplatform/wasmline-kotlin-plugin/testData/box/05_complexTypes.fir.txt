@@ -1,0 +1,9 @@
+FILE: 05_complexTypes.kt
+    package test.ir.types
+
+    public abstract interface ComplexTypeService : R|crow/wasmline/WasmlineService| {
+        public abstract fun processNumbers(a: R|kotlin/Int|, b: R|kotlin/Long|): R|kotlin/Long|
+
+        public abstract fun processString(text: R|kotlin/String|, count: R|kotlin/Int|): R|kotlin/String|
+
+    }

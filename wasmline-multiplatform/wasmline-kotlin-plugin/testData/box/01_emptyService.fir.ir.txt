@@ -1,0 +1,54 @@
+FILE fqName:test.ir.basic fileName:/01_emptyService.kt
+  CLASS CLASS name:EmptyService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.basic.EmptyService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.basic.EmptyService_WasmlineBridge
+    FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
+    FIELD name:implementation type:test.ir.basic.EmptyService? visibility:private [final]
+    FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final]
+    CONSTRUCTOR visibility:public returnType:test.ir.basic.EmptyService_WasmlineBridge [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.basic.EmptyService?
+      VALUE_PARAMETER kind:Regular name:serializationFactory index:2 type:crow.wasmline.serialization.WasmlineSerializationFactory
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EmptyService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.basic.EmptyService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.basic.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.basic.EmptyService_WasmlineBridge declared in test.ir.basic.EmptyService_WasmlineBridge' type=test.ir.basic.EmptyService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.basic.EmptyService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.ir.basic.EmptyService? visibility:private [final] declared in test.ir.basic.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.basic.EmptyService_WasmlineBridge declared in test.ir.basic.EmptyService_WasmlineBridge' type=test.ir.basic.EmptyService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.ir.basic.EmptyService? declared in test.ir.basic.EmptyService_WasmlineBridge.<init>' type=test.ir.basic.EmptyService? origin=null
+        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.basic.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.basic.EmptyService_WasmlineBridge declared in test.ir.basic.EmptyService_WasmlineBridge' type=test.ir.basic.EmptyService_WasmlineBridge origin=null
+          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.basic.EmptyService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.basic.EmptyService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
+      overridden:
+        public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.basic.EmptyService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+      overridden:
+        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.basic.EmptyService_WasmlineBridge'
+          CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.ir.basic.EmptyService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.basic.EmptyService_WasmlineBridge.invoke' type=kotlin.String origin=null
+  CLASS INTERFACE name:EmptyService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.basic.EmptyService
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineService

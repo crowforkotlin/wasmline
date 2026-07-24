@@ -1,0 +1,11 @@
+FILE: 04_multiMethod.kt
+    package test.ir.basic
+
+    public abstract interface MultiMethodService : R|crow/wasmline/WasmlineService| {
+        public abstract fun methodA(): R|kotlin/Int|
+
+        public abstract fun methodB(value: R|kotlin/Boolean|): R|kotlin/String|
+
+        public abstract fun methodC(data: R|kotlin/ByteArray|): R|kotlin/ByteArray|
+
+    }

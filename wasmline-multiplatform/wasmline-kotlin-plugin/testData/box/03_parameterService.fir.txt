@@ -1,0 +1,7 @@
+FILE: 03_parameterService.kt
+    package test.ir.basic
+
+    public abstract interface ParamService : R|crow/wasmline/WasmlineService| {
+        public abstract fun echo(message: R|kotlin/String|): R|kotlin/String|
+
+    }

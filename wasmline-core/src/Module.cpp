@@ -17,19 +17,14 @@ namespace wasmline {
     namespace {
         bool hasSuffixIgnoreCase(const std::string& value, const std::string& suffix) {
             if (value.size() < suffix.size()) return false;
-            return std::equal(
-                suffix.rbegin(),
-                suffix.rend(),
-                value.rbegin(),
-                [](char lhs, char rhs) {
-                    return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
-                }
-            );
+            return std::equal(suffix.rbegin(), suffix.rend(), value.rbegin(), [](char lhs, char rhs) {
+                return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+            });
         }
-    }
+    } // namespace
 
     // Singleton Accessor
-    Module &Module::getInstance() {
+    Module& Module::getInstance() {
         static Module instance;
         return instance;
     }
@@ -39,7 +34,6 @@ namespace wasmline {
         clear();
     }
 
-
     // ============================================================================
     // Private Helpers (Core Logic)
     // ============================================================================
@@ -48,9 +42,9 @@ namespace wasmline {
      * Shared Logic: File Read + raw wasm compilation or precompiled artifact deserialization.
      * No locks are held inside this function.
      */
-    wasmtime_module_t *Module::compileInternal(const std::string &key, const std::string &filePath) {
+    wasmtime_module_t* Module::compileInternal(const std::string& key, const std::string& filePath) {
         // 1. Engine Check
-        wasm_engine_t *engine = Engine::getInstance().getEngine();
+        wasm_engine_t* engine = Engine::getInstance().getEngine();
         if (!engine) {
             LOGE("[Wasmtime] Module --> Engine not initialized.");
             return nullptr;
@@ -59,8 +53,8 @@ namespace wasmline {
         const bool rawWasm = hasSuffixIgnoreCase(filePath, ".wasm");
 
         // 2. Compile raw wasm or deserialize precompiled artifacts
-        wasmtime_module_t *module = nullptr;
-        wasmtime_error_t *error = nullptr;
+        wasmtime_module_t* module = nullptr;
+        wasmtime_error_t* error = nullptr;
 
         if (rawWasm) {
 #ifdef WASMTIME_FEATURE_COMPILER
@@ -71,14 +65,10 @@ namespace wasmline {
             }
 
             LOGI("[Wasmtime] Module --> Compiling raw wasm module for %s", filePath.c_str());
-            error = wasmtime_module_new(
-                engine,
-                reinterpret_cast<const uint8_t*>(data.data()),
-                data.size(),
-                &module
-            );
+            error = wasmtime_module_new(engine, reinterpret_cast<const uint8_t*>(data.data()), data.size(), &module);
 #else
-            LOGE("[Wasmtime] Module --> Raw wasm compilation not available (no compiler). Use precompiled .pwasm artifacts. file=%s", filePath.c_str());
+            LOGE("[Wasmtime] Module --> Raw wasm compilation not available (no compiler). Use precompiled .pwasm artifacts. file=%s",
+                 filePath.c_str());
             return nullptr;
 #endif
         } else {
@@ -100,7 +90,7 @@ namespace wasmline {
     }
 
     // Load Module (Thread-Safe & Optimized)
-    wasmtime_module_t *Module::load(const std::string &key, const std::string &filePath) {
+    wasmtime_module_t* Module::load(const std::string& key, const std::string& filePath) {
         std::unique_lock<std::mutex> lock(cacheMutex);
 
         // 1. Check & Wait Phase
@@ -126,7 +116,7 @@ namespace wasmline {
         lock.unlock();
 
         // 4. Core Logic (Reuse)
-        wasmtime_module_t *module = compileInternal(key, filePath);
+        wasmtime_module_t* module = compileInternal(key, filePath);
 
         // 5. Commit Phase
         lock.lock();
@@ -146,7 +136,7 @@ namespace wasmline {
     }
 
     // Load Module (Unsafe / Fast)
-    wasmtime_module_t *Module::loadUnsafe(const std::string &key, const std::string &filePath) {
+    wasmtime_module_t* Module::loadUnsafe(const std::string& key, const std::string& filePath) {
         // 1. Direct Cache Check
         auto it = moduleCache.find(key);
         if (it != moduleCache.end()) {
@@ -155,7 +145,7 @@ namespace wasmline {
         }
 
         // 2. Core Logic (Reuse)
-        wasmtime_module_t *module = compileInternal(key, filePath);
+        wasmtime_module_t* module = compileInternal(key, filePath);
 
         // 3. Update Cache
         if (module) {
@@ -166,16 +156,15 @@ namespace wasmline {
         return module;
     }
 
-
     // Get Cached Module
-    wasmtime_module_t *Module::get(const std::string &key) {
+    wasmtime_module_t* Module::get(const std::string& key) {
         std::lock_guard<std::mutex> lock(cacheMutex);
         auto it = moduleCache.find(key);
         return (it != moduleCache.end()) ? it->second : nullptr;
     }
 
     // Release Specific Module
-    void Module::release(const std::string &key) {
+    void Module::release(const std::string& key) {
         std::lock_guard<std::mutex> lock(cacheMutex);
         auto it = moduleCache.find(key);
         if (it != moduleCache.end()) {
@@ -188,10 +177,10 @@ namespace wasmline {
     // Clear All Modules
     void Module::clear() {
         std::lock_guard<std::mutex> lock(cacheMutex);
-        for (auto &pair: moduleCache) {
+        for (auto& pair : moduleCache) {
             wasmtime_module_delete(pair.second);
         }
         moduleCache.clear();
         LOGI("[Wasmtime] Module --> All modules released.");
     }
-}
+} // namespace wasmline

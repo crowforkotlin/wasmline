@@ -23,17 +23,21 @@
 #if WASM_LOGS_ENABLED
 
 namespace wasmline {
-    void NativeLogI(const char *fmt, ...);
+    void NativeLogI(const char* fmt, ...);
 
-    void NativeLogE(const char *fmt, ...);
+    void NativeLogE(const char* fmt, ...);
 
 #define LOGI(...) NativeLogI(__VA_ARGS__)
 #define LOGE(...) NativeLogE(__VA_ARGS__)
-}
+} // namespace wasmline
 
 #else
 
-#define LOGI(...) do {} while(0)
-#define LOGE(...) do {} while(0)
+#define LOGI(...)                                                                                                                          \
+    do {                                                                                                                                   \
+    } while (0)
+#define LOGE(...)                                                                                                                          \
+    do {                                                                                                                                   \
+    } while (0)
 
 #endif

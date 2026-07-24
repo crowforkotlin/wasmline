@@ -29,17 +29,15 @@ namespace wasmline {
          * @param cv The condition variable to notify waiters.
          * @param k The specific key to manage.
          */
-        WasmScopeGuard(std::mutex &m, std::unordered_set<std::string> &set, std::condition_variable &c, const std::string &k)
-                : mutex(m), trackingSet(set), cv(c), key(k), isCommitted(false) {}
+        WasmScopeGuard(std::mutex& m, std::unordered_set<std::string>& set, std::condition_variable& c, const std::string& k)
+            : mutex(m), trackingSet(set), cv(c), key(k), isCommitted(false) {}
 
         /**
          * Marks the operation as successfully completed by the caller.
          * The destructor will NO LONGER perform auto-cleanup.
          * Call this when you want to merge the cleanup logic into an existing locked section for performance.
          */
-        void commit() {
-            isCommitted = true;
-        }
+        void commit() { isCommitted = true; }
 
         /**
          * Destructor.
@@ -55,10 +53,10 @@ namespace wasmline {
         }
 
     private:
-        std::mutex &mutex;
-        std::unordered_set<std::string> &trackingSet;
-        std::condition_variable &cv;
+        std::mutex& mutex;
+        std::unordered_set<std::string>& trackingSet;
+        std::condition_variable& cv;
         std::string key;
         bool isCommitted;
     };
-}
+} // namespace wasmline

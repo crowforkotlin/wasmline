@@ -197,13 +197,11 @@
   - Stability guarantee: invariant to package refactoring; coupled to method signature only
 
 - IR test infrastructure
-  - testData/box/*.kt: fixture files with fun box(): String entry point returning "OK"
-  - testData/box/*.fir.txt: FIR dump snapshot — auto-generated, auto-compared
-  - testData/box/*.fir.ir.txt: backend IR dump snapshot — auto-generated, auto-compared
-  - testData/diagnostics/*.kt: diagnostic test fixtures
-  - testData/diagnostics/*.fir.txt: expected diagnostic output snapshot
-  - test-gen/: generated JvmBoxTestGenerated and JvmDiagnosticsTestGenerated runner classes
-  - Invariant: all snapshot files and test-gen/ are build artifacts — never hand-edited
+  - Box tests: `testData/box/*.kt` (6 files) with `fun box(): String` entry point
+  - Diagnostic tests: `testData/diagnostics/*.kt` (3 files) with error markers
+  - Generated: `test-gen/` (auto-generated test runners)
+  - Snapshots: `*.fir.txt`, `*.fir.ir.txt` (auto-generated, never hand-edited)
+  - Full documentation: [`docs/ir/index.md`](index.md)
 
 ---
 

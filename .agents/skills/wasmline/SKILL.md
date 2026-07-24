@@ -10,10 +10,11 @@ Load this skill when working in the `wasmline` repository.
 ## References
 
 | Document | Content |
-|----------|---------|  
+|----------|---------|
 | [`development-guide.md`](./development-guide.md) | Environment setup, module references, commands, generated artifact rules |
 | [`branching-and-release.md`](./branching-and-release.md) | Version model, tag format, Maven publishing, compat window, scenarios |
-| [`mind.md`](./mind.md) | Technical mind map, data flow, IR pipeline |
+| [Technical Mind Map](../../docs/design-mind.md) | Core architecture, data flow, IR transformation pipeline |
+| [IR Test Documentation](../../docs/ir/index.md) | Compiler plugin test structure and guides |
 
 ---
 

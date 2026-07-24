@@ -70,4 +70,4 @@ namespace wasmline {
         // Mutex to protect initialization and release phases
         std::mutex engineMutex;
     };
-}
+} // namespace wasmline

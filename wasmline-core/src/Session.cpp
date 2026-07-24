@@ -28,9 +28,9 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    static ptrdiff_t wasi_log_writer(void *data, const unsigned char *buffer, size_t size) {
+    static ptrdiff_t wasi_log_writer(void* data, const unsigned char* buffer, size_t size) {
         if (size > 0 && buffer) {
-            std::string msg(reinterpret_cast<const char *>(buffer), size > 1024 ? 1024 : size);
+            std::string msg(reinterpret_cast<const char*>(buffer), size > 1024 ? 1024 : size);
             LOGI("[Wasmtime-Wasi] logger -> %s", msg.c_str());
         }
         return size;
@@ -44,8 +44,7 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    Session::Session(wasm_engine_t *eng, wasmtime_module_t *mod, std::string k)
-            : engine(eng), module(mod), key(std::move(k)) {
+    Session::Session(wasm_engine_t* eng, wasmtime_module_t* mod, std::string k) : engine(eng), module(mod), key(std::move(k)) {
         if (!engine) {
             LOGE("[Wasmtime] Session --> Cannot create store because engine is null: %s", key.c_str());
             return;
@@ -101,14 +100,8 @@ namespace wasmline {
         if (isInitialized) return true;
 
         if (!store || !context || !linker || !module) {
-            LOGE(
-                "[Wasmtime] Session --> Invalid state before initialization. store=%p context=%p linker=%p module=%p key=%s",
-                store,
-                context,
-                linker,
-                module,
-                key.c_str()
-            );
+            LOGE("[Wasmtime] Session --> Invalid state before initialization. store=%p context=%p linker=%p module=%p key=%s", store,
+                 context, linker, module, key.c_str());
             return false;
         }
 
@@ -117,7 +110,7 @@ namespace wasmline {
         // =========================================================================================
         // Defines the "Standard Library" for the Wasm environment.
         // Redirects Wasm stdout/stderr to our custom logger.
-        wasmtime_error_t *defineWasiErr = wasmtime_linker_define_wasi(linker);
+        wasmtime_error_t* defineWasiErr = wasmtime_linker_define_wasi(linker);
         if (defineWasiErr) {
             wasm_byte_vec_t error_msg;
             wasmtime_error_message(defineWasiErr, &error_msg);
@@ -126,7 +119,7 @@ namespace wasmline {
             wasmtime_error_delete(defineWasiErr);
             return false;
         }
-        wasi_config_t *wasi = wasi_config_new();
+        wasi_config_t* wasi = wasi_config_new();
         if (!wasi) {
             LOGE("[Wasmtime] Session --> 1. Failed to create wasi config.");
             return false;
@@ -134,7 +127,7 @@ namespace wasmline {
         wasi_config_inherit_env(wasi);
         wasi_config_set_stdout_custom(wasi, wasi_log_writer, nullptr, nullptr);
         wasi_config_set_stderr_custom(wasi, wasi_log_writer, nullptr, nullptr);
-        wasmtime_error_t *wasiErr = wasmtime_context_set_wasi(context, wasi);
+        wasmtime_error_t* wasiErr = wasmtime_context_set_wasi(context, wasi);
         if (wasiErr) {
             // Extract the error message string.
             wasm_byte_vec_t error_msg;
@@ -162,8 +155,8 @@ namespace wasmline {
         // STEP 3: Instantiate Module
         // =========================================================================================
         // Links the module with dependencies, allocates memory, and runs the start function.
-        wasm_trap_t *trap = nullptr;
-        wasmtime_error_t *error = wasmtime_linker_instantiate(linker, context, module, &instance, &trap);
+        wasm_trap_t* trap = nullptr;
+        wasmtime_error_t* error = wasmtime_linker_instantiate(linker, context, module, &instance, &trap);
         if (error) {
             wasm_byte_vec_t msg;
             wasmtime_error_message(error, &msg);
@@ -215,8 +208,10 @@ namespace wasmline {
         // =========================================================================================
         // This gives the final wasmWasi module a deterministic one-time hook to execute user main().
         wasmtime_extern_t wasmline_init;
-        if (wasmtime_instance_export_get(context, &instance, kWasmlineInitExportName.data(), kWasmlineInitExportName.size(), &wasmline_init) && wasmline_init.kind == WASMTIME_EXTERN_FUNC) {
-            wasmtime_error_t *initError = wasmtime_func_call(context, &wasmline_init.of.func, nullptr, 0, nullptr, 0, &trap);
+        if (wasmtime_instance_export_get(context, &instance, kWasmlineInitExportName.data(), kWasmlineInitExportName.size(),
+                                         &wasmline_init) &&
+            wasmline_init.kind == WASMTIME_EXTERN_FUNC) {
+            wasmtime_error_t* initError = wasmtime_func_call(context, &wasmline_init.of.func, nullptr, 0, nullptr, 0, &trap);
             if (trap) {
                 wasm_byte_vec_t msg;
                 wasm_trap_message(trap, &msg);
@@ -255,7 +250,6 @@ namespace wasmline {
         this->outbound.handler = std::move(handler);
     }
 
-
     /**
      * Executes a specific action in the Wasm module.
      * Sets up context pointers, invokes the "App" exported function, and returns the result.
@@ -269,7 +263,7 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    std::string Session::invokeInbound(const char *action, size_t actionLen, const char *data, size_t dataLen) {
+    std::string Session::invokeInbound(const char* action, size_t actionLen, const char* data, size_t dataLen) {
         std::lock_guard<std::mutex> lock(sessionMutex);
         if (!isInitialized) return "";
 
@@ -281,16 +275,17 @@ namespace wasmline {
         inbound.responseBuffer.clear();
 
         wasmtime_extern_t run_entry;
-        wasm_trap_t *trap = nullptr;
+        wasm_trap_t* trap = nullptr;
 
         // 2. Call the "run_entry" function exported by Kotlin/Wasm
-        if (wasmtime_instance_export_get(context, &instance, kWasmlineEntryExportName.data(), kWasmlineEntryExportName.size(), &run_entry)) {
+        if (wasmtime_instance_export_get(context, &instance, kWasmlineEntryExportName.data(), kWasmlineEntryExportName.size(),
+                                         &run_entry)) {
             wasmtime_val_t args[2];
             args[0].kind = WASMTIME_I32;
             args[0].of.i32 = (int32_t)actionLen;
             args[1].kind = WASMTIME_I32;
             args[1].of.i32 = (int32_t)dataLen;
-            wasmtime_error_t *error = wasmtime_func_call(context, &run_entry.of.func, args, 2, nullptr, 0, &trap);
+            wasmtime_error_t* error = wasmtime_func_call(context, &run_entry.of.func, args, 2, nullptr, 0, &trap);
 
             // 3. Handle errors or traps
             if (error || trap) {
@@ -327,7 +322,7 @@ namespace wasmline {
 
         std::string result = std::move(inbound.responseBuffer);
         inbound.responseBuffer.clear();
-         inbound.responseBuffer.shrink_to_fit();
+        inbound.responseBuffer.shrink_to_fit();
         return result;
     }
 
@@ -349,19 +344,18 @@ namespace wasmline {
         }
 
         // Helper Lambda for fast registration using stack memory
-        auto define = [&](
-                const char *name, wasmtime_func_callback_t cb,
-                std::initializer_list<wasm_valkind_t> params,
-                std::initializer_list<wasm_valkind_t> results
-        ) -> bool {
+        auto define = [&](const char* name, wasmtime_func_callback_t cb, std::initializer_list<wasm_valkind_t> params,
+                          std::initializer_list<wasm_valkind_t> results) -> bool {
             // Stack allocation for the small fixed signatures used by the bridge.
-            wasm_valtype_t *p_arr[6] = {nullptr};
-            wasm_valtype_t *r_arr[2] = {nullptr};
+            wasm_valtype_t* p_arr[6] = {nullptr};
+            wasm_valtype_t* r_arr[2] = {nullptr};
 
             int i = 0;
-            for (auto k: params) if (i < 6) p_arr[i++] = wasm_valtype_new(k);
+            for (auto k : params)
+                if (i < 6) p_arr[i++] = wasm_valtype_new(k);
             int j = 0;
-            for (auto k: results) if (j < 2) r_arr[j++] = wasm_valtype_new(k);
+            for (auto k : results)
+                if (j < 2) r_arr[j++] = wasm_valtype_new(k);
 
             // Construct the vectors required by C API
             wasm_valtype_vec_t p_vec, r_vec;
@@ -369,8 +363,8 @@ namespace wasmline {
             wasm_valtype_vec_new(&r_vec, results.size(), r_arr);
 
             // Create function type and define it in the linker
-            wasm_functype_t *ty = wasm_functype_new(&p_vec, &r_vec);
-            wasmtime_error_t *defineErr = wasmtime_linker_define_func(linker, "env", 3, name, strlen(name), ty, cb, nullptr, nullptr);
+            wasm_functype_t* ty = wasm_functype_new(&p_vec, &r_vec);
+            wasmtime_error_t* defineErr = wasmtime_linker_define_func(linker, "env", 3, name, strlen(name), ty, cb, nullptr, nullptr);
 
             // Clean up function type (valtypes are handled internally by wasmtime)
             wasm_functype_delete(ty);
@@ -393,7 +387,9 @@ namespace wasmline {
         if (!define("bridge_inbound_set_response", bridge_inbound_set_response, {WASM_I32, WASM_I32}, {})) return false;
 
         // Register Outbound
-        if (!define("bridge_outbound_call_host", bridge_outbound_call_host, {WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32}, {WASM_I32})) return false;
+        if (!define("bridge_outbound_call_host", bridge_outbound_call_host, {WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32, WASM_I32},
+                    {WASM_I32}))
+            return false;
         if (!define("bridge_outbound_get_response", bridge_outbound_get_response, {WASM_I32}, {})) return false;
         return true;
     }
@@ -404,8 +400,8 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    static Session *get_session(wasmtime_caller_t *caller) {
-        return reinterpret_cast<Session *>(wasmtime_context_get_data(wasmtime_caller_context(caller)));
+    static Session* get_session(wasmtime_caller_t* caller) {
+        return reinterpret_cast<Session*>(wasmtime_context_get_data(wasmtime_caller_context(caller)));
     }
 
     /**
@@ -417,11 +413,12 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    wasm_trap_t *Session::bridge_inbound_get_size(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults) {
-        auto *self = get_session(caller);
+    wasm_trap_t* Session::bridge_inbound_get_size(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
+                                                  wasmtime_val_t* results, size_t nresults) {
+        auto* self = get_session(caller);
         int32_t type = args[0].of.i32; // 0: Action, 1: Input
         results[0].kind = WASMTIME_I32;
-        results[0].of.i32 = (int32_t) (type == 0 ? self->inbound.actionLen : self->inbound.dataLen);
+        results[0].of.i32 = (int32_t)(type == 0 ? self->inbound.actionLen : self->inbound.dataLen);
         return nullptr;
     }
 
@@ -436,23 +433,24 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    wasm_trap_t *Session::bridge_inbound_copy_params(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults) {
-        Session *self = get_session(caller);
+    wasm_trap_t* Session::bridge_inbound_copy_params(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
+                                                     wasmtime_val_t* results, size_t nresults) {
+        Session* self = get_session(caller);
         if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
 
         int32_t type = args[0].of.i32;    // Source type
         int32_t wasmPtr = args[1].of.i32; // Destination Ptr
         int32_t len = args[2].of.i32;     // Length
 
-        const char *srcData = (type == 0) ? self->inbound.actionPtr : self->inbound.dataPtr;
+        const char* srcData = (type == 0) ? self->inbound.actionPtr : self->inbound.dataPtr;
         size_t maxLen = (type == 0) ? self->inbound.actionLen : self->inbound.dataLen;
 
         // Safety: Clamp length to avoid reading past Host buffer
-        if (len < 0 || static_cast<size_t>(len) > maxLen) len = (int32_t) maxLen;
+        if (len < 0 || static_cast<size_t>(len) > maxLen) len = (int32_t)maxLen;
 
         // Perform copy using raw memory pointer
         // Note: Ideally, check (wasmPtr + len) against memory bounds here as well
-        uint8_t *rawMemory = wasmtime_memory_data(self->context, &self->memory);
+        uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);
         if (rawMemory && srcData && len > 0) {
             memcpy(rawMemory + wasmPtr, srcData, len);
         }
@@ -469,17 +467,18 @@ namespace wasmline {
      * 2025-12-02
      * @author crowforkotlin
      */
-    wasm_trap_t *Session::bridge_inbound_set_response(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults) {
-        auto *self = get_session(caller);
+    wasm_trap_t* Session::bridge_inbound_set_response(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
+                                                      wasmtime_val_t* results, size_t nresults) {
+        auto* self = get_session(caller);
         if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
 
         int32_t wasmPtr = args[0].of.i32;
         int32_t len = args[1].of.i32;
 
-        uint8_t *rawMemory = wasmtime_memory_data(self->context, &self->memory);
+        uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);
         if (rawMemory && len > 0) {
             // Append Wasm memory data to C++ output string buffer
-            self->inbound.responseBuffer.append(reinterpret_cast<char *>(rawMemory + wasmPtr), len);
+            self->inbound.responseBuffer.append(reinterpret_cast<char*>(rawMemory + wasmPtr), len);
         }
         return nullptr;
     }
@@ -500,10 +499,11 @@ namespace wasmline {
      * 2025-12-26
      * @author crowforkotlin
      */
-    wasm_trap_t *Session::bridge_outbound_call_host(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults) {
-        Session *self = get_session(caller);
-        auto *ctx = wasmtime_caller_context(caller);
-        uint8_t *mem = wasmtime_memory_data(ctx, &self->memory);
+    wasm_trap_t* Session::bridge_outbound_call_host(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
+                                                    wasmtime_val_t* results, size_t nresults) {
+        Session* self = get_session(caller);
+        auto* ctx = wasmtime_caller_context(caller);
+        uint8_t* mem = wasmtime_memory_data(ctx, &self->memory);
         size_t mem_size = wasmtime_memory_size(ctx, &self->memory);
 
         // 1. extract input pointers
@@ -517,9 +517,10 @@ namespace wasmline {
         int32_t outCap = args[5].of.i32;
 
         // [Optimization] Use string_view to point directly to Wasm memory, ZERO COPY
-        // Note: Wasm memory may expand during the host call, causing the pointer to become invalid, but it is safe during the synchronous execution of this function.
-        std::string_view action(reinterpret_cast<char *>(mem + aPtr), aLen);
-        std::string_view payload(reinterpret_cast<char *>(mem + pPtr), pLen);
+        // Note: Wasm memory may expand during the host call, causing the pointer to become invalid, but it is safe during the synchronous
+        // execution of this function.
+        std::string_view action(reinterpret_cast<char*>(mem + aPtr), aLen);
+        std::string_view payload(reinterpret_cast<char*>(mem + pPtr), pLen);
 
         // 3. execute business logic
         std::string resultData;
@@ -534,13 +535,13 @@ namespace wasmline {
         if (resultSize <= outCap) {
             if (resultSize > 0) {
                 // Re-acquire the memory pointer in case the host callback triggered memory growth.
-                uint8_t *current_mem = wasmtime_memory_data(ctx, &self->memory);
+                uint8_t* current_mem = wasmtime_memory_data(ctx, &self->memory);
                 memcpy(current_mem + outPtr, resultData.data(), resultSize);
             }
             self->outbound.responseBuffer.clear();
             results[0].of.i32 = resultSize;
         }
-            // 5. slow path
+        // 5. slow path
         else {
             // Move, avoid copying
             self->outbound.responseBuffer = std::move(resultData);
@@ -560,9 +561,10 @@ namespace wasmline {
      * 2025-12-26
      * @author crowforkotlin
      */
-    wasm_trap_t *Session::bridge_outbound_get_response(void *env, wasmtime_caller_t *caller, const wasmtime_val_t *args, size_t nargs, wasmtime_val_t *results, size_t nresults) {
-        Session *self = get_session(caller);
-        uint8_t *mem = wasmtime_memory_data(self->context, &self->memory);
+    wasm_trap_t* Session::bridge_outbound_get_response(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
+                                                       wasmtime_val_t* results, size_t nresults) {
+        Session* self = get_session(caller);
+        uint8_t* mem = wasmtime_memory_data(self->context, &self->memory);
         int32_t ptr = args[0].of.i32;
 
         // Copy the buffered host response into the target Wasm memory address.
@@ -573,4 +575,4 @@ namespace wasmline {
         self->outbound.responseBuffer.shrink_to_fit();
         return nullptr;
     }
-}
+} // namespace wasmline

@@ -1,0 +1,244 @@
+FILE fqName:test.ir.types fileName:/05_complexTypes.kt
+  CLASS CLASS name:ComplexTypeService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.types.ComplexTypeService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.types.ComplexTypeService_WasmlineBridge
+    FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
+    FIELD name:implementation type:test.ir.types.ComplexTypeService? visibility:private [final]
+    FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final]
+    FIELD name:processNumbers_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final]
+    FIELD name:processNumbers_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final]
+    FIELD name:processString_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final]
+    FIELD name:processString_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final]
+    CONSTRUCTOR visibility:public returnType:test.ir.types.ComplexTypeService_WasmlineBridge [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.types.ComplexTypeService?
+      VALUE_PARAMETER kind:Regular name:serializationFactory index:2 type:crow.wasmline.serialization.WasmlineSerializationFactory
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:ComplexTypeService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.types.ComplexTypeService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.types.ComplexTypeService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.ir.types.ComplexTypeService? visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.ir.types.ComplexTypeService? declared in test.ir.types.ComplexTypeService_WasmlineBridge.<init>' type=test.ir.types.ComplexTypeService? origin=null
+        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.types.ComplexTypeService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+        SET_FIELD 'FIELD name:processNumbers_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+          value: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+            TYPE_ARG T: kotlinx.serialization.KSerializer<*>
+            ARG elements: VARARG type=kotlin.Array<kotlinx.serialization.KSerializer<*>> varargElementType=kotlinx.serialization.KSerializer<*>
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Long
+        SET_FIELD 'FIELD name:processNumbers_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+          value: CALL 'internal final fun buildParamsDescriptor (name: kotlin.String, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>): kotlinx.serialization.descriptors.SerialDescriptor declared in crow.wasmline.internal.bridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+            ARG name: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processNumbers"
+            ARG serializers: GET_FIELD 'FIELD name:processNumbers_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+              receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+        SET_FIELD 'FIELD name:processString_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+          value: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+            TYPE_ARG T: kotlinx.serialization.KSerializer<*>
+            ARG elements: VARARG type=kotlin.Array<kotlinx.serialization.KSerializer<*>> varargElementType=kotlinx.serialization.KSerializer<*>
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.String
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+        SET_FIELD 'FIELD name:processString_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+          value: CALL 'internal final fun buildParamsDescriptor (name: kotlin.String, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>): kotlinx.serialization.descriptors.SerialDescriptor declared in crow.wasmline.internal.bridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+            ARG name: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processString"
+            ARG serializers: GET_FIELD 'FIELD name:processString_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+              receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.types.ComplexTypeService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
+      overridden:
+        public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processNumbers"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processNumbers"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processString"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processString"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.types.ComplexTypeService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+      overridden:
+        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processNumbers"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.Long
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG value: BLOCK type=kotlin.Long origin=null
+                  VAR name:tmp0_decodedArgs type:kotlin.Array<kotlin.Any?> [val]
+                    CALL 'internal final fun decodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, payload: kotlin.ByteArray): kotlin.Array<kotlin.Any?> declared in crow.wasmline.internal.bridge' type=kotlin.Array<kotlin.Any?> origin=null
+                      ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG descriptor: GET_FIELD 'FIELD name:processNumbers_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG serializers: GET_FIELD 'FIELD name:processNumbers_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+                  CALL 'public abstract fun processNumbers (a: kotlin.Int, b: kotlin.Long): kotlin.Long declared in test.ir.types.ComplexTypeService' type=kotlin.Long origin=null
+                    ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.types.ComplexTypeService origin=null
+                      TYPE_ARG T: test.ir.types.ComplexTypeService
+                      ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.types.ComplexTypeService? visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService? origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG contractId: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService"
+                    ARG a: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=0
+                    ARG b: TYPE_OP type=kotlin.Long origin=CAST typeOperand=kotlin.Long
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=1
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processString"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG value: BLOCK type=kotlin.String origin=null
+                  VAR name:tmp0_decodedArgs type:kotlin.Array<kotlin.Any?> [val]
+                    CALL 'internal final fun decodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, payload: kotlin.ByteArray): kotlin.Array<kotlin.Any?> declared in crow.wasmline.internal.bridge' type=kotlin.Array<kotlin.Any?> origin=null
+                      ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG descriptor: GET_FIELD 'FIELD name:processString_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG serializers: GET_FIELD 'FIELD name:processString_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+                  CALL 'public abstract fun processString (text: kotlin.String, count: kotlin.Int): kotlin.String declared in test.ir.types.ComplexTypeService' type=kotlin.String origin=null
+                    ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.types.ComplexTypeService origin=null
+                      TYPE_ARG T: test.ir.types.ComplexTypeService
+                      ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.types.ComplexTypeService? visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=test.ir.types.ComplexTypeService? origin=null
+                        receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                      ARG contractId: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService"
+                    ARG text: TYPE_OP type=kotlin.String origin=CAST typeOperand=kotlin.String
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=0
+                    ARG count: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=1
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.types.ComplexTypeService_WasmlineBridge'
+          CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.types.ComplexTypeService_WasmlineBridge.invoke' type=kotlin.String origin=null
+    FUN name:processNumbers visibility:public modality:FINAL returnType:kotlin.Long
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.types.ComplexTypeService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:a index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:b index:2 type:kotlin.Long
+      overridden:
+        public abstract fun processNumbers (a: kotlin.Int, b: kotlin.Long): kotlin.Long declared in test.ir.types.ComplexTypeService
+      BLOCK_BODY
+        RETURN type=kotlin.Long from='public final fun processNumbers (a: kotlin.Int, b: kotlin.Long): kotlin.Long declared in test.ir.types.ComplexTypeService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.Long origin=null
+            TYPE_ARG T: kotlin.Long
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processNumbers' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processNumbers' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processNumbers"
+              ARG payload: CALL 'internal final fun encodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, values: kotlin.Array<kotlin.Any?>): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processNumbers' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG descriptor: GET_FIELD 'FIELD name:processNumbers_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processNumbers' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG serializers: GET_FIELD 'FIELD name:processNumbers_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processNumbers' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG values: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+                  TYPE_ARG T: kotlin.Any?
+                  ARG elements: VARARG type=kotlin.Array<kotlin.Any?> varargElementType=kotlin.Any?
+                    GET_VAR 'a: kotlin.Int declared in test.ir.types.ComplexTypeService_WasmlineBridge.processNumbers' type=kotlin.Int origin=null
+                    GET_VAR 'b: kotlin.Long declared in test.ir.types.ComplexTypeService_WasmlineBridge.processNumbers' type=kotlin.Long origin=null
+    FUN name:processString visibility:public modality:FINAL returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.types.ComplexTypeService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:text index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:count index:2 type:kotlin.Int
+      overridden:
+        public abstract fun processString (text: kotlin.String, count: kotlin.Int): kotlin.String declared in test.ir.types.ComplexTypeService
+      BLOCK_BODY
+        RETURN type=kotlin.String from='public final fun processString (text: kotlin.String, count: kotlin.Int): kotlin.String declared in test.ir.types.ComplexTypeService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+            TYPE_ARG T: kotlin.String
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processString' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processString' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.types.ComplexTypeService#processString"
+              ARG payload: CALL 'internal final fun encodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, values: kotlin.Array<kotlin.Any?>): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processString' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG descriptor: GET_FIELD 'FIELD name:processString_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processString' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG serializers: GET_FIELD 'FIELD name:processString_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.types.ComplexTypeService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                  receiver: GET_VAR '<this>: test.ir.types.ComplexTypeService_WasmlineBridge declared in test.ir.types.ComplexTypeService_WasmlineBridge.processString' type=test.ir.types.ComplexTypeService_WasmlineBridge origin=null
+                ARG values: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+                  TYPE_ARG T: kotlin.Any?
+                  ARG elements: VARARG type=kotlin.Array<kotlin.Any?> varargElementType=kotlin.Any?
+                    GET_VAR 'text: kotlin.String declared in test.ir.types.ComplexTypeService_WasmlineBridge.processString' type=kotlin.String origin=null
+                    GET_VAR 'count: kotlin.Int declared in test.ir.types.ComplexTypeService_WasmlineBridge.processString' type=kotlin.Int origin=null
+  CLASS INTERFACE name:ComplexTypeService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.types.ComplexTypeService
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineService
+    FUN name:processNumbers visibility:public modality:ABSTRACT returnType:kotlin.Long
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.types.ComplexTypeService
+      VALUE_PARAMETER kind:Regular name:a index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:b index:2 type:kotlin.Long
+    FUN name:processString visibility:public modality:ABSTRACT returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.types.ComplexTypeService
+      VALUE_PARAMETER kind:Regular name:text index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:count index:2 type:kotlin.Int

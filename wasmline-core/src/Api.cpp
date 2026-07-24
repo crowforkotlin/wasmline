@@ -15,27 +15,22 @@
 
 namespace wasmline {
     namespace {
-        bool hasSuffixIgnoreCase(const std::string &value, const std::string &suffix) {
+        bool hasSuffixIgnoreCase(const std::string& value, const std::string& suffix) {
             if (value.size() < suffix.size()) return false;
-            return std::equal(
-                suffix.rbegin(),
-                suffix.rend(),
-                value.rbegin(),
-                [](char lhs, char rhs) {
-                    return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
-                }
-            );
+            return std::equal(suffix.rbegin(), suffix.rend(), value.rbegin(), [](char lhs, char rhs) {
+                return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
+            });
         }
 
-        std::optional<bool> pulleyModeForArtifact(const std::string &path) {
+        std::optional<bool> pulleyModeForArtifact(const std::string& path) {
             if (hasSuffixIgnoreCase(path, ".pwasm")) return true;
             if (hasSuffixIgnoreCase(path, ".cwasm")) return false;
             return std::nullopt;
         }
-    }
+    } // namespace
 
     // Static member initialization
-    std::unordered_map<std::string, Session *> Api::sessionCache;
+    std::unordered_map<std::string, Session*> Api::sessionCache;
     std::shared_mutex Api::sessionMutex;
 
     void Api::initEngine() {
@@ -43,7 +38,7 @@ namespace wasmline {
     }
 
     void Api::warmupEngine(bool usePulley) {
-        auto &engine = Engine::getInstance();
+        auto& engine = Engine::getInstance();
         if (engine.isInitialized() && engine.isPulley() == usePulley) {
             return;
         }
@@ -67,7 +62,7 @@ namespace wasmline {
         // 1. Release all sessions first
         {
             std::unique_lock<std::shared_mutex> lock(sessionMutex);
-            for (auto &pair: sessionCache) {
+            for (auto& pair : sessionCache) {
                 delete pair.second;
             }
             sessionCache.clear();
@@ -80,21 +75,21 @@ namespace wasmline {
         Engine::getInstance().release();
     }
 
-    bool Api::loadModule(const std::string &key, const std::string &path) {
+    bool Api::loadModule(const std::string& key, const std::string& path) {
         ensureEngineForArtifact(path);
-        auto *mod = Module::getInstance().load(key, path);
+        auto* mod = Module::getInstance().load(key, path);
         return (mod != nullptr);
     }
 
-    bool Api::loadModuleUnsafe(const std::string &key, const std::string &path) {
+    bool Api::loadModuleUnsafe(const std::string& key, const std::string& path) {
         ensureEngineForArtifact(path);
-        auto *mod = Module::getInstance().loadUnsafe(key, path);
+        auto* mod = Module::getInstance().loadUnsafe(key, path);
         return (mod != nullptr);
     }
 
-    void Api::ensureEngineForArtifact(const std::string &path) {
+    void Api::ensureEngineForArtifact(const std::string& path) {
         auto desiredPulleyMode = pulleyModeForArtifact(path);
-        auto &engine = Engine::getInstance();
+        auto& engine = Engine::getInstance();
 
         if (!desiredPulleyMode.has_value()) {
             if (!engine.isInitialized()) {
@@ -112,17 +107,12 @@ namespace wasmline {
             return;
         }
 
-        LOGI(
-            "[Wasmtime] Api --> Reinitializing engine for %s artifact: %s",
-            *desiredPulleyMode ? "pwasm" : "cwasm",
-            path.c_str()
-        );
+        LOGI("[Wasmtime] Api --> Reinitializing engine for %s artifact: %s", *desiredPulleyMode ? "pwasm" : "cwasm", path.c_str());
         releaseEngine();
         engine.init(*desiredPulleyMode);
     }
 
-
-    void Api::releaseModule(const std::string &key) {
+    void Api::releaseModule(const std::string& key) {
         // 1. Remove associated session if exists
         {
             std::unique_lock<std::shared_mutex> lock(sessionMutex);
@@ -137,14 +127,14 @@ namespace wasmline {
     }
 
     // Registers the outbound handler for the target session.
-    void Api::setOutboundHandler(const std::string &key, std::unique_ptr<OutboundHandler> handler) {
-        Session *session = getOrCreateSession(key);
+    void Api::setOutboundHandler(const std::string& key, std::unique_ptr<OutboundHandler> handler) {
+        Session* session = getOrCreateSession(key);
         if (session) session->setOutboundHandler(std::move(handler));
     }
 
     // Core execution logic
-    std::string Api::invokeInbound(const std::string &key, const char* action, size_t actionLen, const char* data, size_t dataLen) {
-        Session *session = getOrCreateSession(key);
+    std::string Api::invokeInbound(const std::string& key, const char* action, size_t actionLen, const char* data, size_t dataLen) {
+        Session* session = getOrCreateSession(key);
         if (!session) {
             LOGE("[Wasmtime] Api --> Call failed, session could not be created for %s", key.c_str());
             return "";
@@ -154,7 +144,7 @@ namespace wasmline {
     }
 
     // Helper: Session Management
-    Session *Api::getOrCreateSession(const std::string &key) {
+    Session* Api::getOrCreateSession(const std::string& key) {
         // 1. Fast Path: Check cache (Read Lock)
         {
             std::shared_lock<std::shared_mutex> lock(sessionMutex);
@@ -169,8 +159,8 @@ namespace wasmline {
         if (sessionCache.count(key)) return sessionCache[key];
 
         // Get prerequisites
-        wasm_engine_t *engine = Engine::getInstance().getEngine();
-        wasmtime_module_t *module = Module::getInstance().get(key);
+        wasm_engine_t* engine = Engine::getInstance().getEngine();
+        wasmtime_module_t* module = Module::getInstance().get(key);
 
         if (!engine || !module) {
             LOGE("[Wasmtime] Api --> Cannot create session. Engine or Module is null for %s", key.c_str());
@@ -178,7 +168,7 @@ namespace wasmline {
         }
 
         // Create new Session
-        auto *session = new Session(engine, module, key);
+        auto* session = new Session(engine, module, key);
 
         // Initialize Session (Register hosts, WASI, Instance)
         // Note: session->initialize() is thread-safe internally
@@ -191,4 +181,4 @@ namespace wasmline {
         sessionCache[key] = session;
         return session;
     }
-}
+} // namespace wasmline

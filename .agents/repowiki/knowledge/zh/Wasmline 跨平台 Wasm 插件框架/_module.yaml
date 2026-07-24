@@ -2,7 +2,7 @@ schema_version: 1
 module_path: ""
 title: Wasmline 跨平台 Wasm 插件框架
 scope:
-    - README.md
+    - BOX_IR.md
     - README_zh.md
     - .gitignore
     - .qoderignore

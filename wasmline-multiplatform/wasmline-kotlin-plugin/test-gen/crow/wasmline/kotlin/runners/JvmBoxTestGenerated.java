@@ -20,37 +20,43 @@ public class JvmBoxTestGenerated extends AbstractJvmBoxTest {
   }
 
   @Test
+  @TestMetadata("01_emptyService.kt")
+  public void test01_emptyService() {
+    run("01_emptyService.kt");
+  }
+
+  @Test
+  @TestMetadata("02_simpleMethod.kt")
+  public void test02_simpleMethod() {
+    run("02_simpleMethod.kt");
+  }
+
+  @Test
+  @TestMetadata("03_parameterService.kt")
+  public void test03_parameterService() {
+    run("03_parameterService.kt");
+  }
+
+  @Test
+  @TestMetadata("04_multiMethod.kt")
+  public void test04_multiMethod() {
+    run("04_multiMethod.kt");
+  }
+
+  @Test
+  @TestMetadata("05_complexTypes.kt")
+  public void test05_complexTypes() {
+    run("05_complexTypes.kt");
+  }
+
+  @Test
+  @TestMetadata("06_linkBindPattern.kt")
+  public void test06_linkBindPattern() {
+    run("06_linkBindPattern.kt");
+  }
+
+  @Test
   public void testAllFilesPresentInBox() {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("/home/crowf/develop/github/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/box"), Pattern.compile("^(.+)\\.kt$"), null, true);
-  }
-
-  @Test
-  @TestMetadata("bindAsSelectsRequestedContract.kt")
-  public void testBindAsSelectsRequestedContract() {
-    run("bindAsSelectsRequestedContract.kt");
-  }
-
-  @Test
-  @TestMetadata("echoProxyRoundTrip.kt")
-  public void testEchoProxyRoundTrip() {
-    run("echoProxyRoundTrip.kt");
-  }
-
-  @Test
-  @TestMetadata("linkSelectsGeneratedBridge.kt")
-  public void testLinkSelectsGeneratedBridge() {
-    run("linkSelectsGeneratedBridge.kt");
-  }
-
-  @Test
-  @TestMetadata("multiParamServiceRoundTrip.kt")
-  public void testMultiParamServiceRoundTrip() {
-    run("multiParamServiceRoundTrip.kt");
-  }
-
-  @Test
-  @TestMetadata("zeroArgUnitBridgeRoundTrip.kt")
-  public void testZeroArgUnitBridgeRoundTrip() {
-    run("zeroArgUnitBridgeRoundTrip.kt");
   }
 }

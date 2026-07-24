@@ -13,13 +13,12 @@
 
 namespace wasmline {
     namespace {
-        bool configurePulleyTarget(wasm_config_t *conf) {
-            const auto targets = (sizeof(void*) == 8)
-                ? std::array<const char*, 2>{"pulley64", "pulley64-unknown-unknown-elf"}
-                : std::array<const char*, 2>{"pulley32", "pulley32-unknown-unknown-elf"};
+        bool configurePulleyTarget(wasm_config_t* conf) {
+            const auto targets = (sizeof(void*) == 8) ? std::array<const char*, 2>{"pulley64", "pulley64-unknown-unknown-elf"}
+                                                      : std::array<const char*, 2>{"pulley32", "pulley32-unknown-unknown-elf"};
 
-            for (const char *target : targets) {
-                wasmtime_error_t *error = wasmtime_config_target_set(conf, target);
+            for (const char* target : targets) {
+                wasmtime_error_t* error = wasmtime_config_target_set(conf, target);
                 if (!error) {
                     LOGI("[Wasmtime] Engine --> Configured Pulley target: %s", target);
                     return true;
@@ -34,10 +33,10 @@ namespace wasmline {
 
             return false;
         }
-    }
+    } // namespace
 
     // Singleton Instance Accessor
-    Engine &Engine::getInstance() {
+    Engine& Engine::getInstance() {
         static Engine instance;
         return instance;
     }
@@ -55,8 +54,8 @@ namespace wasmline {
      * 2. Memory Guard Size = 0: To prevent VSS (Virtual Set Size) OOM on 32-bit or limited devices.
      * 3. GC / Exceptions: Enabled for Kotlin/Wasm support.
      */
-    wasm_config_t *Engine::createConfig(bool usePulley) {
-        wasm_config_t *conf = wasm_config_new();
+    wasm_config_t* Engine::createConfig(bool usePulley) {
+        wasm_config_t* conf = wasm_config_new();
 
         // Feature Flags for Kotlin/Wasm support
         wasmtime_config_wasm_gc_set(conf, true);
@@ -109,10 +108,8 @@ namespace wasmline {
             // Create the engine with the configuration
             engine = wasm_engine_new_with_config(conf);
             if (engine) {
-                LOGI(
-                    "[Wasmtime] Engine --> Initialized successfully. engine_is_pulley=%s",
-                    wasmtime_engine_is_pulley(engine) ? "true" : "false"
-                );
+                LOGI("[Wasmtime] Engine --> Initialized successfully. engine_is_pulley=%s",
+                     wasmtime_engine_is_pulley(engine) ? "true" : "false");
             } else {
                 LOGE("[Wasmtime] Engine --> Failed to initialize.");
             }
@@ -141,8 +138,8 @@ namespace wasmline {
     }
 
     // Getter for the raw engine pointer
-    wasm_engine_t *Engine::getEngine() {
+    wasm_engine_t* Engine::getEngine() {
         std::lock_guard<std::mutex> lock(engineMutex);
         return engine;
     }
-}
+} // namespace wasmline

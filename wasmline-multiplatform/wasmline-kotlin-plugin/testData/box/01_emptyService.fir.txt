@@ -1,0 +1,5 @@
+FILE: 01_emptyService.kt
+    package test.ir.basic
+
+    public abstract interface EmptyService : R|crow/wasmline/WasmlineService| {
+    }

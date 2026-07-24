@@ -51,7 +51,6 @@ namespace wasmline {
          */
         static bool loadModuleUnsafe(const std::string& key, const std::string& path);
 
-
         /**
          * Releases a module and its associated sessions.
          */
@@ -66,12 +65,12 @@ namespace wasmline {
          * @param data Input binary data
          * @return Output binary data
          */
-        static std::string invokeInbound(const std::string &key, const char* action, size_t actionLen, const char* data, size_t dataLen);
+        static std::string invokeInbound(const std::string& key, const char* action, size_t actionLen, const char* data, size_t dataLen);
 
         static void setOutboundHandler(const std::string& key, std::unique_ptr<OutboundHandler> handler);
 
     private:
-        static void ensureEngineForArtifact(const std::string &path);
+        static void ensureEngineForArtifact(const std::string& path);
 
         /**
          * Internal helper to get or create a session.
@@ -86,4 +85,4 @@ namespace wasmline {
         // Mutex for session cache safety
         static std::shared_mutex sessionMutex;
     };
-}
+} // namespace wasmline

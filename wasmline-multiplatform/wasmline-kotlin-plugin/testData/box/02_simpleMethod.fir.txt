@@ -1,0 +1,7 @@
+FILE: 02_simpleMethod.kt
+    package test.ir.basic
+
+    public abstract interface SimpleService : R|crow/wasmline/WasmlineService| {
+        public abstract fun ping(): R|kotlin/String|
+
+    }

@@ -99,7 +99,7 @@ Core concepts: `WasmlineEndpoint`, `WasmlineGeneratedBridge`, `bindGeneratedBrid
 
 **Tests:** `testData/box/`, `testData/diagnostics/`, `test-gen/` (auto-generated runners)
 
-**Design docs:** `testData/box/README_zh.md`, `.github/plans/ir-planv2.md`
+**IR test documentation:** [`docs/ir/index.md`](../../docs/ir/index.md)
 
 > This is an **IR plugin**, not a source generator. Understand Runtime Helper + plugin code + box tests as a unified system.
 
@@ -262,8 +262,7 @@ Workflow: `.github/workflows/ci.yml`
 6. `wasmline-core/` — C/C++ Bridge
 7. `wasmline-multiplatform/wasmline/` — Kotlin runtime
 8. `wasmline-multiplatform/wasmline-kotlin-plugin/` — IR plugin
-9. `testData/box/README_zh.md` — Box test docs
-10. `.github/plans/ir-planv2.md` — IR design plan
+9. [`docs/ir/index.md`](../../docs/ir/index.md) — IR test documentation
 
 ---
 

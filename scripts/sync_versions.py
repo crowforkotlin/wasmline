@@ -315,7 +315,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                 ),
             ),
         ),
-        FileSpec("README.md", readme_en),
+        FileSpec("BOX_IR.md", readme_en),
         FileSpec("README_zh.md", readme_zh),
         FileSpec("docs/content/docs/building-from-source.mdx", building_from_source_en),
         FileSpec("docs/content/docs/building-from-source.zh.mdx", building_from_source_zh),
