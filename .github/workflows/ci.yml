@@ -118,7 +118,6 @@ jobs:
         working-directory: wasmline-multiplatform
         run: |
           ./gradlew compileKotlinJvm \
-                    compileKotlinDesktop \
                     compileDebugKotlinAndroid \
                     compileKotlinWasmJs \
                     compileKotlinJs \
