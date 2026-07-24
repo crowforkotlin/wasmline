@@ -148,7 +148,7 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Kotlin compiler plugin tests (box + diagnostics)
+      - name: Kotlin compiler plugin box tests
         working-directory: wasmline-multiplatform
         run: |
           ./gradlew :wasmline-kotlin-plugin:generateTests \
