@@ -15,11 +15,11 @@ fun box(): String {
     val bridgeClass = runCatching {
         Class.forName("test.ir.empty.EmptyService_WasmlineBridge")
     }.getOrNull() ?: return "Fail: Bridge not generated"
-    
+
     // Verify Bridge implements EmptyService
     if (!EmptyService::class.java.isAssignableFrom(bridgeClass)) {
         return "Fail: Bridge doesn't implement EmptyService"
     }
-    
+
     return "OK"
 }

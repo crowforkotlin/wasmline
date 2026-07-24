@@ -21,4 +21,39 @@ trim_trailing_whitespace = false
 indent_size = 2
 
 [**/build/**/*.{kt,kts}]
-indent_size = 2
+ktlint_standard = disabled
+
+[**/wasmline-build-logic/**/*.{kt,kts}]
+ktlint_standard_indent = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_trailing-comma-on-call-site = disabled
+ktlint_standard_trailing-comma-on-declaration-site = disabled
+ktlint_standard_no-consecutive-blank-lines = disabled
+ktlint_standard_no-blank-line-before-rbrace = disabled
+ktlint_standard_no-empty-first-line-in-method-block = disabled
+ktlint_standard_wrapping = disabled
+ktlint_standard_colon-spacing = disabled
+ktlint_standard_comment-spacing = disabled
+ktlint_standard_function-return-type-spacing = disabled
+ktlint_standard_no-multi-spaces = disabled
+ktlint_standard_string-template = disabled
+ktlint_standard_class-signature = disabled
+ktlint_standard_import-ordering = disabled
+ktlint_standard_modifier-order = disabled
+ktlint_standard_function-expression-body = disabled
+ktlint_standard_filename = disabled
+
+[**/iosMain/**/*.{kt,kts}]
+ktlint_standard_indent = disabled
+ktlint_standard_function-expression-body = disabled
+ktlint_standard_final-newline = disabled
+ktlint_standard_no-blank-line-before-rbrace = disabled
+ktlint_standard_no-empty-first-line-in-method-block = disabled
+ktlint_standard_import-ordering = disabled
+ktlint_standard_modifier-order = disabled
+ktlint_standard_class-signature = disabled
+ktlint_standard_trailing-comma-on-declaration-site = disabled
+ktlint_standard_no-unused-imports = disabled
+
+[**/testData/**/*.{kt,kts}]
+ktlint_standard_filename = disabled

@@ -17,28 +17,28 @@ fun box(): String {
     val bridgeClass = runCatching {
         Class.forName("test.ir.complextypes.ComplexTypeService_WasmlineBridge")
     }.getOrNull() ?: return "Fail: Bridge not generated"
-    
+
     if (!ComplexTypeService::class.java.isAssignableFrom(bridgeClass)) {
         return "Fail: Bridge doesn't implement ComplexTypeService"
     }
-    
+
     // Verify processNumbers method
     val numbersMethod = try {
         bridgeClass.getMethod("processNumbers", Int::class.java, Long::class.java)
     } catch (e: NoSuchMethodException) {
         return "Fail: processNumbers(Int, Long) method not found"
     }
-    
+
     // Verify processString method
     val stringMethod = try {
         bridgeClass.getMethod("processString", String::class.java, Int::class.java)
     } catch (e: NoSuchMethodException) {
         return "Fail: processString(String, Int) method not found"
     }
-    
+
     if (numbersMethod == null || stringMethod == null) {
         return "Fail: Required methods missing"
     }
-    
+
     return "OK"
 }
