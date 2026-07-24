@@ -1,6 +1,5 @@
 package crow.wasmline
 
-
 /**
  * Marker interface for typed Wasmline service contracts.
  *
@@ -24,6 +23,5 @@ package crow.wasmline
  */
 interface WasmlineService {
     companion object {
-
     }
 }

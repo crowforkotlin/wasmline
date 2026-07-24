@@ -11,9 +11,8 @@ import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathP
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 open class AbstractJvmDiagnosticTest : AbstractFirPhasedDiagnosticTest(FirParser.LightTree) {
-    override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
-        return EnvironmentBasedStandardLibrariesPathProvider
-    }
+    override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider =
+        EnvironmentBasedStandardLibrariesPathProvider
 
     override fun configure(builder: TestConfigurationBuilder) = with(builder) {
         super.configure(builder)
@@ -27,4 +26,3 @@ open class AbstractJvmDiagnosticTest : AbstractFirPhasedDiagnosticTest(FirParser
         configurePlugin()
     }
 }
-

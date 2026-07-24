@@ -40,12 +40,7 @@ internal object WasmlineHttpServer {
      * @param port           TCP port (default 8080)
      * @param logger         Gradle logger for startup/shutdown messages
      */
-    fun startBlocking(
-        serveDirectory: File,
-        host: String,
-        port: Int,
-        logger: Logger,
-    ) {
+    fun startBlocking(serveDirectory: File, host: String, port: Int, logger: Logger) {
         if (!serveDirectory.isDirectory) {
             logger.error("Serve directory does not exist or is not a directory: ${serveDirectory.absolutePath}")
             return
@@ -79,7 +74,7 @@ internal object WasmlineHttpServer {
                         append("<ul>")
                         for (file in files) {
                             val sizeKb = file.length() / 1024.0
-                            append("<li><a href=\"/${file.name}\">${file.name}</a> (${sizeKb} KB)</li>")
+                            append("<li><a href=\"/${file.name}\">${file.name}</a> ($sizeKb KB)</li>")
                         }
                         append("</ul>")
                         append("</body></html>")
@@ -97,7 +92,7 @@ internal object WasmlineHttpServer {
                             HttpHeaders.ContentDisposition,
                             ContentDisposition.Attachment
                                 .withParameter(ContentDisposition.Parameters.FileName, file.name)
-                                .toString()
+                                .toString(),
                         )
                         val contentType = when (file.extension.lowercase()) {
                             "wasm" -> ContentType.Application.OctetStream
@@ -112,7 +107,7 @@ internal object WasmlineHttpServer {
                     } else {
                         call.respondText(
                             "File not found: $filename",
-                            status = HttpStatusCode.NotFound
+                            status = HttpStatusCode.NotFound,
                         )
                     }
                 }

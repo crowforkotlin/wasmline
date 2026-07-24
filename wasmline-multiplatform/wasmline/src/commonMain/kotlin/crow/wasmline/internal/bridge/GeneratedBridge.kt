@@ -29,16 +29,13 @@ internal object UnlinkedWasmlineEndpoint : WasmlineEndpoint {
 
 /** Fails fast when a generated binder bridge is invoked without a concrete implementation. */
 @PublishedApi
-internal fun <T : Any> requireGeneratedImplementation(implementation: T?, contractId: String): T {
-    return implementation ?: error(
-        "Generated Wasmline bridge for $contractId does not hold a bound implementation. " +
-            "Did the compiler plugin wire bind() correctly?",
-    )
-}
+internal fun <T : Any> requireGeneratedImplementation(implementation: T?, contractId: String): T = implementation ?: error(
+    "Generated Wasmline bridge for $contractId does not hold a bound implementation. " +
+        "Did the compiler plugin wire bind() correctly?",
+)
 
 /** Fails fast for unknown generated actions reaching a bridge dispatcher. */
 @PublishedApi
 internal fun unknownGeneratedAction(contractId: String, action: String): Nothing {
     error("Unknown Wasmline action '$action' for generated bridge $contractId.")
 }
-

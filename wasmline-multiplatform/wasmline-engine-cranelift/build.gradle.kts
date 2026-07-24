@@ -57,8 +57,8 @@ kotlin {
 // only need: implementation("crow.wasmline:wasmline-engine-cranelift:version")
 
 val platformMap = mapOf(
-    "linux"   to listOf("x86_64" to "x86-64", "aarch64" to "aarch64"),
-    "darwin"  to listOf("aarch64" to "aarch64", "x86_64" to "x86-64"),
+    "linux" to listOf("x86_64" to "x86-64", "aarch64" to "aarch64"),
+    "darwin" to listOf("aarch64" to "aarch64", "x86_64" to "x86-64"),
     "windows" to listOf("x86_64" to "x86-64"),
 )
 
@@ -81,7 +81,7 @@ platformMap.forEach { (platform, archs) ->
     archs.forEach { (archDir, gradleArch) ->
         val capitalPlatform = platform.replaceFirstChar { it.uppercase() }
         val capitalArch = archDir.replaceFirstChar { it.uppercase() }
-        val taskName = "craneliftNative${capitalPlatform}${capitalArch}"
+        val taskName = "craneliftNative${capitalPlatform}$capitalArch"
         val jniDir = layout.projectDirectory.dir("src/jvmMain/resources/jni/$platform/$archDir")
 
         val jarTask = tasks.register<Jar>(taskName) {
@@ -142,9 +142,9 @@ tasks.named<GenerateModuleMetadata>("generateMetadataFileForJvmPublication") {
                         mapOf(
                             "name" to "$jvmModuleName-$version-${v.platform}-${v.archDir}.jar",
                             "url" to "$jvmModuleName-$version-${v.platform}-${v.archDir}.jar",
-                        )
-                    )
-                )
+                        ),
+                    ),
+                ),
             )
         }
 

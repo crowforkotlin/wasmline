@@ -14,12 +14,7 @@ import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 
 /** Reports one error-level diagnostic against the given declaration. */
-internal fun reportError(
-    messageCollector: MessageCollector,
-    file: IrFile,
-    declaration: IrDeclaration,
-    message: String,
-) {
+internal fun reportError(messageCollector: MessageCollector, file: IrFile, declaration: IrDeclaration, message: String) {
     report(messageCollector, file, declaration, CompilerMessageSeverity.ERROR, message)
 }
 
@@ -60,4 +55,3 @@ internal fun IrType.renderForDiagnostics(): String {
     val classSymbol = classifierOrNull as? IrClassSymbol ?: return toString()
     return classSymbol.owner.fqNameWhenAvailable?.asString() ?: classSymbol.owner.name.asString()
 }
-

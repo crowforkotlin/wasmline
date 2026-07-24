@@ -50,14 +50,12 @@ internal object WasmlineLocalPackageResolution {
     internal fun selectArtifact(
         artifacts: List<WasmlineArtifact>,
         target: WasmlineHostArtifactTarget = currentHostArtifactTarget,
-    ): WasmlineArtifact? {
-        return artifacts
-            .mapNotNull { artifact ->
-                artifact.selectionScoreFor(target)?.let { score -> score to artifact }
-            }
-            .maxByOrNull { (score, _) -> score }
-            ?.second
-    }
+    ): WasmlineArtifact? = artifacts
+        .mapNotNull { artifact ->
+            artifact.selectionScoreFor(target)?.let { score -> score to artifact }
+        }
+        .maxByOrNull { (score, _) -> score }
+        ?.second
 
     private fun readEnvelope(manifestPath: String): SignedManifestEnvelope? {
         val bytes = readHostFileBytes(manifestPath) ?: return null
@@ -68,20 +66,14 @@ internal object WasmlineLocalPackageResolution {
         }
     }
 
-    private fun sha256HexOrNull(path: String): String? {
-        return readHostFileBytes(path)?.toByteString()?.sha256()?.hex()
-    }
+    private fun sha256HexOrNull(path: String): String? = readHostFileBytes(path)?.toByteString()?.sha256()?.hex()
 
-    private fun resolveArtifactPath(manifestPath: String, artifactUrl: String): String {
-        return resolveHostArtifactPath(manifestPath, artifactUrl)
-    }
+    private fun resolveArtifactPath(manifestPath: String, artifactUrl: String): String = resolveHostArtifactPath(manifestPath, artifactUrl)
 
-    private fun WasmlineArtifact.selectionScoreFor(target: WasmlineHostArtifactTarget): Int? {
-        return when (type) {
-            WasmlineArtifactType.WASM -> wasmSelectionScore(target)
-            WasmlineArtifactType.CWASM -> cwasmSelectionScore(target)
-            WasmlineArtifactType.PWASM -> pwasmSelectionScore(target)
-        }
+    private fun WasmlineArtifact.selectionScoreFor(target: WasmlineHostArtifactTarget): Int? = when (type) {
+        WasmlineArtifactType.WASM -> wasmSelectionScore(target)
+        WasmlineArtifactType.CWASM -> cwasmSelectionScore(target)
+        WasmlineArtifactType.PWASM -> pwasmSelectionScore(target)
     }
 
     private fun WasmlineArtifact.wasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
@@ -125,12 +117,10 @@ internal object WasmlineLocalPackageResolution {
         }
     }
 
-    private fun matchesPulleyBitness(cpu: String, is64Bit: Boolean): Boolean {
-        return when {
-            cpu.endsWith("64") -> is64Bit
-            cpu.endsWith("32") -> !is64Bit
-            else -> true
-        }
+    private fun matchesPulleyBitness(cpu: String, is64Bit: Boolean): Boolean = when {
+        cpu.endsWith("64") -> is64Bit
+        cpu.endsWith("32") -> !is64Bit
+        else -> true
     }
 
     private fun describe(target: WasmlineHostArtifactTarget): String {
@@ -138,35 +128,29 @@ internal object WasmlineLocalPackageResolution {
         return "${target.os}/${target.cpu} ($bitness)"
     }
 
-    private fun normalizeOs(value: String?): String? {
-        return when (value?.lowercase()) {
-            null -> null
-            "mac", "macos", "darwin", "osx" -> "macos"
-            "win", "windows" -> "windows"
-            "linux" -> "linux"
-            "android" -> "android"
-            "ios" -> "ios"
-            "web", "browser" -> "browser"
-            else -> value.lowercase()
-        }
+    private fun normalizeOs(value: String?): String? = when (value?.lowercase()) {
+        null -> null
+        "mac", "macos", "darwin", "osx" -> "macos"
+        "win", "windows" -> "windows"
+        "linux" -> "linux"
+        "android" -> "android"
+        "ios" -> "ios"
+        "web", "browser" -> "browser"
+        else -> value.lowercase()
     }
 
-    private fun normalizeCpu(value: String?): String? {
-        return when (value?.lowercase()) {
-            null -> null
-            "amd64", "x86_64" -> "x86_64"
-            "arm64", "aarch64" -> "aarch64"
-            "wasm", "wasm32", "wasmjs", "browser" -> "wasmjs"
-            else -> value.lowercase()
-        }
+    private fun normalizeCpu(value: String?): String? = when (value?.lowercase()) {
+        null -> null
+        "amd64", "x86_64" -> "x86_64"
+        "arm64", "aarch64" -> "aarch64"
+        "wasm", "wasm32", "wasmjs", "browser" -> "wasmjs"
+        else -> value.lowercase()
     }
 
-    private fun failure(cause: String): WasmlineSourceResolution.Complete {
-        return WasmlineSourceResolution.Complete(
-            WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = cause,
-            ),
-        )
-    }
+    private fun failure(cause: String): WasmlineSourceResolution.Complete = WasmlineSourceResolution.Complete(
+        WasmlineLoadState.Failure(
+            code = WasmlineLoadState.CODE_FAILURE,
+            cause = cause,
+        ),
+    )
 }

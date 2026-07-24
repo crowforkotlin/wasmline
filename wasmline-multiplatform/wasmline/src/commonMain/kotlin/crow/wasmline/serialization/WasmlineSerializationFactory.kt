@@ -24,36 +24,29 @@ interface WasmlineSerializationFactory {
 object WasmlineRawBytesSerializationFactory : WasmlineSerializationFactory {
     override val id: String = "raw"
 
-    override fun <T> encode(serializer: KSerializer<T>, value: T): ByteArray {
-        return when (serializer.descriptor.serialName) {
-            BYTE_ARRAY_SERIAL_NAME -> value as? ByteArray
+    override fun <T> encode(serializer: KSerializer<T>, value: T): ByteArray = when (serializer.descriptor.serialName) {
+        BYTE_ARRAY_SERIAL_NAME ->
+            value as? ByteArray
                 ?: error("Raw serialization expected ByteArray for ${serializer.descriptor.serialName}.")
 
-            UNIT_SERIAL_NAME -> ByteArray(0)
-            else -> unsupportedRawSerialization(serializer)
-        }
+        UNIT_SERIAL_NAME -> ByteArray(0)
+        else -> unsupportedRawSerialization(serializer)
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T> decode(serializer: KSerializer<T>, payload: ByteArray): T {
-        return when (serializer.descriptor.serialName) {
-            BYTE_ARRAY_SERIAL_NAME -> payload as T
-            UNIT_SERIAL_NAME -> Unit as T
-            else -> unsupportedRawSerialization(serializer)
-        }
+    override fun <T> decode(serializer: KSerializer<T>, payload: ByteArray): T = when (serializer.descriptor.serialName) {
+        BYTE_ARRAY_SERIAL_NAME -> payload as T
+        UNIT_SERIAL_NAME -> Unit as T
+        else -> unsupportedRawSerialization(serializer)
     }
 }
 
 object WasmlineProtobufSerializationFactory : WasmlineSerializationFactory {
     override val id: String = "protobuf"
 
-    override fun <T> encode(serializer: KSerializer<T>, value: T): ByteArray {
-        return ProtoBuf.encodeToByteArray(serializer, value)
-    }
+    override fun <T> encode(serializer: KSerializer<T>, value: T): ByteArray = ProtoBuf.encodeToByteArray(serializer, value)
 
-    override fun <T> decode(serializer: KSerializer<T>, payload: ByteArray): T {
-        return ProtoBuf.decodeFromByteArray(serializer, payload)
-    }
+    override fun <T> decode(serializer: KSerializer<T>, payload: ByteArray): T = ProtoBuf.decodeFromByteArray(serializer, payload)
 }
 
 private fun unsupportedRawSerialization(serializer: KSerializer<*>): Nothing {

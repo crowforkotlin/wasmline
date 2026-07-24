@@ -39,6 +39,7 @@ kotlin {
         val nativeHeaderDir = project.file("src/iosMain/native")
         val wasmtimeVersion = project.property("wasmtime.version") as String
         val wasmtimeReleaseTag = "release-v$wasmtimeVersion"
+
         // iOS only supports pulley engine variant
         fun iosPlatformRoot(targetName: String) = when (targetName) {
             "iosSimulatorArm64" -> project.file("../../build/platforms/$wasmtimeReleaseTag/pulley/ios/simulator-arm64")
@@ -48,9 +49,7 @@ kotlin {
             "iosSimulatorArm64" -> project.file("build/ios/simulator-arm64")
             else -> project.file("build/ios/arm64")
         }
-        fun buildNativeBridgeTask(
-            target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget,
-        ) = tasks.register(
+        fun buildNativeBridgeTask(target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget) = tasks.register(
             "build${target.name.replaceFirstChar { it.uppercaseChar() }}NativeBridge",
             Exec::class.java,
         ) {
@@ -73,8 +72,8 @@ kotlin {
                     includeDirs(nativeHeaderDir)
                     includeDirs(wasmtimeHeaderDir)
                     compilerOpts("-I${nativeHeaderDir.absolutePath}", "-I${wasmtimeHeaderDir.absolutePath}")
-                    linkerOpts("-Wl,-force_load,${coreLibAbsPath}")
-                    linkerOpts("-Wl,-force_load,${wasmtimeLibAbsPath}")
+                    linkerOpts("-Wl,-force_load,$coreLibAbsPath")
+                    linkerOpts("-Wl,-force_load,$wasmtimeLibAbsPath")
                     linkerOpts("-lc++")
                     linkerOpts("-framework", "CoreFoundation")
                     linkerOpts("-framework", "Security")
@@ -91,11 +90,13 @@ kotlin {
                     isStatic = false
                     freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
                     linkerOpts(
-                        "-Wl,-force_load,${coreLibAbsPath}",
-                        "-Wl,-force_load,${wasmtimeLibAbsPath}",
+                        "-Wl,-force_load,$coreLibAbsPath",
+                        "-Wl,-force_load,$wasmtimeLibAbsPath",
                         "-lc++",
-                        "-framework", "CoreFoundation",
-                        "-framework", "Security"
+                        "-framework",
+                        "CoreFoundation",
+                        "-framework",
+                        "Security",
                     )
                     linkTaskProvider.configure {
                         dependsOn(nativeBridgeTask)

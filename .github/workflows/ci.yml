@@ -1,4 +1,4 @@
-# CI: Compile, Test, Format Check
+# CI: Lint Checks, Build Verification & Test Execution
 name: CI
 
 on:
@@ -18,8 +18,47 @@ env:
   ZIG_VERSION: "0.15.1"
 
 jobs:
-  build-and-test:
+  lint-kotlin:
     runs-on: ubuntu-latest
+    name: Kotlin Format Check
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: jetbrains
+          java-version: 21
+
+      - name: ktlint check
+        working-directory: wasmline-multiplatform
+        run: ./gradlew ktlintCheck --no-daemon
+
+  lint-clang:
+    runs-on: ubuntu-latest
+    name: C++ Format Check
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+
+      - name: clang-format check
+        run: |
+          find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | \
+            xargs clang-format --dry-run --Werror
+
+  # ───────────────────────────────────────────────────────────────
+  # JOB 3: Compile all targets (requires native libraries)
+  # ───────────────────────────────────────────────────────────────
+
+  compile-all:
+    needs: [lint-kotlin, lint-clang]
+    if: ${{ needs.lint-kotlin.result == 'success' && needs.lint-clang.result == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    name: Compile All Targets
 
     steps:
       - uses: actions/checkout@v4
@@ -63,47 +102,60 @@ jobs:
         run: |
           echo "MINGW_PATH=/usr/x86_64-w64-mingw32" >> "$GITHUB_ENV"
 
-      # ── Native Asset Build ───────────────────────────────────────
+      # ── Native Asset Build (blocking step) ────────────────────────
+      # Only starts after lint checks pass (or fail-fast)
 
       - name: Initialize Wasmtime platform assets
         run: printf "\na\n\n" | bash scripts/init-wasmtime.sh
 
       - name: Build native libraries
+        timeout-minutes: 5
         run: bash scripts/build-native-assets.sh
 
-      # ── Format Check ─────────────────────────────────────────────
+      # ── Compilation (Format checks already passed in lint-* jobs) ────
 
-      - name: ktlint check
-        working-directory: wasmline-multiplatform
-        run: ./gradlew ktlintCheck --no-daemon
-
-      - name: clang-format check
-        run: |
-          find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | \
-            xargs clang-format --dry-run --Werror
-
-      # ── Compilation ──────────────────────────────────────────────
-
-      - name: Compile all targets
+      - name: Compile all JVM & Multiplatform targets
         working-directory: wasmline-multiplatform
         run: |
           ./gradlew compileKotlinJvm \
-                      compileKotlinDesktop \
-                      compileDebugKotlinAndroid \
-                      compileKotlinWasmJs \
-                      compileKotlinJs \
-                      compileKotlinWasmWasi \
-                      --no-daemon
+                    compileKotlinDesktop \
+                    compileDebugKotlinAndroid \
+                    compileKotlinWasmJs \
+                    compileKotlinJs \
+                    compileKotlinWasmWasi \
+                    --no-daemon
 
-      # ── Tests ────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────
+  # JOB 4: Execute Tests (requires successful compilation)
+  # ───────────────────────────────────────────────────────────────
 
-      - name: Kotlin compiler plugin tests
+  test-all:
+    needs: compile-all
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    name: Run All Tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: jetbrains
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Kotlin compiler plugin tests (box + diagnostics)
         working-directory: wasmline-multiplatform
         run: |
           ./gradlew :wasmline-kotlin-plugin:generateTests \
                     :wasmline-kotlin-plugin:test \
                     --no-daemon
 
-      - name: Loader module tests
+      - name: Loader module jvmTest
         working-directory: wasmline-multiplatform
         run: ./gradlew :wasmline-loader:jvmTest --no-daemon

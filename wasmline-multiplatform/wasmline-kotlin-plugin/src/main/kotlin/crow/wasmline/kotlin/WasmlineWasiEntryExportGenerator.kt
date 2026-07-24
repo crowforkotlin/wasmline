@@ -13,14 +13,14 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irString
-import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
-import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
+import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
@@ -62,7 +62,8 @@ internal fun generateWasiEntryExport(
             )
             messageCollector.report(
                 CompilerMessageSeverity.INFO,
-                "[Wasmline] generated wasmWasi init export '$WASMLINE_INIT_EXPORT_NAME' for ${userMain.fqNameWhenAvailable?.asString() ?: userMain.name.asString()}.",
+                "[Wasmline] generated wasmWasi init export '$WASMLINE_INIT_EXPORT_NAME' for " +
+                    "${userMain.fqNameWhenAvailable?.asString() ?: userMain.name.asString()}.",
             )
         } else {
             messageCollector.report(
@@ -78,7 +79,8 @@ internal fun generateWasiEntryExport(
     if (existingEntry != null) {
         messageCollector.report(
             CompilerMessageSeverity.INFO,
-            "[Wasmline] skip generated wasm entry export because user-defined ${existingEntry.fqNameWhenAvailable?.asString() ?: existingEntry.name.asString()} already exists.",
+            "[Wasmline] skip generated wasm entry export because " +
+                "user-defined ${existingEntry.fqNameWhenAvailable?.asString() ?: existingEntry.name.asString()} already exists.",
         )
         return
     }
@@ -135,7 +137,7 @@ private fun createWasmlineInitFunction(
             .filterIsInstance<IrConstructor>()
             .single { constructor ->
                 constructor.parameters.count { parameter -> parameter.kind == IrParameterKind.Regular } == 1
-            }.symbol
+            }.symbol,
     ).apply {
         arguments[0] = functionBuilder.irString(WASMLINE_INIT_EXPORT_NAME)
     }
@@ -186,7 +188,7 @@ private fun createWasmlineEntryFunction(
             .filterIsInstance<IrConstructor>()
             .single { constructor ->
                 constructor.parameters.count { parameter -> parameter.kind == IrParameterKind.Regular } == 1
-            }.symbol
+            }.symbol,
     ).apply {
         arguments[0] = functionBuilder.irString(WASMLINE_ENTRY_EXPORT_NAME)
     }
@@ -209,24 +211,18 @@ private fun createWasmlineEntryFunction(
     return generatedFunction
 }
 
-private fun isUserMain(function: IrSimpleFunction, pluginContext: IrPluginContext): Boolean {
-    return function.name.asString() == "main" &&
-        function.parent is IrFile &&
-        function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
-        function.parameters.count { it.kind == IrParameterKind.Regular } == 0 &&
-        function.returnType == pluginContext.irBuiltIns.unitType
-}
+private fun isUserMain(function: IrSimpleFunction, pluginContext: IrPluginContext): Boolean = function.name.asString() == "main" &&
+    function.parent is IrFile &&
+    function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
+    function.parameters.count { it.kind == IrParameterKind.Regular } == 0 &&
+    function.returnType == pluginContext.irBuiltIns.unitType
 
-private fun isManualWasmlineInit(function: IrSimpleFunction): Boolean {
-    return function.name.asString() == WASMLINE_INIT_EXPORT_NAME &&
-        function.parent is IrFile &&
-        function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
-        function.parameters.count { it.kind == IrParameterKind.Regular } == 0
-}
+private fun isManualWasmlineInit(function: IrSimpleFunction): Boolean = function.name.asString() == WASMLINE_INIT_EXPORT_NAME &&
+    function.parent is IrFile &&
+    function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
+    function.parameters.count { it.kind == IrParameterKind.Regular } == 0
 
-private fun isManualWasmlineEntry(function: IrSimpleFunction): Boolean {
-    return function.name.asString() == WASMLINE_ENTRY_EXPORT_NAME &&
-        function.parent is IrFile &&
-        function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
-        function.parameters.count { it.kind == IrParameterKind.Regular } == 2
-}
+private fun isManualWasmlineEntry(function: IrSimpleFunction): Boolean = function.name.asString() == WASMLINE_ENTRY_EXPORT_NAME &&
+    function.parent is IrFile &&
+    function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
+    function.parameters.count { it.kind == IrParameterKind.Regular } == 2

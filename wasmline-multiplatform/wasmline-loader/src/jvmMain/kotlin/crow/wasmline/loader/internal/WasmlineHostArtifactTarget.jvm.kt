@@ -18,12 +18,10 @@ private fun normalizeHostOs(osName: String?): String {
     }
 }
 
-private fun normalizeHostCpu(arch: String?): String {
-    return when (arch?.lowercase()) {
-        "amd64", "x86_64" -> "x86_64"
-        "arm64", "aarch64" -> "aarch64"
-        else -> arch?.lowercase() ?: "unknown"
-    }
+private fun normalizeHostCpu(arch: String?): String = when (arch?.lowercase()) {
+    "amd64", "x86_64" -> "x86_64"
+    "arm64", "aarch64" -> "aarch64"
+    else -> arch?.lowercase() ?: "unknown"
 }
 
 private fun is64BitArch(arch: String?): Boolean {

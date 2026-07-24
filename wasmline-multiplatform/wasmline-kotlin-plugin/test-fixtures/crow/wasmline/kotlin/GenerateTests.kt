@@ -55,4 +55,3 @@ private fun resolveModuleDir(): Path {
             "Set -Dwasmline.kotlin.plugin.projectDir=/absolute/path/to/wasmline-kotlin-plugin if needed.",
     )
 }
-

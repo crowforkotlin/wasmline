@@ -20,22 +20,22 @@ import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
 /** Inspired by [org.jetbrains.kotlin.ir.backend.js.utils.asString]. */
 fun IrSimpleType.asString(): String = classifier.asString() +
     (
-      arguments.ifNotEmpty {
-      joinToString(separator = ",", prefix = "<", postfix = ">") { it.asString() }
-    } ?: ""
-    ) +
+        arguments.ifNotEmpty {
+            joinToString(separator = ",", prefix = "<", postfix = ">") { it.asString() }
+        } ?: ""
+        ) +
     (if (isMarkedNullable()) "?" else "")
 
 /** Copied from [org.jetbrains.kotlin.ir.backend.js.utils.asString]. */
 private fun IrTypeArgument.asString(): String = when (this) {
-  is IrStarProjection -> "*"
-  is IrTypeProjection -> variance.label + (if (variance != Variance.INVARIANT) " " else "") + (type as IrSimpleType).asString()
-  else -> error("Unexpected kind of IrTypeArgument: " + javaClass.simpleName)
+    is IrStarProjection -> "*"
+    is IrTypeProjection -> variance.label + (if (variance != Variance.INVARIANT) " " else "") + (type as IrSimpleType).asString()
+    else -> error("Unexpected kind of IrTypeArgument: " + javaClass.simpleName)
 }
 
 /** Copied from [org.jetbrains.kotlin.ir.backend.js.utils.asString]. */
 private fun IrClassifierSymbol.asString() = when (this) {
-  is IrTypeParameterSymbol -> this.owner.name.asString()
-  is IrClassSymbol -> this.owner.fqNameWhenAvailable!!.asString()
-  else -> error("Unexpected kind of IrClassifierSymbol: " + javaClass.typeName)
+    is IrTypeParameterSymbol -> this.owner.name.asString()
+    is IrClassSymbol -> this.owner.fqNameWhenAvailable!!.asString()
+    else -> error("Unexpected kind of IrClassifierSymbol: " + javaClass.typeName)
 }

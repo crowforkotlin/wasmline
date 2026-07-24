@@ -19,21 +19,15 @@ import io.ktor.client.HttpClient
  *
  * @param client Optional pre-configured [HttpClient] for custom configuration.
  */
-class KtorNetworkClient(
-    private val client: HttpClient = HttpClient(),
-) : WasmlineNetworkClient {
+class KtorNetworkClient(private val client: HttpClient = HttpClient()) : WasmlineNetworkClient {
 
-    override fun fetch(url: String): WasmlineHttpResponse {
-        return blockingKtorFetch(client, url)
-    }
+    override fun fetch(url: String): WasmlineHttpResponse = blockingKtorFetch(client, url)
 }
 
 /**
  * Factory function for creating a [KtorNetworkClient].
  */
-fun ktorNetworkClient(client: HttpClient = HttpClient()): WasmlineNetworkClient {
-    return KtorNetworkClient(client)
-}
+fun ktorNetworkClient(client: HttpClient = HttpClient()): WasmlineNetworkClient = KtorNetworkClient(client)
 
 /**
  * Platform-specific blocking HTTP GET implementation.

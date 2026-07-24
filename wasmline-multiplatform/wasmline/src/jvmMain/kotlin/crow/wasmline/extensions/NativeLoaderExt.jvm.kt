@@ -21,11 +21,14 @@ actual fun loadNativeLibrary() {
         throw IllegalStateException("Unsupported OS: $osName")
     }
     val candidateArchs = archCandidates(osArch)
-    val wasmlineJarPath = candidateArchs
+    val triedPaths = candidateArchs
         .map { "/jni/$platform/$it/libwasmline.$extension" }
+        .toList()
+    val wasmlineJarPath = triedPaths
         .firstOrNull { Wasmline::class.java.getResource(it) != null }
         ?: throw IllegalStateException(
-            "Unable to read native wasmline library from JAR. os.name=$osName, os.arch=${System.getProperty("os.arch")}, platform=$platform, normalizedArch=$osArch, tried=${candidateArchs.joinToString()}"
+            "Unable to find native library in JAR. OS=$osName, Arch=${System.getProperty("os.arch")}, " +
+                "Platform=$platform, normalizedArch=$osArch",
         )
     extractAndLoad(Wasmline::class.java, wasmlineJarPath)
 }

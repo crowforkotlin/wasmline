@@ -24,9 +24,7 @@ import okhttp3.Request
  * @param client Optional pre-configured [OkHttpClient] for connection pooling,
  *               custom timeouts, interceptors, etc.
  */
-class OkHttpNetworkClient(
-    private val client: OkHttpClient = OkHttpClient(),
-) : WasmlineNetworkClient {
+class OkHttpNetworkClient(private val client: OkHttpClient = OkHttpClient()) : WasmlineNetworkClient {
 
     override fun fetch(url: String): WasmlineHttpResponse {
         val request = Request.Builder()
@@ -45,6 +43,4 @@ class OkHttpNetworkClient(
 /**
  * Factory function for creating an [OkHttpNetworkClient].
  */
-fun okHttpNetworkClient(client: OkHttpClient = OkHttpClient()): WasmlineNetworkClient {
-    return OkHttpNetworkClient(client)
-}
+fun okHttpNetworkClient(client: OkHttpClient = OkHttpClient()): WasmlineNetworkClient = OkHttpNetworkClient(client)

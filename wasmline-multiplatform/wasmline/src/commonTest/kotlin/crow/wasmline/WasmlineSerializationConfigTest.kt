@@ -1,8 +1,8 @@
 package crow.wasmline
 
-import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.serialization.WasmlineProtobufSerializationFactory
 import crow.wasmline.serialization.WasmlineRawBytesSerializationFactory
+import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.serialization.WasmlineSerializationRegistry
 import kotlin.test.Test
 import kotlin.test.assertEquals

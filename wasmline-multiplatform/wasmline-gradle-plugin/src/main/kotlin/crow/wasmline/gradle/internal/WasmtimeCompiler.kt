@@ -79,7 +79,7 @@ internal object WasmtimeCompiler {
             ?: throw GradleException(
                 "wasmtime executable not found in '${directory.absolutePath}'. " +
                     "Run the 'wasmline download' CLI command first or configure the wasmtime directory " +
-                    "via the wasmline { wasmtime { directory = file(\"...\") } } DSL block."
+                    "via the wasmline { wasmtime { directory = file(\"...\") } } DSL block.",
             )
     }
 
@@ -128,12 +128,7 @@ internal object WasmtimeCompiler {
 
     // ==================== Internal helpers ====================
 
-    private fun copyBrowserArtifact(
-        inputFile: File,
-        outputDir: File,
-        productName: String,
-        logger: Logger,
-    ): WasmlineArtifact? {
+    private fun copyBrowserArtifact(inputFile: File, outputDir: File, productName: String, logger: Logger): WasmlineArtifact? {
         val outFile = File(outputDir, "$productName.wasm")
         return try {
             Files.copy(inputFile.toPath(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -254,8 +249,5 @@ internal object WasmtimeCompiler {
     }
 
     @Serializable
-    private data class CompileResultData(
-        val inputFile: String,
-        val artifacts: List<WasmlineArtifact>,
-    )
+    private data class CompileResultData(val inputFile: String, val artifacts: List<WasmlineArtifact>)
 }

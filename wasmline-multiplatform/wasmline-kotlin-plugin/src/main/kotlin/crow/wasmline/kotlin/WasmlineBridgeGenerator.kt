@@ -7,8 +7,8 @@ import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.descriptors.DescriptorVisibility
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irIfThen
 import org.jetbrains.kotlin.ir.builders.irInt
-import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irTemporary
@@ -36,8 +35,8 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
+import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
 import org.jetbrains.kotlin.ir.expressions.impl.IrBlockImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
@@ -48,10 +47,10 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.symbols.impl.IrFieldSymbolImpl
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
-import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.makeNullable
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.constructors
@@ -134,7 +133,9 @@ internal fun generateBridge(
                 val descriptorField = createPrivateField(
                     owner = bridgeClass,
                     pluginContext = pluginContext,
-                    type = pluginContext.referenceClass(ClassId(FqName("kotlinx.serialization.descriptors"), Name.identifier("SerialDescriptor")))!!.owner.defaultType,
+                    type = pluginContext.referenceClass(
+                        ClassId(FqName("kotlinx.serialization.descriptors"), Name.identifier("SerialDescriptor")),
+                    )!!.owner.defaultType,
                     name = Name.identifier("${methodName}_descriptor"),
                 )
                 bridgeClass.declarations += serializersField
@@ -362,38 +363,36 @@ private fun generateBridgeBindMethod(
     pluginContext: IrPluginContext,
     runtimeSymbols: WasmlineRuntimeSymbols,
     fqName: String,
-): IrSimpleFunction {
-    return createBridgeSimpleFunction(
-        pluginContext = pluginContext,
-        owner = bridgeClass,
-        original = bridgeClass,
-        name = Name.identifier("bind"),
-        returnType = pluginContext.irBuiltIns.unitType,
-    ).apply {
-        overriddenSymbols = listOf(runtimeSymbols.generatedBridgeBindFunction)
-        val bindFunction = this
-        parameters += buildReceiverParameter {
-            type = bridgeClass.defaultType
-        }
-        val registerActionParameter = addValueParameter("registerAction", runtimeSymbols.actionRegistrarType())
-        irFunctionBody(
-            context = pluginContext,
-            scopeOwnerSymbol = symbol,
-        ) {
-            contractFunctions.forEach { contractFunction ->
-                val action = "$fqName#${contractFunction.name.asString()}"
-                +irInvoke(
-                    dispatchReceiver = irGet(registerActionParameter),
-                    callee = runtimeSymbols.function2InvokeFunction,
-                    irString(action),
-                    generateBindActionHandler(
-                        owner = bindFunction,
-                        pluginContext = pluginContext,
-                        runtimeSymbols = runtimeSymbols,
-                        action = action,
-                    ),
-                )
-            }
+): IrSimpleFunction = createBridgeSimpleFunction(
+    pluginContext = pluginContext,
+    owner = bridgeClass,
+    original = bridgeClass,
+    name = Name.identifier("bind"),
+    returnType = pluginContext.irBuiltIns.unitType,
+).apply {
+    overriddenSymbols = listOf(runtimeSymbols.generatedBridgeBindFunction)
+    val bindFunction = this
+    parameters += buildReceiverParameter {
+        type = bridgeClass.defaultType
+    }
+    val registerActionParameter = addValueParameter("registerAction", runtimeSymbols.actionRegistrarType())
+    irFunctionBody(
+        context = pluginContext,
+        scopeOwnerSymbol = symbol,
+    ) {
+        contractFunctions.forEach { contractFunction ->
+            val action = "$fqName#${contractFunction.name.asString()}"
+            +irInvoke(
+                dispatchReceiver = irGet(registerActionParameter),
+                callee = runtimeSymbols.function2InvokeFunction,
+                irString(action),
+                generateBindActionHandler(
+                    owner = bindFunction,
+                    pluginContext = pluginContext,
+                    runtimeSymbols = runtimeSymbols,
+                    action = action,
+                ),
+            )
         }
     }
 }
@@ -461,57 +460,55 @@ private fun generateBridgeDispatcherMethod(
     runtimeSymbols: WasmlineRuntimeSymbols,
     fqName: String,
     multiParamFields: Map<IrSimpleFunction, Pair<IrField, IrField>>,
-): IrSimpleFunction {
-    return createBridgeSimpleFunction(
-        pluginContext = pluginContext,
-        owner = bridgeClass,
-        original = bridgeClass,
-        name = Name.identifier("invoke"),
-        returnType = runtimeSymbols.byteArrayClass.owner.defaultType,
-        isOperator = true,
-    ).apply {
-        overriddenSymbols = listOf(runtimeSymbols.generatedBridgeInvokeFunction)
-        parameters += buildReceiverParameter {
-            type = bridgeClass.defaultType
-        }
-        val actionParameter = addValueParameter("action", pluginContext.irBuiltIns.stringType)
-        val payloadParameter = addValueParameter("payload", runtimeSymbols.byteArrayClass.owner.defaultType)
-        irFunctionBody(
-            context = pluginContext,
-            scopeOwnerSymbol = symbol,
-        ) {
-            val bridgeThisParam = dispatchReceiverParameter!!
-            contractFunctions.forEach { contractFunction ->
-                val action = "$fqName#${contractFunction.name.asString()}"
-                +irIfThen(
-                    type = pluginContext.irBuiltIns.unitType,
-                    condition = irEquals(irGet(actionParameter), irString(action)),
-                    thenPart = irReturn(
-                        value = dispatcherResultExpression(
-                            bridgeThisParam = bridgeThisParam,
-                            implementationField = implementationField,
-                            serializationFactoryField = serializationFactoryField,
-                            contract = contract,
-                            contractFunction = contractFunction,
-                            payloadParameter = payloadParameter,
-                            runtimeSymbols = runtimeSymbols,
-                            fqName = fqName,
-                            multiParamFields = multiParamFields,
-                        ),
-                        returnTargetSymbol = symbol,
+): IrSimpleFunction = createBridgeSimpleFunction(
+    pluginContext = pluginContext,
+    owner = bridgeClass,
+    original = bridgeClass,
+    name = Name.identifier("invoke"),
+    returnType = runtimeSymbols.byteArrayClass.owner.defaultType,
+    isOperator = true,
+).apply {
+    overriddenSymbols = listOf(runtimeSymbols.generatedBridgeInvokeFunction)
+    parameters += buildReceiverParameter {
+        type = bridgeClass.defaultType
+    }
+    val actionParameter = addValueParameter("action", pluginContext.irBuiltIns.stringType)
+    val payloadParameter = addValueParameter("payload", runtimeSymbols.byteArrayClass.owner.defaultType)
+    irFunctionBody(
+        context = pluginContext,
+        scopeOwnerSymbol = symbol,
+    ) {
+        val bridgeThisParam = dispatchReceiverParameter!!
+        contractFunctions.forEach { contractFunction ->
+            val action = "$fqName#${contractFunction.name.asString()}"
+            +irIfThen(
+                type = pluginContext.irBuiltIns.unitType,
+                condition = irEquals(irGet(actionParameter), irString(action)),
+                thenPart = irReturn(
+                    value = dispatcherResultExpression(
+                        bridgeThisParam = bridgeThisParam,
+                        implementationField = implementationField,
+                        serializationFactoryField = serializationFactoryField,
+                        contract = contract,
+                        contractFunction = contractFunction,
+                        payloadParameter = payloadParameter,
+                        runtimeSymbols = runtimeSymbols,
+                        fqName = fqName,
+                        multiParamFields = multiParamFields,
                     ),
-                )
-            }
-            +irReturn(
-                value = irInvoke(
-                    null,
-                    runtimeSymbols.unknownGeneratedActionFunction,
-                    irString(fqName),
-                    irGet(actionParameter),
+                    returnTargetSymbol = symbol,
                 ),
-                returnTargetSymbol = symbol,
             )
         }
+        +irReturn(
+            value = irInvoke(
+                null,
+                runtimeSymbols.unknownGeneratedActionFunction,
+                irString(fqName),
+                irGet(actionParameter),
+            ),
+            returnTargetSymbol = symbol,
+        )
     }
 }
 
@@ -617,13 +614,8 @@ private fun org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder.dispatcherResult
 }
 
 /** Creates a private backing field used by the generated bridge class. */
-private fun createPrivateField(
-    owner: IrClass,
-    pluginContext: IrPluginContext,
-    type: IrType,
-    name: Name,
-): IrField {
-    return pluginContext.irFactory.createField(
+private fun createPrivateField(owner: IrClass, pluginContext: IrPluginContext, type: IrType, name: Name): IrField =
+    pluginContext.irFactory.createField(
         startOffset = owner.startOffset,
         endOffset = owner.endOffset,
         origin = IrDeclarationOrigin.DEFINED,
@@ -637,7 +629,6 @@ private fun createPrivateField(
     ).apply {
         parent = owner
     }
-}
 
 private fun DeclarationIrBuilder.initializeBridgeConstructorState(
     pluginContext: IrPluginContext,
@@ -685,39 +676,35 @@ private fun createBridgeSimpleFunction(
     visibility: DescriptorVisibility = DescriptorVisibilities.PUBLIC,
     isOperator: Boolean = false,
     isInfix: Boolean = false,
-): IrSimpleFunction {
-    return pluginContext.irFactory.createSimpleFunction(
-        startOffset = original.startOffset,
-        endOffset = original.endOffset,
-        origin = IrDeclarationOrigin.DEFINED,
-        name = name,
-        visibility = visibility,
-        isInline = false,
-        isExpect = false,
-        returnType = returnType,
-        modality = Modality.FINAL,
-        symbol = IrSimpleFunctionSymbolImpl(),
-        isTailrec = false,
-        isSuspend = false,
-        isOperator = isOperator,
-        isInfix = isInfix,
-        isExternal = false,
-        containerSource = null,
-        isFakeOverride = false,
-    ).apply {
-        parent = owner
-    }
+): IrSimpleFunction = pluginContext.irFactory.createSimpleFunction(
+    startOffset = original.startOffset,
+    endOffset = original.endOffset,
+    origin = IrDeclarationOrigin.DEFINED,
+    name = name,
+    visibility = visibility,
+    isInline = false,
+    isExpect = false,
+    returnType = returnType,
+    modality = Modality.FINAL,
+    symbol = IrSimpleFunctionSymbolImpl(),
+    isTailrec = false,
+    isSuspend = false,
+    isOperator = isOperator,
+    isInfix = isInfix,
+    isExternal = false,
+    containerSource = null,
+    isFakeOverride = false,
+).apply {
+    parent = owner
 }
 
 /** Returns an object-get expression for a singleton runtime symbol used by generated bridges. */
-private fun irGetObject(symbol: IrClassSymbol): IrExpression {
-    return IrGetObjectValueImpl(
-        startOffset = SYNTHETIC_OFFSET,
-        endOffset = SYNTHETIC_OFFSET,
-        type = symbol.owner.defaultType,
-        symbol = symbol,
-    )
-}
+private fun irGetObject(symbol: IrClassSymbol): IrExpression = IrGetObjectValueImpl(
+    startOffset = SYNTHETIC_OFFSET,
+    endOffset = SYNTHETIC_OFFSET,
+    type = symbol.owner.defaultType,
+    symbol = symbol,
+)
 
 /** Generates `serializer<T>()` for a given parameter type. */
 private fun irSerializerCall(

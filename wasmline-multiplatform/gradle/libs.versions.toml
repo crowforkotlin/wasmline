@@ -131,7 +131,7 @@ compress-tukaani-xz = "1.11"
 
 maven-publish = "0.36.0"
 jetbrains-annotations = "26.1.0"
-ktlint = "12.1.1"
+ktlint = "14.2.0"
 
 wasmline = "1.0.0"
 
@@ -338,4 +338,3 @@ wasmline-kotlin = { id = "crow.wasmline.kotlin" }
 app-base-multiplatform-library = { id = "app.base.multiplatform.library" }
 app-base-library = { id = "app.base.library" }
 app-base-android = { id = "app.base.android" }
-

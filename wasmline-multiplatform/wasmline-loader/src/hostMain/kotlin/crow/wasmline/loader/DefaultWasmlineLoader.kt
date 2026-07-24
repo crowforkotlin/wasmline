@@ -23,11 +23,7 @@ internal object DefaultWasmlineLoader {
         )
     }
 
-    private fun loadSource(
-        request: WasmlineLoadRequest,
-        source: WasmlineSource,
-        resolutionDepth: Int,
-    ): WasmlineLoadState {
+    private fun loadSource(request: WasmlineLoadRequest, source: WasmlineSource, resolutionDepth: Int): WasmlineLoadState {
         if (resolutionDepth > MAX_SOURCE_RESOLUTION_DEPTH) {
             WasmlineLog.logger?.error("$P Source resolution exceeded max depth ($MAX_SOURCE_RESOLUTION_DEPTH)")
             return WasmlineLoadState.Failure(
@@ -101,15 +97,11 @@ internal object DefaultWasmlineLoader {
         }
     }
 
-    private fun unsupportedSourceFailure(
-        description: String,
-        resolverHint: String,
-    ): WasmlineLoadState.Failure {
-        return WasmlineLoadState.Failure(
-            code = WasmlineLoadState.CODE_FAILURE,
-            cause = "$description is not supported yet. Provide $resolverHint to resolve it into a local host-compatible artifact for the current runtime.",
-        )
-    }
+    private fun unsupportedSourceFailure(description: String, resolverHint: String): WasmlineLoadState.Failure = WasmlineLoadState.Failure(
+        code = WasmlineLoadState.CODE_FAILURE,
+        cause = "$description is not supported yet. Provide $resolverHint to " +
+            "resolve it into a local host-compatible artifact for the current runtime.",
+    )
 }
 
 private const val MAX_SOURCE_RESOLUTION_DEPTH = 8

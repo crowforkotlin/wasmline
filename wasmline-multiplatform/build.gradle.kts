@@ -26,6 +26,13 @@ allprojects {
 
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
+    // Exclude auto-generated sources from KtLint checks
+    ktlint {
+        filter {
+            exclude { it.file.path.contains("/build/generated/") }
+        }
+    }
+
     pluginManager.withPlugin("com.vanniktech.maven.publish") {
         configure<MavenPublishBaseExtension> {
             publishToMavenCentral(automaticRelease = true)
@@ -57,4 +64,3 @@ allprojects {
         }
     }
 }
-

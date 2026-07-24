@@ -2,9 +2,8 @@
 
 package crow.wasmline
 
-import crow.wasmline.internal.bridge.WasmlineEndpoint
-import crow.wasmline.serialization.WasmlineSerializationFactory
 import crow.wasmline.serialization.WasmlineProtobufSerializationFactory
+import crow.wasmline.serialization.WasmlineSerializationFactory
 
 /**
  * Plugin-side runtime handle.
@@ -21,9 +20,7 @@ class Wasmline private constructor() {
             serializationFactory = value
         }
 
-    internal fun call(action: String, inputBytes: ByteArray): ByteArray {
-        return WasmlineWasmBridge.callHost(action = action, payload = inputBytes)
-    }
+    internal fun call(action: String, inputBytes: ByteArray): ByteArray = WasmlineWasmBridge.callHost(action = action, payload = inputBytes)
 
     fun configure(block: WasmlineConfigurationBuilder.() -> Unit): Wasmline {
         val builder = WasmlineConfigurationBuilder(serializationFactory)

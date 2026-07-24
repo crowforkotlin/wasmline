@@ -16,18 +16,12 @@ data class WasmlineSourceResolvers(
  * Custom resolver for local package sources.
  */
 fun interface WasmlineLocalPackageResolver {
-    fun resolve(
-        source: WasmlineSource.LocalManifestPath,
-        request: WasmlineLoadRequest,
-    ): WasmlineSourceResolution
+    fun resolve(source: WasmlineSource.LocalManifestPath, request: WasmlineLoadRequest): WasmlineSourceResolution
 }
 
 /**
  * Custom resolver for remote package sources.
  */
 fun interface WasmlineRemotePackageResolver {
-    fun resolve(
-        source: WasmlineSource.RemoteManifestUrl,
-        request: WasmlineLoadRequest,
-    ): WasmlineSourceResolution
+    fun resolve(source: WasmlineSource.RemoteManifestUrl, request: WasmlineLoadRequest): WasmlineSourceResolution
 }

@@ -18,8 +18,8 @@ package crow.wasmline.loader.internal.crypto
 import okio.ByteString
 
 internal interface SignatureAlgorithm {
-  fun sign(message: ByteString, privateKey: ByteString): ByteString
+    fun sign(message: ByteString, privateKey: ByteString): ByteString
 
-  /** Returns true if [signature] with [message], can be verified with [publicKey]. */
-  fun verify(message: ByteString, signature: ByteString, publicKey: ByteString): Boolean
+    /** Returns true if [signature] with [message], can be verified with [publicKey]. */
+    fun verify(message: ByteString, signature: ByteString, publicKey: ByteString): Boolean
 }

@@ -9,29 +9,19 @@ import kotlinx.serialization.Serializable
  * its local factory through `Wasmline.get()`.
  */
 @Serializable
-data class WasmlineSerializationConfig(
-    val factoryId: String,
-    val options: Map<String, String> = emptyMap(),
-) {
+data class WasmlineSerializationConfig(val factoryId: String, val options: Map<String, String> = emptyMap()) {
     companion object {
-        fun rawBytes(
-            options: Map<String, String> = emptyMap(),
-        ): WasmlineSerializationConfig = WasmlineSerializationConfig(
+        fun rawBytes(options: Map<String, String> = emptyMap()): WasmlineSerializationConfig = WasmlineSerializationConfig(
             factoryId = WasmlineRawBytesSerializationFactory.id,
             options = options,
         )
 
-        fun protobuf(
-            options: Map<String, String> = emptyMap(),
-        ): WasmlineSerializationConfig = WasmlineSerializationConfig(
+        fun protobuf(options: Map<String, String> = emptyMap()): WasmlineSerializationConfig = WasmlineSerializationConfig(
             factoryId = WasmlineProtobufSerializationFactory.id,
             options = options,
         )
 
-        fun custom(
-            factoryId: String,
-            options: Map<String, String> = emptyMap(),
-        ): WasmlineSerializationConfig = WasmlineSerializationConfig(
+        fun custom(factoryId: String, options: Map<String, String> = emptyMap()): WasmlineSerializationConfig = WasmlineSerializationConfig(
             factoryId = factoryId,
             options = options,
         )

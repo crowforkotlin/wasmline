@@ -2,9 +2,9 @@
 
 package crow.wasmline
 
-import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.extensions.Keys
 import crow.wasmline.extensions.printHeader
+import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
@@ -33,45 +33,43 @@ class ManifestTest {
     private val privateKey = Keys.privateKey1.decodeHex()
     private val publicKey = Keys.publicKey1.decodeHex()
 
-    private fun createTestManifest(): WasmlineManifest {
-        return WasmlineManifest(
-            pluginId = "crow.wasmline.demo",
-            version = "1.0.0",
-            versionCode = 100,
-            minSdkVersion = "0.9.0",
-            buildTimestamp = Clock.System.now().toEpochMilliseconds(),
-            displayName = "Wasmline Demo Plugin",
-            author = "Crow",
-            description = "A demo plugin for testing manifest capabilities.",
-            iconUrl = "assets/icon.png",
-            homePageUrl = "https://github.com/wasmline/demo",
-            metadata = mapOf("git_hash" to "ff99aa", "compatibility" to "strict"),
-            artifacts = listOf(
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.WASM,
-                    url = "lib.wasm",
-                    sha256 = "rawwasm00112233",
-                    targetCpu = "wasmjs",
-                    targetOs = "browser"
-                ),
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.CWASM,
-                    url = "lib.cwasm",
-                    sha256 = "deadbeef12345678",
-                    targetCompilerVersion = "wasmtime-17.0",
-                    targetCpu = "arm64",
-                    targetOs = "android"
-                ),
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.PWASM,
-                    url = "lib.pwasm",
-                    sha256 = "cafebabe87654321",
-                    targetCompilerVersion = "wasmtime-17.0",
-                    is64Bit = true
-                )
-            )
-        )
-    }
+    private fun createTestManifest(): WasmlineManifest = WasmlineManifest(
+        pluginId = "crow.wasmline.demo",
+        version = "1.0.0",
+        versionCode = 100,
+        minSdkVersion = "0.9.0",
+        buildTimestamp = Clock.System.now().toEpochMilliseconds(),
+        displayName = "Wasmline Demo Plugin",
+        author = "Crow",
+        description = "A demo plugin for testing manifest capabilities.",
+        iconUrl = "assets/icon.png",
+        homePageUrl = "https://github.com/wasmline/demo",
+        metadata = mapOf("git_hash" to "ff99aa", "compatibility" to "strict"),
+        artifacts = listOf(
+            WasmlineArtifact(
+                type = WasmlineArtifactType.WASM,
+                url = "lib.wasm",
+                sha256 = "rawwasm00112233",
+                targetCpu = "wasmjs",
+                targetOs = "browser",
+            ),
+            WasmlineArtifact(
+                type = WasmlineArtifactType.CWASM,
+                url = "lib.cwasm",
+                sha256 = "deadbeef12345678",
+                targetCompilerVersion = "wasmtime-17.0",
+                targetCpu = "arm64",
+                targetOs = "android",
+            ),
+            WasmlineArtifact(
+                type = WasmlineArtifactType.PWASM,
+                url = "lib.pwasm",
+                sha256 = "cafebabe87654321",
+                targetCompilerVersion = "wasmtime-17.0",
+                is64Bit = true,
+            ),
+        ),
+    )
 
     private fun signManifest(manifest: WasmlineManifest): SignedManifestEnvelope {
         val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
@@ -79,7 +77,7 @@ class ManifestTest {
         return SignedManifestEnvelope(
             signature = signature.toByteArray(),
             manifest = manifest,
-            algorithm = "Ed25519"
+            algorithm = "Ed25519",
         )
     }
 
@@ -88,7 +86,7 @@ class ManifestTest {
         return Ed25519.verify(
             manifestBytes.toByteString(),
             envelope.signature.toByteString(),
-            key
+            key,
         )
     }
 
@@ -242,7 +240,7 @@ class ManifestTest {
 
         // Tamper with the manifest after signing
         val tampered = envelope.copy(
-            manifest = envelope.manifest.copy(pluginId = "com.evil.tampered")
+            manifest = envelope.manifest.copy(pluginId = "com.evil.tampered"),
         )
 
         val isVerified = verifyEnvelope(tampered)
@@ -284,9 +282,9 @@ class ManifestTest {
                 WasmlineArtifact(
                     type = WasmlineArtifactType.PWASM,
                     url = "lib.pwasm",
-                    sha256 = "abc123"
-                )
-            )
+                    sha256 = "abc123",
+                ),
+            ),
         )
 
         assertNull(minimal.displayName)
@@ -305,7 +303,7 @@ class ManifestTest {
         val artifact = WasmlineArtifact(
             type = WasmlineArtifactType.PWASM,
             url = "lib.pwasm",
-            sha256 = "abc123"
+            sha256 = "abc123",
         )
 
         assertNull(artifact.targetCpu)
@@ -327,8 +325,8 @@ class ManifestTest {
                 versionCode = 1,
                 minSdkVersion = "0.9.0",
                 buildTimestamp = 0L,
-                artifacts = emptyList()
-            )
+                artifacts = emptyList(),
+            ),
         )
 
         assertEquals("Ed25519", envelope.algorithm, "Default algorithm should be Ed25519")
@@ -346,7 +344,7 @@ class ManifestTest {
             val artifact = WasmlineArtifact(
                 type = type,
                 url = "lib.${type.name.lowercase()}",
-                sha256 = "hash_${type.name}"
+                sha256 = "hash_${type.name}",
             )
 
             val bytes = ProtoBuf.encodeToByteArray(WasmlineArtifact.serializer(), artifact)

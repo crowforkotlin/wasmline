@@ -142,16 +142,14 @@ class Compile : CliktCommand(name = "compile") {
             "x86-android",
             "aarch64-macos",
             "aarch64-ios",
-            "x86_64-windows"
+            "x86_64-windows",
         )
 
         /**
          * Resolve a shorthand target name to a standard Rust/LLVM triple.
          * If the input is already a full triple (or `pulley64`), it is returned as-is.
          */
-        fun normalizeTarget(target: String): String {
-            return TARGET_ALIASES[target] ?: target
-        }
+        fun normalizeTarget(target: String): String = TARGET_ALIASES[target] ?: target
 
         /**
          * Prepare the browser `.wasm` artifact and compile native target artifacts.
@@ -166,7 +164,7 @@ class Compile : CliktCommand(name = "compile") {
             outputDir: File,
             productName: String,
             targets: Collection<String>,
-            echo: (String) -> Unit
+            echo: (String) -> Unit,
         ): List<WasmlineArtifact> {
             val artifacts = mutableListOf<WasmlineArtifact>()
             copyBrowserArtifact(inputFile, outputDir, productName, echo)?.let(artifacts::add)
@@ -179,12 +177,7 @@ class Compile : CliktCommand(name = "compile") {
             return artifacts
         }
 
-        fun copyBrowserArtifact(
-            inputFile: File,
-            outputDir: File,
-            productName: String,
-            echo: (String) -> Unit
-        ): WasmlineArtifact? {
+        fun copyBrowserArtifact(inputFile: File, outputDir: File, productName: String, echo: (String) -> Unit): WasmlineArtifact? {
             val outFile = File(outputDir, "$productName.wasm")
             return try {
                 Files.copy(inputFile.toPath(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -198,7 +191,7 @@ class Compile : CliktCommand(name = "compile") {
                     sha256 = sha256Hex(outFile),
                     targetCpu = "wasmjs",
                     targetOs = "browser",
-                    is64Bit = true
+                    is64Bit = true,
                 )
             } catch (e: Exception) {
                 echo("Failed to copy browser wasm artifact: ${e.message}")
@@ -218,7 +211,7 @@ class Compile : CliktCommand(name = "compile") {
             outputDir: File,
             productName: String,
             target: String,
-            echo: (String) -> Unit
+            echo: (String) -> Unit,
         ): WasmlineArtifact? {
             val isPulley = target.contains("pulley")
             val extension = if (isPulley) "pwasm" else "cwasm"
@@ -247,7 +240,7 @@ class Compile : CliktCommand(name = "compile") {
                 "-O", "dynamic-memory-guard-size=0",
                 "-O", "signals-based-traps=n",
                 "-O", "opt-level=2",
-                "-C", "cranelift-debug-verifier=no"
+                "-C", "cranelift-debug-verifier=no",
             )
 
             return try {
@@ -270,7 +263,7 @@ class Compile : CliktCommand(name = "compile") {
                         targetCpu = cpu,
                         targetOs = os,
                         targetCompilerVersion = "wasmtime-${BuildConfig.WASMTIME_VERSION}",
-                        is64Bit = target.contains("64") || target.contains("aarch64")
+                        is64Bit = target.contains("64") || target.contains("aarch64"),
                     )
                 } else {
                     echo("Failed to compile for $target (Exit Code: $exitCode)")
@@ -292,7 +285,7 @@ class Compile : CliktCommand(name = "compile") {
             val result = CompileResult(
                 wasmtimeVersion = BuildConfig.WASMTIME_VERSION,
                 inputFile = inputFile.name,
-                artifacts = artifacts
+                artifacts = artifacts,
             )
             File(debugDir, COMPILE_RESULT_FILE).writeText(baseJson.encodeToString(result))
         }
@@ -312,15 +305,13 @@ class Compile : CliktCommand(name = "compile") {
             return cpu to normalizeOs(rawOs)
         }
 
-        private fun normalizeOs(raw: String): String {
-            return when {
-                "android" in raw -> "android"
-                "darwin" in raw -> "macos"
-                "ios" in raw -> "ios"
-                "linux" in raw -> "linux"
-                "windows" in raw -> "windows"
-                else -> raw
-            }
+        private fun normalizeOs(raw: String): String = when {
+            "android" in raw -> "android"
+            "darwin" in raw -> "macos"
+            "ios" in raw -> "ios"
+            "linux" in raw -> "linux"
+            "windows" in raw -> "windows"
+            else -> raw
         }
 
         fun sha256Hex(file: File): String {

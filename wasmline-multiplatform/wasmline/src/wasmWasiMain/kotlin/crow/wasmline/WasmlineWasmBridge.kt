@@ -1,6 +1,7 @@
 @file:OptIn(
-    ExperimentalWasmInterop::class, UnsafeWasmMemoryApi::class,
-    ExperimentalSerializationApi::class
+    ExperimentalWasmInterop::class,
+    UnsafeWasmMemoryApi::class,
+    ExperimentalSerializationApi::class,
 )
 @file:Suppress("FunctionName", "SpellCheckingInspection")
 
@@ -69,7 +70,9 @@ internal object WasmlineWasmBridge {
         withScopedMemoryAllocator { allocator ->
             val size = result.size
             val pointer = allocator.allocate(size)
-            for (i in 0 until size) { (pointer + i).storeByte(result[i]) }
+            for (i in 0 until size) {
+                (pointer + i).storeByte(result[i])
+            }
             bridge_inbound_set_response(pointer.address.toInt(), size)
         }
     }
@@ -110,9 +113,12 @@ internal object WasmlineWasmBridge {
 
             // Invoke the host and let it decide whether the fast-path buffer is sufficient.
             val resultStatus = bridge_outbound_call_host(
-                aPtrAddress, actionBytes.size,
-                pPtrAddress, payload.size,
-                tempResultPtr.address.toInt(), PRE_ALLOC_SIZE
+                aPtrAddress,
+                actionBytes.size,
+                pPtrAddress,
+                payload.size,
+                tempResultPtr.address.toInt(),
+                PRE_ALLOC_SIZE,
             )
 
             if (resultStatus >= 0) {
@@ -125,7 +131,6 @@ internal object WasmlineWasmBridge {
                     result[i] = (tempResultPtr + i).loadByte()
                 }
                 return result
-
             } else {
                 // Slow path: allocate the exact buffer size and fetch the full response.
                 val neededSize = -resultStatus

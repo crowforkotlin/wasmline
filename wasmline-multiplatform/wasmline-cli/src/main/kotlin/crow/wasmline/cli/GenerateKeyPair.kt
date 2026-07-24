@@ -31,9 +31,7 @@ import crow.wasmline.loader.internal.crypto.generateKeyPair
 import java.io.File
 import java.io.PrintStream
 
-class GenerateKeyPair(
-    private val out: PrintStream = System.out,
-) : CliktCommand(NAME) {
+class GenerateKeyPair(private val out: PrintStream = System.out) : CliktCommand(NAME) {
 
     private val algorithm by option("-a", "--algorithm")
         .enum<SignatureAlgorithmId>()
@@ -59,7 +57,7 @@ class GenerateKeyPair(
       |ALGORITHM: $algorithm
       |PUBLIC KEY: $publicKeyHex
       |PRIVATE KEY: $privateKeyHex
-      """.trimMargin(),
+            """.trimMargin(),
         )
 
         if (save) {

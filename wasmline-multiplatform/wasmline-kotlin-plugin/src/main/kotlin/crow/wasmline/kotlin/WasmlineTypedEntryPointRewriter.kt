@@ -6,9 +6,9 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irNull
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -30,9 +29,7 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 /**
  * Rewrites typed Wasmline entrypoints such as `link()` and `bind()` into generated bridge usage.
  */
-internal class WasmlineTypedEntryPointRewriter(
-    private val messageCollector: MessageCollector,
-) {
+internal class WasmlineTypedEntryPointRewriter(private val messageCollector: MessageCollector) {
     /** Walks the module and rewrites typed entrypoints in-place after bridge generation. */
     fun rewrite(
         moduleFragment: IrModuleFragment,
@@ -168,8 +165,8 @@ internal class WasmlineTypedEntryPointRewriter(
                             file,
                             ownerDeclaration,
                             "Unable to resolve a concrete Wasmline service contract for bind(implementation). " +
-                                "Implementation type ${implementationType.renderForDiagnostics()} does not implement a WasmlineService interface. " +
-                                "Use bind(Contract::class, implementation) to disambiguate.",
+                                "Implementation type ${implementationType.renderForDiagnostics()} does not implement a " +
+                                "WasmlineService interface. Use bind(Contract::class, implementation) to disambiguate.",
                         )
                         null
                     }
@@ -214,22 +211,17 @@ internal fun buildBindBridge(
 }
 
 /** Reads the implementation argument for the currently supported bind overloads. */
-internal fun bindImplementationArgument(
-    call: IrCall,
-    runtimeSymbols: WasmlineRuntimeSymbols,
-): IrExpression? {
-    return when {
-        runtimeSymbols.isHostBindContractCall(call.symbol) || runtimeSymbols.isTopLevelBindContractCall(call.symbol) -> {
-            call.regularValueArgument(1)
-        }
-
-        runtimeSymbols.isHostBindSingleCall(call.symbol) ||
-            runtimeSymbols.isTopLevelBindSingleCall(call.symbol) -> {
-            call.regularValueArgument(0)
-        }
-
-        else -> null
+internal fun bindImplementationArgument(call: IrCall, runtimeSymbols: WasmlineRuntimeSymbols): IrExpression? = when {
+    runtimeSymbols.isHostBindContractCall(call.symbol) || runtimeSymbols.isTopLevelBindContractCall(call.symbol) -> {
+        call.regularValueArgument(1)
     }
+
+    runtimeSymbols.isHostBindSingleCall(call.symbol) ||
+        runtimeSymbols.isTopLevelBindSingleCall(call.symbol) -> {
+        call.regularValueArgument(0)
+    }
+
+    else -> null
 }
 
 /** Returns the regular value argument at the requested logical index. */
@@ -262,9 +254,7 @@ private fun DeclarationIrBuilder.generatedSerializationFactory(
     )
 }
 
-private fun DeclarationIrBuilder.currentGeneratedSerializationFactory(
-    runtimeSymbols: WasmlineRuntimeSymbols,
-): IrExpression? {
+private fun DeclarationIrBuilder.currentGeneratedSerializationFactory(runtimeSymbols: WasmlineRuntimeSymbols): IrExpression? {
     val function = runtimeSymbols.currentGeneratedSerializationFactoryFunction ?: return null
     return irInvoke(
         null,
@@ -274,6 +264,5 @@ private fun DeclarationIrBuilder.currentGeneratedSerializationFactory(
 }
 
 /** Resolves a class literal expression such as `Foo::class` back to its contract type. */
-internal fun IrExpression.classLiteralContract(): IrClass? {
-    return (((this as? IrClassReference)?.symbol) as? IrClassSymbol)?.owner?.asWasmlineServiceContract()
-}
+internal fun IrExpression.classLiteralContract(): IrClass? =
+    (((this as? IrClassReference)?.symbol) as? IrClassSymbol)?.owner?.asWasmlineServiceContract()

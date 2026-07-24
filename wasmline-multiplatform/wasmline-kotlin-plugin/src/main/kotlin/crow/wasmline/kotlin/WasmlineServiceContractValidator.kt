@@ -21,9 +21,7 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 /**
  * Finds Wasmline service contracts and validates the currently supported bridge rules.
  */
-internal class WasmlineServiceContractValidator(
-    private val messageCollector: MessageCollector,
-) {
+internal class WasmlineServiceContractValidator(private val messageCollector: MessageCollector) {
     /** Recursively collects interface declarations that ultimately extend `WasmlineService`. */
     fun scanContracts(container: IrDeclarationContainer, contracts: MutableList<IrClass>) {
         container.declarations.forEach { declaration ->
@@ -131,15 +129,14 @@ internal class WasmlineServiceContractValidator(
     }
 
     @OptIn(UnsafeDuringIrConstructionAPI::class)
-    private fun IrClass.isWasmlineServiceContract(
-        visited: MutableSet<IrClassSymbol> = mutableSetOf(),
-    ): Boolean {
+    private fun IrClass.isWasmlineServiceContract(visited: MutableSet<IrClassSymbol> = mutableSetOf()): Boolean {
         if (!visited.add(symbol)) return false
         return superTypes.any { superType ->
             val superClassSymbol = superType.classifierOrNull as? IrClassSymbol ?: return@any false
             val superClass = superClassSymbol.owner
             val superFqName = superClass.fqNameWhenAvailable?.asString()
-            superFqName == WASMLINE_SERVICE_FQ_NAME || (superClass.kind == ClassKind.INTERFACE && superClass.isWasmlineServiceContract(visited))
+            superFqName == WASMLINE_SERVICE_FQ_NAME ||
+                (superClass.kind == ClassKind.INTERFACE && superClass.isWasmlineServiceContract(visited))
         }
     }
 
@@ -154,12 +151,16 @@ internal class WasmlineServiceContractValidator(
 
 /** Returns this class only when it is a concrete Wasmline service contract interface. */
 internal fun IrClass.asWasmlineServiceContract(): IrClass? {
-    return takeIf { kind == ClassKind.INTERFACE && superTypes.any { superType ->
-        val superClassSymbol = superType.classifierOrNull as? IrClassSymbol ?: return@any false
-        val superClass = superClassSymbol.owner
-        val superFqName = superClass.fqNameWhenAvailable?.asString()
-        superFqName == "crow.wasmline.WasmlineService" || (superClass.kind == ClassKind.INTERFACE && superClass.asWasmlineServiceContract() != null)
-    } }
+    return takeIf {
+        kind == ClassKind.INTERFACE &&
+            superTypes.any { superType ->
+                val superClassSymbol = superType.classifierOrNull as? IrClassSymbol ?: return@any false
+                val superClass = superClassSymbol.owner
+                val superFqName = superClass.fqNameWhenAvailable?.asString()
+                superFqName == "crow.wasmline.WasmlineService" ||
+                    (superClass.kind == ClassKind.INTERFACE && superClass.asWasmlineServiceContract() != null)
+            }
+    }
 }
 
 /** Resolves a type back to its Wasmline service contract, if one exists. */
@@ -180,10 +181,7 @@ private fun IrClass.implementedWasmlineServiceContracts(): Set<IrClass> {
     return result
 }
 
-private fun IrClass.collectImplementedWasmlineServiceContracts(
-    result: MutableSet<IrClass>,
-    visited: MutableSet<IrClassSymbol>,
-) {
+private fun IrClass.collectImplementedWasmlineServiceContracts(result: MutableSet<IrClass>, visited: MutableSet<IrClassSymbol>) {
     if (!visited.add(symbol)) return
     asWasmlineServiceContract()?.let { result += it }
     superTypes.mapNotNull { it.classifierOrNull as? IrClassSymbol }

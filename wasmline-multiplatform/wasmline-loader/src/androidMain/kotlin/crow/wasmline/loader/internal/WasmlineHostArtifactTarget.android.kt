@@ -9,10 +9,8 @@ internal actual val currentHostArtifactTarget: WasmlineHostArtifactTarget
         is64Bit = Process.is64Bit(),
     )
 
-private fun normalizeAndroidCpu(arch: String?): String {
-    return when (arch?.lowercase()) {
-        "amd64", "x86_64" -> "x86_64"
-        "arm64", "aarch64" -> "aarch64"
-        else -> arch?.lowercase() ?: "unknown"
-    }
+private fun normalizeAndroidCpu(arch: String?): String = when (arch?.lowercase()) {
+    "amd64", "x86_64" -> "x86_64"
+    "arm64", "aarch64" -> "aarch64"
+    else -> arch?.lowercase() ?: "unknown"
 }

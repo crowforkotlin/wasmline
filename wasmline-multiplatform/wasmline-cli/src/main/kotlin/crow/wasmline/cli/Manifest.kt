@@ -116,7 +116,7 @@ class Manifest : CliktCommand(name = "manifest") {
             iconUrl = iconUrl,
             homePageUrl = homeUrl,
             buildTimestamp = System.currentTimeMillis(),
-            artifacts = compileResult.artifacts
+            artifacts = compileResult.artifacts,
         )
 
         // 3. Signature
@@ -129,7 +129,7 @@ class Manifest : CliktCommand(name = "manifest") {
         val envelope = SignedManifestEnvelope(
             signature = signature.toByteArray(),
             manifest = manifest,
-            algorithm = "Ed25519"
+            algorithm = "Ed25519",
         )
 
         // 4. Export manifest.wlm to the product directory (same level as .wasm/.cwasm/.pwasm)

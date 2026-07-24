@@ -18,17 +18,14 @@ class WasmlineServiceRuntimeTest {
         override fun echo(message: String): String = "echo:$message"
     }
 
-    private class EchoServiceBridge private constructor(
-        private val endpoint: WasmlineEndpoint,
-        private val implementation: EchoService?,
-    ) : EchoService, WasmlineGeneratedBridge {
+    private class EchoServiceBridge private constructor(private val endpoint: WasmlineEndpoint, private val implementation: EchoService?) :
+        EchoService,
+        WasmlineGeneratedBridge {
         constructor(endpoint: WasmlineEndpoint) : this(endpoint, null)
 
         constructor(implementation: EchoService) : this(UnlinkedWasmlineEndpoint, implementation)
 
-        override fun echo(message: String): String {
-            return endpoint.invoke(ECHO_ACTION, message.encodeToByteArray()).decodeToString()
-        }
+        override fun echo(message: String): String = endpoint.invoke(ECHO_ACTION, message.encodeToByteArray()).decodeToString()
 
         override fun bind(registerAction: (String, (ByteArray) -> ByteArray) -> Unit) {
             registerAction(ECHO_ACTION) { payload ->

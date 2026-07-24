@@ -5,7 +5,6 @@ package crow.wasmline.loader.internal
 import crow.wasmline.WasmlineCache
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineLog
-import crow.wasmline.network.WasmlineNetworkClient
 import crow.wasmline.WasmlineTrustedKeys
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
@@ -14,6 +13,7 @@ import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.network.WasmlineNetworkClient
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.toByteString
@@ -28,10 +28,7 @@ import okio.ByteString.Companion.toByteString
 internal object WasmlineRemotePackageResolution {
     private const val P = "[WasmlineRemotePackageResolution]"
 
-    fun resolve(
-        source: WasmlineSource.RemoteManifestUrl,
-        request: WasmlineLoadRequest,
-    ): WasmlineSourceResolution {
+    fun resolve(source: WasmlineSource.RemoteManifestUrl, request: WasmlineLoadRequest): WasmlineSourceResolution {
         val networkClient = request.config.networkClient
             ?: return failure("No network client configured for remote package '${source.url}'. Provide request.config.networkClient.")
 
@@ -145,7 +142,7 @@ internal object WasmlineRemotePackageResolution {
                         val ts = parseTimestamp(tsData)
                         if (ts != null && (currentTimeMs() - ts.fetchTimeMs) <= ts.ttlMs) {
                             log?.debug("$P Manifest cache hit: $manifestCacheKey")
-                            return cached  // Cache hit, not expired
+                            return cached // Cache hit, not expired
                         }
                     }
                     // Stale — invalidate
@@ -154,7 +151,7 @@ internal object WasmlineRemotePackageResolution {
                     fileCache.delete(manifestTsKey)
                 } else {
                     log?.debug("$P Manifest cache hit: $manifestCacheKey")
-                    return cached  // No TTL checking, cache hit
+                    return cached // No TTL checking, cache hit
                 }
             }
         }
@@ -199,10 +196,7 @@ internal object WasmlineRemotePackageResolution {
         }
     }
 
-    private fun fetchBytes(
-        networkClient: WasmlineNetworkClient,
-        url: String,
-    ): ByteArray? {
+    private fun fetchBytes(networkClient: WasmlineNetworkClient, url: String): ByteArray? {
         return try {
             val response = networkClient.fetch(url)
             if (!response.isSuccess) {
@@ -275,11 +269,7 @@ internal object WasmlineRemotePackageResolution {
         }
     }
 
-    private fun writeCachedArtifact(
-        bytes: ByteArray,
-        artifact: WasmlineArtifact,
-        cacheKey: String,
-    ): String? {
+    private fun writeCachedArtifact(bytes: ByteArray, artifact: WasmlineArtifact, cacheKey: String): String? {
         val cacheDir = defaultCacheDirectory() ?: return null
         val extension = when (artifact.type) {
             crow.wasmline.loader.model.WasmlineArtifactType.WASM -> ".wasm"
@@ -300,12 +290,10 @@ internal object WasmlineRemotePackageResolution {
         return "${target.os}/${target.cpu} ($bitness)"
     }
 
-    private fun failure(cause: String): WasmlineSourceResolution.Complete {
-        return WasmlineSourceResolution.Complete(
-            WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = cause,
-            ),
-        )
-    }
+    private fun failure(cause: String): WasmlineSourceResolution.Complete = WasmlineSourceResolution.Complete(
+        WasmlineLoadState.Failure(
+            code = WasmlineLoadState.CODE_FAILURE,
+            cause = cause,
+        ),
+    )
 }

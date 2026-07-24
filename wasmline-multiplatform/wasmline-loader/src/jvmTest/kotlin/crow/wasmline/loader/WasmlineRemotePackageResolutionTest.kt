@@ -4,9 +4,7 @@ package crow.wasmline.loader
 
 import crow.wasmline.WasmlineCache
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.network.WasmlineHttpResponse
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.network.WasmlineNetworkClient
 import crow.wasmline.WasmlineNoOpCache
 import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.extensions.Keys
@@ -15,6 +13,8 @@ import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.network.WasmlineHttpResponse
+import crow.wasmline.network.WasmlineNetworkClient
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.decodeHex
@@ -30,21 +30,16 @@ class WasmlineRemotePackageResolutionTest {
     private val privateKey = Keys.privateKey1.decodeHex()
     private val publicKey = Keys.publicKey1.decodeHex()
 
-    private fun createTestManifest(artifacts: List<WasmlineArtifact>): WasmlineManifest {
-        return WasmlineManifest(
-            pluginId = "crow.wasmline.test",
-            version = "1.0.0",
-            versionCode = 1,
-            minSdkVersion = "0.9.0",
-            buildTimestamp = Clock.System.now().toEpochMilliseconds(),
-            artifacts = artifacts,
-        )
-    }
+    private fun createTestManifest(artifacts: List<WasmlineArtifact>): WasmlineManifest = WasmlineManifest(
+        pluginId = "crow.wasmline.test",
+        version = "1.0.0",
+        versionCode = 1,
+        minSdkVersion = "0.9.0",
+        buildTimestamp = Clock.System.now().toEpochMilliseconds(),
+        artifacts = artifacts,
+    )
 
-    private fun signAndEncodeEnvelope(
-        manifest: WasmlineManifest,
-        publicKeyId: String? = null,
-    ): ByteArray {
+    private fun signAndEncodeEnvelope(manifest: WasmlineManifest, publicKeyId: String? = null): ByteArray {
         val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
         val signature = Ed25519.sign(manifestBytes.toByteString(), privateKey)
         val envelope = SignedManifestEnvelope(
@@ -56,13 +51,9 @@ class WasmlineRemotePackageResolutionTest {
         return ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
     }
 
-    private fun fakeArtifactBytes(): ByteArray {
-        return "fake compiled wasm artifact content for testing".encodeToByteArray()
-    }
+    private fun fakeArtifactBytes(): ByteArray = "fake compiled wasm artifact content for testing".encodeToByteArray()
 
-    private fun fakeArtifactSha256(): String {
-        return fakeArtifactBytes().toByteString().sha256().hex()
-    }
+    private fun fakeArtifactSha256(): String = fakeArtifactBytes().toByteString().sha256().hex()
 
     // ========== Tests ==========
 
@@ -364,6 +355,8 @@ private class InMemoryCache : WasmlineCache {
     private val store = mutableMapOf<String, ByteArray>()
 
     override fun get(key: String): ByteArray? = store[key]
-    override fun put(key: String, bytes: ByteArray) { store[key] = bytes }
+    override fun put(key: String, bytes: ByteArray) {
+        store[key] = bytes
+    }
     override fun exists(key: String): Boolean = store.containsKey(key)
 }

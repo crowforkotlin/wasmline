@@ -12,9 +12,7 @@ object WasmlineSerializationRegistry {
 
     fun factoryOrNull(id: String): WasmlineSerializationFactory? = factories[id]
 
-    fun requireFactory(id: String): WasmlineSerializationFactory {
-        return requireNotNull(factoryOrNull(id)) {
-            "No Wasmline serialization factory is registered for '$id'."
-        }
+    fun requireFactory(id: String): WasmlineSerializationFactory = requireNotNull(factoryOrNull(id)) {
+        "No Wasmline serialization factory is registered for '$id'."
     }
 }

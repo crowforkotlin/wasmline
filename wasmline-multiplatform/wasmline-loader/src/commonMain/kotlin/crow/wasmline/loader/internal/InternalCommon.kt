@@ -30,9 +30,7 @@ internal expect val ecdsaP256: SignatureAlgorithm
 
 internal expect val systemEpochMsClock: () -> Long
 
-internal fun SignatureAlgorithmId.get(): SignatureAlgorithm {
-  return when (this) {
+internal fun SignatureAlgorithmId.get(): SignatureAlgorithm = when (this) {
     SignatureAlgorithmId.Ed25519 -> Ed25519
     SignatureAlgorithmId.EcdsaP256 -> ecdsaP256
-  }
 }

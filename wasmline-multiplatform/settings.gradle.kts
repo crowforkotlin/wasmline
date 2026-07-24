@@ -8,7 +8,7 @@ pluginManagement {
         mavenLocal()
         google {
             content {
-                includeGroupByRegex(    "com\\.android.*")
+                includeGroupByRegex("com\\.android.*")
                 includeGroupByRegex("androidx.*")
                 includeGroupByRegex("com\\.google.*")
             }
@@ -36,7 +36,7 @@ dependencyResolutionManagement {
     }
 }
 
-/////////////  Auto include module  ///////////
+// ///////////  Auto include module  ///////////
 
 // When you need to delete a module, write this, and you will no longer include it, just write the module name
 val excludeList: List<String> = listOf()
@@ -54,17 +54,15 @@ fun includeModule(topName: String, file: File) {
         }
     }
     file.listFiles()?.filter {
-        it.name != "src"
-                && it.name != "build"
-                && it.name != "iosApp"
-                && !it.resolve("settings.gradle.kts").exists()
-                && !excludeList.contains(it.name)
+        it.name != "src" &&
+            it.name != "build" &&
+            it.name != "iosApp" &&
+            !it.resolve("settings.gradle.kts").exists() &&
+            !excludeList.contains(it.name)
     }?.forEach {
         includeModule(topName, it)
     }
 }
-
-
 
 // includeModule(topName = "wasmline-sample", file = file("wasmline-sample"))
 includeModule(topName = "wasmline", file = file("wasmline"))

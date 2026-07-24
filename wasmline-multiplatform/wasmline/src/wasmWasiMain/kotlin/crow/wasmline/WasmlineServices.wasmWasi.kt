@@ -8,18 +8,12 @@ import crow.wasmline.serialization.WasmlineSerializationFactory
 import kotlin.reflect.KClass
 
 @PublishedApi
-internal class GeneratedWasmlineHostEndpoint(
-    private val wasmline: Wasmline,
-) : WasmlineEndpoint {
-    override fun invoke(action: String, payload: ByteArray): ByteArray {
-        return wasmline.call(action, payload)
-    }
+internal class GeneratedWasmlineHostEndpoint(private val wasmline: Wasmline) : WasmlineEndpoint {
+    override fun invoke(action: String, payload: ByteArray): ByteArray = wasmline.call(action, payload)
 }
 
 @PublishedApi
-internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFactory {
-    return serializationFactory
-}
+internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFactory = serializationFactory
 
 @PublishedApi
 internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {

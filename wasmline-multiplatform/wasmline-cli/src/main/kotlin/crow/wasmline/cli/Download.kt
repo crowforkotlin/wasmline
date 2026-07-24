@@ -16,7 +16,6 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.request.prepareRequest
 import io.ktor.client.statement.bodyAsChannel
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readAvailable
@@ -238,7 +237,7 @@ class Download : CliktCommand(name = "download") {
             if (result != null) return result
         }
         throw IllegalStateException(
-            "Unable to resolve wasmtime release for '$version'. Tried: ${failures.joinToString("; ")}"
+            "Unable to resolve wasmtime release for '$version'. Tried: ${failures.joinToString("; ")}",
         )
     }
 
@@ -249,7 +248,7 @@ class Download : CliktCommand(name = "download") {
             "release-v$base",
             "v$base",
             raw,
-            "release-$raw"
+            "release-$raw",
         ).distinct()
     }
 
@@ -361,12 +360,10 @@ class Download : CliktCommand(name = "download") {
      * @author crowforkotlin
      * @formatter:on
      */
-    private fun formatSize(bytes: Long): String {
-        return when {
-            bytes >= 1024 * 1024 -> "%.2f MB".format(bytes / (1024.0 * 1024.0))
-            bytes >= 1024 -> "%.2f KB".format(bytes / 1024.0)
-            else -> "$bytes B"
-        }
+    private fun formatSize(bytes: Long): String = when {
+        bytes >= 1024 * 1024 -> "%.2f MB".format(bytes / (1024.0 * 1024.0))
+        bytes >= 1024 -> "%.2f KB".format(bytes / 1024.0)
+        else -> "$bytes B"
     }
 
     /**
@@ -376,9 +373,7 @@ class Download : CliktCommand(name = "download") {
      * @author crowforkotlin
      * @formatter:on
      */
-    private fun detectPlatform(): String {
-        return DownloadPlatformDetector.detectPlatform()
-    }
+    private fun detectPlatform(): String = DownloadPlatformDetector.detectPlatform()
 
     companion object {
         const val BASE_URL = "https://api.github.com/repos/crowforkotlin/wasmtime/releases"

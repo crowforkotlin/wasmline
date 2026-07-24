@@ -5,15 +5,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.maven.publish)
+    alias(libs.plugins.ktlint)
     application
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+// Exclude auto-generated sources from KtLint checks
+ktlint {
+    filter {
+        exclude("**/generated/**")
     }
 }
-
 
 buildConfig {
     useKotlinOutput { internalVisibility = true }

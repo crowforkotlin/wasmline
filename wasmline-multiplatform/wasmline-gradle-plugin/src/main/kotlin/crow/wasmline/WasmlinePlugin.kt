@@ -7,7 +7,6 @@ import crow.wasmline.gradle.extensions.WasmlineExtension
 import crow.wasmline.gradle.tasks.WasmlineAssembleTask
 import crow.wasmline.gradle.tasks.WasmlineServerDeployTask
 import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
-import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
@@ -59,8 +58,8 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         version = BuildConfig.KOTLIN_PLUGIN_VERSION,
     )
 
-    override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
-        return kotlinCompilation.target.project.provider {
+    override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> =
+        kotlinCompilation.target.project.provider {
             listOf(
                 SubpluginOption(
                     key = ENABLE_WASI_INIT_EXPORT_OPTION,
@@ -68,7 +67,6 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
                 ),
             )
         }
-    }
 
     override fun apply(target: Project) {
         // 1. Register the DSL extension
@@ -105,12 +103,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
-    private fun configureAssembleTask(
-        task: WasmlineAssembleTask,
-        project: Project,
-        ext: WasmlineExtension,
-        libraryDir: String,
-    ) {
+    private fun configureAssembleTask(task: WasmlineAssembleTask, project: Project, ext: WasmlineExtension, libraryDir: String) {
         val manifestExt = ext.manifest
 
         // Manifest metadata
@@ -134,12 +127,12 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         // execution time (after the Kotlin/WasmWasi compilation task has run).
         // Layout: build/compileSync/wasmWasi/main/{variant}Library/optimized/
         task.wasmCompileOutputDir.set(
-            project.layout.buildDirectory.dir("compileSync/wasmWasi/main/$libraryDir/optimized")
+            project.layout.buildDirectory.dir("compileSync/wasmWasi/main/$libraryDir/optimized"),
         )
 
         // Output directory: build/wasmline/output/
         task.outputDir.set(
-            project.layout.buildDirectory.dir("wasmline/output")
+            project.layout.buildDirectory.dir("wasmline/output"),
         )
     }
 
@@ -160,17 +153,16 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             val pluginId = ext.manifest.pluginId.orNull ?: "unknown"
             val version = ext.manifest.version.getOrElse("1.0.0")
             task.serveDirectory.set(
-                project.layout.buildDirectory.dir("wasmline/output/$pluginId-$version")
+                project.layout.buildDirectory.dir("wasmline/output/$pluginId-$version"),
             )
         }
     }
 
     // ==================== Existing helpers ====================
 
-    private fun shouldEnableWasiInitExport(kotlinCompilation: KotlinCompilation<*>): Boolean {
-        return kotlinCompilation.target.platformType == KotlinPlatformType.wasm &&
-                kotlinCompilation.defaultSourceSet.name == "wasmWasiMain"
-    }
+    private fun shouldEnableWasiInitExport(kotlinCompilation: KotlinCompilation<*>): Boolean =
+        kotlinCompilation.target.platformType == KotlinPlatformType.wasm &&
+            kotlinCompilation.defaultSourceSet.name == "wasmWasiMain"
 
     private fun createGenerateKeyPairTasks(project: Project) {
         project.tasks.register("generateWasmlineManifestKeyPairEd25519") { task ->

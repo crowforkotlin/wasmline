@@ -24,15 +24,9 @@ fun interface WasmlineTrustedKeys {
  * 1. Exact match on `(algorithm, keyId)`
  * 2. Wildcard match on `(algorithm, null)` — any keyId accepted for this algorithm
  */
-class WasmlineTrustedKeySet private constructor(
-    private val entries: List<TrustedKeyEntry>,
-) : WasmlineTrustedKeys {
+class WasmlineTrustedKeySet private constructor(private val entries: List<TrustedKeyEntry>) : WasmlineTrustedKeys {
 
-    private data class TrustedKeyEntry(
-        val algorithm: String,
-        val keyId: String?,
-        val publicKey: ByteArray,
-    ) {
+    private data class TrustedKeyEntry(val algorithm: String, val keyId: String?, val publicKey: ByteArray) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is TrustedKeyEntry) return false
@@ -62,9 +56,8 @@ class WasmlineTrustedKeySet private constructor(
             return this
         }
 
-        fun addHex(algorithm: String, keyId: String?, publicKeyHex: String): Builder {
-            return add(algorithm, keyId, publicKeyHex.decodeHexToByteArray())
-        }
+        fun addHex(algorithm: String, keyId: String?, publicKeyHex: String): Builder =
+            add(algorithm, keyId, publicKeyHex.decodeHexToByteArray())
 
         fun build(): WasmlineTrustedKeySet = WasmlineTrustedKeySet(entries.toList())
     }

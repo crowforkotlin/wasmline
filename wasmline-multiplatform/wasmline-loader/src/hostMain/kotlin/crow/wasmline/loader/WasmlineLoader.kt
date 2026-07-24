@@ -61,10 +61,7 @@ object WasmlineLoader {
      * @param config Unified configuration for runtime, network, cache, and trusted keys.
      * @return [WasmlineLoadResult.Success] with a [Wasmline] instance, or [WasmlineLoadResult.Failure].
      */
-    fun load(
-        source: WasmlineSource,
-        config: WasmlineConfig = WasmlineConfig(),
-    ): WasmlineLoadResult {
+    fun load(source: WasmlineSource, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult {
         val request = WasmlineLoadRequest(source = source, config = config)
         return loadInternal(request).toResult()
     }
@@ -76,13 +73,10 @@ object WasmlineLoader {
      * - Ends with `.pwasm`, `.cwasm`, or `.wasm` → [WasmlineSource.LocalArtifactPath]
      * - Otherwise → [WasmlineSource.LocalManifestPath]
      */
-    fun load(
-        source: String,
-        config: WasmlineConfig = WasmlineConfig(),
-    ): WasmlineLoadResult {
+    fun load(source: String, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult {
         val input = source.trim()
         val wasmlineSource = when {
-            input.startsWith(prefix=  "http://") || input.startsWith("https://") ->
+            input.startsWith(prefix = "http://") || input.startsWith("https://") ->
                 WasmlineSource.RemoteManifestUrl(url = input)
             input.endsWith(".pwasm") || input.endsWith(".cwasm") || input.endsWith(".wasm") ->
                 WasmlineSource.LocalArtifactPath(path = input)
@@ -92,17 +86,13 @@ object WasmlineLoader {
         return load(source = wasmlineSource, config = config)
     }
 
-    private fun loadInternal(request: WasmlineLoadRequest): WasmlineLoadState {
-        return DefaultWasmlineLoader.load(request)
-    }
+    private fun loadInternal(request: WasmlineLoadRequest): WasmlineLoadState = DefaultWasmlineLoader.load(request)
 }
 
 /**
  * Convert internal [WasmlineLoadState] to public [WasmlineLoadResult].
  */
-private fun WasmlineLoadState.toResult(): WasmlineLoadResult {
-    return when (this) {
-        is WasmlineLoadState.Success -> WasmlineLoadResult.Success(wasmline = this.wasmline)
-        is WasmlineLoadState.Failure -> WasmlineLoadResult.Failure(cause = this.cause)
-    }
+private fun WasmlineLoadState.toResult(): WasmlineLoadResult = when (this) {
+    is WasmlineLoadState.Success -> WasmlineLoadResult.Success(wasmline = this.wasmline)
+    is WasmlineLoadState.Failure -> WasmlineLoadResult.Failure(cause = this.cause)
 }

@@ -34,6 +34,7 @@ node ./scripts/init-wasmtime.mjs         # Node.js 18+
 ```
 
 All three are functionally equivalent. Support:
+
 - Interactive platform/architecture selection
 - Configurable concurrent downloads
 - Optional proxy (first argument, e.g., `127.0.0.1:7890`)
@@ -46,7 +47,7 @@ Do not assume assets exist on any machine. Skip if `doctor.sh` confirms presence
 ## Repository Structure
 
 | Directory | Description |
-|---|---|
+| --- | --- |
 | `wasmline-core/` | Native Wasmtime Bridge (C/C++): Engine, Module, Session, Api |
 | `wasmline-multiplatform/` | Kotlin Multiplatform main project (standalone Gradle) |
 | `wasmline-multiplatform/wasmline/` | Core runtime library (multi-platform source sets) |
@@ -68,12 +69,15 @@ Do not assume assets exist on any machine. Skip if `doctor.sh` confirms presence
 ### Runtime / Bridge
 
 **C/C++ Layer:**
+
 - `wasmline-core/include/Engine.h`, `src/Engine.cpp`, `src/Module.cpp`, `src/Session.cpp`, `src/Api.cpp`
 
 **Kotlin Bridge Layer:**
+
 - `wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/` — GeneratedBridge, GeneratedSerialization, Endpoint, HostDispatcher, Payload
 
 **Tests:**
+
 - `wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt`
 
 ### Kotlin Runtime API
@@ -112,6 +116,7 @@ Core concepts: `WasmlineEndpoint`, `WasmlineGeneratedBridge`, `bindGeneratedBrid
 - `wasmline/src/jniMain/native/`, `src/jvmMain/native/`
 
 Build (only on explicit user instruction):
+
 ```bash
 cd wasmline-multiplatform/wasmline
 zig build --release=small -p src/jvmMain/resources
@@ -134,11 +139,13 @@ zig build --release=small -p src/jvmMain/resources
 - `**/build/` — Build outputs
 
 IR test notes:
+
 - Snapshots are auto-generated and auto-compared.
 - First run may fail (missing snapshots); second run passes.
 - Never manually edit snapshots for logic changes.
 
 Box test workflow:
+
 1. Create `.kt` under `testData/box/`
 2. `./gradlew :wasmline-kotlin-plugin:generateTests`
 3. Run tests → snapshots auto-generate
@@ -201,14 +208,45 @@ Workflow: `.github/workflows/ci.yml`
 
 **Trigger:** push to `main` / PR to `main` (ignores docs-only changes)
 
-**Single Ubuntu runner, sequential steps:**
+### Job Structure (4 parallel/sequential lanes)
 
-1. Setup toolchain (JBR 21, Zig 0.15.1, MinGW-w64, Android NDK)
-2. Download wasmtime platform assets (`init-wasmtime.sh`)
-3. Build native libraries (`build-native-assets.sh`)
-4. Format check (ktlint + clang-format)
-5. Compile all targets (JVM, Desktop, Android, WasmJs, Js, WasmWasi)
-6. Run tests (kotlin-plugin box/diagnostics + loader jvmTest)
+```
+┌──────────────┐   ┌──────────────┐
+│ lint-kotlin  │   │ lint-clang   │
+└──────┬───────┘   └──────┬───────┘
+       │                  │
+       └────────┬─────────┘
+                │
+         (both must pass)
+                │
+       ┌────────▼─────────┐
+       │ compile-all      │
+       │ - Native build   │
+       │ - Compile all    │
+       └────────┬─────────┘
+                │
+                ▼
+       ┌──────────────────┐
+       │ test-all         │
+       │ - Box tests      │
+       │ - Diagnostics    │
+       │ - Loader jvmTest │
+       └──────────────────┘
+```
+
+**Conditions:**
+
+- `compile-all` only runs if **both** lint jobs succeed
+- `test-all` runs **after compile-all completes** (even if failed via `if: always()`)
+- **Exception**: `workflow_dispatch` triggers bypass lint checks (manual run allowed)
+
+### Why Split Into 4 Jobs?
+
+| Stage | Purpose | Benefit |
+| ------- | --------- | -------- |
+| **lint-kotlin / lint-clang** | Fast format failures | Instant feedback, no wasted compute on heavy builds |
+| **compile-all** | Heavy native build + multi-platform compilation | Isolated error context for toolchain/runtime issues |
+| **test-all** | Execute unit + integration tests | Clear separation between "can we build?" and "does it work?" |
 
 > `publishToMavenCentral` is NOT part of CI at this stage (project in development).
 

@@ -6,10 +6,7 @@ package crow.wasmline.network
  * @property statusCode HTTP status code (e.g. 200, 404).
  * @property bytes Response body as raw bytes.
  */
-data class WasmlineHttpResponse(
-    val statusCode: Int,
-    val bytes: ByteArray,
-) {
+data class WasmlineHttpResponse(val statusCode: Int, val bytes: ByteArray) {
     val isSuccess: Boolean get() = statusCode in 200..299
 
     override fun equals(other: Any?): Boolean {

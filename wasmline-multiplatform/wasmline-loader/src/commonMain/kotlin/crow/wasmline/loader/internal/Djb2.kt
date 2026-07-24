@@ -10,11 +10,11 @@ internal object Djb2 {
 
     fun hash(data: ByteArray): Int {
         var h = 5381
-        for (b in data) { h += (h shl 5) + (b.toInt() and 0xFF) }
+        for (b in data) {
+            h += (h shl 5) + (b.toInt() and 0xFF)
+        }
         return h
     }
 
-    fun hashToHex8(data: ByteArray): String {
-        return hash(data).toUInt().toString(16).padStart(8, '0')
-    }
+    fun hashToHex8(data: ByteArray): String = hash(data).toUInt().toString(16).padStart(8, '0')
 }

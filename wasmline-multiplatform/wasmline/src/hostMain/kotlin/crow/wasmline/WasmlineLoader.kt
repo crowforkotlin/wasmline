@@ -1,9 +1,6 @@
 package crow.wasmline
 
-internal data class ResolvedPrecompiledArtifact(
-    val artifactPath: String,
-    val moduleKey: String,
-)
+internal data class ResolvedPrecompiledArtifact(val artifactPath: String, val moduleKey: String)
 
 /**
  * Shared local-artifact bridge for runtime platform actuals.
@@ -15,11 +12,7 @@ internal data class ResolvedPrecompiledArtifact(
  */
 internal object WasmlineLocalArtifactBridge {
 
-    internal fun load(
-        artifactPath: String,
-        config: WasmlineConfig,
-        platform: WasmlinePlatformArtifactBridge
-    ): WasmlineLoadState {
+    internal fun load(artifactPath: String, config: WasmlineConfig, platform: WasmlinePlatformArtifactBridge): WasmlineLoadState {
         val log = WasmlineLog.logger
         val resolvedArtifact = platform.resolveArtifact(artifactPath)
             ?: run {
@@ -65,14 +58,11 @@ internal interface WasmlinePlatformArtifactBridge {
     fun backendCodeOrNull(path: String): Byte? = path.precompiledBackendCodeOrNull()
     fun unsupportedArtifactMessage(path: String): String =
         "[Wasmline] Load failure, only .cwasm or .pwasm artifacts are supported on Wasmtime hosts: $path"
-    fun loadFailureMessage(path: String): String =
-        "[Wasmline] Load failure, because native load return false, artifact path is : $path"
+    fun loadFailureMessage(path: String): String = "[Wasmline] Load failure, because native load return false, artifact path is : $path"
 }
 
-private fun String.precompiledBackendCodeOrNull(): Byte? {
-    return when (substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
-        "cwasm" -> WasmlineLoadState.CODE_SUCCESS_AOT
-        "pwasm" -> WasmlineLoadState.CODE_SUCCESS_PULLEY
-        else -> null
-    }
+private fun String.precompiledBackendCodeOrNull(): Byte? = when (substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
+    "cwasm" -> WasmlineLoadState.CODE_SUCCESS_AOT
+    "pwasm" -> WasmlineLoadState.CODE_SUCCESS_PULLEY
+    else -> null
 }

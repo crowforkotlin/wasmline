@@ -153,7 +153,7 @@ class Build : CliktCommand(name = "build") {
             iconUrl = iconUrl,
             homePageUrl = homeUrl,
             buildTimestamp = System.currentTimeMillis(),
-            artifacts = artifacts
+            artifacts = artifacts,
         )
 
         val privateKeyHex = Manifest.resolveKey(key)
@@ -165,7 +165,7 @@ class Build : CliktCommand(name = "build") {
         val envelope = SignedManifestEnvelope(
             signature = signature.toByteArray(),
             manifest = manifest,
-            algorithm = "Ed25519"
+            algorithm = "Ed25519",
         )
 
         val envelopeBytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)

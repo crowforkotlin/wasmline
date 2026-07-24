@@ -11,8 +11,4 @@ import kotlinx.serialization.Serializable
  * @author crowforkotlin
  */
 @Serializable
-data class CompileResult(
-    val wasmtimeVersion: String,
-    val inputFile: String,
-    val artifacts: List<WasmlineArtifact>
-)
+data class CompileResult(val wasmtimeVersion: String, val inputFile: String, val artifacts: List<WasmlineArtifact>)

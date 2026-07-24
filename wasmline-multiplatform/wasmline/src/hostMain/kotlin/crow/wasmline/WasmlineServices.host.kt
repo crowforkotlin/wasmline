@@ -10,18 +10,13 @@ import crow.wasmline.serialization.WasmlineSerializationRegistry
 import kotlin.reflect.KClass
 
 @PublishedApi
-internal class GeneratedWasmlineHostEndpoint(
-    private val wasmline: Wasmline,
-) : WasmlineEndpoint {
-    override fun invoke(action: String, payload: ByteArray): ByteArray {
-        return wasmline.call(action, payload)
-    }
+internal class GeneratedWasmlineHostEndpoint(private val wasmline: Wasmline) : WasmlineEndpoint {
+    override fun invoke(action: String, payload: ByteArray): ByteArray = wasmline.call(action, payload)
 }
 
 @PublishedApi
-internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFactory {
-    return WasmlineSerializationRegistry.requireFactory(config.serialization.factoryId)
-}
+internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFactory =
+    WasmlineSerializationRegistry.requireFactory(config.serialization.factoryId)
 
 @PublishedApi
 internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
@@ -53,11 +48,7 @@ fun Wasmline.bind(implementation: WasmlineService) {
     error("Wasmline compiler plugin is not applied or failed to replace Wasmline.bind(implementation).")
 }
 
-
-private fun Map<String, (ByteArray) -> ByteArray>.toHostDispatcher(): WasmlineHostDispatcher {
-    return WasmlineHostDispatcher { action, payload ->
-        val handler = this[action] ?: error("No Wasmline action bound for '$action'.")
-        handler(payload)
-    }
+private fun Map<String, (ByteArray) -> ByteArray>.toHostDispatcher(): WasmlineHostDispatcher = WasmlineHostDispatcher { action, payload ->
+    val handler = this[action] ?: error("No Wasmline action bound for '$action'.")
+    handler(payload)
 }
-

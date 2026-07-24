@@ -4,9 +4,7 @@ internal fun browserHostPathExists(path: String): Boolean = false
 
 internal fun browserReadHostFileBytes(path: String): Nothing? = null
 
-internal fun browserResolveHostArtifactPath(manifestPath: String, artifactUrl: String): String {
-    return artifactUrl
-}
+internal fun browserResolveHostArtifactPath(manifestPath: String, artifactUrl: String): String = artifactUrl
 
 internal fun browserWriteHostFileBytes(path: String, bytes: ByteArray): Boolean = false
 

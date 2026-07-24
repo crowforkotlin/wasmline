@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 package crow.wasmline.loader.internal.crypto
 
 import okio.ByteString
 
 /** Defines the KeyPair consisting of a private key and its corresponding public key.  */
-internal class KeyPair internal constructor(
-  val publicKey: ByteString,
-  val privateKey: ByteString,
-)
+internal class KeyPair internal constructor(val publicKey: ByteString, val privateKey: ByteString)
 
 /** Returns a new `<publicKey / privateKey>` KeyPair generated from a seed. */
 internal fun newKeyPairFromSeed(secretSeed: ByteString): KeyPair {
-  require(secretSeed.size == Field25519.FIELD_LEN) {
-    "Given secret seed length is not ${Field25519.FIELD_LEN}"
-  }
-  val publicKey = Ed25519.scalarMultWithBaseToBytes(Ed25519.getHashedScalar(secretSeed))
-  return KeyPair(publicKey, secretSeed)
+    require(secretSeed.size == Field25519.FIELD_LEN) {
+        "Given secret seed length is not ${Field25519.FIELD_LEN}"
+    }
+    val publicKey = Ed25519.scalarMultWithBaseToBytes(Ed25519.getHashedScalar(secretSeed))
+    return KeyPair(publicKey, secretSeed)
 }

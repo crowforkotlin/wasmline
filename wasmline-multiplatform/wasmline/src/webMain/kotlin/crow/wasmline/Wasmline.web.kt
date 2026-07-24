@@ -12,9 +12,7 @@ internal class BrowserWasmline(private val moduleKey: String) {
         WasmlineWebModuleRegistry.require(moduleKey).setOutbound(dispatcher)
     }
 
-    fun call(action: String, payloadBase64: String): String {
-        return WasmlineWebModuleRegistry.require(moduleKey).call(action, payloadBase64)
-    }
+    fun call(action: String, payloadBase64: String): String = WasmlineWebModuleRegistry.require(moduleKey).call(action, payloadBase64)
 
     fun close() {
         WasmlineWebModuleRegistry.remove(moduleKey)
@@ -22,11 +20,7 @@ internal class BrowserWasmline(private val moduleKey: String) {
 }
 
 internal object BrowserWasmlineRuntime {
-    fun load(
-        filepath: String,
-        config: WasmlineConfig,
-        createWasmline: (String, WasmlineConfig) -> Wasmline,
-    ): WasmlineLoadState {
+    fun load(filepath: String, config: WasmlineConfig, createWasmline: (String, WasmlineConfig) -> Wasmline): WasmlineLoadState {
         if (config.supportConcurrent) {
             return WasmlineLoadState.Failure(
                 code = WasmlineLoadState.CODE_FAILURE,
@@ -38,36 +32,25 @@ internal object BrowserWasmlineRuntime {
             artifactPath = filepath,
             config = config,
             platform = object : WasmlinePlatformArtifactBridge {
-                override fun createWasmline(moduleKey: String, config: WasmlineConfig): Wasmline {
-                    return createWasmline(moduleKey, config)
+                override fun createWasmline(moduleKey: String, config: WasmlineConfig): Wasmline = createWasmline(moduleKey, config)
+
+                override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? = ResolvedPrecompiledArtifact(
+                    artifactPath = path,
+                    moduleKey = path,
+                )
+
+                override fun backendCodeOrNull(path: String): Byte? = if (path.substringAfterLast('.', "").lowercase() == "wasm") {
+                    WasmlineLoadState.CODE_SUCCESS_WASM
+                } else {
+                    null
                 }
 
-                override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? {
-                    return ResolvedPrecompiledArtifact(
-                        artifactPath = path,
-                        moduleKey = path,
-                    )
-                }
+                override fun unsupportedArtifactMessage(path: String): String =
+                    "[Wasmline] Browser web host only supports raw .wasm artifacts: $path"
 
-                override fun backendCodeOrNull(path: String): Byte? {
-                    return if (path.substringAfterLast('.', "").lowercase() == "wasm") {
-                        WasmlineLoadState.CODE_SUCCESS_WASM
-                    } else {
-                        null
-                    }
-                }
+                override fun loadPrecompiled(moduleKey: String, path: String): Boolean = WasmlineWebModuleRegistry.load(moduleKey, path)
 
-                override fun unsupportedArtifactMessage(path: String): String {
-                    return "[Wasmline] Browser web host only supports raw .wasm artifacts: $path"
-                }
-
-                override fun loadPrecompiled(moduleKey: String, path: String): Boolean {
-                    return WasmlineWebModuleRegistry.load(moduleKey, path)
-                }
-
-                override fun loadFailureMessage(path: String): String {
-                    return WasmlineWebModuleRegistry.failureMessage(path)
-                }
+                override fun loadFailureMessage(path: String): String = WasmlineWebModuleRegistry.failureMessage(path)
             },
         )
     }
@@ -84,9 +67,8 @@ internal object BrowserWasmlineRuntime {
 internal fun browserWasmlineBootstrap() = BrowserWasmlineRuntime.bootstrap()
 internal fun browserWasmlineShutdown() = BrowserWasmlineRuntime.shutdown()
 internal fun browserWasmlineWarmup(@Suppress("UNUSED_PARAMETER") mode: WasmlineWarmupMode) = Unit
-internal fun browserWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {
-    return BrowserWasmlineRuntime.load(filepath, config, ::Wasmline)
-}
+internal fun browserWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
+    BrowserWasmlineRuntime.load(filepath, config, ::Wasmline)
 
 private object WasmlineWebModuleRegistry {
     private val modules = linkedMapOf<String, WasmlineWebModule>()
@@ -111,10 +93,8 @@ private object WasmlineWebModuleRegistry {
         )
     }
 
-    fun require(moduleKey: String): WasmlineWebModule {
-        return checkNotNull(modules[moduleKey]) {
-            "Wasmline browser module '$moduleKey' is not loaded."
-        }
+    fun require(moduleKey: String): WasmlineWebModule = checkNotNull(modules[moduleKey]) {
+        "Wasmline browser module '$moduleKey' is not loaded."
     }
 
     fun remove(moduleKey: String) {
@@ -137,9 +117,7 @@ private object WasmlineWebModuleRegistry {
     }
 }
 
-private class WasmlineWebModule(
-    private val raw: RawWasmlineBrowserModule,
-) {
+private class WasmlineWebModule(private val raw: RawWasmlineBrowserModule) {
     private var dispatcher: ((String, String) -> String)? = null
 
     init {
@@ -155,9 +133,7 @@ private class WasmlineWebModule(
         this.dispatcher = dispatcher
     }
 
-    fun call(action: String, payloadBase64: String): String {
-        return raw.call(action, payloadBase64)
-    }
+    fun call(action: String, payloadBase64: String): String = raw.call(action, payloadBase64)
 
     fun close() {
         raw.clearDispatcher()
@@ -362,5 +338,5 @@ private fun newRawWasmlineBrowserModule(): RawWasmlineBrowserModule = js(
         },
       };
     })()
-    """
+    """,
 )

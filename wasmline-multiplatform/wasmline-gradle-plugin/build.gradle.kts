@@ -19,7 +19,6 @@ java {
     }
 }
 
-
 buildConfig {
     useKotlinOutput { internalVisibility = true }
     packageName("crow.wasmline.gradle")
@@ -76,7 +75,7 @@ gradlePlugin {
 configure<MavenPublishBaseExtension> {
     configure(
         platform = GradlePlugin(
-            javadocJar = JavadocJar.Empty()
-        )
+            javadocJar = JavadocJar.Empty(),
+        ),
     )
 }

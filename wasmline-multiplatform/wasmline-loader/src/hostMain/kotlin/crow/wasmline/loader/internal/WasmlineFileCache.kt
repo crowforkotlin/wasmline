@@ -11,28 +11,18 @@ import crow.wasmline.WasmlineCache
  * This cache is not thread-safe for concurrent writes to the same key.
  * Concurrent reads of different keys are safe.
  */
-internal class WasmlineFileCache(
-    private val cacheDirectory: String,
-) : WasmlineCache {
+internal class WasmlineFileCache(private val cacheDirectory: String) : WasmlineCache {
 
-    override fun get(key: String): ByteArray? {
-        return readHostFileBytes(path = resolvePath(key))
-    }
+    override fun get(key: String): ByteArray? = readHostFileBytes(path = resolvePath(key))
 
     override fun put(key: String, bytes: ByteArray) {
         hostMkdirs(path = cacheDirectory)
         writeHostFileBytes(path = resolvePath(key), bytes)
     }
 
-    override fun exists(key: String): Boolean {
-        return hostPathExists(path = resolvePath(key))
-    }
+    override fun exists(key: String): Boolean = hostPathExists(path = resolvePath(key))
 
-    fun delete(key: String): Boolean {
-        return hostDeleteFile(path = resolvePath(key))
-    }
+    fun delete(key: String): Boolean = hostDeleteFile(path = resolvePath(key))
 
-    fun resolvePath(key: String): String {
-        return "$cacheDirectory/$key"
-    }
+    fun resolvePath(key: String): String = "$cacheDirectory/$key"
 }

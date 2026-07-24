@@ -14,13 +14,11 @@ import org.jetbrains.kotlin.test.services.RuntimeClasspathProvider
 import org.jetbrains.kotlin.test.services.TestServices
 import java.io.File
 
-private fun readClasspath(propertyName: String): List<File> {
-    return System.getProperty(propertyName)
-        ?.split(File.pathSeparator)
-        ?.filter { it.isNotBlank() }
-        ?.map(::File)
-        .orEmpty()
-}
+private fun readClasspath(propertyName: String): List<File> = System.getProperty(propertyName)
+    ?.split(File.pathSeparator)
+    ?.filter { it.isNotBlank() }
+    ?.map(::File)
+    .orEmpty()
 
 private val wasmlineRuntimeClasspath = readClasspath("wasmlineRuntime.classpath")
 private val wasmlineTestArtifactsClasspath = readClasspath("wasmlineTestArtifacts.classpath")
@@ -47,10 +45,7 @@ private class WasmlinePluginConfigurator(testServices: TestServices) : Environme
         with(registrar) { registerExtensions(configuration) }
     }
 
-    override fun configureCompilerConfiguration(
-        configuration: CompilerConfiguration,
-        module: TestModule,
-    ) {
+    override fun configureCompilerConfiguration(configuration: CompilerConfiguration, module: TestModule) {
         configuration.addJvmClasspathRoots(wasmlineCompilerTestClasspath)
     }
 }

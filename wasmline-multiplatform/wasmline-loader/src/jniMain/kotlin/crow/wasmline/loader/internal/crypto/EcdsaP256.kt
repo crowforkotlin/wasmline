@@ -37,73 +37,67 @@ import java.security.spec.ECPublicKeySpec
 import java.security.spec.EllipticCurve
 import java.security.spec.PKCS8EncodedKeySpec
 
-internal class EcdsaP256(
-  private val random: SecureRandom,
-) : SignatureAlgorithm {
+internal class EcdsaP256(private val random: SecureRandom) : SignatureAlgorithm {
 
-  /** Generate a key pair using the P-256 curve. */
-  fun generateKeyPair(): KeyPair {
-    val keyPairGenerator = KeyPairGenerator.getInstance("EC")
-    keyPairGenerator.initialize(ECGenParameterSpec("secp256r1"), random)
-    val keyPair = keyPairGenerator.generateKeyPair()
-    return KeyPair(
-        publicKey = (keyPair.public as ECPublicKey).encodeAnsiX963(),
-        privateKey = keyPair.private.encoded.toByteString(),
-    )
-  }
-
-  fun sign(privateKey: PrivateKey, plaintext: ByteString): ByteString {
-    val signer = Signature.getInstance("SHA256withECDSA")
-    signer.initSign(privateKey, random)
-    signer.update(plaintext.toByteArray())
-    return signer.sign().toByteString()
-  }
-
-  override fun sign(message: ByteString, privateKey: ByteString): ByteString {
-    return sign(decodePkcs8EcPrivateKey(privateKey), message)
-  }
-
-  fun verify(publicKey: PublicKey, signature: ByteString, data: ByteString): Boolean {
-    val verifier = Signature.getInstance("SHA256withECDSA")
-    verifier.initVerify(publicKey)
-    verifier.update(data.toByteArray())
-    return verifier.verify(signature.toByteArray())
-  }
-
-  override fun verify(message: ByteString, signature: ByteString, publicKey: ByteString): Boolean {
-    val ecPublicKey = publicKey.decodeAnsiX963()
-    return try {
-      verify(ecPublicKey, signature, message)
-    } catch (e: SignatureException) {
-      false // Malformed signature.
+    /** Generate a key pair using the P-256 curve. */
+    fun generateKeyPair(): KeyPair {
+        val keyPairGenerator = KeyPairGenerator.getInstance("EC")
+        keyPairGenerator.initialize(ECGenParameterSpec("secp256r1"), random)
+        val keyPair = keyPairGenerator.generateKeyPair()
+        return KeyPair(
+            publicKey = (keyPair.public as ECPublicKey).encodeAnsiX963(),
+            privateKey = keyPair.private.encoded.toByteString(),
+        )
     }
-  }
+
+    fun sign(privateKey: PrivateKey, plaintext: ByteString): ByteString {
+        val signer = Signature.getInstance("SHA256withECDSA")
+        signer.initSign(privateKey, random)
+        signer.update(plaintext.toByteArray())
+        return signer.sign().toByteString()
+    }
+
+    override fun sign(message: ByteString, privateKey: ByteString): ByteString = sign(decodePkcs8EcPrivateKey(privateKey), message)
+
+    fun verify(publicKey: PublicKey, signature: ByteString, data: ByteString): Boolean {
+        val verifier = Signature.getInstance("SHA256withECDSA")
+        verifier.initVerify(publicKey)
+        verifier.update(data.toByteArray())
+        return verifier.verify(signature.toByteArray())
+    }
+
+    override fun verify(message: ByteString, signature: ByteString, publicKey: ByteString): Boolean {
+        val ecPublicKey = publicKey.decodeAnsiX963()
+        return try {
+            verify(ecPublicKey, signature, message)
+        } catch (e: SignatureException) {
+            false // Malformed signature.
+        }
+    }
 }
 
 internal fun decodePkcs8EcPrivateKey(privateKey: ByteString): PrivateKey {
-  val keyFactory = KeyFactory.getInstance("EC")
-  val keySpec = PKCS8EncodedKeySpec(privateKey.toByteArray())
-  return keyFactory.generatePrivate(keySpec)
+    val keyFactory = KeyFactory.getInstance("EC")
+    val keySpec = PKCS8EncodedKeySpec(privateKey.toByteArray())
+    return keyFactory.generatePrivate(keySpec)
 }
 
-internal fun ECPublicKey.encodeAnsiX963(): ByteString {
-  return Buffer()
+internal fun ECPublicKey.encodeAnsiX963(): ByteString = Buffer()
     .writeByte(4)
     .write(w.affineX.toUnsignedFixedWidth(32))
     .write(w.affineY.toUnsignedFixedWidth(32))
     .readByteString()
-}
 
 internal fun ByteString.decodeAnsiX963(): ECPublicKey {
-  val buffer = Buffer().write(this)
-  require(4 == buffer.readByte().toInt())
-  val x = buffer.readByteArray(32)
-  val y = buffer.readByteArray(32)
-  require(buffer.exhausted())
-  val point = ECPoint(BigInteger(1, x), BigInteger(1, y))
-  val keySpec = ECPublicKeySpec(point, secp256r1ParamSpec)
-  val keyFactory = KeyFactory.getInstance("EC")
-  return keyFactory.generatePublic(keySpec) as ECPublicKey
+    val buffer = Buffer().write(this)
+    require(4 == buffer.readByte().toInt())
+    val x = buffer.readByteArray(32)
+    val y = buffer.readByteArray(32)
+    require(buffer.exhausted())
+    val point = ECPoint(BigInteger(1, x), BigInteger(1, y))
+    val keySpec = ECPublicKeySpec(point, secp256r1ParamSpec)
+    val keyFactory = KeyFactory.getInstance("EC")
+    return keyFactory.generatePublic(keySpec) as ECPublicKey
 }
 
 /**
@@ -122,21 +116,21 @@ internal fun ByteString.decodeAnsiX963(): ECPublicKey {
  * https://datatracker.ietf.org/doc/html/rfc6090
  */
 private val secp256r1ParamSpec: ECParameterSpec by lazy {
-  ECParameterSpec(
-    EllipticCurve(
-      ECFieldFp(
-        BigInteger("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff", 16),
-      ),
-      BigInteger("ffffffff00000001000000000000000000000000fffffffffffffffffffffffc", 16),
-      BigInteger("5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b", 16),
-    ),
-    ECPoint(
-      BigInteger("6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296", 16),
-      BigInteger("4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5", 16),
-    ),
-    BigInteger("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", 16),
-    1,
-  )
+    ECParameterSpec(
+        EllipticCurve(
+            ECFieldFp(
+                BigInteger("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff", 16),
+            ),
+            BigInteger("ffffffff00000001000000000000000000000000fffffffffffffffffffffffc", 16),
+            BigInteger("5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b", 16),
+        ),
+        ECPoint(
+            BigInteger("6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296", 16),
+            BigInteger("4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5", 16),
+        ),
+        BigInteger("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", 16),
+        1,
+    )
 }
 
 /**
@@ -151,13 +145,13 @@ private val secp256r1ParamSpec: ECParameterSpec by lazy {
  *    33 bits to encode!
  */
 internal fun BigInteger.toUnsignedFixedWidth(byteCount: Int): ByteArray {
-  val result = ByteArray(byteCount)
-  val signedBytes = toByteArray()
-  val startIndex = maxOf(signedBytes.size - byteCount, 0)
-  signedBytes.copyInto(
-    destination = result,
-    destinationOffset = byteCount - (signedBytes.size - startIndex),
-    startIndex = startIndex,
-  )
-  return result
+    val result = ByteArray(byteCount)
+    val signedBytes = toByteArray()
+    val startIndex = maxOf(signedBytes.size - byteCount, 0)
+    signedBytes.copyInto(
+        destination = result,
+        destinationOffset = byteCount - (signedBytes.size - startIndex),
+        startIndex = startIndex,
+    )
+    return result
 }

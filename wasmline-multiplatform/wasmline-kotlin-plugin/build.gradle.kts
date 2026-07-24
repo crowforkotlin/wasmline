@@ -69,7 +69,7 @@ val generateTests: TaskProvider<JavaExec> by tasks.registering(type = JavaExec::
 
     // Passes absolute paths as system properties for the generator to locate source and target
     systemProperty("wasmline.kotlin.plugin.projectDir", project.projectDir.absolutePath)
-    systemProperty( "wasmline.kotlin.plugin.testsRootDir", project.projectDir.resolve("test-gen").absolutePath)
+    systemProperty("wasmline.kotlin.plugin.testsRootDir", project.projectDir.resolve("test-gen").absolutePath)
 
     // Ensures the target directory is empty before generation to avoid stale test files
     doFirst {
@@ -158,8 +158,8 @@ dependencies {
 configure<MavenPublishBaseExtension> {
     configure(
         platform = KotlinJvm(
-            javadocJar = JavadocJar.Empty()
-        )
+            javadocJar = JavadocJar.Empty(),
+        ),
     )
 }
 

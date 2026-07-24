@@ -131,7 +131,7 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         val wasmFile = compileDir.listFiles { f -> f.extension == "wasm" }?.firstOrNull()
             ?: throw GradleException(
                 "No .wasm file found in ${compileDir.absolutePath}. " +
-                    "Ensure the Kotlin/WasmWasi compilation task for variant '$variant' has run successfully."
+                    "Ensure the Kotlin/WasmWasi compilation task for variant '$variant' has run successfully.",
             )
 
         val productName = pId.substringAfterLast('.')

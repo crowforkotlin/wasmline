@@ -13,10 +13,8 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
  * This entrypoint keeps orchestration small and delegates validation, bridge generation, and
  * typed entrypoint rewriting to focused collaborators.
  */
-internal class WasmlineIrGenerationExtension(
-    private val messageCollector: MessageCollector,
-    private val enableWasiInitExport: Boolean,
-) : IrGenerationExtension {
+internal class WasmlineIrGenerationExtension(private val messageCollector: MessageCollector, private val enableWasiInitExport: Boolean) :
+    IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         val runtimeSymbols = WasmlineRuntimeSymbols(pluginContext)
