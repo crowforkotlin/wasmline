@@ -33,7 +33,7 @@ jobs:
 
       - name: ktlint check
         working-directory: wasmline-multiplatform
-        run: ktlint --relative
+        run: ktlint --relative '!**/wasmline-build-logic/**' '!**/iosMain/**' '!**/build/**'
 
   lint-clang:
     runs-on: ubuntu-latest

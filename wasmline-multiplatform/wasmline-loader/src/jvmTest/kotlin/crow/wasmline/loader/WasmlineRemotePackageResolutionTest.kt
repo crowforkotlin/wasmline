@@ -27,8 +27,8 @@ import kotlin.time.Clock
 
 class WasmlineRemotePackageResolutionTest {
 
-    private val privateKey = Keys.privateKey1.decodeHex()
-    private val publicKey = Keys.publicKey1.decodeHex()
+    private val privateKey = Keys.PRIVATE_KEY_1.decodeHex()
+    private val publicKey = Keys.PUBLIC_KEY_1.decodeHex()
 
     private fun createTestManifest(artifacts: List<WasmlineArtifact>): WasmlineManifest = WasmlineManifest(
         pluginId = "crow.wasmline.test",
