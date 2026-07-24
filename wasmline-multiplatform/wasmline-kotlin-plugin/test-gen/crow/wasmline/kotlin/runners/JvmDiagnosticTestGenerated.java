@@ -20,24 +20,6 @@ public class JvmDiagnosticTestGenerated extends AbstractJvmDiagnosticTest {
   }
 
   @Test
-  @TestMetadata("01_notWasmlineService.kt")
-  public void test01_notWasmlineService() {
-    run("01_notWasmlineService.kt");
-  }
-
-  @Test
-  @TestMetadata("02_emptyWasmlineService.kt")
-  public void test02_emptyWasmlineService() {
-    run("02_emptyWasmlineService.kt");
-  }
-
-  @Test
-  @TestMetadata("03_typeMismatchExample.kt")
-  public void test03_typeMismatchExample() {
-    run("03_typeMismatchExample.kt");
-  }
-
-  @Test
   public void testAllFilesPresentInDiagnostics() {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("/home/crowf/develop/github/wasmline/wasmline-multiplatform/wasmline-kotlin-plugin/testData/diagnostics"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
