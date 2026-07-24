@@ -1,5 +1,5 @@
 FILE: 04_multiMethod.kt
-    package test.ir.basic
+    package test.ir.multi
 
     public abstract interface MultiMethodService : R|crow/wasmline/WasmlineService| {
         public abstract fun methodA(): R|kotlin/Int|
@@ -8,4 +8,17 @@ FILE: 04_multiMethod.kt
 
         public abstract fun methodC(data: R|kotlin/ByteArray|): R|kotlin/ByteArray|
 
+    }
+    public final fun box(): R|kotlin/String| {
+        lval bridgeClass: R|java/lang/Class<*>| = R|kotlin/runCatching|<R|java/lang/Class<*>!|>(<L> = runCatching@fun <anonymous>(): R|java/lang/Class<*>!| <inline=Inline, kind=UNKNOWN>  {
+            ^ Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.ir.multi.MultiMethodService_WasmlineBridge))
+        }
+        ).R|SubstitutionOverride<kotlin/Result.getOrNull: R|java/lang/Class<*>?|>|() ?: ^box String(Fail: Bridge not generated)
+        when () {
+            <getClass>(Q|test/ir/multi/MultiMethodService|).R|kotlin/jvm/java|<R|test/ir/multi/MultiMethodService|>.R|SubstitutionOverride<java/lang/Class.isAssignableFrom: R|kotlin/Boolean|>|(R|<local>/bridgeClass|).R|kotlin/Boolean.not|() ->  {
+                ^box String(Fail: Bridge doesn't implement MultiMethodService)
+            }
+        }
+
+        ^box String(OK)
     }

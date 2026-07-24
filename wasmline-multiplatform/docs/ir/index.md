@@ -35,6 +35,7 @@ Generate test classes:
 Run tests:
 
 ```bash
+cd ../../
 ./gradlew :wasmline-kotlin-plugin:test --tests '*JvmBoxTestGenerated*'
 ./gradlew :wasmline-kotlin-plugin:test --tests '*JvmDiagnosticTestGenerated*'
 ```

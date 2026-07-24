@@ -1,0 +1,20 @@
+FILE: 06_linkBindPattern.kt
+    package test.ir.link.bind
+
+    public abstract interface LinkedService : R|crow/wasmline/WasmlineService| {
+        public abstract fun linkedCall(data: R|kotlin/String|): R|kotlin/String|
+
+    }
+    public final fun box(): R|kotlin/String| {
+        lval bridgeClass: R|java/lang/Class<*>| = R|kotlin/runCatching|<R|java/lang/Class<*>!|>(<L> = runCatching@fun <anonymous>(): R|java/lang/Class<*>!| <inline=Inline, kind=UNKNOWN>  {
+            ^ Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.ir.link.bind.LinkedService_WasmlineBridge))
+        }
+        ).R|SubstitutionOverride<kotlin/Result.getOrNull: R|java/lang/Class<*>?|>|() ?: ^box String(Fail: Bridge not generated)
+        when () {
+            <getClass>(Q|test/ir/link/bind/LinkedService|).R|kotlin/jvm/java|<R|test/ir/link/bind/LinkedService|>.R|SubstitutionOverride<java/lang/Class.isAssignableFrom: R|kotlin/Boolean|>|(R|<local>/bridgeClass|).R|kotlin/Boolean.not|() ->  {
+                ^box String(Fail: Bridge doesn't implement LinkedService)
+            }
+        }
+
+        ^box String(OK)
+    }

@@ -1,44 +1,44 @@
-FILE fqName:test.ir.basic fileName:/01_emptyService.kt
-  CLASS CLASS name:EmptyService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.basic.EmptyService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.basic.EmptyService_WasmlineBridge
+FILE fqName:test.ir.empty fileName:/01_emptyService.kt
+  CLASS CLASS name:EmptyService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.empty.EmptyService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.empty.EmptyService_WasmlineBridge
     FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
-    FIELD name:implementation type:test.ir.basic.EmptyService? visibility:private [final]
+    FIELD name:implementation type:test.ir.empty.EmptyService? visibility:private [final]
     FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final]
-    CONSTRUCTOR visibility:public returnType:test.ir.basic.EmptyService_WasmlineBridge [primary]
+    CONSTRUCTOR visibility:public returnType:test.ir.empty.EmptyService_WasmlineBridge [primary]
       VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
-      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.basic.EmptyService?
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.empty.EmptyService?
       VALUE_PARAMETER kind:Regular name:serializationFactory index:2 type:crow.wasmline.serialization.WasmlineSerializationFactory
       BLOCK_BODY
         DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
-        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EmptyService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.basic.EmptyService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
-        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.basic.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
-          receiver: GET_VAR '<this>: test.ir.basic.EmptyService_WasmlineBridge declared in test.ir.basic.EmptyService_WasmlineBridge' type=test.ir.basic.EmptyService_WasmlineBridge origin=null
-          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.basic.EmptyService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
-        SET_FIELD 'FIELD name:implementation type:test.ir.basic.EmptyService? visibility:private [final] declared in test.ir.basic.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
-          receiver: GET_VAR '<this>: test.ir.basic.EmptyService_WasmlineBridge declared in test.ir.basic.EmptyService_WasmlineBridge' type=test.ir.basic.EmptyService_WasmlineBridge origin=null
-          value: GET_VAR 'implementation: test.ir.basic.EmptyService? declared in test.ir.basic.EmptyService_WasmlineBridge.<init>' type=test.ir.basic.EmptyService? origin=null
-        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.basic.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
-          receiver: GET_VAR '<this>: test.ir.basic.EmptyService_WasmlineBridge declared in test.ir.basic.EmptyService_WasmlineBridge' type=test.ir.basic.EmptyService_WasmlineBridge origin=null
-          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.basic.EmptyService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:EmptyService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.empty.EmptyService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.empty.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.empty.EmptyService_WasmlineBridge declared in test.ir.empty.EmptyService_WasmlineBridge' type=test.ir.empty.EmptyService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.empty.EmptyService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.ir.empty.EmptyService? visibility:private [final] declared in test.ir.empty.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.empty.EmptyService_WasmlineBridge declared in test.ir.empty.EmptyService_WasmlineBridge' type=test.ir.empty.EmptyService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.ir.empty.EmptyService? declared in test.ir.empty.EmptyService_WasmlineBridge.<init>' type=test.ir.empty.EmptyService? origin=null
+        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.empty.EmptyService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.empty.EmptyService_WasmlineBridge declared in test.ir.empty.EmptyService_WasmlineBridge' type=test.ir.empty.EmptyService_WasmlineBridge origin=null
+          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.empty.EmptyService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
     FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.basic.EmptyService_WasmlineBridge
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.empty.EmptyService_WasmlineBridge
       VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
       overridden:
         public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
       BLOCK_BODY
     FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
-      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.basic.EmptyService_WasmlineBridge
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.empty.EmptyService_WasmlineBridge
       VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
       VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
       overridden:
         public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
       BLOCK_BODY
-        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.basic.EmptyService_WasmlineBridge'
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.empty.EmptyService_WasmlineBridge'
           CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
-            ARG contractId: CONST String type=kotlin.String value="test.ir.basic.EmptyService"
-            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.basic.EmptyService_WasmlineBridge.invoke' type=kotlin.String origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.ir.empty.EmptyService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.empty.EmptyService_WasmlineBridge.invoke' type=kotlin.String origin=null
   CLASS INTERFACE name:EmptyService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
-    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.basic.EmptyService
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.empty.EmptyService
     FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
       VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
@@ -52,3 +52,40 @@ FILE fqName:test.ir.basic fileName:/01_emptyService.kt
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
       overridden:
         public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineService
+  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+    BLOCK_BODY
+      VAR name:bridgeClass type:java.lang.Class<*> [val]
+        BLOCK type=java.lang.Class<*> origin=ELVIS
+          VAR IR_TEMPORARY_VARIABLE name:tmp_0 type:java.lang.Class<*>? [val]
+            CALL 'public final fun getOrNull (): T of kotlin.Result? declared in kotlin.Result' type=java.lang.Class<*>? origin=null
+              ARG <this>: CALL 'public final fun runCatching <R> (block: kotlin.Function0<R of kotlin.runCatching>): kotlin.Result<R of kotlin.runCatching> declared in kotlin' type=kotlin.Result<@[FlexibleNullability] java.lang.Class<*>?> origin=null
+                TYPE_ARG R: @[FlexibleNullability] java.lang.Class<*>?
+                ARG block: FUN_EXPR type=kotlin.Function0<@[FlexibleNullability] java.lang.Class<*>?> origin=LAMBDA
+                  FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:@[FlexibleNullability] java.lang.Class<*>?
+                    BLOCK_BODY
+                      RETURN type=kotlin.Nothing from='local final fun <anonymous> (): @[FlexibleNullability] java.lang.Class<*>? declared in test.ir.empty.box'
+                        CALL 'public open fun forName (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.Class<*>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+                          ARG p0: CONST String type=kotlin.String value="test.ir.empty.EmptyService_WasmlineBridge"
+          WHEN type=java.lang.Class<*> origin=null
+            BRANCH
+              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                ARG arg0: GET_VAR 'val tmp_0: java.lang.Class<*>? declared in test.ir.empty.box' type=java.lang.Class<*>? origin=null
+                ARG arg1: CONST Null type=kotlin.Nothing? value=null
+              then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.ir.empty'
+                CONST String type=kotlin.String value="Fail: Bridge not generated"
+            BRANCH
+              if: CONST Boolean type=kotlin.Boolean value=true
+              then: GET_VAR 'val tmp_0: java.lang.Class<*>? declared in test.ir.empty.box' type=java.lang.Class<*>? origin=null
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=null
+            ARG <this>: CALL 'public open fun isAssignableFrom (p0: @[FlexibleNullability] java.lang.Class<*>?): kotlin.Boolean declared in java.lang.Class' type=kotlin.Boolean origin=null
+              ARG <this>: CALL 'public final fun <get-java> <T> (<this>: kotlin.reflect.KClass<T of kotlin.jvm.<get-java>>): java.lang.Class<T of kotlin.jvm.<get-java>> declared in kotlin.jvm' type=java.lang.Class<test.ir.empty.EmptyService> origin=GET_PROPERTY
+                TYPE_ARG T: test.ir.empty.EmptyService
+                ARG <this>: CLASS_REFERENCE 'CLASS INTERFACE name:EmptyService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]' type=kotlin.reflect.KClass<test.ir.empty.EmptyService>
+              ARG p0: GET_VAR 'val bridgeClass: java.lang.Class<*> declared in test.ir.empty.box' type=java.lang.Class<*> origin=null
+          then: BLOCK type=kotlin.Unit origin=null
+            RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.ir.empty'
+              CONST String type=kotlin.String value="Fail: Bridge doesn't implement EmptyService"
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.ir.empty'
+        CONST String type=kotlin.String value="OK"

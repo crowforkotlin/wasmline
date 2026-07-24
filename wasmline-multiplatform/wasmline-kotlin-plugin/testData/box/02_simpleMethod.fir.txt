@@ -1,7 +1,40 @@
 FILE: 02_simpleMethod.kt
-    package test.ir.basic
+    package test.ir.simple
 
     public abstract interface SimpleService : R|crow/wasmline/WasmlineService| {
         public abstract fun ping(): R|kotlin/String|
 
+    }
+    public final fun box(): R|kotlin/String| {
+        lval bridgeClass: R|java/lang/Class<*>| = R|kotlin/runCatching|<R|java/lang/Class<*>!|>(<L> = runCatching@fun <anonymous>(): R|java/lang/Class<*>!| <inline=Inline, kind=UNKNOWN>  {
+            ^ Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.ir.simple.SimpleService_WasmlineBridge))
+        }
+        ).R|SubstitutionOverride<kotlin/Result.getOrNull: R|java/lang/Class<*>?|>|() ?: ^box String(Fail: Bridge not generated)
+        when () {
+            <getClass>(Q|test/ir/simple/SimpleService|).R|kotlin/jvm/java|<R|test/ir/simple/SimpleService|>.R|SubstitutionOverride<java/lang/Class.isAssignableFrom: R|kotlin/Boolean|>|(R|<local>/bridgeClass|).R|kotlin/Boolean.not|() ->  {
+                ^box String(Fail: Bridge doesn't implement SimpleService)
+            }
+        }
+
+        lval bindMethod: R|java/lang/reflect/Method!| = try {
+            R|<local>/bridgeClass|.R|SubstitutionOverride<java/lang/Class.getMethod: R|java/lang/reflect/Method!|>|(String(bind), vararg(<getClass>(Q|kotlin/Function2|).R|kotlin/jvm/java|<R|(*, *) -> *|>))
+        }
+        catch (e: R|java/lang/NoSuchMethodException|) {
+            ^box String(Fail: bind() method not found)
+        }
+
+        lval echoMethod: R|java/lang/reflect/Method!| = try {
+            R|<local>/bridgeClass|.R|SubstitutionOverride<java/lang/Class.getMethod: R|java/lang/reflect/Method!|>|(String(ping))
+        }
+        catch (e: R|java/lang/NoSuchMethodException|) {
+            ^box String(Fail: ping() method not found)
+        }
+
+        when () {
+            ==(R|<local>/bindMethod|, Null(null)) || ==(R|<local>/echoMethod|, Null(null)) ->  {
+                ^box String(Fail: Required methods missing)
+            }
+        }
+
+        ^box String(OK)
     }

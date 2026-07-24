@@ -1,9 +1,42 @@
 FILE: 05_complexTypes.kt
-    package test.ir.types
+    package test.ir.complextypes
 
     public abstract interface ComplexTypeService : R|crow/wasmline/WasmlineService| {
         public abstract fun processNumbers(a: R|kotlin/Int|, b: R|kotlin/Long|): R|kotlin/Long|
 
         public abstract fun processString(text: R|kotlin/String|, count: R|kotlin/Int|): R|kotlin/String|
 
+    }
+    public final fun box(): R|kotlin/String| {
+        lval bridgeClass: R|java/lang/Class<*>| = R|kotlin/runCatching|<R|java/lang/Class<*>!|>(<L> = runCatching@fun <anonymous>(): R|java/lang/Class<*>!| <inline=Inline, kind=UNKNOWN>  {
+            ^ Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.ir.complextypes.ComplexTypeService_WasmlineBridge))
+        }
+        ).R|SubstitutionOverride<kotlin/Result.getOrNull: R|java/lang/Class<*>?|>|() ?: ^box String(Fail: Bridge not generated)
+        when () {
+            <getClass>(Q|test/ir/complextypes/ComplexTypeService|).R|kotlin/jvm/java|<R|test/ir/complextypes/ComplexTypeService|>.R|SubstitutionOverride<java/lang/Class.isAssignableFrom: R|kotlin/Boolean|>|(R|<local>/bridgeClass|).R|kotlin/Boolean.not|() ->  {
+                ^box String(Fail: Bridge doesn't implement ComplexTypeService)
+            }
+        }
+
+        lval numbersMethod: R|java/lang/reflect/Method!| = try {
+            R|<local>/bridgeClass|.R|SubstitutionOverride<java/lang/Class.getMethod: R|java/lang/reflect/Method!|>|(String(processNumbers), vararg(<getClass>(Q|kotlin/Int|).R|kotlin/jvm/java|<R|kotlin/Int|>, <getClass>(Q|kotlin/Long|).R|kotlin/jvm/java|<R|kotlin/Long|>))
+        }
+        catch (e: R|java/lang/NoSuchMethodException|) {
+            ^box String(Fail: processNumbers(Int, Long) method not found)
+        }
+
+        lval stringMethod: R|java/lang/reflect/Method!| = try {
+            R|<local>/bridgeClass|.R|SubstitutionOverride<java/lang/Class.getMethod: R|java/lang/reflect/Method!|>|(String(processString), vararg(<getClass>(Q|kotlin/String|).R|kotlin/jvm/java|<R|kotlin/String|>, <getClass>(Q|kotlin/Int|).R|kotlin/jvm/java|<R|kotlin/Int|>))
+        }
+        catch (e: R|java/lang/NoSuchMethodException|) {
+            ^box String(Fail: processString(String, Int) method not found)
+        }
+
+        when () {
+            ==(R|<local>/numbersMethod|, Null(null)) || ==(R|<local>/stringMethod|, Null(null)) ->  {
+                ^box String(Fail: Required methods missing)
+            }
+        }
+
+        ^box String(OK)
     }

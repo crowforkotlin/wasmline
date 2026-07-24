@@ -1,0 +1,3 @@
+FILE: 02_emptyWasmlineService.kt
+    public abstract interface EmptyService : R|crow/wasmline/WasmlineService| {
+    }

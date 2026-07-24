@@ -1,5 +1,18 @@
 FILE: 01_emptyService.kt
-    package test.ir.basic
+    package test.ir.empty
 
     public abstract interface EmptyService : R|crow/wasmline/WasmlineService| {
+    }
+    public final fun box(): R|kotlin/String| {
+        lval bridgeClass: R|java/lang/Class<*>| = R|kotlin/runCatching|<R|java/lang/Class<*>!|>(<L> = runCatching@fun <anonymous>(): R|java/lang/Class<*>!| <inline=Inline, kind=UNKNOWN>  {
+            ^ Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.ir.empty.EmptyService_WasmlineBridge))
+        }
+        ).R|SubstitutionOverride<kotlin/Result.getOrNull: R|java/lang/Class<*>?|>|() ?: ^box String(Fail: Bridge not generated)
+        when () {
+            <getClass>(Q|test/ir/empty/EmptyService|).R|kotlin/jvm/java|<R|test/ir/empty/EmptyService|>.R|SubstitutionOverride<java/lang/Class.isAssignableFrom: R|kotlin/Boolean|>|(R|<local>/bridgeClass|).R|kotlin/Boolean.not|() ->  {
+                ^box String(Fail: Bridge doesn't implement EmptyService)
+            }
+        }
+
+        ^box String(OK)
     }

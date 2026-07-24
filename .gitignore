@@ -19,6 +19,8 @@
 *.pyc
 *.pyo
 *.pyd
+*.java-version
+*.python-version
 
 **/.cxx/
 **/build/
