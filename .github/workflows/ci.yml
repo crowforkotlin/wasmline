@@ -33,7 +33,7 @@ jobs:
 
       - name: ktlint check
         working-directory: wasmline-multiplatform
-        run: ktlint --relative '!**/wasmline-build-logic/**' '!**/build/**'
+        run: ktlint --relative
 
   lint-clang:
     runs-on: ubuntu-latest
@@ -56,7 +56,7 @@ jobs:
 
   compile-all:
     needs: [lint-kotlin, lint-clang]
-    if: ${{ needs.lint-kotlin.result == 'success' && needs.lint-clang.result == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ always() && (needs.lint-kotlin.result == 'success' || needs.lint-clang.result == 'success' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     name: Compile All Targets
 
