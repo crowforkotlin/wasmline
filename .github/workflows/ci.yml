@@ -112,6 +112,15 @@ jobs:
         timeout-minutes: 5
         run: bash scripts/build-native-assets.sh
 
+      - name: Upload native assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-assets
+          path: |
+            build/platforms/
+            wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
+          retention-days: 1
+
       # ── Compilation (Format checks already passed in lint-* jobs) ────
 
       - name: Compile all JVM & Multiplatform targets
@@ -148,17 +157,10 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@v2
+      - name: Download native assets
+        uses: actions/download-artifact@v4
         with:
-          version: ${{ env.ZIG_VERSION }}
-
-      - name: Initialize Wasmtime platform assets
-        run: printf "\na\n\n" | bash scripts/init-wasmtime.sh
-
-      - name: Build native libraries
-        timeout-minutes: 5
-        run: bash scripts/build-native-assets.sh
+          name: native-assets
 
       - name: Kotlin compiler plugin box tests
         working-directory: wasmline-multiplatform
