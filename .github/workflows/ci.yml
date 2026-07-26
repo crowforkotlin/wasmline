@@ -20,7 +20,7 @@ env:
 jobs:
   lint-kotlin:
     runs-on: ubuntu-latest
-    name: Kotlin Format Check
+    name: lint-kotlin
 
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
 
   lint-clang:
     runs-on: ubuntu-latest
-    name: C++ Format Check
+    name: lint-clang
 
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
 
   compile-all:
     runs-on: ubuntu-latest
-    name: Compile All Targets
+    name: compile
 
     steps:
       - uses: actions/checkout@v4
@@ -149,7 +149,7 @@ jobs:
   test-all:
     needs: compile-all
     runs-on: ubuntu-latest
-    name: Run All Tests
+    name: test
 
     steps:
       - uses: actions/checkout@v4
