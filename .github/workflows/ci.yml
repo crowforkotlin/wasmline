@@ -51,12 +51,10 @@ jobs:
             xargs clang-format --dry-run --Werror
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 3: Compile all targets (requires native libraries)
+  # JOB 3: Compile all targets (parallel with lint, requires native libraries)
   # ───────────────────────────────────────────────────────────────
 
   compile-all:
-    needs: [lint-kotlin, lint-clang]
-    if: ${{ always() && (needs.lint-kotlin.result == 'success' || needs.lint-clang.result == 'success' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     name: Compile All Targets
 
@@ -102,26 +100,37 @@ jobs:
         run: |
           echo "MINGW_PATH=/usr/x86_64-w64-mingw32" >> "$GITHUB_ENV"
 
-      # ── Native Asset Build (blocking step) ────────────────────────
-      # Only starts after lint checks pass (or fail-fast)
+      # ── Native Asset Build (with cache) ────────────────────────────
+
+      - name: Cache Wasmtime platform assets
+        id: cache-wasmtime
+        uses: actions/cache@v4
+        with:
+          path: build/platforms
+          key: wasmtime-platforms-${{ hashFiles('scripts/versions.json') }}
 
       - name: Initialize Wasmtime platform assets
+        if: steps.cache-wasmtime.outputs.cache-hit != 'true'
         run: printf "\na\n\n" | bash scripts/init-wasmtime.sh
 
       - name: Build native libraries
         timeout-minutes: 5
         run: bash scripts/build-native-assets.sh
 
+      - name: Deploy JVM native library for tests
+        run: |
+          mkdir -p wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/linux/x86_64
+          cp wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so \
+             wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+
       - name: Upload native assets
         uses: actions/upload-artifact@v4
         with:
           name: native-assets
-          path: |
-            build/platforms/
-            wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
+          path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
           retention-days: 1
 
-      # ── Compilation (Format checks already passed in lint-* jobs) ────
+      # ── Compilation ────────────────────────────────────────────────
 
       - name: Compile all JVM & Multiplatform targets
         working-directory: wasmline-multiplatform
@@ -139,7 +148,6 @@ jobs:
 
   test-all:
     needs: compile-all
-    if: ${{ always() }}
     runs-on: ubuntu-latest
     name: Run All Tests
 
@@ -161,6 +169,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: native-assets
+          path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
 
       - name: Kotlin compiler plugin box tests
         working-directory: wasmline-multiplatform
