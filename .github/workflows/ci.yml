@@ -281,7 +281,9 @@ jobs:
         if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: printf "6\n\n\n" | bash scripts/init-wasmtime.sh
+          WASM_VERSION: release-v45.0.6
+          USER_FILTER: aarch64-ios-sim-pulley-min-c-api
+        run: bash scripts/init-wasmtime.sh
 
       - name: Run iOS simulator tests
         working-directory: wasmline-multiplatform
