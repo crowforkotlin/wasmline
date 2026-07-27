@@ -112,6 +112,8 @@ jobs:
 
       - name: Initialize Wasmtime platform assets
         if: steps.cache-wasmtime.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: printf "\na\n\n" | bash scripts/init-wasmtime.sh
 
       - name: Build native libraries
@@ -277,6 +279,8 @@ jobs:
 
       - name: Initialize Wasmtime iOS simulator assets
         if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: printf "6\n\n\n" | bash scripts/init-wasmtime.sh
 
       - name: Run iOS simulator tests

@@ -345,11 +345,22 @@ mkdir -p "$TEMP_WORK_DIR" "$PLATFORMS_ROOT"
 log_header "Wasmtime SDK Init"
 setup_proxy "$1"
 
+# GitHub API authentication (avoids rate limit on CI runners)
+CURL_AUTH_OPTS=""
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    CURL_AUTH_OPTS="-H \"Authorization: Bearer ${GITHUB_TOKEN}\""
+    log_info "Using authenticated GitHub API requests."
+fi
+
 # 1. Fetch releases
 log_info "Fetching releases..."
-ALL_RELEASES=$(curl -s --retry 3 --connect-timeout 10 "https://api.github.com/repos/$REPO/releases?per_page=10")
+ALL_RELEASES=$(eval curl -s --retry 3 --connect-timeout 10 $CURL_AUTH_OPTS "https://api.github.com/repos/$REPO/releases?per_page=10")
 if [ -z "$ALL_RELEASES" ] || echo "$ALL_RELEASES" | grep -q '"message":.*Not Found'; then
     log_error "Fetch failed."
+    exit 1
+fi
+if echo "$ALL_RELEASES" | grep -q '"message":.*API rate limit'; then
+    log_error "GitHub API rate limit exceeded. Set GITHUB_TOKEN to authenticate."
     exit 1
 fi
 
@@ -357,7 +368,7 @@ fi
 select_version "$ALL_RELEASES"
 
 # Fetch the specific version's release details for asset URLs
-RESP=$(curl -s --retry 3 --connect-timeout 10 "https://api.github.com/repos/$REPO/releases/tags/${SELECTED_VERSION}")
+RESP=$(eval curl -s --retry 3 --connect-timeout 10 $CURL_AUTH_OPTS "https://api.github.com/repos/$REPO/releases/tags/${SELECTED_VERSION}")
 if [ -z "$RESP" ] || echo "$RESP" | grep -q '"message":.*Not Found'; then
     log_error "Failed to fetch release: ${SELECTED_VERSION}"
     exit 1
