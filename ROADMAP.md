@@ -1,123 +1,138 @@
 # Wasmline Roadmap
 
-This document outlines the planned and completed features for the Wasmline project.
+## Completed Features
 
-> **Note**: When releasing version 1.0.0, all implemented features must be updated in this file
-> with `[x]` to indicate completion status.
-
----
-
-## Core Runtime
-
-- [x] Wasmtime C-API integration (v45.0.3)
-- [x] Dual-path execution model (Native + Web)
+### Core Runtime
+- [x] Wasmtime C-API integration (v47.0.2)
+- [x] Dual-path execution: Native and Web
 - [x] Session-based memory isolation
-- [x] Engine singleton lifecycle management
-- [x] AOT compilation support (`.cwasm` artifacts)
-- [x] Pulley portable bytecode support (`.pwasm` artifacts)
-- [x] Module cache with keyed storage
-- [ ] Module hot-reload without host restart
-- [ ] Concurrent multi-plugin execution within a single session
-- [ ] Configurable resource limits (memory, CPU ticks) per session
+- [x] Engine singleton lifecycle
+- [x] AOT compilation (`.cwasm`)
+- [x] Pulley portable bytecode (`.pwasm`)
+- [x] Module keyed cache
 
-## Platform Support
+### Platform Support
+- [x] Android (arm64-v8a, arm-eabi, x86_64, x86)
+- [x] iOS (arm64)
+- [x] macOS (arm64)
+- [x] Linux (x86_64)
+- [x] Windows (x86_64)
+- [x] Web - Kotlin/JS via browser WebAssembly API
+- [x] Web - Kotlin/WasmJS via browser WebAssembly API
 
-- [x] Android (arm64-v8a) — JNI bridge
-- [x] iOS (arm64) — Kotlin/Native C Interop
-- [x] macOS (arm64) — JNI bridge
-- [x] Linux (x86_64) — JNI bridge
-- [x] Windows (x86_64) — JNI bridge
-- [x] Web — Kotlin/JS via browser WebAssembly API
-- [x] Web — Kotlin/WasmJS via browser WebAssembly API
-- [ ] Android (x86_64 emulator) — full CI validation
-- [ ] Web — SharedArrayBuffer-based async execution
-- [ ] Web — Service Worker off-thread plugin execution
-
-## Compiler Plugin (IR Transformation)
-
-- [x] Service contract discovery and validation
+### Compiler Plugin (IR Transformation)
+- [x] Service contract discovery (`WasmlineService` interface)
 - [x] Bridge class synthesis (`*_WasmlineBridge`)
-- [x] `link<T>()` call-site rewriting
-- [x] `bind(impl)` call-site rewriting
-- [x] SHA-256 action identifier derivation
-- [x] Diagnostic error reporting for contract violations
+- [x] `link<T>()` call rewriting
+- [x] `bind(impl)` call rewriting
+- [x] SHA-256 action identifiers
+- [x] Diagnostic error reporting
 - [x] IR box test infrastructure
-- [ ] Support for overloaded methods via parameter-type-disambiguated action identifiers
-- [ ] Support for `suspend` functions in service contracts
-- [ ] Support for generic type parameters on service contracts
+- [x] Contract validation (interface-only, no suspend, single parameter)
 
-## Service Contracts & Bridge Protocol
-
-- [x] `WasmlineService` interface-based contract definition
-- [x] Single-parameter method signature support
-- [x] Serialization/deserialization bridge synthesis
+### Service Contracts
+- [x] Interface-based contracts
+- [x] Single-parameter methods
+- [x] Multi-parameter methods
+- [x] Automatic serialization (Protobuf, raw bytes)
 - [x] Bidirectional host ↔ plugin invocation
-- [x] Base64 payload encoding for Web targets
-- [ ] Multi-parameter method signature support
-- [ ] Return type `Result<T>` for typed error propagation
-- [ ] Streaming / chunked payload transfer for large data
-- [ ] Contract versioning and backward-compatible evolution
+- [x] Base64 encoding for Web targets
 
-## CLI Toolchain
+### CLI Toolchain
+- [x] `download` - Wasmtime binary acquisition
+- [x] `generate-key-pair` - Ed25519 key generation
+- [x] `compile` - AOT and Pulley compilation
+- [x] `manifest` - Signed manifest generation
+- [x] `build` - Full pipeline orchestration
 
-- [x] `download` — Wasmtime binary acquisition
-- [x] `generate-key-pair` — Ed25519 key generation
-- [x] `compile` — AOT and Pulley compilation
-- [x] `manifest` — Signed manifest generation (Protobuf + Ed25519)
-- [x] `build` — Full pipeline orchestration
-- [ ] Incremental compilation — skip unchanged modules
-- [ ] Multi-target parallel compilation
-- [ ] Plugin dependency resolution and bundling
+### Security & Manifest
+- [x] Ed25519 digital signatures
+- [x] ECDSA-P256 support
+- [x] Protobuf manifest format (`.wlm`)
+- [x] Manifest verification on load
 
-## Security & Manifest
-
-- [x] Ed25519 cryptographic signing
-- [x] Protobuf-based manifest format (`.wlm`)
-- [x] Manifest parsing and verification in `wasmline-loader`
-- [ ] ECDSA-P256 signature algorithm support
-- [ ] Manifest-based permission declaration and enforcement
-- [ ] Plugin sandboxing policy configuration
-- [ ] Certificate chain validation for third-party plugins
-
-## Build System & Gradle Integration
-
-- [x] `wasmline-gradle-plugin` — consumer project integration
-- [x] `wasmline-build-logic` — shared convention plugins
-- [x] Multi-platform KMP target configuration
+### Gradle Integration
+- [x] `wasmline-gradle-plugin`
+- [x] `wasmline-build-logic` convention plugins
+- [x] KMP multiplatform configuration
 - [x] Android NDK / CMake integration
-- [x] Zig 0.15.1 JNI shared library compilation
-- [ ] Gradle configuration cache full compatibility
-- [ ] Published Gradle plugin portal distribution
-- [ ] Kotlin Multiplatform project template generator
+- [x] Zig 0.15.1 JNI compilation
 
-## Networking
+### Network Clients
+- [x] Ktor HTTP client adapter
+- [x] OkHttp HTTP client adapter
 
-- [x] Ktor-based HTTP client adapter (`wasmline-network-ktor`)
-- [x] OkHttp-based HTTP client adapter (`wasmline-network-okhttp`)
-- [ ] WASI preview2 HTTP proxy integration
-- [ ] gRPC-over-Wasm bridge for plugin service discovery
+### Documentation & Samples
+- [x] Multi-platform sample apps
+- [x] English and Chinese documentation
+- [x] Architecture diagrams and design docs
+- [x] Next.js + Fumadocs site
 
-## Documentation & Ecosystem
+---
 
-- [x] Sample applications (Android, Desktop, Compose Multiplatform, Web)
-- [x] Multi-language README (English / Chinese)
-- [x] Architecture documentation with mind maps
-- [x] Documentation site (Next.js + Fumadocs)
-- [ ] API reference documentation (Dokka)
+## Planned Features
+
+### Runtime Enhancements
+- [ ] Hot-reload: replace loaded module without host restart
+- [ ] Concurrent multi-plugin execution
+- [ ] Resource limits (memory, CPU ticks) per session
+- [ ] Streaming/chunked data transfer for large payloads
+
+### Compiler Plugin Enhancements
+- [ ] Method overload support (type-disambiguated action IDs)
+- [ ] Suspend function support (async/await)
+- [ ] Generic type parameters in contracts
+- [ ] Default parameters in method signatures
+- [ ] Property access support
+- [ ] Improved diagnostic messages with quick fixes
+
+### Build System Improvements
+- [ ] Incremental compilation (skip unchanged modules)
+- [ ] Parallel multi-target compilation
+- [ ] Plugin dependency resolution and bundling
+- [ ] Gradle build cache compatibility
+- [ ] Maven central publishing
+
+### Security & Sandboxing
+- [ ] Manifest-based permission declarations
+- [ ] Runtime permission enforcement
+- [ ] Plugin sandboxing policies
+- [ ] Certificate chain validation (third-party plugins)
+
+### Platform Coverage
+- [ ] Android x86_64 full CI validation
+- [ ] Web SharedArrayBuffer async execution
+- [ ] Web Service Worker off-thread execution
+- [ ] Additional architectures (RISC-V, ARMv7)
+
+### Network & Protocol
+- [ ] WASI Preview 2 HTTP integration
+- [ ] gRPC-over-Wasm bridge for service discovery
+- [ ] Plugin marketplace discovery protocol
+
+### Developer Experience
+- [ ] API reference (Dokka)
 - [ ] Plugin authoring guide
-- [ ] Migration guide between major versions
+- [ ] Migration guides between major versions
 - [ ] Community plugin registry
+- [ ] IntelliJ/IDE plugin for hot reload debugging
+
+### Testing & Quality
+- [ ] Fuzzing tests for serialization
+- [ ] Performance benchmarks suite
+- [ ] Cross-version compatibility tests
+- [ ] Memory leak detection tools
 
 ---
 
-## Versioning Policy
+## Version Plan
 
-| Phase   | Version  | Focus                                                  |
-|---------|----------|--------------------------------------------------------|
-| Alpha   | 0.x.x   | Core runtime stability, platform coverage, API design   |
-| Beta    | 0.9.x   | Feature completeness, performance optimization, testing |
-| Stable  | 1.0.0   | Production-ready release with full documentation        |
+| Phase   | Version  | Focus                              |
+|---------|----------|------------------------------------|
+| Alpha   | 0.x.x    | Core stability, platform coverage  |
+| Beta    | 0.9.x    | Feature completeness, performance  |
+| Stable  | 1.0.0    | Production-ready, complete docs    |
 
 ---
 
-*Last updated: 2025-06-25*
+*Last updated: 2026-07-27*
