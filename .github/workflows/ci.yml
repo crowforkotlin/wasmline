@@ -282,8 +282,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           WASM_VERSION: release-v45.0.6
-          USER_FILTER: aarch64-ios-sim-pulley-min-c-api
-        run: bash scripts/init-wasmtime.sh
+        run: bash scripts/init-wasmtime-ci.sh
 
       - name: Run iOS simulator tests
         working-directory: wasmline-multiplatform
