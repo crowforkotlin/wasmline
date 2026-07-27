@@ -68,6 +68,7 @@ jobs:
         with:
           distribution: jetbrains
           java-version: 21
+          token: ${{ github.token }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -158,6 +159,7 @@ jobs:
         with:
           distribution: jetbrains
           java-version: 21
+          token: ${{ github.token }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -197,6 +199,7 @@ jobs:
         with:
           distribution: jetbrains
           java-version: 21
+          token: ${{ github.token }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -231,6 +234,7 @@ jobs:
         with:
           distribution: jetbrains
           java-version: 21
+          token: ${{ github.token }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -257,6 +261,7 @@ jobs:
         with:
           distribution: jetbrains
           java-version: 21
+          token: ${{ github.token }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
