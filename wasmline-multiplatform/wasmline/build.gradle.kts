@@ -56,7 +56,7 @@ kotlin {
             workingDir = project.projectDir
             commandLine(
                 "bash",
-                "./compile_ios.sh",
+                "../ci/compile-ios.sh",
                 if (target.name == "iosSimulatorArm64") "simulator-arm64" else "arm64",
             )
         }

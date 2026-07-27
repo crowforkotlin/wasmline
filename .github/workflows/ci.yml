@@ -123,12 +123,11 @@ jobs:
           cp wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so \
              wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
 
-      - name: Upload native assets
-        uses: actions/upload-artifact@v4
+      - name: Cache native assets for test job
+        uses: actions/cache/save@v4
         with:
-          name: native-assets
           path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
-          retention-days: 1
+          key: native-assets-${{ github.run_id }}
 
       # ── Compilation ────────────────────────────────────────────────
 
@@ -165,19 +164,70 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Download native assets
-        uses: actions/download-artifact@v4
+      - name: Restore native assets from cache
+        uses: actions/cache/restore@v4
         with:
-          name: native-assets
           path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
+          key: native-assets-${{ github.run_id }}
 
-      - name: Kotlin compiler plugin box tests
+      - name: Run JVM tests
         working-directory: wasmline-multiplatform
         run: |
           ./gradlew :wasmline-kotlin-plugin:generateTests \
                     :wasmline-kotlin-plugin:test \
+                    :wasmline-loader:jvmTest \
+                    :wasmline:jvmTest \
+                    :wasmline-cli:test \
                     --no-daemon
 
-      - name: Loader module jvmTest
+      - name: Run web platform tests (wasmJs / js / wasmWasi)
         working-directory: wasmline-multiplatform
-        run: ./gradlew :wasmline-loader:jvmTest --no-daemon
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          ./gradlew :wasmline:wasmJsBrowserTest \
+                    :wasmline:jsBrowserTest \
+                    :wasmline:wasmWasiNodeTest \
+                    :wasmline-loader:wasmJsBrowserTest \
+                    :wasmline-loader:jsBrowserTest \
+                    --no-daemon
+
+  # ───────────────────────────────────────────────────────────────
+  # JOB 5: iOS Simulator Tests (macOS runner, Xcode pre-installed)
+  # ───────────────────────────────────────────────────────────────
+
+  test-ios:
+    runs-on: macos-latest
+    name: test-ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: jetbrains
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Cache Wasmtime iOS platform assets
+        id: cache-wasmtime-ios
+        uses: actions/cache@v4
+        with:
+          path: build/platforms
+          key: wasmtime-platforms-ios-${{ hashFiles('scripts/versions.json') }}
+
+      - name: Initialize Wasmtime iOS simulator assets
+        if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
+        run: printf "6\n\n\n" | bash scripts/init-wasmtime.sh
+
+      - name: Run iOS simulator tests
+        working-directory: wasmline-multiplatform
+        run: |
+          ./gradlew :wasmline:iosSimulatorArm64Test \
+                    :wasmline-loader:iosSimulatorArm64Test \
+                    --no-daemon
