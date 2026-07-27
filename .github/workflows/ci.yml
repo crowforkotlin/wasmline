@@ -213,7 +213,8 @@ jobs:
         env:
           CHROME_BIN: /usr/bin/google-chrome
         run: |
-          ./gradlew :wasmline:wasmJsBrowserTest \
+          ./gradlew :kotlinUpgradeYarnLock \
+                    :wasmline:wasmJsBrowserTest \
                     :wasmline:jsBrowserTest \
                     :wasmline-loader:wasmJsBrowserTest \
                     :wasmline-loader:jsBrowserTest \
