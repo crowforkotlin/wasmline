@@ -142,13 +142,13 @@ jobs:
                     --no-daemon
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 4: Execute Tests (requires successful compilation)
+  # JOB 4: JVM / Desktop Tests
   # ───────────────────────────────────────────────────────────────
 
-  test-all:
+  test-jvm:
     needs: compile-all
     runs-on: ubuntu-latest
-    name: test
+    name: test-jvm
 
     steps:
       - uses: actions/checkout@v4
@@ -180,20 +180,69 @@ jobs:
                     :wasmline-cli:test \
                     --no-daemon
 
-      - name: Run web platform tests (wasmJs / js / wasmWasi)
+  # ───────────────────────────────────────────────────────────────
+  # JOB 5: Web Browser Tests (wasmJs / js)
+  # ───────────────────────────────────────────────────────────────
+
+  test-web:
+    needs: compile-all
+    runs-on: ubuntu-latest
+    name: test-web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: jetbrains
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run browser tests (wasmJs / js)
         working-directory: wasmline-multiplatform
         env:
           CHROME_BIN: /usr/bin/google-chrome
         run: |
           ./gradlew :wasmline:wasmJsBrowserTest \
                     :wasmline:jsBrowserTest \
-                    :wasmline:wasmWasiNodeTest \
                     :wasmline-loader:wasmJsBrowserTest \
                     :wasmline-loader:jsBrowserTest \
                     --no-daemon
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 5: iOS Simulator Tests (macOS runner, Xcode pre-installed)
+  # JOB 6: wasmWasi Tests (Node.js)
+  # ───────────────────────────────────────────────────────────────
+
+  test-node:
+    needs: compile-all
+    runs-on: ubuntu-latest
+    name: test-node
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: jetbrains
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run wasmWasi Node.js tests
+        working-directory: wasmline-multiplatform
+        run: ./gradlew :wasmline:wasmWasiNodeTest --no-daemon
+
+  # ───────────────────────────────────────────────────────────────
+  # JOB 7: iOS Simulator Tests (macOS runner, Xcode pre-installed)
   # ───────────────────────────────────────────────────────────────
 
   test-ios:
@@ -231,3 +280,29 @@ jobs:
           ./gradlew :wasmline:iosSimulatorArm64Test \
                     :wasmline-loader:iosSimulatorArm64Test \
                     --no-daemon
+
+  # ───────────────────────────────────────────────────────────────
+  # JOB 8: Publish to Maven Central (placeholder, runs after all jobs)
+  # ───────────────────────────────────────────────────────────────
+
+  publish:
+    needs: [lint-kotlin, lint-clang, compile-all, test-jvm, test-web, test-node, test-ios]
+    runs-on: ubuntu-latest
+    name: publish
+
+    steps:
+      - name: Placeholder
+        run: echo "Publish to Maven Central — not yet implemented."
+
+  # ───────────────────────────────────────────────────────────────
+  # JOB 9: GitHub Release (placeholder, runs after all jobs)
+  # ───────────────────────────────────────────────────────────────
+
+  release:
+    needs: [lint-kotlin, lint-clang, compile-all, test-jvm, test-web, test-node, test-ios]
+    runs-on: ubuntu-latest
+    name: release
+
+    steps:
+      - name: Placeholder
+        run: echo "Create GitHub Release with changelog — not yet implemented."
