@@ -33,6 +33,7 @@ kotlin {
             implementation(projects.sampleApps.multiplatform.shared)
             implementation(projects.sampleCommon)
             implementation(libs.crow.wasmline)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.coroutines)
         }
     }

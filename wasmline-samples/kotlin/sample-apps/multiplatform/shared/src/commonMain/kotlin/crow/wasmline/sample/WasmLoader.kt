@@ -18,14 +18,14 @@ import crow.wasmline.serialization.WasmlineSerializationConfig
 import kotlin.time.TimeSource
 import kotlin.time.measureTime
 
-internal enum class WasmExecutionStatus {
+enum class WasmExecutionStatus {
     Idle,
     Running,
     Success,
     Failure,
 }
 
-internal data class WasmExecutionRequest(
+data class WasmExecutionRequest(
     val artifactPath: String,
     val platform: String,
     val content: String,
@@ -35,7 +35,7 @@ internal data class WasmExecutionRequest(
     val executedAction: String = "TimeSyncService.timeSync",
 )
 
-internal data class WasmExecutionReport(
+data class WasmExecutionReport(
     val status: WasmExecutionStatus,
     val headline: String,
     val detail: String,
