@@ -172,14 +172,17 @@ class Download : CliktCommand(name = "download") {
                         println("Extracting TAR.XZ: $fileName...")
                         extractTarXz(tempFile, outputDir)
                     }
+
                     fileName.endsWith(".tar.gz") -> {
                         println("Extracting TAR.GZ: $fileName...")
                         extractTarGz(tempFile, outputDir)
                     }
+
                     fileName.endsWith(".zip") -> {
                         println("Extracting ZIP: $fileName...")
                         extractZip(tempFile, outputDir)
                     }
+
                     else -> {
                         targetFolder.deleteRecursively()
                         throw IllegalStateException("Unsupported archive type for '$fileName'")

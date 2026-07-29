@@ -16,7 +16,7 @@ The Web layer splits into three source sets. Platform code never enters `webMain
 | JS actual | `jsMain` | `wasmline/src/jsMain/kotlin/crow/wasmline/web/WebBindings.js.kt` | Typed externals (`org.khronos.webgl`) |
 | WasmJs actual | `wasmJsMain` | `wasmline/src/wasmJsMain/kotlin/crow/wasmline/web/WebBindings.wasmJs.kt` | `JsAny` handles, constant `js()` |
 
----
+--
 
 ## Naming Rules
 

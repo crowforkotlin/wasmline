@@ -24,8 +24,7 @@ internal object WebWasmRuntime {
         WebWasmInstanceHandle(webInstantiateWasm(module, imports))
     }
 
-    fun instantiate(module: WebWasmModule, imports: WebWasmImportsBuilder): WebWasmInstanceHandle =
-        instantiate(module, imports.build())
+    fun instantiate(module: WebWasmModule, imports: WebWasmImportsBuilder): WebWasmInstanceHandle = instantiate(module, imports.build())
 
     private inline fun <T> runStage(stage: String, block: () -> T): T = try {
         block()
@@ -45,9 +44,7 @@ internal object WebWasmRuntime {
  * 2026-07-29
  * @author crowforkotlin
  */
-internal class WebWasmInstanceHandle internal constructor(
-    private val instance: WebWasmInstance,
-) {
+internal class WebWasmInstanceHandle internal constructor(private val instance: WebWasmInstance) {
     // Kept accessible for phase-2 wiring of custom bridge exports.
     val exports: WebJsObject = webExportsOf(instance)
 
@@ -81,14 +78,8 @@ internal class WebWasmInstanceHandle internal constructor(
  * 2026-07-29
  * @author crowforkotlin
  */
-internal class WebWasmFunction internal constructor(
-    private val name: String,
-    private val function: WebJsValue,
-) {
-    fun invoke(
-        args: List<WebWasmValue> = emptyList(),
-        resultTypes: List<WebWasmType> = emptyList(),
-    ): List<WebWasmValue> {
+internal class WebWasmFunction internal constructor(private val name: String, private val function: WebJsValue) {
+    fun invoke(args: List<WebWasmValue> = emptyList(), resultTypes: List<WebWasmType> = emptyList()): List<WebWasmValue> {
         val encodedArgs = webArrayOf(args.map(WebWasmValueCodec::encode))
         val result = try {
             webCallFunction(function, encodedArgs)
@@ -108,9 +99,7 @@ internal class WebWasmFunction internal constructor(
  * 2026-07-29
  * @author crowforkotlin
  */
-internal class WebWasmMemory internal constructor(
-    private val memory: WebJsValue,
-) {
+internal class WebWasmMemory internal constructor(private val memory: WebJsValue) {
     fun read(pointer: Int, length: Int): ByteArray {
         if (length == 0) return ByteArray(0)
         return webBytesCopyOut(webMemoryBytes(memory, pointer, length))

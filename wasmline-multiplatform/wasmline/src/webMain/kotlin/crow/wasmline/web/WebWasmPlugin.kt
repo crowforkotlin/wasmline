@@ -127,8 +127,12 @@ internal class WebWasmPlugin(binary: ByteArray) {
             module = ENV_MODULE,
             name = "bridge_outbound_call_host",
             paramTypes = listOf(
-                WebWasmType.I32, WebWasmType.I32, WebWasmType.I32,
-                WebWasmType.I32, WebWasmType.I32, WebWasmType.I32,
+                WebWasmType.I32,
+                WebWasmType.I32,
+                WebWasmType.I32,
+                WebWasmType.I32,
+                WebWasmType.I32,
+                WebWasmType.I32,
             ),
             resultTypes = listOf(WebWasmType.I32),
         ) { args ->
@@ -227,11 +231,10 @@ internal class WebWasmPlugin(binary: ByteArray) {
 private fun WebWasmValue.i32(): Int = (this as WebWasmValue.I32).value
 
 /** Reads a little-endian 32-bit integer from the buffer. */
-private fun ByteArray.readI32Le(offset: Int): Int =
-    (this[offset].toInt() and 0xFF) or
-        ((this[offset + 1].toInt() and 0xFF) shl 8) or
-        ((this[offset + 2].toInt() and 0xFF) shl 16) or
-        ((this[offset + 3].toInt() and 0xFF) shl 24)
+private fun ByteArray.readI32Le(offset: Int): Int = (this[offset].toInt() and 0xFF) or
+    ((this[offset + 1].toInt() and 0xFF) shl 8) or
+    ((this[offset + 2].toInt() and 0xFF) shl 16) or
+    ((this[offset + 3].toInt() and 0xFF) shl 24)
 
 /** Converts an int to a 4-byte little-endian array. */
 private fun Int.toLeBytes(): ByteArray = ByteArray(4) { index -> (this shr (index * 8)).toByte() }

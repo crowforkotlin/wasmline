@@ -59,8 +59,7 @@ internal actual fun webObjectWriteObject(obj: WebJsObject, name: String, value: 
 
 // ========== Array helpers ==========
 
-internal actual fun webArrayOf(values: List<WebJsValue>): WebJsArray =
-    WebJsArray(values.map { value -> value.raw }.toTypedArray())
+internal actual fun webArrayOf(values: List<WebJsValue>): WebJsArray = WebJsArray(values.map { value -> value.raw }.toTypedArray())
 
 internal actual fun webArrayAsValue(array: WebJsArray): WebJsValue = WebJsValue(array.raw)
 
@@ -113,12 +112,11 @@ internal actual fun webCallFunction(function: WebJsValue, args: WebJsArray): Web
     return if (rawIsNullish(result)) null else WebJsValue(result)
 }
 
-internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?): WebJsValue =
-    WebJsValue(
-        rawVariadicFunction { rawArgs ->
-            handler(rawArgs.map(::WebJsValue))?.raw
-        },
-    )
+internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?): WebJsValue = WebJsValue(
+    rawVariadicFunction { rawArgs ->
+        handler(rawArgs.map(::WebJsValue))?.raw
+    },
+)
 
 // ========== Linear memory access ==========
 

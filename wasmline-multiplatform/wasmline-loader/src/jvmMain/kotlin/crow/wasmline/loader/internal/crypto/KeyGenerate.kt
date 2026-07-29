@@ -20,6 +20,7 @@ internal fun generateEd25519KeyPair(): KeyPair {
 
 internal fun generateKeyPair(signatureAlgorithmId: SignatureAlgorithmId): KeyPair = when (signatureAlgorithmId) {
     SignatureAlgorithmId.Ed25519 -> generateEd25519KeyPair()
+
     SignatureAlgorithmId.EcdsaP256 -> EcdsaP256(
         secureRandom(),
     ).generateKeyPair()

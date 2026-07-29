@@ -305,6 +305,7 @@ private fun generateBridgeContractMethod(
             val bridgeThis = dispatchReceiverParameter!!
             val payload = when (regularParameters.size) {
                 0 -> irInvoke(null, runtimeSymbols.emptyPayloadFunction)
+
                 1 -> irInvoke(
                     dispatchReceiver = null,
                     callee = runtimeSymbols.encodeGeneratedValueFunction,
@@ -315,6 +316,7 @@ private fun generateBridgeContractMethod(
                     ),
                     returnTypeHint = runtimeSymbols.byteArrayClass.owner.defaultType,
                 )
+
                 else -> {
                     val (serializersField, descriptorField) = multiParamFields[contractFunction]!!
                     val arrayOfParams = irArrayOfParamsCall(

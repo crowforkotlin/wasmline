@@ -89,6 +89,7 @@ internal object DefaultWasmlineLoader {
         )
         return when (resolved) {
             is WasmlineSourceResolution.Complete -> resolved.state
+
             is WasmlineSourceResolution.ContinueWith -> loadSource(
                 request = request,
                 source = resolved.source,

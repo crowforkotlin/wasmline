@@ -30,6 +30,7 @@ object WasmlineRawBytesSerializationFactory : WasmlineSerializationFactory {
                 ?: error("Raw serialization expected ByteArray for ${serializer.descriptor.serialName}.")
 
         UNIT_SERIAL_NAME -> ByteArray(0)
+
         else -> unsupportedRawSerialization(serializer)
     }
 

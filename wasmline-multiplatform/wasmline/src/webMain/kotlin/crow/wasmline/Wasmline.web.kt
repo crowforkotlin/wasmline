@@ -27,8 +27,7 @@ internal class BrowserWasmline(private val moduleKey: String) {
         WasmlineWebModuleRegistry.require(moduleKey).setDispatcher(dispatcher::dispatch)
     }
 
-    fun call(action: String, inputBytes: ByteArray): ByteArray =
-        WasmlineWebModuleRegistry.require(moduleKey).call(action, inputBytes)
+    fun call(action: String, inputBytes: ByteArray): ByteArray = WasmlineWebModuleRegistry.require(moduleKey).call(action, inputBytes)
 
     fun close() {
         WasmlineWebModuleRegistry.remove(moduleKey)

@@ -118,8 +118,10 @@ class WasmlineRemotePackageResolutionTest {
             when {
                 url.endsWith(".wlm") || url.endsWith("/manifest.wlm") ->
                     WasmlineHttpResponse(200, envelopeBytes)
+
                 url.endsWith("lib.pwasm") ->
                     WasmlineHttpResponse(200, artifactBytes)
+
                 else ->
                     WasmlineHttpResponse(404, ByteArray(0))
             }

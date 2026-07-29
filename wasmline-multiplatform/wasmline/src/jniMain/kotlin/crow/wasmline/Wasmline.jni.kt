@@ -78,6 +78,7 @@ actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
             )
             WasmlineWarmupMode.PULLEY
         }
+
         else -> mode
     }
     Wasmline.warmupEngine(effectiveMode == WasmlineWarmupMode.PULLEY)

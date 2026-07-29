@@ -49,11 +49,7 @@ internal class WebWasmImportsBuilder {
      * Registers a raw host function import for low-level shims (for example
      * WASI stubs) that work with JS value handles directly.
      */
-    fun rawFunction(
-        module: String,
-        name: String,
-        handler: (List<WebJsValue>) -> WebJsValue?,
-    ): WebWasmImportsBuilder = apply {
+    fun rawFunction(module: String, name: String, handler: (List<WebJsValue>) -> WebJsValue?): WebWasmImportsBuilder = apply {
         webObjectWrite(namespace(module), name, webHostFunction(handler))
     }
 
@@ -64,8 +60,7 @@ internal class WebWasmImportsBuilder {
 
     fun build(): WebJsObject = root
 
-    private fun namespace(module: String): WebJsObject =
-        webObjectReadObject(root, module) ?: webNewObject().also { created ->
-            webObjectWriteObject(root, module, created)
-        }
+    private fun namespace(module: String): WebJsObject = webObjectReadObject(root, module) ?: webNewObject().also { created ->
+        webObjectWriteObject(root, module, created)
+    }
 }

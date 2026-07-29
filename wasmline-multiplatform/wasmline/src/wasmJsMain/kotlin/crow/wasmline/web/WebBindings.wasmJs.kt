@@ -122,14 +122,13 @@ internal actual fun webCallFunction(function: WebJsValue, args: WebJsArray): Web
     return if (rawIsNullish(result)) null else WebJsValue(result)
 }
 
-internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?): WebJsValue =
-    WebJsValue(
-        rawVariadicFunction { rawArgs ->
-            val count = rawArrayLength(rawArgs)
-            val args = List(count) { index -> WebJsValue(rawArrayAt(rawArgs, index)) }
-            handler(args)?.raw
-        },
-    )
+internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?): WebJsValue = WebJsValue(
+    rawVariadicFunction { rawArgs ->
+        val count = rawArrayLength(rawArgs)
+        val args = List(count) { index -> WebJsValue(rawArrayAt(rawArgs, index)) }
+        handler(args)?.raw
+    },
+)
 
 // ========== Linear memory access ==========
 
@@ -223,13 +222,11 @@ private fun rawIsWasmMemory(value: JsAny?): Boolean = js("value instanceof WebAs
 
 private fun rawApplyFunction(fn: JsAny, args: JsAny): JsAny? = js("fn.apply(undefined, args)")
 
-private fun rawMemoryBytes(memory: JsAny, pointer: Int, length: Int): JsAny =
-    js("new Uint8Array(memory.buffer, pointer, length)")
+private fun rawMemoryBytes(memory: JsAny, pointer: Int, length: Int): JsAny = js("new Uint8Array(memory.buffer, pointer, length)")
 
 private fun rawNowMillis(): Double = js("Date.now()")
 
-private fun rawVariadicFunction(handler: (JsAny) -> JsAny?): JsAny =
-    js("((...args) => handler(args))")
+private fun rawVariadicFunction(handler: (JsAny) -> JsAny?): JsAny = js("((...args) => handler(args))")
 
 private fun rawFetchBytes(url: String, onSuccess: (JsAny) -> Unit, onFailure: (String) -> Unit): Unit = js(
     """{
