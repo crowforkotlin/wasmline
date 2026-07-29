@@ -266,6 +266,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   test-ios:
+    needs: compile-all
     runs-on: macos-latest
     name: test-ios
 
@@ -306,7 +307,7 @@ jobs:
                     --no-daemon
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 8: Publish to Maven Central (placeholder, runs after all jobs)
+  # JOB 7: Publish to Maven Central (placeholder, runs after all jobs)
   # ───────────────────────────────────────────────────────────────
 
   publish:
@@ -319,7 +320,7 @@ jobs:
         run: echo "Publish to Maven Central — not yet implemented."
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 9: GitHub Release (placeholder, runs after all jobs)
+  # JOB 8: GitHub Release (placeholder, runs after all jobs)
   # ───────────────────────────────────────────────────────────────
 
   release:
