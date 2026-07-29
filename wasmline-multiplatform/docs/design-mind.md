@@ -60,14 +60,15 @@
   - iosMain
     - Wasmline.ios.kt: Kotlin/Native C Interop wrappers delegating to wasmline-core
   - webMain
-    - BrowserWasmlineRuntime: browser execution controller
-    - WasmlineWebModuleRegistry: WebAssembly.Module cache keyed by artifact URL
-    - WasmlineWebModule: per-module wrapper around WebAssembly.Instance
-    - RawWasmlineBrowserModule: raw .wasm loader via synchronous XHR
-    - BrowserPayloadEncoding: ByteArray to Base64 and back
-    - inline JS block (js() interop): WASI shim layer + Wasmline bridge protocol imports
+    - WebBindings.web.kt: expect/actual contract layer (no platform-specific interop)
+    - WebWasmValue: i32/i64/f32/f64 sealed interface + WebWasmValueCodec
+    - WebWasmRuntime: WebAssembly.compile/instantiate wrapper
+    - WebWasmImportsBuilder: import object construction
+    - WebArtifactFetcher: Fetch API-based artifact loader
+    - WebWasmPlugin: WASI preview1 shims + bridge_inbound_/bridge_outbound_* handlers
+    - WasmlineWeb: async prefetch API (bridges sync load model)
   - jsMain / wasmJsMain
-    - actual declarations delegating to webMain implementations
+    - WebBindings.js.kt / .wasmJs.kt: actual declarations via typed externals or JsAny
   - wasmWasiMain
     - WasmlineRouter: action registration and dispatch table
     - WasmBridge: plugin-side outbound call implementation
@@ -102,7 +103,7 @@
 
 ---
 
-## Bidirectional Data Flow Pipelines
+- Bidirectional Data Flow Pipelines
 
 - Inbound (host invokes plugin service)
   - Host calls module.link\<EchoService\>().echo("ping")
@@ -124,15 +125,14 @@
             - Session reads response ByteArray across JNI boundary
         - Web path
           - BrowserWasmlineRuntime.call(action, payload)
-            - BrowserPayloadEncoding.encode: payload ByteArray to Base64
-            - js() bridge calls wasmlineCall(action, base64Payload)
-              - bridge_inbound_copy_params: action string + payload bytes into Wasm linear memory
-              - WebAssembly.Instance export invoked (plugin entry dispatcher)
-                - Plugin reads params via bridge_inbound_copy_params
-                - WasmlineRouter.dispatch runs
-                - Plugin writes response via bridge_inbound_set_response
-              - bridge_inbound_set_response: reads response bytes from Wasm linear memory
-            - BrowserPayloadEncoding.decode: Base64 response to ByteArray
+            - Prefetched artifact cached by WebWasmArtifacts
+            - WebWasmPlugin instantiated with binary
+            - WASI imports: fd_write (stdout/stderr), random_get, clock_time_get
+            - env.bridge_* imports: bridge_inbound_copy_params, bridge_inbound_set_response, bridge_outbound_call_host, bridge_outbound_get_response
+            - __wasmline_wasi_entry export invoked with params pointer + payload pointer
+            - Plugin dispatch runs synchronously
+            - Response read back via bridge_inbound_set_response
+            - No Base64 encoding needed (ByteArray passes directly through Kotlin layer)
       - Deserializes response via WasmlineSerializationFactory.decode
     - Returns typed result to host call site
 
@@ -250,8 +250,7 @@
     - WasmlineSerializationRegistry.register(factory) at process startup
     - Factory id is part of the binary protocol — must be stable across versions
 
-- Web payload encoding (supplementary layer)
-  - BrowserPayloadEncoding
-    - encode(bytes: ByteArray): String — js() btoa call
-    - decode(base64: String): ByteArray — js() atob call
-  - Applied on top of serialization layer when crossing Kotlin-JS linear memory boundary
+- Web payload encoding (deprecated)
+  - BrowserPayloadEncoding: ByteArray ↔ Base64 conversion (removed in Phase 2 refactor)
+  - Replaced with direct ByteArray transmission through Kotlin layer
+  - Fetch API-based artifact loading replaces synchronous XHR

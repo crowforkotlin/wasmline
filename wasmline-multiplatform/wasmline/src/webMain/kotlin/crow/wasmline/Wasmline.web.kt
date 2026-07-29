@@ -1,24 +1,45 @@
-@file:OptIn(ExperimentalWasmJsInterop::class)
 @file:Suppress("unused")
 
 package crow.wasmline
 
-import kotlin.js.ExperimentalWasmJsInterop
-import kotlin.js.JsAny
-import kotlin.js.js
+import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.web.WebWasmArtifacts
+import crow.wasmline.web.WebWasmPlugin
 
+/*
+ * Web-facing Wasmline facade shared by the js and wasmJs targets.
+ *
+ * This file contains no platform interop: all JS access goes through the
+ * expect/actual toolkit in `crow.wasmline.web` (value codec, WebAssembly
+ * runtime wrappers, import builder, and Fetch-based artifact cache).
+ *
+ * 2026-07-29
+ * @author crowforkotlin
+ */
+
+/** Per-module handle used by the platform `Wasmline` actual classes.
+ *
+ * 2026-07-29
+ * @author crowforkotlin
+ */
 internal class BrowserWasmline(private val moduleKey: String) {
-    fun setOutbound(dispatcher: (String, String) -> String) {
-        WasmlineWebModuleRegistry.require(moduleKey).setOutbound(dispatcher)
+    fun setOutbound(dispatcher: WasmlineHostDispatcher) {
+        WasmlineWebModuleRegistry.require(moduleKey).setDispatcher(dispatcher::dispatch)
     }
 
-    fun call(action: String, payloadBase64: String): String = WasmlineWebModuleRegistry.require(moduleKey).call(action, payloadBase64)
+    fun call(action: String, inputBytes: ByteArray): ByteArray =
+        WasmlineWebModuleRegistry.require(moduleKey).call(action, inputBytes)
 
     fun close() {
         WasmlineWebModuleRegistry.remove(moduleKey)
     }
 }
 
+/** Lifecycle entry points shared by both web targets.
+ *
+ * 2026-07-29
+ * @author crowforkotlin
+ */
 internal object BrowserWasmlineRuntime {
     fun load(filepath: String, config: WasmlineConfig, createWasmline: (String, WasmlineConfig) -> Wasmline): WasmlineLoadState {
         if (config.supportConcurrent) {
@@ -59,6 +80,7 @@ internal object BrowserWasmlineRuntime {
 
     fun shutdown() {
         WasmlineWebModuleRegistry.clear()
+        WebWasmArtifacts.clear()
     }
 }
 
@@ -70,20 +92,31 @@ internal fun browserWasmlineWarmup(@Suppress("UNUSED_PARAMETER") mode: WasmlineW
 internal fun browserWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     BrowserWasmlineRuntime.load(filepath, config, ::Wasmline)
 
+/**
+ * Registry of live plugin modules keyed by module key.
+ *
+ * Instantiation is synchronous and consumes bytes previously cached by
+ * [WasmlineWeb.prefetch]; loading an artifact that was never prefetched
+ * fails with an explicit hint instead of blocking the main thread.
+ */
 private object WasmlineWebModuleRegistry {
-    private val modules = linkedMapOf<String, WasmlineWebModule>()
+    private val modules = linkedMapOf<String, WebWasmPlugin>()
     private val failures = linkedMapOf<String, String>()
 
     fun load(moduleKey: String, path: String): Boolean {
-        val existing = modules[moduleKey]
-        if (existing != null) return true
+        if (modules.containsKey(moduleKey)) return true
 
-        return runCatching {
-            WasmlineWebModule(newRawWasmlineBrowserModule().also { it.load(path) })
-        }.fold(
-            onSuccess = { module ->
+        val bytes = WebWasmArtifacts.bytesOrNull(path)
+        if (bytes == null) {
+            failures[path] = "Artifact is not prefetched. Call WasmlineWeb.prefetch(\"$path\") and wait for " +
+                "completion before WasmlineLoader.load()."
+            return false
+        }
+
+        return runCatching { WebWasmPlugin(bytes) }.fold(
+            onSuccess = { plugin ->
                 failures.remove(path)
-                modules[moduleKey] = module
+                modules[moduleKey] = plugin
                 true
             },
             onFailure = { throwable ->
@@ -93,8 +126,8 @@ private object WasmlineWebModuleRegistry {
         )
     }
 
-    fun require(moduleKey: String): WasmlineWebModule = checkNotNull(modules[moduleKey]) {
-        "Wasmline browser module '$moduleKey' is not loaded."
+    fun require(moduleKey: String): WebWasmPlugin = checkNotNull(modules[moduleKey]) {
+        "Wasmline web module '$moduleKey' is not loaded."
     }
 
     fun remove(moduleKey: String) {
@@ -110,233 +143,9 @@ private object WasmlineWebModuleRegistry {
     fun failureMessage(path: String): String {
         val detail = failures[path]
         return if (detail == null) {
-            "[Wasmline] Browser web host failed to load artifact: $path"
+            "[Wasmline] Web host failed to load artifact: $path"
         } else {
-            "[Wasmline] Browser web host failed to load artifact: $path. $detail"
+            "[Wasmline] Web host failed to load artifact: $path. $detail"
         }
     }
 }
-
-private class WasmlineWebModule(private val raw: RawWasmlineBrowserModule) {
-    private var dispatcher: ((String, String) -> String)? = null
-
-    init {
-        raw.setDispatcher { action, payloadBase64 ->
-            val currentDispatcher = checkNotNull(dispatcher) {
-                "No Wasmline outbound dispatcher is bound for action '$action'."
-            }
-            currentDispatcher(action, payloadBase64)
-        }
-    }
-
-    fun setOutbound(dispatcher: (String, String) -> String) {
-        this.dispatcher = dispatcher
-    }
-
-    fun call(action: String, payloadBase64: String): String = raw.call(action, payloadBase64)
-
-    fun close() {
-        raw.clearDispatcher()
-        raw.close()
-    }
-}
-
-private external interface RawWasmlineBrowserModule : JsAny {
-    fun load(artifactPath: String)
-    fun setDispatcher(dispatcher: (String, String) -> String)
-    fun clearDispatcher()
-    fun call(action: String, payloadBase64: String): String
-    fun close()
-}
-
-private fun newRawWasmlineBrowserModule(): RawWasmlineBrowserModule = js(
-    """
-    (() => {
-      const encoder = new TextEncoder();
-      const decoder = new TextDecoder();
-      let instance = null;
-      let memory = null;
-      let dispatcher = null;
-      let inboundAction = new Uint8Array(0);
-      let inboundPayload = new Uint8Array(0);
-      let inboundResponse = new Uint8Array(0);
-      let pendingOutboundResponse = new Uint8Array(0);
-
-      const requireMemoryBuffer = () => {
-        if (!memory) throw new Error("Plugin memory is not initialized yet");
-        return memory.buffer;
-      };
-
-      const readBytes = (pointer, length) => new Uint8Array(requireMemoryBuffer(), pointer, length).slice();
-
-      const writeBytes = (pointer, bytes) => {
-        new Uint8Array(requireMemoryBuffer(), pointer, bytes.length).set(bytes);
-      };
-
-      const readText = (pointer, length) => decoder.decode(readBytes(pointer, length));
-
-      const bytesToBase64 = (bytes) => {
-        if (!bytes || bytes.length === 0) return "";
-        let binary = "";
-        const chunkSize = 0x8000;
-        for (let index = 0; index < bytes.length; index += chunkSize) {
-          const chunk = bytes.subarray(index, index + chunkSize);
-          for (let inner = 0; inner < chunk.length; inner++) {
-            binary += String.fromCharCode(chunk[inner]);
-          }
-        }
-        return btoa(binary);
-      };
-
-      const base64ToBytes = (value) => {
-        if (!value) return new Uint8Array(0);
-        const binary = atob(value);
-        const bytes = new Uint8Array(binary.length);
-        for (let index = 0; index < binary.length; index++) {
-          bytes[index] = binary.charCodeAt(index);
-        }
-        return bytes;
-      };
-
-      const binaryStringToBytes = (value) => {
-        if (!value) return new Uint8Array(0);
-        const bytes = new Uint8Array(value.length);
-        for (let index = 0; index < value.length; index++) {
-          bytes[index] = value.charCodeAt(index) & 0xff;
-        }
-        return bytes;
-      };
-
-      const imports = {
-        wasi_snapshot_preview1: {
-          fd_write(fd, iovs, iovsLen, writtenPtr) {
-            const view = new DataView(requireMemoryBuffer());
-            let totalLength = 0;
-            const parts = [];
-            for (let index = 0; index < iovsLen; index++) {
-              const offset = iovs + index * 8;
-              const pointer = view.getUint32(offset, true);
-              const length = view.getUint32(offset + 4, true);
-              const part = readBytes(pointer, length);
-              parts.push(part);
-              totalLength += length;
-            }
-            const merged = new Uint8Array(totalLength);
-            let cursor = 0;
-            for (const part of parts) {
-              merged.set(part, cursor);
-              cursor += part.length;
-            }
-            if (writtenPtr !== 0) {
-              view.setUint32(writtenPtr, totalLength, true);
-            }
-            const text = decoder.decode(merged).trimEnd();
-            if (text.length > 0) {
-              if (fd === 2) {
-                console.error(text);
-              } else {
-                console.log(text);
-              }
-            }
-            return 0;
-          },
-          random_get(pointer, length) {
-            globalThis.crypto.getRandomValues(new Uint8Array(requireMemoryBuffer(), pointer, length));
-            return 0;
-          },
-          clock_time_get(clockId, precision, resultPointer) {
-            new DataView(requireMemoryBuffer()).setBigUint64(
-              resultPointer,
-              BigInt(Date.now()) * BigInt(1000000),
-              true
-            );
-            return 0;
-          },
-        },
-        env: {
-          bridge_inbound_copy_params(type, pointer, length) {
-            const source = type === 0 ? inboundAction : inboundPayload;
-            writeBytes(pointer, source.subarray(0, length));
-          },
-          bridge_inbound_set_response(pointer, length) {
-            inboundResponse = length === 0 ? new Uint8Array(0) : readBytes(pointer, length);
-          },
-          bridge_outbound_call_host(actionPointer, actionLength, payloadPointer, payloadLength, outPointer, outLength) {
-            if (!dispatcher) {
-              throw new Error("No Wasmline outbound dispatcher is bound.");
-            }
-
-            const action = readText(actionPointer, actionLength);
-            const payload = readBytes(payloadPointer, payloadLength);
-            const responseBase64 = dispatcher(action, bytesToBase64(payload)) || "";
-            const responseBytes = base64ToBytes(responseBase64);
-
-            if (responseBytes.length <= outLength) {
-              writeBytes(outPointer, responseBytes);
-              return responseBytes.length;
-            }
-
-            pendingOutboundResponse = responseBytes;
-            return -responseBytes.length;
-          },
-          bridge_outbound_get_response(pointer) {
-            writeBytes(pointer, pendingOutboundResponse);
-          },
-        },
-      };
-
-      return {
-        load(artifactPath) {
-          if (instance !== null) return;
-
-          const xhr = new XMLHttpRequest();
-          xhr.open("GET", artifactPath, false);
-          xhr.overrideMimeType("text/plain; charset=x-user-defined");
-          xhr.send(null);
-
-          if (!((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0)) {
-            throw new Error("Unable to fetch plugin: " + xhr.status + " " + xhr.statusText);
-          }
-
-          const moduleBytes = binaryStringToBytes(xhr.responseText);
-          if (moduleBytes.length === 0) {
-            throw new Error("Empty wasm response for: " + artifactPath);
-          }
-
-          const module = new WebAssembly.Module(moduleBytes);
-          instance = new WebAssembly.Instance(module, imports);
-          memory = instance.exports.memory;
-          instance.exports.__wasmline_wasi_init();
-        },
-        setDispatcher(nextDispatcher) {
-          dispatcher = nextDispatcher;
-        },
-        clearDispatcher() {
-          dispatcher = null;
-        },
-        call(action, payloadBase64) {
-          if (instance === null) {
-            throw new Error("Wasmline browser module is not loaded yet.");
-          }
-
-          inboundAction = encoder.encode(action);
-          inboundPayload = base64ToBytes(payloadBase64);
-          inboundResponse = new Uint8Array(0);
-          pendingOutboundResponse = new Uint8Array(0);
-
-          instance.exports.__wasmline_wasi_entry(inboundAction.length, inboundPayload.length);
-          return bytesToBase64(inboundResponse);
-        },
-        close() {
-          dispatcher = null;
-          instance = null;
-          memory = null;
-          inboundAction = new Uint8Array(0);
-          inboundPayload = new Uint8Array(0);
-          inboundResponse = new Uint8Array(0);
-          pendingOutboundResponse = new Uint8Array(0);
-        },
-      };
-    })()
-    """,
-)

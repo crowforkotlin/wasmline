@@ -220,6 +220,19 @@ jobs:
                     :wasmline-loader:jsBrowserTest \
                     --no-daemon
 
+      - name: Upload Web Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-test-results-${{ github.run_id }}
+          path: |
+            wasmline-multiplatform/wasmline/build/reports/tests/*Test/index.html
+            wasmline-multiplatform/wasmline/build/test-results/*/TEST-*.xml
+            wasmline-multiplatform/wasmline-loader/build/reports/tests/*Test/index.html
+            wasmline-multiplatform/wasmline-loader/build/test-results/*/TEST-*.xml
+          retention-days: 7
+          if-no-files-found: warn
+
   # ───────────────────────────────────────────────────────────────
   # JOB 6: wasmWasi Tests (Node.js)
   # ───────────────────────────────────────────────────────────────

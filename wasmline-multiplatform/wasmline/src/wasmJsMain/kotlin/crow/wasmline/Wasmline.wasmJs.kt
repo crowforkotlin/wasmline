@@ -6,13 +6,10 @@ actual class Wasmline internal actual constructor(moduleKey: String, actual val 
     private val delegate = BrowserWasmline(moduleKey)
 
     internal actual fun setOutbound(dispatcher: WasmlineHostDispatcher) {
-        delegate.setOutbound { action, payloadBase64 ->
-            dispatcher.dispatch(action, payloadBase64.decodeBase64Payload()).encodeBase64Payload()
-        }
+        delegate.setOutbound(dispatcher)
     }
 
-    internal actual fun call(action: String, inputBytes: ByteArray): ByteArray =
-        delegate.call(action, inputBytes.encodeBase64Payload()).decodeBase64Payload()
+    internal actual fun call(action: String, inputBytes: ByteArray): ByteArray = delegate.call(action, inputBytes)
 
     actual fun close() {
         delegate.close()

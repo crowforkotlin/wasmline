@@ -122,9 +122,8 @@ kotlin {
         val hostMain by creating { dependsOn(other = commonMain) }
         val jniMain by creating { dependsOn(other = hostMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
+        // jsMain/wasmJsMain already depend on webMain via the default hierarchy template.
         val webMain by getting { dependsOn(other = hostMain) }
-        val jsMain by getting { dependsOn(other = webMain) }
-        val wasmJsMain by getting { dependsOn(other = webMain) }
 //        val macosArm64Main by getting { dependsOn(hostMain) }
 //        val linuxX64Main by getting { dependsOn(jvmMain) }
 //        val mingwX64Main by getting { dependsOn(jvmMain) }

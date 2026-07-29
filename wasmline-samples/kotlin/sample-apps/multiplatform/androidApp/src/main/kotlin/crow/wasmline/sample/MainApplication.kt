@@ -6,9 +6,7 @@ import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.loader.WasmlineLoader
 
 /**
- * ● 
- * 
- * ● 2026/1/2 20:54
+ * 2026/1/2 20:54
  * @author crowforkotlin
  * @formatter:on
  */
