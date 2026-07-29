@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.konan.target.HostManager
 
 /** @formatter:off */
 
-
 plugins {
     id("kotlin-multiplatform")
     id("com.android.kotlin.multiplatform.library")
@@ -17,7 +16,7 @@ plugins {
 
 kotlin {
 
-    jvmToolchain    {
+    jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of(21))
         vendor.set(JvmVendorSpec.JETBRAINS)
     }
@@ -54,7 +53,7 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by  getting {
+        val commonMain by getting {
             dependencies {
                 api(libsEx.`kotlinx-coroutines`)
                 api(libsEx.`kotlinx-collections`)

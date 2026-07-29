@@ -1,6 +1,5 @@
 import buildlogic.Config
 import buildlogic.libsEx
-
 import extensions.AndroidExtension
 import kotlin.jvm.java
 
@@ -33,7 +32,7 @@ android {
     packaging {
         resources {
             pickFirsts += arrayOf(
-                "META-INF/androidx.compose.ui_ui.version"
+                "META-INF/androidx.compose.ui_ui.version",
             )
             excludes += arrayOf(
                 "DebugProbesKt.bin",
@@ -41,7 +40,7 @@ android {
                 "kotlin/**",
                 "META-INF/*.version",
                 "META-INF/**/LICENSE.txt",
-                "/META-INF/{AL2.0,LGPL2.1}"
+                "/META-INF/{AL2.0,LGPL2.1}",
             )
         }
         dex {

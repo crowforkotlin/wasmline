@@ -15,19 +15,18 @@ val KotlinMultiplatformExtension.nonWebCommonMain: KotlinSourceSet
         return this.sourceSets.getByName("buildlogic.nonWebCommonMain")
     }
 
-fun KotlinMultiplatformExtension.applyBaseHierarchyTemplate(
-    common: (KotlinHierarchyBuilder.() -> Unit)? = null
-) {
-    this.applyHierarchyTemplate(template = KotlinHierarchyTemplate {
-        this.withSourceSetTree(tree = arrayOf(KotlinSourceSetTree.main, KotlinSourceSetTree.test))
-        this.common {
-            this.withCompilations { true }
-            this.nonWebCommon()//            this.buildlogic.native()
+fun KotlinMultiplatformExtension.applyBaseHierarchyTemplate(common: (KotlinHierarchyBuilder.() -> Unit)? = null) {
+    this.applyHierarchyTemplate(
+        template = KotlinHierarchyTemplate {
+            this.withSourceSetTree(tree = arrayOf(KotlinSourceSetTree.main, KotlinSourceSetTree.test))
+            this.common {
+                this.withCompilations { true }
+                this.nonWebCommon() //            this.buildlogic.native()
 //            this.buildlogic.webCommon()
 //            this.buildlogic.nonWasmCommon()
-
-        }
-    })
+            }
+        },
+    )
 }
 
 fun KotlinHierarchyBuilder.native() {

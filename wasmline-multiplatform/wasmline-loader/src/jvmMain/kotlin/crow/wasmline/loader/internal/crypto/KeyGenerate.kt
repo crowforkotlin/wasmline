@@ -5,13 +5,12 @@ import okio.ByteString.Companion.toByteString
 
 /**
  * KeyGenerate
+ * Returns a new `<publicKey / privateKey>` KeyPair.
  *
  * 2026/2/10 19:56
  * @author crowforkotlin
  * @formatter:on
  */
-
-/** Returns a new `<publicKey / privateKey>` KeyPair. */
 internal fun generateEd25519KeyPair(): KeyPair {
     val secretSeed = ByteArray(Field25519.FIELD_LEN)
     secureRandom().nextBytes(secretSeed)

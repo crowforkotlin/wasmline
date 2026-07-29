@@ -22,7 +22,7 @@ if ! command -v ktlint &>/dev/null; then
 fi
 
 # --- Parse arguments ---
-MODE="check"
+MODE="check"  # 默认 check
 if [[ "${1:-}" == "--format" || "${1:-}" == "-F" ]]; then
     MODE="format"
 fi
@@ -37,13 +37,18 @@ if [[ "$MODE" == "format" ]]; then
         '!**/wasmline-build-logic/**' \
         '!**/iosMain/**' \
         '!**/build/**'
-else
-    log_header "ktlint check"
-    log_info "Checking Kotlin style..."
-    ktlint --relative \
-        '!**/wasmline-build-logic/**' \
-        '!**/iosMain/**' \
-        '!**/build/**'
+    log_success "Kotlin styles have been auto-fixed. Re-run to verify."
+    exit 0
+fi
+
+log_header "ktlint check"
+log_info "Checking Kotlin style..."
+if ! ktlint --relative \
+    '!**/wasmline-build-logic/**' \
+    '!**/iosMain/**' \
+    '!**/build/**'; then
+    log_error "Lint check failed! Run 'bash $0 --format' to auto-fix, then re-run."
+    exit 1
 fi
 
 log_success "lint-kotlin passed."

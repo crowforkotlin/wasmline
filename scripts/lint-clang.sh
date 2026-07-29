@@ -22,7 +22,7 @@ if ! command -v clang-format &>/dev/null; then
 fi
 
 # --- Parse arguments ---
-MODE="check"
+MODE="check"  # 默认 check
 if [[ "${1:-}" == "--format" || "${1:-}" == "-F" ]]; then
     MODE="format"
 fi
@@ -43,10 +43,15 @@ if [[ "$MODE" == "format" ]]; then
     log_header "clang-format --format"
     log_info "Auto-fixing formatting for ${FILE_COUNT} files..."
     echo "$FILES" | xargs clang-format -i
-else
-    log_header "clang-format check"
-    log_info "Checking formatting for ${FILE_COUNT} files..."
-    echo "$FILES" | xargs clang-format --dry-run --Werror
+    log_success "Clang format has been applied. Re-run to verify."
+    exit 0
+fi
+
+log_header "clang-format check"
+log_info "Checking formatting for ${FILE_COUNT} files..."
+if ! echo "$FILES" | xargs clang-format --dry-run --Werror; then
+    log_error "Format check failed! Run 'bash $0 --format' to auto-fix, then re-run."
+    exit 1
 fi
 
 log_success "lint-clang passed."
