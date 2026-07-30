@@ -6,7 +6,7 @@
 # Used for native asset padding before publishing Maven products.
 #
 # Usage:
-#   bash scripts/build-native-assets.sh [pulley|cranelift|both]
+#   bash scripts/build-native-assets.sh [pulley|cranelift|all]
 #
 # Prerequisites:
 #   1. Run init-wasmtime.sh to download wasmtime assets to build/platforms/
@@ -32,7 +32,7 @@ WASMTIME_TAG="release-v$WASMTIME_VERSION"
 echo "==> Wasmtime version: $WASMTIME_TAG"
 
 # ── Parse parameters ──────────────────────────────────────────────
-VARIANT="${1:-both}"
+VARIANT="${1:-all}"
 
 # ── Android ABIs per variant ──────────────────────────────
 get_android_abis() {
@@ -202,7 +202,7 @@ echo "║  Version: $WASMTIME_TAG                         "
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 
-if [[ "$VARIANT" == "both" ]]; then
+if [[ "$VARIANT" == "all" ]]; then
   echo "── Pulley ──"
   build_android "pulley"
   build_jvm "pulley"
@@ -214,7 +214,7 @@ elif [[ "$VARIANT" == "pulley" || "$VARIANT" == "cranelift" ]]; then
   build_android "$VARIANT"
   build_jvm "$VARIANT"
 else
-  echo "ERROR: Unknown variant '$VARIANT'; usage: $0 [pulley|cranelift|both]" >&2
+  echo "ERROR: Unknown variant '$VARIANT'; usage: $0 [pulley|cranelift|all]" >&2
   exit 1
 fi
 

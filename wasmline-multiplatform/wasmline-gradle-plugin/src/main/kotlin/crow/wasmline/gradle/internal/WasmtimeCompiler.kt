@@ -58,8 +58,8 @@ internal object WasmtimeCompiler {
     /**
      * Locate the `wasmtime` executable inside [directory].
      *
-     * Prefers `wasmtime-min` (v45.0.0 and earlier) and falls back to `wasmtime`
-     * (v45.0.3+ where the min artifact only ships a single binary).
+     * Prefers `wasmtime-min` (v47.0.2 and earlier) and falls back to `wasmtime`
+     * (v47.0.2+ where the min artifact only ships a single binary).
      *
      * @throws GradleException if the executable cannot be found.
      */

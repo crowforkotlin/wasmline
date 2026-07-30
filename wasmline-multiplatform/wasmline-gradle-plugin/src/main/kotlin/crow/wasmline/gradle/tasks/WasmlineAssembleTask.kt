@@ -145,8 +145,42 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         // -------- Step 1: Wasmtime AOT compilation --------
         logger.lifecycle("========== Step 1: Wasmtime Compile ==========")
 
-        val wasmtimeExec = WasmtimeCompiler.resolveExecutable(wasmtimeDirectory.get().asFile)
-        logger.lifecycle("Using wasmtime: ${wasmtimeExec.absolutePath}")
+        val wasmtimeDirectory = wasmtimeDirectory.get().asFile
+        logger.lifecycle("Checking for wasmtime in: ${wasmtimeDirectory.absolutePath}")
+        
+        val wasmtimeExec = try {
+            WasmtimeCompiler.resolveExecutable(wasmtimeDirectory)
+        } catch (e: GradleException) {
+            // Provide enhanced error message with helpful hints
+            logger.error("❌ wasmtime executable not found!")
+            logger.lifecycle("")
+            logger.error("The directory '${wasmtimeDirectory.absolutePath}' does not contain a wasmtime binary.")
+            logger.lifecycle("")
+            
+            // Suggest common locations
+            logger.lifecycle("Common locations to check:")
+            logger.lifecycle("  1. ~/.wasmline/wasmtime/")
+            logger.lifecycle("  2. /usr/local/wasmtime/")
+            logger.lifecycle("  3. Custom path configured in build.gradle.kts")
+            logger.lifecycle("")
+            
+            // Check if it's the default empty directory
+            if (wasmtimeDirectory.name == "wasmtime" && !wasmtimeDirectory.parentFile.exists()) {
+                logger.lifecycle("📍 It appears you're using the default path:")
+                logger.lifecycle("   ${wasmtimeDirectory.absolutePath}")
+                logger.lifecycle("")
+                logger.lifecycle("💡 Download wasmtime first:")
+                logger.lifecycle("   wasmline download -a <your-platform>")
+                logger.lifecycle("")
+                logger.lifecycle("Or set WASMTIME_ROOT environment variable:")
+                logger.lifecycle("   export WASMTIME_ROOT=/path/to/wasmtime")
+            }
+            
+            throw e
+        }
+        
+        logger.lifecycle("✅ Found wasmtime: ${wasmtimeExec.absolutePath}")
+        logger.lifecycle("   Executable: ${wasmtimeExec.name}")
 
         val artifacts = WasmtimeCompiler.compileAll(
             wasmtimeExec = wasmtimeExec,

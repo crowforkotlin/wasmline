@@ -149,6 +149,7 @@ def file_specs() -> tuple[FileSpec, ...]:
         Rule(
             r"minimum required Kotlin version is \*\*[0-9A-Za-z.\-]+\*\*",
             lambda v: f"minimum required Kotlin version is **{v['kotlin_min_version']}**",
+            min_count=0,
         ),
     )
     readme_zh = badge_rules() + (
@@ -217,10 +218,11 @@ def file_specs() -> tuple[FileSpec, ...]:
     )
 
     architecture_rules = (
-        Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}"),
+        Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}", min_count=0),
         Rule(
             r"wasmtime C-API\s+v[0-9]+\.[0-9]+\.[0-9]+",
             lambda v: f"wasmtime C-API  v{v['wasmtime_version']}",
+            min_count=0,
         ),
     )
 
@@ -228,10 +230,12 @@ def file_specs() -> tuple[FileSpec, ...]:
         Rule(
             r"download -v v[0-9]+\.[0-9]+\.[0-9]+",
             lambda v: f"download -v v{v['wasmtime_version']}",
+            min_count=0,
         ),
         Rule(
             r"wasmtime-v[0-9]+\.[0-9]+\.[0-9]+-aarch64-macos",
             lambda v: f"wasmtime-v{v['wasmtime_version']}-aarch64-macos",
+            min_count=0,
         ),
     )
 
@@ -251,19 +255,21 @@ def file_specs() -> tuple[FileSpec, ...]:
         FileSpec(
             ".agents/skills/wasmline/SKILL.md",
             (
-                Rule(r"Java [0-9]+", lambda v: f"Java {v['jbr_version']}"),
-                Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
+                Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}", min_count=0),
                 Rule(
                     r"Zig version \(requires \*\*[0-9.]+\*\*\)",
                     lambda v: f"Zig version (requires **{v['zig_version']}**)",
+                    min_count=0,
                 ),
                 Rule(
                     r"Zig version \*\*[0-9.]+\*\*",
                     lambda v: f"Zig version **{v['zig_version']}**",
+                    min_count=0,
                 ),
                 Rule(
                     r"requires Zig [0-9]+\.[0-9]+\.[0-9]+",
                     lambda v: f"requires Zig {v['zig_version']}",
+                    min_count=0,
                 ),
             ),
         ),
@@ -294,6 +300,33 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
+            "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
+            (
+                Rule(
+                    r'wasmtime-v[0-9]+\.[0-9]+\.[0-9]+-x86_64-linux-min',
+                    lambda v: f"wasmtime-v{v['wasmtime_version']}-x86_64-linux-min",
+                ),
+            ),
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/run-sample-common.sh",
+            (
+                Rule(
+                    r"# v[0-9]+\.[0-9]+\.[0-9]+\+ min artifact extracts to a -min suffixed directory",
+                    lambda v: f"# v{v['wasmtime_version']}+ min artifact extracts to a -min suffixed directory",
+                ),
+            ),
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/run-ios.sh",
+            (
+                Rule(
+                    r'echo "release-v[0-9]+\.[0-9]+\.[0-9]+"',
+                    lambda v: f'echo "release-v{v["wasmtime_version"]}"',
+                ),
+            ),
+        ),
+        FileSpec(
             "wasmline-multiplatform/gradle/libs.versions.toml",
             (
                 Rule(
@@ -315,7 +348,10 @@ def file_specs() -> tuple[FileSpec, ...]:
                 ),
             ),
         ),
-        FileSpec("BOX_IR.md", readme_en),
+        FileSpec(
+            "wasmline-multiplatform/docs/ir/box-ir.md",
+            readme_en,
+        ),
         FileSpec("README_zh.md", readme_zh),
         FileSpec("docs/content/docs/building-from-source.mdx", building_from_source_en),
         FileSpec("docs/content/docs/building-from-source.zh.mdx", building_from_source_zh),

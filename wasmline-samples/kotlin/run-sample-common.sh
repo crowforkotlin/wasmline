@@ -393,7 +393,7 @@ resolve_wasmtime_dir() {
         printf '%s\n' "$candidate"
         return 0
     fi
-    # v45.0.3+ min artifact extracts to a -min suffixed directory
+    # v47.0.2+ min artifact extracts to a -min suffixed directory
     local min_candidate="${SHARED_WASMTIME_ROOT}/${wasmtime_dir_name}-min"
     if [ -d "$min_candidate" ]; then
         printf '%s\n' "$min_candidate"

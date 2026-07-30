@@ -134,22 +134,34 @@ kotlin {
             }
         }
 
+        // commonTest: base test dependencies available on ALL platforms (including wasmWasi)
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines)
                 implementation(libs.kotlinx.coroutines.test)
-                implementation(projects.wasmline)
             }
         }
+        
+        // hostTest: extends commonTest with WasmlineLoader (only for host platforms)
+        // WASMLINE LOADER IS HOST-SPECIFIC: It handles plugin loading, validation, and platform-specific artifact resolution
+        // This includes: JVM, JS, Android, iOS, Desktop targets
+        // EXCLUDES: wasmWasi (pure WASM runtime, not a host environment for loading other plugins)
         val hostTest by creating {
             dependsOn(other = commonTest)
             dependencies {
                 implementation(projects.wasmlineLoader)
             }
         }
-        val jvmTest by getting { dependsOn(other = hostTest) }
-
+        
+        // JVM-specific JNI tests (uses native Wasmtime library loaded via JNI)
+        val jvmTest by getting { 
+            dependsOn(other = hostTest)
+            dependencies {
+                implementation(projects.wasmlineEngineCranelift) // Provides libwasmline.so for testing
+            }
+        }
+        
         if (HostManager.hostIsMac) {
             val iosMain by getting { dependsOn(other = hostMain) }
             val iosArm64Main by getting { dependsOn(other = iosMain) }

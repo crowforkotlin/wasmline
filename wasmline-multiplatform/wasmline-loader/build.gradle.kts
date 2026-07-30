@@ -59,7 +59,10 @@ kotlin {
         val jniMain by creating { dependsOn(other = hostMain) }
         val androidMain by getting { dependsOn(other = jniMain) }
         val jvmMain by getting { dependsOn(other = jniMain) }
+        
+        // webMain includes both js and wasmJs targets
         val webMain by getting { dependsOn(other = hostMain) }
+        
         val commonTest by getting {
             dependencies {
                 implementation(libs.kotlin.test)
