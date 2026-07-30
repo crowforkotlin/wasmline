@@ -51,12 +51,12 @@ jobs:
             xargs clang-format --dry-run --Werror
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 3: Compile all targets (parallel with lint, requires native libraries)
+  # JOB 3: Build native assets (Wasmtime platform libraries)
   # ───────────────────────────────────────────────────────────────
 
-  compile-all:
+  build-assets:
     runs-on: ubuntu-latest
-    name: compile
+    name: build-assets
 
     steps:
       - uses: actions/checkout@v5
@@ -70,7 +70,7 @@ jobs:
           java-version: 21.x
           token: ${{ github.token }}
 
-      - name: Cache JBR 21 for iOS tests
+      - name: Cache JBR 21
         id: cache-jbr-21
         uses: actions/cache@v5
         with:
@@ -123,7 +123,10 @@ jobs:
         if: steps.cache-wasmtime.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: printf "\na\n\n" | bash scripts/init-wasmtime.sh
+          WASMTIME_VERSION: ${{ vars.WASMTIME_VERSION || 'release-v47.0.2' }}
+        run: |
+          echo "Initializing Wasmtime $WASMTIME_VERSION..."
+          printf "\na\n\n" | bash scripts/init-wasmtime.sh
 
       - name: Build native libraries
         timeout-minutes: 5
@@ -141,24 +144,12 @@ jobs:
           path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
           key: native-assets-${{ github.run_id }}
 
-      # ── Compilation ────────────────────────────────────────────────
-
-      - name: Compile all JVM & Multiplatform targets
-        working-directory: wasmline-multiplatform
-        run: |
-          ./gradlew compileKotlinJvm \
-                    compileAndroidMain \
-                    compileKotlinWasmJs \
-                    compileKotlinJs \
-                    compileKotlinWasmWasi \
-                    --no-daemon
-
   # ───────────────────────────────────────────────────────────────
   # JOB 4: JVM / Desktop Tests
   # ───────────────────────────────────────────────────────────────
 
   test-jvm:
-    needs: compile-all
+    needs: build-assets
     runs-on: ubuntu-latest
     name: test-jvm
 
@@ -172,7 +163,7 @@ jobs:
           java-version: 21.x
           token: ${{ github.token }}
 
-      - name: Cache JBR 21 for iOS tests
+      - name: Cache JBR 21
         id: cache-jbr-21
         uses: actions/cache@v5
         with:
@@ -207,7 +198,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   test-web:
-    needs: compile-all
+    needs: build-assets
     runs-on: ubuntu-latest
     name: test-web
 
@@ -221,7 +212,7 @@ jobs:
           java-version: 21.x
           token: ${{ github.token }}
 
-      - name: Cache JBR 21 for iOS tests
+      - name: Cache JBR 21
         id: cache-jbr-21
         uses: actions/cache@v5
         with:
@@ -265,7 +256,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   test-node:
-    needs: compile-all
+    needs: build-assets
     runs-on: ubuntu-latest
     name: test-node
 
@@ -279,7 +270,7 @@ jobs:
           java-version: 21.x
           token: ${{ github.token }}
 
-      - name: Cache JBR 21 for iOS tests
+      - name: Cache JBR 21
         id: cache-jbr-21
         uses: actions/cache@v5
         with:
@@ -302,7 +293,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   test-ios:
-    needs: compile-all
+    needs: build-assets
     runs-on: macos-latest
     name: test-ios
 
@@ -316,7 +307,7 @@ jobs:
           java-version: 21.x
           token: ${{ github.token }}
 
-      - name: Cache JBR 21 for iOS tests
+      - name: Cache JBR 21
         id: cache-jbr-21
         uses: actions/cache@v5
         with:
@@ -341,8 +332,10 @@ jobs:
         if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WASM_VERSION: release-v45.0.6
-        run: bash scripts/init-wasmtime-ci.sh
+          WASMTIME_VERSION: ${{ vars.WASMTIME_VERSION || 'release-v47.0.2' }}
+        run: |
+          echo "Initializing Wasmtime $WASMTIME_VERSION for iOS Simulator..."
+          bash scripts/init-wasmtime-ci.sh
 
       - name: Run iOS simulator tests
         working-directory: wasmline-multiplatform
@@ -356,7 +349,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   publish:
-    needs: [lint-kotlin, lint-clang, compile-all, test-jvm, test-web, test-node, test-ios]
+    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios]
     runs-on: ubuntu-latest
     name: publish
 
@@ -369,7 +362,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   release:
-    needs: [lint-kotlin, lint-clang, compile-all, test-jvm, test-web, test-node, test-ios]
+    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios]
     runs-on: ubuntu-latest
     name: release
 
