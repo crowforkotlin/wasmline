@@ -67,8 +67,17 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: jetbrains
-          java-version: 21
+          java-version: 21.x
           token: ${{ github.token }}
+
+      - name: Cache JBR 21 for iOS tests
+        id: cache-jbr-21
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.JAVA_HOME }}
+          key: jbr-21-${{ runner.os }}-${{ github.sha }}
+          lookback-period: 7
+          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -160,8 +169,17 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: jetbrains
-          java-version: 21
+          java-version: 21.x
           token: ${{ github.token }}
+
+      - name: Cache JBR 21 for iOS tests
+        id: cache-jbr-21
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.JAVA_HOME }}
+          key: jbr-21-${{ runner.os }}-${{ github.sha }}
+          lookback-period: 7
+          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -200,8 +218,17 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: jetbrains
-          java-version: 21
+          java-version: 21.x
           token: ${{ github.token }}
+
+      - name: Cache JBR 21 for iOS tests
+        id: cache-jbr-21
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.JAVA_HOME }}
+          key: jbr-21-${{ runner.os }}-${{ github.sha }}
+          lookback-period: 7
+          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -249,8 +276,17 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: jetbrains
-          java-version: 21
+          java-version: 21.x
           token: ${{ github.token }}
+
+      - name: Cache JBR 21 for iOS tests
+        id: cache-jbr-21
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.JAVA_HOME }}
+          key: jbr-21-${{ runner.os }}-${{ github.sha }}
+          lookback-period: 7
+          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -277,8 +313,17 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: jetbrains
-          java-version: 21
+          java-version: 21.x
           token: ${{ github.token }}
+
+      - name: Cache JBR 21 for iOS tests
+        id: cache-jbr-21
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.JAVA_HOME }}
+          key: jbr-21-${{ runner.os }}-${{ github.sha }}
+          lookback-period: 7
+          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
