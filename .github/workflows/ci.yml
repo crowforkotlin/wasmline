@@ -76,7 +76,6 @@ jobs:
         with:
           path: ${{ env.JAVA_HOME }}
           key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          lookback-period: 7
           fail-on-cache-miss: false
 
       - name: Setup Gradle
@@ -169,7 +168,6 @@ jobs:
         with:
           path: ${{ env.JAVA_HOME }}
           key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          lookback-period: 7
           fail-on-cache-miss: false
 
       - name: Setup Gradle
@@ -218,7 +216,6 @@ jobs:
         with:
           path: ${{ env.JAVA_HOME }}
           key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          lookback-period: 7
           fail-on-cache-miss: false
 
       - name: Setup Gradle
@@ -276,7 +273,6 @@ jobs:
         with:
           path: ${{ env.JAVA_HOME }}
           key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          lookback-period: 7
           fail-on-cache-miss: false
 
       - name: Setup Gradle
@@ -313,7 +309,6 @@ jobs:
         with:
           path: ${{ env.JAVA_HOME }}
           key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          lookback-period: 7
           fail-on-cache-miss: false
 
       - name: Setup Gradle

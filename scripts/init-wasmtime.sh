@@ -180,7 +180,7 @@ select_variant() {
     case "$USER_FILTER" in
         all)
             VARIANT="both"
-            log_info "All Platforms: downloading both Cranelift and Pulley assets."
+            log_info "All Platforms: downloading both Cranelift and Pulley assets (variant: all)."
             ;;
         aarch64-ios-pulley-min-c-api|aarch64-ios-sim-pulley-min-c-api|armv7-android|x86-android)
             VARIANT="pulley"
