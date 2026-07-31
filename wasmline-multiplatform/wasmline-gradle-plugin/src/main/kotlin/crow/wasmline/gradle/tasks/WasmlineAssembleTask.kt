@@ -2,8 +2,9 @@
 
 package crow.wasmline.gradle.tasks
 
-import crow.wasmline.gradle.internal.ManifestBuilder
-import crow.wasmline.gradle.internal.WasmtimeCompiler
+import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
+import crow.wasmline.plugin.core.manifest.ManifestSigner
+import crow.wasmline.plugin.core.packaging.PluginPackager
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
@@ -12,13 +13,11 @@ import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 import java.io.File
-import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 /**
  * Gradle task that assembles a wasmline plugin package.
@@ -93,8 +92,12 @@ abstract class WasmlineAssembleTask : DefaultTask() {
 
     // ==================== Wasmtime config ====================
 
-    /** Directory containing the `wasmtime` executable. */
-    @get:InputDirectory
+    /**
+     * Base directory for locating the `wasmtime` executable.
+     * Marked as @Internal because the directory may not exist at configuration
+     * time and is resolved at execution time with sub-directory search.
+     */
+    @get:Internal
     abstract val wasmtimeDirectory: DirectoryProperty
 
     /** Target architectures for AOT compilation. Empty means all default targets. */
@@ -145,76 +148,65 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         // -------- Step 1: Wasmtime AOT compilation --------
         logger.lifecycle("========== Step 1: Wasmtime Compile ==========")
 
-        val wasmtimeDirectory = wasmtimeDirectory.get().asFile
-        logger.lifecycle("Checking for wasmtime in: ${wasmtimeDirectory.absolutePath}")
-        
-        val wasmtimeExec = try {
-            WasmtimeCompiler.resolveExecutable(wasmtimeDirectory)
-        } catch (e: GradleException) {
-            // Provide enhanced error message with helpful hints
-            logger.error("❌ wasmtime executable not found!")
-            logger.lifecycle("")
-            logger.error("The directory '${wasmtimeDirectory.absolutePath}' does not contain a wasmtime binary.")
-            logger.lifecycle("")
-            
-            // Suggest common locations
-            logger.lifecycle("Common locations to check:")
-            logger.lifecycle("  1. ~/.wasmline/wasmtime/")
-            logger.lifecycle("  2. /usr/local/wasmtime/")
-            logger.lifecycle("  3. Custom path configured in build.gradle.kts")
-            logger.lifecycle("")
-            
-            // Check if it's the default empty directory
-            if (wasmtimeDirectory.name == "wasmtime" && !wasmtimeDirectory.parentFile.exists()) {
-                logger.lifecycle("📍 It appears you're using the default path:")
-                logger.lifecycle("   ${wasmtimeDirectory.absolutePath}")
-                logger.lifecycle("")
-                logger.lifecycle("💡 Download wasmtime first:")
-                logger.lifecycle("   wasmline download -a <your-platform>")
-                logger.lifecycle("")
-                logger.lifecycle("Or set WASMTIME_ROOT environment variable:")
-                logger.lifecycle("   export WASMTIME_ROOT=/path/to/wasmtime")
-            }
-            
-            throw e
-        }
+        // Resolve wasmtime base directory (DSL > env > default)
+        val wasmtimeBaseDir = wasmtimeDirectory.orNull?.asFile
+            ?: System.getenv("WASMTIME_ROOT")?.let { File(it) }
+            ?: File(System.getProperty("user.home"), ".wasmline/wasmtime")
+        logger.lifecycle("Wasmtime base directory: ${wasmtimeBaseDir.absolutePath}")
+
+        // Search for executable (direct + versioned subdirectories)
+        val wasmtimeExec = WasmtimeCompiler.findWasmtimeInDirectory(wasmtimeBaseDir)
+            ?: throw GradleException(
+                "wasmtime executable not found in '${wasmtimeBaseDir.absolutePath}' or its subdirectories.\n" +
+                "Run './gradlew wasmlineDownloadWasmtime' or 'wasmline download -a <platform>' first.\n" +
+                "\n" +
+                "Common locations to check:\n" +
+                "  1. ~/.wasmline/wasmtime/\n" +
+                "  2. Custom path configured in build.gradle.kts\n" +
+                "  3. WASMTIME_ROOT environment variable"
+            )
         
         logger.lifecycle("✅ Found wasmtime: ${wasmtimeExec.absolutePath}")
         logger.lifecycle("   Executable: ${wasmtimeExec.name}")
 
-        val artifacts = WasmtimeCompiler.compileAll(
+        val artifacts = WasmtimeCompiler().compileAll(
             wasmtimeExec = wasmtimeExec,
-            inputFile = wasmFile,
+            inputWasm = wasmFile,
             outputDir = outDir,
             productName = productName,
             targets = compileTargets.get(),
-            logger = logger,
+            logger = logger::lifecycle,
         )
 
         if (artifacts.isEmpty()) {
             throw GradleException("No artifacts produced by wasmtime compilation. Check wasmtime installation.")
         }
 
-        WasmtimeCompiler.writeCompileResult(wasmFile, debugDir, artifacts)
+        WasmtimeCompiler().writeCompileResult(
+            inputFile = wasmFile,
+            debugDir = debugDir,
+            artifacts = artifacts,
+            wasmtimeVersion = wasmtimeExec.name,
+        )
 
         // -------- Step 2: Manifest build & sign --------
         logger.lifecycle("========== Step 2: Manifest ==========")
 
-        val wlmFile = ManifestBuilder.buildAndSign(
+        val wlmFile = ManifestSigner().createSignedManifest(
             artifacts = artifacts,
             pluginId = pId,
             version = pVersion,
             versionCode = versionCode.get(),
             minSdkVersion = minSdkVersion.get(),
+            signingKey = signingKey.get(),
+            outputDir = outDir,
             displayName = displayName.orNull,
             author = author.orNull,
             description = pluginDescription.orNull,
             iconUrl = iconUrl.orNull,
             homePageUrl = homePageUrl.orNull,
             metadata = metadata.get(),
-            signingKeyHex = signingKey.get(),
-            outputDir = outDir,
-            logger = logger,
+            logger = logger::lifecycle,
         )
 
         // -------- Step 3: Package zip --------
@@ -225,24 +217,11 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         val zipFile = File(distDir, zipName)
         val folderPrefix = "$pId-$pVersion"
 
-        ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
-            addToZip(zos, wlmFile, "$folderPrefix/${wlmFile.name}")
-            artifacts.forEach { artifact ->
-                val file = File(outDir, artifact.url)
-                if (file.exists()) {
-                    addToZip(zos, file, "$folderPrefix/${file.name}")
-                }
-            }
-        }
+        PluginPackager.createZip(wlmFile, artifacts, outDir, zipFile, folderPrefix)
 
         logger.lifecycle("Package written to: ${zipFile.absolutePath} (${zipFile.length()} bytes)")
         logger.lifecycle("==========  Assemble Complete ($variant)  ==========")
         logger.lifecycle("Artifacts: ${artifacts.size}")
     }
 
-    private fun addToZip(zos: ZipOutputStream, file: File, entryName: String) {
-        zos.putNextEntry(ZipEntry(entryName))
-        file.inputStream().use { it.copyTo(zos) }
-        zos.closeEntry()
-    }
 }

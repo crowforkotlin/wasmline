@@ -3,6 +3,8 @@
 import com.vanniktech.maven.publish.GradlePlugin
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.jvm.tasks.Jar
 
 
 plugins {
@@ -32,25 +34,21 @@ buildConfig {
 dependencies {
 
     compileOnly(libs.kotlin.compiler.embeddable)
+    compileOnly(projects.wasmlinePluginCore)
 
     implementation(projects.wasmlineLoader)
     implementation(libs.gradle.kotlin.plugin)
     implementation(libs.gradle.kotlin.plugin.api)
-
-    implementation(libs.clikt)
+    implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.protobuf)
-
-    implementation(libs.compress.apache.common)
-    implementation(libs.compress.tukaani.xz)
-
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
+    implementation(libs.compress.apache.common)
+    implementation(libs.okio.core)
 
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
-
-    implementation(libs.okio.core)
 
     testImplementation(libs.kotlin.test)
 }
@@ -59,6 +57,17 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
     }
+}
+
+evaluationDependsOn(":wasmline-plugin-core")
+
+val pluginCoreOutput = project(":wasmline-plugin-core")
+    .extensions
+    .getByType<SourceSetContainer>()["main"]
+    .output
+
+tasks.named<Jar>("jar") {
+    from(pluginCoreOutput)
 }
 
 gradlePlugin {

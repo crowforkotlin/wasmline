@@ -34,6 +34,29 @@ PLATFORMS_ROOT = PROJECT_ROOT / "build" / "platforms"
 
 REPO = "crowforkotlin/wasmtime"
 
+# ── GitHub Token Configuration ───────────────────────────────────────────────
+def get_github_token() -> str | None:
+    """Get GitHub token from environment variables with fallback chain.
+    
+    Priority order:
+    1. GITHUB_TOKEN (standard, used by GitHub Actions)
+    2. GithubToken (user-friendly alias)
+    3. GITHUB_AUTH_TOKEN (alternative naming)
+    4. GH_TOKEN (short form)
+    
+    Returns:
+        Token string if found, None otherwise
+    """
+    # Priority-based lookup
+    for env_var in ["GITHUB_TOKEN", "GithubToken", "GITHUB_AUTH_TOKEN", "GH_TOKEN"]:
+        token = os.environ.get(env_var)
+        if token:
+            log_info(f"Using GitHub authentication via {env_var}.")
+            return token
+    return None
+
+_GITHUB_TOKEN = get_github_token()
+
 # ── Colors ───────────────────────────────────────────────────────────────────
 _NO_COLOR = os.environ.get("NO_COLOR")
 
@@ -254,9 +277,41 @@ def setup_proxy(proxy: str | None) -> None:
 
 
 def api_get_json(url: str) -> dict:
+    """Fetch JSON from GitHub API with optional authentication.
+    
+    Automatically handles rate limits and provides informative warnings.
+    """
     req = Request(url, headers={"Accept": "application/vnd.github+json"})
-    with urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+    
+    # Add authentication if token is available
+    if _GITHUB_TOKEN:
+        req.add_header("Authorization", f"Bearer {_GITHUB_TOKEN}")
+    
+    try:
+        with urlopen(req, timeout=30) as resp:
+            # Log rate limit status if authenticated
+            if _GITHUB_TOKEN:
+                remaining = int(resp.headers.get('X-RateLimit-Remaining', 60))
+                reset_time = int(resp.headers.get('X-RateLimit-Reset', 0))
+                log_detail(f"Rate limit remaining: {remaining}/{resp.headers.get('X-RateLimit-Limit', '?')}, resets at: {time.ctime(reset_time)}")
+            
+            return json.loads(resp.read())
+    except (URLError, OSError) as exc:
+        error_str = str(exc).lower()
+        if "rate limit" in error_str or "403" in str(exc) or "429" in str(exc):
+            log_err("GitHub API rate limit exceeded!")
+            if not _GITHUB_TOKEN:
+                log_err("")
+                log_err("💡 Set environment variable to increase limits:")
+                log_err("   Linux/macOS: export GITHUB_TOKEN=your_token_here")
+                log_err("   Windows PowerShell: $env:GITHUB_TOKEN='your_token_here'")
+                log_err("   GitHub Actions: automatically provided via ${{{{github.token}}}}")
+                log_err("")
+            else:
+                log_err("⚠️  Even with authentication, you've exceeded secondary rate limits.")
+                log_err("   Wait a few minutes before retrying.")
+                log_err("")
+        raise
 
 
 def download_file(url: str, dest: Path) -> None:

@@ -8,17 +8,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-WASM_INPUT_DIR="../wasmline-sample/plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized"
-WASM_INPUT_FILE_NAME="wasmline-multiplatform-wasmline-sample-plugin.wasm"
-OUTPUT_NAME="wasmline-multiplatform-wasmline-sample-plugin"
+WASM_INPUT_DIR="../../wasmline-samples/kotlin/sample-plugin/build/compileSync/wasmWasi/main/productionLibrary/optimized"
+WASM_INPUT_FILE_NAME="wasmline-sample-sample-plugin.wasm"
+OUTPUT_NAME="wasmline-sample-sample-plugin"
 VERSION="1.0.0"
 VERSION_ALT="1.0.0"
 VERSION_CODE_ALT="1"
 WASMTIME_VERSION="v47.0.2"
-WASMTIME_TARGET="aarch64-macos"
+# WASMTIME_TARGET="-min" suffix is added automatically for consistency with Gradle plugin
+#WASMTIME_TARGET="aarch64-macos"
+WASMTIME_TARGET="x86_64-linux-min"
 WASMTIME_DIR=""
 DOWNLOAD_EXTRA_VERSION="latest"
-DOWNLOAD_ARCH="aarch64-macos"
+# DOWNLOAD_ARCH can be plain "x86_64-linux" or full asset name like "wasmtime-v47.0.2-x86_64-linux-min.tar.xz"
+#DOWNLOAD_ARCH="aarch64-macos"
+DOWNLOAD_ARCH="x86_64-linux"
 SELECTED_ARCHES="pulley64,aarch64-linux-android"
 KEY_FILE="build/wasmline/keys/ed25519_private.key"
 HEX_KEY="10829ee4b2894f74647aa109ff82ff549a176e28d64632b69f1c8d5a5225023b"
@@ -40,8 +44,10 @@ SUPPORTED_DOWNLOAD_ARCHES=(
   "aarch64-ios"
   "aarch64-ios-sim"
   "aarch64-linux"
+  "aarch64-linux-min"
   "aarch64-macos"
   "x86_64-linux"
+  "x86_64-linux-min"
   "x86_64-macos"
   "x86_64-windows"
 )
@@ -121,6 +127,7 @@ extract_release_arch() {
 
   case "$value" in
   wasmtime-v*-*)
+    # Extract platform from filename like wasmtime-v47.0.2-x86_64-linux-min
     printf '%s' "${value#wasmtime-v*-}"
     ;;
   *)
@@ -159,11 +166,20 @@ apply_derived_defaults() {
   DOWNLOAD_ARCH="$(extract_release_arch "$DOWNLOAD_ARCH")"
   validate_download_arch "$raw_download_arch" "$DOWNLOAD_ARCH"
 
+  # Ensure WASMTIME_TARGET always has -min suffix for consistency
+  if [[ "$WASMTIME_TARGET" != *-min ]] && [[ "$WASMTIME_TARGET" != "all" ]]; then
+    WASMTIME_TARGET="${WASMTIME_TARGET}-min"
+  fi
+
   WASM_INPUT="${WASM_INPUT_DIR%/}/${WASM_INPUT_FILE_NAME}"
   NAME="${OUTPUT_NAME}"
 
   if [ "$WASMTIME_TARGET_EXPLICIT" -eq 0 ] && [ "$DOWNLOAD_ARCH" != "all" ]; then
     WASMTIME_TARGET="$DOWNLOAD_ARCH"
+    # Add -min suffix if not present and not explicitly set
+    if [[ "$WASMTIME_TARGET" != *-min ]]; then
+      WASMTIME_TARGET="${WASMTIME_TARGET}-min"
+    fi
   fi
 
   if [ -z "$WASMTIME_DIR" ]; then
@@ -190,10 +206,10 @@ Options:
   --version-alt VALUE            Alternate version used by custom examples
   --version-code-alt VALUE       Alternate version code used by custom examples
   --wasmtime-version VALUE       Wasmtime version shown in examples
-  --wasmtime-target VALUE        Wasmtime target shown in examples, overrides auto-sync from --download-arch
+  --wasmtime-target VALUE        Wasmtime target shown in examples (will have -min suffix added automatically if missing), overrides auto-sync from --download-arch
   --wasmtime-dir VALUE           Wasmtime directory used by build/compile examples, defaults from version + target
   --download-extra-version VALUE Extra version used by download multi-version example
-  --download-arch VALUE          Download architecture or release asset name, e.g. x86_64-linux or wasmtime-${WASMTIME_VERSION}-x86_64-linux.tar.xz
+  --download-arch VALUE          Download architecture or release asset name, e.g. x86_64-linux, aarch64-macos, or wasmtime-${WASMTIME_VERSION}-x86_64-linux-min.tar.xz
   --selected-arches VALUE        Comma-separated arch list for build/compile arch examples
   --key-file VALUE               Private key file path used by build/manifest examples
   --hex-key VALUE                Hex private key used by build/manifest examples

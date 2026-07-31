@@ -45,7 +45,7 @@ kotlinpoet = "2.2.0"
 kotlinx-coroutines = "1.10.2"
 
 # https://github.com/Kotlin/kotlinx.serialization
-kotlinx-serialization = "1.9.0"
+kotlinx-serialization = "1.11.0"
 
 # https://github.com/gmazzo/gradle-buildconfig-plugin
 buildconfig = "6.0.7"

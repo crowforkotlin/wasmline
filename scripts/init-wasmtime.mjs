@@ -27,6 +27,21 @@ const PROJECT_ROOT = resolve(SCRIPT_DIR, "..");
 const PLATFORMS_ROOT = join(PROJECT_ROOT, "build", "platforms");
 const REPO = "crowforkotlin/wasmtime";
 
+// ── GitHub Token Configuration ──────────────────────────────────────────────
+function getGitHubToken() {
+  const envVars = ["GITHUB_TOKEN", "GithubToken", "GITHUB_AUTH_TOKEN", "GH_TOKEN"];
+  for (const envVar of envVars) {
+    const token = process.env[envVar];
+    if (token) {
+      logInfo(`Using GitHub authentication via ${envVar}.`);
+      return token;
+    }
+  }
+  return null;
+}
+
+const GITHUB_TOKEN = getGitHubToken();
+
 // ── Colors ──────────────────────────────────────────────────────────────────
 const isTTY = process.stdout.isTTY && !process.env.NO_COLOR;
 const c = (code, t) => (isTTY ? `\x1b[${code}m${t}\x1b[0m` : t);
@@ -238,16 +253,49 @@ function setupProxy(proxy) {
 }
 
 async function fetchJSON(url) {
-  const resp = await fetch(url, {
-    headers: { Accept: "application/vnd.github+json" },
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
+  const headers = { Accept: "application/vnd.github+json" };
+  
+  // Add authentication if token is available
+  if (GITHUB_TOKEN) {
+    headers["Authorization"] = `Bearer ${GITHUB_TOKEN}`;
+  }
+  
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) {
+    // Handle rate limits
+    if (resp.status === 403 || resp.status === 429) {
+      const rateRemaining = resp.headers.get("X-RateLimit-Remaining");
+      if (rateRemaining === "0") {
+        throw new Error(
+          `GitHub API rate limit exceeded!\n` +
+          `   Tip: Set GITHUB_TOKEN environment variable for higher limits`
+        );
+      }
+    }
+    throw new Error(`HTTP ${resp.status} for ${url}`);
+  }
   return resp.json();
 }
 
 async function downloadFile(url, dest) {
-  const resp = await fetch(url, { redirect: "follow" });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const headers = {};
+  
+  // Add authentication if token is available
+  if (GITHUB_TOKEN) {
+    headers["Authorization"] = `Bearer ${GITHUB_TOKEN}`;
+  }
+  
+  const resp = await fetch(url, { headers, redirect: "follow" });
+  if (!resp.ok) {
+    // Handle rate limits on download
+    if (resp.status === 403 || resp.status === 429) {
+      throw new Error(
+        `Download failed due to GitHub API rate limit!\n` +
+        `   Set GITHUB_TOKEN environment variable for higher limits`
+      );
+    }
+    throw new Error(`HTTP ${resp.status}`);
+  }
   const ws = createWriteStream(dest);
   // @ts-ignore – Node 18+ body is a ReadableStream / web stream
   await pipeline(resp.body, ws);
