@@ -102,14 +102,10 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         // Note: Use KotlinJsIrTarget as the base type, then filter by wasmTargetType
         logger.apply {
             kotlinExtension.targets.withType(KotlinJsIrTarget::class.java).configureEach { wasiTarget ->
-                lifecycle("Found KotlinJsIrTarget: ${wasiTarget.name}")
-
                 // Check if this is a WASI target based on wasmTargetType
                 val isWasiTarget = wasiTarget.wasmTargetType == KotlinWasmTargetType.WASI
 
                 if (isWasiTarget) {
-                    lifecycle("Registering WASI tasks for target: ${wasiTarget.name} (WASM-WASI)")
-
                     // 3.1 Create wasmtime download and check tasks (once per WASI target)
                     createWasmlineDownloadTask(project = target, ext = extension)
                     createWasmtimeCheckTask(project = target, ext = extension)
@@ -145,9 +141,6 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.platform.convention(detectCurrentPlatform())
             task.githubToken.set(ext.wasmtime.githubToken)
 
-            // Note: outputDir is intentionally NOT set - this task has side effects that
-            // Gradle cannot reliably track via standard outputs (downloads a binary file).
-            // The wasmtimeDirectory serves as both input and target location.
         }
     }
 
