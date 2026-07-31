@@ -72,7 +72,7 @@ pub fn build(b: *std.Build) !void {
     try installArtifacts(b, lib, target);
 
     // 10. Integrate compilation database generation (for editor tooling like clangd/marksman)
-    var compile_steps_to_include = std.ArrayList(*std.Build.Step.Compile){};
+    var compile_steps_to_include: std.ArrayList(*std.Build.Step.Compile) = .empty;
     try compile_steps_to_include.append(b.allocator, lib);
     const cdb_internal_step = zcc.createStep(b, "generate_compile_commands_internal", compile_steps_to_include.items);
     b.step("cdb", "Generate compile_commands.json for editor integration.").dependOn(cdb_internal_step);
@@ -93,6 +93,7 @@ fn createDynamicLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimiz
             .link_libcpp = true,
         }),
         .linkage = .dynamic,
+        .use_lld = if (target.result.os.tag == .windows and optimize != .Debug) true else null,
     });
     lib.bundle_compiler_rt = true; // Include compiler runtime
     return lib;
@@ -117,23 +118,22 @@ fn configureOptimization(lib: *std.Build.Step.Compile, target: std.Build.Resolve
 
     // Enable LTO and force LLD linker for Windows Release builds
     if (target.result.os.tag == .windows and is_release) {
-        lib.want_lto = true;
-        lib.use_lld = true;
+        lib.lto = .full;
     }
 }
 
 fn addSourceFiles(b: *std.Build, lib: *std.Build.Step.Compile, core_dir: []const u8) !void {
     // Native JNI
-    lib.addCSourceFile(.{ .file = b.path("src/jniMain/native/WasmlineJni.cpp"), .flags = CPP_FLAGS });
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/WasmlineJni.cpp"), .flags = CPP_FLAGS });
 
     // Desktop Adapter (ConsoleLogger, JniHostHandler)
-    lib.addCSourceFile(.{ .file = b.path("src/jvmMain/native/ConsoleLogger.cpp"), .flags = CPP_FLAGS });
-    lib.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniHostHandler.cpp"), .flags = CPP_FLAGS });
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/jvmMain/native/ConsoleLogger.cpp"), .flags = CPP_FLAGS });
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniHostHandler.cpp"), .flags = CPP_FLAGS });
 
     // External Core Sources
     for (EXTERNAL_SOURCES) |src| {
         const full_src_path = b.pathJoin(&.{ core_dir, src });
-        lib.addCSourceFile(.{ .file = .{ .cwd_relative = full_src_path }, .flags = CPP_FLAGS });
+        lib.root_module.addCSourceFile(.{ .file = .{ .cwd_relative = full_src_path }, .flags = CPP_FLAGS });
     }
 }
 
@@ -144,14 +144,14 @@ fn addIncludePaths(
     wasmtime_dir: []const u8,
     java_home: []const u8,
 ) void {
-    lib.addIncludePath(b.path("src/jniMain/native"));
-    lib.addIncludePath(b.path("src/jniMain/native"));
-    lib.addIncludePath(b.path("src/jvmMain/native")); // ConsoleLogger might be here
+    lib.root_module.addIncludePath(b.path("src/jniMain/native"));
+    lib.root_module.addIncludePath(b.path("src/jniMain/native"));
+    lib.root_module.addIncludePath(b.path("src/jvmMain/native")); // ConsoleLogger might be here
 
-    lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include" }) });
-    lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include/extensions" }) });
-    lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ wasmtime_dir, "include" }) });
-    lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include" }) });
+    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include" }) });
+    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include/extensions" }) });
+    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ wasmtime_dir, "include" }) });
+    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include" }) });
 
     // For cross-compilation, the host JDK only has jni_md.h for the host platform.
     // jni_md.h defines primitive typedefs (jint, jlong) that are identical across
@@ -162,7 +162,7 @@ fn addIncludePaths(
         .macos => "darwin",
         else => "linux",
     };
-    lib.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include", host_plat_dir }) });
+    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include", host_plat_dir }) });
 }
 
 /// Link the static libwasmtime.a directly into libwasmline so that a single
@@ -180,7 +180,7 @@ fn linkWasmtimeStatic(
 
     const lib_path = b.pathJoin(&.{ wasmtime_dir, "lib", lib_name });
     std.debug.print("[Debug] Wasmtime static lib: {s}\n", .{lib_path});
-    lib.addObjectFile(.{ .cwd_relative = lib_path });
+    lib.root_module.addObjectFile(.{ .cwd_relative = lib_path });
 }
 
 /// Link system-level dependencies required by both the bridge code and the
@@ -188,7 +188,7 @@ fn linkWasmtimeStatic(
 fn linkSystemDependencies(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
     if (target.result.os.tag == .windows) {
         // Enforce MINGW_PATH environment variable
-        const mingw_path = std.process.getEnvVarOwned(b.allocator, "MINGW_PATH") catch {
+        const mingw_path = b.graph.environ_map.get("MINGW_PATH") orelse {
             std.debug.print(
                 \\
                 \\## Windows Cross-Compile Requirements
@@ -208,30 +208,29 @@ fn linkSystemDependencies(b: *std.Build, lib: *std.Build.Step.Compile, target: s
         const layout_a = b.pathJoin(&.{ mingw_path, "lib" });
         const layout_b = b.pathJoin(&.{ mingw_path, "x86_64-w64-mingw32/lib" });
         const mingw_lib = blk: {
-            std.fs.cwd().access(layout_a, .{}) catch break :blk layout_b;
+            std.Io.Dir.cwd().access(b.graph.io, layout_a, .{}) catch break :blk layout_b;
             break :blk layout_a;
         };
-        lib.addLibraryPath(.{ .cwd_relative = mingw_lib });
-        lib.linkSystemLibrary("bcrypt"); // Encryption API (Required for RNG)
-        lib.linkSystemLibrary("userenv"); // User Environment (Env vars)
-        lib.linkSystemLibrary("ole32"); // COM Library
-        lib.linkSystemLibrary("uuid"); // UUID Library
+        lib.root_module.addLibraryPath(.{ .cwd_relative = mingw_lib });
+        lib.root_module.linkSystemLibrary("bcrypt", .{}); // Encryption API (Required for RNG)
+        lib.root_module.linkSystemLibrary("userenv", .{}); // User Environment (Env vars)
+        lib.root_module.linkSystemLibrary("ole32", .{}); // COM Library
+        lib.root_module.linkSystemLibrary("uuid", .{}); // UUID Library
     } else {
-        lib.linkSystemLibrary("m");
-        lib.linkSystemLibrary("dl");
-        lib.linkSystemLibrary("pthread");
+        lib.root_module.linkSystemLibrary("m", .{});
+        lib.root_module.linkSystemLibrary("dl", .{});
+        lib.root_module.linkSystemLibrary("pthread", .{});
     }
 }
 
 /// Read wasmtime version from scripts/versions.json.
 fn readWasmtimeVersion(b: *std.Build, repo_root: []const u8) ![]const u8 {
     const versions_path = b.pathJoin(&.{ repo_root, "scripts", "versions.json" });
-    const file = std.fs.cwd().openFile(versions_path, .{}) catch {
+    const content = std.Io.Dir.cwd().readFileAlloc(b.graph.io, versions_path, b.allocator, .limited(1024 * 1024)) catch {
         std.debug.print("[Warn] Could not open {s}, using default version\n", .{versions_path});
         return "release-v45.0.5";
     };
-    defer file.close();
-    const content = file.readToEndAlloc(b.allocator, 1024 * 1024) catch return "release-v45.0.5";
+    defer b.allocator.free(content);
     // Simple JSON parsing: find "wasmtime_version": "X.Y.Z"
     const needle = "\"wasmtime_version\"";
     if (std.mem.indexOf(u8, content, needle)) |idx| {
@@ -274,11 +273,7 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
     // Install single artifact: libwasmline (contains wasmtime engine)
     const wasmline_name = b.fmt("libwasmline{s}", .{ext});
     const install_wasmline = b.addInstallFileWithDir(lib.getEmittedBin(), .{ .custom = install_subdir }, wasmline_name);
-
-    const lib_dir_path = b.getInstallPath(.prefix, "lib");
-    const deleteLib = b.addRemoveDirTree(.{ .cwd_relative = lib_dir_path });
-    deleteLib.step.dependOn(&install_wasmline.step);
-    b.getInstallStep().dependOn(&deleteLib.step);
+    b.getInstallStep().dependOn(&install_wasmline.step);
 }
 
 // ============================================================================
@@ -287,29 +282,34 @@ fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Bui
 
 fn autoDetectJavaHome(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
     if (b.option([]const u8, "java-home", "Override JAVA_HOME")) |path| {
-        return validateJavaHomeWithContext(path, target, "-Djava-home");
+        return validateJavaHomeWithContext(b, path, target, "-Djava-home");
     }
 
-    if (std.process.getEnvVarOwned(b.allocator, "JAVA_HOME")) |path| {
-        if (tryValidateJavaHome(path, target, "JAVA_HOME")) |valid| return valid;
-    } else |_| {}
+    if (b.graph.environ_map.get("JAVA_HOME")) |path| {
+        if (tryValidateJavaHome(b, path, target, "JAVA_HOME")) |valid| return valid;
+    }
 
     if (target.result.os.tag == .macos) {
-        const result = std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{"/usr/libexec/java_home"} }) catch |err| {
+        const result = std.process.run(b.allocator, b.graph.io, .{ .argv = &.{"/usr/libexec/java_home"} }) catch |err| {
             std.debug.print("[Warn] Failed to execute /usr/libexec/java_home: {any}\n", .{err});
             if (try detectJavaHomeFromJavaCommand(b, target)) |path| return path;
             return detectJavaHomeFromShellConfigs(b, target);
         };
-        if (result.term.Exited == 0) {
-            const path = std.mem.trim(u8, result.stdout, " \n\r");
-            if (path.len != 0) {
-                if (tryValidateJavaHome(path, target, "/usr/libexec/java_home")) |valid| return valid;
-            }
-        } else {
-            const stderr_text = std.mem.trim(u8, result.stderr, " \n\r");
-            if (stderr_text.len != 0) {
-                std.debug.print("[Warn] /usr/libexec/java_home returned: {s}\n", .{stderr_text});
-            }
+        defer b.allocator.free(result.stdout);
+        defer b.allocator.free(result.stderr);
+        switch (result.term) {
+            .exited => |code| if (code == 0) {
+                const path = std.mem.trim(u8, result.stdout, " \n\r");
+                if (path.len != 0) {
+                    if (tryValidateJavaHome(b, path, target, "/usr/libexec/java_home")) |valid| return valid;
+                }
+            } else {
+                const stderr_text = std.mem.trim(u8, result.stderr, " \n\r");
+                if (stderr_text.len != 0) {
+                    std.debug.print("[Warn] /usr/libexec/java_home returned: {s}\n", .{stderr_text});
+                }
+            },
+            else => std.debug.print("[Warn] /usr/libexec/java_home did not exit normally.\n", .{}),
         }
     }
 
@@ -357,11 +357,11 @@ fn getPlatformSubdir(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u
     }
 }
 
-fn validateJavaHome(java_home: []const u8, target: std.Build.ResolvedTarget) ![]const u8 {
+fn validateJavaHome(b: *std.Build, java_home: []const u8, target: std.Build.ResolvedTarget) ![]const u8 {
     // Always require jni.h (platform-independent)
     const jni_header = try std.fs.path.join(std.heap.page_allocator, &.{ java_home, "include", "jni.h" });
     defer std.heap.page_allocator.free(jni_header);
-    std.fs.cwd().access(jni_header, .{}) catch return error.JavaHomeInvalid;
+    std.Io.Dir.cwd().access(b.graph.io, jni_header, .{}) catch return error.JavaHomeInvalid;
 
     // For cross-compilation, the host JDK may not have the target's jni_md.h
     // (e.g. Linux JDK has include/linux/jni_md.h but not include/darwin/jni_md.h).
@@ -381,15 +381,15 @@ fn validateJavaHome(java_home: []const u8, target: std.Build.ResolvedTarget) ![]
         };
         const jni_platform_header = try std.fs.path.join(std.heap.page_allocator, &.{ java_home, "include", jni_platform_dir, "jni_md.h" });
         defer std.heap.page_allocator.free(jni_platform_header);
-        std.fs.cwd().access(jni_platform_header, .{}) catch return error.JavaHomeInvalid;
+        std.Io.Dir.cwd().access(b.graph.io, jni_platform_header, .{}) catch return error.JavaHomeInvalid;
     }
     // Cross-compilation: jni.h check is sufficient
 
     return java_home;
 }
 
-fn validateJavaHomeWithContext(java_home: []const u8, target: std.Build.ResolvedTarget, source: []const u8) ![]const u8 {
-    return validateJavaHome(java_home, target) catch |err| {
+fn validateJavaHomeWithContext(b: *std.Build, java_home: []const u8, target: std.Build.ResolvedTarget, source: []const u8) ![]const u8 {
+    return validateJavaHome(b, java_home, target) catch |err| {
         switch (err) {
             error.JavaHomeInvalid => {
                 const jni_platform_dir = switch (target.result.os.tag) {
@@ -415,8 +415,8 @@ fn validateJavaHomeWithContext(java_home: []const u8, target: std.Build.Resolved
     };
 }
 
-fn tryValidateJavaHome(java_home: []const u8, target: std.Build.ResolvedTarget, source: []const u8) ?[]const u8 {
-    return validateJavaHome(java_home, target) catch |err| {
+fn tryValidateJavaHome(b: *std.Build, java_home: []const u8, target: std.Build.ResolvedTarget, source: []const u8) ?[]const u8 {
+    return validateJavaHome(b, java_home, target) catch |err| {
         switch (err) {
             error.JavaHomeInvalid => {
                 std.debug.print("[Warn] Ignoring invalid Java home from {s}: {s}\n", .{ source, java_home });
@@ -431,25 +431,25 @@ fn tryValidateJavaHome(java_home: []const u8, target: std.Build.ResolvedTarget, 
 }
 
 fn detectJavaHomeFromShellConfigs(b: *std.Build, target: std.Build.ResolvedTarget) ![]const u8 {
-    const home = std.process.getEnvVarOwned(b.allocator, "HOME") catch return error.JavaHomeNotFound;
+    const home = b.graph.environ_map.get("HOME") orelse return error.JavaHomeNotFound;
     const config_names = [_][]const u8{ ".zshrc", ".bashrc", ".bash_profile" };
 
     for (config_names) |config_name| {
         const config_path = try std.fs.path.join(b.allocator, &.{ home, config_name });
         defer b.allocator.free(config_path);
 
-        const content = std.fs.cwd().readFileAlloc(b.allocator, config_path, 1024 * 1024) catch |err| switch (err) {
+        const content = std.Io.Dir.cwd().readFileAlloc(b.graph.io, config_path, b.allocator, .limited(1024 * 1024)) catch |err| switch (err) {
             error.FileNotFound => continue,
             else => return err,
         };
         defer b.allocator.free(content);
 
-        var candidates = std.ArrayList([]const u8){};
+        var candidates: std.ArrayList([]const u8) = .empty;
         defer candidates.deinit(b.allocator);
 
         try collectQuotedPathCandidates(b.allocator, content, &candidates);
         for (candidates.items) |candidate| {
-            if (tryValidateJavaHome(candidate, target, config_path)) |valid| {
+            if (tryValidateJavaHome(b, candidate, target, config_path)) |valid| {
                 std.debug.print("[Info] Using Java home discovered from {s}: {s}\n", .{ config_path, valid });
                 return valid;
             }
@@ -460,8 +460,7 @@ fn detectJavaHomeFromShellConfigs(b: *std.Build, target: std.Build.ResolvedTarge
 }
 
 fn detectJavaHomeFromJavaCommand(b: *std.Build, target: std.Build.ResolvedTarget) !?[]const u8 {
-    const result = std.process.Child.run(.{
-        .allocator = b.allocator,
+    const result = std.process.run(b.allocator, b.graph.io, .{
         .argv = &.{ "java", "-XshowSettings:properties", "-version" },
     }) catch |err| {
         std.debug.print("[Warn] Failed to execute java -XshowSettings:properties -version: {any}\n", .{err});
@@ -470,12 +469,18 @@ fn detectJavaHomeFromJavaCommand(b: *std.Build, target: std.Build.ResolvedTarget
     defer b.allocator.free(result.stdout);
     defer b.allocator.free(result.stderr);
 
-    if (result.term.Exited != 0) {
-        const stderr_text = std.mem.trim(u8, result.stderr, " \n\r");
-        if (stderr_text.len != 0) {
-            std.debug.print("[Warn] java -XshowSettings:properties -version returned: {s}\n", .{stderr_text});
-        }
-        return null;
+    switch (result.term) {
+        .exited => |code| if (code != 0) {
+            const stderr_text = std.mem.trim(u8, result.stderr, " \n\r");
+            if (stderr_text.len != 0) {
+                std.debug.print("[Warn] java -XshowSettings:properties -version returned: {s}\n", .{stderr_text});
+            }
+            return null;
+        },
+        else => {
+            std.debug.print("[Warn] java -XshowSettings:properties -version did not exit normally.\n", .{});
+            return null;
+        },
     }
 
     const detected = extractJavaHomeFromJavaSettings(result.stderr) orelse extractJavaHomeFromJavaSettings(result.stdout) orelse {
@@ -484,7 +489,7 @@ fn detectJavaHomeFromJavaCommand(b: *std.Build, target: std.Build.ResolvedTarget
     };
 
     const owned_path = try b.allocator.dupe(u8, detected);
-    return tryValidateJavaHome(owned_path, target, "java -XshowSettings:properties -version");
+    return tryValidateJavaHome(b, owned_path, target, "java -XshowSettings:properties -version");
 }
 
 fn extractJavaHomeFromJavaSettings(output: []const u8) ?[]const u8 {

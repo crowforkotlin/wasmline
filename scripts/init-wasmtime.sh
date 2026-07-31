@@ -21,7 +21,7 @@ setup_proxy() {
         log_success "Proxy: $p"
     else
         log_info "Direct connection."
-        printf "${YELLOW}[TIP] If slow, use: bash $0 127.0.0.1:7890${NC}"
+        printf "${YELLOW}[TIP] If slow, use: bash $0 127.0.0.1:7890${NC}\n"
     fi
 }
 
@@ -179,7 +179,7 @@ select_variant() {
     local can_choose=false
     case "$USER_FILTER" in
         all)
-            VARIANT="all"
+            VARIANT="both"
             log_info "All Platforms: downloading all runtime variants (Cranelift + Pulley)."
             ;;
         aarch64-ios-pulley-min-c-api|aarch64-ios-sim-pulley-min-c-api|armv7-android|x86-android)

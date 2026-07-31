@@ -1,13 +1,13 @@
 # Zig Build Instructions
 
-- Zig Version : 0.15.1
+- Zig Version : 0.16.0
 
 ```shell
 # Check Zig version
 zig version
 
 # Download compile_commands dependency
-zig fetch --save-exact=compile_commands "https://github.com/the-argus/zig-compile-commands/archive/70fb439897e12cae896c071717d7c9c382918689.tar.gz"
+zig fetch --save-exact=compile_commands "https://github.com/the-argus/zig-compile-commands/archive/24a28a2b68d2e4351323d646649c9cd3061525d6.tar.gz"
 ```
 
 ## General Build

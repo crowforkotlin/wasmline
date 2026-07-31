@@ -1,12 +1,16 @@
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.WasmlineWarmupMode
+import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.wasmlineBootstrap
 import crow.wasmline.wasmlineShutdown
+import crow.wasmline.wasmlineWarmup
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -18,7 +22,9 @@ import kotlin.test.assertTrue
 class NativeEchoServiceTest {
 
     companion object {
-        private val PWASM_PATH = "${System.getProperty("user.dir")}/../wasmline-test-plugin/build/wasmline/output/wasmline-test-plugin-1.0.0/wasmline-test-plugin-pulley64.pwasm"
+        private val ARTIFACT_PATH = requireNotNull(System.getProperty("wasmline.plugin.artifact.path")) {
+            "Missing wasmline plugin artifact path."
+        }
     }
 
     /**
@@ -27,15 +33,19 @@ class NativeEchoServiceTest {
     @Test
     fun echoesSimpleString() {
         val artifactPath = findArtifact()
-        
+
         wasmlineBootstrap()
+        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
         try {
-            val state = WasmlineLoader.loadArtifact(artifactPath, WasmlineConfig(supportConcurrent = false))
-            val loader = (state as WasmlineLoadState.Loaded).loader
-            
-            loader.load<crow.wasmline.test.plugin.EchoService>().use { echoService ->
+            val wasmline = assertIs<WasmlineLoadResult.Success>(
+                WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),
+            ).wasmline
+            try {
+                val echoService = wasmline.link<crow.wasmline.test.plugin.EchoService>()
                 assertEquals("Hello, World!", echoService.echo("Hello, World!"))
                 assertEquals("Wasmline", echoService.echo("Wasmline"))
+            } finally {
+                wasmline.close()
             }
         } finally {
             wasmlineShutdown()
@@ -48,15 +58,19 @@ class NativeEchoServiceTest {
     @Test
     fun echoesWithPrefix() {
         val artifactPath = findArtifact()
-        
+
         wasmlineBootstrap()
+        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
         try {
-            val state = WasmlineLoader.loadArtifact(artifactPath, WasmlineConfig(supportConcurrent = false))
-            val loader = (state as WasmlineLoadState.Loaded).loader
-            
-            loader.load<crow.wasmline.test.plugin.EchoService>().use { echoService ->
+            val wasmline = assertIs<WasmlineLoadResult.Success>(
+                WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),
+            ).wasmline
+            try {
+                val echoService = wasmline.link<crow.wasmline.test.plugin.EchoService>()
                 assertEquals("Prefix: Test Message", echoService.echoWithPrefix("Prefix: ", "Test Message"))
                 assertEquals("[INFO] Log entry", echoService.echoWithPrefix("[INFO] ", "Log entry"))
+            } finally {
+                wasmline.close()
             }
         } finally {
             wasmlineShutdown()
@@ -64,8 +78,8 @@ class NativeEchoServiceTest {
     }
 
     private fun findArtifact(): String {
-        val path = PWASM_PATH
-        assertTrue(java.io.File(path).exists(), "Artifact not found: $path. Run build first.")
+        val path = ARTIFACT_PATH
+        assertTrue(java.io.File(path).exists(), "Artifact not found: $path. Run './gradlew jvmTest' first.")
         return path
     }
 }
