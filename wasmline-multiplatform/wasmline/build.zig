@@ -212,6 +212,13 @@ fn linkSystemDependencies(b: *std.Build, lib: *std.Build.Step.Compile, target: s
             break :blk layout_a;
         };
         lib.root_module.addLibraryPath(.{ .cwd_relative = mingw_lib });
+        if (target.result.abi == .gnu) {
+            // MinGW's compatibility runtime provides the math, wide-character,
+            // and POSIX helper symbols used by the statically-linked zigc/Rust code.
+            lib.root_module.addObjectFile(.{
+                .cwd_relative = b.pathJoin(&.{ mingw_lib, "libmingwex.a" }),
+            });
+        }
         lib.root_module.linkSystemLibrary("bcrypt", .{}); // Encryption API (Required for RNG)
         lib.root_module.linkSystemLibrary("userenv", .{}); // User Environment (Env vars)
         lib.root_module.linkSystemLibrary("ole32", .{}); // COM Library
