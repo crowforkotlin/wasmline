@@ -39,13 +39,17 @@ export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638"
 
 # MinGW-w64 toolchain path (required for Zig Windows cross-compilation)
 export MINGW_PATH="/usr/x86_64-w64-mingw32"
+
+# macOS/Homebrew: use the formula root; build.zig resolves toolchain-x86_64/
+# automatically. The brew --prefix path remains valid across formula upgrades.
+# export MINGW_PATH="$(brew --prefix mingw-w64)"
 ```
 
 | Variable | Purpose |
 |---|---|
 | `ANDROID_HOME` | Locates the Android SDK for Gradle builds |
 | `ANDROID_NDK_HOME` | Locates the NDK toolchain for `build-native-assets.sh` Android ABI builds |
-| `MINGW_PATH` | Locates the MinGW sysroot for `build.zig` Windows cross-compilation |
+| `MINGW_PATH` | Locates the MinGW toolchain root for `build.zig` Windows cross-compilation |
 
 <Callout type="info" title="MINGW_PATH is only needed for Windows cross-compilation">
   If Windows artifacts are not required, `MINGW_PATH` can be omitted. `build-native-assets.sh` skips failed targets and continues building the remaining platforms.

@@ -39,13 +39,17 @@ export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638"
 
 # MinGW-w64 工具链路径（Zig 交叉编译 Windows 目标必需）
 export MINGW_PATH="/usr/x86_64-w64-mingw32"
+
+# macOS/Homebrew：使用 formula 根目录，build.zig 会自动解析 toolchain-x86_64/。
+# brew --prefix 路径不会因 formula 升级而失效。
+# export MINGW_PATH="$(brew --prefix mingw-w64)"
 ```
 
 | 变量 | 用途 |
 |---|---|
 | `ANDROID_HOME` | Gradle 构建 Android 目标时定位 SDK |
 | `ANDROID_NDK_HOME` | `build-native-assets.sh` 构建 Android ABI 时定位 NDK 工具链 |
-| `MINGW_PATH` | `build.zig` 交叉编译 `x86_64-windows-gnu` 时定位 MinGW sysroot |
+| `MINGW_PATH` | `build.zig` 交叉编译 `x86_64-windows-gnu` 时定位 MinGW 工具链根目录 |
 
 <Callout type="info" title="MINGW_PATH 仅 Windows 交叉编译需要">
   如果不需要构建 Windows 产物，可不设置 `MINGW_PATH`。`build-native-assets.sh` 会跳过失败的目标并继续构建其余平台。

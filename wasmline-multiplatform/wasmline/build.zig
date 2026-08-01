@@ -66,7 +66,7 @@ pub fn build(b: *std.Build) !void {
     linkWasmtimeStatic(b, lib, wasmtime_dir, target);
 
     // 8. Link system dependencies (m, dl, pthread, etc.)
-    linkSystemDependencies(b, lib, target);
+    try linkSystemDependencies(b, lib, target);
 
     // 9. Install single artifact: libwasmline (contains wasmtime engine)
     try installArtifacts(b, lib, target);
@@ -185,34 +185,24 @@ fn linkWasmtimeStatic(
 
 /// Link system-level dependencies required by both the bridge code and the
 /// statically-linked wasmtime engine (Rust runtime deps, math, threading, etc.).
-fn linkSystemDependencies(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
+fn linkSystemDependencies(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) !void {
     if (target.result.os.tag == .windows) {
-        // Enforce MINGW_PATH environment variable
-        const mingw_path = b.graph.environ_map.get("MINGW_PATH") orelse {
-            std.debug.print(
-                \\
-                \\## Windows Cross-Compile Requirements
-                \\1. **Install:** MinGW-w64 (e.g. `pacman -S mingw-w64-gcc`).
-                \\2. **Environment Variable:** Set `MINGW_PATH` to the MinGW sysroot.
-                \\   Arch Linux:  export MINGW_PATH=/usr/x86_64-w64-mingw32
-                \\   Ubuntu:      export MINGW_PATH=/usr/x86_64-w64-mingw32
-                \\   llvm-mingw:  export MINGW_PATH=/path/to/llvm-mingw
-                \\
-            , .{});
-            @panic("MINGW_PATH environment variable not set");
-        };
-
-        // Detect library directory layout:
-        //   Arch/Ubuntu:  /usr/x86_64-w64-mingw32/lib
-        //   Standalone:   /path/to/mingw/x86_64-w64-mingw32/lib
-        const layout_a = b.pathJoin(&.{ mingw_path, "lib" });
-        const layout_b = b.pathJoin(&.{ mingw_path, "x86_64-w64-mingw32/lib" });
-        const mingw_lib = blk: {
-            std.Io.Dir.cwd().access(b.graph.io, layout_a, .{}) catch break :blk layout_b;
-            break :blk layout_a;
-        };
-        lib.root_module.addLibraryPath(.{ .cwd_relative = mingw_lib });
         if (target.result.abi == .gnu) {
+            const mingw_path = b.graph.environ_map.get("MINGW_PATH") orelse {
+                printMingwRequirements();
+                return error.MingwPathNotSet;
+            };
+            const mingw_lib = findMingwLibraryDir(b, mingw_path, target) orelse {
+                std.debug.print(
+                    "[Error] MINGW_PATH does not contain libmingwex.a: {s}\n",
+                    .{mingw_path},
+                );
+                printMingwRequirements();
+                return error.MingwRuntimeNotFound;
+            };
+            std.debug.print("[Config] MinGW library dir: {s}\n", .{mingw_lib});
+            lib.root_module.addLibraryPath(.{ .cwd_relative = mingw_lib });
+
             // MinGW's compatibility runtime provides the math, wide-character,
             // and POSIX helper symbols used by the statically-linked zigc/Rust code.
             lib.root_module.addObjectFile(.{
@@ -228,6 +218,55 @@ fn linkSystemDependencies(b: *std.Build, lib: *std.Build.Step.Compile, target: s
         lib.root_module.linkSystemLibrary("dl", .{});
         lib.root_module.linkSystemLibrary("pthread", .{});
     }
+}
+
+fn findMingwLibraryDir(
+    b: *std.Build,
+    mingw_path: []const u8,
+    target: std.Build.ResolvedTarget,
+) ?[]const u8 {
+    const target_triplet = switch (target.result.cpu.arch) {
+        .x86_64 => "x86_64-w64-mingw32",
+        .x86 => "i686-w64-mingw32",
+        .aarch64 => "aarch64-w64-mingw32",
+        else => return null,
+    };
+    const homebrew_toolchain = switch (target.result.cpu.arch) {
+        .x86_64 => "toolchain-x86_64",
+        .x86 => "toolchain-i686",
+        .aarch64 => "toolchain-aarch64",
+        else => return null,
+    };
+
+    // Supported roots:
+    //   Arch/Ubuntu/MSYS2: /usr/x86_64-w64-mingw32
+    //   Standalone/llvm-mingw: /path/to/mingw/x86_64-w64-mingw32
+    //   Homebrew: /opt/homebrew/opt/mingw-w64/toolchain-x86_64/x86_64-w64-mingw32
+    const candidates = [_][]const u8{
+        b.pathJoin(&.{ mingw_path, "lib" }),
+        b.pathJoin(&.{ mingw_path, target_triplet, "lib" }),
+        b.pathJoin(&.{ mingw_path, homebrew_toolchain, target_triplet, "lib" }),
+    };
+
+    for (candidates) |candidate| {
+        const runtime_path = b.pathJoin(&.{ candidate, "libmingwex.a" });
+        std.Io.Dir.cwd().access(b.graph.io, runtime_path, .{}) catch continue;
+        return candidate;
+    }
+    return null;
+}
+
+fn printMingwRequirements() void {
+    std.debug.print(
+        \\
+        \\## Windows GNU cross-compile requirements
+        \\1. **Install:** MinGW-w64 or llvm-mingw.
+        \\2. **Environment Variable:** Set `MINGW_PATH` to the toolchain root.
+        \\   Arch/Ubuntu: export MINGW_PATH=/usr/x86_64-w64-mingw32
+        \\   llvm-mingw:  export MINGW_PATH=/path/to/llvm-mingw
+        \\   Homebrew:   export MINGW_PATH=$(brew --prefix mingw-w64)
+        \\
+    , .{});
 }
 
 /// Read wasmtime version from scripts/versions.json.
