@@ -38,10 +38,10 @@ class NativeMathServiceTest {
     @Test
     fun loadsAndCallsAddFromArtifact() {
         val artifactPath = findArtifact(ARTIFACT_PATH)
-        
+
         wasmlineBootstrap()
         wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-        
+
         try {
             val wasmline = assertIs<WasmlineLoadResult.Success>(
                 WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),
@@ -65,10 +65,10 @@ class NativeMathServiceTest {
     @Test
     fun loadsAndCallsSubtractFromCraneliftArtifact() {
         val artifactPath = findArtifact(ARTIFACT_PATH)
-        
+
         wasmlineBootstrap()
         wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-        
+
         try {
             val wasmline = assertIs<WasmlineLoadResult.Success>(
                 WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = true)),
@@ -78,7 +78,7 @@ class NativeMathServiceTest {
                 assertEquals(8, mathService.subtract(15, 7))
                 assertEquals(-3, mathService.subtract(2, 5))
                 assertEquals(0, mathService.subtract(42, 42))
-                
+
                 assertEquals(50L, mathService.multiply(5L, 10L))
                 assertEquals(-20L, mathService.multiply(-4L, 5L))
                 assertEquals(0L, mathService.multiply(100L, 0L))
@@ -96,10 +96,10 @@ class NativeMathServiceTest {
     @Test
     fun performsMultipleCallsToSameService() {
         val artifactPath = findArtifact(ARTIFACT_PATH)
-        
+
         wasmlineBootstrap()
         wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-        
+
         try {
             val wasmline = assertIs<WasmlineLoadResult.Success>(
                 WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),

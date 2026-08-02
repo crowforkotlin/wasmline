@@ -1,6 +1,9 @@
 package crow.wasmline.web
 
 import crow.wasmline.WasmlineLog
+import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.invocation.WasmlineCallError
+import crow.wasmline.invocation.WasmlineErrorCode
 import kotlin.random.Random
 
 /**
@@ -193,12 +196,30 @@ internal class WebWasmPlugin(binary: ByteArray) {
         outPointer: Int,
         outCapacity: Int,
     ): Int {
-        val currentDispatcher = checkNotNull(dispatcher) { "No Wasmline outbound dispatcher is bound." }
         val memory = requireMemory()
 
         val action = memory.readText(actionPointer, actionLength)
         val payload = memory.read(payloadPointer, payloadLength)
-        val response = currentDispatcher(action, payload)
+        val response = try {
+            val currentDispatcher = dispatcher
+            if (currentDispatcher == null) {
+                WasmlineResponseCodec.encodeFailure(
+                    WasmlineCallError(
+                        code = WasmlineErrorCode.ACTION_NOT_BOUND,
+                        message = "No Wasmline outbound action is bound.",
+                    ),
+                )
+            } else {
+                currentDispatcher(action, payload)
+            }
+        } catch (error: Throwable) {
+            WasmlineResponseCodec.encodeFailure(
+                WasmlineCallError(
+                    code = WasmlineErrorCode.HANDLER_FAILED,
+                    message = error.message ?: "Wasmline outbound action handler failed.",
+                ),
+            )
+        }
 
         // Responses larger than the guest buffer are handed over in a second
         // pass through bridge_outbound_get_response, signalled by a negative size.

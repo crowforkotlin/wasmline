@@ -7,7 +7,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/run-sample-common.sh"
 
 APPLICATION_RESOURCE_DIR="${SAMPLE_ROOT}/sample-apps/application/src/main/resources"
-COMPILE_OUTPUT_ROOT="${SAMPLE_ROOT}/build/application-output"
 
 print_help() {
     cat <<EOF
@@ -17,7 +16,7 @@ Usage:
 Build and run the application sample.
 
 Options:
-  --platform VALUE   Wasmtime host toolchain used by wasmline-cli compile.
+  --platform VALUE   Target platform for the cwasm artifact.
                      Supported values:
                        Linux:   x86_64-linux, aarch64-linux
                        macOS:   aarch64-macos, x86_64-macos
@@ -42,7 +41,6 @@ parse_common_args 1 0 1 "$@"
 if [ -z "$PLATFORM" ]; then
   PLATFORM="$(detect_current_platform)"
 fi
-WASMTIME_DIR="$(ensure_wasmtime_toolchain)"
-build_plugin_runtime_artifacts "$COMPILE_OUTPUT_ROOT" "$WASMTIME_DIR" "application plugin artifact" "$PLATFORM"
+build_plugin_runtime_artifacts "$PLATFORM" "application plugin artifact"
 sync_runtime_artifacts "$APPLICATION_RESOURCE_DIR" "plugin" "plugin.generated"
 run_gradle_with_runtime_format "$SAMPLE_ROOT" :sample-apps:application:run

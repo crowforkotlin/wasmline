@@ -1,0 +1,52 @@
+/**
+ * Describes a binary artifact and its invocation boundary.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
+package crow.wasmline
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class WasmlineArtifactDescriptor(
+    val path: String,
+    val executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
+    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+    val exportName: String? = null,
+    val contractMetadata: Map<String, String> = emptyMap(),
+) {
+    fun validationError(): String? {
+        if (path.isBlank()) return "Artifact path must not be blank."
+        if (
+            (
+                executionModel == WasmlineExecutionModel.COMPONENT_MODEL ||
+                    invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
+                    invocationProtocol == WasmlineInvocationProtocol.RAW_EXPORT
+                ) &&
+            exportName.isNullOrBlank()
+        ) {
+            return "An exportName is required for direct export invocation."
+        }
+        return when (executionModel) {
+            WasmlineExecutionModel.CORE_WASM -> when (invocationProtocol) {
+                WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+                WasmlineInvocationProtocol.RAW_EXPORT,
+                -> null
+
+                WasmlineInvocationProtocol.COMPONENT_EXPORT ->
+                    "COMPONENT_EXPORT requires COMPONENT_MODEL."
+            }
+
+            WasmlineExecutionModel.COMPONENT_MODEL -> when (invocationProtocol) {
+                WasmlineInvocationProtocol.COMPONENT_EXPORT -> null
+
+                WasmlineInvocationProtocol.WASMLINE_CORE_V1 ->
+                    "COMPONENT_MODEL cannot use WASMLINE_CORE_V1."
+
+                WasmlineInvocationProtocol.RAW_EXPORT ->
+                    "COMPONENT_MODEL cannot use RAW_EXPORT."
+            }
+        }
+    }
+}

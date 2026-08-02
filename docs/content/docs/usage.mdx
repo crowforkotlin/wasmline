@@ -74,6 +74,80 @@ module.close()
   `link<T>()` and `bind(impl)` are Kotlin IR compiler plugin rewrite targets. The IR plugin replaces each call site with a direct invocation of the synthesized `*_WasmlineBridge`. If the `wasmline-kotlin-plugin` is not applied to the compilation unit, these functions throw `UnsupportedOperationException` at runtime.
 </Callout>
 
+## Select an Invocation Path
+
+Use `WasmlineArtifactDescriptor` when the artifact is not a default Core Wasmline module. The execution model and invocation protocol are validated as a pair:
+
+```kotlin
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineComponentValue
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.invokeComponentResult
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.loader.WasmlineLoader
+
+val result = WasmlineLoader.load(
+    WasmlineArtifactDescriptor(
+        path = "component.wasm",
+        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+        exportName = "add",
+        contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
+    ),
+)
+
+when (result) {
+    is WasmlineLoadResult.Success -> when (
+        val call = result.wasmline.invokeComponentResult(
+            exportName = "add",
+            arguments = listOf(WasmlineComponentValue.S32(1), WasmlineComponentValue.S32(2)),
+        ),
+    ) {
+        is WasmlineCallResult.Success -> useValues(call.value.values)
+        is WasmlineCallResult.Failure -> log(call.error.message)
+    }
+
+    is WasmlineLoadResult.Failure -> log(result.cause)
+}
+```
+
+`CORE_WASM` with `WASMLINE_CORE_V1` is the default service path. `CORE_WASM` with `RAW_EXPORT` is for a Core Wasm module with an explicitly declared numeric ABI. `COMPONENT_MODEL` with `COMPONENT_EXPORT` is for a component binary that was compiled before loading. Wasmline does not run WIT-to-Wasm, WIT-Kotlin-to-component, `wit-bindgen`, or adapter generation. Component calls use Component Model values and do not use Core linear memory or the Core response frame.
+
+## Result and Exception Boundary
+
+Use `callResult`, `invokeRawResult`, and `invokeComponentResult` when normal call failures should be handled as data. The result has either `Success(value)` or `Failure(error)`; inspect `error.code` rather than parsing the message.
+
+An action that has no bound handler returns `ACTION_NOT_BOUND`. It is not represented by an empty payload and does not crash the host. Unknown actions, invalid payloads, handler failures, traps, transport failures, and malformed response frames also return a failure result when the runtime can construct one.
+
+`getOrNull()` and `errorOrNull()` provide non-throwing reads. `throwOnFailure()` is an explicit exception adapter for callers that need the older exception-style API. It is not part of the default result path. An exception remains appropriate for a violated programming contract, an invalid runtime state, or a failure that cannot produce a reliable result object.
+
+The Core response frame uses the fixed `WLMF` magic marker and a one-byte `frameVersion`. The current value is `1`. The magic marker identifies the frame entry format; it is not authentication. `frameVersion` identifies the response byte layout; it is not the Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not add this Core frame.
+
+## Stable Error Codes
+
+Error codes are stable identifiers. Applications should branch on the code and use the message only for diagnostics.
+
+| Code | Value | Meaning |
+|---|---:|---|
+| `ACTION_NOT_BOUND` | `1001` | No handler is bound for the action scope. |
+| `UNKNOWN_ACTION` | `1002` | The action name is not registered. |
+| `INVALID_PAYLOAD` | `1003` | The payload or typed arguments are invalid. |
+| `HANDLER_FAILED` | `1004` | A handler failed during execution. |
+| `SERIALIZATION_FAILED` | `1005` | Business data could not be serialized. |
+| `ENGINE_NOT_INITIALIZED` | `2001` | The Wasmtime engine is not initialized. |
+| `CORE_TRAP` | `2002` | Core Wasm execution trapped. |
+| `CORE_EXPORT_NOT_FOUND` | `2003` | A Core export is missing. |
+| `INVOCATION_PROTOCOL_MISMATCH` | `2004` | The descriptor and call API do not match. |
+| `COMPONENT_TRAP` | `2101` | Component Model execution trapped. |
+| `COMPONENT_EXPORT_NOT_FOUND` | `2102` | A Component export is missing. |
+| `COMPONENT_CALL_FAILED` | `2103` | A Component call did not return successfully. |
+| `RESPONSE_MALFORMED` | `3001` | The response frame is invalid. |
+| `RESPONSE_MISSING` | `3002` | No response was returned. |
+| `TRANSPORT_FAILURE` | `3003` | A platform bridge failed. |
+| `RESPONSE_UNSUPPORTED_VERSION` | `3004` | The Core response frame version is unsupported. |
+
 ## Sample Applications
 
 Reference implementations are located under `wasmline-samples/kotlin/`:

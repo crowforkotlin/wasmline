@@ -45,6 +45,33 @@ While the Pulley interpreter can also load and JIT-compile raw `.wasm` at runtim
 </details>
 
 <details>
+<summary><strong>How do Core Wasm, Raw Export, and Component Model calls differ?</strong></summary>
+
+Use `CORE_WASM` with `WASMLINE_CORE_V1` for a Wasmline service module that exchanges action names and byte payloads. Use `CORE_WASM` with `RAW_EXPORT` for a Core Wasm module with an explicitly declared numeric export ABI. Use `COMPONENT_MODEL` with `COMPONENT_EXPORT` for a complete component binary and Component Model typed values.
+
+The Component Model path starts with an already compiled component binary. Wasmline does not compile WIT or WIT-Kotlin, run `wit-bindgen`, or generate component adapters. Optional `contractMetadata` describes the export contract; it is not an input to a WIT compiler.
+
+</details>
+
+<details>
+<summary><strong>What happens when a plugin has no bound action?</strong></summary>
+
+The call returns `WasmlineCallResult.Failure` with `WasmlineErrorCode.ACTION_NOT_BOUND`. It does not return an empty successful payload and does not crash the host. Unknown actions, invalid payloads, handler failures, traps, and malformed response frames follow the same result-first rule when the runtime can construct a reliable result.
+
+Use `callResult`, `invokeRawResult`, or `invokeComponentResult` and inspect `Failure.error.code`. `getOrNull()` and `errorOrNull()` are non-throwing helpers. `throwOnFailure()` is an explicit adapter for callers that choose exception-style handling; it is not the default transport behavior.
+
+</details>
+
+<details>
+<summary><strong>What do <code>WLMF</code> and <code>frameVersion</code> mean?</strong></summary>
+
+`WLMF` is a four-byte magic marker for the Wasmline Core response frame. It identifies the response format and is not a signature, encryption mechanism, or security check. Integrity and authenticity are handled by the artifact hash, manifest, and signature mechanisms.
+
+`frameVersion` is a one-byte response layout version. The current value is `1`; it is not a Wasmtime version, Kotlin version, framework version, or business API version. A V1 reader accepts only version `1`. Raw Export and Component Model calls do not use this Core response frame.
+
+</details>
+
+<details>
 <summary><strong>Is the Kotlin IR compiler plugin mandatory for host integration?</strong></summary>
 
 The compiler plugin is not mandatory. The low-level `Wasmline.call(action, bytes): ByteArray` API is always available for manual dispatch. Without the `wasmline-kotlin-plugin` applied — typically via the `wasmline-gradle-plugin` — `link<T>()` and `bind(impl)` call sites throw `UnsupportedOperationException` at runtime.

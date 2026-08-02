@@ -64,11 +64,11 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
 
     /**
      * Enable automatic wasmtime download when the toolchain is not found.
-     * 
+     *
      * Behavior:
      * - `true`: Attempt to download wasmtime before building (requires wasmline-cli accessible)
      * - `false`: Fail build with helpful instructions if wasmtime is missing
-     * 
+     *
      * Default: `false` (explicit opt-in for safety)
      */
     val autoDownload: Property<Boolean> = objects.property(Boolean::class.java)
@@ -76,30 +76,30 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
 
     /**
      * Wasmtime version to download when autoDownload is enabled.
-     * 
+     *
      * Examples:
      * - `"latest"` — Download the latest release
      * - `"v47.0.2"` — Specific version tag
      * - `"release-v47.0.2"` — GitHub release tag format
-     * 
+     *
      * Default: `"latest"`
      */
     val version: Property<String> = objects.property(String::class.java)
         .convention("latest")
-    
+
     /**
      * GitHub token for authenticated API requests.
-     * 
+     *
      * When set, all GitHub API calls use Bearer token authentication,
      * increasing the rate limit from 60/hour to 5,000/hour.
-     * 
+     *
      * Configuration methods (in priority order):
      * 1. Direct value: `githubToken.set("your_token_here")`
      * 2. File path: `githubToken.set(file("~/.wasmline/github-token"))`
      * 3. Environment variable (via property): Not required if env var already set globally
-     * 
+     *
      * If neither set, uses environment variables GITHUB_TOKEN, GithubToken, etc.
-     * 
+     *
      * Example:
      * ```kotlin
      * wasmline {
@@ -108,7 +108,7 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      *     }
      * }
      * ```
-     * 
+     *
      * Or for CI environments:
      * ```kotlin
      * wasmline {

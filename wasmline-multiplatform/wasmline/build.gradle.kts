@@ -1,5 +1,7 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage", "SpellCheckingInspection")
 
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.konan.target.HostManager
 
 
@@ -142,7 +144,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
-        
+
         // hostTest: extends commonTest with WasmlineLoader (only for host platforms)
         // WASMLINE LOADER IS HOST-SPECIFIC: It handles plugin loading, validation, and platform-specific artifact resolution
         // This includes: JVM, JS, Android, iOS, Desktop targets
@@ -153,15 +155,15 @@ kotlin {
                 implementation(projects.wasmlineLoader)
             }
         }
-        
+
         // JVM-specific JNI tests (uses native Wasmtime library loaded via JNI)
-        val jvmTest by getting { 
+        val jvmTest by getting {
             dependsOn(other = hostTest)
             dependencies {
                 implementation(projects.wasmlineEngineCranelift) // Provides libwasmline.so for testing
             }
         }
-        
+
         if (HostManager.hostIsMac) {
             val iosMain by getting { dependsOn(other = hostMain) }
             val iosArm64Main by getting { dependsOn(other = iosMain) }
@@ -170,4 +172,13 @@ kotlin {
         }
 //        val androidInstrumentedTest by getting { dependsOn(other = hostTest) }
     }
+}
+
+tasks.register<JavaExec>("wasmlineBenchmark") {
+    dependsOn("jvmTestClasses")
+    val jvmTestTask = tasks.named<Test>("jvmTest")
+    mainClass.set("crow.wasmline.test.wasmtime.WasmlineInvocationBenchmark")
+    classpath = jvmTestTask.get().classpath
+    systemProperty("wasmline.benchmark.warmup", providers.gradleProperty("benchmark.warmup").orNull ?: "32")
+    systemProperty("wasmline.benchmark.iterations", providers.gradleProperty("benchmark.iterations").orNull ?: "256")
 }

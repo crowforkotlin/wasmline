@@ -38,17 +38,26 @@ message(NOTICE "Wasmline CMakeLogcat --> Wasmtime Variant : ${WASMTIME_VARIANT}"
 include_directories(native/include)
 include_directories(${LIBRARY_DIR}/${ANDROID_ABI}/include)
 include_directories(${ROOT_DIR}/wasmline-core/include)
-include_directories(${ROOT_DIR}/wasmline-core/include/extensions)
+include_directories(${ROOT_DIR}/wasmline-core/src)
 
 # Compile as a static library for JNI reuse
 add_library(wasmline_core STATIC
         native/AndroidLogger.cpp
         ${ROOT_DIR}/wasmline-multiplatform/wasmline/src/jniMain/native/JniHostHandler.cpp
-        ${ROOT_DIR}/wasmline-core/src/extensions/FileUtils.cpp
-        ${ROOT_DIR}/wasmline-core/src/Api.cpp
-        ${ROOT_DIR}/wasmline-core/src/Engine.cpp
-        ${ROOT_DIR}/wasmline-core/src/Module.cpp
-        ${ROOT_DIR}/wasmline-core/src/Session.cpp
+        ${ROOT_DIR}/wasmline-core/src/api/Api.cpp
+        ${ROOT_DIR}/wasmline-core/src/runtime/Component.cpp
+        ${ROOT_DIR}/wasmline-core/src/runtime/ComponentSession.cpp
+        ${ROOT_DIR}/wasmline-core/src/runtime/Engine.cpp
+        ${ROOT_DIR}/wasmline-core/src/runtime/Module.cpp
+        ${ROOT_DIR}/wasmline-core/src/runtime/RawModuleSession.cpp
+        ${ROOT_DIR}/wasmline-core/src/runtime/Session.cpp
+        ${ROOT_DIR}/wasmline-core/src/value/ComponentValue.cpp
+        ${ROOT_DIR}/wasmline-core/src/invocation/InvocationResult.cpp
+        ${ROOT_DIR}/wasmline-core/src/invocation/TypedInvocationCodec.cpp
+        ${ROOT_DIR}/wasmline-core/src/protocol/WasmlineProtocol.cpp
+        ${ROOT_DIR}/wasmline-core/src/io/FileIO.cpp
+        ${ROOT_DIR}/wasmline-core/src/wasmtime/WasmtimeMessage.cpp
+        ${ROOT_DIR}/wasmline-core/src/wasi/WasiConfig.cpp
 )
 
 # Path to the Wasmtime static library (downloaded to build/platforms/ via the init script)

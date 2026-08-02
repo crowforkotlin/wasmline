@@ -1,8 +1,14 @@
+/**
+ * Defines the JNI declarations for the Wasmline native API.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
+
 #include <jni.h>
 #include <string>
-#include <string>
-#include "Logger.h"
-#include "Api.h"
+#include "wasmline/api/Api.h"
+#include "logging/NativeLogger.h"
 #include "JniHostHandler.h"
 
 static jboolean loadPrecompiledModuleCommon(JNIEnv *env, jstring keyStr, jstring pathStr, bool unsafe) {

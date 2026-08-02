@@ -13,6 +13,7 @@ import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.loader.toDescriptor
 import crow.wasmline.network.WasmlineNetworkClient
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -72,6 +73,8 @@ internal object WasmlineRemotePackageResolution {
                 "No compatible artifact found in remote package '$manifestUrl' " +
                     "for host ${describe(currentHostArtifactTarget)}.",
             )
+        val descriptor = artifact.toDescriptor(path = "pending")
+        descriptor.validationError()?.let { return failure("Invalid artifact descriptor for '${artifact.url}': $it") }
 
         // Step 6: Resolve artifact URL
         val artifactUrl = resolveArtifactUrl(manifestUrl, artifact.url)
@@ -111,7 +114,10 @@ internal object WasmlineRemotePackageResolution {
             ?: return failure("Failed to write cached artifact to local file system.")
 
         return WasmlineSourceResolution.ContinueWith(
-            WasmlineSource.LocalArtifactPath(path = localPath),
+            WasmlineSource.LocalArtifactPath(
+                path = localPath,
+                descriptor = artifact.toDescriptor(localPath),
+            ),
         )
     }
 

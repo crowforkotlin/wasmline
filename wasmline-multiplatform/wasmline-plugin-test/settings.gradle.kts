@@ -50,4 +50,3 @@ dependencyResolutionManagement {
 if (useWasmlineSource) {
     includeBuild("..")
 }
-

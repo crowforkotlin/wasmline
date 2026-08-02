@@ -2,22 +2,28 @@
 
 package crow.wasmline
 
-import crow.wasmline.model.WasmError
-import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.protobuf.ProtoBuf
+import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.invocation.WasmlineCallError
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
 
 @PublishedApi
 internal fun wasmlineHandleInbound(actionLen: Int, inputLen: Int) {
     val action = if (actionLen > 0) WasmlineWasmBridge.readBytesFromHost(0, actionLen).decodeToString() else null
     val args = if (inputLen > 0) WasmlineWasmBridge.readBytesFromHost(1, inputLen) else null
-    println("[WasmKotlin] Receive action: $action, size: $inputLen")
-    val result: ByteArray = try {
-        WasmlineRouter.dispatch(action, args) ?: return
-    } catch (e: Throwable) {
-        println("[WasmKotlin] Failed action: $action, message: ${e.message}")
-        ProtoBuf.encodeToByteArray(
-            value = WasmError(message = e.message ?: "Unknown Wasmline wasm error"),
+    val result = try {
+        WasmlineRouter.dispatch(action, args)
+    } catch (error: Throwable) {
+        WasmlineCallResult.Failure(
+            WasmlineCallError(
+                code = WasmlineErrorCode.HANDLER_FAILED,
+                message = error.message ?: "Wasmline action handler failed.",
+            ),
         )
     }
-    WasmlineWasmBridge.sendResult(result)
+    val response = when (result) {
+        is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(result.value)
+        is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.error)
+    }
+    WasmlineWasmBridge.sendResult(response)
 }

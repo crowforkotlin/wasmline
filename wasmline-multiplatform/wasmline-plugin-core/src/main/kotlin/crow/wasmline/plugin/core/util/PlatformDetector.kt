@@ -23,16 +23,12 @@ object PlatformDetector {
         return detectPlatform(
             osName = osName,
             osArch = osArch,
-            macHardwareArm64 = macHardwareArm64
+            macHardwareArm64 = macHardwareArm64,
         )
     }
-    
+
     /** Returns the platform name from the supplied system properties. */
-    fun detectPlatform(
-        osName: String,
-        osArch: String,
-        macHardwareArm64: Boolean? = null
-    ): String {
+    fun detectPlatform(osName: String, osArch: String, macHardwareArm64: Boolean? = null): String {
         val normalizedOs = normalizeOs(osName)
         val normalizedArch = when {
             normalizedOs == "macos" && normalizeArch(osArch) == "x86_64" && macHardwareArm64 == true -> "aarch64"
@@ -40,7 +36,7 @@ object PlatformDetector {
         }
         return "$normalizedArch-$normalizedOs"
     }
-    
+
     /** Converts an operating system name to the Wasmtime name. */
     fun normalizeOs(osName: String): String {
         val normalizedName = osName.lowercase()
@@ -52,7 +48,7 @@ object PlatformDetector {
             else -> "unknown"
         }
     }
-    
+
     /** Converts an architecture name to the Wasmtime name. */
     fun normalizeArch(osArch: String): String {
         val normalizedName = osArch.lowercase()
@@ -62,7 +58,7 @@ object PlatformDetector {
             else -> normalizedName
         }
     }
-    
+
     /** Detects Apple Silicon when the current Java runtime uses x86_64. */
     private fun detectMacHardwareArm64(): Boolean? {
         val sysctl = File("/usr/sbin/sysctl").takeIf(File::exists)?.absolutePath ?: "sysctl"

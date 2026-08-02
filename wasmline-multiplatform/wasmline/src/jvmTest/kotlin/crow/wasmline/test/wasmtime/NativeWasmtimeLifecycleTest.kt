@@ -3,13 +3,11 @@
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineConfig
+import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.wasmlineBootstrap
 import crow.wasmline.wasmlineShutdown
 import crow.wasmline.wasmlineWarmup
-import crow.wasmline.WasmlineWarmupMode
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 

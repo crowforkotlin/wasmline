@@ -3,6 +3,7 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.invocation.WasmlineCallResult
 
 /**
  * Host-side runtime handle for a loaded module.
@@ -12,12 +13,15 @@ import crow.wasmline.internal.bridge.WasmlineHostDispatcher
  *
  * Engine lifecycle and loading are managed entirely by `WasmlineLoader`.
  */
-expect class Wasmline internal constructor(moduleKey: String, config: WasmlineConfig) {
+expect class Wasmline internal constructor(moduleKey: String, config: WasmlineConfig, descriptor: WasmlineArtifactDescriptor) {
 
     val config: WasmlineConfig
+    val descriptor: WasmlineArtifactDescriptor
 
     internal fun setOutbound(dispatcher: WasmlineHostDispatcher)
     internal fun call(action: String, inputBytes: ByteArray): ByteArray
+    internal fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray>
+    internal fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray>
     fun close()
 }
 
@@ -31,3 +35,4 @@ expect fun wasmlineBootstrap()
 expect fun wasmlineShutdown()
 expect fun wasmlineWarmup(mode: WasmlineWarmupMode)
 expect fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState
+expect fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState

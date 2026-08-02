@@ -16,6 +16,8 @@ sealed class WasmlineLoadState {
         const val CODE_SUCCESS_AOT: Byte = 1
         const val CODE_FAILURE: Byte = 2
         const val CODE_SUCCESS_WASM: Byte = 3
+        const val CODE_SUCCESS_COMPONENT: Byte = 4
+        const val CODE_SUCCESS_RAW_EXPORT: Byte = 5
     }
 
     data class Success(val code: Byte, val wasmline: Wasmline) : WasmlineLoadState()

@@ -4,12 +4,19 @@ package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineEndpoint
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.serialization.WasmlineSerializationFactory
 import kotlin.reflect.KClass
 
+internal fun Wasmline.callResult(action: String, payload: ByteArray = ByteArray(0)): WasmlineCallResult<ByteArray> =
+    WasmlineResponseCodec.decodeLegacyCompatible(call(action, payload))
+
 @PublishedApi
 internal class GeneratedWasmlineHostEndpoint(private val wasmline: Wasmline) : WasmlineEndpoint {
-    override fun invoke(action: String, payload: ByteArray): ByteArray = wasmline.call(action, payload)
+    override fun invoke(action: String, payload: ByteArray): ByteArray = invokeResult(action, payload).throwOnFailure()
+
+    override fun invokeResult(action: String, payload: ByteArray): WasmlineCallResult<ByteArray> = wasmline.callResult(action, payload)
 }
 
 @PublishedApi

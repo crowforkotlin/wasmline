@@ -4,8 +4,10 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.help
+import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
+import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.long
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
@@ -40,6 +42,10 @@ class Manifest : CliktCommand(name = "manifest") {
     private val description by option("--description")
     private val iconUrl by option("--icon-url")
     private val homeUrl by option("--home-url")
+    private val executionModel by option("--execution-model").default("CORE_WASM")
+    private val invocationProtocol by option("--invocation-protocol").default("WASMLINE_CORE_V1")
+    private val exportName by option("--export-name")
+    private val contractMetadata by option("--contract-metadata").multiple().unique()
     private val key by option("-k", "--key").required().help("Ed25519 private key: file path or hex string")
 
     override fun run() {
@@ -50,6 +56,7 @@ class Manifest : CliktCommand(name = "manifest") {
         }
         val result = WasmtimeCompiler().readCompileResult(resultFile)
         val resolvedPluginId = pluginId ?: File(result.inputFile).nameWithoutExtension
+        val invocation = parseInvocationOptions(executionModel, invocationProtocol, exportName, contractMetadata)
         ManifestSigner().createSignedManifest(
             artifacts = result.artifacts,
             pluginId = resolvedPluginId,
@@ -63,6 +70,10 @@ class Manifest : CliktCommand(name = "manifest") {
             description = description,
             iconUrl = iconUrl,
             homePageUrl = homeUrl,
+            executionModel = invocation.executionModel,
+            invocationProtocol = invocation.invocationProtocol,
+            exportName = invocation.exportName,
+            contractMetadata = invocation.contractMetadata,
             logger = ::echo,
         )
     }

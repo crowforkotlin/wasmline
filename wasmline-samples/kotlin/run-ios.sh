@@ -10,7 +10,6 @@ IOS_APP_ROOT="${SAMPLE_ROOT}/iosApp"
 IOS_PROJECT_FILE="${IOS_APP_ROOT}/iosApp.xcodeproj"
 IOS_SCHEME="iosApp"
 IOS_RESOURCE_FILE="${IOS_APP_ROOT}/plugin.pwasm"
-COMPILE_OUTPUT_ROOT="${SAMPLE_ROOT}/build/ios-output"
 IOS_DERIVED_DATA_PATH="${SAMPLE_ROOT}/build/ios-derived-data"
 IOS_PRODUCT_NAME="wasmline"
 IOS_BUNDLE_ID="crow.wasmline.wasmline"
@@ -19,17 +18,11 @@ IOS_DEVICE=""
 print_help() {
     cat <<EOF
 Usage:
-  ./${SCRIPT_NAME} [--platform VALUE] [--device NAME_OR_UDID] [-q]
+  ./${SCRIPT_NAME} [--device NAME_OR_UDID] [-q]
 
 Build and run the iOS simulator sample.
 
 Options:
-  --platform VALUE      Wasmtime host toolchain used by wasmline-cli compile.
-                        Supported values:
-                          Linux:   x86_64-linux, aarch64-linux
-                          macOS:   aarch64-macos, x86_64-macos
-                          Windows: x86_64-windows
-                        If omitted, auto-detect the current platform.
   --device NAME_OR_UDID Optional simulator name or UDID. Uses the booted simulator
                         when available, otherwise the first available iPhone simulator.
   -q, --quiet           Suppress build output.
@@ -40,16 +33,6 @@ EOF
 parse_ios_args() {
     while [ "$#" -gt 0 ]; do
         case "$1" in
-            --platform)
-                require_value "$1" "${2:-}"
-                PLATFORM="$(normalize_platform "$2")"
-                shift 2
-                ;;
-            --platform=*)
-                require_value "--platform" "${1#*=}"
-                PLATFORM="$(normalize_platform "${1#*=}")"
-                shift
-                ;;
             --device)
                 require_value "$1" "${2:-}"
                 IOS_DEVICE="$2"
@@ -200,10 +183,11 @@ install_and_launch_ios_sample() {
 load_wasmline_metadata
 parse_ios_args "$@"
 ensure_ios_prerequisites
-WASMTIME_DIR="$(ensure_wasmtime_toolchain)"
+PLATFORM="$(detect_current_platform)"
+ARTIFACT_FORMAT="pwasm64"
 build_ios_frameworks
-PLUGIN_OUTPUT_FILE="$(build_plugin_pwasm "$COMPILE_OUTPUT_ROOT" "$WASMTIME_DIR" "ios plugin artifact")"
-copy_artifact "$PLUGIN_OUTPUT_FILE" "$IOS_RESOURCE_FILE"
+build_plugin_runtime_artifacts "$PLATFORM" "ios plugin artifact"
+copy_artifact "$RUNTIME_PWASM_FILE" "$IOS_RESOURCE_FILE"
 SIMULATOR_INFO="$(select_ios_simulator)"
 SIMULATOR_ID="${SIMULATOR_INFO%%|*}"
 SIMULATOR_NAME_AND_STATE="${SIMULATOR_INFO#*|}"

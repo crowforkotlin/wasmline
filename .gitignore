@@ -42,11 +42,12 @@
 **/dist/
 **/*.egg-info/
 
-**/local.properties
+!wasmline-multiplatform/wasmline/src/jvmTest/resources/fixtures/component-export.wasm
 **/*.wasm
 **/*.cwasm
 **/*.pwasm
 **/*.lib
+**/local.properties
 **/*.dll
 **/*.pdb
 **/*.a

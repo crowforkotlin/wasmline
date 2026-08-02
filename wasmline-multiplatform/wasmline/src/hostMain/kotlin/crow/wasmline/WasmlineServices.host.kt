@@ -5,13 +5,19 @@ package crow.wasmline
 import crow.wasmline.internal.bridge.WasmlineEndpoint
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.invocation.WasmlineCallError
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.serialization.WasmlineSerializationFactory
 import crow.wasmline.serialization.WasmlineSerializationRegistry
 import kotlin.reflect.KClass
 
 @PublishedApi
 internal class GeneratedWasmlineHostEndpoint(private val wasmline: Wasmline) : WasmlineEndpoint {
-    override fun invoke(action: String, payload: ByteArray): ByteArray = wasmline.call(action, payload)
+    override fun invoke(action: String, payload: ByteArray): ByteArray = invokeResult(action, payload).throwOnFailure()
+
+    override fun invokeResult(action: String, payload: ByteArray): WasmlineCallResult<ByteArray> = wasmline.callResult(action, payload)
 }
 
 @PublishedApi
@@ -49,6 +55,30 @@ fun Wasmline.bind(implementation: WasmlineService) {
 }
 
 private fun Map<String, (ByteArray) -> ByteArray>.toHostDispatcher(): WasmlineHostDispatcher = WasmlineHostDispatcher { action, payload ->
-    val handler = this[action] ?: error("No Wasmline action bound for '$action'.")
-    handler(payload)
+    val handler = this[action]
+    if (handler == null) {
+        val error = if (isEmpty()) {
+            WasmlineCallError(
+                code = WasmlineErrorCode.ACTION_NOT_BOUND,
+                message = "No Wasmline action is bound.",
+            )
+        } else {
+            WasmlineCallError(
+                code = WasmlineErrorCode.UNKNOWN_ACTION,
+                message = "Wasmline action is not registered: $action.",
+            )
+        }
+        return@WasmlineHostDispatcher WasmlineResponseCodec.encodeFailure(error)
+    }
+
+    return@WasmlineHostDispatcher try {
+        handler(payload)
+    } catch (error: Throwable) {
+        WasmlineResponseCodec.encodeFailure(
+            WasmlineCallError(
+                code = WasmlineErrorCode.HANDLER_FAILED,
+                message = error.message ?: "Wasmline action handler failed.",
+            ),
+        )
+    }
 }

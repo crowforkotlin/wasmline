@@ -42,10 +42,14 @@ val testPluginVersion = "1.0.0"
 val testPluginCompileTarget = when {
     System.getProperty("os.name").lowercase().contains("mac") &&
         System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-macos"
+
     System.getProperty("os.name").lowercase().contains("mac") -> "x86_64-macos"
+
     System.getProperty("os.name").lowercase().contains("linux") &&
         System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-linux"
+
     System.getProperty("os.name").lowercase().contains("linux") -> "x86_64-linux"
+
     else -> error("Unsupported Wasmtime test host: ${System.getProperty("os.name")} ${System.getProperty("os.arch")}")
 }
 val testPluginArtifactDirectory = layout.buildDirectory.dir("wasmline/output/$testPluginId-$testPluginVersion")
@@ -59,7 +63,7 @@ tasks.named<Test>("jvmTest") {
 // WASMTIME directory uses relative path from multiplatform root (same pattern as run-sample-common.sh)
 wasmline {
     val wasmtimeVersion = "47.0.2"
-    val wasmtimePlatformDir = "wasmtime-v${wasmtimeVersion}-$testPluginCompileTarget-min"
+    val wasmtimePlatformDir = "wasmtime-v$wasmtimeVersion-$testPluginCompileTarget-min"
     manifest {
         pluginId = testPluginId
         version = testPluginVersion

@@ -1,5 +1,6 @@
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineLog
 import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
@@ -33,10 +34,18 @@ internal object DefaultWasmlineLoader {
         }
 
         return when (source) {
-            is WasmlineSource.LocalArtifactPath -> wasmlineLoadArtifact(
-                filepath = source.path,
-                config = request.config,
-            )
+            is WasmlineSource.LocalArtifactPath -> {
+                val descriptor = source.descriptor ?: WasmlineArtifactDescriptor(path = source.path)
+                val validationError = descriptor.validationError()
+                if (validationError != null) {
+                    WasmlineLoadState.Failure(
+                        code = WasmlineLoadState.CODE_FAILURE,
+                        cause = "Invalid artifact descriptor: $validationError",
+                    )
+                } else {
+                    wasmlineLoadArtifact(descriptor = descriptor, config = request.config)
+                }
+            }
 
             is WasmlineSource.LocalManifestPath -> resolveSource(
                 request = request,

@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalSerializationApi::class)
+@file:Suppress("SpellCheckingInspection")
 
 package crow.wasmline
 
@@ -310,7 +311,29 @@ class ManifestTest {
         assertNull(artifact.targetOs)
         assertNull(artifact.targetCompilerVersion)
         assertTrue(artifact.is64Bit, "is64Bit should default to true")
+        assertEquals(WasmlineExecutionModel.CORE_WASM, artifact.executionModel)
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE_V1, artifact.invocationProtocol)
+        assertNull(artifact.exportName)
+        assertEquals(emptyMap(), artifact.contractMetadata)
         println("Artifact default values verified.")
+    }
+
+    @Test
+    fun `test component invocation metadata survives protobuf`() {
+        val artifact = WasmlineArtifact(
+            type = WasmlineArtifactType.CWASM,
+            url = "component.cwasm",
+            sha256 = "component-hash",
+            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+            invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+            exportName = "add",
+            contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
+        )
+
+        val bytes = ProtoBuf.encodeToByteArray(WasmlineArtifact.serializer(), artifact)
+        val decoded = ProtoBuf.decodeFromByteArray(WasmlineArtifact.serializer(), bytes)
+
+        assertEquals(artifact, decoded)
     }
 
     @Test

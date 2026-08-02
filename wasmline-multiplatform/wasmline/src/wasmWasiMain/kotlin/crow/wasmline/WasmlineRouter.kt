@@ -1,21 +1,46 @@
-@file:OptIn(ExperimentalSerializationApi::class)
-
 package crow.wasmline
 
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlin.collections.get
-
+import crow.wasmline.invocation.WasmlineCallError
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
 internal fun interface Callback {
-    fun callback(params: ByteArray?): ByteArray?
+    fun callback(params: ByteArray?): ByteArray
 }
 
 internal object WasmlineRouter {
     private val handlers = mutableMapOf<String, Callback>()
+
     internal fun register(action: String, callback: Callback) {
         handlers[action] = callback
     }
-    internal fun dispatch(action: String?, args: ByteArray?): ByteArray? {
+
+    internal fun dispatch(action: String?, args: ByteArray?): WasmlineCallResult<ByteArray> {
+        if (handlers.isEmpty()) {
+            return WasmlineCallResult.Failure(
+                WasmlineCallError(
+                    code = WasmlineErrorCode.ACTION_NOT_BOUND,
+                    message = "No Wasmline action is bound.",
+                ),
+            )
+        }
+
         val handler = handlers[action]
-        return handler?.callback(args)
+            ?: return WasmlineCallResult.Failure(
+                WasmlineCallError(
+                    code = WasmlineErrorCode.UNKNOWN_ACTION,
+                    message = "Wasmline action is not registered: ${action.orEmpty()}.",
+                ),
+            )
+
+        return try {
+            WasmlineCallResult.Success(handler.callback(args))
+        } catch (error: Throwable) {
+            WasmlineCallResult.Failure(
+                WasmlineCallError(
+                    code = WasmlineErrorCode.HANDLER_FAILED,
+                    message = error.message ?: "Wasmline action handler failed.",
+                ),
+            )
+        }
     }
 }

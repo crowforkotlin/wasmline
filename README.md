@@ -109,6 +109,55 @@ module.close()
 > [!NOTE]
 > `link<T>()` and `bind(impl)` are rewrite targets of the Kotlin IR compiler plugin. If `wasmline-kotlin-plugin` is not applied to the compilation unit, these calls throw `UnsupportedOperationException` at runtime.
 
+## Execution Models and Call Results
+
+Wasmline supports three explicit host-side invocation paths:
+
+| Execution model | Invocation protocol | Input | Result |
+|---|---|---|---|
+| `CORE_WASM` | `WASMLINE_CORE_V1` | action name and byte payload | `WasmlineCallResult<ByteArray>` |
+| `CORE_WASM` | `RAW_EXPORT` | declared Core Wasm numeric values | `WasmlineCallResult<WasmlineRawCallResult>` |
+| `COMPONENT_MODEL` | `COMPONENT_EXPORT` | declared Component Model values | `WasmlineCallResult<WasmlineComponentCallResult>` |
+
+The Component Model path loads an already compiled component binary. Wasmline does not compile WIT, WIT-Kotlin, or component adapters. `contractMetadata` describes the call contract when needed; it is not a WIT compiler input.
+
+The current browser runtime supports the Core Wasmline bridge. Raw Export and Component Model typed calls are provided by the native host backend, where the Wasmtime C API is available.
+
+Core Wasmline calls return results instead of using exceptions for normal call failures:
+
+```kotlin
+import crow.wasmline.callResult
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
+
+when (val result = module.callResult("echo", payload)) {
+    is WasmlineCallResult.Success -> usePayload(result.value)
+    is WasmlineCallResult.Failure -> {
+        if (result.error.code == WasmlineErrorCode.ACTION_NOT_BOUND) {
+            log("The plugin did not bind this action.")
+        }
+        log(result.error.message)
+    }
+}
+```
+
+An unbound action returns `ACTION_NOT_BOUND`. It does not return an empty payload and does not crash the host. The same result-first rule applies to unknown actions, invalid payloads, traps, and handler failures. `throwOnFailure()` is an explicit adapter for code that chooses exception-style handling; it is not used by the result API by default.
+
+The `WASMLINE_CORE_V1` response frame starts with the four-byte `WLMF` magic marker and a one-byte `frameVersion` whose current value is `1`. The magic marker identifies the frame format; it is not a security check. `frameVersion` identifies the response byte layout; it is not a Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not use this Core response frame.
+
+For direct calls, the descriptor must declare both the execution model and protocol:
+
+```kotlin
+val component = WasmlineLoader.load(
+    WasmlineArtifactDescriptor(
+        path = "component.wasm",
+        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+        exportName = "add",
+    ),
+)
+```
+
 ## Platform Support
 
 | Platform | Architecture | Artifact Support | Loading |

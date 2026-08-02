@@ -1,10 +1,14 @@
-#pragma once
+/**
+ * Implements the desktop native logger.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 
-#include "Logger.h"
+#include "logging/NativeLogger.h"
 #include <cstdio>
 #include <cstdarg>
 
-// Keep the logger helpers in the wasmline namespace.
 namespace wasmline {
 
     void NativeLogI(const char* fmt, ...) {

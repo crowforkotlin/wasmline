@@ -13,7 +13,7 @@ print_help() {
 Usage:
   ./${SCRIPT_NAME} [-q]
 
-Build the sample plugin wasm, copy it into the web resources directory, and start the JS browser dev server.
+Assemble the sample plugin, copy its wasm artifact into the web resources directory, and start the JS browser dev server.
 
 Options:
   -q, --quiet   Suppress build output.
@@ -23,6 +23,6 @@ EOF
 
 load_wasmline_metadata
 parse_common_args 0 0 0 "$@"
-PLUGIN_WASM_FILE="$(build_plugin_raw_wasm)"
+PLUGIN_WASM_FILE="$(build_plugin_wasm "web JS plugin artifact")"
 copy_artifact "$PLUGIN_WASM_FILE" "$WEB_RESOURCE_FILE"
 run_gradle "$SAMPLE_ROOT" :sample-apps:multiplatform:webApp:jsBrowserDevelopmentRun

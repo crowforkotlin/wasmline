@@ -54,6 +54,10 @@ class Build : CliktCommand(name = "build") {
     private val description by option("--description")
     private val iconUrl by option("--icon-url")
     private val homeUrl by option("--home-url")
+    private val executionModel by option("--execution-model").default("CORE_WASM")
+    private val invocationProtocol by option("--invocation-protocol").default("WASMLINE_CORE_V1")
+    private val exportName by option("--export-name")
+    private val contractMetadata by option("--contract-metadata").multiple().unique()
     private val key by option("-k", "--key").required().help("Ed25519 private key: file path or hex string")
 
     override fun run() {
@@ -63,6 +67,7 @@ class Build : CliktCommand(name = "build") {
             throw ProgramResult(1)
         }
         val productName = name ?: inputFile.nameWithoutExtension
+        val invocation = parseInvocationOptions(executionModel, invocationProtocol, exportName, contractMetadata)
         val outputDir = File("build/wasmline/output", "$productName-$version").apply { mkdirs() }
         val compiler = WasmtimeCompiler()
         val artifacts = compiler.compileAll(
@@ -92,6 +97,10 @@ class Build : CliktCommand(name = "build") {
             description = description,
             iconUrl = iconUrl,
             homePageUrl = homeUrl,
+            executionModel = invocation.executionModel,
+            invocationProtocol = invocation.invocationProtocol,
+            exportName = invocation.exportName,
+            contractMetadata = invocation.contractMetadata,
             logger = ::echo,
         )
         val zipFile = PluginPackager.createZip(

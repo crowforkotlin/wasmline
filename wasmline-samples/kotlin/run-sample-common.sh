@@ -6,18 +6,15 @@ COMMON_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SAMPLE_ROOT="${COMMON_SCRIPT_DIR}"
 REPO_ROOT="$(cd "${COMMON_SCRIPT_DIR}/../.." && pwd)"
 MULTIPLATFORM_ROOT="${REPO_ROOT}/wasmline-multiplatform"
-WASMLINE_MODULE_ROOT="${MULTIPLATFORM_ROOT}/wasmline"
-WASMLINE_CLI_ROOT="${MULTIPLATFORM_ROOT}/wasmline-cli"
 SAMPLE_PLUGIN_ROOT="${SAMPLE_ROOT}/sample-plugin"
-SHARED_WASMTIME_ROOT="${REPO_ROOT}/build/wasmline/wasmtime"
+SAMPLE_PLUGIN_OUTPUT_ROOT="${SAMPLE_PLUGIN_ROOT}/build/wasmline/output"
 
 PLATFORM=""
 ANDROID_DEVICE=""
-WASMTIME_VERSION=""
-WASMLINE_VERSION=""
 ARTIFACT_FORMAT=""
 ENGINE=""
 QUIET=0
+PLUGIN_ASSEMBLY_ROOT=""
 
 require_value() {
     local option="$1"
@@ -46,57 +43,22 @@ require_command() {
     fi
 }
 
-read_gradle_property() {
-    local file="$1"
-    local key="$2"
-
-    awk -F= -v key="$key" '
-        {
-            name = $1
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
-            if (name == key) {
-                value = substr($0, index($0, "=") + 1)
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-                print value
-                exit
-            }
-        }
-    ' "$file"
-}
-
-render_args() {
-    local result=""
-    local quoted
-    local token
-
-    for token in "$@"; do
-        printf -v quoted '%q' "$token"
-        if [ -n "$result" ]; then
-            result+=" "
-        fi
-        result+="$quoted"
-    done
-
-    printf '%s\n' "$result"
-}
-
 run_gradle() {
     local directory="$1"
     shift
     (
         cd "$directory"
-        ./gradlew "$@"
+        if [ "$QUIET" -eq 1 ]; then
+            ./gradlew --quiet "$@"
+        else
+            ./gradlew "$@"
+        fi
     )
 }
 
 run_gradle_with_runtime_format() {
     local directory="$1"
     shift
-
-    local gradle_extra_args=()
-    if [ -n "$ENGINE" ]; then
-        gradle_extra_args+=("-Pwasmline.engine=$ENGINE")
-    fi
 
     (
         case "$ARTIFACT_FORMAT" in
@@ -111,7 +73,11 @@ run_gradle_with_runtime_format() {
                 fi
                 ;;
         esac
-        run_gradle "$directory" "${gradle_extra_args[@]}" "$@"
+        if [ -n "$ENGINE" ]; then
+            run_gradle "$directory" "-Pwasmline.engine=$ENGINE" "$@"
+        else
+            run_gradle "$directory" "$@"
+        fi
     )
 }
 
@@ -123,22 +89,6 @@ run_gradle_build() {
     else
         run_gradle "$@" >&2
     fi
-}
-
-find_first_file() {
-    local directory="$1"
-    local pattern="$2"
-    local description="$3"
-    local maxdepth="${4:-1}"
-    local file
-
-    file="$(find "$directory" -maxdepth "$maxdepth" -type f -name "$pattern" | sort | head -n 1)"
-    if [ -z "$file" ]; then
-        echo "Unable to locate ${description} under ${directory}" >&2
-        exit 1
-    fi
-
-    printf '%s\n' "$file"
 }
 
 copy_artifact() {
@@ -166,28 +116,6 @@ normalize_platform() {
             echo "Run ./${SCRIPT_NAME} --help for usage." >&2
             exit 1
             ;;
-    esac
-}
-
-# Maps shorthand platform names to standard Rust/LLVM target triples
-# required by `wasmtime compile --target`. Without this, wasmtime parses
-# e.g. "aarch64-android" as arch=aarch64, vendor=android, os=unknown.
-normalize_compile_target() {
-    case "$1" in
-        aarch64-android)   printf '%s\n' "aarch64-linux-android" ;;
-        armv7-android)     printf '%s\n' "armv7-linux-androideabi" ;;
-        x86-android)       printf '%s\n' "i686-linux-android" ;;
-        x86_64-android)    printf '%s\n' "x86_64-linux-android" ;;
-        aarch64-linux)     printf '%s\n' "aarch64-unknown-linux-gnu" ;;
-        x86_64-linux)      printf '%s\n' "x86_64-unknown-linux-gnu" ;;
-        aarch64-macos)     printf '%s\n' "aarch64-apple-darwin" ;;
-        x86_64-macos)      printf '%s\n' "x86_64-apple-darwin" ;;
-        aarch64-ios)       printf '%s\n' "aarch64-apple-ios" ;;
-        aarch64-ios-sim)   printf '%s\n' "aarch64-apple-ios-sim" ;;
-        x86_64-windows)    printf '%s\n' "x86_64-pc-windows-msvc" ;;
-        pulley32)          printf '%s\n' "pulley32" ;;
-        pulley64)          printf '%s\n' "pulley64" ;;
-        *)                 printf '%s\n' "$1" ;;
     esac
 }
 
@@ -372,180 +300,7 @@ parse_common_args() {
 
 load_wasmline_metadata() {
     require_directory "$MULTIPLATFORM_ROOT" "wasmline-multiplatform root"
-    require_directory "$WASMLINE_MODULE_ROOT" "wasmline module"
-    require_directory "$WASMLINE_CLI_ROOT" "wasmline-cli module"
     require_directory "$SAMPLE_PLUGIN_ROOT" "sample-plugin module"
-
-    WASMTIME_VERSION="$(read_gradle_property "${MULTIPLATFORM_ROOT}/gradle.properties" "wasmtime.version")"
-    WASMLINE_VERSION="$(read_gradle_property "${MULTIPLATFORM_ROOT}/gradle.properties" "wasmline.version")"
-
-    if [ -z "$WASMTIME_VERSION" ] || [ -z "$WASMLINE_VERSION" ]; then
-        echo "Unable to read wasmline version metadata from ${MULTIPLATFORM_ROOT}/gradle.properties" >&2
-        exit 1
-    fi
-}
-
-resolve_wasmtime_dir() {
-    local platform="$1"
-    local wasmtime_dir_name="wasmtime-v${WASMTIME_VERSION}-${platform}"
-    local candidate="${SHARED_WASMTIME_ROOT}/${wasmtime_dir_name}"
-    if [ -d "$candidate" ]; then
-        printf '%s\n' "$candidate"
-        return 0
-    fi
-    # v47.0.2+ min artifact extracts to a -min suffixed directory
-    local min_candidate="${SHARED_WASMTIME_ROOT}/${wasmtime_dir_name}-min"
-    if [ -d "$min_candidate" ]; then
-        printf '%s\n' "$min_candidate"
-        return 0
-    fi
-    return 1
-}
-
-find_wasmtime_executable() {
-    local directory="$1"
-    local executable
-
-    if [[ "$(uname -s)" == CYGWIN* || "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == Windows_NT ]]; then
-        executable="$(find "$directory" -type f -name 'wasmtime-min.exe' | sort | head -n 1)"
-        if [ -z "$executable" ]; then
-            executable="$(find "$directory" -type f -name 'wasmtime.exe' | sort | head -n 1)"
-        fi
-    else
-        executable="$(find "$directory" -type f -name 'wasmtime-min' | sort | head -n 1)"
-        if [ -z "$executable" ]; then
-            executable="$(find "$directory" -type f -name 'wasmtime' | sort | head -n 1)"
-        fi
-    fi
-
-    printf '%s\n' "$executable"
-}
-
-ensure_wasmtime_toolchain() {
-    local download_args
-
-    if [ -z "$PLATFORM" ]; then
-        PLATFORM="$(detect_current_platform)"
-    fi
-
-    local wasmtime_dir
-    local wasmtime_executable
-    wasmtime_dir="$(resolve_wasmtime_dir "$PLATFORM" || true)"
-    wasmtime_executable=""
-    if [ -n "$wasmtime_dir" ]; then
-        wasmtime_executable="$(find_wasmtime_executable "$wasmtime_dir")"
-    fi
-    if [ -z "$wasmtime_executable" ]; then
-        download_args="$(render_args \
-            download \
-            -v "v${WASMTIME_VERSION}" \
-            -a "${PLATFORM}" \
-            -o "${SHARED_WASMTIME_ROOT}" \
-        )"
-        run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$download_args"
-        wasmtime_dir="$(resolve_wasmtime_dir "$PLATFORM" || true)"
-        if [ -n "$wasmtime_dir" ]; then
-            wasmtime_executable="$(find_wasmtime_executable "$wasmtime_dir")"
-        fi
-    fi
-    if [ -z "$wasmtime_executable" ] || [ -z "$wasmtime_dir" ]; then
-        echo "wasmtime executable not found in shared toolchain cache for ${PLATFORM}." >&2
-        echo "Tried cache root: ${SHARED_WASMTIME_ROOT}" >&2
-        exit 1
-    fi
-
-    printf '%s\n' "$wasmtime_dir"
-}
-
-
-clean_plugin_builds() {
-    rm -rf "${WASMLINE_MODULE_ROOT}/build/kotlin/compileKotlinWasmWasi"
-    rm -rf "${WASMLINE_MODULE_ROOT}/build/classes/kotlin/wasmWasi"
-    rm -rf "${SAMPLE_PLUGIN_ROOT}/build"
-}
-
-build_plugin_raw_wasm() {
-    clean_plugin_builds
-    run_gradle_build "$SAMPLE_ROOT" :sample-plugin:compileProductionLibraryKotlinWasmWasi
-
-    local input_dir="${SAMPLE_PLUGIN_ROOT}/build/compileSync/wasmWasi/main/productionLibrary/kotlin"
-    find_first_file "$input_dir" "*.wasm" "sample plugin wasm input"
-}
-
-build_plugin_optimized_wasm() {
-    clean_plugin_builds
-    run_gradle_build "$SAMPLE_ROOT" :sample-plugin:compileProductionLibraryKotlinWasmWasiOptimize
-
-    local input_dir="${SAMPLE_PLUGIN_ROOT}/build/compileSync/wasmWasi/main/productionLibrary/optimized"
-    find_first_file "$input_dir" "*.wasm" "sample plugin wasm input"
-}
-
-build_plugin_pwasm() {
-    local output_root="$1"
-    local wasmtime_dir="$2"
-    local artifact_description="$3"
-    local pulley_target="${4:-pulley64}"
-    local input_file
-    local compile_args
-
-    rm -rf "$output_root"
-    input_file="$(build_plugin_optimized_wasm)"
-    compile_args="$(render_args \
-        compile \
-        -i "$input_file" \
-        -o "$output_root" \
-        -v "$WASMLINE_VERSION" \
-        -wt "$wasmtime_dir" \
-        -a "$pulley_target"
-    )"
-    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$compile_args"
-    find_first_file "$output_root" "*-${pulley_target}.pwasm" "$artifact_description" 2
-}
-
-build_plugin_cwasm() {
-    local output_root="$1"
-    local wasmtime_dir="$2"
-    local artifact_description="$3"
-    local target="$4"
-    local input_file
-    local compile_args
-
-    if [ -z "$target" ]; then
-        echo "Missing cwasm target for ${artifact_description}" >&2
-        exit 1
-    fi
-
-    rm -rf "$output_root"
-    input_file="$(build_plugin_optimized_wasm)"
-    compile_args="$(render_args \
-        compile \
-        -i "$input_file" \
-        -o "$output_root" \
-        -v "$WASMLINE_VERSION" \
-        -wt "$wasmtime_dir" \
-        -a "$target"
-    )"
-    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$compile_args"
-    find_first_file "$output_root" "*-${target}.cwasm" "$artifact_description" 2
-}
-
-build_plugin_runtime_artifact() {
-    local output_root="$1"
-    local wasmtime_dir="$2"
-    local artifact_description="$3"
-    local cwasm_target="$4"
-
-    case "$ARTIFACT_FORMAT" in
-        cwasm)
-            build_plugin_cwasm "$output_root" "$wasmtime_dir" "$artifact_description" "$cwasm_target"
-            ;;
-        pwasm32)
-            build_plugin_pwasm "$output_root" "$wasmtime_dir" "$artifact_description" "pulley32"
-            ;;
-        *)
-            build_plugin_pwasm "$output_root" "$wasmtime_dir" "$artifact_description" "pulley64"
-            ;;
-    esac
 }
 
 find_optional_file() {
@@ -561,97 +316,77 @@ find_optional_file() {
 RUNTIME_PWASM_FILE=""
 RUNTIME_CWASM_FILE=""
 
+assemble_sample_plugin() {
+    local cwasm_target="$1"
+    local artifact_description="$2"
+    local gradle_args=(
+        :sample-plugin:wasmlineAssembleDebug
+        "-Pwasmline.compile.target=${cwasm_target}"
+    )
+    local manifest_file
+
+    if [ -z "$cwasm_target" ]; then
+        echo "Missing cwasm target for ${artifact_description}" >&2
+        exit 1
+    fi
+    if [ -n "$ARTIFACT_FORMAT" ]; then
+        gradle_args+=("-Pwasmline.artifact.format=${ARTIFACT_FORMAT}")
+    fi
+
+    rm -rf "$SAMPLE_PLUGIN_OUTPUT_ROOT"
+    run_gradle_build "$SAMPLE_ROOT" "${gradle_args[@]}"
+
+    manifest_file="$(find "$SAMPLE_PLUGIN_OUTPUT_ROOT" -mindepth 2 -maxdepth 2 -type f -name manifest.wlm | sort | head -n 1)"
+    if [ -z "$manifest_file" ]; then
+        echo "Unable to locate assembled ${artifact_description} under ${SAMPLE_PLUGIN_OUTPUT_ROOT}" >&2
+        exit 1
+    fi
+    PLUGIN_ASSEMBLY_ROOT="$(dirname "$manifest_file")"
+}
+
+find_plugin_artifact() {
+    local pattern="$1"
+    local description="$2"
+    local file
+
+    file="$(find_optional_file "$PLUGIN_ASSEMBLY_ROOT" "$pattern")"
+    if [ -z "$file" ]; then
+        echo "Unable to locate ${description} under ${PLUGIN_ASSEMBLY_ROOT}" >&2
+        exit 1
+    fi
+    printf '%s\n' "$file"
+}
+
+build_plugin_wasm() {
+    local artifact_description="$1"
+
+    assemble_sample_plugin "$(detect_current_platform)" "$artifact_description"
+    find_plugin_artifact "*.wasm" "${artifact_description} wasm"
+}
+
 build_plugin_runtime_artifacts() {
-    local output_root="$1"
-    local wasmtime_dir="$2"
-    local artifact_description="$3"
-    local cwasm_target="$4"
-    local input_file
-    local compile_args=()
-    local targets=()
-    local target
+    local cwasm_target="$1"
+    local artifact_description="$2"
 
     RUNTIME_PWASM_FILE=""
     RUNTIME_CWASM_FILE=""
-
-    rm -rf "$output_root"
-    input_file="$(build_plugin_optimized_wasm)"
+    assemble_sample_plugin "$cwasm_target" "$artifact_description"
 
     case "$ARTIFACT_FORMAT" in
         pwasm32)
-            targets=("pulley32")
+            RUNTIME_PWASM_FILE="$(find_plugin_artifact '*-pulley32.pwasm' "${artifact_description} pwasm32 artifact")"
             ;;
         pwasm|pwasm64)
-            targets=("pulley64")
+            RUNTIME_PWASM_FILE="$(find_plugin_artifact '*-pulley64.pwasm' "${artifact_description} pwasm64 artifact")"
             ;;
         cwasm)
-            if [ -z "$cwasm_target" ]; then
-                echo "Missing cwasm target for ${artifact_description}" >&2
-                exit 1
-            fi
-            targets=("$(normalize_compile_target "$cwasm_target")")
+            RUNTIME_CWASM_FILE="$(find_plugin_artifact "*-${cwasm_target}.cwasm" "${artifact_description} cwasm artifact")"
             ;;
         *)
-            targets=("pulley64")
-            if [ -n "$cwasm_target" ]; then
-                targets+=("$(normalize_compile_target "$cwasm_target")")
-            fi
+            RUNTIME_PWASM_FILE="$(find_plugin_artifact '*-pulley64.pwasm' "${artifact_description} pwasm64 artifact")"
+            RUNTIME_CWASM_FILE="$(find_plugin_artifact "*-${cwasm_target}.cwasm" "${artifact_description} cwasm artifact")"
             ;;
     esac
-
-    compile_args=(
-        compile
-        -i "$input_file"
-        -o "$output_root"
-        -v "$WASMLINE_VERSION"
-        -wt "$wasmtime_dir"
-    )
-    for target in "${targets[@]}"; do
-        compile_args+=( -a "$target" )
-    done
-
-    run_gradle_build "$MULTIPLATFORM_ROOT" :wasmline-cli:run --args="$(render_args "${compile_args[@]}")"
-
-    if printf '%s\n' "${targets[@]}" | grep -Fxq 'pulley64'; then
-        RUNTIME_PWASM_FILE="$(find_optional_file "$output_root" '*-pulley64.pwasm' 2)"
-        if [ -z "$RUNTIME_PWASM_FILE" ]; then
-            echo "Unable to locate ${artifact_description} pwasm64 artifact under ${output_root}" >&2
-            exit 1
-        fi
-    fi
-
-    if printf '%s\n' "${targets[@]}" | grep -Fxq 'pulley32'; then
-        RUNTIME_PWASM_FILE="$(find_optional_file "$output_root" '*-pulley32.pwasm' 2)"
-        if [ -z "$RUNTIME_PWASM_FILE" ]; then
-            echo "Unable to locate ${artifact_description} pwasm32 artifact under ${output_root}" >&2
-            exit 1
-        fi
-    fi
-
-    local normalized_cwasm_target
-    normalized_cwasm_target="$(normalize_compile_target "$cwasm_target")"
-    if [ -n "$cwasm_target" ] && printf '%s\n' "${targets[@]}" | grep -Fxq "$normalized_cwasm_target"; then
-        RUNTIME_CWASM_FILE="$(find_optional_file "$output_root" "*-${normalized_cwasm_target}.cwasm" 2)"
-        if [ -z "$RUNTIME_CWASM_FILE" ]; then
-            echo "Unable to locate ${artifact_description} cwasm artifact under ${output_root}" >&2
-            exit 1
-        fi
-    fi
-}
-
-sync_runtime_artifact() {
-    local source_file="$1"
-    local target_file="$2"
-    local target_dir
-    local target_base
-
-    target_dir="$(dirname "$target_file")"
-    target_base="$(basename "$target_file")"
-    target_base="${target_base%.*}"
-
-    mkdir -p "$target_dir"
-    rm -f "$target_dir/${target_base}.pwasm" "$target_dir/${target_base}.cwasm"
-    cp "$source_file" "$target_file"
 }
 
 sync_runtime_artifacts() {

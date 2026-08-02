@@ -35,7 +35,7 @@ wasmline-core  (C/C++ · Zig 0.15.1)
 wasmtime C-API  v47.0.2
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
-Plugin binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
+Core Wasmline binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
 ```
 
 ### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
@@ -71,6 +71,26 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
         ▼
 Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding)
 ```
+
+## 执行模型
+
+运行时根据 `WasmlineArtifactDescriptor` 选择后端。文件扩展名不用于选择执行模型。
+
+| 执行模型 | 调用协议 | 运行时边界 | Core 响应帧 |
+|---|---|---|---|
+| `CORE_WASM` | `WASMLINE_CORE_V1` | `Session`、action 路由和线性内存 | 使用 |
+| `CORE_WASM` | `RAW_EXPORT` | `RawModuleSession` 和已声明的 Core 数值 ABI | 不使用 |
+| `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` 和 Component Model 值 | 不使用 |
+
+`WASMLINE_CORE_V1` 是 Core Wasmline 模块的服务协议。其响应字节使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别响应格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。读取方只有在该字段为 `1` 时才按 V1 布局解析。
+
+Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。该路径不分配或解析 Core 响应帧。
+
+Component Model 调用通过 Wasmtime Component Model API 加载完整且已经编译完成的 component binary。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。Wasmline 不编译 WIT、WIT-Kotlin，也不运行 `wit-bindgen` 或生成 component adapter。可选的 `contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
+
+三种路径共享相同的结果语义。未绑定 action 返回失败结果 `ACTION_NOT_BOUND`，不表示为空的成功 payload，也不要求抛出异常。Core 路径通过响应帧传递该结果；Raw Export 和 Component Model 通过 typed result carrier 传递该结果。违反编程契约、运行时状态不可恢复，或无法构造可靠结果时，才使用异常。
+
+当前浏览器实现仅支持 Core Wasmline bridge。Raw Export 和 Component Model typed 调用通过 native 后端执行，因为它们需要 Wasmtime C API。这是目标平台的能力边界，不改变产物模型。
 
 ## 模块依赖关系图
 

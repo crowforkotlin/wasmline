@@ -16,7 +16,6 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
-import org.gradle.internal.cc.base.logger
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
@@ -24,8 +23,6 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.jetbrains.kotlin.gradle.targets.js.KotlinWasmTargetType
-import org.jetbrains.kotlin.gradle.targets.js.dsl.KotlinWasmWasiTargetDsl
-import org.jetbrains.kotlin.gradle.targets.js.ir.JsIrBinary
 import org.jetbrains.kotlin.gradle.targets.js.ir.KotlinJsIrTarget
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -96,29 +93,16 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
         // 2. Get Kotlin multiplatform extension if available
         val kotlinExtension = target.extensions.findByType(KotlinMultiplatformExtension::class.java)
-          ?: return
+            ?: return
 
-        // 3. Register WASI-specific tasks ONLY for wasmWasi targets
-        // Note: Use KotlinJsIrTarget as the base type, then filter by wasmTargetType
-        logger.apply {
-            kotlinExtension.targets.withType(KotlinJsIrTarget::class.java).configureEach { wasiTarget ->
-                // Check if this is a WASI target based on wasmTargetType
-                val isWasiTarget = wasiTarget.wasmTargetType == KotlinWasmTargetType.WASI
-
-                if (isWasiTarget) {
-                    // 3.1 Create wasmtime download and check tasks (once per WASI target)
-                    createWasmlineDownloadTask(project = target, ext = extension)
-                    createWasmtimeCheckTask(project = target, ext = extension)
-
-                    // 3.2 Key-pair generation tasks (only for WASI)
-                    createGenerateKeyPairTasks(project = target)
-
-                    // 3.3 Build & deploy tasks (only for WASI)
-                    registerAssembleTasks(project = target, ext = extension)
-                    registerServerDeployTask(project = target, ext = extension)
-                } else {
-                    lifecycle("⚠️ Skipping wasm-js target: ${wasiTarget.name}")
-                }
+        // Register Wasmtime tasks only for WASI targets.
+        kotlinExtension.targets.withType(KotlinJsIrTarget::class.java).configureEach { wasiTarget ->
+            if (wasiTarget.wasmTargetType == KotlinWasmTargetType.WASI) {
+                createWasmlineDownloadTask(project = target, ext = extension)
+                createWasmtimeCheckTask(project = target, ext = extension)
+                createGenerateKeyPairTasks(project = target)
+                registerAssembleTasks(project = target, ext = extension)
+                registerServerDeployTask(project = target, ext = extension)
             }
         }
     }
@@ -140,7 +124,6 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.version.set(ext.wasmtime.version)
             task.platform.convention(detectCurrentPlatform())
             task.githubToken.set(ext.wasmtime.githubToken)
-
         }
     }
 
@@ -161,14 +144,18 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.doLast {
                 val baseDir = resolveWasmtimeBaseDirectory(project, ext)
                 val platform = detectCurrentPlatform()
-                project.logger.lifecycle("📍 Wasmtime base directory: ${baseDir.absolutePath}")
+                project.logger.info("Wasmtime base directory: ${baseDir.absolutePath}")
 
                 // Search for executable (direct + versioned subdirectories)
-                val executable = WasmtimeCompiler.findWasmtimeInDirectory(baseDir, platform)
+                val executable = WasmtimeCompiler.findWasmtimeInDirectory(
+                    baseDir = baseDir,
+                    platform = platform,
+                    version = ext.wasmtime.version.get(),
+                )
                 if (executable != null) {
-                    project.logger.lifecycle("✅ Found wasmtime: ${executable.absolutePath}")
+                    project.logger.info("Found wasmtime: ${executable.absolutePath}")
                     val versionOutput = runCommand(listOf(executable.absolutePath, "--version"))
-                    project.logger.lifecycle("   Version: ${versionOutput.trim()}")
+                    project.logger.info("Wasmtime version: ${versionOutput.trim()}")
                     return@doLast
                 }
 
@@ -195,7 +182,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             return dir.asFile
         }
         System.getenv("WASMTIME_ROOT")?.let { envPath ->
-            project.logger.lifecycle("📍 Using WASMTIME_ROOT: $envPath")
+            project.logger.info("Using WASMTIME_ROOT: $envPath")
             return File(envPath)
         }
         return File(System.getProperty("user.home"), ".wasmline/wasmtime")
@@ -207,14 +194,8 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
      * 2. After download, verify the executable exists
      * 3. If download fails or autoDownload is disabled, show instructions and throw
      */
-    private fun handleMissingWasmtime(
-        project: Project,
-        ext: WasmlineExtension,
-        baseDir: File,
-        platform: String,
-    ) {
-        project.logger.error("❌ wasmtime not found in: ${baseDir.absolutePath}")
-        project.logger.lifecycle("")
+    private fun handleMissingWasmtime(project: Project, ext: WasmlineExtension, baseDir: File, platform: String) {
+        project.logger.error("Wasmtime ${ext.wasmtime.version.get()} was not found in: ${baseDir.absolutePath}")
 
         // Show attempted locations
         val attemptedLocations = mutableListOf<String>()
@@ -228,26 +209,27 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
         project.logger.error("Attempted locations:")
         attemptedLocations.forEach { project.logger.error("  - $it") }
-        project.logger.lifecycle("")
 
         // Attempt automatic download
         if (ext.wasmtime.autoDownload.get()) {
-            project.logger.lifecycle("⚡ Attempting automatic download...")
+            project.logger.lifecycle("Attempting automatic Wasmtime download")
             val version = ext.wasmtime.version.get()
             val success = attemptAutoDownload(project, ext, baseDir, platform, version)
             if (success) {
                 // Re-verify after download
-                val executable = WasmtimeCompiler.findWasmtimeInDirectory(baseDir, platform)
+                val executable = WasmtimeCompiler.findWasmtimeInDirectory(
+                    baseDir = baseDir,
+                    platform = platform,
+                    version = version,
+                )
                 if (executable != null) {
-                    project.logger.lifecycle("✅ Automatic download successful!")
-                    project.logger.lifecycle("   Location: ${executable.absolutePath}")
+                    project.logger.lifecycle("Wasmtime download completed: ${executable.absolutePath}")
                     return
                 }
-                project.logger.warn("⚠️  Download appeared to succeed but executable not found.")
+                project.logger.warn("Wasmtime download completed but the executable was not found.")
             } else {
-                project.logger.warn("⚠️  Automatic download failed or unavailable.")
+                project.logger.warn("Automatic Wasmtime download failed or is unavailable.")
             }
-            project.logger.lifecycle("")
         }
 
         // Provide comprehensive download instructions
@@ -255,78 +237,69 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
         // Add specific hint for sample projects
         if (project.rootProject.name != "wasmline") {
-            project.logger.warn("")
-            project.logger.warn("⚠️  NOTE: This appears to be a sample project.")
+            project.logger.warn("This appears to be a sample project.")
             project.logger.warn("   Please ensure you have downloaded wasmtime separately from:")
             project.logger.warn("   https://github.com/wasmtime/wasmtime/releases")
-            project.logger.warn("")
         }
 
         throw GradleException(
             "wasmtime toolchain required but not found. " +
-            "See error output above for download instructions."
+                "See error output above for download instructions.",
         )
     }
 
-    private fun attemptAutoDownload(
-        project: Project,
-        ext: WasmlineExtension,
-        baseDir: File,
-        platform: String,
-        version: String,
-    ): Boolean = try {
-        project.logger.lifecycle("  Platform: $platform")
-        project.logger.lifecycle("  Version: $version")
-        project.logger.lifecycle("  Output: ${baseDir.absolutePath}")
-        runBlocking {
-            val downloader = WasmtimeDownloader()
-            try {
-                downloader.download(
-                    githubToken = ext.wasmtime.githubToken.orNull,
-                    version = version,
-                    platform = platform,
-                    outputDir = baseDir,
-                )
-            } finally {
-                downloader.close()
+    private fun attemptAutoDownload(project: Project, ext: WasmlineExtension, baseDir: File, platform: String, version: String): Boolean =
+        try {
+            project.logger.info("Wasmtime platform: $platform")
+            project.logger.info("Wasmtime version: $version")
+            project.logger.info("Wasmtime output: ${baseDir.absolutePath}")
+            runBlocking {
+                val downloader = WasmtimeDownloader()
+                try {
+                    downloader.download(
+                        githubToken = ext.wasmtime.githubToken.orNull,
+                        version = version,
+                        platform = platform,
+                        outputDir = baseDir,
+                    )
+                } finally {
+                    downloader.close()
+                }
             }
+            WasmtimeCompiler.findWasmtimeInDirectory(
+                baseDir = baseDir,
+                platform = platform,
+                version = version,
+            ) != null
+        } catch (e: Exception) {
+            project.logger.warn("Failed to download wasmtime: ${e.message}")
+            false
         }
-        WasmtimeCompiler.findWasmtimeInDirectory(baseDir, platform) != null
-    } catch (e: Exception) {
-        project.logger.warn("Failed to download wasmtime: ${e.message}")
-        false
-    }
 
     /**
      * Provides comprehensive, user-friendly download instructions.
      */
     private fun provideDownloadInstructions(project: Project) {
-        project.logger.lifecycle("💡 Download Wasmtime using one of these methods:")
-        project.logger.lifecycle("")
+        project.logger.error("Download Wasmtime using one of these methods:")
         project.logger.lifecycle("Method 1: Using Gradle task (Recommended)")
         project.logger.lifecycle("  ./gradlew wasmlineDownloadWasmtime")
-        project.logger.lifecycle("")
         project.logger.lifecycle("Method 2: Using standalone wasmline CLI")
         project.logger.lifecycle("  wasmline download -a x86_64-linux")
-        project.logger.lifecycle("")
         project.logger.lifecycle("Method 3: Manual download from GitHub")
         project.logger.lifecycle("  https://github.com/crowforkotlin/wasmtime/releases")
-        project.logger.lifecycle("")
         project.logger.lifecycle("Method 4: Set environment variable")
         project.logger.lifecycle("  export WASMTIME_ROOT=/path/to/wasmtime")
     }
 
     private fun detectCurrentPlatform(): String = PlatformDetector.detectPlatform()
 
-    private fun runCommand(command: List<String>): String {
-        return try {
-            val process = ProcessBuilder(command).redirectErrorStream(true).start()
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            process.waitFor()
-            output
-        } catch (e: Exception) {
-            ""
-        }
+    private fun runCommand(command: List<String>): String = try {
+        val process = ProcessBuilder(command).redirectErrorStream(true).start()
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        process.waitFor()
+        output
+    } catch (e: Exception) {
+        ""
     }
 
     // ==================== Task registration ====================
@@ -364,10 +337,15 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         task.homePageUrl.set(manifestExt.homePageUrl)
         task.signingKey.set(manifestExt.signingKey.map { it.asFile.readText().trim() })
         task.metadata.set(manifestExt.metadata)
+        task.executionModel.set(manifestExt.executionModel)
+        task.invocationProtocol.set(manifestExt.invocationProtocol)
+        task.exportName.set(manifestExt.exportName)
+        task.contractMetadata.set(manifestExt.contractMetadata)
 
         // Wasmtime configuration
         task.wasmtimeDirectory.set(ext.wasmtime.directory)
         task.compileTargets.set(ext.wasmtime.targets)
+        task.wasmtimeVersion.set(ext.wasmtime.version)
 
         // Compilation output directory — the .wasm file is resolved at task
         // execution time (after the Kotlin/WasmWasi compilation task has run).

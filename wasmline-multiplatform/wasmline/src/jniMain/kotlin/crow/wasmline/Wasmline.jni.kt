@@ -1,12 +1,19 @@
-@file:Suppress("unused", "OPTIONAL_DECLARATION_USAGE_IN_NON_COMMON_SOURCE")
+@file:Suppress("unused")
 
 package crow.wasmline
 
 import crow.wasmline.extensions.loadNativeLibrary
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.invocation.WasmlineCallError
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
 import java.io.File
 
-actual class Wasmline internal actual constructor(private val moduleKey: String, actual val config: WasmlineConfig) {
+actual class Wasmline internal actual constructor(
+    private val moduleKey: String,
+    actual val config: WasmlineConfig,
+    actual val descriptor: WasmlineArtifactDescriptor,
+) {
 
     internal companion object {
         // JNI native methods — must stay private for correct JNI name mangling.
@@ -14,11 +21,19 @@ actual class Wasmline internal actual constructor(private val moduleKey: String,
 
         @JvmStatic private external fun nativeLoadAotUnsafe(key: String, path: String): Boolean
 
+        @JvmStatic private external fun nativeLoadComponent(key: String, path: String): Boolean
+
+        @JvmStatic private external fun nativeLoadComponentUnsafe(key: String, path: String): Boolean
+
         @JvmStatic private external fun nativeReleaseModule(key: String)
 
         @JvmStatic private external fun nativeSetOutboundHandler(key: String, dispatcher: WasmlineHostDispatcher)
 
         @JvmStatic private external fun nativeInvokeInbound(key: String, action: String, protobufBytes: ByteArray): ByteArray
+
+        @JvmStatic private external fun nativeInvokeRaw(key: String, exportName: String, arguments: ByteArray): ByteArray?
+
+        @JvmStatic private external fun nativeInvokeComponent(key: String, exportName: String, arguments: ByteArray): ByteArray?
 
         @JvmStatic private external fun nativeWarmup(usePulley: Boolean)
 
@@ -29,6 +44,8 @@ actual class Wasmline internal actual constructor(private val moduleKey: String,
         // Internal wrappers for use by standalone bridge functions.
         fun loadAot(key: String, path: String): Boolean = nativeLoadAot(key, path)
         fun loadAotUnsafe(key: String, path: String): Boolean = nativeLoadAotUnsafe(key, path)
+        fun loadComponent(key: String, path: String): Boolean = nativeLoadComponent(key, path)
+        fun loadComponentUnsafe(key: String, path: String): Boolean = nativeLoadComponentUnsafe(key, path)
         fun warmupEngine(usePulley: Boolean) = nativeWarmup(usePulley)
         fun supportsAot(): Boolean = nativeSupportsAot()
         fun releaseEngine() = nativeReleaseEngine()
@@ -40,9 +57,26 @@ actual class Wasmline internal actual constructor(private val moduleKey: String,
 
     internal actual fun call(action: String, inputBytes: ByteArray): ByteArray = nativeInvokeInbound(moduleKey, action, inputBytes)
 
+    internal actual fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
+        decodeNativeCarrier(nativeInvokeRaw(moduleKey, exportName, arguments))
+
+    internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
+        decodeNativeCarrier(nativeInvokeComponent(moduleKey, exportName, arguments))
+
     actual fun close() {
         nativeReleaseModule(moduleKey)
     }
+}
+
+private fun decodeNativeCarrier(bytes: ByteArray?): WasmlineCallResult<ByteArray> = if (bytes == null) {
+    WasmlineCallResult.Failure(
+        WasmlineCallError(
+            code = WasmlineErrorCode.TRANSPORT_FAILURE,
+            message = "JNI typed invocation returned no response.",
+        ),
+    )
+} else {
+    WasmlineCallResult.Success(bytes)
 }
 
 // ========== Runtime bridge functions for WasmlineLoader ==========
@@ -84,14 +118,17 @@ actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     Wasmline.warmupEngine(effectiveMode == WasmlineWarmupMode.PULLEY)
 }
 
-actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState {
-    ensureBootstrapped()
+actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
+    wasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
+
+actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState {
     val supportConcurrent = config.supportConcurrent
     return WasmlineLocalArtifactBridge.load(
-        artifactPath = filepath,
+        descriptor = descriptor,
         config = config,
         platform = object : WasmlinePlatformArtifactBridge {
-            override fun createWasmline(moduleKey: String, config: WasmlineConfig): Wasmline = Wasmline(moduleKey, config)
+            override fun createWasmline(moduleKey: String, config: WasmlineConfig, descriptor: WasmlineArtifactDescriptor): Wasmline =
+                Wasmline(moduleKey, config, descriptor)
 
             override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? {
                 val artifactFile = File(path).absoluteFile
@@ -102,10 +139,19 @@ actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): Wasml
                 )
             }
 
-            override fun loadPrecompiled(moduleKey: String, path: String): Boolean = if (supportConcurrent) {
-                Wasmline.loadAot(key = moduleKey, path = path)
-            } else {
-                Wasmline.loadAotUnsafe(key = moduleKey, path = path)
+            override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
+                ensureBootstrapped()
+                return when (descriptor.executionModel) {
+                    WasmlineExecutionModel.CORE_WASM ->
+                        if (supportConcurrent) Wasmline.loadAot(moduleKey, path) else Wasmline.loadAotUnsafe(moduleKey, path)
+
+                    WasmlineExecutionModel.COMPONENT_MODEL ->
+                        if (supportConcurrent) {
+                            Wasmline.loadComponent(moduleKey, path)
+                        } else {
+                            Wasmline.loadComponentUnsafe(moduleKey, path)
+                        }
+                }
             }
         },
     )

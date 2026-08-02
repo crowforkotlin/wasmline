@@ -19,6 +19,7 @@ dependencies {
     // Engine module provides native libwasmline.so for JVM via variant publishing
     implementation(libs.crow.wasmline.engine.pulley)
     implementation(libs.ktor.client.cio)
+    runtimeOnly(libs.slf4j.nop)
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(projects.sampleCommon)
 

@@ -2,6 +2,8 @@
 
 package crow.wasmline.gradle.extensions
 
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.MapProperty
@@ -71,5 +73,20 @@ abstract class ManifestExtension @Inject constructor(objects: ObjectFactory) {
 
     /** Arbitrary metadata key-value pairs included in the manifest. */
     val metadata: MapProperty<String, String> = objects.mapProperty(String::class.java, String::class.java)
+        .convention(emptyMap())
+
+    /** Runtime execution model of the published binary. */
+    val executionModel: Property<WasmlineExecutionModel> = objects.property(WasmlineExecutionModel::class.java)
+        .convention(WasmlineExecutionModel.CORE_WASM)
+
+    /** Invocation protocol used by the published binary. */
+    val invocationProtocol: Property<WasmlineInvocationProtocol> = objects.property(WasmlineInvocationProtocol::class.java)
+        .convention(WasmlineInvocationProtocol.WASMLINE_CORE_V1)
+
+    /** Export name required by direct export invocation protocols. */
+    val exportName: Property<String> = objects.property(String::class.java)
+
+    /** Type metadata for direct export invocation. */
+    val contractMetadata: MapProperty<String, String> = objects.mapProperty(String::class.java, String::class.java)
         .convention(emptyMap())
 }

@@ -45,6 +45,33 @@ payload 数据以 Base64 编码字符串跨越 Kotlin–JS 线性内存边界（
 </details>
 
 <details>
+<summary><strong>Core Wasm、Raw Export 和 Component Model 调用有什么区别？</strong></summary>
+
+对于使用 action 名称和字节 payload 的 Wasmline 服务模块，使用 `CORE_WASM` 与 `WASMLINE_CORE_V1`。对于具有明确数值 export ABI 的 Core Wasm 模块，使用 `CORE_WASM` 与 `RAW_EXPORT`。对于完整的 component binary 和 Component Model typed value，使用 `COMPONENT_MODEL` 与 `COMPONENT_EXPORT`。
+
+Component Model 路径的输入是已经编译完成的 component binary。Wasmline 不编译 WIT 或 WIT-Kotlin，不运行 `wit-bindgen`，也不生成 component adapter。可选的 `contractMetadata` 用于描述 export 契约，不是 WIT 编译器的输入。
+
+</details>
+
+<details>
+<summary><strong>插件没有绑定 action 时会发生什么？</strong></summary>
+
+调用返回包含 `WasmlineErrorCode.ACTION_NOT_BOUND` 的 `WasmlineCallResult.Failure`。它不返回空的成功 payload，也不会导致宿主崩溃。未知 action、无效 payload、handler 失败、trap 和响应帧格式错误，在运行时能够构造可靠结果时都遵循相同的结果优先规则。
+
+使用 `callResult`、`invokeRawResult` 或 `invokeComponentResult`，并读取 `Failure.error.code`。`getOrNull()` 与 `errorOrNull()` 是无异常辅助方法。`throwOnFailure()` 只为明确选择异常风格的调用方提供适配，不是默认的传输行为。
+
+</details>
+
+<details>
+<summary><strong><code>WLMF</code> 与 <code>frameVersion</code> 表示什么？</strong></summary>
+
+`WLMF` 是 Wasmline Core 响应帧的四字节 magic 标记，用于识别响应格式。它不是签名、加密机制或安全校验。完整性和真实性由产物 hash、manifest 与签名机制负责。
+
+`frameVersion` 是一个字节的响应布局版本。当前值为 `1`；它不表示 Wasmtime、Kotlin、框架或业务 API 版本。V1 读取方只接受版本 `1`。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
+
+</details>
+
+<details>
 <summary><strong>Kotlin IR 编译器插件是宿主集成的必需项吗？</strong></summary>
 
 编译器插件并非必需。底层 `Wasmline.call(action, bytes): ByteArray` API 始终可用于手动分发。如果未应用 `wasmline-kotlin-plugin`——通常通过 `wasmline-gradle-plugin` 间接应用——`link<T>()` 与 `bind(impl)` 调用点会在运行时抛出 `UnsupportedOperationException`。

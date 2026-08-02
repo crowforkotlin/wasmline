@@ -1,4 +1,11 @@
-#include "Logger.h"
+/**
+ * Implements the iOS native logger.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
+
+#include "logging/NativeLogger.h"
 #include <cstdarg>
 #include <cstdio>
 #include <os/log.h>

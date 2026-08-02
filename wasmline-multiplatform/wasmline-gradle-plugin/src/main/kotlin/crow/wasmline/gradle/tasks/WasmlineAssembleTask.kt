@@ -2,6 +2,8 @@
 
 package crow.wasmline.gradle.tasks
 
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.manifest.ManifestSigner
 import crow.wasmline.plugin.core.packaging.PluginPackager
@@ -90,6 +92,19 @@ abstract class WasmlineAssembleTask : DefaultTask() {
     @get:Input
     abstract val metadata: MapProperty<String, String>
 
+    @get:Input
+    abstract val executionModel: Property<WasmlineExecutionModel>
+
+    @get:Input
+    abstract val invocationProtocol: Property<WasmlineInvocationProtocol>
+
+    @get:Input
+    @get:Optional
+    abstract val exportName: Property<String>
+
+    @get:Input
+    abstract val contractMetadata: MapProperty<String, String>
+
     // ==================== Wasmtime config ====================
 
     /**
@@ -103,6 +118,10 @@ abstract class WasmlineAssembleTask : DefaultTask() {
     /** Target architectures for AOT compilation. Empty means all default targets. */
     @get:Input
     abstract val compileTargets: ListProperty<String>
+
+    /** Required Wasmtime version used for AOT compilation. */
+    @get:Input
+    abstract val wasmtimeVersion: Property<String>
 
     // ==================== Input / Output ====================
 
@@ -139,35 +158,32 @@ abstract class WasmlineAssembleTask : DefaultTask() {
 
         val productName = pId.substringAfterLast('.')
 
-        logger.lifecycle("========== Wasmline Assemble ($variant) ==========")
-        logger.lifecycle("Plugin ID: $pId")
-        logger.lifecycle("Version: $pVersion")
-        logger.lifecycle("Input: ${wasmFile.absolutePath}")
-        logger.lifecycle("Output: ${outDir.absolutePath}")
-
-        // -------- Step 1: Wasmtime AOT compilation --------
-        logger.lifecycle("========== Step 1: Wasmtime Compile ==========")
+        logger.info("Wasmline assemble: plugin=$pId, version=$pVersion, variant=$variant")
+        logger.info("Wasm input: ${wasmFile.absolutePath}")
+        logger.info("Wasmline output: ${outDir.absolutePath}")
 
         // Resolve wasmtime base directory (DSL > env > default)
         val wasmtimeBaseDir = wasmtimeDirectory.orNull?.asFile
             ?: System.getenv("WASMTIME_ROOT")?.let { File(it) }
             ?: File(System.getProperty("user.home"), ".wasmline/wasmtime")
-        logger.lifecycle("Wasmtime base directory: ${wasmtimeBaseDir.absolutePath}")
+        logger.info("Wasmtime base directory: ${wasmtimeBaseDir.absolutePath}")
 
         // Search for executable (direct + versioned subdirectories)
-        val wasmtimeExec = WasmtimeCompiler.findWasmtimeInDirectory(wasmtimeBaseDir)
+        val wasmtimeExec = WasmtimeCompiler.findWasmtimeInDirectory(
+            baseDir = wasmtimeBaseDir,
+            version = wasmtimeVersion.get(),
+        )
             ?: throw GradleException(
-                "wasmtime executable not found in '${wasmtimeBaseDir.absolutePath}' or its subdirectories.\n" +
-                "Run './gradlew wasmlineDownloadWasmtime' or 'wasmline download -a <platform>' first.\n" +
-                "\n" +
-                "Common locations to check:\n" +
-                "  1. ~/.wasmline/wasmtime/\n" +
-                "  2. Custom path configured in build.gradle.kts\n" +
-                "  3. WASMTIME_ROOT environment variable"
+                "wasmtime ${wasmtimeVersion.get()} executable not found in '${wasmtimeBaseDir.absolutePath}' or its subdirectories.\n" +
+                    "Run './gradlew wasmlineDownloadWasmtime' or 'wasmline download -a <platform>' first.\n" +
+                    "\n" +
+                    "Common locations to check:\n" +
+                    "  1. ~/.wasmline/wasmtime/\n" +
+                    "  2. Custom path configured in build.gradle.kts\n" +
+                    "  3. WASMTIME_ROOT environment variable",
             )
-        
-        logger.lifecycle("✅ Found wasmtime: ${wasmtimeExec.absolutePath}")
-        logger.lifecycle("   Executable: ${wasmtimeExec.name}")
+
+        logger.info("Wasmtime executable: ${wasmtimeExec.absolutePath}")
 
         val artifacts = WasmtimeCompiler().compileAll(
             wasmtimeExec = wasmtimeExec,
@@ -175,7 +191,7 @@ abstract class WasmlineAssembleTask : DefaultTask() {
             outputDir = outDir,
             productName = productName,
             targets = compileTargets.get(),
-            logger = logger::lifecycle,
+            logger = ::logCompilerMessage,
         )
 
         if (artifacts.isEmpty()) {
@@ -188,9 +204,6 @@ abstract class WasmlineAssembleTask : DefaultTask() {
             artifacts = artifacts,
             wasmtimeVersion = wasmtimeExec.name,
         )
-
-        // -------- Step 2: Manifest build & sign --------
-        logger.lifecycle("========== Step 2: Manifest ==========")
 
         val wlmFile = ManifestSigner().createSignedManifest(
             artifacts = artifacts,
@@ -206,11 +219,12 @@ abstract class WasmlineAssembleTask : DefaultTask() {
             iconUrl = iconUrl.orNull,
             homePageUrl = homePageUrl.orNull,
             metadata = metadata.get(),
-            logger = logger::lifecycle,
+            executionModel = executionModel.get(),
+            invocationProtocol = invocationProtocol.get(),
+            exportName = exportName.orNull,
+            contractMetadata = contractMetadata.get(),
+            logger = logger::info,
         )
-
-        // -------- Step 3: Package zip --------
-        logger.lifecycle("========== Step 3: Package ==========")
 
         val distDir = File(outputDir.get().asFile.parentFile.parentFile, "dist").apply { mkdirs() }
         val zipName = "$pId-$pVersion.zip"
@@ -219,9 +233,16 @@ abstract class WasmlineAssembleTask : DefaultTask() {
 
         PluginPackager.createZip(wlmFile, artifacts, outDir, zipFile, folderPrefix)
 
-        logger.lifecycle("Package written to: ${zipFile.absolutePath} (${zipFile.length()} bytes)")
-        logger.lifecycle("==========  Assemble Complete ($variant)  ==========")
-        logger.lifecycle("Artifacts: ${artifacts.size}")
+        logger.info("Wasmline package: ${zipFile.absolutePath} (${zipFile.length()} bytes)")
+        logger.info("Wasmline assemble completed: ${artifacts.size} artifacts")
     }
 
+    /** Writes compiler errors at error level and routine messages at info level. */
+    private fun logCompilerMessage(message: String) {
+        if (message.contains("error", ignoreCase = true) || message.startsWith("Failed")) {
+            logger.error(message)
+        } else {
+            logger.info(message)
+        }
+    }
 }

@@ -36,15 +36,15 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun createsAndInitializesEngineSuccessfully() {
         wasmlineBootstrap()
-        
+
         try {
             // PULLEY warmup should work without exceptions
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            
+
             // Verify engine capabilities were registered
             assertTrue(
                 Wasmline.supportsAot(),
-                "Engine should report AOT support after warmup"
+                "Engine should report AOT support after warmup",
             )
         } finally {
             wasmlineShutdown()
@@ -58,15 +58,15 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun initializesCraneliftBackendSuccessfully() {
         wasmlineBootstrap()
-        
+
         try {
             // Cranelift warmup may fallback to PULLEY if not available
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-            
+
             // Should at least have some backend configured
             assertTrue(
                 Wasmline.supportsAot(),
-                "At least one backend should be active"
+                "At least one backend should be active",
             )
         } finally {
             wasmlineShutdown()
@@ -80,19 +80,21 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun executesFullEngineLifecycle() {
         wasmlineBootstrap()
-        
+
         try {
             // Warm up both backends sequentially
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val pulleyWorked = Wasmline.supportsAot()
-            
+
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
             val craneliftWorked = Wasmline.supportsAot()
-            
+
             // At least one should succeed
-            assertTrue(pulleyWorked || craneliftWorked, 
-                      "At least one engine backend must initialize successfully")
-            
+            assertTrue(
+                pulleyWorked || craneliftWorked,
+                "At least one engine backend must initialize successfully",
+            )
+
             // Clean shutdown
             wasmlineShutdown()
         } catch (_: Exception) {
@@ -107,25 +109,25 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun managesEngineResourcesCorrectly() {
         var engineWasAlive = false
-        
+
         wasmlineBootstrap()
-        
+
         try {
             // First cycle
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             engineWasAlive = Wasmline.supportsAot()
-            
+
             assertTrue(engineWasAlive, "Engine should start in first cycle")
-            
+
             // Shutdown
             wasmlineShutdown()
-            
+
             // Second cycle - re-bootstrap
             wasmlineBootstrap()
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-            
+
             assertTrue(Wasmline.supportsAot(), "Engine should restart successfully")
-            
+
             // Final cleanup
             wasmlineShutdown()
         } catch (_: Exception) {
@@ -136,7 +138,7 @@ class NativeWasmtimeIntegrationTest {
                 wasmlineShutdown()
             } catch (_: Exception) {}
         }
-        
+
         assertTrue(engineWasAlive, "Engine lifecycle test failed")
     }
 
@@ -147,24 +149,24 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun loadsMissingArtifactGracefully() {
         wasmlineBootstrap()
-        
+
         try {
             val result = wasmlineLoadArtifact(
                 filepath = "/nonexistent/path/to/missing.cwasm",
-                config = WasmlineConfig(supportConcurrent = false)
+                config = WasmlineConfig(supportConcurrent = false),
             )
-            
+
             // Should return Failure state, not crash
             assertTrue(result is crow.wasmline.WasmlineLoadState.Failure)
             assertEquals(
                 crow.wasmline.WasmlineLoadState.CODE_FAILURE,
-                (result as crow.wasmline.WasmlineLoadState.Failure).code
+                (result as crow.wasmline.WasmlineLoadState.Failure).code,
             )
-            
+
             val failure = result as crow.wasmline.WasmlineLoadState.Failure
             assertTrue(
                 failure.cause.contains("not found"),
-                "Error message should indicate file not found"
+                "Error message should indicate file not found",
             )
         } finally {
             wasmlineShutdown()
@@ -178,30 +180,30 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun supportsDifferentLoadingModes() {
         wasmlineBootstrap()
-        
+
         try {
             // Test non-concurrent mode
             val result1 = wasmlineLoadArtifact(
                 filepath = "/dev/null",
-                config = WasmlineConfig(supportConcurrent = false)
+                config = WasmlineConfig(supportConcurrent = false),
             )
             assertTrue(result1 is crow.wasmline.WasmlineLoadState.Failure)
-            
+
             // Test concurrent mode
             val result2 = wasmlineLoadArtifact(
                 filepath = "/dev/null",
-                config = WasmlineConfig(supportConcurrent = true)
+                config = WasmlineConfig(supportConcurrent = true),
             )
             assertTrue(result2 is crow.wasmline.WasmlineLoadState.Failure)
-            
+
             // Both should fail gracefully
             assertEquals(
                 crow.wasmline.WasmlineLoadState.CODE_FAILURE,
-                (result1 as crow.wasmline.WasmlineLoadState.Failure).code
+                (result1 as crow.wasmline.WasmlineLoadState.Failure).code,
             )
             assertEquals(
                 crow.wasmline.WasmlineLoadState.CODE_FAILURE,
-                (result2 as crow.wasmline.WasmlineLoadState.Failure).code
+                (result2 as crow.wasmline.WasmlineLoadState.Failure).code,
             )
         } finally {
             wasmlineShutdown()
@@ -214,21 +216,23 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun warmsUpMultipleBackendsSequentially() {
         wasmlineBootstrap()
-        
+
         try {
             // Sequential warmups
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val firstResult = Wasmline.supportsAot()
-            
+
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
             val secondResult = Wasmline.supportsAot()
-            
+
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val thirdResult = Wasmline.supportsAot()
-            
+
             // At least one should have worked
-            assertTrue(firstResult || secondResult || thirdResult,
-                      "Multiple sequential warmups should succeed at least once")
+            assertTrue(
+                firstResult || secondResult || thirdResult,
+                "Multiple sequential warmups should succeed at least once",
+            )
         } finally {
             wasmlineShutdown()
         }
@@ -240,18 +244,20 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun reportsEngineCapabilitiesCorrectly() {
         wasmlineBootstrap()
-        
+
         try {
             // Initial check
             val initialSupportsAot = Wasmline.supportsAot()
-            
+
             // After warmup
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val postWarmupSupportsAot = Wasmline.supportsAot()
-            
+
             // Should have reported something
-            assertTrue(postWarmupSupportsAot || initialSupportsAot,
-                      "Engine should report capabilities")
+            assertTrue(
+                postWarmupSupportsAot || initialSupportsAot,
+                "Engine should report capabilities",
+            )
         } finally {
             wasmlineShutdown()
         }
@@ -264,16 +270,16 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun performsSafeIdempotentShutdown() {
         wasmlineBootstrap()
-        
+
         try {
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            
+
             // First shutdown
             wasmlineShutdown()
-            
+
             // Second shutdown (should be safe)
             wasmlineShutdown()
-            
+
             // Third shutdown (still safe)
             wasmlineShutdown()
         } catch (_: Exception) {
@@ -291,8 +297,10 @@ class NativeWasmtimeIntegrationTest {
             wasmlineBootstrap()
             try {
                 wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-                assertTrue(Wasmline.supportsAot(), 
-                          "Cycle ${iteration + 1} should succeed")
+                assertTrue(
+                    Wasmline.supportsAot(),
+                    "Cycle ${iteration + 1} should succeed",
+                )
             } finally {
                 wasmlineShutdown()
             }

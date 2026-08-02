@@ -3,6 +3,9 @@
 
 package crow.wasmline.plugin.core.manifest
 
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
@@ -23,7 +26,7 @@ import java.io.File
 class ManifestSigner {
 
     companion object {
-        const val defaultManifestName = "manifest.wlm"
+        const val DEFAULT_MANIFEST_NAME = "manifest.wlm"
 
         private val debugJson = Json {
             prettyPrint = true
@@ -57,9 +60,29 @@ class ManifestSigner {
         iconUrl: String? = null,
         homePageUrl: String? = null,
         metadata: Map<String, String> = emptyMap(),
+        executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
+        invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+        exportName: String? = null,
+        contractMetadata: Map<String, String> = emptyMap(),
         logger: (String) -> Unit = {},
     ): File {
         outputDir.mkdirs()
+        val descriptorError = WasmlineArtifactDescriptor(
+            path = "manifest",
+            executionModel = executionModel,
+            invocationProtocol = invocationProtocol,
+            exportName = exportName,
+            contractMetadata = contractMetadata,
+        ).validationError()
+        require(descriptorError == null) { "Invalid artifact invocation descriptor: $descriptorError" }
+        val describedArtifacts = artifacts.map { artifact ->
+            artifact.copy(
+                executionModel = executionModel,
+                invocationProtocol = invocationProtocol,
+                exportName = exportName,
+                contractMetadata = contractMetadata,
+            )
+        }
         val manifest = WasmlineManifest(
             pluginId = pluginId,
             version = version,
@@ -72,7 +95,7 @@ class ManifestSigner {
             homePageUrl = homePageUrl,
             buildTimestamp = System.currentTimeMillis(),
             metadata = metadata,
-            artifacts = artifacts,
+            artifacts = describedArtifacts,
         )
         val privateKey = resolveKey(signingKey).decodeHex()
         val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
@@ -82,7 +105,7 @@ class ManifestSigner {
             algorithm = "Ed25519",
             manifest = manifest,
         )
-        val manifestFile = File(outputDir, defaultManifestName)
+        val manifestFile = File(outputDir, DEFAULT_MANIFEST_NAME)
         manifestFile.writeBytes(ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope))
 
         val debugDir = File(outputDir, "debug").apply { mkdirs() }

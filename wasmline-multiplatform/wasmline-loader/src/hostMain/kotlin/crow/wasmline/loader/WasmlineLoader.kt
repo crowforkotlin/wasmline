@@ -1,5 +1,6 @@
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineLoadState
@@ -65,6 +66,12 @@ object WasmlineLoader {
         val request = WasmlineLoadRequest(source = source, config = config)
         return loadInternal(request).toResult()
     }
+
+    /**
+     * Load an artifact with an explicit execution model and invocation protocol.
+     */
+    fun load(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult =
+        load(WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor), config)
 
     /**
      * Load a Wasmline module by auto-detecting the source type from the input string.

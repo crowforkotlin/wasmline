@@ -19,11 +19,11 @@ import javax.inject.Inject
  *     wasmtime {
  *         // Configure wasmtime location and behavior
  *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
- * 
+ *
  *         // Enable auto-download if wasmtime is missing
  *         autoDownload = true
  *         version = "latest" // or specific version like "v47.0.2"
- * 
+ *
  *         // Optional: Set GitHub token for higher API rate limits
  *         // Use environment variable from CI or local config
  *         githubToken.set(System.getenv("GITHUB_TOKEN"))

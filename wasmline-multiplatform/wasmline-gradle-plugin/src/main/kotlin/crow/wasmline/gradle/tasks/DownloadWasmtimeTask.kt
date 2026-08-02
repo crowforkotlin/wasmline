@@ -48,12 +48,9 @@ abstract class DownloadWasmtimeTask : DefaultTask() {
         val baseDir = wasmtimeDirectory.orNull?.asFile
             ?: File(System.getProperty("user.home"), ".wasmline/wasmtime")
 
-        WasmtimeCompiler.findWasmtimeInDirectory(baseDir, targetPlatform)?.let { executable ->
-            if (hasRequestedVersion(executable, targetVersion)) {
-                logger.lifecycle("wasmtime already exists at: ${executable.absolutePath}")
-                return
-            }
-            logger.lifecycle("wasmtime version does not match $targetVersion: ${executable.absolutePath}")
+        WasmtimeCompiler.findWasmtimeInDirectory(baseDir, targetPlatform, targetVersion)?.let { executable ->
+            logger.lifecycle("wasmtime already exists at: ${executable.absolutePath}")
+            return
         }
 
         logger.lifecycle("Downloading wasmtime $targetVersion for $targetPlatform into ${baseDir.absolutePath}")
@@ -70,21 +67,8 @@ abstract class DownloadWasmtimeTask : DefaultTask() {
                 downloader.close()
             }
         }
-        checkNotNull(WasmtimeCompiler.findWasmtimeInDirectory(baseDir, targetPlatform)) {
+        checkNotNull(WasmtimeCompiler.findWasmtimeInDirectory(baseDir, targetPlatform, targetVersion)) {
             "wasmtime download completed but no executable was found in ${baseDir.absolutePath}"
         }
-    }
-
-    private fun hasRequestedVersion(executable: File, targetVersion: String): Boolean {
-        if (targetVersion == "latest") return true
-
-        val expectedVersion = targetVersion.removePrefix("release-").removePrefix("v")
-        return runCatching {
-            val process = ProcessBuilder(executable.absolutePath, "--version")
-                .redirectErrorStream(true)
-                .start()
-            val versionOutput = process.inputStream.bufferedReader().use { it.readText() }
-            process.waitFor() == 0 && versionOutput.contains("wasmtime $expectedVersion")
-        }.getOrDefault(false)
     }
 }

@@ -74,6 +74,80 @@ module.close()
   `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。IR 插件会将每个调用点替换为对生成的 `*_WasmlineBridge` 的直接调用。如果编译单元未应用 `wasmline-kotlin-plugin`，这些函数会在运行时抛出 `UnsupportedOperationException`。
 </Callout>
 
+## 选择调用路径
+
+当产物不是默认的 Core Wasmline 模块时，使用 `WasmlineArtifactDescriptor`。执行模型与调用协议必须成对声明，加载器会验证二者的组合：
+
+```kotlin
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineComponentValue
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.invokeComponentResult
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.loader.WasmlineLoader
+
+val result = WasmlineLoader.load(
+    WasmlineArtifactDescriptor(
+        path = "component.wasm",
+        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+        exportName = "add",
+        contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
+    ),
+)
+
+when (result) {
+    is WasmlineLoadResult.Success -> when (
+        val call = result.wasmline.invokeComponentResult(
+            exportName = "add",
+            arguments = listOf(WasmlineComponentValue.S32(1), WasmlineComponentValue.S32(2)),
+        ),
+    ) {
+        is WasmlineCallResult.Success -> useValues(call.value.values)
+        is WasmlineCallResult.Failure -> log(call.error.message)
+    }
+
+    is WasmlineLoadResult.Failure -> log(result.cause)
+}
+```
+
+`CORE_WASM` 与 `WASMLINE_CORE_V1` 是默认服务路径。`CORE_WASM` 与 `RAW_EXPORT` 用于具有明确数值 ABI 的 Core Wasm 模块。`COMPONENT_MODEL` 与 `COMPONENT_EXPORT` 用于加载前已经编译完成的 component binary。Wasmline 不执行 WIT-to-Wasm、WIT-Kotlin-to-component、`wit-bindgen` 或 adapter 生成。Component 调用使用 Component Model 值，不使用 Core 线性内存，也不使用 Core 响应帧。
+
+## 结果与异常边界
+
+当普通调用错误需要作为数据处理时，使用 `callResult`、`invokeRawResult` 和 `invokeComponentResult`。结果只有 `Success(value)` 或 `Failure(error)` 两种状态；分支判断应使用 `error.code`，不应解析错误消息。
+
+没有绑定 handler 的 action 返回 `ACTION_NOT_BOUND`。它不表示为空 payload，也不会导致宿主崩溃。未知 action、无效 payload、handler 失败、trap、传输失败和响应帧格式错误，在运行时能够构造结果时都返回失败结果。
+
+`getOrNull()` 与 `errorOrNull()` 用于无异常读取。`throwOnFailure()` 是为需要旧式异常调用方式的调用方提供的显式适配，不属于默认结果路径。违反编程契约、运行时对象状态无效，或无法可靠构造结果对象时，才适合使用异常。
+
+Core 响应帧使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别帧格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不会增加该 Core 响应帧。
+
+## 稳定错误码
+
+错误码是稳定标识符。应用程序应根据错误码分支，错误消息只用于诊断。
+
+| 错误码 | 数值 | 含义 |
+|---|---:|---|
+| `ACTION_NOT_BOUND` | `1001` | 当前 action 作用域没有绑定 handler。 |
+| `UNKNOWN_ACTION` | `1002` | action 名称未注册。 |
+| `INVALID_PAYLOAD` | `1003` | payload 或 typed 参数无效。 |
+| `HANDLER_FAILED` | `1004` | handler 执行失败。 |
+| `SERIALIZATION_FAILED` | `1005` | 业务数据无法序列化。 |
+| `ENGINE_NOT_INITIALIZED` | `2001` | Wasmtime engine 未初始化。 |
+| `CORE_TRAP` | `2002` | Core Wasm 执行发生 trap。 |
+| `CORE_EXPORT_NOT_FOUND` | `2003` | Core export 不存在。 |
+| `INVOCATION_PROTOCOL_MISMATCH` | `2004` | 描述对象与调用 API 不匹配。 |
+| `COMPONENT_TRAP` | `2101` | Component Model 执行发生 trap。 |
+| `COMPONENT_EXPORT_NOT_FOUND` | `2102` | Component export 不存在。 |
+| `COMPONENT_CALL_FAILED` | `2103` | Component 调用未成功返回。 |
+| `RESPONSE_MALFORMED` | `3001` | 响应帧格式无效。 |
+| `RESPONSE_MISSING` | `3002` | 没有返回响应。 |
+| `TRANSPORT_FAILURE` | `3003` | 平台 bridge 失败。 |
+| `RESPONSE_UNSUPPORTED_VERSION` | `3004` | Core 响应帧版本不受支持。 |
+
 ## 示例应用
 
 参考实现位于 `wasmline-samples/kotlin/`：

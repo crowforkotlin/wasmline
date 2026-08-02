@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORE_SRC="${PROJECT_ROOT}/wasmline-core/src"
-IOS_SRC="${SCRIPT_DIR}/src/iosMain/native"
+IOS_SRC="${PROJECT_ROOT}/wasmline-multiplatform/wasmline/src/iosMain/native"
 
 # Resolve wasmtime version tag (e.g. "release-v45.0.5")
 if [ -z "${WASMTIME_VERSION:-}" ]; then
@@ -49,7 +49,7 @@ if [ ! -f "${LIB_DIR}/libwasmtime.a" ]; then
 fi
 
 INCLUDE_DIRS="-I${PROJECT_ROOT}/wasmline-core/include \
-              -I${PROJECT_ROOT}/wasmline-core/include/extensions \
+              -I${PROJECT_ROOT}/wasmline-core/src \
               -I${IOS_SRC} \
               -I${HEADER_DIR}"
 
@@ -58,11 +58,20 @@ mkdir -p "${BUILD_DIR}"
 ARCH="arm64"
 
 SOURCES=(
-    "$CORE_SRC/Api.cpp"
-    "$CORE_SRC/Engine.cpp"
-    "$CORE_SRC/Module.cpp"
-    "$CORE_SRC/Session.cpp"
-    "$CORE_SRC/extensions/FileUtils.cpp"
+    "$CORE_SRC/api/Api.cpp"
+    "$CORE_SRC/runtime/Component.cpp"
+    "$CORE_SRC/runtime/ComponentSession.cpp"
+    "$CORE_SRC/runtime/Engine.cpp"
+    "$CORE_SRC/runtime/Module.cpp"
+    "$CORE_SRC/runtime/RawModuleSession.cpp"
+    "$CORE_SRC/runtime/Session.cpp"
+    "$CORE_SRC/value/ComponentValue.cpp"
+    "$CORE_SRC/invocation/InvocationResult.cpp"
+    "$CORE_SRC/invocation/TypedInvocationCodec.cpp"
+    "$CORE_SRC/protocol/WasmlineProtocol.cpp"
+    "$CORE_SRC/io/FileIO.cpp"
+    "$CORE_SRC/wasmtime/WasmtimeMessage.cpp"
+    "$CORE_SRC/wasi/WasiConfig.cpp"
     "$IOS_SRC/WasmlineNative.cpp"
     "$IOS_SRC/IosLogger.cpp"
 )

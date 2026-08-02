@@ -8,6 +8,7 @@ import crow.wasmline.loader.WasmlineSourceResolution
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.toDescriptor
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.toByteString
@@ -26,6 +27,8 @@ internal object WasmlineLocalPackageResolution {
             "No compatible artifact found in local package '${source.path}' for host ${describe(currentHostArtifactTarget)}.",
         )
         val artifactPath = resolveArtifactPath(manifestPath, artifact.url)
+        val descriptor = artifact.toDescriptor(artifactPath)
+        descriptor.validationError()?.let { return failure("Invalid artifact descriptor for '${artifact.url}': $it") }
         if (!hostPathExists(artifactPath)) {
             return failure(
                 "Artifact '${artifact.url}' referenced by local package '${source.path}' was not found at '$artifactPath'.",
@@ -43,7 +46,7 @@ internal object WasmlineLocalPackageResolution {
         }
 
         return WasmlineSourceResolution.ContinueWith(
-            WasmlineSource.LocalArtifactPath(path = artifactPath),
+            WasmlineSource.LocalArtifactPath(path = artifactPath, descriptor = descriptor),
         )
     }
 

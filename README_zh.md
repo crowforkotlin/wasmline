@@ -109,6 +109,55 @@ module.close()
 > [!NOTE]
 > `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。编译单元未应用 `wasmline-kotlin-plugin` 时，这些调用会在运行时抛出 `UnsupportedOperationException`。
 
+## 执行模型与调用结果
+
+Wasmline 支持三种显式的宿主调用路径：
+
+| 执行模型 | 调用协议 | 输入 | 结果 |
+|---|---|---|---|
+| `CORE_WASM` | `WASMLINE_CORE_V1` | action 名称与字节 payload | `WasmlineCallResult<ByteArray>` |
+| `CORE_WASM` | `RAW_EXPORT` | 已声明的 Core Wasm 数值 | `WasmlineCallResult<WasmlineRawCallResult>` |
+| `COMPONENT_MODEL` | `COMPONENT_EXPORT` | 已声明的 Component Model 值 | `WasmlineCallResult<WasmlineComponentCallResult>` |
+
+Component Model 路径直接加载已经编译完成的 component binary。Wasmline 不编译 WIT、WIT-Kotlin，也不生成 component adapter。需要时，`contractMetadata` 用于描述调用契约；它不是 WIT 编译输入。
+
+当前浏览器运行时支持 Core Wasmline bridge。Raw Export 和 Component Model typed 调用由可以使用 Wasmtime C API 的 native 宿主后端提供。
+
+Core Wasmline 调用通过结果返回普通调用错误，不使用异常作为普通控制流：
+
+```kotlin
+import crow.wasmline.callResult
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
+
+when (val result = module.callResult("echo", payload)) {
+    is WasmlineCallResult.Success -> usePayload(result.value)
+    is WasmlineCallResult.Failure -> {
+        if (result.error.code == WasmlineErrorCode.ACTION_NOT_BOUND) {
+            log("插件未绑定该 action")
+        }
+        log(result.error.message)
+    }
+}
+```
+
+未绑定 action 返回 `ACTION_NOT_BOUND`，不返回空 payload，也不会使宿主崩溃。未知 action、无效 payload、执行 trap 和 handler 失败也遵循结果优先规则。`throwOnFailure()` 只为明确选择异常风格的调用方提供适配，不是结果 API 的默认行为。
+
+`WASMLINE_CORE_V1` 响应帧以四字节 `WLMF` magic 标记开始，并使用一个字节的 `frameVersion`，当前值为 `1`。magic 只用于识别帧格式，不提供安全校验。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
+
+直接调用时，描述对象必须同时声明执行模型和调用协议：
+
+```kotlin
+val component = WasmlineLoader.load(
+    WasmlineArtifactDescriptor(
+        path = "component.wasm",
+        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+        exportName = "add",
+    ),
+)
+```
+
 ## 支持平台
 
 | 平台 | 架构 | 产物支持 | 加载方式 |

@@ -1,6 +1,8 @@
 /**
- * WasmlineNative.h
- * C bridge declarations for the iOS Wasmline host runtime.
+ * Defines the iOS C bridge for the Wasmline native API.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
  */
 #ifndef WASMLINE_NATIVE_H
 #define WASMLINE_NATIVE_H
@@ -12,53 +14,58 @@
 extern "C" {
 #endif
 
-/**
- * Initializes the global engine with the default backend.
- */
+/** Initializes the global engine with the default backend. */
 void wasmline_init_engine();
 
-/**
- * Eagerly initializes the global engine for a specific backend.
- */
+/** Initializes the global engine for the selected backend. */
 void wasmline_warmup_engine(bool usePulley);
 
-/**
- * Releases the global engine and cached runtime state.
- */
+/** Releases the global engine and cached runtime state. */
 void wasmline_release_engine();
 
-/**
- * Loads a prepared local module artifact.
- */
+/** Loads a Core Wasm artifact. */
 bool wasmline_load_module(const char* key, const char* path, bool isUnsafe);
 
-/**
- * Releases a previously loaded module.
- */
+/** Loads a Component Model artifact. */
+bool wasmline_load_component(const char* key, const char* path, bool isUnsafe);
+
+/** Releases a previously loaded artifact. */
 void wasmline_release_module(const char* key);
 
-/**
- * Invokes the inbound entrypoint of a loaded module.
- */
+/** Invokes the Core Wasmline entry point. */
 char* wasmline_invoke_inbound(const char* key,
                               const char* action, size_t actionLen,
                               const void* data,
                               size_t dataLen,
                               size_t* outLen);
 
-/**
- * Releases memory returned by the native bridge.
- */
+/** Invokes a raw Core Wasm export with typed values. */
+char* wasmline_invoke_raw(const char* key,
+                           const char* exportName,
+                           size_t exportNameLen,
+                           const void* data,
+                           size_t dataLen,
+                           size_t* outLen);
+
+/** Invokes a Component Model export with typed values. */
+char* wasmline_invoke_component(const char* key,
+                                const char* exportName,
+                                size_t exportNameLen,
+                                const void* data,
+                                size_t dataLen,
+                                size_t* outLen);
+
+/** Releases memory returned by the native bridge. */
 void wasmline_free_memory(char* ptr);
 
-/**
- * Native callback signature used for outbound host calls.
- */
-typedef char* (*OutboundCallback)(const char* action, size_t actionLen, const char* payload, size_t payloadLen);
+/** Defines the callback signature for outbound host calls. */
+typedef char* (*OutboundCallback)(const char* action,
+                                  size_t actionLen,
+                                  const char* payload,
+                                  size_t payloadLen,
+                                  size_t* outLen);
 
-/**
- * Registers the outbound callback for a loaded module.
- */
+/** Registers the outbound callback for an artifact. */
 void wasmline_set_outbound_handler(const char* key, OutboundCallback callback);
 
 #ifdef __cplusplus

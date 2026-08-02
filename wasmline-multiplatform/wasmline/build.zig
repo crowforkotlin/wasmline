@@ -16,11 +16,20 @@ const CPP_FLAGS: []const []const u8 = &.{
 };
 
 const EXTERNAL_SOURCES: []const []const u8 = &.{
-    "src/extensions/FileUtils.cpp",
-    "src/Api.cpp",
-    "src/Engine.cpp",
-    "src/Module.cpp",
-    "src/Session.cpp",
+    "src/api/Api.cpp",
+    "src/runtime/Component.cpp",
+    "src/runtime/ComponentSession.cpp",
+    "src/runtime/Engine.cpp",
+    "src/runtime/Module.cpp",
+    "src/runtime/RawModuleSession.cpp",
+    "src/runtime/Session.cpp",
+    "src/value/ComponentValue.cpp",
+    "src/invocation/InvocationResult.cpp",
+    "src/invocation/TypedInvocationCodec.cpp",
+    "src/protocol/WasmlineProtocol.cpp",
+    "src/io/FileIO.cpp",
+    "src/wasmtime/WasmtimeMessage.cpp",
+    "src/wasi/WasiConfig.cpp",
 };
 
 // ============================================================================
@@ -145,11 +154,10 @@ fn addIncludePaths(
     java_home: []const u8,
 ) void {
     lib.root_module.addIncludePath(b.path("src/jniMain/native"));
-    lib.root_module.addIncludePath(b.path("src/jniMain/native"));
     lib.root_module.addIncludePath(b.path("src/jvmMain/native")); // ConsoleLogger might be here
 
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include" }) });
-    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include/extensions" }) });
+    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "src" }) });
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ wasmtime_dir, "include" }) });
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include" }) });
 

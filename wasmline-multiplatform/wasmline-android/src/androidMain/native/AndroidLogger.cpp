@@ -1,4 +1,11 @@
-#include "Logger.h"
+/**
+ * Implements the Android native logger.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
+
+#include "logging/NativeLogger.h"
 
 #if WASM_LOGS_ENABLED
 

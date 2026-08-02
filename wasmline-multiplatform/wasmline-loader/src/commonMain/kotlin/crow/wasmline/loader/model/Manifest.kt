@@ -3,6 +3,8 @@
 
 package crow.wasmline.loader.model
 
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
@@ -81,6 +83,10 @@ data class WasmlineArtifact(
     @property:ProtoNumber(5) val targetOs: String? = null,
     @property:ProtoNumber(6) val targetCompilerVersion: String? = null,
     @property:ProtoNumber(7) val is64Bit: Boolean = true,
+    @property:ProtoNumber(8) val executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
+    @property:ProtoNumber(9) val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+    @property:ProtoNumber(10) val exportName: String? = null,
+    @property:ProtoNumber(11) val contractMetadata: Map<String, String> = emptyMap(),
 )
 
 /**
