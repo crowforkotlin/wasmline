@@ -1,3 +1,8 @@
+---
+title: Wasmtime Download Guide
+description: Wasmtime download configuration and troubleshooting for the Wasmline Gradle plugin
+---
+
 # Wasmline Gradle Plugin - Wasmtime Download 完整指南
 
 ## 📋 目录

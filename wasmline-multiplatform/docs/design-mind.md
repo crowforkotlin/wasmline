@@ -36,7 +36,7 @@
 
 ## Module Functional Mapping
 
-- wasmline-core (C/C++ · Zig 0.15.1)
+- wasmline-core (C/C++ · Zig 0.16.0)
   - Engine.cpp: Wasmtime Engine singleton — global init / shutdown
   - Module.cpp: AOT and Pulley module compilation — keyed module cache
   - Session.cpp: per-invocation isolated linear memory region — execution context lifecycle

@@ -2,18 +2,12 @@
 
 package crow.wasmline.test.wasmtime
 
-import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.link
-import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.wasmlineBootstrap
-import crow.wasmline.wasmlineShutdown
-import crow.wasmline.wasmlineWarmup
+import crow.wasmline.test.plugin.MathService
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 /**
  * End-to-end tests for MathService using a real compiled host artifact.
@@ -26,36 +20,16 @@ import kotlin.test.assertTrue
  */
 class NativeMathServiceTest {
 
-    companion object {
-        private val ARTIFACT_PATH = requireNotNull(System.getProperty("wasmline.plugin.artifact.path")) {
-            "Missing wasmline plugin artifact path."
-        }
-    }
-
     /**
      * Tests loading MathService from the host artifact and calling add.
      */
     @Test
     fun loadsAndCallsAddFromArtifact() {
-        val artifactPath = findArtifact(ARTIFACT_PATH)
-
-        wasmlineBootstrap()
-        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-
-        try {
-            val wasmline = assertIs<WasmlineLoadResult.Success>(
-                WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),
-            ).wasmline
-            try {
-                val mathService = wasmline.link<crow.wasmline.test.plugin.MathService>()
-                assertEquals(42, mathService.add(20, 22))
-                assertEquals(0, mathService.add(-5, 5))
-                assertEquals(100, mathService.add(100, 0))
-            } finally {
-                wasmline.close()
-            }
-        } finally {
-            wasmlineShutdown()
+        NativePluginTestSupport.withLoadedPlugin { wasmline ->
+            val mathService = wasmline.link<MathService>()
+            assertEquals(42, mathService.add(20, 22))
+            assertEquals(0, mathService.add(-5, 5))
+            assertEquals(100, mathService.add(100, 0))
         }
     }
 
@@ -64,29 +38,15 @@ class NativeMathServiceTest {
      */
     @Test
     fun loadsAndCallsSubtractFromCraneliftArtifact() {
-        val artifactPath = findArtifact(ARTIFACT_PATH)
+        NativePluginTestSupport.withLoadedPlugin(supportConcurrent = true) { wasmline ->
+            val mathService = wasmline.link<MathService>()
+            assertEquals(8, mathService.subtract(15, 7))
+            assertEquals(-3, mathService.subtract(2, 5))
+            assertEquals(0, mathService.subtract(42, 42))
 
-        wasmlineBootstrap()
-        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-
-        try {
-            val wasmline = assertIs<WasmlineLoadResult.Success>(
-                WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = true)),
-            ).wasmline
-            try {
-                val mathService = wasmline.link<crow.wasmline.test.plugin.MathService>()
-                assertEquals(8, mathService.subtract(15, 7))
-                assertEquals(-3, mathService.subtract(2, 5))
-                assertEquals(0, mathService.subtract(42, 42))
-
-                assertEquals(50L, mathService.multiply(5L, 10L))
-                assertEquals(-20L, mathService.multiply(-4L, 5L))
-                assertEquals(0L, mathService.multiply(100L, 0L))
-            } finally {
-                wasmline.close()
-            }
-        } finally {
-            wasmlineShutdown()
+            assertEquals(50L, mathService.multiply(5L, 10L))
+            assertEquals(-20L, mathService.multiply(-4L, 5L))
+            assertEquals(0L, mathService.multiply(100L, 0L))
         }
     }
 
@@ -95,33 +55,34 @@ class NativeMathServiceTest {
      */
     @Test
     fun performsMultipleCallsToSameService() {
-        val artifactPath = findArtifact(ARTIFACT_PATH)
-
-        wasmlineBootstrap()
-        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-
-        try {
-            val wasmline = assertIs<WasmlineLoadResult.Success>(
-                WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),
-            ).wasmline
-            try {
-                val mathService = wasmline.link<crow.wasmline.test.plugin.MathService>()
-                repeat(10) { i ->
-                    val a = i * 10
-                    val b = i * 5
-                    assertEquals(a + b, mathService.add(a, b))
-                }
-            } finally {
-                wasmline.close()
+        NativePluginTestSupport.withLoadedPlugin { wasmline ->
+            val mathService = wasmline.link<MathService>()
+            repeat(10) { i ->
+                val a = i * 10
+                val b = i * 5
+                assertEquals(a + b, mathService.add(a, b))
             }
-        } finally {
-            wasmlineShutdown()
         }
     }
 
-    private fun findArtifact(path: String): String {
-        val file = java.io.File(path)
-        assertTrue(file.exists(), "Artifact not found: $path. Run './gradlew jvmTest' first.")
-        return file.absolutePath
+    /**
+     * Tests concurrent calls through the thread-safe native loading path.
+     */
+    @Test
+    fun performsConcurrentCallsWhenEnabled() {
+        NativePluginTestSupport.withLoadedPlugin(supportConcurrent = true) { wasmline ->
+            val mathService = wasmline.link<MathService>()
+            val executor = Executors.newFixedThreadPool(4)
+            try {
+                val tasks = (0 until 16).map { index ->
+                    Callable { mathService.add(index, index * 2) }
+                }
+                executor.invokeAll(tasks).forEachIndexed { index, result ->
+                    assertEquals(index * 3, result.get())
+                }
+            } finally {
+                executor.shutdownNow()
+            }
+        }
     }
 }

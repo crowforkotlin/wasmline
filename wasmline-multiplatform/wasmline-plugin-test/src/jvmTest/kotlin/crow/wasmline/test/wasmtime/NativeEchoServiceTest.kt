@@ -1,17 +1,9 @@
 package crow.wasmline.test.wasmtime
 
-import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.link
-import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.wasmlineBootstrap
-import crow.wasmline.wasmlineShutdown
-import crow.wasmline.wasmlineWarmup
+import crow.wasmline.test.plugin.EchoService
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 /**
  * End-to-end tests for EchoService validating string round-trip communication.
@@ -21,34 +13,15 @@ import kotlin.test.assertTrue
  */
 class NativeEchoServiceTest {
 
-    companion object {
-        private val ARTIFACT_PATH = requireNotNull(System.getProperty("wasmline.plugin.artifact.path")) {
-            "Missing wasmline plugin artifact path."
-        }
-    }
-
     /**
      * Tests echoing simple strings.
      */
     @Test
     fun echoesSimpleString() {
-        val artifactPath = findArtifact()
-
-        wasmlineBootstrap()
-        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-        try {
-            val wasmline = assertIs<WasmlineLoadResult.Success>(
-                WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),
-            ).wasmline
-            try {
-                val echoService = wasmline.link<crow.wasmline.test.plugin.EchoService>()
-                assertEquals("Hello, World!", echoService.echo("Hello, World!"))
-                assertEquals("Wasmline", echoService.echo("Wasmline"))
-            } finally {
-                wasmline.close()
-            }
-        } finally {
-            wasmlineShutdown()
+        NativePluginTestSupport.withLoadedPlugin { wasmline ->
+            val echoService = wasmline.link<EchoService>()
+            assertEquals("Hello, World!", echoService.echo("Hello, World!"))
+            assertEquals("Wasmline", echoService.echo("Wasmline"))
         }
     }
 
@@ -57,29 +30,10 @@ class NativeEchoServiceTest {
      */
     @Test
     fun echoesWithPrefix() {
-        val artifactPath = findArtifact()
-
-        wasmlineBootstrap()
-        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-        try {
-            val wasmline = assertIs<WasmlineLoadResult.Success>(
-                WasmlineLoader.load(artifactPath, WasmlineConfig(supportConcurrent = false)),
-            ).wasmline
-            try {
-                val echoService = wasmline.link<crow.wasmline.test.plugin.EchoService>()
-                assertEquals("Prefix: Test Message", echoService.echoWithPrefix("Prefix: ", "Test Message"))
-                assertEquals("[INFO] Log entry", echoService.echoWithPrefix("[INFO] ", "Log entry"))
-            } finally {
-                wasmline.close()
-            }
-        } finally {
-            wasmlineShutdown()
+        NativePluginTestSupport.withLoadedPlugin { wasmline ->
+            val echoService = wasmline.link<EchoService>()
+            assertEquals("Prefix: Test Message", echoService.echoWithPrefix("Prefix: ", "Test Message"))
+            assertEquals("[INFO] Log entry", echoService.echoWithPrefix("[INFO] ", "Log entry"))
         }
-    }
-
-    private fun findArtifact(): String {
-        val path = ARTIFACT_PATH
-        assertTrue(java.io.File(path).exists(), "Artifact not found: $path. Run './gradlew jvmTest' first.")
-        return path
     }
 }

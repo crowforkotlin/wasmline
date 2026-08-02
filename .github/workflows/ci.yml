@@ -15,7 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ZIG_VERSION: "0.15.1"
+  ZIG_VERSION: "0.16.0"
+  GITHUB_TOKEN: ${{ github.token }}
 
 jobs:
   lint-kotlin:
@@ -63,20 +64,21 @@ jobs:
 
       # ── Toolchain Setup ──────────────────────────────────────────
 
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-21-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
       - name: Setup JBR 21
         uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           distribution: jetbrains
           java-version: 21.x
           token: ${{ github.token }}
-
-      - name: Cache JBR 21
-        id: cache-jbr-21
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.JAVA_HOME }}
-          key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -155,20 +157,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-21-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
       - name: Setup JBR 21
         uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           distribution: jetbrains
           java-version: 21.x
           token: ${{ github.token }}
-
-      - name: Cache JBR 21
-        id: cache-jbr-21
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.JAVA_HOME }}
-          key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -203,20 +206,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-21-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
       - name: Setup JBR 21
         uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           distribution: jetbrains
           java-version: 21.x
           token: ${{ github.token }}
-
-      - name: Cache JBR 21
-        id: cache-jbr-21
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.JAVA_HOME }}
-          key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -235,19 +239,6 @@ jobs:
                     :wasmline-loader:jsBrowserTest \
                     --no-daemon
 
-      - name: Upload Web Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: web-test-results-${{ github.run_id }}
-          path: |
-            wasmline-multiplatform/wasmline/build/reports/tests/*Test/index.html
-            wasmline-multiplatform/wasmline/build/test-results/*/TEST-*.xml
-            wasmline-multiplatform/wasmline-loader/build/reports/tests/*Test/index.html
-            wasmline-multiplatform/wasmline-loader/build/test-results/*/TEST-*.xml
-          retention-days: 7
-          if-no-files-found: warn
-
   # ───────────────────────────────────────────────────────────────
   # JOB 6: wasmWasi Tests (Node.js)
   # ───────────────────────────────────────────────────────────────
@@ -260,20 +251,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-21-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
       - name: Setup JBR 21
         uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           distribution: jetbrains
           java-version: 21.x
           token: ${{ github.token }}
-
-      - name: Cache JBR 21
-        id: cache-jbr-21
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.JAVA_HOME }}
-          key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -296,20 +288,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-21-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
       - name: Setup JBR 21
         uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           distribution: jetbrains
           java-version: 21.x
           token: ${{ github.token }}
-
-      - name: Cache JBR 21
-        id: cache-jbr-21
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.JAVA_HOME }}
-          key: jbr-21-${{ runner.os }}-${{ github.sha }}
-          fail-on-cache-miss: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -340,11 +333,60 @@ jobs:
                     --no-daemon
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 7: Publish to Maven Central (placeholder, runs after all jobs)
+  # JOB 8: Wasmline Plugin Integration Tests
+  # ───────────────────────────────────────────────────────────────
+
+  test-plugin:
+    needs: build-assets
+    runs-on: ubuntu-latest
+    name: test-plugin
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-21-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          distribution: jetbrains
+          java-version: 21.x
+          token: ${{ github.token }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Restore native assets from cache
+        uses: actions/cache/restore@v5
+        with:
+          path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
+          key: native-assets-${{ github.run_id }}
+
+      - name: Cache plugin Wasmtime binary
+        uses: actions/cache@v5
+        with:
+          path: wasmline-multiplatform/wasmline-plugin-test/build/wasmline/wasmtime/
+          key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('scripts/versions.json', 'wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts') }}
+
+      - name: Run plugin integration tests
+        working-directory: wasmline-multiplatform/wasmline-plugin-test
+        run: ./gradlew jvmTest --no-daemon -Pgithub.token="${{ github.token }}"
+
+  # ───────────────────────────────────────────────────────────────
+  # JOB 9: Publish to Maven Central (placeholder, runs after all jobs)
   # ───────────────────────────────────────────────────────────────
 
   publish:
-    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios]
+    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
     runs-on: ubuntu-latest
     name: publish
 
@@ -353,11 +395,11 @@ jobs:
         run: echo "Publish to Maven Central — not yet implemented."
 
   # ───────────────────────────────────────────────────────────────
-  # JOB 8: GitHub Release (placeholder, runs after all jobs)
+  # JOB 10: GitHub Release (placeholder, runs after all jobs)
   # ───────────────────────────────────────────────────────────────
 
   release:
-    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios]
+    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
     runs-on: ubuntu-latest
     name: release
 

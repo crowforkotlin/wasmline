@@ -29,7 +29,7 @@ PLATFORM_TARGETS=(
     "pulley|windows/x64|Windows x64 (Pulley)|x86_64-windows-pulley"
 )
 REQUIRED_JBR_VERSION="21"
-REQUIRED_ZIG_VERSION="0.15.1"
+REQUIRED_ZIG_VERSION="0.16.0"
 
 # Inline version resolution (doctor.sh is standalone, does not source context.sh)
 resolve_wasmtime_version() {

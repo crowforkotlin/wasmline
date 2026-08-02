@@ -167,21 +167,21 @@ build_jvm() {
     echo "  [JVM] $variant/$plat_subdir (zig -Dtarget=$zig_target) ..."
 
     # Cross-compile via zig
-    (cd "$zig_dir" && zig build \
+    if ! (cd "$zig_dir" && zig build \
       -Dtarget="$zig_target" \
       -Dwasmtime-version="$WASMTIME_TAG" \
       -Dwasmtime-variant="$variant" \
-      --release=small 2>&1) || {
-      echo "  WARN: zig build failed for $zig_target, continuing..." >&2
-      continue
-    }
+      --release=small 2>&1); then
+      echo "  ERROR: zig build failed for $zig_target" >&2
+      return 1
+    fi
 
     local zig_out="$zig_dir/zig-out/jni/$arch_name"
     local so_file="$zig_out/libwasmline.$ext"
 
     if [[ ! -f "$so_file" ]]; then
-      echo "  WARN: zig output missing: $so_file" >&2
-      continue
+      echo "  ERROR: zig output missing: $so_file" >&2
+      return 1
     fi
 
     # Deploy to engine module (platform/$arch structure for variant publishing)

@@ -1,6 +1,7 @@
 package crow.wasmline.test.plugin
 
 import crow.wasmline.WasmlineService
+import kotlinx.serialization.Serializable
 
 /**
  * Input data class for calculator operations.
@@ -8,6 +9,7 @@ import crow.wasmline.WasmlineService
  * 2026-07-30
  * @author crowforkotlin
  */
+@Serializable
 data class CalculatorInput(val numbers: List<Int>, val operation: String)
 
 /**
@@ -16,6 +18,7 @@ data class CalculatorInput(val numbers: List<Int>, val operation: String)
  * 2026-07-30
  * @author crowforkotlin
  */
+@Serializable
 data class CalculatorOutput(val result: Int)
 
 /**

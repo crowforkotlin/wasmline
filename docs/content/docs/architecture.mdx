@@ -11,7 +11,7 @@ description: Per-platform execution stacks, module dependencies, and repository 
 
 ## Execution Stacks
 
-Wasmline exposes a single API from `commonMain` / `hostMain` and selects an execution path per target platform. On native targets (Android, iOS, macOS, Linux, Windows), plugins execute through `wasmline-core` (C/C++, compiled with Zig 0.15.1) into the wasmtime C-API. On Web targets (Kotlin/JS, Kotlin/WasmJS), plugins execute through an inline JS runtime on the browser-native WebAssembly API — wasmtime is not involved.
+Wasmline exposes a single API from `commonMain` / `hostMain` and selects an execution path per target platform. On native targets (Android, iOS, macOS, Linux, Windows), plugins execute through `wasmline-core` (C/C++, compiled with Zig 0.16.0) into the wasmtime C-API. On Web targets (Kotlin/JS, Kotlin/WasmJS), plugins execute through an inline JS runtime on the browser-native WebAssembly API — wasmtime is not involved.
 
 ### Native Target Stack — Android · iOS · macOS · Linux · Windows
 
@@ -26,7 +26,7 @@ Platform actual  (jniMain / iosMain)
         │  JNI external declarations          — Android, macOS, Linux, Windows
         │  Kotlin/Native C Interop (.def)     — iOS
         ▼
-wasmline-core  (C/C++ · Zig 0.15.1)
+wasmline-core  (C/C++ · Zig 0.16.0)
         │  Engine.cpp   — wasmtime Engine singleton; global init / shutdown
         │  Module.cpp   — AOT / Pulley module compilation; keyed module cache
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context

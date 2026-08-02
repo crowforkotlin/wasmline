@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.okio.core)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(projects.wasmlinePluginCore)
 }
 
 evaluationDependsOn(":wasmline-plugin-core")

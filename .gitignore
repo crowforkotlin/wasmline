@@ -42,7 +42,6 @@
 **/dist/
 **/*.egg-info/
 
-!wasmline-multiplatform/wasmline/src/jvmTest/resources/fixtures/component-export.wasm
 **/*.wasm
 **/*.cwasm
 **/*.pwasm
@@ -61,6 +60,8 @@
 **/*.db
 **/*.tar.xz
 **/*.log
+
+!wasmline-multiplatform/wasmline/src/jvmTest/resources/fixtures/component-export.wasm
 
 /AGENTS.md
 /build/platforms/

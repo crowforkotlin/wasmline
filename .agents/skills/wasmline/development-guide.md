@@ -19,7 +19,7 @@ Details:
 - If JBR 21 is unavailable → stop all Gradle operations.
 - Do not hardcode local JBR paths into any file.
 - Reports Wasmtime platform asset status under `build/platforms/` (WARNING only, not a hard block).
-- Reports Zig version (requires **0.15.1**) and desktop JNI artifact status.
+- Reports Zig version (requires **0.16.0**) and desktop JNI artifact status.
 
 ---
 
@@ -124,7 +124,7 @@ zig build --release=small -p src/jvmMain/resources
 
 - `src/jvmMain/resources/jni/` = Zig install output, not a stable source entry.
 - Default output: `zig-out/jni/`.
-- Requires Zig **0.15.1**.
+- Requires Zig **0.16.0**.
 
 ---
 
@@ -173,7 +173,7 @@ cd wasmline-multiplatform
 # Diagnostic tests
 ./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
 
-# Desktop JNI (requires Zig 0.15.1, explicit instruction)
+# Desktop JNI (requires Zig 0.16.0, explicit instruction)
 cd wasmline-multiplatform/wasmline
 zig build --release=small -p src/jvmMain/resources
 

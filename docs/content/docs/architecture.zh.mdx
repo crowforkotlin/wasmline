@@ -11,7 +11,7 @@ description: 各平台执行栈、模块依赖关系与仓库目录结构
 
 ## 执行栈
 
-Wasmline 从 `commonMain` / `hostMain` 暴露统一 API，并按目标平台选择执行路径：原生目标（Android、iOS、macOS、Linux、Windows）经 `wasmline-core`（C/C++，Zig 0.15.1 编译）调用 wasmtime C-API 执行插件；Web 目标（Kotlin/JS、Kotlin/WasmJS）经内联 JS 运行时调用浏览器原生 WebAssembly API 执行插件，不经过 wasmtime。
+Wasmline 从 `commonMain` / `hostMain` 暴露统一 API，并按目标平台选择执行路径：原生目标（Android、iOS、macOS、Linux、Windows）经 `wasmline-core`（C/C++，Zig 0.16.0 编译）调用 wasmtime C-API 执行插件；Web 目标（Kotlin/JS、Kotlin/WasmJS）经内联 JS 运行时调用浏览器原生 WebAssembly API 执行插件，不经过 wasmtime。
 
 ### 原生目标栈 — Android · iOS · macOS · Linux · Windows
 
@@ -26,7 +26,7 @@ Platform actual  (jniMain / iosMain)
         │  JNI external declarations          — Android, macOS, Linux, Windows
         │  Kotlin/Native C Interop (.def)     — iOS
         ▼
-wasmline-core  (C/C++ · Zig 0.15.1)
+wasmline-core  (C/C++ · Zig 0.16.0)
         │  Engine.cpp   — wasmtime Engine singleton; global init / shutdown
         │  Module.cpp   — AOT / Pulley module compilation; keyed module cache
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context

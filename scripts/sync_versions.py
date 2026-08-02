@@ -305,6 +305,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r'wasmtime-v[0-9]+\.[0-9]+\.[0-9]+-x86_64-linux-min',
                     lambda v: f"wasmtime-v{v['wasmtime_version']}-x86_64-linux-min",
+                    min_count=0,
                 ),
             ),
         ),
@@ -314,6 +315,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r"# v[0-9]+\.[0-9]+\.[0-9]+\+ min artifact extracts to a -min suffixed directory",
                     lambda v: f"# v{v['wasmtime_version']}+ min artifact extracts to a -min suffixed directory",
+                    min_count=0,
                 ),
             ),
         ),
