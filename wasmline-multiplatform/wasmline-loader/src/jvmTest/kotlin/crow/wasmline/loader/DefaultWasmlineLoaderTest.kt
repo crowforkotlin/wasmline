@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
+/** Verifies top-level loader routing and resolver delegation failures. */
 class DefaultWasmlineLoaderTest {
 
     @Test

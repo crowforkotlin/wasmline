@@ -28,9 +28,8 @@ interface InvalidService {  // Missing : WasmlineService
 
 | File | Description | Expected Behavior |
 |------|-------------|-------------------|
-| `01_notWasmlineService.kt` | Non-service class | Plugin should ignore |
-| `02_emptyWasmlineService.kt` | Empty service interface | Valid but no methods |
-| `03_typeMismatchExample.kt` | Multi-module with errors | Type checking |
+| `01_typeMismatch.kt` | Wasmline service fixture with a type mismatch | Reports `TYPE_MISMATCH` |
+| `02_unresolvedReference.kt` | Wasmline service fixture with a missing symbol | Reports `UNRESOLVED_REFERENCE` |
 
 ---
 
@@ -79,7 +78,7 @@ cd wasmline-multiplatform
 Run diagnostic tests:
 
 ```bash
-./gradlew :wasmline-kotlin-plugin:test --tests '*JvmDiagnosticTestGenerated*'
+./gradlew :wasmline-kotlin-plugin:test --tests '*JvmDiagnosticsTestGenerated*'
 ```
 
 ---

@@ -1,4 +1,4 @@
 {
   "title": "Docs",
-  "pages": ["index", "installation", "building-from-source", "usage", "cli", "architecture", "compiler-plugin", "faq", "mdx-compponent"]
+  "pages": ["index", "installation", "building-from-source", "usage", "testing", "cli", "architecture", "compiler-plugin", "faq", "mdx-compponent"]
 }

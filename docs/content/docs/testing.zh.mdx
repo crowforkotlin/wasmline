@@ -1,0 +1,74 @@
+---
+title: 测试
+description: Wasmline 测试矩阵、生成产物规则与本地验证方式
+---
+
+# 测试
+
+Wasmline 按边界拆分测试。执行任何 Gradle 命令前，先在仓库根目录运行一次环境预检：
+
+```bash
+bash ./scripts/doctor.sh
+```
+
+## 测试矩阵
+
+| 范围 | 模块 | 主要覆盖 | 命令 |
+|---|---|---|---|
+| Common runtime | `wasmline` | 响应帧、descriptor 与序列化 | `./gradlew :wasmline:jvmTest` |
+| Host runtime | `wasmline` | 本地 artifact bridge、typed raw/component 调用与宿主 API 编译 | `./gradlew :wasmline:jvmTest` |
+| Native Wasmtime | `wasmline` | JNI 生命周期、产物加载、raw export、component export | `./gradlew :wasmline:jvmTest` |
+| Kotlin/JS | `wasmline` | WebAssembly imports、值、内存与 exports | `./gradlew :wasmline:jsBrowserTest` |
+| Kotlin/WasmJS | `wasmline` | WebAssembly imports、值、内存与 exports | `./gradlew :wasmline:wasmJsBrowserTest` |
+| Kotlin/WasmWasi | `wasmline` | WASI 运行时集成 | `./gradlew :wasmline:wasmWasiNodeTest` |
+| Loader | `wasmline-loader` | manifest、签名、本地与远程包解析 | `./gradlew :wasmline-loader:jvmTest` |
+| CLI | `wasmline-cli` | 平台检测与密钥生成 | `./gradlew :wasmline-cli:test` |
+| IR box/diagnostics | `wasmline-kotlin-plugin` | 生成 bridge 结构与编译器校验 | 参见[编译器插件](/zh/docs/compiler-plugin) |
+
+在 `wasmline-multiplatform/` 下运行主要 JVM 检查：
+
+```bash
+./gradlew :wasmline:jvmTest \
+  :wasmline-loader:jvmTest \
+  :wasmline-cli:test \
+  :wasmline-kotlin-plugin:generateTests \
+  :wasmline-kotlin-plugin:test
+```
+
+Native Wasmtime 测试要求 `wasmline/src/jvmMain/resources/jni/` 下存在 native library。CI 会先构建该 library，再运行 `:wasmline:jvmTest`。Web 测试不需要 native Wasmtime 资产，但浏览器测试需要可用的 Chrome runner。
+
+## IR 测试规则
+
+IR 夹具位于 `wasmline-kotlin-plugin/testData/`：
+
+- `box/*.kt` 通过 `fun box(): String` 校验生成的 bridge 行为。
+- `diagnostics/*.kt` 校验编译器 diagnostics 与 directives。
+- `test-gen/` 与 FIR/IR snapshot 属于生成产物。
+
+只编辑源夹具，然后用以下命令重新生成 runner 和 snapshot：
+
+```bash
+./gradlew :wasmline-kotlin-plugin:generateTests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
+```
+
+不要手动编辑 `test-gen/`、`*.fir.txt` 或 `*.fir.ir.txt`。
+
+## 版本校验
+
+`scripts/versions.json` 是项目、sample-plugin、Wasmtime、Kotlin、AGP、Zig 与 JBR 版本的唯一源。同步器会一次更新所有受管理的构建文件、脚本、文档与 CI fallback：
+
+```bash
+python3 scripts/sync_version.py --set wasmtime_version=47.0.2
+python3 scripts/sync_version.py --check
+python3 scripts/test_sync_versions.py
+```
+
+现有自动化仍可使用 `sync_versions.py`。两个入口使用同一份实现和 manifest。
+
+## Kotlin 注释规范
+
+runtime 与 test 源码中的 Kotlin 声明使用 KDoc（`/** ... */`）说明 API 与测试意图。外部测试格式要求的注释，例如 `// WITH_STDLIB`，必须保留。相比在断言体内逐行叙述，更推荐在类或测试函数上写简洁的 KDoc。

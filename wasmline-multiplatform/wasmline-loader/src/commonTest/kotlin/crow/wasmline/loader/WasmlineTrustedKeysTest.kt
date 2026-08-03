@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertNull
 
+/** Verifies exact, wildcard, and algorithm-specific trusted key lookup. */
 class WasmlineTrustedKeysTest {
 
     @Test

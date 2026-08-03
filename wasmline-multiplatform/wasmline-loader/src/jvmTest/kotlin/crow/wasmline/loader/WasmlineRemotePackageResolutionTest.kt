@@ -25,6 +25,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 
+/** Verifies remote manifest resolution, caching, compatibility, and signatures. */
 class WasmlineRemotePackageResolutionTest {
 
     private val privateKey = Keys.PRIVATE_KEY_1.decodeHex()
@@ -54,8 +55,6 @@ class WasmlineRemotePackageResolutionTest {
     private fun fakeArtifactBytes(): ByteArray = "fake compiled wasm artifact content for testing".encodeToByteArray()
 
     private fun fakeArtifactSha256(): String = fakeArtifactBytes().toByteString().sha256().hex()
-
-    // ========== Tests ==========
 
     @Test
     fun `remote source without networkClient returns failure`() {

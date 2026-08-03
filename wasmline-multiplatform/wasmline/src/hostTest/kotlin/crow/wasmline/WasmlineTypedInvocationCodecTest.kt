@@ -13,6 +13,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+/** Verifies the typed invocation carrier codec for raw and component values. */
 class WasmlineTypedInvocationCodecTest {
     @Test
     fun encodesRawArgumentsWithLittleEndianValues() {
@@ -32,6 +33,26 @@ class WasmlineTypedInvocationCodecTest {
             ),
             result.value,
         )
+    }
+
+    /** Round-trips all raw scalar value kinds through a successful response. */
+    @Test
+    fun decodesRawSuccessValues() {
+        val values = listOf(
+            WasmlineRawValue.I32(-7),
+            WasmlineRawValue.I64(9_000_000_001L),
+            WasmlineRawValue.F32(-1.25f),
+            WasmlineRawValue.F64(3.5),
+        )
+        val encoded = assertIs<WasmlineCallResult.Success<ByteArray>>(
+            WasmlineTypedInvocationCodec.encodeRawArguments(values),
+        )
+
+        val decoded = assertIs<WasmlineCallResult.Success<WasmlineRawCallResult>>(
+            WasmlineTypedInvocationCodec.decodeRawResult(successResponse(1, encoded.value)),
+        )
+
+        assertEquals(values, decoded.value.values)
     }
 
     @Test
@@ -186,6 +207,18 @@ class WasmlineTypedInvocationCodecTest {
             WasmlineTypedInvocationCodec.decodeComponentResult(successResponse(2, componentValues)),
         )
         assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, componentFailure.error.code)
+    }
+
+    /** Rejects boolean values with a marker other than zero or one. */
+    @Test
+    fun rejectsInvalidComponentBooleanMarker() {
+        val result = assertIs<WasmlineCallResult.Failure>(
+            WasmlineTypedInvocationCodec.decodeComponentResult(
+                successResponse(2, byteArrayOf(1, 0, 0, 0, 0, 2)),
+            ),
+        )
+
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.error.code)
     }
 
     @Test

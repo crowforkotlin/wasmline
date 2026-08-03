@@ -37,7 +37,7 @@ Run tests:
 ```bash
 cd ../../
 ./gradlew :wasmline-kotlin-plugin:test --tests '*JvmBoxTestGenerated*'
-./gradlew :wasmline-kotlin-plugin:test --tests '*JvmDiagnosticTestGenerated*'
+./gradlew :wasmline-kotlin-plugin:test --tests '*JvmDiagnosticsTestGenerated*'
 ```
 
 ## Structure
@@ -51,10 +51,9 @@ wasmline-multiplatform/wasmline-kotlin-plugin/testData/
 │   ├── 04_multiMethod.kt     # Multiple methods
 │   ├── 05_complexTypes.kt    # Complex types
 │   └── 06_linkBindPattern.kt # Link/bind pattern
-└── diagnostics/              # Diagnostic tests (3 files)
-    ├── 01_notWasmlineService.kt
-    ├── 02_emptyWasmlineService.kt
-    └── 03_typeMismatchExample.kt
+└── diagnostics/              # Diagnostic tests (2 files)
+    ├── 01_typeMismatch.kt
+    └── 02_unresolvedReference.kt
 ```
 
 For detailed instructions, see the linked documents above.

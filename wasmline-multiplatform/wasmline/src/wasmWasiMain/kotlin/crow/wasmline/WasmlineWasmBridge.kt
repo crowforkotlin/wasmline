@@ -11,8 +11,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
-// Inbound bridge imports.
-
 /** Copies inbound host data of the requested kind into the provided linear-memory buffer. */
 @WasmImport("env", "bridge_inbound_copy_params")
 internal external fun bridge_inbound_copy_params(type: Int, ptr: Int, len: Int)
@@ -20,8 +18,6 @@ internal external fun bridge_inbound_copy_params(type: Int, ptr: Int, len: Int)
 /** Publishes the wasm response bytes stored at the provided linear-memory address. */
 @WasmImport("env", "bridge_inbound_set_response")
 internal external fun bridge_inbound_set_response(ptr: Int, len: Int)
-
-// Outbound bridge imports.
 
 /**
  * Invokes the host with action and payload buffers and writes the result into the provided output
@@ -48,7 +44,6 @@ internal object WasmlineWasmBridge {
     internal fun readBytesFromHost(type: Int, size: Int): ByteArray {
         if (size <= 0) return ByteArray(0)
 
-        // ScopedAllocator allocates linear-memory pages on the stack with minimal overhead.
         withScopedMemoryAllocator { allocator ->
             val pointer = allocator.allocate(size)
             bridge_inbound_copy_params(type, pointer.address.toInt(), size)
@@ -91,7 +86,6 @@ internal object WasmlineWasmBridge {
         val actionBytes = action.encodeToByteArray()
 
         withScopedMemoryAllocator { allocator ->
-            // Prepare input buffers in wasm linear memory.
             val aPtrAddress = if (actionBytes.isEmpty()) {
                 0
             } else {
@@ -108,10 +102,8 @@ internal object WasmlineWasmBridge {
                 pPtr.address.toInt()
             }
 
-            // Reserve a small scratch buffer for the common fast-path response.
             val tempResultPtr = allocator.allocate(PRE_ALLOC_SIZE)
 
-            // Invoke the host and let it decide whether the fast-path buffer is sufficient.
             val resultStatus = bridge_outbound_call_host(
                 aPtrAddress,
                 actionBytes.size,
@@ -122,7 +114,6 @@ internal object WasmlineWasmBridge {
             )
 
             if (resultStatus >= 0) {
-                // Fast path: the full response already fits in the scratch buffer.
                 val realLen = resultStatus
                 if (realLen == 0) return ByteArray(0)
 
@@ -132,7 +123,6 @@ internal object WasmlineWasmBridge {
                 }
                 return result
             } else {
-                // Slow path: allocate the exact buffer size and fetch the full response.
                 val neededSize = -resultStatus
 
                 val finalResPtr = allocator.allocate(neededSize)

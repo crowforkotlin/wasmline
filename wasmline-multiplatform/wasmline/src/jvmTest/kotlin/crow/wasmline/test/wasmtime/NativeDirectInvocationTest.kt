@@ -26,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+/** Verifies raw Core and Component Model calls through native Wasmtime. */
 class NativeDirectInvocationTest {
 
     @Test

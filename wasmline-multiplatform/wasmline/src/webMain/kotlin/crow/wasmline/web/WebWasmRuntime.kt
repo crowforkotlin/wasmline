@@ -45,7 +45,6 @@ internal object WebWasmRuntime {
  * @author crowforkotlin
  */
 internal class WebWasmInstanceHandle internal constructor(private val instance: WebWasmInstance) {
-    // Kept accessible for phase-2 wiring of custom bridge exports.
     val exports: WebJsObject = webExportsOf(instance)
 
     fun functionOrNull(name: String): WebWasmFunction? {

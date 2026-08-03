@@ -28,14 +28,11 @@ class NativeWasmtimeLifecycleTest {
         wasmlineBootstrap()
 
         try {
-            // Warmup PULLEY engine should not throw exceptions
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
 
-            // Verify warmup succeeded by checking AOT support
             val supportsAot = Wasmline.supportsAot()
 
-            // At minimum, the engine should be initialized
-            assertTrue(supportsAot || !wasmlineBootstrapCalled(), "Engine failed to initialize properly")
+            assertTrue(supportsAot, "Engine failed to initialize properly")
         } catch (e: Exception) {
             fail("PULLEY warmup threw exception: ${e.message}", e)
         } finally {
@@ -50,15 +47,8 @@ class NativeWasmtimeLifecycleTest {
         try {
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
 
-            // Should either succeed or gracefully fall back to PULLEY
             val supportsAot = Wasmline.supportsAot()
             assertTrue(supportsAot, "Engine warmup should configure some backend")
-        } catch (e: IllegalStateException) {
-            if (e.message?.contains("CRANELIFT") == true) {
-                // Graceful fallback - this is acceptable behavior
-                return
-            }
-            throw e
         } catch (e: Exception) {
             fail("Cranelift warmup threw unexpected exception: ${e.message}", e)
         } finally {
@@ -71,22 +61,16 @@ class NativeWasmtimeLifecycleTest {
         wasmlineBootstrap()
 
         try {
-            val beforeShutdown = wasmlineBootstrapCalled()
-            assertTrue(beforeShutdown, "Engine should be running after bootstrap")
+            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
+            assertTrue(Wasmline.supportsAot(), "Engine should be running after warmup")
 
             wasmlineShutdown()
 
-            // Second shutdown should be safe (idempotent)
             wasmlineShutdown()
-
-            // Cleanup completed successfully
         } finally {
-            // Ensure final cleanup
             try {
                 wasmlineShutdown()
-            } catch (_: Exception) {
-                // Ignore - already cleaned up
-            }
+            } catch (_: Exception) {}
         }
     }
 
@@ -95,22 +79,15 @@ class NativeWasmtimeLifecycleTest {
         wasmlineBootstrap()
 
         try {
-            // Sequential warmups should work
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val firstResult = Wasmline.supportsAot()
 
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
             val secondResult = Wasmline.supportsAot()
 
-            // At least one engine mode should work
             assertTrue(firstResult || secondResult, "PULLEY engine not available")
         } finally {
             wasmlineShutdown()
         }
-    }
-
-    private fun wasmlineBootstrapCalled(): Boolean {
-        // Dummy check - in real implementation this would check internal state
-        return true
     }
 }

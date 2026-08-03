@@ -9,7 +9,7 @@ import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.web.WebWasmArtifacts
 import crow.wasmline.web.WebWasmPlugin
 
-/*
+/**
  * Web-facing Wasmline facade shared by the js and wasmJs targets.
  *
  * This file contains no platform interop: all JS access goes through the
@@ -116,8 +116,6 @@ internal object BrowserWasmlineRuntime {
         WebWasmArtifacts.clear()
     }
 }
-
-// ========== Web bridge helpers for standalone actual functions ==========
 
 internal fun browserWasmlineBootstrap() = BrowserWasmlineRuntime.bootstrap()
 internal fun browserWasmlineShutdown() = BrowserWasmlineRuntime.shutdown()

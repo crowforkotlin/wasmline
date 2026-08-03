@@ -25,15 +25,11 @@ internal actual class WebWasmModule internal constructor(internal val raw: Nativ
 
 internal actual class WebWasmInstance internal constructor(internal val raw: NativeWasmInstance)
 
-// ========== Generic value helpers ==========
-
 internal actual fun webUndefined(): WebJsValue = WebJsValue(rawUndefined())
 
 internal actual fun webIsNullish(value: WebJsValue?): Boolean = value == null || rawIsNullish(value.raw)
 
 internal actual fun webTypeNameOf(value: WebJsValue): String = rawTypeOf(value.raw)
-
-// ========== Object helpers ==========
 
 internal actual fun webNewObject(): WebJsObject = WebJsObject(rawNewObject())
 
@@ -57,8 +53,6 @@ internal actual fun webObjectWriteObject(obj: WebJsObject, name: String, value: 
     rawWriteProperty(obj.raw, name, value.raw)
 }
 
-// ========== Array helpers ==========
-
 internal actual fun webArrayOf(values: List<WebJsValue>): WebJsArray = WebJsArray(values.map { value -> value.raw }.toTypedArray())
 
 internal actual fun webArrayAsValue(array: WebJsArray): WebJsValue = WebJsValue(array.raw)
@@ -70,8 +64,6 @@ internal actual fun webArraySize(array: WebJsArray): Int = array.raw.size
 internal actual fun webArrayAt(array: WebJsArray, index: Int): WebJsValue = WebJsValue(array.raw[index])
 
 internal actual fun webIsArray(value: WebJsValue): Boolean = rawIsArray(value.raw)
-
-// ========== Wasm numeric bridging ==========
 
 internal actual fun webFromI32(value: Int): WebJsValue = WebJsValue(value)
 
@@ -89,10 +81,7 @@ internal actual fun webToF32(value: WebJsValue): Float = value.raw.unsafeCast<Do
 
 internal actual fun webToF64(value: WebJsValue): Double = value.raw.unsafeCast<Double>()
 
-// ========== WebAssembly primitives ==========
-
 internal actual fun webCompileWasm(binary: ByteArray): WebWasmModule {
-    // A Kotlin/JS ByteArray is an Int8Array over its own dedicated buffer.
     val bytes = binary.unsafeCast<Int8Array>()
     return WebWasmModule(NativeWasmModule(bytes.buffer))
 }
@@ -118,8 +107,6 @@ internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?):
     },
 )
 
-// ========== Linear memory access ==========
-
 internal actual fun webMemoryBytes(memory: WebJsValue, pointer: Int, length: Int): WebBytes {
     val raw = memory.raw.unsafeCast<NativeWasmMemory>()
     return WebBytes(Uint8Array(raw.buffer, pointer, length))
@@ -136,11 +123,7 @@ internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray) {
     bytes.raw.set(Uint8Array(sourceView.buffer, sourceView.byteOffset, sourceView.length))
 }
 
-// ========== Clock ==========
-
 internal actual fun webNowMillis(): Double = rawNowMillis()
-
-// ========== Network ==========
 
 internal actual fun webFetchBytes(url: String, onSuccess: (ByteArray) -> Unit, onFailure: (String) -> Unit) {
     fetch(url)
@@ -152,8 +135,6 @@ internal actual fun webFetchBytes(url: String, onSuccess: (ByteArray) -> Unit, o
         .then { buffer -> onSuccess(Int8Array(buffer).unsafeCast<ByteArray>()) }
         .catch { failure -> onFailure(failure.message ?: failure.toString()) }
 }
-
-// ========== Private JS snippets ==========
 
 private external fun fetch(resource: String): Promise<Response>
 

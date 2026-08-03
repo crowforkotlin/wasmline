@@ -14,8 +14,8 @@ Load this skill when working in the `wasmline` repository.
 | [`development-guide.md`](./development-guide.md) | Environment setup, module references, commands, generated artifact rules |
 | [`branching-and-release.md`](./branching-and-release.md) | Version model, tag format, Maven publishing, compat window, scenarios |
 | [`web-bindings-guide.md`](./web-bindings-guide.md) | Web platform (js/wasmJs) expect/actual layer, naming rules, WASI shims, tests |
-| [Technical Mind Map](../../docs/design-mind.md) | Core architecture, data flow, IR transformation pipeline |
-| [IR Test Documentation](../../docs/ir/index.md) | Compiler plugin test structure and guides |
+| [Technical Mind Map](../../../wasmline-multiplatform/docs/design-mind.md) | Core architecture, data flow, IR transformation pipeline |
+| [IR Test Documentation](../../../wasmline-multiplatform/docs/ir/index.md) | Compiler plugin test structure and guides |
 
 ---
 

@@ -198,7 +198,7 @@
 
 - IR test infrastructure
   - Box tests: `testData/box/*.kt` (6 files) with `fun box(): String` entry point
-  - Diagnostic tests: `testData/diagnostics/*.kt` (3 files) with error markers
+  - Diagnostic tests: `testData/diagnostics/*.kt` (2 files) with error markers
   - Generated: `test-gen/` (auto-generated test runners)
   - Snapshots: `*.fir.txt`, `*.fir.ir.txt` (auto-generated, never hand-edited)
   - Full documentation: [`docs/ir/index.md`](index.md)

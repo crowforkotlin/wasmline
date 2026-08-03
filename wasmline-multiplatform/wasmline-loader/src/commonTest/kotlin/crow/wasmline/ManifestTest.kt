@@ -24,6 +24,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 
+/** Verifies manifest serialization, signatures, defaults, and artifact models. */
 class ManifestTest {
 
     private val json = Json {
@@ -90,8 +91,6 @@ class ManifestTest {
             key,
         )
     }
-
-    // ==================== Serialization Tests ====================
 
     @Test
     fun `test JSON manifest round-trip serialization`() {
@@ -180,8 +179,6 @@ class ManifestTest {
         println("Protobuf envelope round-trip serialization successful.")
     }
 
-    // ==================== Signature Tests ====================
-
     @Test
     fun `test Ed25519 signing and verification success`() {
         printHeader("Test: Ed25519 Valid Signature")
@@ -206,7 +203,6 @@ class ManifestTest {
 
         val envelope = signManifest(createTestManifest())
 
-        // Simulate network transmission: encode → decode
         val wireBytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
         val received = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), wireBytes)
 
@@ -225,7 +221,6 @@ class ManifestTest {
 
         val envelope = signManifest(createTestManifest())
 
-        // Use a fabricated 32-byte key that doesn't match
         val wrongKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".decodeHex()
         val isVerified = verifyEnvelope(envelope, wrongKey)
 
@@ -239,7 +234,6 @@ class ManifestTest {
 
         val envelope = signManifest(createTestManifest())
 
-        // Tamper with the manifest after signing
         val tampered = envelope.copy(
             manifest = envelope.manifest.copy(pluginId = "com.evil.tampered"),
         )
@@ -256,7 +250,6 @@ class ManifestTest {
 
         val envelope = signManifest(createTestManifest())
 
-        // Corrupt the signature bytes
         val corruptedSig = envelope.signature.copyOf()
         corruptedSig[0] = (corruptedSig[0].toInt() xor 0xFF).toByte()
         val corrupted = envelope.copy(signature = corruptedSig)
@@ -266,8 +259,6 @@ class ManifestTest {
         println("Verification with corrupted signature: $isVerified")
         assertFalse(isVerified, "Signature verification must fail with corrupted signature bytes")
     }
-
-    // ==================== Model Default Value Tests ====================
 
     @Test
     fun `test manifest optional fields default to null`() {
@@ -357,8 +348,6 @@ class ManifestTest {
         println("Envelope default values verified.")
     }
 
-    // ==================== Artifact Type Tests ====================
-
     @Test
     fun `test all artifact types serialize correctly`() {
         printHeader("Test: All Artifact Types")
@@ -381,28 +370,22 @@ class ManifestTest {
         println("All artifact types serialize correctly.")
     }
 
-    // ==================== Equality Tests ====================
-
     @Test
     fun `test SignedManifestEnvelope equality and hashCode`() {
         printHeader("Test: Envelope Equality & HashCode")
 
         val envelope1 = signManifest(createTestManifest())
 
-        // Same content → equal
         val envelope2 = envelope1.copy()
         assertEquals(envelope1, envelope2)
         assertEquals(envelope1.hashCode(), envelope2.hashCode())
 
-        // Different signature → not equal
         val differentSig = envelope1.copy(signature = byteArrayOf(0, 1, 2))
         assertNotEquals(envelope1, differentSig)
 
-        // Different algorithm → not equal
         val differentAlgo = envelope1.copy(algorithm = "ECDSA-P256")
         assertNotEquals(envelope1, differentAlgo)
 
-        // Different publicKeyId → not equal
         val withKeyId = envelope1.copy(publicKeyId = "key-001")
         assertNotEquals(envelope1, withKeyId)
 

@@ -10,7 +10,27 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
+/** Verifies execution-model and invocation-protocol validation rules. */
 class WasmlineArtifactDescriptorTest {
+    /** Rejects an artifact descriptor without a path. */
+    @Test
+    fun rejectsBlankArtifactPath() {
+        val descriptor = WasmlineArtifactDescriptor(path = " ")
+
+        assertEquals("Artifact path must not be blank.", descriptor.validationError())
+    }
+
+    /** Requires an export name for raw direct invocation. */
+    @Test
+    fun rawInvocationRequiresAnExportName() {
+        val descriptor = WasmlineArtifactDescriptor(
+            path = "plugin.wasm",
+            invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+        )
+
+        assertEquals("An exportName is required for direct export invocation.", descriptor.validationError())
+    }
+
     @Test
     fun defaultsDescribeTheLegacyCoreProtocol() {
         val descriptor = WasmlineArtifactDescriptor(path = "plugin.pwasm")
@@ -53,5 +73,30 @@ class WasmlineArtifactDescriptorTest {
         )
 
         assertEquals("COMPONENT_MODEL cannot use WASMLINE_CORE_V1.", descriptor.validationError())
+    }
+
+    /** Rejects the component export protocol on a Core Wasm artifact. */
+    @Test
+    fun rejectsComponentProtocolOnCoreArtifact() {
+        val descriptor = WasmlineArtifactDescriptor(
+            path = "plugin.wasm",
+            executionModel = WasmlineExecutionModel.CORE_WASM,
+            invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+            exportName = "add",
+        )
+
+        assertEquals("COMPONENT_EXPORT requires COMPONENT_MODEL.", descriptor.validationError())
+    }
+
+    /** Accepts a Core Wasm artifact with an explicitly named raw export. */
+    @Test
+    fun acceptsRawCoreInvocationWithExportName() {
+        val descriptor = WasmlineArtifactDescriptor(
+            path = "plugin.wasm",
+            invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+            exportName = "add",
+        )
+
+        assertNull(descriptor.validationError())
     }
 }

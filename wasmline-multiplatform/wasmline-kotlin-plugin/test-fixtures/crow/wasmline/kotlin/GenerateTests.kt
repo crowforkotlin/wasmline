@@ -19,10 +19,9 @@ fun main() {
             testClass<AbstractJvmBoxTest> {
                 model("box")
             }
-            // TODO: Re-enable when diagnostic test fixtures are added
-            // testClass<AbstractJvmDiagnosticTest> {
-            //     model("diagnostics")
-            // }
+//            testClass<AbstractJvmDiagnosticTest> {
+//                model("diagnostics")
+//            }
         }
     }
 }

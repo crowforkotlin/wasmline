@@ -26,15 +26,11 @@ internal actual class WebWasmModule internal constructor(internal val raw: JsAny
 
 internal actual class WebWasmInstance internal constructor(internal val raw: JsAny)
 
-// ========== Generic value helpers ==========
-
 internal actual fun webUndefined(): WebJsValue = WebJsValue(rawUndefined())
 
 internal actual fun webIsNullish(value: WebJsValue?): Boolean = value == null || rawIsNullish(value.raw)
 
 internal actual fun webTypeNameOf(value: WebJsValue): String = rawTypeOf(value.raw)
-
-// ========== Object helpers ==========
 
 internal actual fun webNewObject(): WebJsObject = WebJsObject(rawNewObject())
 
@@ -58,8 +54,6 @@ internal actual fun webObjectWriteObject(obj: WebJsObject, name: String, value: 
     rawWriteProperty(obj.raw, name, value.raw)
 }
 
-// ========== Array helpers ==========
-
 internal actual fun webArrayOf(values: List<WebJsValue>): WebJsArray {
     val array = rawNewArray()
     for (value in values) {
@@ -79,8 +73,6 @@ internal actual fun webArrayAt(array: WebJsArray, index: Int): WebJsValue = WebJ
 
 internal actual fun webIsArray(value: WebJsValue): Boolean = rawIsArray(value.raw)
 
-// ========== Wasm numeric bridging ==========
-
 internal actual fun webFromI32(value: Int): WebJsValue = WebJsValue(rawFromI32(value))
 
 internal actual fun webFromI64(value: Long): WebJsValue = WebJsValue(rawFromI64(value))
@@ -96,8 +88,6 @@ internal actual fun webToI64(value: WebJsValue): Long = rawToI64(value.raw)
 internal actual fun webToF32(value: WebJsValue): Float = rawToF32(value.raw)
 
 internal actual fun webToF64(value: WebJsValue): Double = rawToF64(value.raw)
-
-// ========== WebAssembly primitives ==========
 
 internal actual fun webCompileWasm(binary: ByteArray): WebWasmModule {
     val bytes = rawNewUint8Array(binary.size)
@@ -130,8 +120,6 @@ internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?):
     },
 )
 
-// ========== Linear memory access ==========
-
 internal actual fun webMemoryBytes(memory: WebJsValue, pointer: Int, length: Int): WebBytes {
     val raw = checkNotNull(memory.raw) { "Cannot view a null WebAssembly.Memory reference." }
     return WebBytes(rawMemoryBytes(raw, pointer, length))
@@ -148,11 +136,7 @@ internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray) {
     }
 }
 
-// ========== Clock ==========
-
 internal actual fun webNowMillis(): Double = rawNowMillis()
-
-// ========== Network ==========
 
 internal actual fun webFetchBytes(url: String, onSuccess: (ByteArray) -> Unit, onFailure: (String) -> Unit) {
     rawFetchBytes(
@@ -161,8 +145,6 @@ internal actual fun webFetchBytes(url: String, onSuccess: (ByteArray) -> Unit, o
         onFailure = onFailure,
     )
 }
-
-// ========== Private JS snippets ==========
 
 private fun rawUndefined(): JsAny? = js("undefined")
 

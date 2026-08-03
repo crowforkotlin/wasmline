@@ -21,7 +21,6 @@ fun box(): String {
         return "Fail: Bridge doesn't implement ParamService"
     }
 
-    // Verify parameter method exists
     val echoMethod = try {
         bridgeClass.getMethod("echo", String::class.java)
     } catch (e: NoSuchMethodException) {

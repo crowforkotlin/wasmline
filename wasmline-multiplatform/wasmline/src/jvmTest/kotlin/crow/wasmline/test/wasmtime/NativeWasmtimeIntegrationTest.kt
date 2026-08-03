@@ -38,10 +38,8 @@ class NativeWasmtimeIntegrationTest {
         wasmlineBootstrap()
 
         try {
-            // PULLEY warmup should work without exceptions
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
 
-            // Verify engine capabilities were registered
             assertTrue(
                 Wasmline.supportsAot(),
                 "Engine should report AOT support after warmup",
@@ -60,10 +58,8 @@ class NativeWasmtimeIntegrationTest {
         wasmlineBootstrap()
 
         try {
-            // Cranelift warmup may fallback to PULLEY if not available
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
 
-            // Should at least have some backend configured
             assertTrue(
                 Wasmline.supportsAot(),
                 "At least one backend should be active",
@@ -82,23 +78,18 @@ class NativeWasmtimeIntegrationTest {
         wasmlineBootstrap()
 
         try {
-            // Warm up both backends sequentially
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val pulleyWorked = Wasmline.supportsAot()
 
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
             val craneliftWorked = Wasmline.supportsAot()
 
-            // At least one should succeed
             assertTrue(
                 pulleyWorked || craneliftWorked,
                 "At least one engine backend must initialize successfully",
             )
-
-            // Clean shutdown
+        } finally {
             wasmlineShutdown()
-        } catch (_: Exception) {
-            // Some engines don't support multiple warmups gracefully
         }
     }
 
@@ -108,38 +99,23 @@ class NativeWasmtimeIntegrationTest {
      */
     @Test
     fun managesEngineResourcesCorrectly() {
-        var engineWasAlive = false
-
         wasmlineBootstrap()
 
         try {
-            // First cycle
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            engineWasAlive = Wasmline.supportsAot()
+            assertTrue(Wasmline.supportsAot(), "Engine should start in first cycle")
 
-            assertTrue(engineWasAlive, "Engine should start in first cycle")
-
-            // Shutdown
             wasmlineShutdown()
 
-            // Second cycle - re-bootstrap
             wasmlineBootstrap()
             wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
 
             assertTrue(Wasmline.supportsAot(), "Engine should restart successfully")
-
-            // Final cleanup
-            wasmlineShutdown()
-        } catch (_: Exception) {
-            // Ignore - some implementations may not support double shutdown
         } finally {
-            // Ensure final cleanup
             try {
                 wasmlineShutdown()
             } catch (_: Exception) {}
         }
-
-        assertTrue(engineWasAlive, "Engine lifecycle test failed")
     }
 
     /**
@@ -156,7 +132,6 @@ class NativeWasmtimeIntegrationTest {
                 config = WasmlineConfig(supportConcurrent = false),
             )
 
-            // Should return Failure state, not crash
             assertTrue(result is crow.wasmline.WasmlineLoadState.Failure)
             assertEquals(
                 crow.wasmline.WasmlineLoadState.CODE_FAILURE,
@@ -180,23 +155,24 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun supportsDifferentLoadingModes() {
         wasmlineBootstrap()
+        val malformedArtifact = java.io.File.createTempFile("wasmline-invalid-", ".wasm").apply {
+            writeBytes(byteArrayOf(0x00, 0x61, 0x73, 0x6D))
+            deleteOnExit()
+        }
 
         try {
-            // Test non-concurrent mode
             val result1 = wasmlineLoadArtifact(
-                filepath = "/dev/null",
+                filepath = malformedArtifact.absolutePath,
                 config = WasmlineConfig(supportConcurrent = false),
             )
             assertTrue(result1 is crow.wasmline.WasmlineLoadState.Failure)
 
-            // Test concurrent mode
             val result2 = wasmlineLoadArtifact(
-                filepath = "/dev/null",
+                filepath = malformedArtifact.absolutePath,
                 config = WasmlineConfig(supportConcurrent = true),
             )
             assertTrue(result2 is crow.wasmline.WasmlineLoadState.Failure)
 
-            // Both should fail gracefully
             assertEquals(
                 crow.wasmline.WasmlineLoadState.CODE_FAILURE,
                 (result1 as crow.wasmline.WasmlineLoadState.Failure).code,
@@ -218,7 +194,6 @@ class NativeWasmtimeIntegrationTest {
         wasmlineBootstrap()
 
         try {
-            // Sequential warmups
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val firstResult = Wasmline.supportsAot()
 
@@ -228,7 +203,6 @@ class NativeWasmtimeIntegrationTest {
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val thirdResult = Wasmline.supportsAot()
 
-            // At least one should have worked
             assertTrue(
                 firstResult || secondResult || thirdResult,
                 "Multiple sequential warmups should succeed at least once",
@@ -246,14 +220,11 @@ class NativeWasmtimeIntegrationTest {
         wasmlineBootstrap()
 
         try {
-            // Initial check
             val initialSupportsAot = Wasmline.supportsAot()
 
-            // After warmup
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
             val postWarmupSupportsAot = Wasmline.supportsAot()
 
-            // Should have reported something
             assertTrue(
                 postWarmupSupportsAot || initialSupportsAot,
                 "Engine should report capabilities",
@@ -274,16 +245,15 @@ class NativeWasmtimeIntegrationTest {
         try {
             wasmlineWarmup(WasmlineWarmupMode.PULLEY)
 
-            // First shutdown
             wasmlineShutdown()
 
-            // Second shutdown (should be safe)
             wasmlineShutdown()
 
-            // Third shutdown (still safe)
             wasmlineShutdown()
-        } catch (_: Exception) {
-            // Some engines may not support idempotent shutdown
+        } finally {
+            try {
+                wasmlineShutdown()
+            } catch (_: Exception) {}
         }
     }
 

@@ -11,12 +11,10 @@ import crow.wasmline.WasmlineService
 interface EmptyService : WasmlineService
 
 fun box(): String {
-    // Verify that Bridge class was generated
     val bridgeClass = runCatching {
         Class.forName("test.ir.empty.EmptyService_WasmlineBridge")
     }.getOrNull() ?: return "Fail: Bridge not generated"
 
-    // Verify Bridge implements EmptyService
     if (!EmptyService::class.java.isAssignableFrom(bridgeClass)) {
         return "Fail: Bridge doesn't implement EmptyService"
     }

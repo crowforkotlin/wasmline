@@ -98,8 +98,6 @@ private fun invokeTypedCarrier(
     WasmlineCallResult.Success(result)
 }
 
-// ========== Runtime bridge functions for WasmlineLoader ==========
-
 private fun iosBootstrap() {
     loadNativeLibrary()
 }
@@ -156,8 +154,6 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
         },
     )
 }
-
-// Helpers for C-to-Kotlin outbound callbacks.
 
 private object WasmlineCallbackRegistry {
     private val dispatchers = mutableMapOf<String, WasmlineHostDispatcher>()

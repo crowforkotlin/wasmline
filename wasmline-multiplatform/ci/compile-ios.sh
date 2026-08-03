@@ -11,9 +11,9 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORE_SRC="${PROJECT_ROOT}/wasmline-core/src"
 IOS_SRC="${PROJECT_ROOT}/wasmline-multiplatform/wasmline/src/iosMain/native"
 
-# Resolve wasmtime version tag (e.g. "release-v45.0.5")
+# Resolve wasmtime version tag (e.g. "release-v47.0.2")
 if [ -z "${WASMTIME_VERSION:-}" ]; then
-    WASMTIME_VERSION=$(python3 -c "import json;print('release-v'+json.load(open('${PROJECT_ROOT}/scripts/versions.json'))['versions']['wasmtime_version'])" 2>/dev/null || echo "release-v45.0.5")
+    WASMTIME_VERSION=$(python3 -c "import json;print('release-v'+json.load(open('${PROJECT_ROOT}/scripts/versions.json'))['versions']['wasmtime_version'])" 2>/dev/null || echo "release-v47.0.2")
 fi
 
 TARGET_KIND="${1:-simulator-arm64}"

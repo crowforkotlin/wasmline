@@ -23,6 +23,5 @@ fun box(): String {
         return "Fail: Bridge doesn't implement MultiMethodService"
     }
 
-    // Just verify basic structure exists
     return "OK"
 }

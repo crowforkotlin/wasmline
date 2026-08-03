@@ -121,7 +121,6 @@ class WebWasmRuntimeTest {
     fun exportKindsAreValidated() {
         val instance = WebTestModule.instantiate()
 
-        // "memory" is not a function and "add" is not a memory.
         assertNull(instance.functionOrNull("memory"))
         assertNull(instance.memoryOrNull("add"))
     }

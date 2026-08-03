@@ -16,7 +16,6 @@ actual class Wasmline internal actual constructor(
 ) {
 
     internal companion object {
-        // JNI native methods — must stay private for correct JNI name mangling.
         @JvmStatic private external fun nativeLoadAot(key: String, path: String): Boolean
 
         @JvmStatic private external fun nativeLoadAotUnsafe(key: String, path: String): Boolean
@@ -41,7 +40,6 @@ actual class Wasmline internal actual constructor(
 
         @JvmStatic private external fun nativeReleaseEngine()
 
-        // Internal wrappers for use by standalone bridge functions.
         fun loadAot(key: String, path: String): Boolean = nativeLoadAot(key, path)
         fun loadAotUnsafe(key: String, path: String): Boolean = nativeLoadAotUnsafe(key, path)
         fun loadComponent(key: String, path: String): Boolean = nativeLoadComponent(key, path)
@@ -78,8 +76,6 @@ private fun decodeNativeCarrier(bytes: ByteArray?): WasmlineCallResult<ByteArray
 } else {
     WasmlineCallResult.Success(bytes)
 }
-
-// ========== Runtime bridge functions for WasmlineLoader ==========
 
 @Volatile
 private var jniBootstrapped = false

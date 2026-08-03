@@ -21,7 +21,6 @@ fun box(): String {
         return "Fail: Bridge doesn't implement SimpleService"
     }
 
-    // Verify bridge has expected methods
     val bindMethod = try {
         bridgeClass.getMethod("bind", Function2::class.java)
     } catch (e: NoSuchMethodException) {

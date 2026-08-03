@@ -14,21 +14,17 @@ import kotlin.test.assertTrue
 class NativeModuleLoadingTest {
 
     @Test
-    fun loadsSimplePrecompiledModule() {
-        // This test validates that precompiled module loading works.
-        // It uses a simple .cwasm file path that should exist after build.
-
+    fun reportsMissingPrecompiledModule() {
         val tempFile = java.io.File.createTempFile("wasmline_test_", ".pwasm")
         tempFile.deleteOnExit()
+        tempFile.delete()
 
         try {
-            // Test with a non-existent file - should fail gracefully
             val result = crow.wasmline.wasmlineLoadArtifact(
                 filepath = tempFile.absolutePath,
                 config = crow.wasmline.WasmlineConfig(supportConcurrent = false),
             )
 
-            // Should return a Failure state with appropriate error message
             assertTrue(result is crow.wasmline.WasmlineLoadState.Failure, "Expected failure for missing artifact")
             val failure = result as crow.wasmline.WasmlineLoadState.Failure
             assertEquals(crow.wasmline.WasmlineLoadState.CODE_FAILURE, failure.code)
@@ -42,26 +38,21 @@ class NativeModuleLoadingTest {
     }
 
     @Test
-    fun handlesMissingArtifactGracefully() {
+    fun rejectsMalformedWasmArtifact() {
+        val tempFile = java.io.File.createTempFile("wasmline_", ".wasm")
+        tempFile.writeBytes(byteArrayOf(0x00, 0x61, 0x73, 0x6D))
+        tempFile.deleteOnExit()
+
         val result = crow.wasmline.wasmlineLoadArtifact(
-            filepath = "/nonexistent/path/to/plugin.pwasm",
-            config = crow.wasmline.WasmlineConfig(supportConcurrent = true),
+            filepath = tempFile.absolutePath,
+            config = crow.wasmline.WasmlineConfig(supportConcurrent = false),
         )
 
         assertTrue(result is crow.wasmline.WasmlineLoadState.Failure)
-        assertEquals(crow.wasmline.WasmlineLoadState.CODE_FAILURE, (result as crow.wasmline.WasmlineLoadState.Failure).code)
-        assertTrue((result as crow.wasmline.WasmlineLoadState.Failure).cause.contains("not found"))
-    }
-
-    @Test
-    fun createsValidTempWasmFile() {
-        val content = byteArrayOf(0x00, 0x61, 0x73, 0x6D) // WASM magic number
-        val tempFile = java.io.File.createTempFile("wasmline_", ".wasm")
-        tempFile.writeBytes(content)
-        tempFile.deleteOnExit()
-
-        assertTrue(tempFile.exists(), "Temp file should be created")
-        assertTrue(tempFile.length() > 0, "Temp file should have content")
+        assertEquals(
+            crow.wasmline.WasmlineLoadState.CODE_FAILURE,
+            (result as crow.wasmline.WasmlineLoadState.Failure).code,
+        )
 
         tempFile.delete()
     }

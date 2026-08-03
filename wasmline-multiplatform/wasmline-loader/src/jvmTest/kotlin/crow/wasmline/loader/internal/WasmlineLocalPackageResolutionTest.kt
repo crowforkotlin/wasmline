@@ -5,6 +5,7 @@ import crow.wasmline.loader.model.WasmlineArtifactType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+/** Verifies local package artifact selection for browser and native hosts. */
 class WasmlineLocalPackageResolutionTest {
 
     @Test

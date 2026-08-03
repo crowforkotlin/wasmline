@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.test.runners.codegen.AbstractFirBlackBoxCodegenTestB
 import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
+/** Runs box fixtures through Kotlin/JVM FIR and backend IR phases. */
 open class AbstractJvmBoxTest : AbstractFirBlackBoxCodegenTestBase(FirParser.LightTree) {
     override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider =
         EnvironmentBasedStandardLibrariesPathProvider

@@ -29,7 +29,7 @@ export ENV_SOURCED_MARKER="true"
 log_info "Context loaded. Root: ${PROJECT_ROOT}"
 
 # --- Wasmtime Version Resolution ---
-# Resolves the wasmtime release tag directory name (e.g., "release-v45.0.5").
+# Resolves the wasmtime release tag directory name (e.g., "release-v47.0.2").
 # Priority: WASMTIME_VERSION env > versions.json > latest release-v* directory.
 resolve_wasmtime_version() {
     if [ -n "${WASMTIME_VERSION:-}" ]; then

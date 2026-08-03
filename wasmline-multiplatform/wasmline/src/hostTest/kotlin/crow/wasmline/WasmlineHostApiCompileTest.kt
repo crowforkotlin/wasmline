@@ -3,6 +3,7 @@ package crow.wasmline
 import crow.wasmline.loader.WasmlineLoader
 import kotlin.reflect.KClass
 
+/** Compile-only smoke test for the public host API overloads. */
 @Suppress("unused")
 class WasmlineHostApiCompileTest {
     private interface EchoService : WasmlineService {

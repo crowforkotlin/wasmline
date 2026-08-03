@@ -30,8 +30,6 @@ internal expect class WebWasmModule
 /** Opaque handle to an instantiated `WebAssembly.Instance`. */
 internal expect class WebWasmInstance
 
-// ========== Generic value helpers ==========
-
 internal expect fun webUndefined(): WebJsValue
 
 /** True when [value] is Kotlin null, JS null, or JS undefined. */
@@ -39,8 +37,6 @@ internal expect fun webIsNullish(value: WebJsValue?): Boolean
 
 /** JS-side `typeof` name, intended for diagnostics only. */
 internal expect fun webTypeNameOf(value: WebJsValue): String
-
-// ========== Object helpers ==========
 
 internal expect fun webNewObject(): WebJsObject
 
@@ -56,8 +52,6 @@ internal expect fun webObjectWrite(obj: WebJsObject, name: String, value: WebJsV
 
 internal expect fun webObjectWriteObject(obj: WebJsObject, name: String, value: WebJsObject)
 
-// ========== Array helpers ==========
-
 internal expect fun webArrayOf(values: List<WebJsValue>): WebJsArray
 
 internal expect fun webArrayAsValue(array: WebJsArray): WebJsValue
@@ -70,9 +64,6 @@ internal expect fun webArraySize(array: WebJsArray): Int
 internal expect fun webArrayAt(array: WebJsArray, index: Int): WebJsValue
 
 internal expect fun webIsArray(value: WebJsValue): Boolean
-
-// ========== Wasm numeric bridging (i32 / i64 / f32 / f64) ==========
-// The JS side stores i32/f32/f64 as `number` and i64 as `BigInt`.
 
 internal expect fun webFromI32(value: Int): WebJsValue
 
@@ -89,8 +80,6 @@ internal expect fun webToI64(value: WebJsValue): Long
 internal expect fun webToF32(value: WebJsValue): Float
 
 internal expect fun webToF64(value: WebJsValue): Double
-
-// ========== WebAssembly primitives ==========
 
 /** Compiles a raw wasm binary through `new WebAssembly.Module(...)`. */
 internal expect fun webCompileWasm(binary: ByteArray): WebWasmModule
@@ -113,8 +102,6 @@ internal expect fun webCallFunction(function: WebJsValue, args: WebJsArray): Web
  */
 internal expect fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?): WebJsValue
 
-// ========== Linear memory access ==========
-
 /** Creates a `Uint8Array` window over `memory.buffer` at [pointer]/[length]. */
 internal expect fun webMemoryBytes(memory: WebJsValue, pointer: Int, length: Int): WebBytes
 
@@ -124,12 +111,8 @@ internal expect fun webBytesCopyOut(bytes: WebBytes): ByteArray
 /** Copies Kotlin bytes into the window (window must be large enough). */
 internal expect fun webBytesCopyIn(bytes: WebBytes, source: ByteArray)
 
-// ========== Clock ==========
-
 /** Current epoch time in milliseconds (`Date.now()`). */
 internal expect fun webNowMillis(): Double
-
-// ========== Network ==========
 
 /**
  * Downloads a binary resource with the Fetch API. Exactly one callback is

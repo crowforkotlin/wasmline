@@ -94,12 +94,10 @@ internal val IrSimpleFunction.signature: String
         if (property != null) {
             val name = property.owner.name.asString()
             if (parameters.size == 2) {
-                // setter
                 append(
                     "var $name: ${(parameters[1].type as IrSimpleType).asString()}",
                 )
             } else {
-                // getter
                 append(
                     "val $name: ${(returnType as IrSimpleType).asString()}",
                 )
@@ -221,7 +219,6 @@ fun DeclarationIrBuilder.irDelegatingConstructorCall(
         symbol = symbol,
         typeArgumentsCount = typeArgumentsCount,
         valueArgumentsCount = valueArgumentsCount,
-        // Note: These three parameters are unused in the Kotlin 2.1.0 implementation of this factory.
         contextParameterCount = 0,
         hasDispatchReceiver = false,
         hasExtensionReceiver = false,
@@ -421,7 +418,7 @@ fun getOrCreateCompanion(enclosing: IrClass, irPluginContext: IrPluginContext): 
     return companionClass
 }
 
-// https://github.com/JetBrains/kotlin/blob/d625d9a988f3a7a344ce1687b085ff7c811e916c/plugins/kotlinx-serialization/kotlinx-serialization.backend/src/org/jetbrains/kotlinx/serialization/compiler/backend/ir/IrBuilderWithPluginContext.kt#L199-L211
+/** Mirrors the Kotlin serialization IR builder implementation. */
 fun IrBuilderWithScope.irInvoke(
     dispatchReceiver: IrExpression? = null,
     callee: IrFunctionSymbol,
@@ -460,7 +457,7 @@ fun IrBuilderWithScope.irInvoke(
     return call
 }
 
-// https://github.com/JetBrains/kotlin/blob/d625d9a988f3a7a344ce1687b085ff7c811e916c/plugins/kotlinx-serialization/kotlinx-serialization.backend/src/org/jetbrains/kotlinx/serialization/compiler/backend/ir/IrBuilderWithPluginContext.kt#L213-L225
+/** Mirrors the Kotlin serialization IR builder implementation. */
 fun IrBuilderWithScope.irInvoke(
     dispatchReceiver: IrExpression? = null,
     callee: IrFunctionSymbol,

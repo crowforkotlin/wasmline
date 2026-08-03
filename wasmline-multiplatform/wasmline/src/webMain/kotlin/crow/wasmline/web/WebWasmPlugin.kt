@@ -27,7 +27,6 @@ internal class WebWasmPlugin(binary: ByteArray) {
     private var memory: WebWasmMemory? = null
     private val entryFunction: WebWasmFunction
 
-    // Parameter staging shared with the wasm side through the env bridge.
     private var inboundAction: ByteArray = EMPTY
     private var inboundPayload: ByteArray = EMPTY
     private var inboundResponse: ByteArray = EMPTY
@@ -221,8 +220,6 @@ internal class WebWasmPlugin(binary: ByteArray) {
             )
         }
 
-        // Responses larger than the guest buffer are handed over in a second
-        // pass through bridge_outbound_get_response, signalled by a negative size.
         return if (response.size <= outCapacity) {
             memory.write(outPointer, response)
             response.size

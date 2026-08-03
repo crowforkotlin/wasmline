@@ -22,14 +22,12 @@ fun box(): String {
         return "Fail: Bridge doesn't implement ComplexTypeService"
     }
 
-    // Verify processNumbers method
     val numbersMethod = try {
         bridgeClass.getMethod("processNumbers", Int::class.java, Long::class.java)
     } catch (e: NoSuchMethodException) {
         return "Fail: processNumbers(Int, Long) method not found"
     }
 
-    // Verify processString method
     val stringMethod = try {
         bridgeClass.getMethod("processString", String::class.java, Int::class.java)
     } catch (e: NoSuchMethodException) {

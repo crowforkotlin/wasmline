@@ -14,6 +14,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+/** Verifies valid and malformed Core response frames. */
 class WasmlineResponseCodecTest {
     @Test
     fun encodesAndDecodesSuccessPayload() {

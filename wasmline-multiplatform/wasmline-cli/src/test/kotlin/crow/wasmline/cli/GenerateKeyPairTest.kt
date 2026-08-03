@@ -25,6 +25,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/** Verifies CLI key-pair generation and output formatting. */
 class GenerateKeyPairTest {
     private val systemOut = Buffer()
 

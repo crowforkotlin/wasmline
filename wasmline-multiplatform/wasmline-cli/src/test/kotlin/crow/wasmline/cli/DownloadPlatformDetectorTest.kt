@@ -3,6 +3,7 @@ package crow.wasmline.cli
 import org.junit.Test
 import kotlin.test.assertEquals
 
+/** Verifies host OS and architecture mapping for Wasmtime downloads. */
 class DownloadPlatformDetectorTest {
 
     @Test

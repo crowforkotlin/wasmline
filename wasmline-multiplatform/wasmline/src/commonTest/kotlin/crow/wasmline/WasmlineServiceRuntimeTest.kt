@@ -9,6 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+/** Verifies generated-bridge binding and endpoint failure behavior. */
 class WasmlineServiceRuntimeTest {
     private interface EchoService : WasmlineService {
         fun echo(message: String): String

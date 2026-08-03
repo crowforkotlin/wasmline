@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.test.runners.AbstractFirPhasedDiagnosticTest
 import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
+/** Runs frontend diagnostic fixtures with the Wasmline compiler plugin installed. */
 open class AbstractJvmDiagnosticTest : AbstractFirPhasedDiagnosticTest(FirParser.LightTree) {
     override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider =
         EnvironmentBasedStandardLibrariesPathProvider

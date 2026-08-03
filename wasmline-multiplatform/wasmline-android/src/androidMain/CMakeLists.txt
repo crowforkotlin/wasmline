@@ -16,7 +16,7 @@ add_link_options(
 
 # Wasmtime version & variant (passed from Gradle or use defaults)
 if(NOT DEFINED WASMTIME_VERSION)
-    set(WASMTIME_VERSION "release-v45.0.5")
+    set(WASMTIME_VERSION "release-v47.0.2")
 endif()
 if(NOT DEFINED WASMTIME_VARIANT)
     set(WASMTIME_VARIANT "pulley")

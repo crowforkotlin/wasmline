@@ -24,7 +24,7 @@ PLATFORMS_ROOT="$REPO_ROOT/build/platforms"
 read_version() {
   python3 -c "import json;print(json.load(open('$SCRIPT_DIR/versions.json'))['versions']['wasmtime_version'])" 2>/dev/null ||
     grep -oP 'wasmtime\.version\s*=\s*\K[^\s]+' "$MULTIPLATFORM_ROOT/gradle.properties" ||
-    echo "45.0.5"
+    echo "47.0.2"
 }
 
 WASMTIME_VERSION="$(read_version)"
