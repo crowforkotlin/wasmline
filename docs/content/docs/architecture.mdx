@@ -86,7 +86,7 @@ The runtime selects the backend from `WasmlineArtifactDescriptor`. File extensio
 
 Raw Export calls use an explicitly declared numeric ABI. The current public raw value set is `i32`, `i64`, `f32`, and `f64`. They do not allocate or parse a Core response frame.
 
-Component Model calls load a complete, already compiled component binary through the Wasmtime Component Model API. They use Component Model typed values and do not require Core linear memory, `__wasmline_wasi_entry`, or the Core response frame. Wasmline does not compile WIT, WIT-Kotlin, `wit-bindgen`, or component adapters. Optional `contractMetadata` records a call contract for validation and documentation; it is not compiler input.
+Component Model calls load a complete, already compiled component binary through the Wasmtime Component Model API. They use Component Model typed values and do not require Core linear memory, `__wasmline_wasi_entry`, or the Core response frame. The runtime loader does not run `wit-bindgen` or `wasm-tools`; the optional plugin build pipeline in `wasmline-plugin-core`, the Gradle plugin, and the CLI can generate bindings and assemble the component before loading. Optional `contractMetadata` records a call contract for validation and documentation; it is not compiler input.
 
 All three paths expose the same result semantics. A missing action binding returns `ACTION_NOT_BOUND` as a failure result. It is not encoded as an empty successful payload and does not require an exception. The Core path reports this through its response frame; Raw Export and Component Model report it through their typed result carrier. Exceptions remain for invalid programming contracts, unrecoverable runtime state, and failures that prevent construction of a result.
 

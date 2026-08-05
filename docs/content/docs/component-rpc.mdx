@@ -1,0 +1,86 @@
+---
+title: Component RPC
+description: WIT envelope, Component build pipeline, and cross-language callbacks
+---
+
+# Component RPC
+
+Wasmline's first Component contract is the fixed `wasmline:rpc@1.0.0` world. WIT
+defines the Component boundary and Canonical ABI; the `payload: list<u8>` field
+still carries the selected Wasmline serialization bytes.
+
+```wit
+package wasmline:rpc@1.0.0;
+
+world plugin {
+  import host: interface {
+    record request { action: string, codec: string, payload: list<u8> }
+    record rpc-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, rpc-error>
+  }
+
+  export plugin: interface {
+    record request { action: string, codec: string, payload: list<u8> }
+    record rpc-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, rpc-error>
+  }
+}
+```
+
+## Build Pipeline
+
+For the Kotlin/Wasm WASI sample, the build order is:
+
+1. `wit-bindgen kotlin` generates guest bindings under `build/generated`.
+2. Kotlin/Wasm WASI compiles the guest to Core Wasm.
+3. `wasm-tools component embed` embeds the WIT world.
+4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` creates the raw Component.
+5. `wasm-tools validate` and `wasm-tools component wit` verify the result.
+6. The manifest records `COMPONENT_MODEL`, `COMPONENT_EXPORT`, the export path, codec, protocol version, and artifact digest.
+
+The Gradle entry point is `wasmlineAssembleDebug` or
+`wasmlineAssembleRelease`. The CLI exposes the same shared plugin-core stages
+through `wit generate`, `componentize`, `component validate`, and
+`component inspect`. The runtime loader only receives the finished Component.
+
+Rust can target `wasm32-wasip2` and produce a Component directly. The
+`wasmline-samples/rust/sample-component-plugin` fixture pins the forked
+`wit-bindgen` 0.57.1 Git tag and does not commit generated bindings.
+
+## Codec Profiles
+
+The WIT envelope does not make arbitrary business bytes universally decodable.
+The `codec` string is part of the request and is checked by the host runtime.
+
+| Profile | Codec ID | Payload rule | Reference |
+|---|---|---|---|
+| Kotlin envelope | `protobuf` | Kotlin Serialization Protobuf bytes; the Kotlin sample decodes `sample.echo` | `sample-component-plugin` |
+| Rust envelope fixture | `protobuf` | Payload is opaque and is echoed or forwarded to `host.invoke`; no Rust business decoder is claimed | `wasmline-samples/rust/sample-component-plugin` |
+| Native typed WIT | not an envelope profile | Business arguments are WIT values and must be described by the Component contract | Explicit typed Component descriptor |
+
+Cross-language plugins that need to exchange business objects must use a codec
+implemented by every participant, or expose those objects as typed WIT values.
+Matching only the `protobuf` label is not enough.
+
+## Host Callback Adaptation
+
+The generated guest binding calls the WIT import `host.invoke`. Wasmline's
+Component session registers that import and maps its `action`, `codec`, and
+`payload` fields to the existing `HostDispatcher`. The dispatcher response is
+converted back to `result<list<u8>, rpc-error>` by the runtime.
+
+Therefore a Rust, C, C++, or Kotlin Component plugin implements the WIT world,
+not these Core Wasm-only imports:
+
+- `bridge_inbound_copy_params`
+- `bridge_inbound_set_response`
+- `bridge_outbound_call_host`
+- `bridge_outbound_get_response`
+
+The plugin still needs the generated language binding and a WIT `host.invoke`
+call. That binding is the portable Component contract; the Wasmline host owns
+the adapter into its dispatcher.
+
+The native Wasmtime backend supports this Component path. Browser targets still
+advertise only the Core Wasmline bridge and reject Component descriptors during
+loading.

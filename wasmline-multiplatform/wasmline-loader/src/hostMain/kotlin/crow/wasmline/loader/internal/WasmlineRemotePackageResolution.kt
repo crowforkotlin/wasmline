@@ -281,6 +281,7 @@ internal object WasmlineRemotePackageResolution {
             crow.wasmline.loader.model.WasmlineArtifactType.WASM -> ".wasm"
             crow.wasmline.loader.model.WasmlineArtifactType.CWASM -> ".cwasm"
             crow.wasmline.loader.model.WasmlineArtifactType.PWASM -> ".pwasm"
+            crow.wasmline.loader.model.WasmlineArtifactType.COMPONENT_WASM -> ".component.wasm"
         }
         val localPath = "$cacheDir/$cacheKey$extension"
         return if (writeHostFileBytes(localPath, bytes)) localPath else null

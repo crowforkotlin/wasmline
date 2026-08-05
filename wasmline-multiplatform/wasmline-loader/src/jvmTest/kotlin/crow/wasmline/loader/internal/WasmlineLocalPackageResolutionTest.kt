@@ -67,4 +67,50 @@ class WasmlineLocalPackageResolutionTest {
 
         assertEquals("plugin.pwasm", selected?.url)
     }
+
+    @Test
+    fun `native host accepts a raw Component Wasm artifact`() {
+        val selected = WasmlineLocalPackageResolution.selectArtifact(
+            artifacts = listOf(
+                WasmlineArtifact(
+                    type = WasmlineArtifactType.COMPONENT_WASM,
+                    url = "plugin.component.wasm",
+                    sha256 = "component",
+                    executionModel = crow.wasmline.WasmlineExecutionModel.COMPONENT_MODEL,
+                    invocationProtocol = crow.wasmline.WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                    exportName = "plugin/invoke",
+                ),
+            ),
+            target = WasmlineHostArtifactTarget(
+                os = "linux",
+                cpu = "x86_64",
+                is64Bit = true,
+            ),
+        )
+
+        assertEquals("plugin.component.wasm", selected?.url)
+    }
+
+    @Test
+    fun `browser host rejects raw Component Wasm artifacts`() {
+        val selected = WasmlineLocalPackageResolution.selectArtifact(
+            artifacts = listOf(
+                WasmlineArtifact(
+                    type = WasmlineArtifactType.COMPONENT_WASM,
+                    url = "plugin.component.wasm",
+                    sha256 = "component",
+                    executionModel = crow.wasmline.WasmlineExecutionModel.COMPONENT_MODEL,
+                    invocationProtocol = crow.wasmline.WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                    exportName = "plugin/invoke",
+                ),
+            ),
+            target = WasmlineHostArtifactTarget(
+                os = "browser",
+                cpu = "wasmjs",
+                is64Bit = true,
+            ),
+        )
+
+        assertEquals(null, selected)
+    }
 }

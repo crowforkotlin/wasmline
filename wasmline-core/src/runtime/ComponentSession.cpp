@@ -10,11 +10,15 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <exception>
+#include <functional>
 #include <utility>
 
 #include "logging/NativeLogger.h"
 #include "wasi/WasiConfig.h"
 #include "wasmtime/WasmtimeMessage.h"
+#include "wasmline/protocol/WasmlineProtocol.h"
+#include "wasmline/runtime/OutboundHandler.h"
 
 namespace wasmline {
     namespace {
@@ -24,6 +28,44 @@ namespace wasmline {
 
             ~ValueTypeGuard() {
                 if (active) wasmtime_component_valtype_delete(&value);
+            }
+        };
+
+        struct ComponentItemGuard {
+            wasmtime_component_item_t value{};
+            bool active = false;
+
+            ~ComponentItemGuard() {
+                if (active) wasmtime_component_item_delete(&value);
+            }
+        };
+
+        struct ExportIndexGuard {
+            std::vector<wasmtime_component_export_index_t*> values;
+
+            void rollback(size_t size) {
+                while (values.size() > size) {
+                    wasmtime_component_export_index_delete(values.back());
+                    values.pop_back();
+                }
+            }
+
+            ~ExportIndexGuard() {
+                rollback(0);
+            }
+        };
+
+        constexpr size_t kMaxComponentInvocationDepth = 32;
+        thread_local std::vector<const ComponentSession*> activeComponentSessions;
+
+        class ComponentInvocationScope {
+        public:
+            explicit ComponentInvocationScope(const ComponentSession* session) {
+                activeComponentSessions.push_back(session);
+            }
+
+            ~ComponentInvocationScope() {
+                activeComponentSessions.pop_back();
             }
         };
 
@@ -37,6 +79,152 @@ namespace wasmline {
 
         bool nameEquals(const wasm_name_t& actual, std::string_view expected) {
             return actual.size == expected.size() && actual.data && std::memcmp(actual.data, expected.data(), expected.size()) == 0;
+        }
+
+        bool typeIsByteList(const wasmtime_component_valtype_t& type) {
+            if (type.kind != WASMTIME_COMPONENT_VALTYPE_LIST || !type.of.list) return false;
+            ValueTypeGuard elementType;
+            wasmtime_component_list_type_element(type.of.list, &elementType.value);
+            elementType.active = true;
+            return elementType.value.kind == WASMTIME_COMPONENT_VALTYPE_U8;
+        }
+
+        bool recordFieldMatches(const wasmtime_component_record_type_t* record, size_t index, std::string_view expectedName,
+                                bool (*typeMatches)(const wasmtime_component_valtype_t&)) {
+            const char* fieldName = nullptr;
+            size_t fieldNameSize = 0;
+            ValueTypeGuard fieldType;
+            if (!record || !typeMatches ||
+                !wasmtime_component_record_type_field_nth(record, index, &fieldName, &fieldNameSize, &fieldType.value)) {
+                return false;
+            }
+            fieldType.active = true;
+            return nameString(fieldName, fieldNameSize) == expectedName && typeMatches(fieldType.value);
+        }
+
+        bool typeIsString(const wasmtime_component_valtype_t& type) {
+            return type.kind == WASMTIME_COMPONENT_VALTYPE_STRING;
+        }
+
+        bool requestTypeMatches(const wasmtime_component_valtype_t& type) {
+            return type.kind == WASMTIME_COMPONENT_VALTYPE_RECORD && type.of.record &&
+                   wasmtime_component_record_type_field_count(type.of.record) == 3 &&
+                   recordFieldMatches(type.of.record, 0, "action", typeIsString) &&
+                   recordFieldMatches(type.of.record, 1, "codec", typeIsString) &&
+                   recordFieldMatches(type.of.record, 2, "payload", typeIsByteList);
+        }
+
+        bool errorTypeMatches(const wasmtime_component_valtype_t& type) {
+            return type.kind == WASMTIME_COMPONENT_VALTYPE_RECORD && type.of.record &&
+                   wasmtime_component_record_type_field_count(type.of.record) == 3 &&
+                   recordFieldMatches(type.of.record, 0, "code", typeIsString) &&
+                   recordFieldMatches(type.of.record, 1, "message", typeIsString) &&
+                   recordFieldMatches(type.of.record, 2, "details", typeIsByteList);
+        }
+
+        bool rpcFunctionTypeMatches(const wasmtime_component_func_type_t* type) {
+            if (!type || wasmtime_component_func_type_param_count(type) != 1) return false;
+
+            const char* parameterName = nullptr;
+            size_t parameterNameSize = 0;
+            ValueTypeGuard parameterType;
+            if (!wasmtime_component_func_type_param_nth(type, 0, &parameterName, &parameterNameSize, &parameterType.value)) return false;
+            parameterType.active = true;
+            if (!requestTypeMatches(parameterType.value)) return false;
+
+            ValueTypeGuard resultType;
+            if (!wasmtime_component_func_type_result(type, &resultType.value)) return false;
+            resultType.active = true;
+            if (resultType.value.kind != WASMTIME_COMPONENT_VALTYPE_RESULT || !resultType.value.of.result) return false;
+
+            ValueTypeGuard okType;
+            ValueTypeGuard errorType;
+            if (!wasmtime_component_result_type_ok(resultType.value.of.result, &okType.value)) return false;
+            okType.active = true;
+            if (!wasmtime_component_result_type_err(resultType.value.of.result, &errorType.value)) return false;
+            errorType.active = true;
+            return typeIsByteList(okType.value) && errorTypeMatches(errorType.value);
+        }
+
+        bool rpcInstanceTypeMatches(const wasmtime_component_instance_type_t* type, const wasm_engine_t* engine) {
+            if (!type || !engine) return false;
+            ComponentItemGuard invoke;
+            if (!wasmtime_component_instance_type_export_get(type, engine, "invoke", 6, &invoke.value)) return false;
+            invoke.active = true;
+            return invoke.value.kind == WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC && rpcFunctionTypeMatches(invoke.value.of.component_func);
+        }
+
+        const ComponentValue* recordField(const ComponentRecord& record, std::string_view name) {
+            const auto field = std::find_if(record.begin(), record.end(), [name](const ComponentRecordField& item) {
+                return item.name == name;
+            });
+            return field == record.end() ? nullptr : &field->value;
+        }
+
+        bool componentBytes(const ComponentValue& value, std::string* output) {
+            if (!output || value.kind() != ComponentValue::Kind::LIST) return false;
+            const auto& items = value.listValue();
+            output->clear();
+            output->reserve(items.size());
+            for (const auto& item : items) {
+                if (item.kind() != ComponentValue::Kind::U8) return false;
+                output->push_back(static_cast<char>(item.u8Value()));
+            }
+            return true;
+        }
+
+        ComponentValue byteList(std::string_view bytes) {
+            ComponentList values;
+            values.reserve(bytes.size());
+            for (const unsigned char byte : bytes) {
+                values.push_back(ComponentValue::u8(byte));
+            }
+            return ComponentValue::list(std::move(values));
+        }
+
+        ComponentValue rpcSuccess(std::string_view payload) {
+            return ComponentValue::result(true, std::make_shared<ComponentValue>(byteList(payload)));
+        }
+
+        ComponentValue rpcFailure(uint32_t code, std::string message, std::string_view details = {}) {
+            ComponentRecord fields;
+            fields.push_back(ComponentRecordField{"code", ComponentValue::string(std::to_string(code))});
+            fields.push_back(ComponentRecordField{"message", ComponentValue::string(std::move(message))});
+            fields.push_back(ComponentRecordField{"details", byteList(details)});
+            return ComponentValue::result(false, std::make_shared<ComponentValue>(ComponentValue::record(std::move(fields))));
+        }
+
+        wasmtime_error_t* componentError(std::string message) {
+            return wasmtime_error_new(message.c_str());
+        }
+
+        bool resolveExportPath(const wasmtime_component_instance_t* instance, wasmtime_context_t* context,
+                               const wasmtime_component_export_index_t* parent, std::string_view path, ExportIndexGuard* guard) {
+            if (!instance || !context || !guard || path.empty()) return false;
+
+            auto* exact = wasmtime_component_instance_get_export_index(instance, context, parent, path.data(), path.size());
+            if (exact) {
+                guard->values.push_back(exact);
+                return true;
+            }
+
+            size_t separator = path.rfind('/');
+            while (separator != std::string_view::npos) {
+                if (separator > 0 && separator + 1 < path.size()) {
+                    const std::string_view prefix = path.substr(0, separator);
+                    const std::string_view suffix = path.substr(separator + 1);
+                    auto* nested = wasmtime_component_instance_get_export_index(instance, context, parent, prefix.data(), prefix.size());
+                    if (nested) {
+                        const size_t checkpoint = guard->values.size();
+                        guard->values.push_back(nested);
+                        if (resolveExportPath(instance, context, nested, suffix, guard)) return true;
+                        guard->rollback(checkpoint);
+                    }
+                }
+                if (separator == 0) break;
+                separator = path.rfind('/', separator - 1);
+            }
+            return false;
         }
 
         bool enumContains(const wasmtime_component_enum_type_t* type, std::string_view name) {
@@ -104,6 +292,12 @@ namespace wasmline {
 
         void initializeValue(wasmtime_component_val_t* value) {
             if (value) *value = {};
+        }
+
+        void deleteComponentValue(wasmtime_component_val_t* value) {
+            if (!value) return;
+            wasmtime_component_val_delete(value);
+            *value = {};
         }
 
         bool convertToWasmtime(const ComponentValue& value, const wasmtime_component_valtype_t& type, wasmtime_component_val_t* result);
@@ -180,7 +374,7 @@ namespace wasmline {
                 if (value.kind() != ComponentValue::Kind::STRING) return false;
                 result->kind = WASMTIME_COMPONENT_STRING;
                 if (!setName(&result->of.string, value.stringValue())) {
-                    wasmtime_component_val_delete(result);
+                    deleteComponentValue(result);
                     return false;
                 }
                 return true;
@@ -196,7 +390,7 @@ namespace wasmline {
                 elementType.active = true;
                 for (size_t index = 0; index < values.size(); ++index) {
                     if (!convertToWasmtime(values[index], elementType.value, &result->of.list.data[index])) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                 }
@@ -219,13 +413,13 @@ namespace wasmline {
                     ValueTypeGuard fieldType;
                     if (!wasmtime_component_record_type_field_nth(type.of.record, index, &fieldName, &fieldNameSize, &fieldType.value) ||
                         fields[index].name != nameString(fieldName, fieldNameSize)) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                     fieldType.active = true;
                     if (!setName(&result->of.record.data[index].name, fields[index].name) ||
                         !convertToWasmtime(fields[index].value, fieldType.value, &result->of.record.data[index].val)) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                 }
@@ -243,12 +437,12 @@ namespace wasmline {
                 for (size_t index = 0; index < count; ++index) {
                     ValueTypeGuard itemType;
                     if (!wasmtime_component_tuple_type_types_nth(type.of.tuple, index, &itemType.value)) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                     itemType.active = true;
                     if (!convertToWasmtime(values[index], itemType.value, &result->of.tuple.data[index])) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                 }
@@ -263,20 +457,23 @@ namespace wasmline {
                 payloadType.active = hasPayload;
                 result->kind = WASMTIME_COMPONENT_VARIANT;
                 if (!setName(&result->of.variant.discriminant, variant.discriminant)) {
-                    wasmtime_component_val_delete(result);
+                    deleteComponentValue(result);
                     return false;
                 }
-                if (hasPayload != static_cast<bool>(variant.value)) return false;
+                if (hasPayload != static_cast<bool>(variant.value)) {
+                    deleteComponentValue(result);
+                    return false;
+                }
                 if (hasPayload) {
                     wasmtime_component_val_t payload{};
                     if (!convertToWasmtime(*variant.value, payloadType.value, &payload)) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                     result->of.variant.val = wasmtime_component_val_new(&payload);
                     if (!result->of.variant.val) {
-                        wasmtime_component_val_delete(&payload);
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(&payload);
+                        deleteComponentValue(result);
                         return false;
                     }
                 }
@@ -286,7 +483,7 @@ namespace wasmline {
                 if (value.kind() != ComponentValue::Kind::ENUM || !enumContains(type.of.enum_, value.enumValue())) return false;
                 result->kind = WASMTIME_COMPONENT_ENUM;
                 if (!setName(&result->of.enumeration, value.enumValue())) {
-                    wasmtime_component_val_delete(result);
+                    deleteComponentValue(result);
                     return false;
                 }
                 return true;
@@ -301,7 +498,7 @@ namespace wasmline {
                 if (!convertToWasmtime(*value.optionValue(), innerType.value, &inner)) return false;
                 result->of.option = wasmtime_component_val_new(&inner);
                 if (!result->of.option) {
-                    wasmtime_component_val_delete(&inner);
+                    deleteComponentValue(&inner);
                     return false;
                 }
                 return true;
@@ -321,7 +518,7 @@ namespace wasmline {
                 if (!convertToWasmtime(*resultValue.value, innerType.value, &inner)) return false;
                 result->of.result.val = wasmtime_component_val_new(&inner);
                 if (!result->of.result.val) {
-                    wasmtime_component_val_delete(&inner);
+                    deleteComponentValue(&inner);
                     return false;
                 }
                 return true;
@@ -341,7 +538,7 @@ namespace wasmline {
                     result->of.flags.data[index] = {};
                 for (size_t index = 0; index < names.size(); ++index) {
                     if (!setName(&result->of.flags.data[index], names[index])) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                 }
@@ -365,7 +562,7 @@ namespace wasmline {
                 for (size_t index = 0; index < entries.size(); ++index) {
                     if (!convertToWasmtime(entries[index].first, keyType.value, &result->of.map.data[index].key) ||
                         !convertToWasmtime(entries[index].second, valueType.value, &result->of.map.data[index].value)) {
-                        wasmtime_component_val_delete(result);
+                        deleteComponentValue(result);
                         return false;
                     }
                 }
@@ -605,6 +802,147 @@ namespace wasmline {
         if (store_) wasmtime_store_delete(store_);
     }
 
+    void ComponentSession::setOutboundHandler(std::unique_ptr<OutboundHandler> handler, std::string codec) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        outboundHandler_ = std::move(handler);
+        codec_ = std::move(codec);
+    }
+
+    bool ComponentSession::registerRpcImports() {
+        wasmtime_component_type_t* componentType = wasmtime_component_type(component_);
+        if (!componentType) {
+            LOGE("[Wasmtime] ComponentSession -> Component type is unavailable: %s", key_.c_str());
+            return false;
+        }
+
+        const size_t importCount = wasmtime_component_type_import_count(componentType, engine_);
+        for (size_t index = 0; index < importCount; ++index) {
+            const char* importName = nullptr;
+            size_t importNameSize = 0;
+            ComponentItemGuard import;
+            if (!wasmtime_component_type_import_nth(componentType, engine_, index, &importName, &importNameSize, &import.value)) {
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Component import type is unavailable: %s", key_.c_str());
+                return false;
+            }
+            import.active = true;
+            const std::string importNameText = nameString(importName, importNameSize);
+            if (import.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
+                !rpcInstanceTypeMatches(import.value.of.component_instance, engine_)) {
+                continue;
+            }
+
+            wasmtime_component_linker_instance_t* root = wasmtime_component_linker_root(linker_);
+            if (!root) {
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Component linker root is unavailable: %s", key_.c_str());
+                return false;
+            }
+
+            wasmtime_component_linker_instance_t* rpcInstance = nullptr;
+            wasmtime_error_t* error = wasmtime_component_linker_instance_add_instance(root, importName, importNameSize, &rpcInstance);
+            if (!error && rpcInstance) {
+                error = wasmtime_component_linker_instance_add_func(rpcInstance, "invoke", 6, invokeHost, this, nullptr);
+            } else if (!error) {
+                error = componentError("Wasmline RPC linker instance is unavailable.");
+            }
+            if (rpcInstance) wasmtime_component_linker_instance_delete(rpcInstance);
+            wasmtime_component_linker_instance_delete(root);
+
+            if (error) {
+                const std::string message = wasmtime::errorMessage(error);
+                wasmtime_error_delete(error);
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Failed to register RPC import '%s': %s", importNameText.c_str(), message.c_str());
+                return false;
+            }
+            LOGI("[Wasmtime] ComponentSession -> Registered RPC import: %s", importNameText.c_str());
+        }
+
+        wasmtime_component_type_delete(componentType);
+        return true;
+    }
+
+    wasmtime_error_t* ComponentSession::invokeHost(void* data, wasmtime_context_t* context,
+                                                   const wasmtime_component_func_type_t* functionType,
+                                                   wasmtime_component_val_t* arguments, size_t argumentCount,
+                                                   wasmtime_component_val_t* results, size_t resultCount) {
+        auto* session = static_cast<ComponentSession*>(data);
+        if (!session || context != session->context_) return componentError("Wasmline RPC callback has no active component session.");
+        return session->handleHostInvoke(functionType, arguments, argumentCount, results, resultCount);
+    }
+
+    wasmtime_error_t* ComponentSession::handleHostInvoke(const wasmtime_component_func_type_t* functionType,
+                                                         wasmtime_component_val_t* arguments, size_t argumentCount,
+                                                         wasmtime_component_val_t* results, size_t resultCount) {
+        if (!rpcFunctionTypeMatches(functionType) || argumentCount != 1 || resultCount != 1 || !arguments || !results) {
+            return componentError("Wasmline RPC host.invoke signature does not match wasmline:rpc@1.0.0.");
+        }
+
+        const char* parameterName = nullptr;
+        size_t parameterNameSize = 0;
+        ValueTypeGuard parameterType;
+        if (!wasmtime_component_func_type_param_nth(functionType, 0, &parameterName, &parameterNameSize, &parameterType.value)) {
+            return componentError("Wasmline RPC request type is unavailable.");
+        }
+        parameterType.active = true;
+
+        ComponentValue request;
+        if (!fromWasmtimeValue(arguments[0], parameterType.value, &request) || request.kind() != ComponentValue::Kind::RECORD) {
+            return componentError("Wasmline RPC request value is invalid.");
+        }
+
+        const auto& requestFields = request.recordValue();
+        const ComponentValue* actionValue = recordField(requestFields, "action");
+        const ComponentValue* codecValue = recordField(requestFields, "codec");
+        const ComponentValue* payloadValue = recordField(requestFields, "payload");
+        std::string payload;
+        if (!actionValue || actionValue->kind() != ComponentValue::Kind::STRING || !codecValue ||
+            codecValue->kind() != ComponentValue::Kind::STRING || !payloadValue || !componentBytes(*payloadValue, &payload)) {
+            return componentError("Wasmline RPC request fields are invalid.");
+        }
+
+        ComponentValue response;
+        if (!codec_.empty() && codecValue->stringValue() != codec_) {
+            response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::SERIALIZATION_FAILED),
+                                  "Wasmline RPC codec mismatch. Expected '" + codec_ + "' but received '" +
+                                      codecValue->stringValue() + "'.");
+        } else if (!outboundHandler_) {
+            response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::ACTION_NOT_BOUND),
+                                  "No Wasmline outbound action is bound.");
+        } else {
+            std::string encodedResponse;
+            try {
+                encodedResponse = outboundHandler_->onOutboundInvoke(actionValue->stringValue(), payload);
+            } catch (const std::exception& error) {
+                encodedResponse = WasmlineResponseCodec::failure(WasmlineErrorCode::HANDLER_FAILED, error.what());
+            } catch (...) {
+                encodedResponse = WasmlineResponseCodec::failure(WasmlineErrorCode::HANDLER_FAILED,
+                                                                 "Wasmline outbound action handler failed.");
+            }
+
+            WasmlineResponseFrame frame;
+            std::string decodeError;
+            if (!WasmlineResponseCodec::decode(encodedResponse, &frame, &decodeError)) {
+                response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::RESPONSE_MALFORMED), std::move(decodeError));
+            } else if (frame.isSuccess) {
+                response = rpcSuccess(frame.payload);
+            } else {
+                response = rpcFailure(frame.errorCode, std::move(frame.message), frame.payload);
+            }
+        }
+
+        ValueTypeGuard resultType;
+        if (!wasmtime_component_func_type_result(functionType, &resultType.value)) {
+            return componentError("Wasmline RPC result type is unavailable.");
+        }
+        resultType.active = true;
+        if (!toWasmtimeValue(response, resultType.value, &results[0])) {
+            return componentError("Wasmline RPC response could not be lowered to the component result type.");
+        }
+        return nullptr;
+    }
+
     bool ComponentSession::initialize() {
         std::lock_guard<std::mutex> lock(mutex_);
         if (initialized_) return true;
@@ -632,6 +970,8 @@ namespace wasmline {
         }
 #endif
 
+        if (!registerRpcImports()) return false;
+
         wasmtime_error_t* instantiateError = wasmtime_component_linker_instantiate(linker_, context_, component_, &instance_);
         if (instantiateError) {
             LOGE("[Wasmtime] ComponentSession -> Instantiation failed: %s", wasmtime::errorMessage(instantiateError).c_str());
@@ -643,7 +983,22 @@ namespace wasmline {
     }
 
     InvocationResult ComponentSession::invoke(std::string_view exportName, const std::vector<ComponentValue>& arguments) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        if (std::find(activeComponentSessions.begin(), activeComponentSessions.end(), this) != activeComponentSessions.end()) {
+            return InvocationResult::failure(WasmlineErrorCode::COMPONENT_CALL_FAILED,
+                                             "Recursive invocation of the same Component session is not supported.");
+        }
+        if (activeComponentSessions.size() >= kMaxComponentInvocationDepth) {
+            return InvocationResult::failure(WasmlineErrorCode::COMPONENT_CALL_FAILED,
+                                             "Component invocation depth limit was exceeded.");
+        }
+
+        std::unique_lock<std::mutex> lock(mutex_, std::defer_lock);
+        if (activeComponentSessions.empty()) {
+            lock.lock();
+        } else if (!lock.try_lock()) {
+            return InvocationResult::failure(WasmlineErrorCode::COMPONENT_CALL_FAILED,
+                                             "Nested Component session is already active on another thread.");
+        }
         if (!initialized_) {
             return InvocationResult::failure(WasmlineErrorCode::ENGINE_NOT_INITIALIZED, "Component session is not initialized.");
         }
@@ -651,15 +1006,13 @@ namespace wasmline {
             return InvocationResult::failure(WasmlineErrorCode::COMPONENT_EXPORT_NOT_FOUND, "Component export name is empty.");
         }
 
-        wasmtime_component_export_index_t* exportIndex =
-            wasmtime_component_instance_get_export_index(&instance_, context_, nullptr, exportName.data(), exportName.size());
-        if (!exportIndex) {
+        ExportIndexGuard exportIndices;
+        if (!resolveExportPath(&instance_, context_, nullptr, exportName, &exportIndices)) {
             return InvocationResult::failure(WasmlineErrorCode::COMPONENT_EXPORT_NOT_FOUND, "Component export is not available.");
         }
 
         wasmtime_component_func_t function{};
-        const bool found = wasmtime_component_instance_get_func(&instance_, context_, exportIndex, &function);
-        wasmtime_component_export_index_delete(exportIndex);
+        const bool found = wasmtime_component_instance_get_func(&instance_, context_, exportIndices.values.back(), &function);
         if (!found) {
             return InvocationResult::failure(WasmlineErrorCode::COMPONENT_EXPORT_NOT_FOUND, "Component export is not a function.");
         }
@@ -703,6 +1056,7 @@ namespace wasmline {
         wasmtime_component_valtype_t resultType{};
         const bool hasResult = wasmtime_component_func_type_result(functionType, &resultType);
         std::vector<wasmtime_component_val_t> callResults(hasResult ? 1 : 0);
+        ComponentInvocationScope invocationScope(this);
         wasmtime_error_t* callError = wasmtime_component_func_call(&function, context_, callArguments.data(), callArguments.size(),
                                                                    callResults.data(), callResults.size());
         for (size_t index = 0; index < parameterCount; ++index) {

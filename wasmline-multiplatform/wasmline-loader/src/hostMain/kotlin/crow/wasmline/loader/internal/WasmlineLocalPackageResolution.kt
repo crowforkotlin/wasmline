@@ -77,10 +77,13 @@ internal object WasmlineLocalPackageResolution {
         WasmlineArtifactType.WASM -> wasmSelectionScore(target)
         WasmlineArtifactType.CWASM -> cwasmSelectionScore(target)
         WasmlineArtifactType.PWASM -> pwasmSelectionScore(target)
+        WasmlineArtifactType.COMPONENT_WASM -> componentWasmSelectionScore(target)
     }
 
     private fun WasmlineArtifact.wasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
-        if (normalizeOs(target.os) != "browser") {
+        val hostOs = normalizeOs(target.os) ?: return null
+        val hostCpu = normalizeCpu(target.cpu) ?: return null
+        if (hostOs != "browser") {
             return null
         }
         val artifactOs = normalizeOs(targetOs)
@@ -88,36 +91,56 @@ internal object WasmlineLocalPackageResolution {
             return null
         }
         val artifactCpu = normalizeCpu(targetCpu)
-        if (artifactCpu != null && artifactCpu != target.cpu) {
+        if (artifactCpu != null && artifactCpu != hostCpu) {
             return null
         }
         return 500
     }
 
     private fun WasmlineArtifact.cwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
+        val hostOs = normalizeOs(target.os) ?: return null
+        val hostCpu = normalizeCpu(target.cpu) ?: return null
         val artifactOs = normalizeOs(targetOs) ?: return null
         val artifactCpu = normalizeCpu(targetCpu) ?: return null
-        if (artifactOs != target.os || artifactCpu != target.cpu || is64Bit != target.is64Bit) {
+        if (artifactOs != hostOs || artifactCpu != hostCpu || is64Bit != target.is64Bit) {
             return null
         }
         return 300
     }
 
     private fun WasmlineArtifact.pwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
+        val hostOs = normalizeOs(target.os) ?: return null
+        val hostCpu = normalizeCpu(target.cpu) ?: return null
         if (is64Bit != target.is64Bit) {
             return null
         }
         val artifactOs = normalizeOs(targetOs)
-        if (artifactOs != null && artifactOs != target.os) {
+        if (artifactOs != null && artifactOs != hostOs) {
             return null
         }
         val artifactCpu = normalizeCpu(targetCpu)
         return when {
             artifactCpu == null -> 200
-            artifactCpu == target.cpu -> 190
+            artifactCpu == hostCpu -> 190
             artifactCpu.startsWith("pulley") && matchesPulleyBitness(artifactCpu, target.is64Bit) -> 180
             else -> null
         }
+    }
+
+    private fun WasmlineArtifact.componentWasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
+        if (executionModel != crow.wasmline.WasmlineExecutionModel.COMPONENT_MODEL ||
+            invocationProtocol != crow.wasmline.WasmlineInvocationProtocol.COMPONENT_EXPORT
+        ) {
+            return null
+        }
+        val hostOs = normalizeOs(target.os) ?: return null
+        val hostCpu = normalizeCpu(target.cpu) ?: return null
+        if (hostOs == "browser") return null
+        val artifactOs = normalizeOs(targetOs)
+        if (artifactOs != null && artifactOs != hostOs) return null
+        val artifactCpu = normalizeCpu(targetCpu)
+        if (artifactCpu != null && artifactCpu != hostCpu) return null
+        return 100
     }
 
     private fun matchesPulleyBitness(cpu: String, is64Bit: Boolean): Boolean = when {

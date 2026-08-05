@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -24,6 +25,8 @@
 #include <wasmtime/store.h>
 
 namespace wasmline {
+    class OutboundHandler;
+
     /** Provides isolated execution state for a Component Model instance. */
     class ComponentSession {
     public:
@@ -39,6 +42,9 @@ namespace wasmline {
         /** Invokes an exported component function. */
         InvocationResult invoke(std::string_view exportName, const std::vector<ComponentValue>& arguments);
 
+        /** Sets the handler and codec expected by the imported Wasmline RPC interface. */
+        void setOutboundHandler(std::unique_ptr<OutboundHandler> handler, std::string codec);
+
     private:
         std::string key_;
         wasm_engine_t* engine_;
@@ -49,6 +55,19 @@ namespace wasmline {
         wasmtime_component_instance_t instance_{};
         bool initialized_ = false;
         std::mutex mutex_;
+        std::unique_ptr<OutboundHandler> outboundHandler_;
+        std::string codec_;
+
+        bool registerRpcImports();
+
+        static wasmtime_error_t* invokeHost(void* data, wasmtime_context_t* context,
+                                            const wasmtime_component_func_type_t* functionType,
+                                            wasmtime_component_val_t* arguments, size_t argumentCount,
+                                            wasmtime_component_val_t* results, size_t resultCount);
+
+        wasmtime_error_t* handleHostInvoke(const wasmtime_component_func_type_t* functionType,
+                                           wasmtime_component_val_t* arguments, size_t argumentCount,
+                                           wasmtime_component_val_t* results, size_t resultCount);
 
         static bool toWasmtimeValue(const ComponentValue& value, const wasmtime_component_valtype_t& type,
                                     wasmtime_component_val_t* result);

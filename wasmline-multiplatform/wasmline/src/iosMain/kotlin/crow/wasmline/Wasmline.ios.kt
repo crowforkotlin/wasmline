@@ -11,6 +11,7 @@ import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineCallResult
 import kotlinx.cinterop.*
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSLock
 
 actual class Wasmline actual internal constructor(
     private val moduleKey: String,
@@ -20,7 +21,7 @@ actual class Wasmline actual internal constructor(
 
     actual internal fun setOutbound(dispatcher: WasmlineHostDispatcher) {
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
-        wasmline_set_outbound_handler(moduleKey, staticCFunction(::iosStaticOutboundCallback))
+        wasmline_set_outbound_handler(moduleKey, config.serialization.factoryId, staticCFunction(::iosStaticOutboundCallback))
     }
 
     actual internal fun call(action: String, inputBytes: ByteArray): ByteArray = memScoped {
@@ -45,6 +46,10 @@ actual class Wasmline actual internal constructor(
                 return@memScoped byteArrayOf()
             }
 
+            if (outLen.value > Int.MAX_VALUE.toULong()) {
+                wasmline_free_memory(resultPtr)
+                return@memScoped byteArrayOf()
+            }
             val length = outLen.value.toInt()
             if (length == 0) {
                 wasmline_free_memory(resultPtr)
@@ -157,47 +162,89 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
 
 private object WasmlineCallbackRegistry {
     private val dispatchers = mutableMapOf<String, WasmlineHostDispatcher>()
+    private val lock = NSLock()
 
     fun register(key: String, dispatcher: WasmlineHostDispatcher) {
-        dispatchers[key] = dispatcher
+        lock.lock()
+        try {
+            dispatchers[key] = dispatcher
+        } finally {
+            lock.unlock()
+        }
     }
 
     fun unregister(key: String) {
-        dispatchers.remove(key)
+        lock.lock()
+        try {
+            dispatchers.remove(key)
+        } finally {
+            lock.unlock()
+        }
     }
 
-    fun findAny(): WasmlineHostDispatcher? = dispatchers.values.firstOrNull()
+    fun find(key: String): WasmlineHostDispatcher? {
+        lock.lock()
+        return try {
+            dispatchers[key]
+        } finally {
+            lock.unlock()
+        }
+    }
 }
 
+private fun callbackLength(value: ULong): Int? =
+    if (value > Int.MAX_VALUE.toULong()) null else value.toInt()
+
 internal fun iosStaticOutboundCallback(
+    key: CPointer<ByteVar>?,
+    keyLen: ULong,
     action: CPointer<ByteVar>?,
     actionLen: ULong,
     payload: CPointer<ByteVar>?,
     payloadLen: ULong,
     outLen: CPointer<ULongVar>?,
 ): CPointer<ByteVar>? {
-    val actionStr = action?.toKString() ?: ""
-    val payloadBytes = payload?.readBytes(payloadLen.toInt()) ?: byteArrayOf()
-
-    val dispatcher = WasmlineCallbackRegistry.findAny()
-    val response = try {
-        if (dispatcher == null) {
-            WasmlineResponseCodec.encodeFailure(
-                WasmlineCallError(
-                    code = WasmlineErrorCode.ACTION_NOT_BOUND,
-                    message = "No Wasmline outbound action is bound.",
-                ),
-            )
-        } else {
-            dispatcher.dispatch(actionStr, payloadBytes)
-        }
-    } catch (error: Throwable) {
+    val keySize = callbackLength(keyLen)
+    val actionSize = callbackLength(actionLen)
+    val payloadSize = callbackLength(payloadLen)
+    val response = if (keySize == null || actionSize == null || payloadSize == null) {
         WasmlineResponseCodec.encodeFailure(
             WasmlineCallError(
-                code = WasmlineErrorCode.HANDLER_FAILED,
-                message = error.message ?: "Wasmline outbound action handler failed.",
+                code = WasmlineErrorCode.TRANSPORT_FAILURE,
+                message = "iOS outbound callback received an oversized buffer.",
             ),
         )
+    } else if ((keySize > 0 && key == null) || (actionSize > 0 && action == null) || (payloadSize > 0 && payload == null)) {
+        WasmlineResponseCodec.encodeFailure(
+            WasmlineCallError(
+                code = WasmlineErrorCode.TRANSPORT_FAILURE,
+                message = "iOS outbound callback received a null buffer.",
+            ),
+        )
+    } else {
+        val keyStr = key?.readBytes(keySize)?.decodeToString() ?: ""
+        val actionStr = action?.readBytes(actionSize)?.decodeToString() ?: ""
+        val payloadBytes = payload?.readBytes(payloadSize) ?: byteArrayOf()
+        val dispatcher = WasmlineCallbackRegistry.find(keyStr)
+        try {
+            if (dispatcher == null) {
+                WasmlineResponseCodec.encodeFailure(
+                    WasmlineCallError(
+                        code = WasmlineErrorCode.ACTION_NOT_BOUND,
+                        message = "No Wasmline outbound action is bound.",
+                    ),
+                )
+            } else {
+                dispatcher.dispatch(actionStr, payloadBytes)
+            }
+        } catch (error: Throwable) {
+            WasmlineResponseCodec.encodeFailure(
+                WasmlineCallError(
+                    code = WasmlineErrorCode.HANDLER_FAILED,
+                    message = error.message ?: "Wasmline outbound action handler failed.",
+                ),
+            )
+        }
     }
 
     outLen?.pointed?.value = response.size.toULong()

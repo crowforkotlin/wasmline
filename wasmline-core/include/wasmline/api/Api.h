@@ -81,8 +81,8 @@ namespace wasmline {
         static InvocationResult invokeComponent(const std::string& key, std::string_view exportName,
                                                 const std::vector<ComponentValue>& arguments);
 
-        /** Sets the host handler for outbound calls. */
-        static void setOutboundHandler(const std::string& key, std::unique_ptr<OutboundHandler> handler);
+        /** Sets the host handler and serialization codec for outbound calls. */
+        static void setOutboundHandler(const std::string& key, std::string codec, std::unique_ptr<OutboundHandler> handler);
 
     private:
         static void ensureEngineForArtifact(const std::string& path);

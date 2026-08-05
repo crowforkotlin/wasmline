@@ -19,16 +19,18 @@ using namespace wasmline;
 /** Forwards outbound calls to the Kotlin callback. */
 class IosOutboundHandler : public OutboundHandler {
 private:
+    std::string key;
     OutboundCallback kotlinCallback;
 public:
     /** Creates a handler for the Kotlin callback. */
-    IosOutboundHandler(OutboundCallback callback) : kotlinCallback(callback) {}
+    IosOutboundHandler(std::string key, OutboundCallback callback) : key(std::move(key)), kotlinCallback(callback) {}
 
     /** Sends an outbound call to Kotlin. */
     std::string onOutboundInvoke(std::string_view action, std::string_view payload) override {
         if (kotlinCallback) {
             size_t resultLength = 0;
-            char* resultRaw = kotlinCallback(action.data(), action.length(), payload.data(), payload.length(), &resultLength);
+            char* resultRaw = kotlinCallback(key.data(), key.length(), action.data(), action.length(), payload.data(), payload.length(),
+                                             &resultLength);
             if (resultRaw != nullptr) {
                 std::string result(resultRaw, resultLength);
                 free(resultRaw);
@@ -168,9 +170,10 @@ void wasmline_free_memory(char* str) {
     if (str) free(str);
 }
 
-void wasmline_set_outbound_handler(const char* key, OutboundCallback callback) {
-    std::unique_ptr<OutboundHandler> handler(new IosOutboundHandler(callback));
-    Api::setOutboundHandler(std::string(key), std::move(handler));
+void wasmline_set_outbound_handler(const char* key, const char* codec, OutboundCallback callback) {
+    if (!key) return;
+    std::unique_ptr<OutboundHandler> handler(new IosOutboundHandler(key, callback));
+    Api::setOutboundHandler(std::string(key), codec ? std::string(codec) : std::string(), std::move(handler));
 }
 
 }

@@ -73,8 +73,14 @@ Java_crow_wasmline_Wasmline_nativeLoadAotUnsafe(JNIEnv *env, jclass thiz, jstrin
 
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmline_Wasmline_nativeLoadComponent(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+    if (!env || !keyStr || !pathStr) return JNI_FALSE;
     const char *key = env->GetStringUTFChars(keyStr, nullptr);
     const char *path = env->GetStringUTFChars(pathStr, nullptr);
+    if (!key || !path) {
+        if (path) env->ReleaseStringUTFChars(pathStr, path);
+        if (key) env->ReleaseStringUTFChars(keyStr, key);
+        return JNI_FALSE;
+    }
     bool success = wasmline::Api::loadComponent(key, path);
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
@@ -83,8 +89,14 @@ Java_crow_wasmline_Wasmline_nativeLoadComponent(JNIEnv *env, jclass thiz, jstrin
 
 JNIEXPORT jboolean JNICALL
 Java_crow_wasmline_Wasmline_nativeLoadComponentUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
+    if (!env || !keyStr || !pathStr) return JNI_FALSE;
     const char *key = env->GetStringUTFChars(keyStr, nullptr);
     const char *path = env->GetStringUTFChars(pathStr, nullptr);
+    if (!key || !path) {
+        if (path) env->ReleaseStringUTFChars(pathStr, path);
+        if (key) env->ReleaseStringUTFChars(keyStr, key);
+        return JNI_FALSE;
+    }
     bool success = wasmline::Api::loadComponentUnsafe(key, path);
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
@@ -93,7 +105,9 @@ Java_crow_wasmline_Wasmline_nativeLoadComponentUnsafe(JNIEnv *env, jclass thiz, 
 
 JNIEXPORT void JNICALL
 Java_crow_wasmline_Wasmline_nativeReleaseModule(JNIEnv *env, jclass thiz, jstring keyStr) {
+    if (!env || !keyStr) return;
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
+    if (!key) return;
     wasmline::Api::releaseModule(key);
     env->ReleaseStringUTFChars(keyStr, key);
 }
@@ -202,10 +216,24 @@ Java_crow_wasmline_Wasmline_nativeInvokeComponent(JNIEnv *env, jclass thiz, jstr
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeSetOutboundHandler(JNIEnv *env, jclass thiz, jstring keyStr, jobject jDispatcher) {
+Java_crow_wasmline_Wasmline_nativeSetOutboundHandler(JNIEnv *env, jclass thiz, jstring keyStr, jstring codecStr,
+                                                      jobject jDispatcher) {
+    if (!keyStr || !codecStr || !jDispatcher) return;
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
+    const char* codec = env->GetStringUTFChars(codecStr, nullptr);
+    if (!key || !codec) {
+        if (codec) env->ReleaseStringUTFChars(codecStr, codec);
+        if (key) env->ReleaseStringUTFChars(keyStr, key);
+        return;
+    }
     auto handler = std::make_unique<JniHostHandler>(env, jDispatcher);
-    wasmline::Api::setOutboundHandler(key, std::move(handler));
+    if (!handler->isValid()) {
+        env->ReleaseStringUTFChars(codecStr, codec);
+        env->ReleaseStringUTFChars(keyStr, key);
+        return;
+    }
+    wasmline::Api::setOutboundHandler(key, codec, std::move(handler));
+    env->ReleaseStringUTFChars(codecStr, codec);
     env->ReleaseStringUTFChars(keyStr, key);
 }
 }

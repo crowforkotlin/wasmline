@@ -86,7 +86,7 @@ Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding
 
 Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。该路径不分配或解析 Core 响应帧。
 
-Component Model 调用通过 Wasmtime Component Model API 加载完整且已经编译完成的 component binary。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。Wasmline 不编译 WIT、WIT-Kotlin，也不运行 `wit-bindgen` 或生成 component adapter。可选的 `contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
+Component Model 调用通过 Wasmtime Component Model API 加载完整且已经编译完成的 component binary。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen` 或 `wasm-tools`；可选的 plugin 构建流水线会在加载前由 `wasmline-plugin-core`、Gradle 插件或 CLI 生成绑定并组装 component。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
 
 三种路径共享相同的结果语义。未绑定 action 返回失败结果 `ACTION_NOT_BOUND`，不表示为空的成功 payload，也不要求抛出异常。Core 路径通过响应帧传递该结果；Raw Export 和 Component Model 通过 typed result carrier 传递该结果。违反编程契约、运行时状态不可恢复，或无法构造可靠结果时，才使用异常。
 

@@ -119,7 +119,12 @@ Wasmline supports three explicit host-side invocation paths:
 | `CORE_WASM` | `RAW_EXPORT` | declared Core Wasm numeric values | `WasmlineCallResult<WasmlineRawCallResult>` |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | declared Component Model values | `WasmlineCallResult<WasmlineComponentCallResult>` |
 
-The Component Model path loads an already compiled component binary. Wasmline does not compile WIT, WIT-Kotlin, or component adapters. `contractMetadata` describes the call contract when needed; it is not a WIT compiler input.
+The runtime side of the Component Model path loads an already compiled component
+binary. The optional plugin build pipeline can generate bindings and create that
+binary from WIT through `wasmline-plugin-core`, the Gradle plugin, or the CLI;
+the loader itself does not run those tools. `contractMetadata` describes the
+call contract when needed; it is not a WIT compiler input. See the
+[Component RPC guide](docs/content/docs/component-rpc.mdx).
 
 The current browser runtime supports the Core Wasmline bridge. Raw Export and Component Model typed calls are provided by the native host backend, where the Wasmtime C API is available.
 

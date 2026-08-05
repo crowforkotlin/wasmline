@@ -170,7 +170,12 @@ namespace wasmline {
         Component::getInstance().release(key);
     }
 
-    void Api::setOutboundHandler(const std::string& key, std::unique_ptr<OutboundHandler> handler) {
+    void Api::setOutboundHandler(const std::string& key, std::string codec, std::unique_ptr<OutboundHandler> handler) {
+        if (Component::getInstance().get(key)) {
+            ComponentSession* componentSession = getOrCreateComponentSession(key);
+            if (componentSession) componentSession->setOutboundHandler(std::move(handler), std::move(codec));
+            return;
+        }
         Session* session = getOrCreateSession(key);
         if (session) session->setOutboundHandler(std::move(handler));
     }

@@ -49,7 +49,7 @@ While the Pulley interpreter can also load and JIT-compile raw `.wasm` at runtim
 
 Use `CORE_WASM` with `WASMLINE_CORE_V1` for a Wasmline service module that exchanges action names and byte payloads. Use `CORE_WASM` with `RAW_EXPORT` for a Core Wasm module with an explicitly declared numeric export ABI. Use `COMPONENT_MODEL` with `COMPONENT_EXPORT` for a complete component binary and Component Model typed values.
 
-The Component Model path starts with an already compiled component binary. Wasmline does not compile WIT or WIT-Kotlin, run `wit-bindgen`, or generate component adapters. Optional `contractMetadata` describes the export contract; it is not an input to a WIT compiler.
+The runtime path starts with an already compiled component binary. Wasmline does not run `wit-bindgen` or generate adapters while loading it. The optional plugin build pipeline does support WIT binding generation and Component assembly through plugin-core, Gradle, and CLI; `contractMetadata` still describes the export contract and is not a WIT compiler input. See the [Component RPC guide](/en/docs/component-rpc).
 
 </details>
 

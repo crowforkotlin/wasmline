@@ -100,4 +100,5 @@ enum class WasmlineArtifactType {
     WASM,
     CWASM,
     PWASM,
+    COMPONENT_WASM,
 }

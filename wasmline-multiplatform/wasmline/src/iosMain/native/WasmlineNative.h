@@ -59,14 +59,16 @@ char* wasmline_invoke_component(const char* key,
 void wasmline_free_memory(char* ptr);
 
 /** Defines the callback signature for outbound host calls. */
-typedef char* (*OutboundCallback)(const char* action,
+typedef char* (*OutboundCallback)(const char* key,
+                                  size_t keyLen,
+                                  const char* action,
                                   size_t actionLen,
                                   const char* payload,
                                   size_t payloadLen,
                                   size_t* outLen);
 
 /** Registers the outbound callback for an artifact. */
-void wasmline_set_outbound_handler(const char* key, OutboundCallback callback);
+void wasmline_set_outbound_handler(const char* key, const char* codec, OutboundCallback callback);
 
 #ifdef __cplusplus
 }

@@ -80,7 +80,7 @@ class ManifestSigner {
                 executionModel = executionModel,
                 invocationProtocol = invocationProtocol,
                 exportName = exportName,
-                contractMetadata = contractMetadata,
+                contractMetadata = artifact.contractMetadata + contractMetadata,
             )
         }
         val manifest = WasmlineManifest(

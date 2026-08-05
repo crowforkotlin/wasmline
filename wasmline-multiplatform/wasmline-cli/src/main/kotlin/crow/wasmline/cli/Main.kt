@@ -9,6 +9,13 @@ import crow.wasmline.extensions.printHeader
 fun main(vararg args: String) {
     printHeader("wasmline command line")
 
+    val tools = NoOpCliktCommand(name = "tools")
+        .subcommands(commands = arrayOf(ToolDownload()))
+    val wit = NoOpCliktCommand(name = "wit")
+        .subcommands(commands = arrayOf(WitGenerate()))
+    val component = NoOpCliktCommand(name = "component")
+        .subcommands(commands = arrayOf(ComponentValidate(), ComponentInspect()))
+
     NoOpCliktCommand(name = "wasmline")
         .subcommands(
             commands = arrayOf(
@@ -17,6 +24,10 @@ fun main(vararg args: String) {
                 Manifest(),
                 Download(),
                 GenerateKeyPair(),
+                Componentize(),
+                tools,
+                wit,
+                component,
             ),
         )
         .versionOption(version = BuildConfig.VERSION)

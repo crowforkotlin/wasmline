@@ -26,7 +26,7 @@ actual class Wasmline internal actual constructor(
 
         @JvmStatic private external fun nativeReleaseModule(key: String)
 
-        @JvmStatic private external fun nativeSetOutboundHandler(key: String, dispatcher: WasmlineHostDispatcher)
+        @JvmStatic private external fun nativeSetOutboundHandler(key: String, codec: String, dispatcher: WasmlineHostDispatcher)
 
         @JvmStatic private external fun nativeInvokeInbound(key: String, action: String, protobufBytes: ByteArray): ByteArray
 
@@ -50,7 +50,7 @@ actual class Wasmline internal actual constructor(
     }
 
     internal actual fun setOutbound(dispatcher: WasmlineHostDispatcher) {
-        nativeSetOutboundHandler(moduleKey, dispatcher)
+        nativeSetOutboundHandler(moduleKey, config.serialization.factoryId, dispatcher)
     }
 
     internal actual fun call(action: String, inputBytes: ByteArray): ByteArray = nativeInvokeInbound(moduleKey, action, inputBytes)
