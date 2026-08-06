@@ -70,7 +70,7 @@ class Compile : CliktCommand(name = "compile") {
             val effectiveProtocol = invocationProtocol ?: if (componentBuild) {
                 "COMPONENT_EXPORT"
             } else {
-                "WASMLINE_CORE_V1"
+                "WASMLINE_CORE"
             }
             val effectiveExport = exportName ?: if (componentBuild) WasmlineComponentRpcContract.DEFAULT_EXPORT else null
             val invocation = parseInvocationOptions(

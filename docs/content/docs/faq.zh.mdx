@@ -47,7 +47,7 @@ payload 数据以 Base64 编码字符串跨越 Kotlin–JS 线性内存边界（
 <details>
 <summary><strong>Core Wasm、Raw Export 和 Component Model 调用有什么区别？</strong></summary>
 
-对于使用 action 名称和字节 payload 的 Wasmline 服务模块，使用 `CORE_WASM` 与 `WASMLINE_CORE_V1`。对于具有明确数值 export ABI 的 Core Wasm 模块，使用 `CORE_WASM` 与 `RAW_EXPORT`。对于完整的 component binary 和 Component Model typed value，使用 `COMPONENT_MODEL` 与 `COMPONENT_EXPORT`。
+对于使用 action 名称和字节 payload 的 Wasmline 服务模块，使用 `CORE_WASM` 与 `WASMLINE_CORE`。对于具有明确数值 export ABI 的 Core Wasm 模块，使用 `CORE_WASM` 与 `RAW_EXPORT`。对于完整的 component binary 和 Component Model typed value，使用 `COMPONENT_MODEL` 与 `COMPONENT_EXPORT`。
 
 运行时 Component Model 路径的输入是已经编译完成的 component binary。加载时不会运行 `wit-bindgen` 或生成 adapter；可选的 plugin 构建流水线可以通过 plugin-core、Gradle 和 CLI 在加载前完成 WIT 绑定与 Component 组装。`contractMetadata` 仍然只是描述 export 契约，不是 WIT 编译器的输入。详见 [Component RPC 指南](/zh/docs/component-rpc)。
 

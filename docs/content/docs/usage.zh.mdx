@@ -113,7 +113,7 @@ when (result) {
 }
 ```
 
-`CORE_WASM` 与 `WASMLINE_CORE_V1` 是默认服务路径。`CORE_WASM` 与 `RAW_EXPORT` 用于具有明确数值 ABI 的 Core Wasm 模块。`COMPONENT_MODEL` 与 `COMPONENT_EXPORT` 用于加载前已经编译完成的 component binary。运行时不会在加载过程中执行 WIT-to-Wasm 或绑定工具；可选的 Gradle/CLI Component 流水线会提前完成这些构建步骤。Component 调用使用 Component Model 值，不使用 Core 线性内存，也不使用 Core 响应帧。WIT envelope 与回调流程参见 [Component RPC 指南](/zh/docs/component-rpc)。
+`CORE_WASM` 与 `WASMLINE_CORE` 是默认服务路径。`CORE_WASM` 与 `RAW_EXPORT` 用于具有明确数值 ABI 的 Core Wasm 模块。`COMPONENT_MODEL` 与 `COMPONENT_EXPORT` 用于加载前已经编译完成的 component binary。运行时不会在加载过程中执行 WIT-to-Wasm 或绑定工具；可选的 Gradle/CLI Component 流水线会提前完成这些构建步骤。Component 调用使用 Component Model 值，不使用 Core 线性内存，也不使用 Core 响应帧。WIT envelope 与回调流程参见 [Component RPC 指南](/zh/docs/component-rpc)。
 
 ## 结果与异常边界
 

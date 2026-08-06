@@ -59,7 +59,7 @@ class CoreCliRegressionTest {
         assertEquals("pulley64", nativeArtifact.targetCpu)
         assertEquals(null, nativeArtifact.targetOs)
         assertEquals(WasmlineExecutionModel.CORE_WASM, nativeArtifact.executionModel)
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE_V1, nativeArtifact.invocationProtocol)
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE, nativeArtifact.invocationProtocol)
         assertTrue(result.artifacts.all { it.executionModel == WasmlineExecutionModel.CORE_WASM })
         assertTrue(result.artifacts.any { it.type == WasmlineArtifactType.WASM && it.targetOs == "browser" })
     }

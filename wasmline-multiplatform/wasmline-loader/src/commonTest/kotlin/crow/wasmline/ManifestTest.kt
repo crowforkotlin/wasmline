@@ -303,7 +303,7 @@ class ManifestTest {
         assertNull(artifact.targetCompilerVersion)
         assertTrue(artifact.is64Bit, "is64Bit should default to true")
         assertEquals(WasmlineExecutionModel.CORE_WASM, artifact.executionModel)
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE_V1, artifact.invocationProtocol)
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE, artifact.invocationProtocol)
         assertNull(artifact.exportName)
         assertEquals(emptyMap(), artifact.contractMetadata)
         println("Artifact default values verified.")
@@ -335,7 +335,7 @@ class ManifestTest {
                 url = "core.cwasm",
                 sha256 = "core-cwasm",
                 executionModel = WasmlineExecutionModel.CORE_WASM,
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
             ),
             WasmlineArtifact(
                 type = WasmlineArtifactType.PWASM,
@@ -343,7 +343,7 @@ class ManifestTest {
                 sha256 = "core-pwasm",
                 targetCpu = "pulley64",
                 executionModel = WasmlineExecutionModel.CORE_WASM,
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
             ),
             WasmlineArtifact(
                 type = WasmlineArtifactType.CWASM,

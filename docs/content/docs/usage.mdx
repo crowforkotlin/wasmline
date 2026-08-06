@@ -113,7 +113,7 @@ when (result) {
 }
 ```
 
-`CORE_WASM` with `WASMLINE_CORE_V1` is the default service path. `CORE_WASM` with `RAW_EXPORT` is for a Core Wasm module with an explicitly declared numeric ABI. `COMPONENT_MODEL` with `COMPONENT_EXPORT` is for a component binary that was compiled before loading. The runtime does not run WIT-to-Wasm or binding tools during load; the optional Gradle/CLI Component pipeline performs that build step ahead of time. Component calls use Component Model values and do not use Core linear memory or the Core response frame. See the [Component RPC guide](/en/docs/component-rpc) for the WIT envelope and callback flow.
+`CORE_WASM` with `WASMLINE_CORE` is the default service path. `CORE_WASM` with `RAW_EXPORT` is for a Core Wasm module with an explicitly declared numeric ABI. `COMPONENT_MODEL` with `COMPONENT_EXPORT` is for a component binary that was compiled before loading. The runtime does not run WIT-to-Wasm or binding tools during load; the optional Gradle/CLI Component pipeline performs that build step ahead of time. Component calls use Component Model values and do not use Core linear memory or the Core response frame. See the [Component RPC guide](/en/docs/component-rpc) for the WIT envelope and callback flow.
 
 ## Result and Exception Boundary
 

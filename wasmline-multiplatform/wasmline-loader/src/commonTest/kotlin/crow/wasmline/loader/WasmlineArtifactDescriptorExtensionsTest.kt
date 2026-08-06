@@ -34,7 +34,7 @@ class WasmlineArtifactDescriptorExtensionsTest {
                 invocationProtocol = if (component) {
                     WasmlineInvocationProtocol.COMPONENT_EXPORT
                 } else {
-                    WasmlineInvocationProtocol.WASMLINE_CORE_V1
+                    WasmlineInvocationProtocol.WASMLINE_CORE
                 },
                 exportName = if (component) "plugin/invoke" else null,
             )

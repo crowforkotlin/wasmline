@@ -78,11 +78,11 @@ Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding
 
 | 执行模型 | 调用协议 | 运行时边界 | Core 响应帧 |
 |---|---|---|---|
-| `CORE_WASM` | `WASMLINE_CORE_V1` | `Session`、action 路由和线性内存 | 使用 |
+| `CORE_WASM` | `WASMLINE_CORE` | `Session`、action 路由和线性内存 | 使用 |
 | `CORE_WASM` | `RAW_EXPORT` | `RawModuleSession` 和已声明的 Core 数值 ABI | 不使用 |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` 和 Component Model 值 | 不使用 |
 
-`WASMLINE_CORE_V1` 是 Core Wasmline 模块的服务协议。其响应字节使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别响应格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。读取方只有在该字段为 `1` 时才按 V1 布局解析。
+`WASMLINE_CORE` 是 Core Wasmline 模块的服务协议。其响应字节使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别响应格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。读取方只有在该字段为 `1` 时才按 V1 布局解析。
 
 Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。该路径不分配或解析 Core 响应帧。
 

@@ -17,7 +17,7 @@ data class WasmlineArtifactDescriptor(
     val targetCompilerVersion: String? = null,
     val is64Bit: Boolean? = null,
     val executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
-    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
     val exportName: String? = null,
     val contractMetadata: Map<String, String> = emptyMap(),
 ) {
@@ -35,7 +35,7 @@ data class WasmlineArtifactDescriptor(
         }
         return when (executionModel) {
             WasmlineExecutionModel.CORE_WASM -> when (invocationProtocol) {
-                WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+                WasmlineInvocationProtocol.WASMLINE_CORE,
                 WasmlineInvocationProtocol.RAW_EXPORT,
                 -> null
 
@@ -46,8 +46,8 @@ data class WasmlineArtifactDescriptor(
             WasmlineExecutionModel.COMPONENT_MODEL -> when (invocationProtocol) {
                 WasmlineInvocationProtocol.COMPONENT_EXPORT -> null
 
-                WasmlineInvocationProtocol.WASMLINE_CORE_V1 ->
-                    "COMPONENT_MODEL cannot use WASMLINE_CORE_V1."
+                WasmlineInvocationProtocol.WASMLINE_CORE ->
+                    "COMPONENT_MODEL cannot use WASMLINE_CORE."
 
                 WasmlineInvocationProtocol.RAW_EXPORT ->
                     "COMPONENT_MODEL cannot use RAW_EXPORT."

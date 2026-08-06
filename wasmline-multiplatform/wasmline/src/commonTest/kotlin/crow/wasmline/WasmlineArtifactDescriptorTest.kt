@@ -37,7 +37,7 @@ class WasmlineArtifactDescriptorTest {
 
         assertNull(descriptor.artifactFormat)
         assertEquals(WasmlineExecutionModel.CORE_WASM, descriptor.executionModel)
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE_V1, descriptor.invocationProtocol)
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE, descriptor.invocationProtocol)
         assertNull(descriptor.validationError())
     }
 
@@ -80,7 +80,7 @@ class WasmlineArtifactDescriptorTest {
                 invocationProtocol = if (component) {
                     WasmlineInvocationProtocol.COMPONENT_EXPORT
                 } else {
-                    WasmlineInvocationProtocol.WASMLINE_CORE_V1
+                    WasmlineInvocationProtocol.WASMLINE_CORE
                 },
                 exportName = if (component) "plugin/invoke" else null,
             )
@@ -106,11 +106,11 @@ class WasmlineArtifactDescriptorTest {
         val descriptor = WasmlineArtifactDescriptor(
             path = "plugin.cwasm",
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
             exportName = "add",
         )
 
-        assertEquals("COMPONENT_MODEL cannot use WASMLINE_CORE_V1.", descriptor.validationError())
+        assertEquals("COMPONENT_MODEL cannot use WASMLINE_CORE.", descriptor.validationError())
     }
 
     /** Rejects the component export protocol on a Core Wasm artifact. */

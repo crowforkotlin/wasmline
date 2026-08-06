@@ -69,7 +69,7 @@ class ComponentAotBuildRecordTest {
             bytesFile = rawFile,
         ).copy(
             executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
         )
 
         assertFailsWith<IllegalArgumentException> { buildRecord(rawRecord, componentArtifact) }

@@ -164,7 +164,7 @@ object WasmlineInvocationBenchmark {
         WasmlineArtifactDescriptor(
             path = file.absolutePath,
             executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
         ),
     )
 

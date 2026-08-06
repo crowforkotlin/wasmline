@@ -60,12 +60,12 @@ class Manifest : CliktCommand(name = "manifest") {
         val resolvedPluginId = pluginId ?: File(result.inputFile).nameWithoutExtension
         val inferredArtifact = result.artifacts.firstOrNull {
             it.executionModel != WasmlineExecutionModel.CORE_WASM ||
-                it.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_CORE_V1
+                it.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_CORE
         }
         val invocation = parseInvocationOptions(
             executionModelName = executionModel ?: inferredArtifact?.executionModel?.name ?: WasmlineExecutionModel.CORE_WASM.name,
             invocationProtocolName = invocationProtocol ?: inferredArtifact?.invocationProtocol?.name
-                ?: WasmlineInvocationProtocol.WASMLINE_CORE_V1.name,
+                ?: WasmlineInvocationProtocol.WASMLINE_CORE.name,
             exportName = exportName ?: inferredArtifact?.exportName,
             contractMetadataEntries = contractMetadata,
         )

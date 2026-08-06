@@ -100,7 +100,7 @@ class ComponentCompilerModelsTest {
         val metadata = ComponentAotArtifactMetadata()
         val coreArtifact = componentArtifact(metadata).copy(
             executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
         )
 
         assertFailsWith<IllegalArgumentException> {

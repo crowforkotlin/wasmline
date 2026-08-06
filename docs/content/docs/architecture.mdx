@@ -78,11 +78,11 @@ The runtime selects the backend from `WasmlineArtifactDescriptor`. File extensio
 
 | Execution model | Invocation protocol | Runtime boundary | Core response frame |
 |---|---|---|---|
-| `CORE_WASM` | `WASMLINE_CORE_V1` | `Session`, action router, and linear memory | Yes |
+| `CORE_WASM` | `WASMLINE_CORE` | `Session`, action router, and linear memory | Yes |
 | `CORE_WASM` | `RAW_EXPORT` | `RawModuleSession` and declared Core numeric ABI | No |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` and Component Model values | No |
 
-`WASMLINE_CORE_V1` is the service protocol for a Core Wasmline module. Its response bytes use the fixed `WLMF` magic marker and a one-byte `frameVersion` with the current value `1`. The magic marker identifies the response format. It is not authentication. `frameVersion` identifies the response byte layout. It is not a Wasmtime, Kotlin, framework, or business API version. A reader accepts the V1 layout only when the frame version is `1`.
+`WASMLINE_CORE` is the service protocol for a Core Wasmline module. Its response bytes use the fixed `WLMF` magic marker and a one-byte `frameVersion` with the current value `1`. The magic marker identifies the response format. It is not authentication. `frameVersion` identifies the response byte layout. It is not a Wasmtime, Kotlin, framework, or business API version. A reader accepts the V1 layout only when the frame version is `1`.
 
 Raw Export calls use an explicitly declared numeric ABI. The current public raw value set is `i32`, `i64`, `f32`, and `f64`. They do not allocate or parse a Core response frame.
 
