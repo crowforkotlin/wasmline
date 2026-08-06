@@ -96,6 +96,26 @@ namespace wasmline {
 #endif
     }
 
+    const char* Api::wasmtimeVersion() {
+        return WASMTIME_VERSION;
+    }
+
+    bool Api::supportsCranelift() {
+#ifdef WASMTIME_FEATURE_CRANELIFT
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    bool Api::supportsPulley() {
+#ifdef WASMTIME_FEATURE_PULLEY
+        return true;
+#else
+        return false;
+#endif
+    }
+
     void Api::releaseEngine() {
         {
             std::unique_lock<std::shared_mutex> lock(sessionMutex);

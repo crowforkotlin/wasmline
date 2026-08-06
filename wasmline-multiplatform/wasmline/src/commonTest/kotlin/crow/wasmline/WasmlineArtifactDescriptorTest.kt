@@ -35,6 +35,7 @@ class WasmlineArtifactDescriptorTest {
     fun defaultsDescribeTheLegacyCoreProtocol() {
         val descriptor = WasmlineArtifactDescriptor(path = "plugin.pwasm")
 
+        assertNull(descriptor.artifactFormat)
         assertEquals(WasmlineExecutionModel.CORE_WASM, descriptor.executionModel)
         assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE_V1, descriptor.invocationProtocol)
         assertNull(descriptor.validationError())
@@ -61,6 +62,43 @@ class WasmlineArtifactDescriptorTest {
         )
 
         assertNull(descriptor.validationError())
+    }
+
+    @Test
+    fun aotFormatIsIndependentFromExecutionModel() {
+        listOf(
+            WasmlineArtifactFormat.CWASM to WasmlineExecutionModel.CORE_WASM,
+            WasmlineArtifactFormat.PWASM to WasmlineExecutionModel.CORE_WASM,
+            WasmlineArtifactFormat.CWASM to WasmlineExecutionModel.COMPONENT_MODEL,
+            WasmlineArtifactFormat.PWASM to WasmlineExecutionModel.COMPONENT_MODEL,
+        ).forEach { (format, executionModel) ->
+            val component = executionModel == WasmlineExecutionModel.COMPONENT_MODEL
+            val descriptor = WasmlineArtifactDescriptor(
+                path = if (format == WasmlineArtifactFormat.CWASM) "plugin.cwasm" else "plugin.pwasm",
+                artifactFormat = format,
+                executionModel = executionModel,
+                invocationProtocol = if (component) {
+                    WasmlineInvocationProtocol.COMPONENT_EXPORT
+                } else {
+                    WasmlineInvocationProtocol.WASMLINE_CORE_V1
+                },
+                exportName = if (component) "plugin/invoke" else null,
+            )
+
+            assertNull(descriptor.validationError())
+        }
+    }
+
+    @Test
+    fun artifactFormatsContainNoComponentSpecificAotType() {
+        assertEquals(
+            listOf(
+                WasmlineArtifactFormat.RAW_WASM,
+                WasmlineArtifactFormat.CWASM,
+                WasmlineArtifactFormat.PWASM,
+            ),
+            WasmlineArtifactFormat.entries,
+        )
     }
 
     @Test

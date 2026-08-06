@@ -34,5 +34,6 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
 expect fun wasmlineBootstrap()
 expect fun wasmlineShutdown()
 expect fun wasmlineWarmup(mode: WasmlineWarmupMode)
+internal expect fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities
 expect fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState
 expect fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState

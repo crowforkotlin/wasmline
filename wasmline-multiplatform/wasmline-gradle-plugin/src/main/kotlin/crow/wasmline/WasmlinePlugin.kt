@@ -7,11 +7,14 @@ import crow.wasmline.gradle.extensions.WasmlineExtension
 import crow.wasmline.gradle.tasks.DownloadComponentToolsTask
 import crow.wasmline.gradle.tasks.DownloadWasmtimeTask
 import crow.wasmline.gradle.tasks.WasmlineAssembleTask
+import crow.wasmline.gradle.tasks.WasmlineComponentAotTask
 import crow.wasmline.gradle.tasks.WasmlineComponentizeTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineServerDeployTask
 import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
+import crow.wasmline.plugin.core.component.ComponentBuildRecords
+import crow.wasmline.plugin.core.download.WasmtimeDistribution
 import crow.wasmline.plugin.core.download.WasmtimeDownloader
 import crow.wasmline.plugin.core.util.PlatformDetector
 import kotlinx.coroutines.runBlocking
@@ -142,7 +145,20 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.wasmtimeDirectory.set(ext.wasmtime.directory)
             task.version.set(ext.wasmtime.version)
             task.platform.convention(detectCurrentPlatform())
+            task.distribution.set(WasmtimeDistribution.MINIMAL)
             task.githubToken.set(ext.wasmtime.githubToken)
+        }
+        project.tasks.register("wasmlineDownloadWasmtimeCompiler", DownloadWasmtimeTask::class.java) { task ->
+            task.group = "wasmline"
+            task.description = "Download the full Wasmtime CLI used for Component AOT compilation"
+            task.wasmtimeDirectory.set(ext.wasmtime.compilerDirectory)
+            task.version.set(ext.wasmtime.compilerVersion)
+            task.platform.convention(detectCurrentPlatform())
+            task.distribution.set(WasmtimeDistribution.FULL)
+            task.githubToken.set(ext.wasmtime.githubToken)
+            task.installedExecutable.set(
+                ext.wasmtime.compilerDirectory.file(fullWasmtimeExecutableName()),
+            )
         }
     }
 
@@ -328,6 +344,9 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
     private fun detectCurrentPlatform(): String = PlatformDetector.detectPlatform()
 
+    private fun fullWasmtimeExecutableName(): String =
+        if (System.getProperty("os.name").lowercase().contains("win")) "wasmtime.exe" else "wasmtime"
+
     private fun runCommand(command: List<String>): String = try {
         val process = ProcessBuilder(command).redirectErrorStream(true).start()
         val output = process.inputStream.bufferedReader().use { it.readText() }
@@ -366,16 +385,30 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         val debugCompileTask = "compileDevelopmentLibraryKotlinWasmWasiOptimize"
         val releaseCompileTask = "compileProductionLibraryKotlinWasmWasiOptimize"
 
-        registerComponentizeTask(
+        val debugComponent = registerComponentizeTask(
             project = project,
             ext = ext,
             taskName = "wasmlineComponentizeDebug",
             variantName = "debug",
         )
-        registerComponentizeTask(
+        val releaseComponent = registerComponentizeTask(
             project = project,
             ext = ext,
             taskName = "wasmlineComponentizeRelease",
+            variantName = "release",
+        )
+        registerComponentAotTask(
+            project = project,
+            ext = ext,
+            componentTask = debugComponent,
+            taskName = "wasmlineComponentAotDebug",
+            variantName = "debug",
+        )
+        registerComponentAotTask(
+            project = project,
+            ext = ext,
+            componentTask = releaseComponent,
+            taskName = "wasmlineComponentAotRelease",
             variantName = "release",
         )
 
@@ -392,7 +425,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
-    private fun configureAssembleTaskGraph(project: Project, ext: WasmlineExtension) {
+    internal fun configureAssembleTaskGraph(project: Project, ext: WasmlineExtension) {
         val generateBindings = project.tasks.named(
             "wasmlineGenerateWitBindings",
             WasmlineGenerateWitBindingsTask::class.java,
@@ -404,6 +437,14 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         val releaseComponent = project.tasks.named(
             "wasmlineComponentizeRelease",
             WasmlineComponentizeTask::class.java,
+        )
+        val debugComponentAot = project.tasks.named(
+            "wasmlineComponentAotDebug",
+            WasmlineComponentAotTask::class.java,
+        )
+        val releaseComponentAot = project.tasks.named(
+            "wasmlineComponentAotRelease",
+            WasmlineComponentAotTask::class.java,
         )
         val debugCompileTask = "compileDevelopmentLibraryKotlinWasmWasiOptimize"
         val releaseCompileTask = "compileProductionLibraryKotlinWasmWasiOptimize"
@@ -436,8 +477,8 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
         project.tasks.named("wasmlineAssembleDebug", WasmlineAssembleTask::class.java).configure { task ->
             if (componentBuild) {
-                task.componentOutputDirectory.set(debugComponent.flatMap { it.outputDirectory })
-                task.dependsOn(debugComponent)
+                task.componentOutputDirectory.set(debugComponentAot.flatMap { it.outputDirectory })
+                task.dependsOn(debugComponentAot)
             } else {
                 task.wasmCompileOutputDir.set(
                     project.layout.buildDirectory.dir(
@@ -449,8 +490,8 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         }
         project.tasks.named("wasmlineAssembleRelease", WasmlineAssembleTask::class.java).configure { task ->
             if (componentBuild) {
-                task.componentOutputDirectory.set(releaseComponent.flatMap { it.outputDirectory })
-                task.dependsOn(releaseComponent)
+                task.componentOutputDirectory.set(releaseComponentAot.flatMap { it.outputDirectory })
+                task.dependsOn(releaseComponentAot)
             } else {
                 task.wasmCompileOutputDir.set(
                     project.layout.buildDirectory.dir(
@@ -482,6 +523,58 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.toolCacheDirectory.set(ext.component.toolCacheDirectory)
             task.githubToken.set(ext.wasmtime.githubToken)
         }
+
+    private fun registerComponentAotTask(
+        project: Project,
+        ext: WasmlineExtension,
+        componentTask: TaskProvider<WasmlineComponentizeTask>,
+        taskName: String,
+        variantName: String,
+    ) = project.tasks.register(taskName, WasmlineComponentAotTask::class.java) { task ->
+        task.group = "wasmline"
+        task.description = "Compile the $variantName Component to native CWASM/PWASM artifacts"
+        task.componentDirectory.set(componentTask.flatMap { it.outputDirectory })
+        task.componentRecordFile.set(
+            componentTask.flatMap { it.outputDirectory.file(ComponentBuildRecords.FILE_NAME) },
+        )
+        task.wasmtimeCompilerExecutable.set(
+            project.layout.file(
+                project.provider {
+                    ext.wasmtime.compilerExecutable.orNull?.asFile ?: run {
+                        val directory = ext.wasmtime.compilerDirectory.get().asFile
+                        val version = ext.wasmtime.compilerVersion.get()
+                        WasmtimeCompiler.findWasmtimeCompilerInDirectory(
+                            baseDir = directory,
+                            platform = detectCurrentPlatform(),
+                            version = version,
+                        ) ?: if (ext.wasmtime.autoDownload.get()) {
+                            File(directory, fullWasmtimeExecutableName())
+                        } else {
+                            throw GradleException(
+                                "Full Wasmtime CLI $version was not found in ${directory.absolutePath}. " +
+                                    "Configure wasmline.wasmtime.compilerExecutable or run " +
+                                    "./gradlew wasmlineDownloadWasmtimeCompiler.",
+                            )
+                        }
+                    }
+                },
+            ),
+        )
+        task.wasmtimeVersion.set(ext.wasmtime.compilerVersion)
+        task.targets.set(ext.wasmtime.targets)
+        task.productName.set(ext.manifest.pluginId.map { id -> id.substringAfterLast('.') })
+        task.outputDirectory.set(project.layout.buildDirectory.dir("wasmline/component-aot/$variantName"))
+        task.dependsOn(componentTask)
+        task.dependsOn(
+            project.provider<List<String>> {
+                if (!ext.wasmtime.compilerExecutable.isPresent && ext.wasmtime.autoDownload.get()) {
+                    listOf("wasmlineDownloadWasmtimeCompiler")
+                } else {
+                    emptyList()
+                }
+            },
+        )
+    }
 
     private fun configureComponentizeInputs(
         task: TaskProvider<WasmlineComponentizeTask>,

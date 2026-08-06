@@ -4,7 +4,10 @@ import crow.wasmline.WasmlineComponentRpcContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.SignedManifestEnvelope
+import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
+import crow.wasmline.plugin.core.component.ComponentAotBuildRecords
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -29,6 +32,7 @@ class ComponentCliIntegrationTest {
         val witBindgen = requireExecutable(WIT_BINDGEN_ENV)
         val wasmTools = requireExecutable(WASM_TOOLS_ENV)
         val adapter = requireFile(WASI_ADAPTER_ENV)
+        val wasmtimeDirectory = requireDirectory(WASMTIME_DIRECTORY_ENV)
         val witDirectory = resolveCanonicalWitDirectory()
         val root = createTempDirectory("wasmline-cli-live").toFile()
         try {
@@ -137,7 +141,44 @@ class ComponentCliIntegrationTest {
             val privateKey = File(keyDirectory, "ed25519_private.key")
             assertTrue(privateKey.isFile)
 
-            runCliIn(
+            val compileRoot = File(root, "compiled")
+            val compileInvocation = runCli(
+                cli,
+                "compile",
+                "--input",
+                component.absolutePath,
+                "--name",
+                "cli-compile",
+                "--output",
+                compileRoot.absolutePath,
+                "--execution-model",
+                "COMPONENT_MODEL",
+                "--raw-component",
+                "--wit",
+                witDirectory.absolutePath,
+                "--world",
+                "plugin",
+                "--wasm-tools",
+                wasmTools.absolutePath,
+                "--wasmtime",
+                wasmtimeDirectory.absolutePath,
+                "--arch",
+                "x86_64-linux",
+                "--arch",
+                "pulley64",
+            )
+            compileInvocation.assertSuccessWithoutToolHelp("Compile result written to:")
+            assertComponentAotDiagnostics(compileInvocation.output)
+            val compileDirectory = File(compileRoot, "cli-compile-1.0.0")
+            val compileResult = WasmtimeCompiler().readCompileResult(
+                File(compileDirectory, "debug/${WasmtimeCompiler.COMPILE_RESULT_FILE}"),
+            )
+            assertEquals(BuildConfig.WASMTIME_VERSION, compileResult.wasmtimeVersion)
+            assertComponentAotArtifacts(compileResult.artifacts)
+            assertTrue(File(compileDirectory, ComponentBuildRecords.FILE_NAME).isFile)
+            assertTrue(File(compileDirectory, ComponentAotBuildRecords.FILE_NAME).isFile)
+
+            val buildInvocation = runCliIn(
                 cli,
                 root,
                 "build",
@@ -158,9 +199,17 @@ class ComponentCliIntegrationTest {
                 "plugin",
                 "--wasm-tools",
                 wasmTools.absolutePath,
+                "--wasmtime",
+                wasmtimeDirectory.absolutePath,
+                "--arch",
+                "x86_64-linux",
+                "--arch",
+                "pulley64",
                 "--key",
                 privateKey.absolutePath,
-            ).assertSuccessWithoutToolHelp("Package written to:")
+            )
+            buildInvocation.assertSuccessWithoutToolHelp("Package written to:")
+            assertComponentAotDiagnostics(buildInvocation.output)
 
             val packageDirectory = File(root, "build/wasmline/output/cli-package-1.0.0")
             val manifest = File(packageDirectory, "manifest.wlm")
@@ -172,26 +221,15 @@ class ComponentCliIntegrationTest {
                 SignedManifestEnvelope.serializer(),
                 manifest.readBytes(),
             )
-            val artifact = envelope.manifest.artifacts.single()
-            assertEquals(WasmlineArtifactType.COMPONENT_WASM, artifact.type)
-            assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, artifact.executionModel)
-            assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, artifact.invocationProtocol)
-            assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, artifact.exportName)
-            assertEquals(
-                WasmlineComponentRpcContract.DEFAULT_CODEC,
-                artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC],
-            )
-            assertEquals(
-                WasmlineComponentRpcContract.VERSION,
-                artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_VERSION],
-            )
+            assertComponentAotArtifacts(envelope.manifest.artifacts)
 
             ZipFile(archive).use { zip ->
                 val entries = zip.entries().asSequence().map { it.name }.toSet()
                 assertEquals(
                     setOf(
                         "cli-package-1.0.0/manifest.wlm",
-                        "cli-package-1.0.0/cli-package-component.wasm",
+                        "cli-package-1.0.0/cli-package-x86_64-linux.cwasm",
+                        "cli-package-1.0.0/cli-package-pulley64.pwasm",
                     ),
                     entries,
                 )
@@ -207,6 +245,42 @@ class ComponentCliIntegrationTest {
         assertFalse(output.contains("Usage: wit-bindgen"), output)
         assertFalse(output.contains("Usage: wasm-tools"), output)
         assertFalse(output.contains("package root:component"), output)
+    }
+
+    private fun assertComponentAotArtifacts(artifacts: List<WasmlineArtifact>) {
+        assertEquals(setOf(WasmlineArtifactType.CWASM, WasmlineArtifactType.PWASM), artifacts.map { it.type }.toSet())
+        assertFalse(artifacts.any { it.type == WasmlineArtifactType.COMPONENT_WASM })
+        artifacts.forEach { artifact ->
+            assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, artifact.executionModel)
+            assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, artifact.invocationProtocol)
+            assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, artifact.exportName)
+            assertEquals("wasmtime-${BuildConfig.WASMTIME_VERSION}", artifact.targetCompilerVersion)
+            assertEquals(
+                WasmlineComponentRpcContract.DEFAULT_CODEC,
+                artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC],
+            )
+            assertEquals(
+                WasmlineComponentRpcContract.VERSION,
+                artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_VERSION],
+            )
+        }
+    }
+
+    private fun assertComponentAotDiagnostics(output: String) {
+        assertTrue(
+            output.contains(
+                "format=CWASM executionModel=COMPONENT_MODEL backend=CRANELIFT " +
+                    "target=x86_64-linux wasmtime=${BuildConfig.WASMTIME_VERSION}",
+            ),
+            output,
+        )
+        assertTrue(
+            output.contains(
+                "format=PWASM executionModel=COMPONENT_MODEL backend=PULLEY " +
+                    "target=pulley64 wasmtime=${BuildConfig.WASMTIME_VERSION}",
+            ),
+            output,
+        )
     }
 
     private fun runCli(cli: File, vararg arguments: String): CliResult = runCliIn(cli, null, *arguments)
@@ -257,6 +331,15 @@ class ComponentCliIntegrationTest {
         }
     }
 
+    private fun requireDirectory(name: String): File {
+        val path = requireNotNull(System.getenv(name)) {
+            "$name must be set when $LIVE_TESTS_ENV=1."
+        }
+        return File(path).also { directory ->
+            require(directory.isDirectory) { "$name does not point to a directory: ${directory.absolutePath}" }
+        }
+    }
+
     private data class CliResult(val exitCode: Int, val output: String)
 
     private companion object {
@@ -265,6 +348,7 @@ class ComponentCliIntegrationTest {
         const val WIT_BINDGEN_ENV = "WASMLINE_TEST_WIT_BINDGEN"
         const val WASM_TOOLS_ENV = "WASMLINE_TEST_WASM_TOOLS"
         const val WASI_ADAPTER_ENV = "WASMLINE_TEST_WASI_ADAPTER"
+        const val WASMTIME_DIRECTORY_ENV = "WASMLINE_TEST_WASMTIME_DIR"
         const val WIT_DIRECTORY_ENV = "WASMLINE_TEST_WIT_DIRECTORY"
         const val CANONICAL_WIT_PATH = "META-INF/wasmline/wit/wasmline-rpc"
     }

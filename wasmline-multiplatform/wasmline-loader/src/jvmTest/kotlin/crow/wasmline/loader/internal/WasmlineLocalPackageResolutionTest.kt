@@ -19,6 +19,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Verifies local package artifact selection for browser and native hosts. */
@@ -127,6 +128,94 @@ class WasmlineLocalPackageResolutionTest {
     }
 
     @Test
+    fun `pulley64 artifacts are portable across 64-bit native hosts`() {
+        val artifact = pulleyArtifact(cpu = "pulley64", is64Bit = true)
+        val targets = listOf(
+            WasmlineHostArtifactTarget(os = "linux", cpu = "x86_64", is64Bit = true),
+            WasmlineHostArtifactTarget(os = "android", cpu = "aarch64", is64Bit = true),
+            WasmlineHostArtifactTarget(os = "macos", cpu = "aarch64", is64Bit = true),
+            WasmlineHostArtifactTarget(os = "windows", cpu = "x86_64", is64Bit = true),
+            WasmlineHostArtifactTarget(os = "ios", cpu = "aarch64", is64Bit = true),
+        )
+
+        targets.forEach { target ->
+            assertEquals(
+                artifact,
+                WasmlineLocalPackageResolution.selectArtifact(listOf(artifact), target),
+                "Pulley64 should be selectable on ${target.os}/${target.cpu}.",
+            )
+        }
+    }
+
+    @Test
+    fun `legacy pulley OS metadata remains portable`() {
+        val artifact = pulleyArtifact(cpu = "pulley64", targetOs = "pulley", is64Bit = true)
+
+        val selected = WasmlineLocalPackageResolution.selectArtifact(
+            artifacts = listOf(artifact),
+            target = WasmlineHostArtifactTarget(os = "ios", cpu = "aarch64", is64Bit = true),
+        )
+
+        assertEquals(artifact, selected)
+    }
+
+    @Test
+    fun `pulley artifacts require matching bitness`() {
+        val pulley64 = pulleyArtifact(cpu = "pulley64", is64Bit = true)
+        val pulley32 = pulleyArtifact(cpu = "pulley32", is64Bit = false)
+
+        assertNull(
+            WasmlineLocalPackageResolution.selectArtifact(
+                artifacts = listOf(pulley64),
+                target = WasmlineHostArtifactTarget(os = "android", cpu = "x86", is64Bit = false),
+            ),
+        )
+        assertNull(
+            WasmlineLocalPackageResolution.selectArtifact(
+                artifacts = listOf(pulley32),
+                target = WasmlineHostArtifactTarget(os = "linux", cpu = "x86_64", is64Bit = true),
+            ),
+        )
+        assertEquals(
+            pulley32,
+            WasmlineLocalPackageResolution.selectArtifact(
+                artifacts = listOf(pulley32),
+                target = WasmlineHostArtifactTarget(os = "android", cpu = "x86", is64Bit = false),
+            ),
+        )
+    }
+
+    @Test
+    fun `browser host rejects pulley artifacts without raw wasm`() {
+        val selected = WasmlineLocalPackageResolution.selectArtifact(
+            artifacts = listOf(pulleyArtifact(cpu = "pulley64", is64Bit = true)),
+            target = WasmlineHostArtifactTarget(os = "browser", cpu = "wasmjs", is64Bit = true),
+        )
+
+        assertNull(selected)
+    }
+
+    @Test
+    fun `matching Core CWASM remains preferred over portable PWASM`() {
+        val selected = WasmlineLocalPackageResolution.selectArtifact(
+            artifacts = listOf(
+                pulleyArtifact(cpu = "pulley64", is64Bit = true),
+                WasmlineArtifact(
+                    type = WasmlineArtifactType.CWASM,
+                    url = "plugin-x86_64-linux.cwasm",
+                    sha256 = "cwasm",
+                    targetCpu = "x86_64",
+                    targetOs = "linux",
+                    is64Bit = true,
+                ),
+            ),
+            target = WasmlineHostArtifactTarget(os = "linux", cpu = "x86_64", is64Bit = true),
+        )
+
+        assertEquals("plugin-x86_64-linux.cwasm", selected?.url)
+    }
+
+    @Test
     fun `native host accepts a raw Component Wasm artifact`() {
         val selected = WasmlineLocalPackageResolution.selectArtifact(
             artifacts = listOf(
@@ -180,6 +269,15 @@ class WasmlineLocalPackageResolutionTest {
             require(file.isFile) { "$environmentName does not point to a file: ${file.absolutePath}" }
         }
     }
+
+    private fun pulleyArtifact(cpu: String, targetOs: String? = null, is64Bit: Boolean): WasmlineArtifact = WasmlineArtifact(
+        type = WasmlineArtifactType.PWASM,
+        url = "plugin-$cpu.pwasm",
+        sha256 = "pwasm-$cpu",
+        targetCpu = cpu,
+        targetOs = targetOs,
+        is64Bit = is64Bit,
+    )
 
     private companion object {
         const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"

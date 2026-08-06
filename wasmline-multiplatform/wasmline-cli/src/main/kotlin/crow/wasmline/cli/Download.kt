@@ -9,6 +9,7 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
+import crow.wasmline.plugin.core.download.WasmtimeDistribution
 import crow.wasmline.plugin.core.download.WasmtimeDownloader
 import crow.wasmline.plugin.core.util.PlatformDetector
 import kotlinx.coroutines.runBlocking
@@ -30,6 +31,10 @@ class Download : CliktCommand(name = "download") {
 
     private val forceDownload by option("-f", "--force").flag(default = false)
 
+    private val distributionName by option("--distribution")
+        .default(DEFAULT_WASMTIME_DISTRIBUTION.name.lowercase())
+        .help("Wasmtime asset kind: minimal (runtime) or full (build compiler)")
+
     private val showTokenStatus by option("--show-token-status", hidden = true).flag(default = false)
 
     override fun run() = runBlocking {
@@ -44,6 +49,7 @@ class Download : CliktCommand(name = "download") {
             .filter(String::isNotEmpty)
             .ifEmpty { listOf("latest") }
         val platform = archOption ?: PlatformDetector.detectPlatform()
+        val distribution = parseWasmtimeDistribution(distributionName)
         outputDir.mkdirs()
         val downloader = WasmtimeDownloader()
         val failed = try {
@@ -54,6 +60,7 @@ class Download : CliktCommand(name = "download") {
                         githubToken = System.getenv("GITHUB_TOKEN")?.takeIf(String::isNotEmpty),
                         version = version,
                         platform = platform,
+                        distribution = distribution,
                         outputDir = outputDir,
                         force = forceDownload,
                     )
@@ -68,6 +75,14 @@ class Download : CliktCommand(name = "download") {
         }
         if (failed) throw ProgramResult(1)
     }
+}
+
+internal val DEFAULT_WASMTIME_DISTRIBUTION = WasmtimeDistribution.MINIMAL
+
+internal fun parseWasmtimeDistribution(value: String): WasmtimeDistribution = when (value.trim().lowercase()) {
+    "minimal" -> WasmtimeDistribution.MINIMAL
+    "full" -> WasmtimeDistribution.FULL
+    else -> error("Unknown Wasmtime distribution '$value'. Expected minimal or full.")
 }
 
 internal object DownloadPlatformDetector {

@@ -6,7 +6,8 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
-import crow.wasmline.plugin.core.component.ComponentBuildRecords
+import crow.wasmline.plugin.core.component.ComponentAotBuildRecords
+import crow.wasmline.plugin.core.diagnostics.WasmlineArtifactDiagnostics
 import crow.wasmline.plugin.core.manifest.ManifestSigner
 import crow.wasmline.plugin.core.manifest.ManifestSigningMain
 import crow.wasmline.plugin.core.packaging.PluginPackager
@@ -31,7 +32,7 @@ import java.nio.file.StandardCopyOption
 import java.util.Properties
 import javax.inject.Inject
 
-/** Assembles and signs a Core Wasm or raw Component Model plugin package. */
+/** Assembles and signs a Core Wasm or native Component Model plugin package. */
 abstract class WasmlineAssembleTask @Inject constructor(private val execOperations: ExecOperations) : DefaultTask() {
     init {
         group = "wasmline"
@@ -105,7 +106,7 @@ abstract class WasmlineAssembleTask @Inject constructor(private val execOperatio
     @get:Optional
     abstract val wasmCompileOutputDir: DirectoryProperty
 
-    /** Output from WasmlineComponentizeTask; only read for COMPONENT_MODEL. */
+    /** Output from WasmlineComponentAotTask; only read for COMPONENT_MODEL. */
     @get:InputDirectory
     @get:Optional
     abstract val componentOutputDirectory: DirectoryProperty
@@ -128,7 +129,7 @@ abstract class WasmlineAssembleTask @Inject constructor(private val execOperatio
         logger.info("Wasmline assemble: plugin=" + id + ", version=" + version + ", variant=" + variant)
         val prepared = when (executionModel.get()) {
             WasmlineExecutionModel.CORE_WASM -> prepareCoreArtifacts(packageDirectory, productName, variant)
-            WasmlineExecutionModel.COMPONENT_MODEL -> prepareComponentArtifact(packageDirectory, debugDirectory)
+            WasmlineExecutionModel.COMPONENT_MODEL -> prepareComponentArtifacts(packageDirectory, debugDirectory)
         }
         val effectiveExportName = exportName.orNull ?: prepared.artifacts.singleOrNull()?.exportName
 
@@ -156,6 +157,9 @@ abstract class WasmlineAssembleTask @Inject constructor(private val execOperatio
             destination = zipFile,
             folderPrefix = id + "-" + version,
         )
+        prepared.artifacts.forEach { artifact ->
+            logger.lifecycle("Wasmline artifact: " + WasmlineArtifactDiagnostics.format(artifact))
+        }
         logger.lifecycle("Wasmline package: " + zipFile.absolutePath + " (" + zipFile.length() + " bytes)")
     }
 
@@ -251,28 +255,29 @@ abstract class WasmlineAssembleTask @Inject constructor(private val execOperatio
         )
     }
 
-    private fun prepareComponentArtifact(packageDirectory: File, debugDirectory: File): PreparedArtifacts {
+    private fun prepareComponentArtifacts(packageDirectory: File, debugDirectory: File): PreparedArtifacts {
         val componentDirectory = componentOutputDirectory.orNull?.asFile
-            ?: throw GradleException("Component output directory is not configured.")
-        val resultFile = File(componentDirectory, ComponentBuildRecords.FILE_NAME)
-        val record = try {
-            ComponentBuildRecords.read(resultFile)
+            ?: throw GradleException("Component AOT output directory is not configured.")
+        val resultFile = File(componentDirectory, ComponentAotBuildRecords.FILE_NAME)
+        val (record, artifacts) = try {
+            val record = ComponentAotBuildRecords.read(resultFile)
+            record to ComponentAotBuildRecords.materializeArtifacts(
+                record = record,
+                sourceDirectory = componentDirectory,
+                destinationDirectory = packageDirectory,
+            )
         } catch (error: Exception) {
-            throw GradleException("Unable to read Component build result: " + error.message, error)
+            throw GradleException("Unable to prepare Component AOT build result: " + error.message, error)
         }
-        val sourceArtifact = record.toArtifact(componentDirectory)
-        val sourceFile = record.resolveComponentFile(componentDirectory)
-        val packagedFile = File(packageDirectory, sourceFile.name)
-        Files.copy(sourceFile.toPath(), packagedFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
         Files.copy(
             resultFile.toPath(),
-            File(debugDirectory, ComponentBuildRecords.FILE_NAME).toPath(),
+            File(debugDirectory, ComponentAotBuildRecords.FILE_NAME).toPath(),
             StandardCopyOption.REPLACE_EXISTING,
         )
         return PreparedArtifacts(
-            inputFile = packagedFile,
-            artifacts = listOf(sourceArtifact.copy(url = packagedFile.name)),
-            compilerVersion = record.wasmToolsVersion,
+            inputFile = File(packageDirectory, artifacts.first().url),
+            artifacts = artifacts,
+            compilerVersion = record.wasmtimeVersion,
         )
     }
 

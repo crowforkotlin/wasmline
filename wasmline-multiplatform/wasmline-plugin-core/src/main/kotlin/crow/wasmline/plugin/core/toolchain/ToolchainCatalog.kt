@@ -57,7 +57,8 @@ data class ToolAssetSpec(
 object ToolchainCatalog {
     const val WIT_BINDGEN_VERSION = "0.57.1"
     const val WASM_TOOLS_VERSION = "1.255.0"
-    const val WASI_PREVIEW1_ADAPTER_VERSION = "47.0.2"
+    const val WASMTIME_VERSION = "47.0.2"
+    const val WASI_PREVIEW1_ADAPTER_VERSION = WASMTIME_VERSION
     const val UNIVERSAL_PLATFORM = "universal"
 
     private const val WIT_BINDGEN_BASE =

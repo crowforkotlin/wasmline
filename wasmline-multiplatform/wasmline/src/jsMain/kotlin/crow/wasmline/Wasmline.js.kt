@@ -30,6 +30,16 @@ actual class Wasmline internal actual constructor(
 actual fun wasmlineBootstrap() = browserWasmlineBootstrap()
 actual fun wasmlineShutdown() = browserWasmlineShutdown()
 actual fun wasmlineWarmup(mode: WasmlineWarmupMode) = browserWasmlineWarmup(mode)
+internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities = browserRuntimeCapabilities()
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState = browserWasmlineLoadArtifact(filepath, config)
 actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState =
     browserWasmlineLoadArtifact(descriptor, config)
+
+private fun browserRuntimeCapabilities(): WasmlineRuntimeCapabilities = WasmlineRuntimeCapabilities(
+    wasmtimeVersion = "0.0.0",
+    supportsCranelift = false,
+    supportsPulley = false,
+    targetOs = "browser",
+    targetCpu = "wasmjs",
+    is64Bit = false,
+)

@@ -38,6 +38,12 @@ actual class Wasmline internal actual constructor(
 
         @JvmStatic private external fun nativeSupportsAot(): Boolean
 
+        @JvmStatic private external fun nativeWasmtimeVersion(): String
+
+        @JvmStatic private external fun nativeSupportsCranelift(): Boolean
+
+        @JvmStatic private external fun nativeSupportsPulley(): Boolean
+
         @JvmStatic private external fun nativeReleaseEngine()
 
         fun loadAot(key: String, path: String): Boolean = nativeLoadAot(key, path)
@@ -46,6 +52,14 @@ actual class Wasmline internal actual constructor(
         fun loadComponentUnsafe(key: String, path: String): Boolean = nativeLoadComponentUnsafe(key, path)
         fun warmupEngine(usePulley: Boolean) = nativeWarmup(usePulley)
         fun supportsAot(): Boolean = nativeSupportsAot()
+        fun runtimeCapabilities(): WasmlineRuntimeCapabilities = WasmlineRuntimeCapabilities(
+            wasmtimeVersion = nativeWasmtimeVersion(),
+            supportsCranelift = nativeSupportsCranelift(),
+            supportsPulley = nativeSupportsPulley(),
+            targetOs = jniTargetOs(),
+            targetCpu = jniTargetCpu(),
+            is64Bit = jniIs64Bit(),
+        )
         fun releaseEngine() = nativeReleaseEngine()
     }
 
@@ -114,6 +128,11 @@ actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     Wasmline.warmupEngine(effectiveMode == WasmlineWarmupMode.PULLEY)
 }
 
+internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
+    ensureBootstrapped()
+    return Wasmline.runtimeCapabilities()
+}
+
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     wasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
 
@@ -135,6 +154,9 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
                 )
             }
 
+            override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =
+                descriptor.runtimeCompatibilityError(wasmlineRuntimeCapabilities())
+
             override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
                 ensureBootstrapped()
                 return when (descriptor.executionModel) {
@@ -151,4 +173,30 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
             }
         },
     )
+}
+
+private fun jniTargetOs(): String {
+    val runtimeName = System.getProperty("java.runtime.name").orEmpty()
+    val vmName = System.getProperty("java.vm.name").orEmpty()
+    if (runtimeName.contains("android", ignoreCase = true) || vmName.contains("dalvik", ignoreCase = true)) {
+        return "android"
+    }
+    val osName = System.getProperty("os.name").orEmpty().lowercase()
+    return when {
+        "mac" in osName -> "macos"
+        "win" in osName -> "windows"
+        "linux" in osName -> "linux"
+        else -> osName.ifBlank { "unknown" }
+    }
+}
+
+private fun jniTargetCpu(): String = when (val arch = System.getProperty("os.arch").orEmpty().lowercase()) {
+    "amd64", "x86_64" -> "x86_64"
+    "arm64", "aarch64" -> "aarch64"
+    else -> arch.ifBlank { "unknown" }
+}
+
+private fun jniIs64Bit(): Boolean {
+    val arch = System.getProperty("os.arch").orEmpty().lowercase()
+    return "64" in arch || arch == "aarch64" || arch == "arm64"
 }

@@ -23,6 +23,15 @@ void wasmline_warmup_engine(bool usePulley);
 /** Releases the global engine and cached runtime state. */
 void wasmline_release_engine();
 
+/** Returns the exact linked Wasmtime version. */
+const char* wasmline_wasmtime_version();
+
+/** Returns whether the linked runtime supports Cranelift artifacts. */
+bool wasmline_supports_cranelift();
+
+/** Returns whether the linked runtime supports Pulley artifacts. */
+bool wasmline_supports_pulley();
+
 /** Loads a Core Wasm artifact. */
 bool wasmline_load_module(const char* key, const char* path, bool isUnsafe);
 

@@ -111,18 +111,22 @@ internal object WasmlineLocalPackageResolution {
     private fun WasmlineArtifact.pwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
         val hostOs = normalizeOs(target.os) ?: return null
         val hostCpu = normalizeCpu(target.cpu) ?: return null
+        if (hostOs == "browser") {
+            return null
+        }
         if (is64Bit != target.is64Bit) {
             return null
         }
+        val artifactCpu = normalizeCpu(targetCpu)
+        val portablePulley = artifactCpu != null && isPulleyCpu(artifactCpu)
         val artifactOs = normalizeOs(targetOs)
-        if (artifactOs != null && artifactOs != hostOs) {
+        if (artifactOs != null && artifactOs != hostOs && !(artifactOs == "pulley" && portablePulley)) {
             return null
         }
-        val artifactCpu = normalizeCpu(targetCpu)
         return when {
             artifactCpu == null -> 200
             artifactCpu == hostCpu -> 190
-            artifactCpu.startsWith("pulley") && matchesPulleyBitness(artifactCpu, target.is64Bit) -> 180
+            portablePulley && matchesPulleyBitness(artifactCpu, target.is64Bit) -> 180
             else -> null
         }
     }
@@ -148,6 +152,8 @@ internal object WasmlineLocalPackageResolution {
         cpu.endsWith("32") -> !is64Bit
         else -> true
     }
+
+    private fun isPulleyCpu(cpu: String): Boolean = cpu == "pulley32" || cpu == "pulley64"
 
     private fun describe(target: WasmlineHostArtifactTarget): String {
         val bitness = if (target.is64Bit) "64-bit" else "32-bit"

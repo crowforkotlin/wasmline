@@ -57,6 +57,18 @@ void wasmline_release_engine() {
     Api::releaseEngine();
 }
 
+const char* wasmline_wasmtime_version() {
+    return Api::wasmtimeVersion();
+}
+
+bool wasmline_supports_cranelift() {
+    return Api::supportsCranelift();
+}
+
+bool wasmline_supports_pulley() {
+    return Api::supportsPulley();
+}
+
 bool wasmline_load_module(const char* key, const char* path, bool isUnsafe) {
     if (isUnsafe) {
         return Api::loadModuleUnsafe(std::string(key), std::string(path));

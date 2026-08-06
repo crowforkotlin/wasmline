@@ -56,6 +56,21 @@ Java_crow_wasmline_Wasmline_nativeSupportsAot(JNIEnv *env, jclass thiz) {
     return wasmline::Api::supportsAot() ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jstring JNICALL
+Java_crow_wasmline_Wasmline_nativeWasmtimeVersion(JNIEnv *env, jclass thiz) {
+    return env ? env->NewStringUTF(wasmline::Api::wasmtimeVersion()) : nullptr;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmline_Wasmline_nativeSupportsCranelift(JNIEnv *env, jclass thiz) {
+    return wasmline::Api::supportsCranelift() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmline_Wasmline_nativeSupportsPulley(JNIEnv *env, jclass thiz) {
+    return wasmline::Api::supportsPulley() ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT void JNICALL
 Java_crow_wasmline_Wasmline_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
     wasmline::Api::releaseEngine();

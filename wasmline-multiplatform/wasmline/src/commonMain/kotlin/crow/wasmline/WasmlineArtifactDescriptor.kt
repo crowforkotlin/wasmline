@@ -11,6 +11,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class WasmlineArtifactDescriptor(
     val path: String,
+    val artifactFormat: WasmlineArtifactFormat? = null,
+    val targetCpu: String? = null,
+    val targetOs: String? = null,
+    val targetCompilerVersion: String? = null,
+    val is64Bit: Boolean? = null,
     val executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
     val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
     val exportName: String? = null,

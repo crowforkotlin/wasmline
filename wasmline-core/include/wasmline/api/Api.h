@@ -35,6 +35,15 @@ namespace wasmline {
         /** Returns whether this build includes the Wasmtime compiler. */
         static bool supportsAot();
 
+        /** Returns the exact linked Wasmtime version. */
+        static const char* wasmtimeVersion();
+
+        /** Returns whether the linked runtime supports Cranelift artifacts. */
+        static bool supportsCranelift();
+
+        /** Returns whether the linked runtime supports Pulley artifacts. */
+        static bool supportsPulley();
+
         /** Releases the global engine, artifacts, and sessions. */
         static void releaseEngine();
 

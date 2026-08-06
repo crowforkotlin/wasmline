@@ -192,7 +192,12 @@ class NativeComponentRpcIntegrationTest {
             "$environmentVariable must be set when $LIVE_TESTS_ENV=1."
         }.let(::File)
         require(source.isFile) { "$environmentVariable does not point to a file: ${source.absolutePath}" }
-        return File.createTempFile("wasmline-component-rpc-", ".wasm").apply {
+        val suffix = when {
+            source.name.endsWith(".cwasm", ignoreCase = true) -> ".cwasm"
+            source.name.endsWith(".pwasm", ignoreCase = true) -> ".pwasm"
+            else -> ".wasm"
+        }
+        return File.createTempFile("wasmline-component-rpc-", suffix).apply {
             source.copyTo(this, overwrite = true)
             deleteOnExit()
         }

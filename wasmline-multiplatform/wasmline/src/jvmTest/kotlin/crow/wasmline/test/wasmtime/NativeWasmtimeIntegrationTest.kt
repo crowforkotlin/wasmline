@@ -3,14 +3,19 @@
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineConfig
+import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.wasmlineBootstrap
 import crow.wasmline.wasmlineLoadArtifact
+import crow.wasmline.wasmlineRuntimeCapabilities
 import crow.wasmline.wasmlineShutdown
 import crow.wasmline.wasmlineWarmup
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -28,6 +33,37 @@ import kotlin.test.assertTrue
  * @author crowforkotlin
  */
 class NativeWasmtimeIntegrationTest {
+
+    @Test
+    fun reportsLinkedRuntimeCapabilities() {
+        val capabilities = wasmlineRuntimeCapabilities()
+
+        assertEquals("47.0.2", capabilities.wasmtimeVersion)
+        assertTrue(capabilities.supportsCranelift)
+        assertTrue(capabilities.supportsPulley)
+        assertTrue(capabilities.targetOs.isNotBlank())
+        assertTrue(capabilities.targetCpu.isNotBlank())
+    }
+
+    @Test
+    fun rejectsIncompatibleAotMetadataBeforeResolvingTheFile() {
+        val capabilities = wasmlineRuntimeCapabilities()
+
+        val result = wasmlineLoadArtifact(
+            descriptor = WasmlineArtifactDescriptor(
+                path = "/does/not/exist/plugin.cwasm",
+                artifactFormat = WasmlineArtifactFormat.CWASM,
+                targetCpu = capabilities.targetCpu,
+                targetOs = capabilities.targetOs,
+                targetCompilerVersion = "wasmtime-46.0.0",
+                is64Bit = capabilities.is64Bit,
+            ),
+            config = WasmlineConfig(),
+        )
+
+        val failure = assertIs<WasmlineLoadState.Failure>(result)
+        assertTrue(failure.cause.contains("requires Wasmtime 46.0.0"))
+    }
 
     /**
      * Tests that we can successfully create and bootstrap the Wasmtime engine.

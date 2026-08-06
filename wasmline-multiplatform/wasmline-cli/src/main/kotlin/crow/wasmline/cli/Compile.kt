@@ -19,6 +19,7 @@ import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
 import crow.wasmline.plugin.core.component.ExistingComponentRequest
 import crow.wasmline.plugin.core.component.WasmToolsTool
+import crow.wasmline.plugin.core.diagnostics.WasmlineArtifactDiagnostics
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.ToolDownloader
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
@@ -27,10 +28,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
- * Compiles a Core Wasm module or componentizes it according to execution model.
- *
- * Component compilation deliberately stops at raw Component Wasm until
- * Component AOT support is verified for the selected Wasmtime release.
+ * Compiles a Core Wasm module or a Component Model plugin into native AOT artifacts.
  */
 class Compile : CliktCommand(name = "compile") {
     private val inputFile by option("-i", "--input")
@@ -101,12 +99,11 @@ class Compile : CliktCommand(name = "compile") {
                 inputFile = inputFile,
                 debugDir = debugDir,
                 artifacts = artifacts,
-                wasmtimeVersion = if (invocation.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
-                    "wasm-tools-" + wasmToolsVersion
-                } else {
-                    BuildConfig.WASMTIME_VERSION
-                },
+                wasmtimeVersion = BuildConfig.WASMTIME_VERSION,
             )
+            artifacts.forEach { artifact ->
+                echo("Wasmline artifact: " + WasmlineArtifactDiagnostics.format(artifact))
+            }
             echo(
                 "Compile result written to: " +
                     File(debugDir, WasmtimeCompiler.COMPILE_RESULT_FILE).absolutePath,
@@ -198,8 +195,20 @@ class Compile : CliktCommand(name = "compile") {
                     ),
                 )
             }
-            ComponentBuildRecords.write(result, File(outputDir, ComponentBuildRecords.FILE_NAME))
-            return listOf(result.toArtifact())
+            val rawRecord = ComponentBuildRecords.write(result, File(outputDir, ComponentBuildRecords.FILE_NAME))
+            val wasmtimeDirectory = wasmtimeDir
+                ?: error("--wasmtime is required for COMPONENT_MODEL AOT compilation.")
+            return ComponentAotCliAdapter(logger = ::echo).compile(
+                ComponentAotCliRequest(
+                    rawComponent = rawRecord,
+                    componentDirectory = outputDir,
+                    outputDirectory = outputDir,
+                    productName = productName,
+                    wasmtimeDirectory = wasmtimeDirectory,
+                    targets = targets,
+                    wasmtimeVersion = BuildConfig.WASMTIME_VERSION,
+                ),
+            ).artifacts
         } finally {
             downloader.close()
         }

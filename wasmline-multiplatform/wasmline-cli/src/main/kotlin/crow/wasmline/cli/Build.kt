@@ -22,6 +22,7 @@ import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
 import crow.wasmline.plugin.core.component.ExistingComponentRequest
 import crow.wasmline.plugin.core.component.WasmToolsTool
+import crow.wasmline.plugin.core.diagnostics.WasmlineArtifactDiagnostics
 import crow.wasmline.plugin.core.manifest.ManifestSigner
 import crow.wasmline.plugin.core.packaging.PluginPackager
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
@@ -98,16 +99,11 @@ class Build : CliktCommand(name = "build") {
             }
             check(artifacts.isNotEmpty()) { "No artifacts were produced." }
 
-            val compilerVersion = if (invocation.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
-                "wasm-tools-" + wasmToolsVersion
-            } else {
-                BuildConfig.WASMTIME_VERSION
-            }
             WasmtimeCompiler().writeCompileResult(
                 inputFile = inputFile,
                 debugDir = File(outputDir, "debug"),
                 artifacts = artifacts,
-                wasmtimeVersion = compilerVersion,
+                wasmtimeVersion = BuildConfig.WASMTIME_VERSION,
             )
             val manifestFile = ManifestSigner().createSignedManifest(
                 artifacts = artifacts,
@@ -135,6 +131,9 @@ class Build : CliktCommand(name = "build") {
                 destination = File("build/wasmline/dist", productName + "-" + version + ".zip"),
                 folderPrefix = productName + "-" + version,
             )
+            artifacts.forEach { artifact ->
+                echo("Wasmline artifact: " + WasmlineArtifactDiagnostics.format(artifact))
+            }
             echo("Package written to: " + zipFile.absolutePath + " (" + zipFile.length() + " bytes)")
         } catch (error: Exception) {
             echo("Error: " + error.message, err = true)
@@ -223,8 +222,20 @@ class Build : CliktCommand(name = "build") {
                     ),
                 )
             }
-            ComponentBuildRecords.write(result, File(outputDir, ComponentBuildRecords.FILE_NAME))
-            return listOf(result.toArtifact())
+            val rawRecord = ComponentBuildRecords.write(result, File(outputDir, ComponentBuildRecords.FILE_NAME))
+            val wasmtimeDirectory = wasmtimeDir
+                ?: error("--wasmtime is required for COMPONENT_MODEL AOT builds.")
+            return ComponentAotCliAdapter(logger = ::echo).compile(
+                ComponentAotCliRequest(
+                    rawComponent = rawRecord,
+                    componentDirectory = outputDir,
+                    outputDirectory = outputDir,
+                    productName = productName,
+                    wasmtimeDirectory = wasmtimeDirectory,
+                    targets = targets,
+                    wasmtimeVersion = BuildConfig.WASMTIME_VERSION,
+                ),
+            ).artifacts
         } finally {
             downloader.close()
         }

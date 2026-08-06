@@ -124,6 +124,18 @@ actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     wasmline_warmup_engine(true)
 }
 
+internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
+    iosBootstrap()
+    return WasmlineRuntimeCapabilities(
+        wasmtimeVersion = requireNotNull(wasmline_wasmtime_version()).toKString(),
+        supportsCranelift = wasmline_supports_cranelift(),
+        supportsPulley = wasmline_supports_pulley(),
+        targetOs = "ios",
+        targetCpu = "aarch64",
+        is64Bit = true,
+    )
+}
+
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     wasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
 
@@ -144,6 +156,9 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
                     moduleKey = path,
                 )
             }
+
+            override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =
+                descriptor.runtimeCompatibilityError(wasmlineRuntimeCapabilities())
 
             override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
                 iosBootstrap()
