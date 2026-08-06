@@ -106,11 +106,7 @@ object ToolchainCatalog {
     }
 
     /** Resolves a locked release asset for the requested host platform. */
-    fun requireAsset(
-        tool: WasmlineTool,
-        version: String = defaultVersion(tool),
-        platform: String = defaultPlatform(tool),
-    ): ToolAssetSpec {
+    fun requireAsset(tool: WasmlineTool, version: String = defaultVersion(tool), platform: String = defaultPlatform(tool)): ToolAssetSpec {
         val normalizedVersion = version.removePrefix("v")
         val normalizedPlatform = normalizePlatform(tool, platform)
         return assets.firstOrNull {

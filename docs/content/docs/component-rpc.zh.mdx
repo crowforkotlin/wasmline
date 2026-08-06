@@ -47,6 +47,48 @@ Rust 可以使用 `wasm32-wasip2` 直接生成 Component。Rust fixture 位于
 `wasmline-samples/rust/sample-component-plugin`，并固定 fork 的
 `wit-bindgen` 0.57.1 Git tag，不提交生成 bindings。
 
+C 和 C++ 通过 WASI SDK 33（已验证基线）编译到 `wasm32-wasip1`。对应 fixture 位于
+`wasmline-samples/c/sample-component-plugin` 和
+`wasmline-samples/cpp/sample-component-plugin`。两者直接读取
+`wasmline-plugin-core` 内的 canonical WIT world，在 CMake build 目录生成
+bindings，链接生成的 Component type object，再执行
+`wasm-tools component new`。如果所选 WASI SDK 仍在 Core Wasm 中保留
+Preview 1 import，可以显式传入 Preview 1 reactor adapter。
+
+## 多语言 Binding
+
+每种 guest 都实现生成的 export，并通过生成的 import 回调宿主。该流程不修改
+Wasmtime、`wit-bindgen` 或 canonical WIT 源码。
+
+| 语言 | Binding 生成方式 | 插件 export 实现 | 宿主回调 API |
+|---|---|---|---|
+| Kotlin | `wit-bindgen kotlin --world plugin` | `PluginImpl.invoke` | `Host.Import.invoke` |
+| Rust | `wit_bindgen::generate!({ world: "plugin" })` | `exports::plugin::Guest::invoke` | `host::invoke` |
+| C | `wit-bindgen c --world plugin` | `plugin_invoke` | `host_invoke` |
+| C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::rpc::Invoke` | `wasmline::rpc::Invoke` |
+
+生成源码和 Component type object 都只属于 build 输出。C 与 C++ fixture 会在
+CMake configure 阶段严格检查 `wit-bindgen 0.57.1` 和
+`wasm-tools 1.255.0`，完整的 WASI SDK 命令见各自 README。
+C++ 0.57.1 generator 会对 move-only WIT error 生成一次
+`std::expected::value()` 调用。fixture 使用 fail-closed 的生成源码兼容步骤，在
+`has_value()` 之后将它切换为 `operator*`；该流程不修改 `wit-bindgen` 源码，也不
+提交生成代码。
+
+每次只把一个完成的 Rust、C 或 C++ fixture 交给 native runtime 验证：
+
+```shell
+cd wasmline-multiplatform
+WASMLINE_LIVE_TESTS=1 \
+WASMLINE_TEST_COMPONENT_RPC=/absolute/path/to/plugin.component.wasm \
+./gradlew :wasmline:jvmTest \
+  --tests 'crow.wasmline.test.wasmtime.NativeComponentRpcIntegrationTest' \
+  --rerun-tasks --console=plain
+```
+
+四项测试分别覆盖 callback bytes、未绑定 handler、同 session 重入，以及 callback
+中调用第二个 Component session。
+
 ## Codec Profile
 
 WIT envelope 不会让任意业务字节自动具备通用解码能力。`codec` 字符串属于
@@ -56,6 +98,8 @@ request 的一部分，并由宿主 runtime 检查。
 |---|---|---|---|
 | Kotlin envelope | `protobuf` | Kotlin Serialization Protobuf 字节；Kotlin sample 会解码 `sample.echo` | `sample-component-plugin` |
 | Rust envelope fixture | `protobuf` | payload 视为 opaque bytes，只 echo 或转发给 `host.invoke`；不宣称有 Rust 业务解码器 | `wasmline-samples/rust/sample-component-plugin` |
+| C envelope fixture | `protobuf` | payload 视为 opaque bytes，通过生成的 C binding 复制或转发 | `wasmline-samples/c/sample-component-plugin` |
+| C++ envelope fixture | `protobuf` | payload 视为 opaque bytes，通过生成的 C++ binding 移动或转发 | `wasmline-samples/cpp/sample-component-plugin` |
 | 原生 typed WIT | 不使用 envelope profile | 业务参数直接是 WIT value，必须由 Component 契约描述 | 显式 typed Component descriptor |
 
 跨语言插件如果要交换业务对象，必须让所有参与方实现同一个 codec，或将业务
@@ -79,6 +123,8 @@ session 注册这个 import，并把其中的 `action`、`codec`、`payload` 映
 
 插件仍然需要使用生成的语言 binding 调用 WIT `host.invoke`。这个 binding 是
 可移植的 Component 契约；Wasmline 宿主负责把它接入自己的 dispatcher。
+Kotlin、Rust、C 和 C++ fixture 都通过各自生成的 host import 执行
+`sample.callback`，并把 WIT success 或 `rpc-error` 继续传回插件 export。
 
 原生 Wasmtime backend 支持这条 Component 路径。浏览器 target 当前仍只声明
 支持 Core Wasmline bridge，并会在加载阶段拒绝 Component descriptor。

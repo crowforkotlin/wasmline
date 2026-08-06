@@ -3,10 +3,7 @@ package crow.wasmline.plugin.core.toolchain
 import crow.wasmline.plugin.core.util.PlatformDetector
 
 /** Resolves locked tools from a cache and optionally downloads missing assets. */
-class ToolResolver(
-    private val cache: ToolCache,
-    private val downloader: ToolDownloader,
-) {
+class ToolResolver(private val cache: ToolCache, private val downloader: ToolDownloader) {
     suspend fun resolve(
         tool: WasmlineTool,
         version: String = ToolchainCatalog.defaultVersion(tool),

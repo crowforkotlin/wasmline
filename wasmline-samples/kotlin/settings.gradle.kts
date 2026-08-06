@@ -4,6 +4,9 @@ rootProject.name = "wasmline-sample"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("../../wasmline-multiplatform/wasmline-build-logic")
+    if (System.getenv("WASMLINE_USE_INCLUDED_BUILD") == "1") {
+        includeBuild("../../wasmline-multiplatform")
+    }
     repositories {
         mavenLocal()
         google {
@@ -16,6 +19,9 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+}
+if (System.getenv("WASMLINE_USE_INCLUDED_BUILD") == "1") {
+    includeBuild("../../wasmline-multiplatform")
 }
 // Use Maven local artifacts instead of includeBuild source dependency
 // includeBuild("../../wasmline-multiplatform") {

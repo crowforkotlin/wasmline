@@ -67,5 +67,4 @@ internal fun parseTool(value: String): WasmlineTool = when (value.trim().lowerca
     else -> error("Unknown Component tool '$value'. Expected wit-bindgen, wasm-tools or wasi-adapter.")
 }
 
-internal fun defaultToolCacheDirectory(): File =
-    File(System.getProperty("user.home"), ".wasmline/tools")
+internal fun defaultToolCacheDirectory(): File = File(System.getProperty("user.home"), ".wasmline/tools")

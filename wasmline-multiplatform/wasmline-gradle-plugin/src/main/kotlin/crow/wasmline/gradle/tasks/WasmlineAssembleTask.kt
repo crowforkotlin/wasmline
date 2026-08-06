@@ -5,28 +5,34 @@ package crow.wasmline.gradle.tasks
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
+import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.manifest.ManifestSigner
+import crow.wasmline.plugin.core.manifest.ManifestSigningMain
 import crow.wasmline.plugin.core.packaging.PluginPackager
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecOperations
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.util.Properties
+import javax.inject.Inject
 
 /** Assembles and signs a Core Wasm or raw Component Model plugin package. */
-abstract class WasmlineAssembleTask : DefaultTask() {
+abstract class WasmlineAssembleTask @Inject constructor(private val execOperations: ExecOperations) : DefaultTask() {
     init {
         group = "wasmline"
         description = "Assemble wasmline plugin package"
@@ -107,6 +113,9 @@ abstract class WasmlineAssembleTask : DefaultTask() {
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
+    @get:Classpath
+    abstract val manifestToolClasspath: ConfigurableFileCollection
+
     @TaskAction
     fun assemble() {
         val variant = buildVariant.get()
@@ -129,25 +138,13 @@ abstract class WasmlineAssembleTask : DefaultTask() {
             artifacts = prepared.artifacts,
             wasmtimeVersion = prepared.compilerVersion,
         )
-        val manifestFile = ManifestSigner().createSignedManifest(
-            artifacts = prepared.artifacts,
+        val compileResultFile = File(debugDirectory, WasmtimeCompiler.COMPILE_RESULT_FILE)
+        val manifestFile = createSignedManifest(
+            compileResultFile = compileResultFile,
             pluginId = id,
             version = version,
-            versionCode = versionCode.get(),
-            minSdkVersion = minSdkVersion.get(),
-            signingKey = signingKey.get(),
-            outputDir = packageDirectory,
-            displayName = displayName.orNull,
-            author = author.orNull,
-            description = pluginDescription.orNull,
-            iconUrl = iconUrl.orNull,
-            homePageUrl = homePageUrl.orNull,
-            metadata = metadata.get(),
-            executionModel = executionModel.get(),
-            invocationProtocol = invocationProtocol.get(),
             exportName = effectiveExportName,
-            contractMetadata = contractMetadata.get(),
-            logger = { message -> logger.info(message) },
+            packageDirectory = packageDirectory,
         )
 
         val distDirectory = File(outputDir.get().asFile.parentFile, "dist").apply { mkdirs() }
@@ -162,11 +159,53 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         logger.lifecycle("Wasmline package: " + zipFile.absolutePath + " (" + zipFile.length() + " bytes)")
     }
 
-    private fun prepareCoreArtifacts(
+    private fun createSignedManifest(
+        compileResultFile: File,
+        pluginId: String,
+        version: String,
+        exportName: String?,
         packageDirectory: File,
-        productName: String,
-        variant: String,
-    ): PreparedArtifacts {
+    ): File {
+        val requestFile = File(temporaryDir, "manifest-signing.properties")
+        Properties().apply {
+            setProperty(ManifestSigningMain.COMPILE_RESULT_FILE, compileResultFile.absolutePath)
+            setProperty(ManifestSigningMain.OUTPUT_DIRECTORY, packageDirectory.absolutePath)
+            setProperty(ManifestSigningMain.PLUGIN_ID, pluginId)
+            setProperty(ManifestSigningMain.PLUGIN_VERSION, version)
+            setProperty(ManifestSigningMain.VERSION_CODE, versionCode.get().toString())
+            setProperty(ManifestSigningMain.MIN_SDK_VERSION, minSdkVersion.get())
+            setProperty(ManifestSigningMain.SIGNING_KEY, signingKey.get())
+            setOptional(ManifestSigningMain.DISPLAY_NAME, displayName.orNull)
+            setOptional(ManifestSigningMain.AUTHOR, author.orNull)
+            setOptional(ManifestSigningMain.DESCRIPTION, pluginDescription.orNull)
+            setOptional(ManifestSigningMain.ICON_URL, iconUrl.orNull)
+            setOptional(ManifestSigningMain.HOME_PAGE_URL, homePageUrl.orNull)
+            setProperty(ManifestSigningMain.EXECUTION_MODEL, executionModel.get().name)
+            setProperty(ManifestSigningMain.INVOCATION_PROTOCOL, invocationProtocol.get().name)
+            setOptional(ManifestSigningMain.EXPORT_NAME, exportName)
+            metadata.get().forEach { (key, value) -> setProperty(ManifestSigningMain.METADATA_PREFIX + key, value) }
+            contractMetadata.get().forEach { (key, value) ->
+                setProperty(ManifestSigningMain.CONTRACT_METADATA_PREFIX + key, value)
+            }
+            requestFile.outputStream().use { output -> store(output, null) }
+        }
+
+        execOperations.javaexec { spec ->
+            spec.classpath(manifestToolClasspath)
+            spec.mainClass.set(ManifestSigningMain::class.java.name)
+            spec.args(requestFile.absolutePath)
+        }.assertNormalExitValue()
+
+        return File(packageDirectory, ManifestSigner.DEFAULT_MANIFEST_NAME).also { manifest ->
+            if (!manifest.isFile) throw GradleException("Manifest signer did not create ${manifest.absolutePath}.")
+        }
+    }
+
+    private fun Properties.setOptional(name: String, value: String?) {
+        if (value != null) setProperty(name, value)
+    }
+
+    private fun prepareCoreArtifacts(packageDirectory: File, productName: String, variant: String): PreparedArtifacts {
         val compileDirectory = wasmCompileOutputDir.get().asFile
         val candidates = if (compileDirectory.isDirectory) {
             compileDirectory.walkTopDown()
@@ -212,10 +251,7 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         )
     }
 
-    private fun prepareComponentArtifact(
-        packageDirectory: File,
-        debugDirectory: File,
-    ): PreparedArtifacts {
+    private fun prepareComponentArtifact(packageDirectory: File, debugDirectory: File): PreparedArtifacts {
         val componentDirectory = componentOutputDirectory.orNull?.asFile
             ?: throw GradleException("Component output directory is not configured.")
         val resultFile = File(componentDirectory, ComponentBuildRecords.FILE_NAME)
@@ -248,9 +284,5 @@ abstract class WasmlineAssembleTask : DefaultTask() {
         }
     }
 
-    private data class PreparedArtifacts(
-        val inputFile: File,
-        val artifacts: List<WasmlineArtifact>,
-        val compilerVersion: String,
-    )
+    private data class PreparedArtifacts(val inputFile: File, val artifacts: List<WasmlineArtifact>, val compilerVersion: String)
 }

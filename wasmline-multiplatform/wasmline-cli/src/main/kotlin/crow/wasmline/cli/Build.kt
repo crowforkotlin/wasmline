@@ -11,17 +11,17 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.long
-import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
 import crow.wasmline.plugin.core.component.ExistingComponentRequest
 import crow.wasmline.plugin.core.component.WasmToolsTool
-import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.manifest.ManifestSigner
 import crow.wasmline.plugin.core.packaging.PluginPackager
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
@@ -161,11 +161,7 @@ class Build : CliktCommand(name = "build") {
         return artifacts
     }
 
-    private suspend fun compileComponent(
-        outputDir: File,
-        productName: String,
-        componentExportName: String,
-    ): List<WasmlineArtifact> {
+    private suspend fun compileComponent(outputDir: File, productName: String, componentExportName: String): List<WasmlineArtifact> {
         val downloader = ToolDownloader(logger = ::echo)
         try {
             val platform = PlatformDetector.detectPlatform()

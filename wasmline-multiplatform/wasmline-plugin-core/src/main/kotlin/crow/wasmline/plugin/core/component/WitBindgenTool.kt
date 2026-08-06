@@ -15,22 +15,21 @@ data class KotlinBindingsRequest(
 )
 
 /** Typed wrapper around the wit-bindgen Kotlin generator. */
-class WitBindgenTool(
-    private val executable: File,
-    private val runner: ExternalToolRunner = ExternalToolRunner(),
-) {
+class WitBindgenTool(private val executable: File, private val runner: ExternalToolRunner = ExternalToolRunner()) {
+    private val verificationRunner = ExternalToolRunner()
+
     init {
         require(executable.isFile) { "wit-bindgen executable does not exist: " + executable.absolutePath }
         require(executable.canExecute()) { "wit-bindgen executable is not executable: " + executable.absolutePath }
     }
 
     /** Returns the exact version output reported by wit-bindgen. */
-    fun version(): String = runner.run(executable, listOf("--version")).output.trim()
+    fun version(): String = verificationRunner.run(executable, listOf("--version")).output.trim()
 
     /** Verifies the selected binary and the Kotlin generator command. */
     fun verify(expectedVersion: String): String {
         val output = verifyToolVersion("wit-bindgen", version(), expectedVersion)
-        runner.run(executable, listOf("kotlin", "--help"))
+        verificationRunner.run(executable, listOf("kotlin", "--help"))
         return output
     }
 

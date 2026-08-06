@@ -71,12 +71,7 @@ private class RecordingWasmTools : WasmTools {
         return success()
     }
 
-    override fun createComponent(
-        embeddedWasm: File,
-        adapter: File,
-        outputComponent: File,
-        adapterModule: String,
-    ): ToolExecutionResult {
+    override fun createComponent(embeddedWasm: File, adapter: File, outputComponent: File, adapterModule: String): ToolExecutionResult {
         operations += "new"
         outputComponent.writeBytes(embeddedWasm.readBytes() + adapter.readBytes())
         return success()

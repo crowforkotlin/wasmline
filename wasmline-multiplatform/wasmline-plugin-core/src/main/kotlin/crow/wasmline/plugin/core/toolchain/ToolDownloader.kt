@@ -24,10 +24,7 @@ import java.nio.file.StandardOpenOption
  * Every network response is checked against the catalog digest before any
  * extracted file can become visible as a resolved tool.
  */
-class ToolDownloader(
-    private val httpClient: HttpClient = HttpClient(CIO),
-    private val logger: (String) -> Unit = {},
-) : Closeable {
+class ToolDownloader(private val httpClient: HttpClient = HttpClient(CIO), private val logger: (String) -> Unit = {}) : Closeable {
     /**
      * Resolves a cached asset or downloads it when it is missing.
      *

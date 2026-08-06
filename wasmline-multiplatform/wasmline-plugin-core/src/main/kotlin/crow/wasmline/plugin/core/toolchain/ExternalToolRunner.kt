@@ -6,20 +6,13 @@ import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /** Result of one external tool invocation. */
-data class ToolExecutionResult(
-    val command: List<String>,
-    val exitCode: Int,
-    val output: String,
-)
+data class ToolExecutionResult(val command: List<String>, val exitCode: Int, val output: String)
 
 /** Indicates that an external tool timed out or returned a non-zero status. */
 class ToolExecutionException(message: String, val result: ToolExecutionResult? = null) : IllegalStateException(message)
 
 /** Executes pinned tools without involving a shell. */
-class ExternalToolRunner(
-    private val defaultTimeoutMillis: Long = 120_000,
-    private val logger: (String) -> Unit = {},
-) {
+class ExternalToolRunner(private val defaultTimeoutMillis: Long = 120_000, private val logger: (String) -> Unit = {}) {
     fun run(
         executable: File,
         arguments: List<String>,

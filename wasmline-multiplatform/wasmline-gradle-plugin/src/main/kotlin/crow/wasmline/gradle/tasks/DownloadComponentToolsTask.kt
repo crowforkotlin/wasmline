@@ -14,7 +14,6 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 
 /** Downloads and verifies the pinned Component Model build tools. */
@@ -35,7 +34,6 @@ abstract class DownloadComponentToolsTask : DefaultTask() {
     abstract val force: Property<Boolean>
 
     @get:Internal
-    @get:Optional
     abstract val githubToken: Property<String>
 
     @TaskAction

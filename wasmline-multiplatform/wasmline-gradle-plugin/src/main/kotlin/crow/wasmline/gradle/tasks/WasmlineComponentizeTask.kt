@@ -89,7 +89,6 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
     abstract val toolCacheDirectory: DirectoryProperty
 
     @get:Internal
-    @get:Optional
     abstract val githubToken: Property<String>
 
     @TaskAction
@@ -165,7 +164,8 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
         val candidates = if (root.isDirectory) {
             root.walkTopDown()
                 .filter { file ->
-                    file.isFile && file.extension.equals("wasm", ignoreCase = true) &&
+                    file.isFile &&
+                        file.extension.equals("wasm", ignoreCase = true) &&
                         !file.name.endsWith("-component.wasm", ignoreCase = true)
                 }
                 .sortedBy { it.relativeTo(root).invariantSeparatorsPath }

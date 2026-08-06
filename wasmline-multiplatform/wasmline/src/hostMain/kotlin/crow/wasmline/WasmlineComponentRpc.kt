@@ -75,7 +75,7 @@ internal object WasmlineComponentRpc {
             ?: return malformed("Wasmline Component invoke result is not a WIT result value.")
         val value = rpcResult.value ?: return malformed("Wasmline Component invoke result has no payload.")
         return if (rpcResult.isOk) {
-            value.toByteArrayOrNull()?.let(WasmlineCallResult::Success)
+            value.toByteArrayOrNull()?.let { WasmlineCallResult.Success(value = it) }
                 ?: malformed("Wasmline Component success payload is not list<u8>.")
         } else {
             decodeError(value)
@@ -122,8 +122,9 @@ private fun WasmlineComponentValue.toByteArrayOrNull(): ByteArray? {
     return bytes
 }
 
-private fun WasmlineComponentValue.RecordValue.field(name: String): WasmlineComponentValue? =
-    fields.firstOrNull { it.name == name }?.value
+private fun WasmlineComponentValue.RecordValue.field(name: String): WasmlineComponentValue? = fields
+    .firstOrNull { it.name == name }
+    ?.value
 
 private fun String.toErrorCode(): WasmlineErrorCode {
     val enumName = uppercase().replace('-', '_')

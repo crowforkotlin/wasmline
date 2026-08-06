@@ -23,6 +23,10 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 
 internal const val ENABLE_WASI_INIT_EXPORT_OPTION_NAME = "enableWasiInitExport"
+internal const val ENABLE_COMPILER_PLUGIN_OPTION_NAME = "enabled"
+internal val ENABLE_COMPILER_PLUGIN_OPTION = CompilerConfigurationKey<Boolean>(
+    "enable Wasmline IR generation",
+)
 internal val ENABLE_WASI_INIT_EXPORT_OPTION = CompilerConfigurationKey<Boolean>(
     "enable generated wasm entry export for wasmWasi compilations",
 )
@@ -31,6 +35,13 @@ internal val ENABLE_WASI_INIT_EXPORT_OPTION = CompilerConfigurationKey<Boolean>(
 class WasmlineCommandLineProcessor : CommandLineProcessor {
     override val pluginId: String = BuildConfig.KOTLIN_PLUGIN_ID
     override val pluginOptions = listOf(
+        CliOption(
+            optionName = ENABLE_COMPILER_PLUGIN_OPTION_NAME,
+            valueDescription = "true|false",
+            description = "Enable Wasmline IR generation for this compilation.",
+            required = false,
+            allowMultipleOccurrences = false,
+        ),
         CliOption(
             optionName = ENABLE_WASI_INIT_EXPORT_OPTION_NAME,
             valueDescription = "true|false",
@@ -42,6 +53,10 @@ class WasmlineCommandLineProcessor : CommandLineProcessor {
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         when (option.optionName) {
+            ENABLE_COMPILER_PLUGIN_OPTION_NAME -> {
+                configuration.put(ENABLE_COMPILER_PLUGIN_OPTION, value.toBooleanStrictOrNull() ?: true)
+            }
+
             ENABLE_WASI_INIT_EXPORT_OPTION_NAME -> {
                 configuration.put(ENABLE_WASI_INIT_EXPORT_OPTION, value.toBooleanStrictOrNull() ?: false)
             }

@@ -7,10 +7,7 @@ import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import crow.wasmline.plugin.core.toolchain.WasmlineTool
 import java.io.File
 
-internal data class ComponentToolFiles(
-    val wasmTools: File,
-    val adapter: File,
-)
+internal data class ComponentToolFiles(val wasmTools: File, val adapter: File)
 
 internal suspend fun resolveWasmToolsFile(
     cacheDirectory: File,

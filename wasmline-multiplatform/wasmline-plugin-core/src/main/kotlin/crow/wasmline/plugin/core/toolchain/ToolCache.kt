@@ -4,11 +4,7 @@ import java.io.File
 import java.util.Properties
 
 /** A verified tool asset resolved from the local cache. */
-data class ResolvedToolAsset(
-    val spec: ToolAssetSpec,
-    val directory: File,
-    val file: File,
-)
+data class ResolvedToolAsset(val spec: ToolAssetSpec, val directory: File, val file: File)
 
 /** Stores immutable, verified Component toolchain assets. */
 class ToolCache(val rootDirectory: File) {

@@ -28,8 +28,8 @@ object PluginImpl : Plugin {
 
     @OptIn(ExperimentalSerializationApi::class)
     private fun echo(payload: List<UByte>): Result<List<UByte>> = runCatching {
-        val request = ProtoBuf.decodeFromByteArray<EchoRequest>(payload.toByteArray())
-        ProtoBuf.encodeToByteArray(EchoResponse("plugin:${request.value}")).toUByteList()
+        val request = ProtoBuf.decodeFromByteArray(EchoRequest.serializer(), payload.toByteArray())
+        ProtoBuf.encodeToByteArray(EchoResponse.serializer(), EchoResponse("plugin:${request.value}")).toUByteList()
     }.mapFailure(INVALID_PAYLOAD, "Unable to decode the echo request.")
 
     private fun callbackHost(request: Plugin.Request): Result<List<UByte>> = Host.Import.invoke(

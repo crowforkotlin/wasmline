@@ -55,7 +55,6 @@ abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
     abstract val toolCacheDirectory: DirectoryProperty
 
     @get:Internal
-    @get:Optional
     abstract val githubToken: Property<String>
 
     @TaskAction

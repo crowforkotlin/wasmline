@@ -9,8 +9,7 @@ interface WasmTools {
     fun version(): String
 
     /** Verifies the selected wasm-tools version before using the pipeline. */
-    fun verify(expectedVersion: String): String =
-        verifyToolVersion("wasm-tools", version(), expectedVersion)
+    fun verify(expectedVersion: String): String = verifyToolVersion("wasm-tools", version(), expectedVersion)
 
     fun embedWit(witPath: File, inputWasm: File, outputWasm: File, world: String? = null): ToolExecutionResult
 
@@ -27,17 +26,16 @@ interface WasmTools {
 }
 
 /** Typed wrapper around the wasm-tools Component Model commands. */
-class WasmToolsTool(
-    private val executable: File,
-    private val runner: ExternalToolRunner = ExternalToolRunner(),
-) : WasmTools {
+class WasmToolsTool(private val executable: File, private val runner: ExternalToolRunner = ExternalToolRunner()) : WasmTools {
+    private val silentRunner = ExternalToolRunner()
+
     init {
         require(executable.isFile) { "wasm-tools executable does not exist: " + executable.absolutePath }
         require(executable.canExecute()) { "wasm-tools executable is not executable: " + executable.absolutePath }
     }
 
     /** Returns the exact version output reported by wasm-tools. */
-    override fun version(): String = runner.run(executable, listOf("--version")).output.trim()
+    override fun version(): String = silentRunner.run(executable, listOf("--version")).output.trim()
 
     /** Verifies the selected binary and every Component command used below. */
     override fun verify(expectedVersion: String): String {
@@ -47,17 +45,12 @@ class WasmToolsTool(
             listOf("component", "new", "--help"),
             listOf("validate", "--help"),
             listOf("component", "wit", "--help"),
-        ).forEach { arguments -> runner.run(executable, arguments) }
+        ).forEach { arguments -> silentRunner.run(executable, arguments) }
         return output
     }
 
     /** Embeds WIT metadata into a Core Wasm module. */
-    override fun embedWit(
-        witPath: File,
-        inputWasm: File,
-        outputWasm: File,
-        world: String?,
-    ): ToolExecutionResult {
+    override fun embedWit(witPath: File, inputWasm: File, outputWasm: File, world: String?): ToolExecutionResult {
         require(witPath.exists()) { "WIT path does not exist: " + witPath.absolutePath }
         require(inputWasm.isFile) { "Core Wasm input does not exist: " + inputWasm.absolutePath }
         outputWasm.parentFile?.mkdirs()
@@ -73,12 +66,7 @@ class WasmToolsTool(
     }
 
     /** Creates a Component Wasm using the WASI Preview 1 reactor adapter. */
-    override fun createComponent(
-        embeddedWasm: File,
-        adapter: File,
-        outputComponent: File,
-        adapterModule: String,
-    ): ToolExecutionResult {
+    override fun createComponent(embeddedWasm: File, adapter: File, outputComponent: File, adapterModule: String): ToolExecutionResult {
         require(embeddedWasm.isFile) { "Embedded Core Wasm does not exist: " + embeddedWasm.absolutePath }
         require(adapter.isFile) { "WASI adapter does not exist: " + adapter.absolutePath }
         require(adapterModule.isNotBlank()) { "WASI adapter module name must not be blank." }
@@ -109,7 +97,7 @@ class WasmToolsTool(
     /** Extracts the WIT world represented by a Component Wasm. */
     override fun inspectWit(component: File): String {
         require(component.isFile) { "Component Wasm does not exist: " + component.absolutePath }
-        return runner.run(executable, listOf("component", "wit", component.absolutePath)).output
+        return silentRunner.run(executable, listOf("component", "wit", component.absolutePath)).output
     }
 
     private fun requireOutput(output: File, operation: String) {

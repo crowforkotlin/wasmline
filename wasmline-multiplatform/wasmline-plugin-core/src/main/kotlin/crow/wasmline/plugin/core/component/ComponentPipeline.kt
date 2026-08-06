@@ -83,9 +83,7 @@ data class ComponentizeResult(
  * Kotlin compilation remains an upstream concern; this pipeline starts from a
  * finished Core Wasm module and owns every wasm-tools step after it.
  */
-class ComponentPipeline(
-    private val wasmTools: WasmTools,
-) {
+class ComponentPipeline(private val wasmTools: WasmTools) {
     /** Embeds WIT, creates a Component, validates it and records its WIT view. */
     fun componentize(request: ComponentizeRequest): ComponentizeResult {
         validateRequest(request)
