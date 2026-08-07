@@ -3,8 +3,8 @@ package crow.wasmline
 /**
  * Trusted public key lookup for manifest signature verification.
  *
- * When provided in [WasmlineConfig], the loader verifies the manifest signature
- * before accepting the package. If not provided, verification is skipped (permissive mode).
+ * Package sources require this lookup to verify their manifest signature before
+ * accepting package metadata. Direct local artifact paths are caller-trusted.
  */
 fun interface WasmlineTrustedKeys {
     /**

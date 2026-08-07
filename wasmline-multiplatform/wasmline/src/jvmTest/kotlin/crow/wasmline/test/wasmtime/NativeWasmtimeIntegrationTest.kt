@@ -17,6 +17,7 @@ import crow.wasmline.wasmlineShutdown
 import crow.wasmline.wasmlineWarmup
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -51,6 +52,19 @@ class NativeWasmtimeIntegrationTest {
     }
 
     @Test
+    fun rejectsInvalidArtifactFormatCodesAtTheJniBoundary() {
+        wasmlineBootstrap()
+
+        try {
+            listOf(0, -1, 4).forEach { formatCode ->
+                assertFalse(invokeNativeLoadAotWithFormatCode(formatCode))
+            }
+        } finally {
+            wasmlineShutdown()
+        }
+    }
+
+    @Test
     fun rejectsIncompatibleAotMetadataBeforeResolvingTheFile() {
         val capabilities = wasmlineRuntimeCapabilities()
 
@@ -68,6 +82,18 @@ class NativeWasmtimeIntegrationTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertTrue(failure.cause.contains("requires Wasmtime 46.0.0"))
+    }
+
+    private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): Boolean {
+        val intType = requireNotNull(Int::class.javaPrimitiveType)
+        val method = Wasmline::class.java.getDeclaredMethod(
+            "nativeLoadAotWithFormat",
+            String::class.java,
+            String::class.java,
+            intType,
+        )
+        method.isAccessible = true
+        return method.invoke(null, "invalid-format", "/does/not/exist/plugin.bin", formatCode) as Boolean
     }
 
     /**
@@ -160,11 +186,10 @@ class NativeWasmtimeIntegrationTest {
     }
 
     /**
-     * Tests memory safety when loading missing artifacts.
-     * Ensures graceful degradation rather than crashes.
+     * Verifies that native direct-path loading fails before file resolution when it has no format.
      */
     @Test
-    fun loadsMissingArtifactGracefully() {
+    fun rejectsNativeDirectPathWithoutAnExplicitFormat() {
         wasmlineBootstrap()
 
         try {
@@ -173,57 +198,59 @@ class NativeWasmtimeIntegrationTest {
                 config = WasmlineConfig(supportConcurrent = false),
             )
 
-            assertTrue(result is crow.wasmline.WasmlineLoadState.Failure)
+            val failure = assertIs<WasmlineLoadState.Failure>(result)
             assertEquals(
-                crow.wasmline.WasmlineLoadState.CODE_FAILURE,
-                (result as crow.wasmline.WasmlineLoadState.Failure).code,
+                WasmlineLoadState.CODE_FAILURE,
+                failure.code,
             )
 
-            val failure = result as crow.wasmline.WasmlineLoadState.Failure
             assertTrue(
-                failure.cause.contains("not found"),
-                "Error message should indicate file not found",
+                failure.cause.contains("requires an explicit artifactFormat"),
+                "Error message should identify the missing native format",
             )
         } finally {
             wasmlineShutdown()
         }
     }
 
-    /**
-     * Tests concurrent mode support.
-     * Validates different loading configurations.
-     */
     @Test
-    fun supportsDifferentLoadingModes() {
+    fun rejectsRawCoreArtifactsForBothLoadingModes() {
         wasmlineBootstrap()
-        val malformedArtifact = java.io.File.createTempFile("wasmline-invalid-", ".wasm").apply {
-            writeBytes(byteArrayOf(0x00, 0x61, 0x73, 0x6D))
+        val rawArtifact = java.io.File.createTempFile("wasmline-raw-", ".wasm").apply {
+            writeBytes(byteArrayOf(0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00))
             deleteOnExit()
         }
 
         try {
             val result1 = wasmlineLoadArtifact(
-                filepath = malformedArtifact.absolutePath,
+                descriptor = WasmlineArtifactDescriptor(
+                    path = rawArtifact.absolutePath,
+                    artifactFormat = WasmlineArtifactFormat.RAW_WASM,
+                ),
                 config = WasmlineConfig(supportConcurrent = false),
             )
-            assertTrue(result1 is crow.wasmline.WasmlineLoadState.Failure)
+            val failure1 = assertIs<WasmlineLoadState.Failure>(result1)
 
             val result2 = wasmlineLoadArtifact(
-                filepath = malformedArtifact.absolutePath,
+                descriptor = WasmlineArtifactDescriptor(
+                    path = rawArtifact.absolutePath,
+                    artifactFormat = WasmlineArtifactFormat.RAW_WASM,
+                ),
                 config = WasmlineConfig(supportConcurrent = true),
             )
-            assertTrue(result2 is crow.wasmline.WasmlineLoadState.Failure)
+            val failure2 = assertIs<WasmlineLoadState.Failure>(result2)
 
             assertEquals(
-                crow.wasmline.WasmlineLoadState.CODE_FAILURE,
-                (result1 as crow.wasmline.WasmlineLoadState.Failure).code,
+                WasmlineLoadState.CODE_FAILURE,
+                failure1.code,
             )
             assertEquals(
-                crow.wasmline.WasmlineLoadState.CODE_FAILURE,
-                (result2 as crow.wasmline.WasmlineLoadState.Failure).code,
+                WasmlineLoadState.CODE_FAILURE,
+                failure2.code,
             )
         } finally {
             wasmlineShutdown()
+            rawArtifact.delete()
         }
     }
 

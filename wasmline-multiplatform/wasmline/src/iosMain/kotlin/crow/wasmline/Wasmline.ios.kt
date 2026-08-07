@@ -24,6 +24,14 @@ actual class Wasmline actual internal constructor(
         wasmline_set_outbound_handler(moduleKey, config.serialization.factoryId, staticCFunction(::iosStaticOutboundCallback))
     }
 
+    actual internal fun setComponentHostDispatcher(dispatcher: WasmlineComponentHostDispatcher) {
+        WasmlineComponentHostCallbackRegistry.register(moduleKey, dispatcher)
+        if (!wasmline_set_component_host_handler(moduleKey, staticCFunction(::iosStaticComponentHostCallback))) {
+            WasmlineComponentHostCallbackRegistry.unregister(moduleKey)
+            throw IllegalStateException("Failed to install the typed Component host dispatcher for '$moduleKey'.")
+        }
+    }
+
     actual internal fun call(action: String, inputBytes: ByteArray): ByteArray = memScoped {
         val keyCstr = moduleKey
         val actionCstr = action
@@ -74,6 +82,7 @@ actual class Wasmline actual internal constructor(
 
     actual fun close() {
         WasmlineCallbackRegistry.unregister(moduleKey)
+        WasmlineComponentHostCallbackRegistry.unregister(moduleKey)
         wasmline_release_module(moduleKey)
     }
 }
@@ -162,11 +171,17 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
             override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =
                 descriptor.runtimeCompatibilityError(wasmlineRuntimeCapabilities())
 
+            override fun requiresExplicitArtifactFormat(): Boolean = true
+
             override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
                 iosBootstrap()
+                val formatCode = descriptor.artifactFormat?.nativeBridgeCode() ?: return false
                 return when (descriptor.executionModel) {
-                    WasmlineExecutionModel.CORE_WASM -> wasmline_load_module(moduleKey, path, isUnsafe)
-                    WasmlineExecutionModel.COMPONENT_MODEL -> wasmline_load_component(moduleKey, path, isUnsafe)
+                    WasmlineExecutionModel.CORE_WASM ->
+                        wasmline_load_module_with_format(moduleKey, path, formatCode, isUnsafe)
+
+                    WasmlineExecutionModel.COMPONENT_MODEL ->
+                        wasmline_load_component_with_format(moduleKey, path, formatCode, isUnsafe)
                 }
             }
 
@@ -200,6 +215,38 @@ private object WasmlineCallbackRegistry {
     }
 
     fun find(key: String): WasmlineHostDispatcher? {
+        lock.lock()
+        return try {
+            dispatchers[key]
+        } finally {
+            lock.unlock()
+        }
+    }
+}
+
+internal object WasmlineComponentHostCallbackRegistry {
+    private val dispatchers = mutableMapOf<String, WasmlineComponentHostDispatcher>()
+    private val lock = NSLock()
+
+    fun register(key: String, dispatcher: WasmlineComponentHostDispatcher) {
+        lock.lock()
+        try {
+            dispatchers[key] = dispatcher
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    fun unregister(key: String) {
+        lock.lock()
+        try {
+            dispatchers.remove(key)
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    fun find(key: String): WasmlineComponentHostDispatcher? {
         lock.lock()
         return try {
             dispatchers[key]
@@ -264,6 +311,75 @@ internal fun iosStaticOutboundCallback(
         }
     }
 
+    outLen?.pointed?.value = response.size.toULong()
+    if (response.isEmpty()) return null
+
+    val result = nativeHeap.allocArray<ByteVar>(response.size)
+    response.forEachIndexed { index, value -> result[index] = value }
+    return result
+}
+
+private fun encodeComponentHostFailure(code: WasmlineErrorCode, message: String): ByteArray {
+    return when (
+        val encoded = WasmlineTypedInvocationCodec.encodeComponentResult(
+            WasmlineCallResult.Failure(WasmlineCallError(code, message)),
+        )
+    ) {
+        is WasmlineCallResult.Success -> encoded.value
+        is WasmlineCallResult.Failure -> byteArrayOf()
+    }
+}
+
+/** Dispatches one typed Component host import to the immutable iOS registry. */
+internal fun iosStaticComponentHostCallback(
+    key: CPointer<ByteVar>?,
+    keyLen: ULong,
+    interfaceName: CPointer<ByteVar>?,
+    interfaceNameLen: ULong,
+    functionName: CPointer<ByteVar>?,
+    functionNameLen: ULong,
+    arguments: CPointer<ByteVar>?,
+    argumentsLen: ULong,
+    outLen: CPointer<ULongVar>?,
+): CPointer<ByteVar>? {
+    val keySize = callbackLength(keyLen)
+    val interfaceSize = callbackLength(interfaceNameLen)
+    val functionSize = callbackLength(functionNameLen)
+    val argumentsSize = callbackLength(argumentsLen)
+    val response: ByteArray? = if (keySize == null || interfaceSize == null || functionSize == null || argumentsSize == null) {
+        encodeComponentHostFailure(
+            WasmlineErrorCode.TRANSPORT_FAILURE,
+            "iOS typed Component callback received an oversized buffer.",
+        )
+    } else if ((keySize > 0 && key == null) ||
+        (interfaceSize > 0 && interfaceName == null) ||
+        (functionSize > 0 && functionName == null) ||
+        (argumentsSize > 0 && arguments == null)
+    ) {
+        encodeComponentHostFailure(
+            WasmlineErrorCode.TRANSPORT_FAILURE,
+            "iOS typed Component callback received a null buffer.",
+        )
+    } else {
+        val keyString = key?.readBytes(keySize)?.decodeToString() ?: ""
+        val interfaceString = interfaceName?.readBytes(interfaceSize)?.decodeToString() ?: ""
+        val functionString = functionName?.readBytes(functionSize)?.decodeToString() ?: ""
+        val argumentBytes = arguments?.readBytes(argumentsSize) ?: byteArrayOf()
+        val dispatcher = WasmlineComponentHostCallbackRegistry.find(keyString)
+        try {
+            dispatcher?.dispatch(interfaceString, functionString, argumentBytes)
+        } catch (error: Throwable) {
+            encodeComponentHostFailure(
+                WasmlineErrorCode.HANDLER_FAILED,
+                error.message ?: "iOS typed Component host adapter failed.",
+            )
+        }
+    }
+
+    if (response == null) {
+        outLen?.pointed?.value = 0uL
+        return null
+    }
     outLen?.pointed?.value = response.size.toULong()
     if (response.isEmpty()) return null
 

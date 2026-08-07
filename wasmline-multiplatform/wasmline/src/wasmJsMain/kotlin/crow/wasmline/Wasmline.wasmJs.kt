@@ -14,6 +14,9 @@ actual class Wasmline internal actual constructor(
         delegate.setOutbound(dispatcher)
     }
 
+    internal actual fun setComponentHostDispatcher(dispatcher: WasmlineComponentHostDispatcher): Unit =
+        throw UnsupportedOperationException("Browser host does not support typed Component host imports.")
+
     internal actual fun call(action: String, inputBytes: ByteArray): ByteArray = delegate.call(action, inputBytes)
 
     internal actual fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =

@@ -1,9 +1,14 @@
 package crow.wasmline.loader.internal
 
 import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineNativeBackend
+import crow.wasmline.WasmlineTrustedKeySet
+import crow.wasmline.loader.VerifiedPackageArtifact
+import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
 import crow.wasmline.loader.internal.crypto.Ed25519
@@ -51,14 +56,25 @@ class WasmlineLocalPackageResolutionTest {
         if (System.getenv(LIVE_TESTS_ENV) != "1") return
 
         val manifest = requiredLiveFile(COMPONENT_MANIFEST_ENV)
+        val privateKey = requiredLiveFile(COMPONENT_PRIVATE_KEY_ENV).readText().trim().decodeHex()
+        val keyPair = newKeyPairFromSeed(privateKey)
+        val source = WasmlineSource.LocalManifestPath(manifest.absolutePath)
 
         val resolution = WasmlineLocalPackageResolution.resolve(
-            WasmlineSource.LocalManifestPath(manifest.absolutePath),
+            source = source,
+            request = WasmlineLoadRequest(
+                source = source,
+                config = WasmlineConfig(
+                    trustedKeys = WasmlineTrustedKeySet.Builder()
+                        .add("Ed25519", keyId = null, publicKey = keyPair.publicKey.toByteArray())
+                        .build(),
+                ),
+            ),
         )
         val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
-        val source = assertIs<WasmlineSource.LocalArtifactPath>(continuation.source)
-        assertTrue(File(source.path).isFile)
-        val descriptor = requireNotNull(source.descriptor)
+        val artifact = assertIs<VerifiedPackageArtifact>(continuation.source)
+        assertTrue(File(artifact.descriptor.path).isFile)
+        val descriptor = artifact.descriptor
         assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, descriptor.executionModel)
         assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, descriptor.invocationProtocol)
         assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, descriptor.exportName)
@@ -66,6 +82,38 @@ class WasmlineLocalPackageResolutionTest {
             WasmlineComponentRpcContract.DEFAULT_CODEC,
             descriptor.contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC],
         )
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Test
+    fun `local package rejects a missing trusted key source before artifact selection`() {
+        val manifestFile = File.createTempFile("wasmline-package", ".wlm")
+        try {
+            val envelope = SignedManifestEnvelope(
+                signature = byteArrayOf(0),
+                manifest = WasmlineManifest(
+                    pluginId = "crow.wasmline.test",
+                    version = "1.0.0",
+                    versionCode = 1,
+                    minSdkVersion = "0.0.0",
+                    buildTimestamp = 0,
+                    artifacts = emptyList(),
+                ),
+            )
+            manifestFile.writeBytes(ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope))
+            val source = WasmlineSource.LocalManifestPath(manifestFile.absolutePath)
+
+            val resolution = WasmlineLocalPackageResolution.resolve(
+                source = source,
+                request = WasmlineLoadRequest(source = source),
+            )
+
+            val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
+            val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
+            assertTrue(failure.cause.contains("requires trustedKeys"))
+        } finally {
+            manifestFile.delete()
+        }
     }
 
     @Test
@@ -337,6 +385,7 @@ class WasmlineLocalPackageResolutionTest {
                     val artifact = contractArtifact(type, executionModel, invocationProtocol)
                     val target = when (type) {
                         WasmlineArtifactType.WASM -> browserTarget
+
                         WasmlineArtifactType.CWASM,
                         WasmlineArtifactType.COMPONENT_WASM,
                         -> craneliftTarget

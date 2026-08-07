@@ -1,6 +1,9 @@
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineLoadState
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -10,7 +13,7 @@ import kotlin.test.assertTrue
 class DefaultWasmlineLoaderTest {
 
     @Test
-    fun `top level request entrypoint rejects local package source until package resolution is implemented`() {
+    fun `top level request entrypoint uses built-in local package resolution`() {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.LocalManifestPath(path = "/tmp/plugin.wlm"),
@@ -19,12 +22,11 @@ class DefaultWasmlineLoaderTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("Local package source '/tmp/plugin.wlm'"))
-        assertTrue(failure.cause.contains("request.resolvers.localPackage"))
+        assertTrue(failure.cause.contains("Local package manifest not found"))
     }
 
     @Test
-    fun `local package source is rejected until package resolution is implemented`() {
+    fun `local package source reports a missing manifest before signature verification`() {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.LocalManifestPath(path = "/tmp/plugin.wlm"),
@@ -33,8 +35,7 @@ class DefaultWasmlineLoaderTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("Local package source '/tmp/plugin.wlm'"))
-        assertTrue(failure.cause.contains("request.resolvers.localPackage"))
+        assertTrue(failure.cause.contains("Local package manifest not found"))
     }
 
     @Test
@@ -52,7 +53,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `local package source can delegate to a configured resolver`() {
+    fun `custom package resolver direct artifact is caller trusted`() {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.LocalManifestPath(path = "/tmp/plugin.wlm"),
@@ -70,8 +71,8 @@ class DefaultWasmlineLoaderTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("artifact file not found"))
-        assertTrue(failure.cause.contains("/tmp/resolved-plugin.pwasm"))
+        assertTrue(failure.cause.contains("explicit artifactFormat"))
+        assertTrue(!failure.cause.contains("requires trustedKeys"))
     }
 
     @Test
@@ -97,7 +98,7 @@ class DefaultWasmlineLoaderTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("/tmp/resolved-plugin.cwasm"))
+        assertTrue(failure.cause.contains("explicit artifactFormat"))
     }
 
     @Test
@@ -122,14 +123,62 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `top level artifact path entrypoint delegates to runtime-style local loading`() {
+    fun `direct artifact path is caller trusted and still requires explicit native format`() {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(source = WasmlineSource.LocalArtifactPath("/tmp/missing-plugin.pwasm")),
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("artifact file not found"))
-        assertTrue(failure.cause.contains("/tmp/missing-plugin.pwasm"))
+        assertTrue(failure.cause.contains("explicit artifactFormat"))
+        assertTrue(!failure.cause.contains("requires trustedKeys"))
+    }
+
+    @Test
+    fun `verified package artifact rejects a digest mismatch before native loading`() {
+        val artifactFile = File.createTempFile("wasmline-verified", ".cwasm")
+        try {
+            artifactFile.writeBytes("artifact-bytes".encodeToByteArray())
+            val result = DefaultWasmlineLoader.load(
+                WasmlineLoadRequest(
+                    source = VerifiedPackageArtifact(
+                        descriptor = WasmlineArtifactDescriptor(
+                            path = artifactFile.absolutePath,
+                            artifactFormat = WasmlineArtifactFormat.CWASM,
+                        ),
+                        expectedSha256 = "wrong",
+                    ),
+                ),
+            )
+
+            val failure = assertIs<WasmlineLoadState.Failure>(result)
+            assertTrue(failure.cause.contains("before native loading"))
+        } finally {
+            artifactFile.delete()
+        }
+    }
+
+    @Test
+    fun `verified package artifact rejects a missing digest before native loading`() {
+        val artifactFile = File.createTempFile("wasmline-verified", ".cwasm")
+        try {
+            artifactFile.writeBytes("artifact-bytes".encodeToByteArray())
+            val result = DefaultWasmlineLoader.load(
+                WasmlineLoadRequest(
+                    source = VerifiedPackageArtifact(
+                        descriptor = WasmlineArtifactDescriptor(
+                            path = artifactFile.absolutePath,
+                            artifactFormat = WasmlineArtifactFormat.CWASM,
+                        ),
+                        expectedSha256 = " ",
+                    ),
+                ),
+            )
+
+            val failure = assertIs<WasmlineLoadState.Failure>(result)
+            assertTrue(failure.cause.contains("missing sha256 metadata"))
+        } finally {
+            artifactFile.delete()
+        }
     }
 }

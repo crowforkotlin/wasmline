@@ -19,10 +19,20 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
     val descriptor: WasmlineArtifactDescriptor
 
     internal fun setOutbound(dispatcher: WasmlineHostDispatcher)
+    internal fun setComponentHostDispatcher(dispatcher: WasmlineComponentHostDispatcher)
     internal fun call(action: String, inputBytes: ByteArray): ByteArray
     internal fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray>
     internal fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray>
     fun close()
+}
+
+/** Binds an immutable typed host registry to one loaded Component handle. */
+fun Wasmline.bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmline {
+    require(descriptor.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
+        "Typed Component host registries can only bind to COMPONENT_MODEL artifacts."
+    }
+    setComponentHostDispatcher(WasmlineComponentHostDispatcher(registry))
+    return this
 }
 
 /**

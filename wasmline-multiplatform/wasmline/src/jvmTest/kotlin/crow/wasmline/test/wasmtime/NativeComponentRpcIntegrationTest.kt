@@ -8,6 +8,7 @@ package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentRpcContract
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
@@ -19,6 +20,7 @@ import crow.wasmline.internal.protocol.WasmlineResponseCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.wasmlineLoadArtifact
+import crow.wasmline.wasmlineRuntimeCapabilities
 import crow.wasmline.wasmlineShutdown
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -27,9 +29,19 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 class NativeComponentRpcIntegrationTest {
+    @Test
+    fun componentRpcFixturesRequirePrecompiledAotSuffixes() {
+        assertEquals(WasmlineArtifactFormat.CWASM, componentAotFormat("fixture.cwasm"))
+        assertEquals(WasmlineArtifactFormat.PWASM, componentAotFormat("fixture.pwasm"))
+        assertFailsWith<IllegalArgumentException> {
+            componentAotFormat("fixture.wasm")
+        }
+    }
+
     @Test
     fun componentCallsBoundHostHandler() {
         if (!liveTestsEnabled()) return
@@ -170,9 +182,16 @@ class NativeComponentRpcIntegrationTest {
     }
 
     private fun loadComponent(artifact: File): Wasmline {
+        val artifactFormat = componentAotFormat(artifact.name)
+        val runtime = wasmlineRuntimeCapabilities()
         val state = wasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = artifact.absolutePath,
+                artifactFormat = artifactFormat,
+                targetCpu = targetCpuFor(artifactFormat, runtime.is64Bit, runtime.targetCpu),
+                targetOs = targetOsFor(artifactFormat, runtime.targetOs),
+                targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
+                is64Bit = runtime.is64Bit,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
@@ -192,15 +211,37 @@ class NativeComponentRpcIntegrationTest {
             "$environmentVariable must be set when $LIVE_TESTS_ENV=1."
         }.let(::File)
         require(source.isFile) { "$environmentVariable does not point to a file: ${source.absolutePath}" }
-        val suffix = when {
-            source.name.endsWith(".cwasm", ignoreCase = true) -> ".cwasm"
-            source.name.endsWith(".pwasm", ignoreCase = true) -> ".pwasm"
-            else -> ".wasm"
-        }
+        val suffix = componentAotFormat(source.name).fileSuffix()
         return File.createTempFile("wasmline-component-rpc-", suffix).apply {
             source.copyTo(this, overwrite = true)
             deleteOnExit()
         }
+    }
+
+    private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
+        filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
+        filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
+        else -> throw IllegalArgumentException(
+            "Component RPC fixture must be a precompiled .cwasm or .pwasm artifact, not '$filename'.",
+        )
+    }
+
+    private fun WasmlineArtifactFormat.fileSuffix(): String = when (this) {
+        WasmlineArtifactFormat.CWASM -> ".cwasm"
+        WasmlineArtifactFormat.PWASM -> ".pwasm"
+        WasmlineArtifactFormat.RAW_WASM -> error("Component RPC fixtures cannot use raw Wasm.")
+    }
+
+    private fun targetCpuFor(artifactFormat: WasmlineArtifactFormat, is64Bit: Boolean, runtimeCpu: String): String = when (artifactFormat) {
+        WasmlineArtifactFormat.CWASM -> runtimeCpu
+        WasmlineArtifactFormat.PWASM -> if (is64Bit) "pulley64" else "pulley32"
+        WasmlineArtifactFormat.RAW_WASM -> error("Component RPC fixtures cannot use raw Wasm.")
+    }
+
+    private fun targetOsFor(artifactFormat: WasmlineArtifactFormat, runtimeOs: String): String? = when (artifactFormat) {
+        WasmlineArtifactFormat.CWASM -> runtimeOs
+        WasmlineArtifactFormat.PWASM -> null
+        WasmlineArtifactFormat.RAW_WASM -> error("Component RPC fixtures cannot use raw Wasm.")
     }
 
     private fun liveTestsEnabled(): Boolean = System.getenv(LIVE_TESTS_ENV) == "1"

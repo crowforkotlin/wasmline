@@ -6,6 +6,7 @@
  */
 package crow.wasmline
 
+import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import kotlin.test.Test
@@ -86,6 +87,64 @@ class WasmlineTypedInvocationCodecTest {
         )
 
         assertEquals(values, result.value.values)
+    }
+
+    @Test
+    fun decodesComponentHostArguments() {
+        val values = listOf(
+            WasmlineComponentValue.StringValue("host"),
+            WasmlineComponentValue.TupleValue(
+                listOf(WasmlineComponentValue.S32(-2), WasmlineComponentValue.OptionValue()),
+            ),
+        )
+        val encoded = assertIs<WasmlineCallResult.Success<ByteArray>>(
+            WasmlineTypedInvocationCodec.encodeComponentArguments(values),
+        )
+
+        val decoded = assertIs<WasmlineCallResult.Success<List<WasmlineComponentValue>>>(
+            WasmlineTypedInvocationCodec.decodeComponentArguments(encoded.value),
+        )
+
+        assertEquals(values, decoded.value)
+    }
+
+    @Test
+    fun encodesComponentHostSuccessResult() {
+        val values = listOf(WasmlineComponentValue.S32(42), WasmlineComponentValue.StringValue("done"))
+        val encoded = assertIs<WasmlineCallResult.Success<ByteArray>>(
+            WasmlineTypedInvocationCodec.encodeComponentResult(WasmlineCallResult.Success(values)),
+        )
+
+        val decoded = assertIs<WasmlineCallResult.Success<WasmlineComponentCallResult>>(
+            WasmlineTypedInvocationCodec.decodeComponentResult(encoded.value),
+        )
+
+        assertEquals(values, decoded.value.values)
+    }
+
+    @Test
+    fun encodesComponentHostFailureResultWithRawCodeAndDetails() {
+        val encoded = assertIs<WasmlineCallResult.Success<ByteArray>>(
+            WasmlineTypedInvocationCodec.encodeComponentResult(
+                WasmlineCallResult.Failure(
+                    WasmlineCallError(
+                        code = WasmlineErrorCode.UNKNOWN,
+                        message = "host rejected call",
+                        details = byteArrayOf(7, 8),
+                        rawCode = 9_999,
+                    ),
+                ),
+            ),
+        )
+
+        val decoded = assertIs<WasmlineCallResult.Failure>(
+            WasmlineTypedInvocationCodec.decodeComponentResult(encoded.value),
+        )
+
+        assertEquals(WasmlineErrorCode.UNKNOWN, decoded.error.code)
+        assertEquals(9_999, decoded.error.rawCode)
+        assertEquals("host rejected call", decoded.error.message)
+        assertContentEquals(byteArrayOf(7, 8), decoded.error.details)
     }
 
     @Test

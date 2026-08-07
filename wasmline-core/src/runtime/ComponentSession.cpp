@@ -12,12 +12,14 @@
 #include <cstring>
 #include <exception>
 #include <functional>
+#include <memory>
 #include <utility>
 
 #include "logging/NativeLogger.h"
 #include "wasi/WasiConfig.h"
 #include "wasmtime/WasmtimeMessage.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
+#include "wasmline/runtime/ComponentHostHandler.h"
 #include "wasmline/runtime/OutboundHandler.h"
 
 namespace wasmline {
@@ -50,9 +52,7 @@ namespace wasmline {
                 }
             }
 
-            ~ExportIndexGuard() {
-                rollback(0);
-            }
+            ~ExportIndexGuard() { rollback(0); }
         };
 
         constexpr size_t kMaxComponentInvocationDepth = 32;
@@ -60,13 +60,9 @@ namespace wasmline {
 
         class ComponentInvocationScope {
         public:
-            explicit ComponentInvocationScope(const ComponentSession* session) {
-                activeComponentSessions.push_back(session);
-            }
+            explicit ComponentInvocationScope(const ComponentSession* session) { activeComponentSessions.push_back(session); }
 
-            ~ComponentInvocationScope() {
-                activeComponentSessions.pop_back();
-            }
+            ~ComponentInvocationScope() { activeComponentSessions.pop_back(); }
         };
 
         std::string nameString(const char* data, size_t size) {
@@ -79,6 +75,19 @@ namespace wasmline {
 
         bool nameEquals(const wasm_name_t& actual, std::string_view expected) {
             return actual.size == expected.size() && actual.data && std::memcmp(actual.data, expected.data(), expected.size()) == 0;
+        }
+
+        bool isWasiImport(std::string_view importName) {
+            return importName.size() >= 5 && importName.substr(0, 5) == "wasi:";
+        }
+
+        std::string componentHostFunctionLabel(std::string_view interfaceName, std::string_view functionName) {
+            std::string label;
+            label.reserve(interfaceName.size() + functionName.size() + 1);
+            label.append(interfaceName);
+            label.push_back('/');
+            label.append(functionName);
+            return label;
         }
 
         bool typeIsByteList(const wasmtime_component_valtype_t& type) {
@@ -155,9 +164,8 @@ namespace wasmline {
         }
 
         const ComponentValue* recordField(const ComponentRecord& record, std::string_view name) {
-            const auto field = std::find_if(record.begin(), record.end(), [name](const ComponentRecordField& item) {
-                return item.name == name;
-            });
+            const auto field =
+                std::find_if(record.begin(), record.end(), [name](const ComponentRecordField& item) { return item.name == name; });
             return field == record.end() ? nullptr : &field->value;
         }
 
@@ -808,6 +816,17 @@ namespace wasmline {
         codec_ = std::move(codec);
     }
 
+    void ComponentSession::setComponentHostHandler(std::unique_ptr<ComponentHostHandler> handler) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        componentHostHandler_ = std::move(handler);
+    }
+
+    struct ComponentSession::ComponentHostBinding {
+        ComponentSession* session = nullptr;
+        std::string interfaceName;
+        std::string functionName;
+    };
+
     bool ComponentSession::registerRpcImports() {
         wasmtime_component_type_t* componentType = wasmtime_component_type(component_);
         if (!componentType) {
@@ -863,10 +882,102 @@ namespace wasmline {
         return true;
     }
 
+    bool ComponentSession::registerComponentHostImports() {
+        wasmtime_component_type_t* componentType = wasmtime_component_type(component_);
+        if (!componentType) {
+            LOGE("[Wasmtime] ComponentSession -> Component type is unavailable: %s", key_.c_str());
+            return false;
+        }
+
+        const size_t importCount = wasmtime_component_type_import_count(componentType, engine_);
+        for (size_t importIndex = 0; importIndex < importCount; ++importIndex) {
+            const char* importName = nullptr;
+            size_t importNameSize = 0;
+            ComponentItemGuard import;
+            if (!wasmtime_component_type_import_nth(componentType, engine_, importIndex, &importName, &importNameSize, &import.value)) {
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Component import type is unavailable: %s", key_.c_str());
+                return false;
+            }
+            import.active = true;
+
+            const std::string interfaceName = nameString(importName, importNameSize);
+            if (isWasiImport(interfaceName) || import.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
+                rpcInstanceTypeMatches(import.value.of.component_instance, engine_)) {
+                continue;
+            }
+
+            wasmtime_component_linker_instance_t* root = wasmtime_component_linker_root(linker_);
+            if (!root) {
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Component linker root is unavailable: %s", key_.c_str());
+                return false;
+            }
+
+            wasmtime_component_linker_instance_t* hostInstance = nullptr;
+            wasmtime_error_t* instanceError =
+                wasmtime_component_linker_instance_add_instance(root, importName, importNameSize, &hostInstance);
+            wasmtime_component_linker_instance_delete(root);
+            if (instanceError || !hostInstance) {
+                const std::string message =
+                    instanceError ? wasmtime::errorMessage(instanceError) : "Typed Component linker instance is unavailable.";
+                if (instanceError) wasmtime_error_delete(instanceError);
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Failed to register typed import '%s': %s", interfaceName.c_str(), message.c_str());
+                return false;
+            }
+
+            const size_t functionCount = wasmtime_component_instance_type_export_count(import.value.of.component_instance, engine_);
+            for (size_t functionIndex = 0; functionIndex < functionCount; ++functionIndex) {
+                const char* functionName = nullptr;
+                size_t functionNameSize = 0;
+                ComponentItemGuard function;
+                if (!wasmtime_component_instance_type_export_nth(import.value.of.component_instance, engine_, functionIndex, &functionName,
+                                                                 &functionNameSize, &function.value)) {
+                    wasmtime_component_linker_instance_delete(hostInstance);
+                    wasmtime_component_type_delete(componentType);
+                    LOGE("[Wasmtime] ComponentSession -> Component import function type is unavailable: %s", interfaceName.c_str());
+                    return false;
+                }
+                function.active = true;
+                if (function.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC) continue;
+
+                const std::string functionNameText = nameString(functionName, functionNameSize);
+                const std::string functionLabel = componentHostFunctionLabel(interfaceName, functionNameText);
+                if (wasmtime_component_func_type_async(function.value.of.component_func)) {
+                    wasmtime_component_linker_instance_delete(hostInstance);
+                    wasmtime_component_type_delete(componentType);
+                    LOGE("[Wasmtime] ComponentSession -> Async typed import is unsupported: %s", functionLabel.c_str());
+                    return false;
+                }
+
+                auto binding = std::make_unique<ComponentHostBinding>();
+                binding->session = this;
+                binding->interfaceName = interfaceName;
+                binding->functionName = functionNameText;
+                wasmtime_error_t* functionError = wasmtime_component_linker_instance_add_func(hostInstance, functionName, functionNameSize,
+                                                                                              invokeComponentHost, binding.get(), nullptr);
+                if (functionError) {
+                    const std::string message = wasmtime::errorMessage(functionError);
+                    wasmtime_error_delete(functionError);
+                    wasmtime_component_linker_instance_delete(hostInstance);
+                    wasmtime_component_type_delete(componentType);
+                    LOGE("[Wasmtime] ComponentSession -> Failed to register typed import '%s': %s", functionLabel.c_str(), message.c_str());
+                    return false;
+                }
+                componentHostBindings_.push_back(std::move(binding));
+                LOGI("[Wasmtime] ComponentSession -> Registered typed import: %s", functionLabel.c_str());
+            }
+            wasmtime_component_linker_instance_delete(hostInstance);
+        }
+
+        wasmtime_component_type_delete(componentType);
+        return true;
+    }
+
     wasmtime_error_t* ComponentSession::invokeHost(void* data, wasmtime_context_t* context,
-                                                   const wasmtime_component_func_type_t* functionType,
-                                                   wasmtime_component_val_t* arguments, size_t argumentCount,
-                                                   wasmtime_component_val_t* results, size_t resultCount) {
+                                                   const wasmtime_component_func_type_t* functionType, wasmtime_component_val_t* arguments,
+                                                   size_t argumentCount, wasmtime_component_val_t* results, size_t resultCount) {
         auto* session = static_cast<ComponentSession*>(data);
         if (!session || context != session->context_) return componentError("Wasmline RPC callback has no active component session.");
         return session->handleHostInvoke(functionType, arguments, argumentCount, results, resultCount);
@@ -904,12 +1015,11 @@ namespace wasmline {
 
         ComponentValue response;
         if (!codec_.empty() && codecValue->stringValue() != codec_) {
-            response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::SERIALIZATION_FAILED),
-                                  "Wasmline RPC codec mismatch. Expected '" + codec_ + "' but received '" +
-                                      codecValue->stringValue() + "'.");
+            response =
+                rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::SERIALIZATION_FAILED),
+                           "Wasmline RPC codec mismatch. Expected '" + codec_ + "' but received '" + codecValue->stringValue() + "'.");
         } else if (!outboundHandler_) {
-            response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::ACTION_NOT_BOUND),
-                                  "No Wasmline outbound action is bound.");
+            response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::ACTION_NOT_BOUND), "No Wasmline outbound action is bound.");
         } else {
             std::string encodedResponse;
             try {
@@ -917,8 +1027,8 @@ namespace wasmline {
             } catch (const std::exception& error) {
                 encodedResponse = WasmlineResponseCodec::failure(WasmlineErrorCode::HANDLER_FAILED, error.what());
             } catch (...) {
-                encodedResponse = WasmlineResponseCodec::failure(WasmlineErrorCode::HANDLER_FAILED,
-                                                                 "Wasmline outbound action handler failed.");
+                encodedResponse =
+                    WasmlineResponseCodec::failure(WasmlineErrorCode::HANDLER_FAILED, "Wasmline outbound action handler failed.");
             }
 
             WasmlineResponseFrame frame;
@@ -939,6 +1049,90 @@ namespace wasmline {
         resultType.active = true;
         if (!toWasmtimeValue(response, resultType.value, &results[0])) {
             return componentError("Wasmline RPC response could not be lowered to the component result type.");
+        }
+        return nullptr;
+    }
+
+    wasmtime_error_t* ComponentSession::invokeComponentHost(void* data, wasmtime_context_t* context,
+                                                            const wasmtime_component_func_type_t* functionType,
+                                                            wasmtime_component_val_t* arguments, size_t argumentCount,
+                                                            wasmtime_component_val_t* results, size_t resultCount) {
+        auto* binding = static_cast<ComponentHostBinding*>(data);
+        if (!binding || !binding->session || context != binding->session->context_) {
+            return componentError("Typed Component host callback has no active component session.");
+        }
+        return binding->session->handleComponentHostInvoke(*binding, functionType, arguments, argumentCount, results, resultCount);
+    }
+
+    wasmtime_error_t* ComponentSession::handleComponentHostInvoke(const ComponentHostBinding& binding,
+                                                                  const wasmtime_component_func_type_t* functionType,
+                                                                  wasmtime_component_val_t* arguments, size_t argumentCount,
+                                                                  wasmtime_component_val_t* results, size_t resultCount) {
+        const std::string functionLabel = componentHostFunctionLabel(binding.interfaceName, binding.functionName);
+        if (!functionType || (argumentCount > 0 && !arguments) || (resultCount > 0 && !results) ||
+            wasmtime_component_func_type_param_count(functionType) != argumentCount) {
+            return componentError("Typed Component host import '" + functionLabel + "' received a mismatched argument count.");
+        }
+
+        std::vector<ComponentValue> convertedArguments;
+        convertedArguments.reserve(argumentCount);
+        for (size_t index = 0; index < argumentCount; ++index) {
+            const char* argumentName = nullptr;
+            size_t argumentNameSize = 0;
+            ValueTypeGuard argumentType;
+            if (!wasmtime_component_func_type_param_nth(functionType, index, &argumentName, &argumentNameSize, &argumentType.value)) {
+                return componentError("Typed Component host import '" + functionLabel + "' argument type is unavailable.");
+            }
+            argumentType.active = true;
+            ComponentValue argument;
+            if (!fromWasmtimeValue(arguments[index], argumentType.value, &argument)) {
+                return componentError("Typed Component host import '" + functionLabel + "' argument " + std::to_string(index) +
+                                      " does not match its Component type.");
+            }
+            convertedArguments.push_back(std::move(argument));
+        }
+
+        if (!componentHostHandler_) {
+            return componentError("No typed Component host adapter is registered for '" + functionLabel + "'.");
+        }
+
+        InvocationResult invocationResult = [&]() {
+            try {
+                return componentHostHandler_->onComponentHostInvoke(binding.interfaceName, binding.functionName, convertedArguments);
+            } catch (const std::exception& error) {
+                return InvocationResult::failure(WasmlineErrorCode::HANDLER_FAILED, error.what());
+            } catch (...) {
+                return InvocationResult::failure(WasmlineErrorCode::HANDLER_FAILED, "Typed Component host adapter failed.");
+            }
+        }();
+        if (!invocationResult.isSuccess()) {
+            if (invocationResult.errorCode() == WasmlineErrorCode::ACTION_NOT_BOUND) {
+                return componentError("No typed Component host adapter is registered for '" + functionLabel + "'.");
+            }
+            return componentError("Typed Component host adapter for '" + functionLabel + "' failed [" +
+                                  std::to_string(static_cast<int32_t>(invocationResult.errorCode())) + "]: " + invocationResult.message());
+        }
+
+        wasmtime_component_valtype_t resultType{};
+        const bool hasResult = wasmtime_component_func_type_result(functionType, &resultType);
+        if (resultCount != (hasResult ? 1u : 0u)) {
+            if (hasResult) wasmtime_component_valtype_delete(&resultType);
+            return componentError("Typed Component host import '" + functionLabel + "' received a mismatched result count.");
+        }
+
+        const auto& values = invocationResult.componentValues();
+        if (values.size() != resultCount) {
+            if (hasResult) wasmtime_component_valtype_delete(&resultType);
+            return componentError("Typed Component host adapter for '" + functionLabel + "' returned " + std::to_string(values.size()) +
+                                  " value(s); expected " + std::to_string(resultCount) + ".");
+        }
+        if (!hasResult) return nullptr;
+
+        const bool converted = toWasmtimeValue(values[0], resultType, &results[0]);
+        wasmtime_component_valtype_delete(&resultType);
+        if (!converted) {
+            return componentError("Typed Component host adapter for '" + functionLabel +
+                                  "' returned a value that does not match its Component type.");
         }
         return nullptr;
     }
@@ -970,7 +1164,7 @@ namespace wasmline {
         }
 #endif
 
-        if (!registerRpcImports()) return false;
+        if (!registerRpcImports() || !registerComponentHostImports()) return false;
 
         wasmtime_error_t* instantiateError = wasmtime_component_linker_instantiate(linker_, context_, component_, &instance_);
         if (instantiateError) {
@@ -988,8 +1182,7 @@ namespace wasmline {
                                              "Recursive invocation of the same Component session is not supported.");
         }
         if (activeComponentSessions.size() >= kMaxComponentInvocationDepth) {
-            return InvocationResult::failure(WasmlineErrorCode::COMPONENT_CALL_FAILED,
-                                             "Component invocation depth limit was exceeded.");
+            return InvocationResult::failure(WasmlineErrorCode::COMPONENT_CALL_FAILED, "Component invocation depth limit was exceeded.");
         }
 
         std::unique_lock<std::mutex> lock(mutex_, std::defer_lock);

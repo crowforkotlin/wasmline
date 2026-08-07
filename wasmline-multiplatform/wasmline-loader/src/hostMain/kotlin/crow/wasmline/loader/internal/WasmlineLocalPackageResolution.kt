@@ -6,6 +6,8 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineNativeBackend
+import crow.wasmline.loader.VerifiedPackageArtifact
+import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
 import crow.wasmline.loader.model.SignedManifestEnvelope
@@ -17,7 +19,7 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.toByteString
 
 internal object WasmlineLocalPackageResolution {
-    fun resolve(source: WasmlineSource.LocalManifestPath): WasmlineSourceResolution {
+    fun resolve(source: WasmlineSource.LocalManifestPath, request: WasmlineLoadRequest): WasmlineSourceResolution {
         val manifestPath = source.path
         if (!hostPathExists(manifestPath)) {
             return failure("Local package manifest not found: ${source.path}")
@@ -26,12 +28,25 @@ internal object WasmlineLocalPackageResolution {
         val envelope = readEnvelope(manifestPath) ?: return failure(
             "Failed to parse local package manifest '${source.path}'.",
         )
-        val artifact = selectArtifact(envelope.manifest.artifacts) ?: return failure(
+        val manifest = when (
+            val verification = WasmlinePackageSignatureVerifier.verify(
+                envelope = envelope,
+                trustedKeys = request.config.trustedKeys,
+                packageLocation = source.path,
+            )
+        ) {
+            is WasmlineManifestVerification.Verified -> verification.manifest
+            is WasmlineManifestVerification.Rejected -> return failure(verification.cause)
+        }
+        val artifact = selectArtifact(manifest.artifacts) ?: return failure(
             "No compatible artifact found in local package '${source.path}' for host ${describe(currentHostArtifactTarget)}.",
         )
         val artifactPath = resolveArtifactPath(manifestPath, artifact.url)
         val descriptor = artifact.toDescriptor(artifactPath)
         descriptor.validationError()?.let { return failure("Invalid artifact descriptor for '${artifact.url}': $it") }
+        if (artifact.sha256.isBlank()) {
+            return failure("Artifact '${artifact.url}' referenced by local package '${source.path}' is missing sha256 metadata.")
+        }
         if (!hostPathExists(artifactPath)) {
             return failure(
                 "Artifact '${artifact.url}' referenced by local package '${source.path}' was not found at '$artifactPath'.",
@@ -49,7 +64,10 @@ internal object WasmlineLocalPackageResolution {
         }
 
         return WasmlineSourceResolution.ContinueWith(
-            WasmlineSource.LocalArtifactPath(path = artifactPath, descriptor = descriptor),
+            VerifiedPackageArtifact(
+                descriptor = descriptor,
+                expectedSha256 = artifact.sha256,
+            ),
         )
     }
 

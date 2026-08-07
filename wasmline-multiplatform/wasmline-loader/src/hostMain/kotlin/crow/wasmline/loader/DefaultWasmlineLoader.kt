@@ -3,6 +3,8 @@ package crow.wasmline.loader
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineLog
+import crow.wasmline.loader.internal.WasmlineLocalPackageResolution
+import crow.wasmline.loader.internal.WasmlinePackageArtifactVerifier
 import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
 import crow.wasmline.wasmlineLoadArtifact
 
@@ -36,24 +38,22 @@ internal object DefaultWasmlineLoader {
         return when (source) {
             is WasmlineSource.LocalArtifactPath -> {
                 val descriptor = source.descriptor ?: WasmlineArtifactDescriptor(path = source.path)
-                val validationError = descriptor.validationError()
-                if (validationError != null) {
-                    WasmlineLoadState.Failure(
-                        code = WasmlineLoadState.CODE_FAILURE,
-                        cause = "Invalid artifact descriptor: $validationError",
-                    )
-                } else {
-                    wasmlineLoadArtifact(descriptor = descriptor, config = request.config)
-                }
+                loadLocalArtifact(descriptor, request)
             }
 
-            is WasmlineSource.LocalManifestPath -> resolveSource(
-                request = request,
-                resolution = request.resolvers.localPackage?.resolve(source, request),
-                description = "Local package source '${source.path}'",
-                resolverHint = "request.resolvers.localPackage",
-                resolutionDepth = resolutionDepth,
-            )
+            is VerifiedPackageArtifact -> loadLocalArtifact(source.descriptor, request, source.expectedSha256)
+
+            is WasmlineSource.LocalManifestPath -> {
+                val resolution = request.resolvers.localPackage?.resolve(source, request)
+                    ?: WasmlineLocalPackageResolution.resolve(source, request)
+                resolveSource(
+                    request = request,
+                    resolution = resolution,
+                    description = "Local package source '${source.path}'",
+                    resolverHint = "request.resolvers.localPackage",
+                    resolutionDepth = resolutionDepth,
+                )
+            }
 
             is WasmlineSource.RemoteManifestUrl -> {
                 WasmlineLog.logger?.debug("$P Resolving remote source: ${source.url}")
@@ -83,6 +83,32 @@ internal object DefaultWasmlineLoader {
                 }
             }
         }
+    }
+
+    private fun loadLocalArtifact(
+        descriptor: WasmlineArtifactDescriptor,
+        request: WasmlineLoadRequest,
+        expectedSha256: String? = null,
+    ): WasmlineLoadState {
+        val validationError = descriptor.validationError()
+        if (validationError != null) {
+            return WasmlineLoadState.Failure(
+                code = WasmlineLoadState.CODE_FAILURE,
+                cause = "Invalid artifact descriptor: $validationError",
+            )
+        }
+
+        val integrityError = expectedSha256?.let { expected ->
+            WasmlinePackageArtifactVerifier.verify(descriptor.path, expected)
+        }
+        if (integrityError != null) {
+            return WasmlineLoadState.Failure(
+                code = WasmlineLoadState.CODE_FAILURE,
+                cause = integrityError,
+            )
+        }
+
+        return wasmlineLoadArtifact(descriptor = descriptor, config = request.config)
     }
 
     private fun resolveSource(

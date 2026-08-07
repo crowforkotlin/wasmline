@@ -9,6 +9,7 @@ import crow.wasmline.WasmlineNoOpCache
 import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.extensions.Keys
 import crow.wasmline.loader.internal.crypto.Ed25519
+import crow.wasmline.loader.internal.currentHostArtifactTarget
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
@@ -56,6 +57,23 @@ class WasmlineRemotePackageResolutionTest {
 
     private fun fakeArtifactSha256(): String = fakeArtifactBytes().toByteString().sha256().hex()
 
+    private fun trustedKeys(): WasmlineTrustedKeySet = WasmlineTrustedKeySet.Builder()
+        .add("Ed25519", keyId = null, publicKey = publicKey.toByteArray())
+        .build()
+
+    private fun compatibleCraneliftArtifact(url: String, sha256: String): WasmlineArtifact {
+        val target = currentHostArtifactTarget
+        return WasmlineArtifact(
+            type = WasmlineArtifactType.CWASM,
+            url = url,
+            sha256 = sha256,
+            targetCpu = target.cpu,
+            targetOs = target.os,
+            targetCompilerVersion = "wasmtime-${requireNotNull(target.wasmtimeVersion)}",
+            is64Bit = target.is64Bit,
+        )
+    }
+
     @Test
     fun `remote source without networkClient returns failure`() {
         val result = DefaultWasmlineLoader.load(
@@ -102,11 +120,9 @@ class WasmlineRemotePackageResolutionTest {
     fun `networkClient auto-delegates when no custom resolver`() {
         val manifest = createTestManifest(
             artifacts = listOf(
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.PWASM,
-                    url = "lib.pwasm",
+                compatibleCraneliftArtifact(
+                    url = "lib.cwasm",
                     sha256 = fakeArtifactSha256(),
-                    is64Bit = true,
                 ),
             ),
         )
@@ -118,7 +134,7 @@ class WasmlineRemotePackageResolutionTest {
                 url.endsWith(".wlm") || url.endsWith("/manifest.wlm") ->
                     WasmlineHttpResponse(200, envelopeBytes)
 
-                url.endsWith("lib.pwasm") ->
+                url.endsWith("lib.cwasm") ->
                     WasmlineHttpResponse(200, artifactBytes)
 
                 else ->
@@ -229,7 +245,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `signature verification skipped when trustedKeys is null`() {
+    fun `remote package rejects a missing trusted key source`() {
         val manifest = createTestManifest(
             artifacts = listOf(
                 WasmlineArtifact(
@@ -241,12 +257,9 @@ class WasmlineRemotePackageResolutionTest {
             ),
         )
         val envelopeBytes = signAndEncodeEnvelope(manifest)
-        val artifactBytes = fakeArtifactBytes()
-
         val networkClient = WasmlineNetworkClient { url ->
             when {
                 url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
-                url.endsWith("lib.pwasm") -> WasmlineHttpResponse(200, artifactBytes)
                 else -> WasmlineHttpResponse(404, ByteArray(0))
             }
         }
@@ -263,23 +276,16 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(
-            failure.cause.contains("Load failure") ||
-                failure.cause.contains("not found") ||
-                failure.cause.contains("artifact path"),
-            "Expected runtime load error, got: ${failure.cause}",
-        )
+        assertTrue(failure.cause.contains("requires trustedKeys"))
     }
 
     @Test
     fun `artifact SHA256 mismatch returns descriptive error`() {
         val manifest = createTestManifest(
             artifacts = listOf(
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.PWASM,
-                    url = "lib.pwasm",
+                compatibleCraneliftArtifact(
+                    url = "lib.cwasm",
                     sha256 = "wrong_sha256_that_wont_match",
-                    is64Bit = true,
                 ),
             ),
         )
@@ -288,7 +294,7 @@ class WasmlineRemotePackageResolutionTest {
         val networkClient = WasmlineNetworkClient { url ->
             when {
                 url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
-                url.endsWith("lib.pwasm") -> WasmlineHttpResponse(200, fakeArtifactBytes())
+                url.endsWith("lib.cwasm") -> WasmlineHttpResponse(200, fakeArtifactBytes())
                 else -> WasmlineHttpResponse(404, ByteArray(0))
             }
         }
@@ -298,6 +304,7 @@ class WasmlineRemotePackageResolutionTest {
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
                 config = WasmlineConfig(
                     networkClient = networkClient,
+                    trustedKeys = trustedKeys(),
                     cache = WasmlineNoOpCache,
                 ),
             ),
@@ -311,11 +318,9 @@ class WasmlineRemotePackageResolutionTest {
     fun `cache hit avoids network call for manifest`() {
         val manifest = createTestManifest(
             artifacts = listOf(
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.PWASM,
-                    url = "lib.pwasm",
+                compatibleCraneliftArtifact(
+                    url = "lib.cwasm",
                     sha256 = fakeArtifactSha256(),
-                    is64Bit = true,
                 ),
             ),
         )
@@ -333,7 +338,7 @@ class WasmlineRemotePackageResolutionTest {
             fetchCount++
             when {
                 url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
-                url.endsWith("lib.pwasm") -> WasmlineHttpResponse(200, artifactBytes)
+                url.endsWith("lib.cwasm") -> WasmlineHttpResponse(200, artifactBytes)
                 else -> WasmlineHttpResponse(404, ByteArray(0))
             }
         }
@@ -343,6 +348,7 @@ class WasmlineRemotePackageResolutionTest {
                 source = WasmlineSource.RemoteManifestUrl(manifestUrl),
                 config = WasmlineConfig(
                     networkClient = networkClient,
+                    trustedKeys = trustedKeys(),
                     cache = cache,
                 ),
             ),

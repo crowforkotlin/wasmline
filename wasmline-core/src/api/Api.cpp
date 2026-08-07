@@ -9,6 +9,7 @@
 
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/Component.h"
+#include "wasmline/runtime/ComponentHostHandler.h"
 #include "wasmline/runtime/ComponentSession.h"
 #include "wasmline/runtime/Engine.h"
 #include "wasmline/runtime/Module.h"
@@ -16,23 +17,26 @@
 #include "wasmline/runtime/Session.h"
 #include "logging/NativeLogger.h"
 
-#include <algorithm>
-#include <cctype>
 #include <optional>
 
 namespace wasmline {
     namespace {
-        bool hasSuffixIgnoreCase(const std::string& value, const std::string& suffix) {
-            if (value.size() < suffix.size()) return false;
-            return std::equal(suffix.rbegin(), suffix.rend(), value.rbegin(), [](char lhs, char rhs) {
-                return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
-            });
+        std::optional<bool> pulleyModeForArtifact(WasmlineArtifactFormat artifactFormat) {
+            switch (artifactFormat) {
+            case WasmlineArtifactFormat::RAW_WASM:
+                return std::nullopt;
+            case WasmlineArtifactFormat::CWASM:
+                return false;
+            case WasmlineArtifactFormat::PWASM:
+                return true;
+            }
+            return std::nullopt;
         }
 
-        std::optional<bool> pulleyModeForArtifact(const std::string& path) {
-            if (hasSuffixIgnoreCase(path, ".pwasm")) return true;
-            if (hasSuffixIgnoreCase(path, ".cwasm")) return false;
-            return std::nullopt;
+        bool rejectsRawNativeArtifact(WasmlineArtifactFormat artifactFormat, const char* artifactKind, const std::string& path) {
+            if (artifactFormat != WasmlineArtifactFormat::RAW_WASM) return false;
+            LOGE("[Wasmtime] Api --> Raw %s Wasm is not accepted on native. Precompile to CWASM/PWASM: %s", artifactKind, path.c_str());
+            return true;
         }
 
         /** Creates or returns a cached session for an artifact. */
@@ -130,32 +134,73 @@ namespace wasmline {
         Engine::getInstance().release();
     }
 
-    bool Api::loadModule(const std::string& key, const std::string& path) {
-        ensureEngineForArtifact(path);
-        auto* mod = Module::getInstance().load(key, path);
+    bool Api::tryArtifactFormatFromCode(int32_t formatCode, WasmlineArtifactFormat* format) {
+        if (!format) return false;
+        switch (formatCode) {
+        case static_cast<int32_t>(WasmlineArtifactFormat::RAW_WASM):
+            *format = WasmlineArtifactFormat::RAW_WASM;
+            return true;
+        case static_cast<int32_t>(WasmlineArtifactFormat::CWASM):
+            *format = WasmlineArtifactFormat::CWASM;
+            return true;
+        case static_cast<int32_t>(WasmlineArtifactFormat::PWASM):
+            *format = WasmlineArtifactFormat::PWASM;
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool Api::loadModule(const std::string&, const std::string& path) {
+        LOGE("[Wasmtime] Api --> Core artifact format is required: %s", path.c_str());
+        return false;
+    }
+
+    bool Api::loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+        if (rejectsRawNativeArtifact(artifactFormat, "Core", path)) return false;
+        ensureEngineForArtifact(artifactFormat, path);
+        auto* mod = Module::getInstance().load(key, path, artifactFormat);
         return (mod != nullptr);
     }
 
-    bool Api::loadModuleUnsafe(const std::string& key, const std::string& path) {
-        ensureEngineForArtifact(path);
-        auto* mod = Module::getInstance().loadUnsafe(key, path);
+    bool Api::loadModuleUnsafe(const std::string&, const std::string& path) {
+        LOGE("[Wasmtime] Api --> Core artifact format is required: %s", path.c_str());
+        return false;
+    }
+
+    bool Api::loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+        if (rejectsRawNativeArtifact(artifactFormat, "Core", path)) return false;
+        ensureEngineForArtifact(artifactFormat, path);
+        auto* mod = Module::getInstance().loadUnsafe(key, path, artifactFormat);
         return (mod != nullptr);
     }
 
-    bool Api::loadComponent(const std::string& key, const std::string& path) {
-        ensureEngineForArtifact(path);
-        auto* component = Component::getInstance().load(key, path);
+    bool Api::loadComponent(const std::string&, const std::string& path) {
+        LOGE("[Wasmtime] Api --> Component artifact format is required: %s", path.c_str());
+        return false;
+    }
+
+    bool Api::loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+        if (rejectsRawNativeArtifact(artifactFormat, "Component", path)) return false;
+        ensureEngineForArtifact(artifactFormat, path);
+        auto* component = Component::getInstance().load(key, path, artifactFormat);
         return component != nullptr;
     }
 
-    bool Api::loadComponentUnsafe(const std::string& key, const std::string& path) {
-        ensureEngineForArtifact(path);
-        auto* component = Component::getInstance().loadUnsafe(key, path);
+    bool Api::loadComponentUnsafe(const std::string&, const std::string& path) {
+        LOGE("[Wasmtime] Api --> Component artifact format is required: %s", path.c_str());
+        return false;
+    }
+
+    bool Api::loadComponentUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+        if (rejectsRawNativeArtifact(artifactFormat, "Component", path)) return false;
+        ensureEngineForArtifact(artifactFormat, path);
+        auto* component = Component::getInstance().loadUnsafe(key, path, artifactFormat);
         return component != nullptr;
     }
 
-    void Api::ensureEngineForArtifact(const std::string& path) {
-        auto desiredPulleyMode = pulleyModeForArtifact(path);
+    void Api::ensureEngineForArtifact(WasmlineArtifactFormat artifactFormat, const std::string& path) {
+        auto desiredPulleyMode = pulleyModeForArtifact(artifactFormat);
         auto& engine = Engine::getInstance();
 
         if (!desiredPulleyMode.has_value()) {
@@ -198,6 +243,32 @@ namespace wasmline {
         }
         Session* session = getOrCreateSession(key);
         if (session) session->setOutboundHandler(std::move(handler));
+    }
+
+    bool Api::setComponentHostHandler(const std::string& key, std::unique_ptr<ComponentHostHandler> handler) {
+        wasm_engine_t* engine = Engine::getInstance().getEngine();
+        wasmtime_component_t* component = Component::getInstance().get(key);
+        if (!engine || !component) {
+            LOGE("[Wasmtime] Api --> Cannot install typed Component host handler for %s", key.c_str());
+            return false;
+        }
+
+        std::unique_lock<std::shared_mutex> lock(sessionMutex);
+        const auto cached = componentSessionCache.find(key);
+        if (cached != componentSessionCache.end()) {
+            cached->second->setComponentHostHandler(std::move(handler));
+            return true;
+        }
+
+        auto session = std::make_unique<ComponentSession>(engine, component, key);
+        session->setComponentHostHandler(std::move(handler));
+        if (!session->initialize()) {
+            LOGE("[Wasmtime] Api --> Failed to initialize component session for typed host handler: %s", key.c_str());
+            return false;
+        }
+
+        componentSessionCache.emplace(key, std::move(session));
+        return true;
     }
 
     std::string Api::invokeInbound(const std::string& key, const char* action, size_t actionLen, const char* data, size_t dataLen) {
