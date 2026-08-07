@@ -1,13 +1,19 @@
 package crow.wasmline.loader.internal
 
 import android.os.Process
+import crow.wasmline.wasmlineNativeRuntimeInfo
 
 internal actual val currentHostArtifactTarget: WasmlineHostArtifactTarget
-    get() = WasmlineHostArtifactTarget(
-        os = "android",
-        cpu = normalizeAndroidCpu(System.getProperty("os.arch")),
-        is64Bit = Process.is64Bit(),
-    )
+    get() {
+        val runtimeInfo = wasmlineNativeRuntimeInfo()
+        return WasmlineHostArtifactTarget(
+            os = "android",
+            cpu = normalizeAndroidCpu(System.getProperty("os.arch")),
+            is64Bit = Process.is64Bit(),
+            nativeBackend = runtimeInfo?.backend,
+            wasmtimeVersion = runtimeInfo?.wasmtimeVersion,
+        )
+    }
 
 private fun normalizeAndroidCpu(arch: String?): String = when (arch?.lowercase()) {
     "amd64", "x86_64" -> "x86_64"

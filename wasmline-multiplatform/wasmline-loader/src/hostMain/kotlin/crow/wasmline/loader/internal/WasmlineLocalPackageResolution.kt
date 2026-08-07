@@ -2,7 +2,10 @@
 
 package crow.wasmline.loader.internal
 
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
 import crow.wasmline.loader.model.SignedManifestEnvelope
@@ -73,11 +76,29 @@ internal object WasmlineLocalPackageResolution {
 
     private fun resolveArtifactPath(manifestPath: String, artifactUrl: String): String = resolveHostArtifactPath(manifestPath, artifactUrl)
 
-    private fun WasmlineArtifact.selectionScoreFor(target: WasmlineHostArtifactTarget): Int? = when (type) {
-        WasmlineArtifactType.WASM -> wasmSelectionScore(target)
-        WasmlineArtifactType.CWASM -> cwasmSelectionScore(target)
-        WasmlineArtifactType.PWASM -> pwasmSelectionScore(target)
-        WasmlineArtifactType.COMPONENT_WASM -> componentWasmSelectionScore(target)
+    private fun WasmlineArtifact.selectionScoreFor(target: WasmlineHostArtifactTarget): Int? {
+        if (!hasEligibleRuntimeContract()) return null
+        return when (type) {
+            WasmlineArtifactType.WASM -> wasmSelectionScore(target)
+            WasmlineArtifactType.CWASM -> cwasmSelectionScore(target)
+            WasmlineArtifactType.PWASM -> pwasmSelectionScore(target)
+            WasmlineArtifactType.COMPONENT_WASM -> null
+        }
+    }
+
+    private fun WasmlineArtifact.hasEligibleRuntimeContract(): Boolean {
+        if (toDescriptor(path = "selection-candidate").validationError() != null) return false
+        return when (type) {
+            WasmlineArtifactType.WASM ->
+                executionModel == WasmlineExecutionModel.CORE_WASM &&
+                    invocationProtocol == WasmlineInvocationProtocol.WASMLINE_CORE
+
+            WasmlineArtifactType.CWASM,
+            WasmlineArtifactType.PWASM,
+            -> true
+
+            WasmlineArtifactType.COMPONENT_WASM -> false
+        }
     }
 
     private fun WasmlineArtifact.wasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
@@ -98,7 +119,10 @@ internal object WasmlineLocalPackageResolution {
     }
 
     private fun WasmlineArtifact.cwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
+        if (target.nativeBackend != WasmlineNativeBackend.CRANELIFT) return null
+        if (!matchesWasmtimeVersion(target)) return null
         val hostOs = normalizeOs(target.os) ?: return null
+        if (hostOs == "ios") return null
         val hostCpu = normalizeCpu(target.cpu) ?: return null
         val artifactOs = normalizeOs(targetOs) ?: return null
         val artifactCpu = normalizeCpu(targetCpu) ?: return null
@@ -109,42 +133,30 @@ internal object WasmlineLocalPackageResolution {
     }
 
     private fun WasmlineArtifact.pwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
+        if (target.nativeBackend != WasmlineNativeBackend.PULLEY) return null
+        if (!matchesWasmtimeVersion(target)) return null
         val hostOs = normalizeOs(target.os) ?: return null
-        val hostCpu = normalizeCpu(target.cpu) ?: return null
         if (hostOs == "browser") {
             return null
         }
-        if (is64Bit != target.is64Bit) {
-            return null
-        }
-        val artifactCpu = normalizeCpu(targetCpu)
-        val portablePulley = artifactCpu != null && isPulleyCpu(artifactCpu)
-        val artifactOs = normalizeOs(targetOs)
-        if (artifactOs != null && artifactOs != hostOs && !(artifactOs == "pulley" && portablePulley)) {
-            return null
-        }
-        return when {
-            artifactCpu == null -> 200
-            artifactCpu == hostCpu -> 190
-            portablePulley && matchesPulleyBitness(artifactCpu, target.is64Bit) -> 180
-            else -> null
-        }
-    }
-
-    private fun WasmlineArtifact.componentWasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
-        if (executionModel != crow.wasmline.WasmlineExecutionModel.COMPONENT_MODEL ||
-            invocationProtocol != crow.wasmline.WasmlineInvocationProtocol.COMPONENT_EXPORT
+        val artifactCpu = normalizeCpu(targetCpu) ?: return null
+        if (!isPulleyCpu(artifactCpu) ||
+            !matchesPulleyBitness(artifactCpu, target.is64Bit) ||
+            is64Bit != target.is64Bit
         ) {
             return null
         }
-        val hostOs = normalizeOs(target.os) ?: return null
-        val hostCpu = normalizeCpu(target.cpu) ?: return null
-        if (hostOs == "browser") return null
         val artifactOs = normalizeOs(targetOs)
-        if (artifactOs != null && artifactOs != hostOs) return null
-        val artifactCpu = normalizeCpu(targetCpu)
-        if (artifactCpu != null && artifactCpu != hostCpu) return null
-        return 100
+        if (artifactOs != null && artifactOs != "pulley") {
+            return null
+        }
+        return 180
+    }
+
+    private fun WasmlineArtifact.matchesWasmtimeVersion(target: WasmlineHostArtifactTarget): Boolean {
+        val runtimeVersion = target.wasmtimeVersion ?: return false
+        if (!wasmtimeVersionPattern.matches(runtimeVersion)) return false
+        return targetCompilerVersion == "wasmtime-$runtimeVersion"
     }
 
     private fun matchesPulleyBitness(cpu: String, is64Bit: Boolean): Boolean = when {
@@ -178,6 +190,8 @@ internal object WasmlineLocalPackageResolution {
         "wasm", "wasm32", "wasmjs", "browser" -> "wasmjs"
         else -> value.lowercase()
     }
+
+    private val wasmtimeVersionPattern = Regex("^\\d+\\.\\d+\\.\\d+$")
 
     private fun failure(cause: String): WasmlineSourceResolution.Complete = WasmlineSourceResolution.Complete(
         WasmlineLoadState.Failure(

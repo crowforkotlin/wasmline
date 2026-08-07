@@ -10,6 +10,26 @@ internal data class WasmlineRuntimeCapabilities(
     val is64Bit: Boolean,
 )
 
+/**
+ * Maps linked capabilities to the immutable engine-variant policy used before
+ * artifact selection. Cranelift distributions also contain Pulley support, so
+ * compiler availability deliberately identifies the Cranelift variant first.
+ */
+internal val WasmlineRuntimeCapabilities.nativeBackendPolicy: WasmlineNativeBackend?
+    get() = when {
+        supportsCranelift -> WasmlineNativeBackend.CRANELIFT
+        supportsPulley -> WasmlineNativeBackend.PULLEY
+        else -> null
+    }
+
+internal val WasmlineRuntimeCapabilities.nativeRuntimeInfo: WasmlineNativeRuntimeInfo?
+    get() = nativeBackendPolicy?.let { backend ->
+        WasmlineNativeRuntimeInfo(
+            backend = backend,
+            wasmtimeVersion = wasmtimeVersion,
+        )
+    }
+
 internal fun WasmlineArtifactDescriptor.runtimeCompatibilityError(runtime: WasmlineRuntimeCapabilities): String? {
     val format = artifactFormat ?: return null
     if (format == WasmlineArtifactFormat.RAW_WASM) return null

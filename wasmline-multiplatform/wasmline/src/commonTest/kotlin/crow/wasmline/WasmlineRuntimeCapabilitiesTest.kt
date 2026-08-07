@@ -27,6 +27,34 @@ class WasmlineRuntimeCapabilitiesTest {
     }
 
     @Test
+    fun derivesImmutableEngineVariantPolicy() {
+        assertEquals(WasmlineNativeBackend.CRANELIFT, host.nativeBackendPolicy)
+        assertEquals(
+            WasmlineNativeRuntimeInfo(
+                backend = WasmlineNativeBackend.CRANELIFT,
+                wasmtimeVersion = "47.0.2",
+            ),
+            host.nativeRuntimeInfo,
+        )
+        assertEquals(
+            WasmlineNativeBackend.PULLEY,
+            host.copy(supportsCranelift = false).nativeBackendPolicy,
+        )
+        assertNull(
+            host.copy(
+                supportsCranelift = false,
+                supportsPulley = false,
+            ).nativeBackendPolicy,
+        )
+        assertNull(
+            host.copy(
+                supportsCranelift = false,
+                supportsPulley = false,
+            ).nativeRuntimeInfo,
+        )
+    }
+
+    @Test
     fun rejectsMissingMalformedAndDifferentWasmtimeVersions() {
         assertEquals(
             "AOT artifact targetCompilerVersion must use 'wasmtime-x.y.z'.",

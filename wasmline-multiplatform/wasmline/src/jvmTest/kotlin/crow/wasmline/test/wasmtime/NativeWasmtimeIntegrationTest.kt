@@ -7,9 +7,11 @@ import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.wasmlineBootstrap
 import crow.wasmline.wasmlineLoadArtifact
+import crow.wasmline.wasmlineNativeRuntimeInfo
 import crow.wasmline.wasmlineRuntimeCapabilities
 import crow.wasmline.wasmlineShutdown
 import crow.wasmline.wasmlineWarmup
@@ -37,8 +39,11 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun reportsLinkedRuntimeCapabilities() {
         val capabilities = wasmlineRuntimeCapabilities()
+        val runtimeInfo = requireNotNull(wasmlineNativeRuntimeInfo())
 
         assertEquals("47.0.2", capabilities.wasmtimeVersion)
+        assertEquals(capabilities.wasmtimeVersion, runtimeInfo.wasmtimeVersion)
+        assertEquals(WasmlineNativeBackend.CRANELIFT, runtimeInfo.backend)
         assertTrue(capabilities.supportsCranelift)
         assertTrue(capabilities.supportsPulley)
         assertTrue(capabilities.targetOs.isNotBlank())

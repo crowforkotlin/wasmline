@@ -133,6 +133,8 @@ internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
     return Wasmline.runtimeCapabilities()
 }
 
+actual fun wasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? = wasmlineRuntimeCapabilities().nativeRuntimeInfo
+
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     wasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
 

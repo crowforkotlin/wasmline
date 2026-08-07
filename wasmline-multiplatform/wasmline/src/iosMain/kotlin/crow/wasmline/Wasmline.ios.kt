@@ -136,6 +136,8 @@ internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
     )
 }
 
+actual fun wasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? = wasmlineRuntimeCapabilities().nativeRuntimeInfo
+
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     wasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
 

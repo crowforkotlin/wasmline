@@ -34,6 +34,12 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
 expect fun wasmlineBootstrap()
 expect fun wasmlineShutdown()
 expect fun wasmlineWarmup(mode: WasmlineWarmupMode)
+
+/** Returns immutable native runtime identity, or `null` on browser runtimes. */
+expect fun wasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo?
+
+/** Returns the immutable native engine variant, or `null` on browser runtimes. */
+fun wasmlineNativeBackend(): WasmlineNativeBackend? = wasmlineNativeRuntimeInfo()?.backend
 internal expect fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities
 expect fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState
 expect fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState
