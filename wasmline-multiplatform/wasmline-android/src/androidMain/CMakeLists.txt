@@ -43,6 +43,7 @@ include_directories(${ROOT_DIR}/wasmline-core/src)
 # Compile as a static library for JNI reuse
 add_library(wasmline_core STATIC
         native/AndroidLogger.cpp
+        ${ROOT_DIR}/wasmline-multiplatform/wasmline/src/jniMain/native/JniComponentHostHandler.cpp
         ${ROOT_DIR}/wasmline-multiplatform/wasmline/src/jniMain/native/JniHostHandler.cpp
         ${ROOT_DIR}/wasmline-core/src/api/Api.cpp
         ${ROOT_DIR}/wasmline-core/src/runtime/Component.cpp
