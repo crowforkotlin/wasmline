@@ -2,6 +2,8 @@
 @file:OptIn(ExperimentalWasmDsl::class)
 
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.AbstractCopyTask
 
 
 plugins {
@@ -37,4 +39,38 @@ kotlin {
             implementation(libs.kotlinx.coroutines)
         }
     }
+}
+
+val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
+    "wasmline/output/crow.wasmline.demo-1.0.0",
+)
+val syncWasmlineSamplePlugin = tasks.register<Sync>("syncWasmlineSamplePlugin") {
+    group = "wasmline"
+    description = "Build and expose the raw Wasmline plugin to web resources"
+    dependsOn(project(":sample-plugin").tasks.named("wasmlineAssembleDebug"))
+    from(samplePluginOutput) {
+        include("demo.wasm")
+        into("plugin")
+        rename { "wasmline-sample-sample-plugin.wasm" }
+    }
+    into(layout.buildDirectory.dir("generated/web-resources"))
+}
+
+tasks.withType<AbstractCopyTask>().matching {
+    it.name in setOf(
+        "jsProcessResources",
+        "wasmJsProcessResources",
+    )
+}.configureEach {
+    dependsOn(syncWasmlineSamplePlugin)
+    from(syncWasmlineSamplePlugin)
+}
+
+tasks.matching {
+    it.name in setOf(
+        "jsBrowserDevelopmentRun",
+        "wasmJsBrowserDevelopmentRun",
+    )
+}.configureEach {
+    dependsOn(syncWasmlineSamplePlugin)
 }

@@ -4,7 +4,125 @@ set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/run-sample-common.sh"
+SAMPLE_ROOT="${SCRIPT_DIR}"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+MULTIPLATFORM_ROOT="${REPO_ROOT}/wasmline-multiplatform"
+SAMPLE_PLUGIN_ROOT="${SAMPLE_ROOT}/sample-plugin"
+SAMPLE_PLUGIN_OUTPUT_ROOT="${SAMPLE_PLUGIN_ROOT}/build/wasmline/output"
+QUIET=0
+ARTIFACT_FORMAT=""
+PLUGIN_ASSEMBLY_ROOT=""
+RUNTIME_PWASM_FILE=""
+
+require_value() {
+    local option="$1"
+    local value="$2"
+    if [ -z "$value" ]; then
+        echo "Missing value for ${option}" >&2
+        echo "Run ./${SCRIPT_NAME} --help for usage." >&2
+        exit 1
+    fi
+}
+
+require_directory() {
+    local path="$1"
+    local description="$2"
+    if [ ! -d "$path" ]; then
+        echo "Missing ${description}: $path" >&2
+        exit 1
+    fi
+}
+
+require_command() {
+    local command_name="$1"
+    if ! command -v "$command_name" >/dev/null 2>&1; then
+        echo "Missing required command: $command_name" >&2
+        exit 1
+    fi
+}
+
+run_gradle() {
+    local directory="$1"
+    shift
+    (
+        cd "$directory"
+        if [ "$QUIET" -eq 1 ]; then
+            ./gradlew --quiet "$@"
+        else
+            ./gradlew "$@"
+        fi
+    )
+}
+
+run_gradle_build() {
+    if [ "$QUIET" -eq 1 ]; then
+        run_gradle "$@" >/dev/null 2>&1
+    else
+        run_gradle "$@" >&2
+    fi
+}
+
+copy_artifact() {
+    local source_file="$1"
+    local target_file="$2"
+    mkdir -p "$(dirname "$target_file")"
+    rm -f "$target_file"
+    cp "$source_file" "$target_file"
+}
+
+detect_current_platform() {
+    local arch_name
+    arch_name="$(uname -m)"
+    if [ "$(uname -s)" != "Darwin" ]; then
+        echo "iOS sample requires macOS." >&2
+        exit 1
+    fi
+    if [ "$arch_name" = "x86_64" ] && command -v sysctl >/dev/null 2>&1 &&
+        [ "$(sysctl -in hw.optional.arm64 2>/dev/null || true)" = "1" ]; then
+        arch_name="arm64"
+    fi
+    case "$arch_name" in
+        arm64|aarch64) printf '%s\n' "aarch64-macos" ;;
+        x86_64|amd64) printf '%s\n' "x86_64-macos" ;;
+        *) echo "Unsupported macOS architecture: $arch_name" >&2; exit 1 ;;
+    esac
+}
+
+load_wasmline_metadata() {
+    require_directory "$MULTIPLATFORM_ROOT" "wasmline-multiplatform root"
+    require_directory "$SAMPLE_PLUGIN_ROOT" "sample-plugin module"
+}
+
+assemble_sample_plugin() {
+    local cwasm_target="$1"
+    local artifact_description="$2"
+    local gradle_args=(
+        :sample-plugin:wasmlineAssembleDebug
+        "-Pwasmline.compile.target=${cwasm_target}"
+        "-Pwasmline.artifact.format=${ARTIFACT_FORMAT}"
+    )
+
+    rm -rf "$SAMPLE_PLUGIN_OUTPUT_ROOT"
+    run_gradle_build "$SAMPLE_ROOT" "${gradle_args[@]}"
+    local manifest_file
+    manifest_file="$(find "$SAMPLE_PLUGIN_OUTPUT_ROOT" -mindepth 2 -maxdepth 2 -type f -name manifest.wlm | sort | head -n 1)"
+    if [ -z "$manifest_file" ]; then
+        echo "Unable to locate assembled ${artifact_description} under ${SAMPLE_PLUGIN_OUTPUT_ROOT}" >&2
+        exit 1
+    fi
+    PLUGIN_ASSEMBLY_ROOT="$(dirname "$manifest_file")"
+}
+
+build_plugin_runtime_artifacts() {
+    local cwasm_target="$1"
+    local artifact_description="$2"
+    assemble_sample_plugin "$cwasm_target" "$artifact_description"
+    RUNTIME_PWASM_FILE="$(find "$PLUGIN_ASSEMBLY_ROOT" -maxdepth 1 -type f -name '*-pulley64.pwasm' | sort | head -n 1)"
+    if [ -z "$RUNTIME_PWASM_FILE" ]; then
+        echo "Unable to locate ${artifact_description} pwasm64 artifact" >&2
+        exit 1
+    fi
+}
 
 IOS_APP_ROOT="${SAMPLE_ROOT}/iosApp"
 IOS_PROJECT_FILE="${IOS_APP_ROOT}/iosApp.xcodeproj"
