@@ -22,25 +22,38 @@ Payload data crosses the Kotlin–JS linear memory boundary as Base64-encoded st
 <details>
 <summary><strong>What distinguishes <code>.cwasm</code> from <code>.pwasm</code> artifacts — and why not raw <code>.wasm</code>?</strong></summary>
 
-All three artifact types involve wasmtime, but they differ fundamentally in when compilation happens and what the compilation target is:
+These artifact types are related through Wasmline's pipeline, but they differ fundamentally in when compilation happens and what the compilation target is:
 
 | Artifact | Compiled | Execution | Version coupling |
 |---|---|---|---|
-| `.wasm` | At load time (JIT) by the host wasmtime | Cranelift → native or Pulley, depending on configuration | **None** — portable across all wasmtime versions |
+| `.wasm` | Source format; loaded directly by the browser path | Browser WebAssembly runtime | **None** — not coupled to Wasmtime |
 | `.cwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | Directly on native hardware (e.g., arm64 machine code) | Coupled to the wasmtime version that compiled it |
 | `.pwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | wasmtime **Pulley** interpreter | Coupled to the wasmtime version that compiled it |
 
 **`.cwasm` (platform-specific AOT)** produces native machine code for a particular target triple (e.g., `aarch64-android`). Maximum throughput; requires one artifact per platform.
 
-**`.pwasm` (Pulley AOT)** is compiled through the same Cranelift pipeline as `.cwasm`, but targets wasmtime's **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter then executes it at runtime. Critically, `.pwasm` is **not** a raw `.wasm` file being fed to an interpreter — it is a fully pre-compiled, Cranelift-produced artifact, identical in compilation path to `.cwasm`, only targeting a different backend. A single `.pwasm` artifact runs across all native wasmtime targets because the Pulley ISA is platform-independent.
+**`.pwasm` (Pulley AOT)** is compiled through the same Cranelift pipeline as `.cwasm`, but targets wasmtime's **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter then executes it at runtime. Critically, `.pwasm` is **not** a raw `.wasm` file being fed to an interpreter — it is a fully pre-compiled, Cranelift-produced artifact, identical in compilation path to `.cwasm`, only targeting a different backend. A `pulley64.pwasm` artifact runs across all 64-bit native wasmtime targets; 32-bit targets use a matching `pulley32.pwasm` artifact.
 
-Because `.wasm` is compiled at load time by whatever wasmtime version the host uses, it carries no version dependency. Both `.cwasm` and `.pwasm` are pre-compiled outputs of a specific wasmtime release — upgrading wasmtime invalidates them and requires recompilation.
+Raw `.wasm` is accepted directly only by the browser path. Wasmline's native runtime requires a precompiled `.cwasm` or `.pwasm`; both are outputs of a specific wasmtime release, so upgrading wasmtime invalidates them and requires recompilation.
 
-While the Pulley interpreter can also load and JIT-compile raw `.wasm` at runtime, `.pwasm` is preferred in memory-constrained environments such as Android: that in-process compilation step incurs substantially higher memory overhead.
+Wasmline's native runtime does not load raw `.wasm` through the Pulley engine. Generate `.pwasm` ahead of time so the Pulley interpreter can execute the precompiled bytecode without an in-process compilation step; this is especially important in memory-constrained environments such as Android.
 
 <Callout type="info" title="Version coupling">
   Both `.cwasm` and `.pwasm` are **version-coupled to the wasmtime compiler** that produced them. Upgrading the wasmtime version invalidates all previously compiled artifacts — they must be recompiled. This version coupling is why every non-Web native target uses pre-compiled `.cwasm` or `.pwasm` rather than raw `.wasm`. The Web target is the sole exception, relying on the browser's own WebAssembly runtime with raw `.wasm` files.
 </Callout>
+
+</details>
+
+<details>
+<summary><strong>Which engine module should load each artifact?</strong></summary>
+
+| Engine module | Supported artifacts | Selection policy |
+|---|---|---|
+| `wasmline-engine-cranelift` | `.cwasm` and `.pwasm` | Prefer a matching `.cwasm`; fall back to portable `.pwasm` |
+| `wasmline-engine-pulley` | `.pwasm` only | Execute portable bytecode through the Pulley interpreter |
+| iOS runtime | `.pwasm` only | iOS uses the Pulley interpreter because native executable AOT is unavailable |
+
+The engine module and artifact format are related but not interchangeable names: Cranelift is the compiler used to produce both AOT formats, while Pulley is the bytecode ISA and interpreter used by `.pwasm`. The Cranelift Wasmtime build includes both capabilities; the Pulley-only build includes only the Pulley side.
 
 </details>
 

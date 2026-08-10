@@ -170,6 +170,8 @@ val component = WasmlineLoader.load(
 | Windows | x86_64 | `.cwasm` / `.pwasm` | wasmtime |
 | Web（Kotlin/JS · Kotlin/WasmJS） | 浏览器 JS 引擎 | 仅原始 `.wasm` | web |
 
+Cranelift Wasmtime 运行时同时支持 `.cwasm` 和 `.pwasm`；原生宿主优先选择匹配的 `.cwasm`，缺少时回退到匹配位数的 `.pwasm`。Pulley 引擎仅支持 `.pwasm`。iOS 只能使用解释器，因此始终使用 `.pwasm`。
+
 ## 安装
 
 > [!NOTE]

@@ -63,7 +63,7 @@ run_gradle_with_runtime_format() {
     (
         case "$ARTIFACT_FORMAT" in
             pwasm|pwasm64|pwasm32)
-                export WASMLINE_ARTIFACT_FORMAT="pwasm"
+                export WASMLINE_ARTIFACT_FORMAT="$ARTIFACT_FORMAT"
                 ;;
             *)
                 if [ -n "$ARTIFACT_FORMAT" ]; then

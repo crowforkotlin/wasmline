@@ -27,6 +27,9 @@ internal val WasmlineRuntimeCapabilities.nativeRuntimeInfo: WasmlineNativeRuntim
         WasmlineNativeRuntimeInfo(
             backend = backend,
             wasmtimeVersion = wasmtimeVersion,
+            targetOs = targetOs,
+            targetCpu = targetCpu,
+            is64Bit = is64Bit,
         )
     }
 

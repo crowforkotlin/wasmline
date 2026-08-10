@@ -405,11 +405,12 @@ class WasmlineLocalPackageResolutionTest {
     }
 
     @Test
-    fun `native AOT selection rejects mismatched or missing backend policy`() {
+    fun `Cranelift selects PWASM when matching CWASM is unavailable`() {
         val cwasm = cwasmArtifact()
         val pwasm = pulleyArtifact(cpu = "pulley64", is64Bit = true)
 
-        assertNull(
+        assertEquals(
+            pwasm,
             WasmlineLocalPackageResolution.selectArtifact(
                 listOf(pwasm),
                 nativeTarget(os = "linux", cpu = "x86_64", backend = WasmlineNativeBackend.CRANELIFT),

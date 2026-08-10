@@ -41,14 +41,12 @@ class WasmtimeCompiler {
         )
 
         val defaultTargets = listOf(
+            "pulley32",
             "pulley64",
             "x86_64-linux",
             "aarch64-linux",
             "aarch64-android",
-            "armv7-android",
-            "x86-android",
             "aarch64-macos",
-            "aarch64-ios",
             "x86_64-windows",
         )
 
@@ -161,11 +159,25 @@ class WasmtimeCompiler {
 
         val effectiveTargets = if (targets.isEmpty()) defaultTargets else targets
         effectiveTargets.forEach { target ->
+            validateNativeTarget(target)
             val artifact = compileTarget(wasmtimeExec, inputWasm, outputDir, productName, target, wasmtimeVersion, logger)
                 ?: throw IllegalStateException("Failed to compile Wasmtime target '$target'.")
             artifacts += artifact
         }
         return artifacts
+    }
+
+    private fun validateNativeTarget(target: String) {
+        val normalizedTarget = normalizeTarget(target)
+        val (targetCpu, targetOs) = parseTarget(normalizedTarget)
+        require(targetOs != "ios") {
+            "iOS native artifacts must use portable pulley64 PWASM; use target 'pulley64' instead of '$target'."
+        }
+        if (targetOs == "android" && (targetCpu == "armv7" || targetCpu == "i686" || targetCpu == "x86")) {
+            throw IllegalArgumentException(
+                "32-bit Android native artifacts must use portable pulley32 PWASM; use target 'pulley32' instead of '$target'.",
+            )
+        }
     }
 
     /** Writes the compilation result used by manifest creation. */

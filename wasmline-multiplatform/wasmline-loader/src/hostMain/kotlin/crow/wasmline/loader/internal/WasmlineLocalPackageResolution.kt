@@ -151,7 +151,14 @@ internal object WasmlineLocalPackageResolution {
     }
 
     private fun WasmlineArtifact.pwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
-        if (target.nativeBackend != WasmlineNativeBackend.PULLEY) return null
+        // The Cranelift runtime is built with Pulley support as well. PWASM is
+        // therefore a valid fallback for both engine modules; only the
+        // Pulley-only runtime excludes CWASM in cwasmSelectionScore.
+        if (target.nativeBackend != WasmlineNativeBackend.CRANELIFT &&
+            target.nativeBackend != WasmlineNativeBackend.PULLEY
+        ) {
+            return null
+        }
         if (!matchesWasmtimeVersion(target)) return null
         val hostOs = normalizeOs(target.os) ?: return null
         if (hostOs == "browser") {

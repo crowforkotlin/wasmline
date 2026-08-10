@@ -178,7 +178,8 @@ def select_target() -> str:
         print(f"  {red('Invalid input, please try again.')}")
 
 
-# Pulley-only platforms (iOS, armeabi-v7a, x86) — Cranelift not available.
+# Pulley-only platforms (iOS, armeabi-v7a, x86) — no Cranelift native runtime;
+# use matching-bitness PWASM (pulley64 for iOS, pulley32 for 32-bit Android).
 PULLEY_ONLY_FILTERS = {
     "aarch64-ios-pulley-min-c-api",
     "aarch64-ios-sim-pulley-min-c-api",
@@ -198,7 +199,7 @@ def select_variant() -> str:
         log_info("All Platforms: downloading both Cranelift and Pulley assets.")
     elif _current_filter in PULLEY_ONLY_FILTERS:
         variant = "pulley"
-        log_info("Platform requires Pulley runtime (no Cranelift support).")
+        log_info("Platform requires Pulley runtime; use matching-bitness PWASM.")
     else:
         print(f"  {white('1)')} Cranelift — .pwasm + .cwasm AOT  {gray('(default, larger binary)')}")
         print(f"  {white('2)')} Pulley    — .pwasm only            {gray('(smaller binary)')}")

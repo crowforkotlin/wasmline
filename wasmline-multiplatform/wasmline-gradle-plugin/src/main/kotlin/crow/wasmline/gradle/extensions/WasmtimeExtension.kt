@@ -60,9 +60,9 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      * targets defined by `wasmline-plugin-core` are used.
      *
      * Supported values include: "pulley64", "x86_64-linux", "aarch64-linux",
-     * "aarch64-android", "aarch64-macos", "aarch64-ios", "x86_64-windows".
-     * Component Model builds use `pulley64` for iOS; direct iOS CWASM targets
-     * are accepted only by the legacy Core compilation path.
+     * "aarch64-android", "aarch64-macos", "x86_64-windows".
+     * iOS always uses the portable `pulley64` PWASM target because its native
+     * runtime is interpreter-only; direct iOS CWASM targets are rejected.
      */
     val targets: ListProperty<String> = objects.listProperty(String::class.java)
         .convention(emptyList())

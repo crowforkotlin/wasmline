@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: wasmline_multiplatform/wasmline_loader/loader_api_and_models
-title: Wasmline 加载 API 与清单模型
-scope:
-    - wasmline-multiplatform/wasmline-loader/src/commonMain/kotlin/crow/wasmline/loader/
-source_files: []
-depends_on: []
-related_to:
-    - path: wasmline_multiplatform/wasmline_loader/loader_crypto

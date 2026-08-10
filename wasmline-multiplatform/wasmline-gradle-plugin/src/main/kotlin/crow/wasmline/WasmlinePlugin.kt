@@ -359,29 +359,6 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     // ==================== Task registration ====================
 
     private fun registerAssembleTasks(project: Project, ext: WasmlineExtension) {
-        val generateBindings = project.tasks.register(
-            "wasmlineGenerateWitBindings",
-            WasmlineGenerateWitBindingsTask::class.java,
-        ) { task ->
-            task.group = "wasmline"
-            task.description = "Generate Kotlin Component bindings from WIT"
-            task.witDirectory.set(ext.component.witDirectory)
-            task.outputDirectory.set(ext.component.generatedSourcesDirectory)
-            task.world.set(ext.component.world)
-            task.kotlinImports.set(ext.component.kotlinImports)
-            task.witBindgenVersion.set(ext.component.witBindgenVersion)
-            task.platform.convention(detectCurrentPlatform())
-            task.autoDownload.set(ext.component.autoDownload)
-            task.witBindgenExecutable.set(ext.component.witBindgenExecutable)
-            task.toolCacheDirectory.set(ext.component.toolCacheDirectory)
-            task.githubToken.set(ext.wasmtime.githubToken)
-        }
-        project.extensions.getByType(KotlinMultiplatformExtension::class.java)
-            .sourceSets
-            .getByName("wasmWasiMain")
-            .kotlin
-            .srcDir(generateBindings.flatMap { it.outputDirectory })
-
         val debugCompileTask = "compileDevelopmentLibraryKotlinWasmWasiOptimize"
         val releaseCompileTask = "compileProductionLibraryKotlinWasmWasiOptimize"
 
@@ -425,11 +402,32 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
+    private fun registerGenerateBindingsTask(project: Project, ext: WasmlineExtension) = project.tasks.register(
+        "wasmlineGenerateWitBindings",
+        WasmlineGenerateWitBindingsTask::class.java,
+    ) { task ->
+        task.group = "wasmline"
+        task.description = "Generate Kotlin Component bindings from WIT"
+        task.witDirectory.set(ext.component.witDirectory)
+        task.outputDirectory.set(ext.component.generatedSourcesDirectory)
+        task.world.set(ext.component.world)
+        task.kotlinImports.set(ext.component.kotlinImports)
+        task.witBindgenVersion.set(ext.component.witBindgenVersion)
+        task.platform.convention(detectCurrentPlatform())
+        task.autoDownload.set(ext.component.autoDownload)
+        task.witBindgenExecutable.set(ext.component.witBindgenExecutable)
+        task.toolCacheDirectory.set(ext.component.toolCacheDirectory)
+        task.githubToken.set(ext.wasmtime.githubToken)
+    }
+
     internal fun configureAssembleTaskGraph(project: Project, ext: WasmlineExtension) {
-        val generateBindings = project.tasks.named(
-            "wasmlineGenerateWitBindings",
-            WasmlineGenerateWitBindingsTask::class.java,
-        )
+        val componentBuild = ext.manifest.executionModel.get() == WasmlineExecutionModel.COMPONENT_MODEL
+        val directComponent = ext.component.componentInput.isPresent
+        val generateBindings = if (componentBuild && !directComponent) {
+            registerGenerateBindingsTask(project, ext)
+        } else {
+            null
+        }
         val debugComponent = project.tasks.named(
             "wasmlineComponentizeDebug",
             WasmlineComponentizeTask::class.java,
@@ -448,12 +446,18 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         )
         val debugCompileTask = "compileDevelopmentLibraryKotlinWasmWasiOptimize"
         val releaseCompileTask = "compileProductionLibraryKotlinWasmWasiOptimize"
-        val componentBuild = ext.manifest.executionModel.get() == WasmlineExecutionModel.COMPONENT_MODEL
-        val directComponent = ext.component.componentInput.isPresent
+
+        if (generateBindings != null) {
+            project.extensions.getByType(KotlinMultiplatformExtension::class.java)
+                .sourceSets
+                .getByName("wasmWasiMain")
+                .kotlin
+                .srcDir(generateBindings.flatMap { it.outputDirectory })
+        }
 
         project.tasks.matching { it.name == debugCompileTask || it.name == releaseCompileTask }
             .configureEach { task ->
-                if (componentBuild && !directComponent) task.dependsOn(generateBindings)
+                if (generateBindings != null) task.dependsOn(generateBindings)
             }
 
         configureComponentizeInputs(

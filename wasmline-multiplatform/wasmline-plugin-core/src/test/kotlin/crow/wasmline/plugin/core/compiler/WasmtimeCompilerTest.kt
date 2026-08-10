@@ -34,6 +34,15 @@ class WasmtimeCompilerTest {
     }
 
     @Test
+    fun defaultTargetsIncludePortablePwasmFor32And64BitHosts() {
+        assertTrue("pulley32" in WasmtimeCompiler.defaultTargets)
+        assertTrue("pulley64" in WasmtimeCompiler.defaultTargets)
+        assertTrue(WasmtimeCompiler.defaultTargets.none { compiler.parseTarget(it).second == "ios" })
+        assertTrue(WasmtimeCompiler.defaultTargets.none { compiler.parseTarget(it).second == "android" && it.startsWith("armv7") })
+        assertTrue(WasmtimeCompiler.defaultTargets.none { compiler.parseTarget(it).second == "android" && it.startsWith("x86-") })
+    }
+
+    @Test
     fun fullCompilerDiscoveryNeverReturnsWasmtimeMin() {
         val root = createTempDirectory("wasmtime-compiler-discovery").toFile()
         try {

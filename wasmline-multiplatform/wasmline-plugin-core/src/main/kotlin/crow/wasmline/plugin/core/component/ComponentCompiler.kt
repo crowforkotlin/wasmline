@@ -47,6 +47,10 @@ class ComponentCompiler internal constructor(private val runner: ComponentCompil
                 "Duplicate Component AOT target after normalization: $normalizedTarget."
             }
             val targetCpu = normalizedTarget.substringBefore('-')
+            val targetOs = WasmtimeCompiler().parseTarget(normalizedTarget).second
+            require(targetOs != "ios") {
+                "iOS Component artifacts must use portable pulley64 PWASM; use target 'pulley64' instead of '${target.target}'."
+            }
             val isPulley = targetCpu == "pulley32" || targetCpu == "pulley64"
             when (target.backend) {
                 ComponentAotBackend.CRANELIFT -> require(!targetCpu.startsWith("pulley")) {

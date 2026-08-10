@@ -3,19 +3,44 @@ package crow.wasmline.sample
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,477 +53,488 @@ import androidx.compose.ui.unit.sp
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toJsonString
 
-// ─── Design tokens ─────────────────────────────────────────────────────────────
+private val PageBackground = Color(0xFFF6F7F9)
+private val PanelColor = Color(0xFFFFFFFF)
+private val Ink = Color(0xFF17202A)
+private val MutedInk = Color(0xFF65727E)
+private val Border = Color(0xFFE0E5EA)
+private val Green = Color(0xFF168A65)
+private val Amber = Color(0xFFB26A00)
+private val Coral = Color(0xFFC24D4D)
+private val Purple = Color(0xFF6B5CC5)
+private val CodeBackground = Color(0xFF20262D)
+private val CodeForeground = Color(0xFFB7E5D2)
 
-private val CoolGrayBg = Color(0xFFF1F5F9)
-private val White = Color(0xFFFFFFFF)
-private val Slate900 = Color(0xFF0F172A)
-private val Slate700 = Color(0xFF334155)
-private val Slate500 = Color(0xFF64748B)
-private val Slate200 = Color(0xFFE2E8F0)
-private val Slate100 = Color(0xFFF1F5F9)
-private val Indigo600 = Color(0xFF4F46E5)
-private val Green500 = Color(0xFF10B981)
-private val Red500 = Color(0xFFEF4444)
-private val SkyBlue = Color(0xFF38BDF8)
-private val NavyDark = Color(0xFF0F172A)
+data class SampleScreenState(
+    val mode: WasmSampleMode,
+    val artifactPath: String,
+    val content: String,
+    val rawValue: String,
+    val forceReload: Boolean,
+    val freshMode: Boolean,
+    val activeTab: OutputTab,
+    val previewPayload: PlatformBean,
+    val report: WasmExecutionReport,
+)
 
-/**
- * Dedicated Sample UI Composable.
- * 
- * This function renders the entire Sample app interface without any WASM business logic.
- * All UI state is passed as parameters, and user actions are communicated through callbacks.
- * Pure presentational component - no business logic, no WASM runtime code.
- * 
- * @param previewPayload Preview payload data for display purposes
- * @param artifactPath Current path to the WASM artifact file
- * @param contentLabel Current content input from user
- * @param activeTab Currently active tab identifier ("Result", "Request", or "Log")
- * @param forceReload Whether force reload mode is enabled
- * @param freshMode Whether fresh mode is enabled
- * @param report The latest WASM execution report (passive view only)
- * @param onArtifactPathChange Callback when artifact path changes
- * @param onContentChange Callback when content changes
- * @param onForceReloadChange Callback when force reload flag changes
- * @param onFreshModeChange Callback when fresh mode flag changes
- * @param onTabChange Callback when tab switches
- * @param onExecute Callback to trigger WASM execution with WasmExecutionRequest
- */
 @Composable
 fun SampleUI(
-    previewPayload: PlatformBean,
-    artifactPath: String,
-    contentLabel: String,
-    activeTab: String,
-    forceReload: Boolean,
-    freshMode: Boolean,
-    report: WasmExecutionReport,
+    state: SampleScreenState,
+    onModeChange: (WasmSampleMode) -> Unit,
     onArtifactPathChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
+    onRawValueChange: (String) -> Unit,
     onForceReloadChange: (Boolean) -> Unit,
     onFreshModeChange: (Boolean) -> Unit,
-    onTabChange: (String) -> Unit,
-    onExecute: (WasmExecutionRequest) -> Unit,
+    onTabChange: (OutputTab) -> Unit,
+    onExecute: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(CoolGrayBg)
+            .background(PageBackground)
             .safeDrawingPadding()
             .imePadding()
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        AppHeader(report = report)
-        
-        InputCard(
-            report = report,
-            contentLabel = contentLabel,
-            artifactPath = artifactPath,
-            forceReload = forceReload,
-            freshMode = freshMode,
-            onContentChange = onContentChange,
+        Header(report = state.report)
+        ModeSelector(selected = state.mode, onSelect = onModeChange)
+
+        RequestPanel(
+            state = state,
             onArtifactPathChange = onArtifactPathChange,
+            onContentChange = onContentChange,
+            onRawValueChange = onRawValueChange,
             onForceReloadChange = onForceReloadChange,
             onFreshModeChange = onFreshModeChange,
         )
-        
-        ExecuteButton(
-            isRunning = report.status == WasmExecutionStatus.Running,
-            onExecute = { 
-                // Button clicked - trigger WASM execution via callback
-                val request = WasmExecutionRequest(
-                    artifactPath = artifactPath,
-                    platform = "Platform", // TODO: Get from external caller if needed
-                    content = contentLabel,
-                    timeOffsetMs = 0L,
-                    forceReload = forceReload,
-                    freshMode = freshMode,
-                )
-                onExecute(request)
-            },
-        )
-        
-        MetricsRow(report = report)
-        
-        ConsoleCard(
-            modifier = Modifier.weight(1f),
-            report = report,
-            previewPayload = previewPayload,
-            activeTab = activeTab,
+
+        Button(
+            onClick = onExecute,
+            enabled = state.report.status != WasmExecutionStatus.Running,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Ink,
+                contentColor = Color.White,
+                disabledContainerColor = MutedInk,
+            ),
+        ) {
+            Icon(Icons.Default.PlayArrow, contentDescription = "Run sample")
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (state.report.status == WasmExecutionStatus.Running) "Running" else "Run sample",
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        Metrics(report = state.report)
+        ResultPanel(
+            state = state,
             onTabChange = onTabChange,
         )
     }
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
-
 @Composable
-private fun AppHeader(report: WasmExecutionReport) {
-    val dotColor = when (report.status) {
-        WasmExecutionStatus.Running, WasmExecutionStatus.Success -> Green500
-        WasmExecutionStatus.Failure -> Red500
-        WasmExecutionStatus.Idle -> Slate500
-    }
-
+private fun Header(report: WasmExecutionReport) {
+    val accent = statusColor(report.status)
     Row(
         modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(dotColor, CircleShape)
-        )
-        Text(
-            text = "Wasmline",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = Slate900,
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(38.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = Ink,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Memory,
+                        contentDescription = "Wasmline",
+                        tint = Color.White,
+                    )
+                }
+            }
+            Spacer(Modifier.width(11.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Wasmline samples",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Ink,
+                )
+                Text(
+                    text = "Three host invocation boundaries in one small app",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedInk,
+                )
+            }
+        }
+        StatusPill(
+            label = report.status.name.lowercase(),
+            color = accent,
+            icon = when (report.status) {
+                WasmExecutionStatus.Idle -> Icons.Default.Schedule
+                WasmExecutionStatus.Running -> Icons.Default.Schedule
+                WasmExecutionStatus.Success -> Icons.Default.CheckCircle
+                WasmExecutionStatus.Failure -> Icons.Default.ErrorOutline
+            },
         )
     }
 }
 
 @Composable
-private fun MetaBadge(label: String, value: String, monospace: Boolean = false) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = White,
-        border = BorderStroke(1.dp, Slate200),
-    ) {
+private fun ModeSelector(
+    selected: WasmSampleMode,
+    onSelect: (WasmSampleMode) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel(text = "Invocation model")
         Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = Slate500,
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelSmall,
-                color = Slate700,
-                fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            WasmSampleMode.entries.forEach { mode ->
+                val selectedMode = mode == selected
+                Surface(
+                    onClick = { onSelect(mode) },
+                    modifier = Modifier.width(196.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (selectedMode) Color(0xFFEAF5F0) else PanelColor,
+                    border = BorderStroke(1.dp, if (selectedMode) Green else Border),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = when (mode) {
+                                WasmSampleMode.CORE_WASM -> Icons.Default.Memory
+                                WasmSampleMode.RAW_EXPORT -> Icons.Default.Code
+                                WasmSampleMode.COMPONENT_MODEL -> Icons.Default.AccountTree
+                            },
+                            contentDescription = mode.title,
+                            tint = if (selectedMode) Green else MutedInk,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = mode.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Ink,
+                            )
+                            Text(
+                                text = mode.protocol,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selectedMode) Green else MutedInk,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-// ─── Input Card ───────────────────────────────────────────────────────────────
-
 @Composable
-private fun InputCard(
-    report: WasmExecutionReport,
-    contentLabel: String,
-    artifactPath: String,
-    forceReload: Boolean,
-    freshMode: Boolean,
-    onContentChange: (String) -> Unit,
+private fun RequestPanel(
+    state: SampleScreenState,
     onArtifactPathChange: (String) -> Unit,
+    onContentChange: (String) -> Unit,
+    onRawValueChange: (String) -> Unit,
     onForceReloadChange: (Boolean) -> Unit,
     onFreshModeChange: (Boolean) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = White,
-        border = BorderStroke(1.dp, Slate200),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // ForceReload + FreshMode chips + file badge in same scrollable row
-            val badgeScroll = rememberScrollState()
-            Row(
-                modifier = Modifier.horizontalScroll(badgeScroll),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ForceReloadChip(checked = forceReload, onToggle = onForceReloadChange)
-                FreshModeChip(checked = freshMode, onToggle = onFreshModeChange)
-                val fileName = artifactPath
-                    .substringAfterLast('/').substringAfterLast('\\').ifBlank { "—" }
-                MetaBadge(label = "file", value = fileName)
-            }
-
-            // Payload content
-            FieldLabel(text = "Payload")
-            InlineTextField(
-                value = contentLabel,
-                onValueChange = onContentChange,
-                placeholder = "Describe the request payload",
-            )
-
-            // Artifact path
-            FieldLabel(text = "Artifact Path")
-            InlineTextField(
-                value = artifactPath,
-                onValueChange = onArtifactPathChange,
-                placeholder = "Path to .wasm / .pwasm file",
-                monospace = true,
-            )
-        }
-    }
-}
-
-@Composable
-private fun FieldLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = Slate500,
-        maxLines = 1,
-    )
-}
-
-@Composable
-private fun ForceReloadChip(checked: Boolean, onToggle: (Boolean) -> Unit) {
-    val bgColor = if (checked) Color(0xFFFFF7ED) else Slate100
-    val borderColor = if (checked) Color(0xFFFBBF24) else Slate200
-    val textColor = if (checked) Color(0xFF92400E) else Slate500
-    val dotColor = if (checked) Color(0xFFFBBF24) else Slate200
-    Surface(
-        onClick = { onToggle(!checked) },
-        shape = RoundedCornerShape(999.dp),
-        color = bgColor,
-        border = BorderStroke(1.dp, borderColor),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(modifier = Modifier.size(6.dp).background(dotColor, CircleShape))
-            Text(
-                text = "Force Reload",
-                style = MaterialTheme.typography.labelSmall,
-                color = textColor,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun FreshModeChip(checked: Boolean, onToggle: (Boolean) -> Unit) {
-    val bgColor = if (checked) Color(0xFFECFDF5) else Slate100
-    val borderColor = if (checked) Color(0xFF34D399) else Slate200
-    val textColor = if (checked) Color(0xFF065F46) else Slate500
-    val dotColor = if (checked) Color(0xFF10B981) else Slate200
-    Surface(
-        onClick = { onToggle(!checked) },
-        shape = RoundedCornerShape(999.dp),
-        color = bgColor,
-        border = BorderStroke(1.dp, borderColor),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(modifier = Modifier.size(6.dp).background(dotColor, CircleShape))
-            Text(
-                text = "Fresh Mode",
-                style = MaterialTheme.typography.labelSmall,
-                color = textColor,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun InlineTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    monospace: Boolean = false,
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = {
-            Text(
-                text = placeholder,
-                style = MaterialTheme.typography.bodySmall,
-                color = Slate500,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        singleLine = true,
         shape = RoundedCornerShape(8.dp),
-        textStyle = MaterialTheme.typography.bodySmall.copy(
-            fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
-            color = Slate900,
-        ),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Slate100,
-            unfocusedContainerColor = Slate100,
-            disabledContainerColor = Slate100,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-            cursorColor = Indigo600,
-            focusedTextColor = Slate900,
-            unfocusedTextColor = Slate900,
-        ),
-    )
-}
-
-// ─── Execute Button ───────────────────────────────────────────────────────────
-
-@Composable
-private fun ExecuteButton(isRunning: Boolean, onExecute: () -> Unit) {
-    Button(
-        onClick = onExecute,
-        enabled = !isRunning,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Slate900,
-            contentColor = White,
-            disabledContainerColor = Slate500,
-            disabledContentColor = White,
-        ),
-    ) {
-        Text(
-            text = if (isRunning) "Running..." else "Execute ->",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-    }
-}
-
-// ─── Metrics Row ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun MetricsRow(report: WasmExecutionReport) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        MetricCell(
-            modifier = Modifier.weight(1f),
-            label = "Load",
-            value = formatDuration(report.loadDurationMs)
-        )
-        MetricCell(
-            modifier = Modifier.weight(1f),
-            label = "Invoke",
-            value = formatDuration(report.invokeDurationMs)
-        )
-        MetricCell(
-            modifier = Modifier.weight(1f),
-            label = "Total",
-            value = formatDuration(report.totalDurationMs),
-            accent = Green500
-        )
-    }
-}
-
-@Composable
-private fun MetricCell(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    accent: Color = Slate900,
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = White,
-        border = BorderStroke(1.dp, Slate200),
+        color = PanelColor,
+        border = BorderStroke(1.dp, Border),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Slate500)
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = accent,
-            )
-        }
-    }
-}
-
-// ─── Console Card ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun ConsoleCard(
-    modifier: Modifier,
-    report: WasmExecutionReport,
-    previewPayload: PlatformBean,
-    activeTab: String,
-    onTabChange: (String) -> Unit,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = NavyDark,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // Tab bar + runtime status tag
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("Result", "Request", "Log").forEach { tab ->
-                        ConsoleTabChip(
-                            text = tab,
-                            selected = tab == activeTab,
-                            onClick = { onTabChange(tab) },
-                        )
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Request",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Ink,
+                    )
+                    Text(
+                        text = state.mode.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedInk,
+                    )
                 }
-                val (statusLabel, statusColor) = statusInfo(report)
-                ConsoleStatusTag(text = statusLabel, accent = statusColor)
+                Text(
+                    text = state.mode.defaultExport,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Purple,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
 
-            // Scrollable code area — weight(1f) so it fills the remaining console space
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                val hScroll = rememberScrollState()
-                val vScroll = rememberScrollState()
-                SelectionContainer(modifier = Modifier.fillMaxSize()) {
+            Field(
+                label = "Artifact",
+                value = state.artifactPath,
+                placeholder = "Path to .wasm, .pwasm, .cwasm, or .wlm",
+                monospace = true,
+                onValueChange = onArtifactPathChange,
+            )
+
+            if (state.mode == WasmSampleMode.RAW_EXPORT) {
+                Field(
+                    label = "i32 input",
+                    value = state.rawValue,
+                    placeholder = "21",
+                    monospace = true,
+                    onValueChange = onRawValueChange,
+                )
+            } else {
+                Field(
+                    label = "Content",
+                    value = state.content,
+                    placeholder = "hello",
+                    onValueChange = onContentChange,
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                SettingRow(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.Refresh,
+                    label = "Force reload",
+                    checked = state.forceReload,
+                    onCheckedChange = onForceReloadChange,
+                )
+                SettingRow(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.Schedule,
+                    label = "Fresh asset",
+                    checked = state.freshMode,
+                    onCheckedChange = onFreshModeChange,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Field(
+    label: String,
+    value: String,
+    placeholder: String,
+    onValueChange: (String) -> Unit,
+    monospace: Boolean = false,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(text = label, style = MaterialTheme.typography.labelMedium, color = MutedInk)
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = { Text(placeholder, color = MutedInk) },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = Ink,
+                fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
+            ),
+            shape = RoundedCornerShape(7.dp),
+        )
+    }
+}
+
+@Composable
+private fun SettingRow(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(icon, contentDescription = label, tint = MutedInk, modifier = Modifier.size(18.dp))
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = Ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun Metrics(report: WasmExecutionReport) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Metric(modifier = Modifier.weight(1f), label = "Load", value = formatDuration(report.loadDurationMs))
+        Metric(modifier = Modifier.weight(1f), label = "Invoke", value = formatDuration(report.invokeDurationMs))
+        Metric(modifier = Modifier.weight(1f), label = "Total", value = formatDuration(report.totalDurationMs))
+    }
+}
+
+@Composable
+private fun Metric(modifier: Modifier, label: String, value: String) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = PanelColor,
+        border = BorderStroke(1.dp, Border),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = MutedInk)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Ink,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResultPanel(
+    state: SampleScreenState,
+    onTabChange: (OutputTab) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = PanelColor,
+        border = BorderStroke(1.dp, Border),
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, top = 15.dp, end = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = state.report.headline,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Ink,
+                    )
+                    Text(
+                        text = state.report.detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedInk,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                StatusPill(
+                    label = state.report.mode.protocol,
+                    color = statusColor(state.report.status),
+                    icon = Icons.Default.Code,
+                )
+            }
+
+            TabRow(
+                selectedTabIndex = state.activeTab.ordinal,
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                OutputTab.entries.forEach { tab ->
+                    Tab(
+                        selected = state.activeTab == tab,
+                        onClick = { onTabChange(tab) },
+                        text = { Text(tab.name) },
+                    )
+                }
+            }
+
+            val content = when (state.activeTab) {
+                OutputTab.Result -> state.report.outputJson.ifBlank {
+                    state.report.errorMessage.ifBlank { "// no result yet\n${toJsonString(state.previewPayload)}" }
+                }
+
+                OutputTab.Request -> state.report.inputJson.ifBlank { toJsonString(state.previewPayload) }
+                OutputTab.Log -> state.report.consoleLog
+            }
+            SelectionContainer {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 210.dp),
+                    color = CodeBackground,
+                ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .horizontalScroll(hScroll)
-                            .verticalScroll(vScroll)
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(16.dp),
                     ) {
                         Text(
-                            text = resolveConsoleContent(report, previewPayload, activeTab),
-                            color = SkyBlue,
+                            text = content,
+                            color = CodeForeground,
                             fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            softWrap = false,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
                         )
                     }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = state.report.artifactName,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MutedInk,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "${state.report.loadModeLabel} / ${state.report.backendLabel}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MutedInk,
+                    maxLines = 1,
+                )
+                TextButton(onClick = { onTabChange(OutputTab.Log) }) {
+                    Text("View logs")
                 }
             }
         }
@@ -506,71 +542,47 @@ private fun ConsoleCard(
 }
 
 @Composable
-private fun ConsoleTabChip(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun StatusPill(
+    label: String,
+    color: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+) {
     Surface(
-        onClick = onClick,
         shape = RoundedCornerShape(999.dp),
-        color = if (selected) White.copy(alpha = 0.12f) else Color.Transparent,
-        border = BorderStroke(1.dp, if (selected) White.copy(alpha = 0.20f) else Color.Transparent),
+        color = color.copy(alpha = 0.10f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.25f)),
     ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) White else Slate500,
-            maxLines = 1,
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(15.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+                maxLines = 1,
+            )
+        }
     }
 }
 
 @Composable
-private fun ConsoleStatusTag(text: String, accent: Color) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = accent.copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.20f)),
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = accent,
-            maxLines = 1,
-        )
-    }
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MutedInk,
+        fontWeight = FontWeight.SemiBold,
+    )
 }
 
-// ─── Pure helpers ─────────────────────────────────────────────────────────────
-
-private fun OutputTab.displayName(): String = when (this) {
-    OutputTab.Result -> "Result"
-    OutputTab.Request -> "Request"
-    OutputTab.Log -> "Log"
-}
-
-private fun statusInfo(report: WasmExecutionReport): Pair<String, Color> = when (report.status) {
-    WasmExecutionStatus.Idle -> Pair("idle", Slate500)
-    WasmExecutionStatus.Running -> Pair("running", Green500)
-    WasmExecutionStatus.Success -> Pair("success", Green500)
-    WasmExecutionStatus.Failure -> Pair("error", Red500)
-}
-
-private fun resolveConsoleContent(
-    report: WasmExecutionReport,
-    previewPayload: PlatformBean,
-    activeTab: String,
-): String = when (activeTab) {
-    "Result" -> report.outputJson.ifBlank {
-        if (report.errorMessage.isNotBlank()) {
-            "// error\n${report.errorMessage}"
-        } else {
-            "// waiting for result\n// current request preview:\n${toJsonString(previewPayload)}"
-        }
-    }
-
-    "Request" -> report.inputJson.ifBlank { toJsonString(previewPayload) }
-    "Log" -> report.consoleLog
-    else -> report.outputJson.ifBlank { "// invalid tab" }
+private fun statusColor(status: WasmExecutionStatus): Color = when (status) {
+    WasmExecutionStatus.Idle -> MutedInk
+    WasmExecutionStatus.Running -> Amber
+    WasmExecutionStatus.Success -> Green
+    WasmExecutionStatus.Failure -> Coral
 }
 
 private fun formatDuration(ms: Long): String = when {

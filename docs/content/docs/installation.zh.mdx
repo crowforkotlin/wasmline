@@ -50,8 +50,8 @@ dependencies {
 | `crow.wasmline:wasmline-loader` | `WasmlineLoader`、`.wlm` 清单解析、Ed25519/ECDSA-P256 校验 |
 | `crow.wasmline:wasmline-network-ktor` | 基于 Ktor 的 HTTP 网络客户端（远程 manifest 加载） |
 | `crow.wasmline:wasmline-network-okhttp` | 基于 OkHttp 5.x 的 HTTP 网络客户端（JVM/Android） |
-| `crow.wasmline:wasmline-engine-pulley` | Pulley 后端——可移植字节码，覆盖所有原生目标 |
-| `crow.wasmline:wasmline-engine-cranelift` | Cranelift 后端——平台特定 AOT 机器码 |
+| `crow.wasmline:wasmline-engine-pulley` | 仅 Pulley 解释器——仅支持 `.pwasm`，覆盖所有原生目标 |
+| `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley 运行时——优先 `.cwasm`，回退 `.pwasm` |
 
 <Callout type="info" title="分发状态">
   Wasmline 目前处于开发阶段，构件通过 `mavenLocal()` 分发——在 `wasmline-multiplatform/` 下执行 `./gradlew publishToMavenLocal` 即可安装到本地仓库。Maven Central 发布正在筹备中。

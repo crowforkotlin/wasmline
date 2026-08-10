@@ -10,7 +10,7 @@
   - Payload unit: `ByteArray` — serialized via `WasmlineSerializationFactory`
   - Linear memory boundary: Kotlin process memory vs. Wasm sandbox linear memory
   - Cross-boundary encoding (Web): Base64 string via `BrowserPayloadEncoding`
-  - Artifact unit: raw `.wasm` (source) / `.cwasm` (AOT, platform-specific) / `.pwasm` (Pulley portable)
+  - Artifact unit: raw `.wasm` (source/browser) / `.cwasm` (Cranelift native AOT, platform-specific) / `.pwasm` (Cranelift-produced Pulley bytecode)
   - Distribution unit: `{name}-{version}.zip` — contains `.wlm` manifest + compiled artifact set
   - Execution isolation: per-`Session` linear memory region on native; browser sandbox on Web
 
@@ -38,7 +38,7 @@
 
 - wasmline-core (C/C++ · Zig 0.16.0)
   - Engine.cpp: Wasmtime Engine singleton — global init / shutdown
-  - Module.cpp: AOT and Pulley module compilation — keyed module cache
+  - Module.cpp: CWASM and PWASM deserialization — keyed module cache
   - Session.cpp: per-invocation isolated linear memory region — execution context lifecycle
   - Api.cpp: JNI / C Interop surface — load, invoke, setOutbound, release
 
@@ -78,7 +78,7 @@
   - WasmlineLoader: public loadWasmline(artifactPath) API
   - Manifest parsing: .wlm Protobuf decoding
   - Signature verification: Ed25519 and ECDSA-P256
-  - Artifact selection: .cwasm (target-specific) then .pwasm (portable fallback)
+  - Artifact selection: Cranelift runtime selects .cwasm first, then .pwasm; Pulley runtime selects .pwasm only; iOS is always .pwasm
 
 - wasmline-kotlin-plugin
   - WasmlineCompilerPluginRegistrar: Kotlin compiler plugin entry point
@@ -94,7 +94,7 @@
 - wasmline-cli
   - download: Wasmtime release binary download for target platforms
   - generate-key-pair: Ed25519 key pair generation
-  - compile: .wasm to .cwasm per target triple and .pwasm Pulley image
+  - compile: .wasm to Cranelift .cwasm per native target triple and matching-bitness .pwasm Pulley images
   - manifest: Protobuf manifest generation with Ed25519 signature
   - build: full pipeline orchestration — compile then manifest then zip
 
@@ -213,9 +213,9 @@
     - Output: raw .wasm binary
   - Compilation (wasmline-cli compile)
     - Input: raw .wasm
-    - Wasmtime C-API Module::serialize: produces platform-specific .cwasm per target triple
-    - Wasmtime Pulley backend: produces universal .pwasm bytecode image
-    - Output per target: {name}-{arch}-{os}.cwasm and {name}-pulley64.pwasm
+    - Wasmtime C-API Module::serialize: Cranelift produces platform-specific .cwasm per target triple
+    - Wasmtime Pulley target: Cranelift produces a universal .pwasm bytecode image for the Pulley interpreter
+    - Output per target: {name}-{arch}-{os}.cwasm plus {name}-pulley32.pwasm and {name}-pulley64.pwasm as needed
   - Manifest generation (wasmline-cli manifest)
     - Input: compiled artifact set
     - Protobuf encoding of manifest record
@@ -227,7 +227,7 @@
   - Loading (wasmline-loader loadWasmline)
     - manifest.wlm deserialized
     - Signature verified against embedded public key — rejection on tamper
-    - Artifact selected: .cwasm for current target triple then .pwasm fallback
+    - Artifact selected: .cwasm for current target triple then .pwasm fallback on Cranelift; .pwasm only on Pulley and iOS
     - Web: raw .wasm only — no manifest-based AOT loading
     - Output: WasmlineLoadState.Success(wasmline) or WasmlineLoadState.Failure(cause)
 

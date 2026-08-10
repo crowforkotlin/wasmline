@@ -28,15 +28,17 @@ Platform actual  (jniMain / iosMain)
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
         │  Engine.cpp   — wasmtime Engine singleton; global init / shutdown
-        │  Module.cpp   — AOT / Pulley module compilation; keyed module cache
+        │  Module.cpp   — CWASM / PWASM 反序列化；键控模块缓存
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context
         │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
         ▼
 wasmtime C-API  v47.0.2
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
-Core Wasmline binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
+Core Wasmline binary  (.cwasm — Cranelift 原生 AOT  |  .pwasm — Cranelift 生成的 Pulley 字节码)
 ```
+
+产物层与引擎层是两组独立能力。Cranelift Wasmtime 构建同时包含 Cranelift 编译器和 Pulley 解释器，因此可以加载匹配的 `.cwasm`，并在缺少时回退到 `.pwasm`。Pulley 引擎构建只包含 Pulley 解释器，仅接受 `.pwasm`。iOS 使用 Pulley 引擎，因此始终选择 `.pwasm`。
 
 ### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
 

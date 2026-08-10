@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: wasmline_multiplatform/wasmline_cli
-title: Wasmline CLI 工具链
-scope:
-    - wasmline-multiplatform/wasmline-cli/
-source_files: []
-depends_on: []
-related_to:
-    - path: wasmline_multiplatform/wasmline_gradle_plugin

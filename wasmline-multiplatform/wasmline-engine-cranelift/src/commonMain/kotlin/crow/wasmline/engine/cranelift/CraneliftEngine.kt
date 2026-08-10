@@ -5,12 +5,15 @@ package crow.wasmline.engine.cranelift
 /**
  * Marker object for the Cranelift engine variant.
  *
- * This module bundles the Cranelift JIT-compiled Wasmtime runtime as a leaf
- * dependency. It provides `libwasmtime` native libraries for 64-bit platforms
- * only (Android arm64-v8a / x86_64, JVM desktop, macOS, Windows).
+ * This module bundles the Wasmtime runtime built with the Cranelift compiler
+ * and Pulley support. It supports platform-specific `.cwasm` AOT artifacts and
+ * portable `.pwasm` artifacts; the loader prefers `.cwasm` and falls back to
+ * matching-bitness `.pwasm` when a matching native artifact is unavailable. It provides
+ * `libwasmtime` native libraries for 64-bit platforms only (Android arm64-v8a /
+ * x86_64, JVM desktop, macOS, Windows).
  *
- * Note: 32-bit Android (armeabi-v7a, x86) and iOS are NOT supported by Cranelift.
- * Use `wasmline-engine-pulley` for those platforms.
+ * Note: 32-bit Android (armeabi-v7a, x86) and iOS do not ship a Cranelift
+ * native runtime. Use `wasmline-engine-pulley` and `.pwasm` for those targets.
  *
  * Usage:
  * ```kotlin

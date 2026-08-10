@@ -33,6 +33,9 @@ class WasmlineRuntimeCapabilitiesTest {
             WasmlineNativeRuntimeInfo(
                 backend = WasmlineNativeBackend.CRANELIFT,
                 wasmtimeVersion = "47.0.2",
+                targetOs = "linux",
+                targetCpu = "x86_64",
+                is64Bit = true,
             ),
             host.nativeRuntimeInfo,
         )
