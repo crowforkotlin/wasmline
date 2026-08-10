@@ -46,10 +46,10 @@ cd wasmline-multiplatform
 build/wasmline/
 ├── output/{name}-{version}/
 │   ├── manifest.wlm                      # 已签名清单（Protobuf + Ed25519 签名）
-│   ├── {name}-pulley64.pwasm             # Pulley 可移植字节码 — 所有原生 wasmtime 目标
+│   ├── {name}-pulley32.pwasm             # 可移植 Pulley 字节码 — Android 32 位
+│   ├── {name}-pulley64.pwasm             # 可移植 Pulley 字节码 — 64 位原生目标与 iOS
 │   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
 │   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
-│   ├── {name}-aarch64-ios.cwasm          # AOT — iOS arm64
 │   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
 │   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
 │   └── debug/

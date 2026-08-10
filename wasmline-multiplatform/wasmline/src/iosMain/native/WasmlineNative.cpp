@@ -8,27 +8,31 @@
 #include "wasmline/api/Api.h"
 #include "wasmline/invocation/TypedInvocationCodec.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
+#include "wasmline/runtime/ComponentHostHandler.h"
 #include "wasmline/runtime/OutboundHandler.h"
+#include "logging/NativeLogger.h"
 #include <memory>
 #include <string>
 #include <cstring>
-#include <iostream>
+#include <vector>
 
 using namespace wasmline;
 
 /** Forwards outbound calls to the Kotlin callback. */
 class IosOutboundHandler : public OutboundHandler {
 private:
+    std::string key;
     OutboundCallback kotlinCallback;
 public:
     /** Creates a handler for the Kotlin callback. */
-    IosOutboundHandler(OutboundCallback callback) : kotlinCallback(callback) {}
+    IosOutboundHandler(std::string key, OutboundCallback callback) : key(std::move(key)), kotlinCallback(callback) {}
 
     /** Sends an outbound call to Kotlin. */
     std::string onOutboundInvoke(std::string_view action, std::string_view payload) override {
         if (kotlinCallback) {
             size_t resultLength = 0;
-            char* resultRaw = kotlinCallback(action.data(), action.length(), payload.data(), payload.length(), &resultLength);
+            char* resultRaw = kotlinCallback(key.data(), key.length(), action.data(), action.length(), payload.data(), payload.length(),
+                                             &resultLength);
             if (resultRaw != nullptr) {
                 std::string result(resultRaw, resultLength);
                 free(resultRaw);
@@ -40,6 +44,60 @@ public:
             "No Wasmline outbound action is bound.");
     }
 };
+
+/** Forwards typed Component host imports to the Kotlin callback. */
+class IosComponentHostHandler : public ComponentHostHandler {
+private:
+    std::string key;
+    ComponentHostCallback kotlinCallback;
+
+public:
+    /** Creates a handler for one Kotlin typed Component callback. */
+    IosComponentHostHandler(std::string key, ComponentHostCallback callback)
+        : key(std::move(key)), kotlinCallback(callback) {}
+
+    /** Sends one typed Component import to Kotlin and decodes its response. */
+    InvocationResult onComponentHostInvoke(std::string_view interfaceName, std::string_view functionName,
+                                           const std::vector<ComponentValue>& arguments) override {
+        if (!kotlinCallback) {
+            return InvocationResult::failure(WasmlineErrorCode::HANDLER_FAILED,
+                                              "Wasmline iOS typed Component callback is not initialized.");
+        }
+
+        const std::vector<uint8_t> encodedArguments = TypedInvocationCodec::encodeComponentArguments(arguments);
+        if (encodedArguments.empty()) {
+            return InvocationResult::failure(WasmlineErrorCode::INVALID_PAYLOAD,
+                                              "Typed Component host arguments cannot be encoded for iOS.");
+        }
+
+        size_t responseLength = 0;
+        const char* argumentData = reinterpret_cast<const char*>(encodedArguments.data());
+        char* responseData = kotlinCallback(key.data(), key.size(), interfaceName.data(), interfaceName.size(), functionName.data(),
+                                             functionName.size(), argumentData, encodedArguments.size(), &responseLength);
+        if (!responseData) {
+            return InvocationResult::failure(WasmlineErrorCode::ACTION_NOT_BOUND,
+                                              "No typed Component host adapter is bound.");
+        }
+
+        std::string response(responseData, responseLength);
+        free(responseData);
+
+        InvocationResult result = InvocationResult::failure(WasmlineErrorCode::RESPONSE_MALFORMED,
+                                                              "Typed Component host response is malformed.");
+        std::string decodeError;
+        if (!TypedInvocationCodec::decodeComponentResult(response, &result, &decodeError)) {
+            return InvocationResult::failure(WasmlineErrorCode::RESPONSE_MALFORMED,
+                                              decodeError.empty() ? "Typed Component host response is malformed." : decodeError);
+        }
+        return result;
+    }
+};
+
+static bool requireIosPulleyArtifactFormat(WasmlineArtifactFormat artifactFormat) {
+    if (artifactFormat == WasmlineArtifactFormat::PWASM) return true;
+    LOGE("[Wasmline] iOS --> Only PWASM native artifacts are supported: %d", static_cast<int>(artifactFormat));
+    return false;
+}
 
 extern "C" {
 
@@ -55,19 +113,54 @@ void wasmline_release_engine() {
     Api::releaseEngine();
 }
 
-bool wasmline_load_module(const char* key, const char* path, bool isUnsafe) {
-    if (isUnsafe) {
-        return Api::loadModuleUnsafe(std::string(key), std::string(path));
-    } else {
-        return Api::loadModule(std::string(key), std::string(path));
-    }
+const char* wasmline_wasmtime_version() {
+    return Api::wasmtimeVersion();
 }
 
-bool wasmline_load_component(const char* key, const char* path, bool isUnsafe) {
-    if (isUnsafe) {
-        return Api::loadComponentUnsafe(std::string(key), std::string(path));
+bool wasmline_supports_cranelift() {
+    return Api::supportsCranelift();
+}
+
+bool wasmline_supports_pulley() {
+    return Api::supportsPulley();
+}
+
+bool wasmline_load_module(const char*, const char*, bool) {
+    LOGE("[Wasmline] iOS --> Native artifact loading requires an explicit format.");
+    return false;
+}
+
+bool wasmline_load_module_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe) {
+    WasmlineArtifactFormat artifactFormat;
+    if (!Api::tryArtifactFormatFromCode(formatCode, &artifactFormat)) {
+        LOGE("[Wasmline] iOS --> Invalid native artifact format code: %d", static_cast<int>(formatCode));
+        return false;
     }
-    return Api::loadComponent(std::string(key), std::string(path));
+    if (!requireIosPulleyArtifactFormat(artifactFormat)) return false;
+    if (!key || !path) return false;
+    if (isUnsafe) {
+        return Api::loadModuleUnsafe(std::string(key), std::string(path), artifactFormat);
+    }
+    return Api::loadModule(std::string(key), std::string(path), artifactFormat);
+}
+
+bool wasmline_load_component(const char*, const char*, bool) {
+    LOGE("[Wasmline] iOS --> Native artifact loading requires an explicit format.");
+    return false;
+}
+
+bool wasmline_load_component_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe) {
+    WasmlineArtifactFormat artifactFormat;
+    if (!Api::tryArtifactFormatFromCode(formatCode, &artifactFormat)) {
+        LOGE("[Wasmline] iOS --> Invalid native artifact format code: %d", static_cast<int>(formatCode));
+        return false;
+    }
+    if (!requireIosPulleyArtifactFormat(artifactFormat)) return false;
+    if (!key || !path) return false;
+    if (isUnsafe) {
+        return Api::loadComponentUnsafe(std::string(key), std::string(path), artifactFormat);
+    }
+    return Api::loadComponent(std::string(key), std::string(path), artifactFormat);
 }
 
 
@@ -168,9 +261,16 @@ void wasmline_free_memory(char* str) {
     if (str) free(str);
 }
 
-void wasmline_set_outbound_handler(const char* key, OutboundCallback callback) {
-    std::unique_ptr<OutboundHandler> handler(new IosOutboundHandler(callback));
-    Api::setOutboundHandler(std::string(key), std::move(handler));
+void wasmline_set_outbound_handler(const char* key, const char* codec, OutboundCallback callback) {
+    if (!key) return;
+    std::unique_ptr<OutboundHandler> handler(new IosOutboundHandler(key, callback));
+    Api::setOutboundHandler(std::string(key), codec ? std::string(codec) : std::string(), std::move(handler));
+}
+
+bool wasmline_set_component_host_handler(const char* key, ComponentHostCallback callback) {
+    if (!key || !callback) return false;
+    std::unique_ptr<ComponentHostHandler> handler(new IosComponentHostHandler(key, callback));
+    return Api::setComponentHostHandler(std::string(key), std::move(handler));
 }
 
 }

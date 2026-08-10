@@ -58,6 +58,10 @@ object WasmlineLoader {
     /**
      * Load a Wasmline module from the given source.
      *
+     * [WasmlineSource.LocalArtifactPath] is caller-trusted direct input. Package
+     * sources use the built-in verified package pipeline unless a caller supplies
+     * a custom resolver.
+     *
      * @param source Where to load from (local file, local package, or remote URL).
      * @param config Unified configuration for runtime, network, cache, and trusted keys.
      * @return [WasmlineLoadResult.Success] with a [Wasmline] instance, or [WasmlineLoadResult.Failure].
@@ -68,7 +72,11 @@ object WasmlineLoader {
     }
 
     /**
-     * Load an artifact with an explicit execution model and invocation protocol.
+     * Load a direct caller-trusted artifact with an explicit execution model and
+     * invocation protocol.
+     *
+     * This overload does not parse or verify a package manifest. Native AOT
+     * format and compatibility validation still applies.
      */
     fun load(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult =
         load(WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor), config)
@@ -77,8 +85,14 @@ object WasmlineLoader {
      * Load a Wasmline module by auto-detecting the source type from the input string.
      *
      * - Starts with `http://` or `https://` → [WasmlineSource.RemoteManifestUrl]
-     * - Ends with `.pwasm`, `.cwasm`, or `.wasm` → [WasmlineSource.LocalArtifactPath]
-     * - Otherwise → [WasmlineSource.LocalManifestPath]
+     * - Ends with `.pwasm`, `.cwasm`, or `.wasm` → caller-trusted
+     *   [WasmlineSource.LocalArtifactPath]
+     * - Otherwise → [WasmlineSource.LocalManifestPath] through the built-in
+     *   verified package pipeline
+     *
+     * Suffix detection is not a trust decision. Pass a direct artifact path
+     * only when the caller has already trusted it out of band; use a manifest
+     * path or URL for signed package loading.
      */
     fun load(source: String, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult {
         val input = source.trim()

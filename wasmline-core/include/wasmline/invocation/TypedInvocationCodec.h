@@ -30,6 +30,12 @@ namespace wasmline {
         /** Decodes Component Model arguments. */
         static bool decodeComponentArguments(std::string_view input, std::vector<ComponentValue>* values, std::string* error);
 
+        /** Encodes Component Model arguments for a typed host callback. */
+        static std::vector<uint8_t> encodeComponentArguments(const std::vector<ComponentValue>& values);
+
+        /** Decodes a typed Component host callback result. */
+        static bool decodeComponentResult(std::string_view input, InvocationResult* result, std::string* error);
+
         /** Encodes an invocation result for the selected value kind. */
         static std::vector<uint8_t> encodeResult(const InvocationResult& result, TypedInvocationKind kind);
     };

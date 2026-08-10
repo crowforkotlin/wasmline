@@ -22,34 +22,47 @@ payload 数据以 Base64 编码字符串跨越 Kotlin–JS 线性内存边界（
 <details>
 <summary><strong><code>.cwasm</code> 与 <code>.pwasm</code> 产物有什么区别——为什么不用原始 <code>.wasm</code>？</strong></summary>
 
-这三种产物类型都与 wasmtime 有关，但它们在**编译发生的时机**以及**编译目标**上有根本区别：
+这三种产物类型在 Wasmline 流水线中相关，但它们在**编译发生的时机**以及**编译目标**上有根本区别：
 
 | 产物 | 编译时机 | 执行方式 | 版本关联性 |
 |---|---|---|---|
-| `.wasm` | 在加载时（JIT）由宿主 wasmtime 编译 | Cranelift → 原生代码或 Pulley，取决于配置 | **无 — 与所有 wasmtime 版本兼容** |
+| `.wasm` | 源格式；仅由浏览器路径直接加载 | 浏览器 WebAssembly 运行时 | **无 — 不与 Wasmtime 版本绑定** |
 | `.cwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | 直接在原生硬件上执行（例如 arm64 machine code） | 与编译它的 wasmtime 版本关联 |
 | `.pwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | wasmtime **Pulley** 解释器 | 与编译它的 wasmtime 版本关联 |
 
 **`.cwasm`（平台特定 AOT）** 会为特定 target triple（例如 `aarch64-android`）生成原生机器码。吞吐量最高；但每个平台都需要单独产物。
 
-**`.pwasm`（Pulley AOT）** 与 `.cwasm` 一样，都是通过相同的 Cranelift 流水线编译而来，但其目标不是原生机器码，而是 wasmtime 的 **Pulley** 字节码 ISA，运行时再由 Pulley 解释器执行。关键在于，`.pwasm` **不是**把原始 `.wasm` 文件交给解释器运行——它是一个完整的、由 Cranelift 预编译得到的产物，与 `.cwasm` 走的是相同编译路径，只是目标后端不同。由于 Pulley ISA 与平台无关，单个 `.pwasm` 产物可以在所有原生 wasmtime 目标上运行。
+**`.pwasm`（Pulley AOT）** 与 `.cwasm` 一样，都是通过相同的 Cranelift 流水线编译而来，但其目标不是原生机器码，而是 wasmtime 的 **Pulley** 字节码 ISA，运行时再由 Pulley 解释器执行。关键在于，`.pwasm` **不是**把原始 `.wasm` 文件交给解释器运行——它是一个完整的、由 Cranelift 预编译得到的产物，与 `.cwasm` 走的是相同编译路径，只是目标后端不同。`pulley64.pwasm` 可在所有 64 位原生 wasmtime 目标上运行；32 位目标使用匹配的 `pulley32.pwasm`。
 
-由于 `.wasm` 会在加载时由宿主正在使用的 wasmtime 版本即时编译，因此它没有版本依赖。`.cwasm` 与 `.pwasm` 都是某个特定 wasmtime 发行版的预编译输出——升级 wasmtime 后，这些产物会失效，必须重新编译。
+原始 `.wasm` 只有浏览器路径可以直接接受。Wasmline 原生运行时要求预编译的 `.cwasm` 或 `.pwasm`；这两者都是特定 wasmtime 发行版的输出，因此升级 wasmtime 后会失效，必须重新编译。
 
-尽管 Pulley 解释器也可以在运行时加载并 JIT 编译原始 `.wasm`，但在 Android 这类内存受限环境中更推荐 `.pwasm`：进程内编译步骤会带来显著更高的内存开销。
+Wasmline 原生运行时不会通过 Pulley 引擎加载原始 `.wasm`。必须提前生成 `.pwasm`，让 Pulley 解释器直接执行预编译字节码，避免进程内编译步骤；这对 Android 这类内存受限环境尤其重要。
 
 <Callout type="info" title="版本绑定">
-  `.cwasm` 与 `.pwasm` 都**与生成它们的 wasmtime 编译器版本绑定**。一旦升级 wasmtime 版本，所有已编译产物都会失效，必须重新编译。正因如此，除 Web 外的所有原生目标都使用预编译的 `.cwasm` 或 `.pwasm`，而不是原始 `.wasm`。Web 是唯一的例外，它依赖浏览器自身的 WebAssembly 运行时并使用原始 `.wasm` 文件。
+`.cwasm` 与 `.pwasm` 都**与生成它们的 wasmtime 编译器版本绑定**。一旦升级 wasmtime 版本，所有已编译产物都会失效，必须重新编译。正因如此，除 Web 外的所有原生目标都使用预编译的 `.cwasm` 或 `.pwasm`，而不是原始 `.wasm`。Web 是唯一的例外，它依赖浏览器自身的 WebAssembly 运行时并使用原始 `.wasm` 文件。
 </Callout>
+
+</details>
+
+<details>
+<summary><strong>哪个引擎模块应该加载哪种产物？</strong></summary>
+
+| 引擎模块 | 支持的产物 | 选择策略 |
+|---|---|---|
+| `wasmline-engine-cranelift` | `.cwasm` 和 `.pwasm` | 优先匹配的 `.cwasm`，缺少时回退到可移植 `.pwasm` |
+| `wasmline-engine-pulley` | 仅 `.pwasm` | 通过 Pulley 解释器执行可移植字节码 |
+| iOS 运行时 | 仅 `.pwasm` | iOS 只能使用 Pulley 解释器，不能加载原生可执行 AOT |
+
+引擎模块名称与产物格式不是一一对应的：Cranelift 是生成两种 AOT 格式的编译器；Pulley 是 `.pwasm` 使用的字节码 ISA 和解释器。Cranelift Wasmtime 构建同时包含两种能力；仅 Pulley 构建只包含 Pulley 能力。
 
 </details>
 
 <details>
 <summary><strong>Core Wasm、Raw Export 和 Component Model 调用有什么区别？</strong></summary>
 
-对于使用 action 名称和字节 payload 的 Wasmline 服务模块，使用 `CORE_WASM` 与 `WASMLINE_CORE_V1`。对于具有明确数值 export ABI 的 Core Wasm 模块，使用 `CORE_WASM` 与 `RAW_EXPORT`。对于完整的 component binary 和 Component Model typed value，使用 `COMPONENT_MODEL` 与 `COMPONENT_EXPORT`。
+对于使用 action 名称和字节 payload 的 Wasmline 服务模块，使用 `CORE_WASM` 与 `WASMLINE_CORE`。对于具有明确数值 export ABI 的 Core Wasm 模块，使用 `CORE_WASM` 与 `RAW_EXPORT`。对于完整的 component binary 和 Component Model typed value，使用 `COMPONENT_MODEL` 与 `COMPONENT_EXPORT`。
 
-Component Model 路径的输入是已经编译完成的 component binary。Wasmline 不编译 WIT 或 WIT-Kotlin，不运行 `wit-bindgen`，也不生成 component adapter。可选的 `contractMetadata` 用于描述 export 契约，不是 WIT 编译器的输入。
+运行时 Component Model 路径的输入是已经编译完成的 component binary。加载时不会运行 `wit-bindgen` 或生成 adapter；可选的 plugin 构建流水线可以通过 plugin-core、Gradle 和 CLI 在加载前完成 WIT 绑定与 Component 组装。`contractMetadata` 仍然只是描述 export 契约，不是 WIT 编译器的输入。详见 [Component RPC 指南](/zh/docs/component-rpc)。
 
 </details>
 

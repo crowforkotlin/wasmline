@@ -61,7 +61,7 @@ class ManifestSigner {
         homePageUrl: String? = null,
         metadata: Map<String, String> = emptyMap(),
         executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
-        invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE_V1,
+        invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
         exportName: String? = null,
         contractMetadata: Map<String, String> = emptyMap(),
         logger: (String) -> Unit = {},
@@ -80,7 +80,7 @@ class ManifestSigner {
                 executionModel = executionModel,
                 invocationProtocol = invocationProtocol,
                 exportName = exportName,
-                contractMetadata = contractMetadata,
+                contractMetadata = artifact.contractMetadata + contractMetadata,
             )
         }
         val manifest = WasmlineManifest(

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <shared_mutex>
 #include <string>
@@ -16,9 +17,11 @@
 #include <vector>
 
 #include "wasmline/invocation/InvocationResult.h"
+#include "wasmline/runtime/WasmlineArtifactFormat.h"
 
 namespace wasmline {
     class ComponentSession;
+    class ComponentHostHandler;
     class OutboundHandler;
     class RawModuleSession;
     class Session;
@@ -35,10 +38,22 @@ namespace wasmline {
         /** Returns whether this build includes the Wasmtime compiler. */
         static bool supportsAot();
 
+        /** Returns the exact linked Wasmtime version. */
+        static const char* wasmtimeVersion();
+
+        /** Returns whether the linked runtime supports Cranelift artifacts. */
+        static bool supportsCranelift();
+
+        /** Returns whether the linked runtime supports Pulley artifacts. */
+        static bool supportsPulley();
+
         /** Releases the global engine, artifacts, and sessions. */
         static void releaseEngine();
 
-        /** Loads a Core Wasm artifact.
+        /** Converts a stable native bridge code to a physical artifact format. */
+        static bool tryArtifactFormatFromCode(int32_t formatCode, WasmlineArtifactFormat* format);
+
+        /** Legacy Core artifact load entrypoint. It fails because native loading requires an explicit format.
          *
          * @param key Artifact identifier.
          * @param path Artifact file path.
@@ -46,10 +61,16 @@ namespace wasmline {
          */
         static bool loadModule(const std::string& key, const std::string& path);
 
-        /** Loads a Core Wasm artifact without cache synchronization. */
+        /** Loads a Core Wasm artifact with an explicit physical format. */
+        static bool loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
+
+        /** Legacy Core artifact load entrypoint without cache synchronization. It fails without an explicit format. */
         static bool loadModuleUnsafe(const std::string& key, const std::string& path);
 
-        /** Loads a Component Model artifact.
+        /** Loads a Core Wasm artifact with an explicit format without cache synchronization. */
+        static bool loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
+
+        /** Legacy Component artifact load entrypoint. It fails because native loading requires an explicit format.
          *
          * @param key Artifact identifier.
          * @param path Component file path.
@@ -57,8 +78,14 @@ namespace wasmline {
          */
         static bool loadComponent(const std::string& key, const std::string& path);
 
-        /** Loads a Component Model artifact without cache synchronization. */
+        /** Loads a Component Model artifact with an explicit physical format. */
+        static bool loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
+
+        /** Legacy Component artifact load entrypoint without cache synchronization. It fails without an explicit format. */
         static bool loadComponentUnsafe(const std::string& key, const std::string& path);
+
+        /** Loads a Component Model artifact with an explicit format without cache synchronization. */
+        static bool loadComponentUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
 
         /** Releases an artifact and its associated sessions. */
         static void releaseModule(const std::string& key);
@@ -81,11 +108,14 @@ namespace wasmline {
         static InvocationResult invokeComponent(const std::string& key, std::string_view exportName,
                                                 const std::vector<ComponentValue>& arguments);
 
-        /** Sets the host handler for outbound calls. */
-        static void setOutboundHandler(const std::string& key, std::unique_ptr<OutboundHandler> handler);
+        /** Sets the host handler and serialization codec for outbound calls. */
+        static void setOutboundHandler(const std::string& key, std::string codec, std::unique_ptr<OutboundHandler> handler);
+
+        /** Installs a typed host handler before a new Component session is initialized. */
+        static bool setComponentHostHandler(const std::string& key, std::unique_ptr<ComponentHostHandler> handler);
 
     private:
-        static void ensureEngineForArtifact(const std::string& path);
+        static void ensureEngineForArtifact(WasmlineArtifactFormat artifactFormat, const std::string& path);
 
         /** Returns the cached Core Wasm session or creates it. */
         static Session* getOrCreateSession(const std::string& key);

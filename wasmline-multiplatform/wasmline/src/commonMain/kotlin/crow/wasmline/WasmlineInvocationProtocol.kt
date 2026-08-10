@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class WasmlineInvocationProtocol {
-    WASMLINE_CORE_V1,
+    WASMLINE_CORE,
     COMPONENT_EXPORT,
     RAW_EXPORT,
 }

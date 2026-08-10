@@ -36,6 +36,7 @@ kotlin {
 // Repo root: wasmline-samples/kotlin -> wasmline-samples -> wasmline
 val repoRoot = rootDir.parentFile.parentFile
 val wasmtimeVersion = providers.gradleProperty("wasmtime.version").orElse("47.0.2").get()
+val configuredWasmtimeRoot = System.getenv("WASMTIME_ROOT")
 val defaultCwasmTarget = when {
     System.getProperty("os.name").lowercase().contains("mac") &&
         System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-macos"
@@ -64,7 +65,7 @@ wasmline {
         signingKey = file("../keys/private.key")
     }
     wasmtime {
-        directory = file("$repoRoot/build/wasmline/wasmtime")
+        directory = file(configuredWasmtimeRoot ?: "$repoRoot/build/wasmline/wasmtime")
         autoDownload = true
         version = "v$wasmtimeVersion"
         targets = wasmtimeTargets

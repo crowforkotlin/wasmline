@@ -21,8 +21,11 @@ public:
     /** Dispatches an outbound call to Java. */
     std::string onOutboundInvoke(std::string_view action, std::string_view payload) override;
 
+    /** Reports whether the Java dispatcher and its method were resolved. */
+    bool isValid() const noexcept;
+
 private:
-    JavaVM* jvm;
-    jobject javaDispatcherRef;
-    jmethodID dispatchMethodId;
+    JavaVM* jvm = nullptr;
+    jobject javaDispatcherRef = nullptr;
+    jmethodID dispatchMethodId = nullptr;
 };

@@ -7,30 +7,20 @@
 
 #include "wasmline/runtime/Module.h"
 
-#include <algorithm>
-#include <cctype>
-#include <vector>
-
 #include "cache/ArtifactCache.h"
-#include "io/FileIO.h"
 #include "logging/NativeLogger.h"
 #include "wasmtime/WasmtimeMessage.h"
+#include "wasmline/runtime/AotLoadPathDiagnostics.h"
 #include "wasmline/runtime/Engine.h"
+
+// Native Core loading is deserialize-only. Any future raw compiler call fails closed and is observable in diagnostics.
+#define wasmtime_module_new(...) ::wasmline::AotLoadPathDiagnostics::rejectModuleNew(__VA_ARGS__)
 
 namespace wasmline {
     class Module::Impl {
     public:
         cache::ArtifactCache<wasmtime_module_t> cache{wasmtime_module_delete};
     };
-
-    namespace {
-        bool hasSuffixIgnoreCase(const std::string& value, const std::string& suffix) {
-            if (value.size() < suffix.size()) return false;
-            return std::equal(suffix.rbegin(), suffix.rend(), value.rbegin(), [](char lhs, char rhs) {
-                return std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs));
-            });
-        }
-    } // namespace
 
     Module::Module() : impl_(std::make_unique<Impl>()) {}
 
@@ -51,37 +41,25 @@ namespace wasmline {
      * @return Compiled module or nullptr.
      * @note The cache lock is not held while the artifact is compiled.
      */
-    wasmtime_module_t* Module::compileInternal(const std::string& key, const std::string& filePath) {
+    wasmtime_module_t* Module::compileInternal(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat) {
+        if (artifactFormat == WasmlineArtifactFormat::RAW_WASM) {
+            LOGE("[Wasmtime] Module --> Raw Core Wasm is not accepted on native. Precompile to CWASM/PWASM: %s", filePath.c_str());
+            return nullptr;
+        }
+        if (artifactFormat != WasmlineArtifactFormat::CWASM && artifactFormat != WasmlineArtifactFormat::PWASM) {
+            LOGE("[Wasmtime] Module --> Unsupported artifact format for %s", filePath.c_str());
+            return nullptr;
+        }
+
         wasm_engine_t* engine = Engine::getInstance().getEngine();
         if (!engine) {
             LOGE("[Wasmtime] Module --> Engine not initialized.");
             return nullptr;
         }
 
-        const bool rawWasm = hasSuffixIgnoreCase(filePath, ".wasm");
-
         wasmtime_module_t* module = nullptr;
-        wasmtime_error_t* error = nullptr;
-
-        if (rawWasm) {
-#ifdef WASMTIME_FEATURE_COMPILER
-            std::vector<uint8_t> data = io::readFile(filePath);
-            if (data.empty()) {
-                LOGE("[Wasmtime] Module --> Failed to read file: %s", filePath.c_str());
-                return nullptr;
-            }
-
-            LOGI("[Wasmtime] Module --> Compiling raw wasm module for %s", filePath.c_str());
-            error = wasmtime_module_new(engine, reinterpret_cast<const uint8_t*>(data.data()), data.size(), &module);
-#else
-            LOGE("[Wasmtime] Module --> Raw wasm compilation not available (no compiler). Use precompiled .pwasm artifacts. file=%s",
-                 filePath.c_str());
-            return nullptr;
-#endif
-        } else {
-            LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
-            error = wasmtime_module_deserialize_file(engine, filePath.c_str(), &module);
-        }
+        LOGI("[Wasmtime] Module --> Deserializing precompiled artifact for %s", filePath.c_str());
+        wasmtime_error_t* error = wasmtime_module_deserialize_file(engine, filePath.c_str(), &module);
 
         if (error) {
             LOGE("[Wasmtime] Module --> Error loading module %s: %s", key.c_str(), wasmtime::errorMessage(error).c_str());
@@ -89,19 +67,34 @@ namespace wasmline {
             return nullptr;
         }
 
+        AotLoadPathDiagnostics::recordCoreDeserializeSuccess();
         return module;
     }
 
-    wasmtime_module_t* Module::load(const std::string& key, const std::string& filePath) {
-        wasmtime_module_t* module = impl_->cache.load(
-            key, filePath, [this](const std::string& loadKey, const std::string& path) { return compileInternal(loadKey, path); });
+    wasmtime_module_t* Module::load(const std::string&, const std::string& filePath) {
+        LOGE("[Wasmtime] Module --> Explicit artifact format is required: %s", filePath.c_str());
+        return nullptr;
+    }
+
+    wasmtime_module_t* Module::load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat) {
+        wasmtime_module_t* module =
+            impl_->cache.load(key, filePath, [this, artifactFormat](const std::string& loadKey, const std::string& path) {
+                return compileInternal(loadKey, path, artifactFormat);
+            });
         if (module) LOGI("[Wasmtime] Module --> Loaded and cached: %s", key.c_str());
         return module;
     }
 
-    wasmtime_module_t* Module::loadUnsafe(const std::string& key, const std::string& filePath) {
-        wasmtime_module_t* module = impl_->cache.loadUnsafe(
-            key, filePath, [this](const std::string& loadKey, const std::string& path) { return compileInternal(loadKey, path); });
+    wasmtime_module_t* Module::loadUnsafe(const std::string&, const std::string& filePath) {
+        LOGE("[Wasmtime] Module --> Explicit artifact format is required: %s", filePath.c_str());
+        return nullptr;
+    }
+
+    wasmtime_module_t* Module::loadUnsafe(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat) {
+        wasmtime_module_t* module =
+            impl_->cache.loadUnsafe(key, filePath, [this, artifactFormat](const std::string& loadKey, const std::string& path) {
+                return compileInternal(loadKey, path, artifactFormat);
+            });
         if (module) LOGI("[Wasmtime] Module (Unsafe) --> Loaded and cached: %s", key.c_str());
         return module;
     }

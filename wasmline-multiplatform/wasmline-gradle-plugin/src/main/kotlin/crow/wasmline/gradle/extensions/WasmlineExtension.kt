@@ -52,6 +52,9 @@ open class WasmlineExtension @Inject constructor(project: Project) {
     /** Wasmtime AOT compiler configuration. */
     val wasmtime: WasmtimeExtension = objects.newInstance(WasmtimeExtension::class.java)
 
+    /** WIT and Component Model build configuration. */
+    val component: ComponentExtension = objects.newInstance(ComponentExtension::class.java, project)
+
     /** HTTP server configuration for the deployment task. */
     val server: ServerExtension = objects.newInstance(ServerExtension::class.java)
 
@@ -69,6 +72,11 @@ open class WasmlineExtension @Inject constructor(project: Project) {
     /** Configure the [wasmtime] block. */
     fun wasmtime(action: WasmtimeExtension.() -> Unit) {
         wasmtime.action()
+    }
+
+    /** Configure the [component] block. */
+    fun component(action: ComponentExtension.() -> Unit) {
+        component.action()
     }
 
     /** Configure the [server] block. */

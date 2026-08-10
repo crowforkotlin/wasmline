@@ -29,6 +29,43 @@ internal object WasmlineTypedInvocationCodec {
         values.forEach { writeComponentValue(writer, it, 0) }
     }
 
+    fun decodeComponentArguments(bytes: ByteArray): WasmlineCallResult<List<WasmlineComponentValue>> {
+        val reader = Reader(bytes)
+        val count = reader.count() ?: return reader.failure()
+        val values = ArrayList<WasmlineComponentValue>(count.toInt())
+        repeat(count.toInt()) {
+            values += readComponentValue(reader, 0) ?: return reader.failure()
+        }
+        if (!reader.isAtEnd()) return malformed("Component invocation payload has trailing bytes.")
+        return WasmlineCallResult.Success(values)
+    }
+
+    fun encodeComponentResult(result: WasmlineCallResult<List<WasmlineComponentValue>>): WasmlineCallResult<ByteArray> {
+        val writer = Writer()
+        when (result) {
+            is WasmlineCallResult.Success -> {
+                writer.byte(STATUS_SUCCESS)
+                writer.byte(COMPONENT_KIND)
+                writer.u32(0)
+                writer.string("")
+                writer.bytes(ByteArray(0))
+                writer.count(result.value.size)
+                result.value.forEach { writeComponentValue(writer, it, 0) }
+            }
+
+            is WasmlineCallResult.Failure -> {
+                writer.byte(STATUS_FAILURE)
+                writer.byte(COMPONENT_KIND)
+                writer.u32(result.error.rawCode.toLong() and 0xFFFF_FFFFL)
+                writer.string(result.error.message)
+                writer.bytes(result.error.details ?: ByteArray(0))
+                writer.count(0)
+            }
+        }
+        val error = writer.error
+        return if (error == null) WasmlineCallResult.Success(writer.toByteArray()) else malformed(error)
+    }
+
     fun decodeRawResult(bytes: ByteArray): WasmlineCallResult<WasmlineRawCallResult> {
         val reader = Reader(bytes)
         val header = readHeader(reader, RAW_KIND) ?: return reader.failure()
@@ -403,6 +440,15 @@ internal object WasmlineTypedInvocationCodec {
             }
             u32(bytes.size.toLong())
             raw(bytes)
+        }
+
+        fun bytes(value: ByteArray) {
+            if (value.size.toLong() > MAX_STRING_SIZE) {
+                fail("Typed invocation details are too large.")
+                return
+            }
+            u32(value.size.toLong())
+            raw(value)
         }
 
         private fun raw(value: ByteArray) {

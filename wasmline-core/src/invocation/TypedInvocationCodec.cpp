@@ -8,7 +8,6 @@
 #include "wasmline/invocation/TypedInvocationCodec.h"
 
 #include <cstring>
-#include <limits>
 #include <memory>
 #include <utility>
 
@@ -65,9 +64,13 @@ namespace wasmline {
         /** Writes the bounded native invocation encoding. */
         class Writer {
         public:
-            void byte(uint8_t value) { data_.push_back(value); }
+            void byte(uint8_t value) {
+                if (!valid_) return;
+                data_.push_back(value);
+            }
 
             void u32(uint32_t value) {
+                if (!valid_) return;
                 data_.push_back(static_cast<uint8_t>(value & 0xFFu));
                 data_.push_back(static_cast<uint8_t>((value >> 8) & 0xFFu));
                 data_.push_back(static_cast<uint8_t>((value >> 16) & 0xFFu));
@@ -75,13 +78,15 @@ namespace wasmline {
             }
 
             void u64(uint64_t value) {
+                if (!valid_) return;
                 for (size_t shift = 0; shift < 64; shift += 8) {
                     data_.push_back(static_cast<uint8_t>((value >> shift) & 0xFFu));
                 }
             }
 
             void bytes(std::string_view value) {
-                if (value.size() > std::numeric_limits<uint32_t>::max()) {
+                if (!valid_) return;
+                if (value.size() > kMaxStringSize) {
                     valid_ = false;
                     return;
                 }
@@ -90,7 +95,8 @@ namespace wasmline {
             }
 
             void rawBytes(const std::vector<uint8_t>& value) {
-                if (value.size() > std::numeric_limits<uint32_t>::max()) {
+                if (!valid_) return;
+                if (value.size() > kMaxStringSize) {
                     valid_ = false;
                     return;
                 }
@@ -99,7 +105,8 @@ namespace wasmline {
             }
 
             void count(size_t value) {
-                if (value > std::numeric_limits<uint32_t>::max()) {
+                if (!valid_) return;
+                if (value > kMaxCollectionSize) {
                     valid_ = false;
                     return;
                 }
@@ -359,6 +366,18 @@ namespace wasmline {
             return decodeCollectionCount(reader, count, error, 0);
         }
 
+        bool readResultDetails(Reader& reader, std::vector<uint8_t>* details, std::string* error) {
+            if (!details) return false;
+            uint32_t length = 0;
+            std::string bytes;
+            if (!readLength(reader, kMaxStringSize, &length, error) || !reader.readBytes(length, &bytes)) {
+                if (error) *error = "Typed invocation response details are truncated.";
+                return false;
+            }
+            details->assign(bytes.begin(), bytes.end());
+            return true;
+        }
+
         void writeComponentValue(Writer& writer, const ComponentValue& value);
 
         void writeString(Writer& writer, const std::string& value) {
@@ -585,6 +604,66 @@ namespace wasmline {
             if (error) *error = "Component invocation payload has trailing bytes.";
             return false;
         }
+        return true;
+    }
+
+    std::vector<uint8_t> TypedInvocationCodec::encodeComponentArguments(const std::vector<ComponentValue>& values) {
+        Writer writer;
+        writer.count(values.size());
+        for (const auto& value : values)
+            writeComponentValue(writer, value);
+        if (!writer.valid()) return {};
+        return writer.take();
+    }
+
+    bool TypedInvocationCodec::decodeComponentResult(std::string_view input, InvocationResult* result, std::string* error) {
+        if (!result) return false;
+
+        Reader reader(input);
+        uint8_t status = 0;
+        uint8_t kind = 0;
+        uint32_t rawCode = 0;
+        std::string message;
+        std::vector<uint8_t> details;
+        uint32_t valueCount = 0;
+        if (!reader.readByte(&status) || !reader.readByte(&kind) || !reader.readU32(&rawCode) || !readString(reader, &message, error) ||
+            !readResultDetails(reader, &details, error) || !decodeHeader(reader, &valueCount, error)) {
+            if (error && error->empty()) *error = "Typed Component invocation response is truncated.";
+            return false;
+        }
+        if (kind != static_cast<uint8_t>(TypedInvocationKind::COMPONENT)) {
+            if (error) *error = "Typed Component invocation response value kind is invalid.";
+            return false;
+        }
+        if (status != 0 && status != 1) {
+            if (error) *error = "Typed Component invocation response status is invalid.";
+            return false;
+        }
+        if (status == 0 && (rawCode != 0 || !message.empty())) {
+            if (error) *error = "Successful typed Component invocation response contains error fields.";
+            return false;
+        }
+        if (status == 1) {
+            if (rawCode == 0 || valueCount != 0 || !reader.empty()) {
+                if (error) *error = "Failed typed Component invocation response contains values or trailing bytes.";
+                return false;
+            }
+            *result = InvocationResult::failure(static_cast<WasmlineErrorCode>(rawCode), std::move(message), std::move(details));
+            return true;
+        }
+
+        std::vector<ComponentValue> values;
+        values.reserve(valueCount);
+        for (uint32_t index = 0; index < valueCount; ++index) {
+            ComponentValue value;
+            if (!decodeComponentValue(reader, &value, error, 0)) return false;
+            values.push_back(std::move(value));
+        }
+        if (!reader.empty()) {
+            if (error) *error = "Typed Component invocation response has trailing bytes.";
+            return false;
+        }
+        *result = InvocationResult::successComponent(std::move(values));
         return true;
     }
 

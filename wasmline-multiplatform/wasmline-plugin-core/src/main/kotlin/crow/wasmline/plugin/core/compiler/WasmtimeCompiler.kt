@@ -41,14 +41,12 @@ class WasmtimeCompiler {
         )
 
         val defaultTargets = listOf(
+            "pulley32",
             "pulley64",
             "x86_64-linux",
             "aarch64-linux",
             "aarch64-android",
-            "armv7-android",
-            "x86-android",
             "aarch64-macos",
-            "aarch64-ios",
             "x86_64-windows",
         )
 
@@ -71,6 +69,22 @@ class WasmtimeCompiler {
                 ?.firstOrNull { matchesVersion(it, version) }
         }
 
+        /** Finds only the full build-time Wasmtime CLI, never wasmtime-min. */
+        fun findWasmtimeCompilerInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
+            findDirectWasmtimeCompilerExecutable(baseDir)?.let { executable ->
+                if (matchesVersion(executable, version)) return executable
+            }
+            if (!baseDir.isDirectory) return null
+
+            return baseDir.listFiles()
+                ?.asSequence()
+                ?.filter(File::isDirectory)
+                ?.filter { platform == null || it.name.contains(platform) }
+                ?.sortedByDescending(File::getName)
+                ?.mapNotNull(::findWasmtimeCompilerExecutable)
+                ?.firstOrNull { matchesVersion(it, version) }
+        }
+
         /** Finds a Wasmtime executable below the given directory. */
         fun findWasmtimeExecutable(directory: File): File? {
             if (!directory.exists()) return null
@@ -79,6 +93,17 @@ class WasmtimeCompiler {
                     ?.asSequence()
                     ?.filter(File::isDirectory)
                     ?.mapNotNull(::findWasmtimeExecutable)
+                    ?.firstOrNull()
+        }
+
+        /** Finds a full Wasmtime CLI below the given directory. */
+        fun findWasmtimeCompilerExecutable(directory: File): File? {
+            if (!directory.exists()) return null
+            return findDirectWasmtimeCompilerExecutable(directory)
+                ?: directory.listFiles()
+                    ?.asSequence()
+                    ?.filter(File::isDirectory)
+                    ?.mapNotNull(::findWasmtimeCompilerExecutable)
                     ?.firstOrNull()
         }
 
@@ -94,6 +119,14 @@ class WasmtimeCompiler {
             }?.also { executable ->
                 if (!isWindows) executable.setExecutable(true)
             }
+        }
+
+        private fun findDirectWasmtimeCompilerExecutable(directory: File): File? {
+            val isWindows = System.getProperty("os.name").lowercase().contains("win")
+            val targetName = if (isWindows) "wasmtime.exe" else "wasmtime"
+            return directory.listFiles()
+                ?.firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
+                ?.also { executable -> if (!isWindows) executable.setExecutable(true) }
         }
 
         private fun matchesVersion(executable: File, requestedVersion: String?): Boolean {
@@ -126,11 +159,25 @@ class WasmtimeCompiler {
 
         val effectiveTargets = if (targets.isEmpty()) defaultTargets else targets
         effectiveTargets.forEach { target ->
+            validateNativeTarget(target)
             val artifact = compileTarget(wasmtimeExec, inputWasm, outputDir, productName, target, wasmtimeVersion, logger)
                 ?: throw IllegalStateException("Failed to compile Wasmtime target '$target'.")
             artifacts += artifact
         }
         return artifacts
+    }
+
+    private fun validateNativeTarget(target: String) {
+        val normalizedTarget = normalizeTarget(target)
+        val (targetCpu, targetOs) = parseTarget(normalizedTarget)
+        require(targetOs != "ios") {
+            "iOS native artifacts must use portable pulley64 PWASM; use target 'pulley64' instead of '$target'."
+        }
+        if (targetOs == "android" && (targetCpu == "armv7" || targetCpu == "i686" || targetCpu == "x86")) {
+            throw IllegalArgumentException(
+                "32-bit Android native artifacts must use portable pulley32 PWASM; use target 'pulley32' instead of '$target'.",
+            )
+        }
     }
 
     /** Writes the compilation result used by manifest creation. */
@@ -167,7 +214,9 @@ class WasmtimeCompiler {
         wasmtimeVersion: String?,
         logger: (String) -> Unit,
     ): WasmlineArtifact? {
-        val isPulley = target.contains("pulley")
+        val normalizedTarget = normalizeTarget(target)
+        val targetCpu = normalizedTarget.substringBefore("-")
+        val isPulley = targetCpu == "pulley32" || targetCpu == "pulley64"
         val extension = if (isPulley) "pwasm" else "cwasm"
         val outFileName = "$productName-$target.$extension"
         val outFile = File(outputDir, outFileName)
@@ -178,7 +227,7 @@ class WasmtimeCompiler {
             "compile",
             inputFile.absolutePath,
             "-o", outFile.absolutePath,
-            "--target", normalizeTarget(target),
+            "--target", normalizedTarget,
             "-W", "gc=y",
             "-W", "function-references=y",
             "-W", "exceptions=y",
@@ -214,11 +263,11 @@ class WasmtimeCompiler {
         }.onFailure { logger("Failed to compile for $target: ${it.message}") }.getOrNull()
     }
 
-    private fun parseTarget(target: String): Pair<String, String?> {
+    internal fun parseTarget(target: String): Pair<String, String?> {
         val normalized = normalizeTarget(target)
-        if (normalized == "pulley64") return "pulley64" to "pulley"
+        val cpu = normalized.substringBefore("-")
+        if (cpu == "pulley32" || cpu == "pulley64") return cpu to null
         val parts = normalized.split("-")
-        val cpu = parts.first()
         val rawOs = when {
             parts.size >= 3 -> parts[2]
             parts.size == 2 -> parts[1]

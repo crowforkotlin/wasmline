@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: wasmline_samples
-title: Wasmline Kotlin 多平台示例与插件集成
-scope:
-    - wasmline-samples/
-source_files: []
-depends_on: []
-related_to:
-    - path: wasmline_multiplatform/wasmline_sdk

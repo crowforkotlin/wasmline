@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -24,6 +25,9 @@
 #include <wasmtime/store.h>
 
 namespace wasmline {
+    class ComponentHostHandler;
+    class OutboundHandler;
+
     /** Provides isolated execution state for a Component Model instance. */
     class ComponentSession {
     public:
@@ -39,6 +43,12 @@ namespace wasmline {
         /** Invokes an exported component function. */
         InvocationResult invoke(std::string_view exportName, const std::vector<ComponentValue>& arguments);
 
+        /** Sets the handler and codec expected by the imported Wasmline RPC interface. */
+        void setOutboundHandler(std::unique_ptr<OutboundHandler> handler, std::string codec);
+
+        /** Sets the typed handler for non-WASI Component Model imports. */
+        void setComponentHostHandler(std::unique_ptr<ComponentHostHandler> handler);
+
     private:
         std::string key_;
         wasm_engine_t* engine_;
@@ -49,6 +59,34 @@ namespace wasmline {
         wasmtime_component_instance_t instance_{};
         bool initialized_ = false;
         std::mutex mutex_;
+        std::unique_ptr<OutboundHandler> outboundHandler_;
+        std::string codec_;
+        std::unique_ptr<ComponentHostHandler> componentHostHandler_;
+        struct ComponentHostBinding;
+        std::vector<std::unique_ptr<ComponentHostBinding>> componentHostBindings_;
+
+        bool registerRpcImports();
+
+        bool registerComponentHostImports();
+
+        static wasmtime_error_t* invokeHost(void* data, wasmtime_context_t* context,
+                                            const wasmtime_component_func_type_t* functionType,
+                                            wasmtime_component_val_t* arguments, size_t argumentCount,
+                                            wasmtime_component_val_t* results, size_t resultCount);
+
+        static wasmtime_error_t* invokeComponentHost(void* data, wasmtime_context_t* context,
+                                                      const wasmtime_component_func_type_t* functionType,
+                                                      wasmtime_component_val_t* arguments, size_t argumentCount,
+                                                      wasmtime_component_val_t* results, size_t resultCount);
+
+        wasmtime_error_t* handleHostInvoke(const wasmtime_component_func_type_t* functionType,
+                                           wasmtime_component_val_t* arguments, size_t argumentCount,
+                                           wasmtime_component_val_t* results, size_t resultCount);
+
+        wasmtime_error_t* handleComponentHostInvoke(const ComponentHostBinding& binding,
+                                                    const wasmtime_component_func_type_t* functionType,
+                                                    wasmtime_component_val_t* arguments, size_t argumentCount,
+                                                    wasmtime_component_val_t* results, size_t resultCount);
 
         static bool toWasmtimeValue(const ComponentValue& value, const wasmtime_component_valtype_t& type,
                                     wasmtime_component_val_t* result);

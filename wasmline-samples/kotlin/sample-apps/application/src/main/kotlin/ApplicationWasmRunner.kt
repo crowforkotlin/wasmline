@@ -1,12 +1,17 @@
 package crow.wasmline.sample.application
 
 import crow.wasmline.WasmlineConfig
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.network.ktor.KtorNetworkClient
+import crow.wasmline.wasmlineNativeRuntimeInfo
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
@@ -32,8 +37,8 @@ private fun requestedBundledArtifactFormat(): String? {
         ?: return null
     val normalized = rawFormat.lowercase()
     return when (normalized) {
-        "pwasm", "cwasm" -> normalized
-        else -> error("[Application] Unsupported runtime artifact format '$rawFormat'. Expected pwasm or cwasm.")
+        "pwasm", "pwasm32", "pwasm64", "cwasm" -> normalized
+        else -> error("[Application] Unsupported runtime artifact format '$rawFormat'. Expected pwasm32, pwasm64, or cwasm.")
     }
 }
 
@@ -47,7 +52,7 @@ private fun resolveBundledPluginResourceNames(): List<String> {
     val requestedFormat = requestedBundledArtifactFormat()
     if (requestedFormat != null) {
         val selected = when (requestedFormat) {
-            "pwasm" -> findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm")
+            "pwasm", "pwasm32", "pwasm64" -> findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm")
             "cwasm" -> findBundledPluginResource("plugin.cwasm", "plugin.generated.cwasm")
             else -> null
         }
@@ -78,6 +83,50 @@ private fun resolveRemoteWlmUrl(): String? {
         ?: System.getenv(artifactUrlEnvironment)?.ifBlank { null }
 }
 
+private fun loadDirectArtifact(path: String, config: WasmlineConfig): WasmlineLoadResult {
+    val format = when {
+        path.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
+        path.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
+        path.endsWith(".wasm", ignoreCase = true) -> WasmlineArtifactFormat.RAW_WASM
+        else -> return WasmlineLoader.load(source = path, config = config)
+    }
+    val runtime = wasmlineNativeRuntimeInfo()
+    val requestedFormat = requestedBundledArtifactFormat()
+    val targetCpu = when (format) {
+        WasmlineArtifactFormat.CWASM -> runtime?.targetCpu
+        WasmlineArtifactFormat.PWASM -> when (requestedFormat) {
+            "pwasm32" -> "pulley32"
+            "pwasm64" -> "pulley64"
+            else -> if (runtime?.is64Bit == false) "pulley32" else "pulley64"
+        }
+        WasmlineArtifactFormat.RAW_WASM -> null
+    }
+    val targetOs = when (format) {
+        WasmlineArtifactFormat.CWASM -> runtime?.targetOs
+        WasmlineArtifactFormat.PWASM, WasmlineArtifactFormat.RAW_WASM -> null
+    }
+    return WasmlineLoader.load(
+        descriptor = WasmlineArtifactDescriptor(
+            path = path,
+            artifactFormat = format,
+            targetCpu = targetCpu,
+            targetOs = targetOs,
+            targetCompilerVersion = runtime?.wasmtimeVersion?.let { "wasmtime-$it" },
+            is64Bit = when (format) {
+                WasmlineArtifactFormat.PWASM -> when (requestedFormat) {
+                    "pwasm32" -> false
+                    "pwasm64" -> true
+                    else -> runtime?.is64Bit
+                }
+                WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.RAW_WASM -> runtime?.is64Bit
+            },
+            executionModel = WasmlineExecutionModel.CORE_WASM,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+        ),
+        config = config,
+    )
+}
+
 internal fun runApplicationSample() {
     WasmlineLoader.bootstrap()
 
@@ -93,14 +142,12 @@ internal fun runApplicationSample() {
     }
 
     try {
+        val config = WasmlineConfig(
+            serialization = WasmlineSerializationConfig.protobuf(),
+            networkClient = KtorNetworkClient(),
+        )
         when (
-            val result = WasmlineLoader.load(
-                source = source,
-                config = WasmlineConfig(
-                    serialization = WasmlineSerializationConfig.protobuf(),
-                    networkClient = KtorNetworkClient(),
-                ),
-            )
+            val result = loadDirectArtifact(source, config)
         ) {
             is WasmlineLoadResult.Failure -> {
                 error("[Application] Failed to load wasm: ${result.cause}")

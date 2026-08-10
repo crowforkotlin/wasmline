@@ -12,6 +12,8 @@
 
 #include <wasmtime/component/component.h>
 
+#include "wasmline/runtime/WasmlineArtifactFormat.h"
+
 namespace wasmline {
     /** Manages compiled Component Model artifacts. */
     class Component {
@@ -23,11 +25,17 @@ namespace wasmline {
 
         Component& operator=(const Component&) = delete;
 
-        /** Loads a Component Model artifact. */
+        /** Legacy artifact load entrypoint. It fails without an explicit physical format. */
         wasmtime_component_t* load(const std::string& key, const std::string& filePath);
 
-        /** Loads an artifact without cache synchronization. */
+        /** Loads a Component Model artifact with an explicit physical format. */
+        wasmtime_component_t* load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat);
+
+        /** Legacy artifact load entrypoint without cache synchronization. It fails without an explicit format. */
         wasmtime_component_t* loadUnsafe(const std::string& key, const std::string& filePath);
+
+        /** Loads an artifact with an explicit physical format without cache synchronization. */
+        wasmtime_component_t* loadUnsafe(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat);
 
         /** Returns a cached component or nullptr. */
         wasmtime_component_t* get(const std::string& key);
@@ -45,7 +53,7 @@ namespace wasmline {
 
         ~Component();
 
-        wasmtime_component_t* compileInternal(const std::string& key, const std::string& filePath);
+        wasmtime_component_t* compileInternal(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat);
 
         std::unique_ptr<Impl> impl_;
     };

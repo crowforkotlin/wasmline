@@ -4,6 +4,10 @@ rootProject.name = "wasmline-sample"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     includeBuild("../../wasmline-multiplatform/wasmline-build-logic")
+    val useIncludedBuild = System.getenv("WASMLINE_USE_INCLUDED_BUILD")?.let { it == "1" } ?: true
+    if (useIncludedBuild) {
+        includeBuild("../../wasmline-multiplatform")
+    }
     repositories {
         mavenLocal()
         google {
@@ -16,6 +20,9 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+}
+if (System.getenv("WASMLINE_USE_INCLUDED_BUILD")?.let { it == "1" } ?: true) {
+    includeBuild("../../wasmline-multiplatform")
 }
 // Use Maven local artifacts instead of includeBuild source dependency
 // includeBuild("../../wasmline-multiplatform") {
@@ -81,4 +88,5 @@ fun includeModule(topName: String, file: File) {
 
 includeModule(topName = "sample-apps", file = file("sample-apps"))
 include(":sample-common")
+include(":sample-component-plugin")
 include(":sample-plugin")

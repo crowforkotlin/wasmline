@@ -50,8 +50,8 @@ dependencies {
 | `crow.wasmline:wasmline-loader` | `WasmlineLoader`, `.wlm` manifest parsing, Ed25519/ECDSA-P256 verification |
 | `crow.wasmline:wasmline-network-ktor` | HTTP network client backed by Ktor (remote manifest loading) |
 | `crow.wasmline:wasmline-network-okhttp` | HTTP network client backed by OkHttp 5.x (JVM/Android) |
-| `crow.wasmline:wasmline-engine-pulley` | Pulley backend — portable bytecode, all native targets |
-| `crow.wasmline:wasmline-engine-cranelift` | Cranelift backend — platform-specific AOT machine code |
+| `crow.wasmline:wasmline-engine-pulley` | Pulley-only interpreter — `.pwasm` only, all native targets |
+| `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime — `.cwasm` first, `.pwasm` fallback |
 
 <Callout type="info" title="Distribution status">
   Wasmline is under active development. Artifacts are currently distributed through `mavenLocal()` — run `./gradlew publishToMavenLocal` in `wasmline-multiplatform/` to install them locally. Maven Central publishing is in progress.

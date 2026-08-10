@@ -11,6 +11,7 @@ import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineCallResult
 import kotlinx.cinterop.*
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSLock
 
 actual class Wasmline actual internal constructor(
     private val moduleKey: String,
@@ -20,7 +21,15 @@ actual class Wasmline actual internal constructor(
 
     actual internal fun setOutbound(dispatcher: WasmlineHostDispatcher) {
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
-        wasmline_set_outbound_handler(moduleKey, staticCFunction(::iosStaticOutboundCallback))
+        wasmline_set_outbound_handler(moduleKey, config.serialization.factoryId, staticCFunction(::iosStaticOutboundCallback))
+    }
+
+    actual internal fun setComponentHostDispatcher(dispatcher: WasmlineComponentHostDispatcher) {
+        WasmlineComponentHostCallbackRegistry.register(moduleKey, dispatcher)
+        if (!wasmline_set_component_host_handler(moduleKey, staticCFunction(::iosStaticComponentHostCallback))) {
+            WasmlineComponentHostCallbackRegistry.unregister(moduleKey)
+            throw IllegalStateException("Failed to install the typed Component host dispatcher for '$moduleKey'.")
+        }
     }
 
     actual internal fun call(action: String, inputBytes: ByteArray): ByteArray = memScoped {
@@ -45,6 +54,10 @@ actual class Wasmline actual internal constructor(
                 return@memScoped byteArrayOf()
             }
 
+            if (outLen.value > Int.MAX_VALUE.toULong()) {
+                wasmline_free_memory(resultPtr)
+                return@memScoped byteArrayOf()
+            }
             val length = outLen.value.toInt()
             if (length == 0) {
                 wasmline_free_memory(resultPtr)
@@ -69,6 +82,7 @@ actual class Wasmline actual internal constructor(
 
     actual fun close() {
         WasmlineCallbackRegistry.unregister(moduleKey)
+        WasmlineComponentHostCallbackRegistry.unregister(moduleKey)
         wasmline_release_module(moduleKey)
     }
 }
@@ -119,6 +133,20 @@ actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
     wasmline_warmup_engine(true)
 }
 
+internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
+    iosBootstrap()
+    return WasmlineRuntimeCapabilities(
+        wasmtimeVersion = requireNotNull(wasmline_wasmtime_version()).toKString(),
+        supportsCranelift = wasmline_supports_cranelift(),
+        supportsPulley = wasmline_supports_pulley(),
+        targetOs = "ios",
+        targetCpu = "aarch64",
+        is64Bit = true,
+    )
+}
+
+actual fun wasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? = wasmlineRuntimeCapabilities().nativeRuntimeInfo
+
 actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     wasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
 
@@ -140,11 +168,20 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
                 )
             }
 
+            override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =
+                descriptor.runtimeCompatibilityError(wasmlineRuntimeCapabilities())
+
+            override fun requiresExplicitArtifactFormat(): Boolean = true
+
             override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
                 iosBootstrap()
+                val formatCode = descriptor.artifactFormat?.nativeBridgeCode() ?: return false
                 return when (descriptor.executionModel) {
-                    WasmlineExecutionModel.CORE_WASM -> wasmline_load_module(moduleKey, path, isUnsafe)
-                    WasmlineExecutionModel.COMPONENT_MODEL -> wasmline_load_component(moduleKey, path, isUnsafe)
+                    WasmlineExecutionModel.CORE_WASM ->
+                        wasmline_load_module_with_format(moduleKey, path, formatCode, isUnsafe)
+
+                    WasmlineExecutionModel.COMPONENT_MODEL ->
+                        wasmline_load_component_with_format(moduleKey, path, formatCode, isUnsafe)
                 }
             }
 
@@ -157,49 +194,192 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
 
 private object WasmlineCallbackRegistry {
     private val dispatchers = mutableMapOf<String, WasmlineHostDispatcher>()
+    private val lock = NSLock()
 
     fun register(key: String, dispatcher: WasmlineHostDispatcher) {
-        dispatchers[key] = dispatcher
+        lock.lock()
+        try {
+            dispatchers[key] = dispatcher
+        } finally {
+            lock.unlock()
+        }
     }
 
     fun unregister(key: String) {
-        dispatchers.remove(key)
+        lock.lock()
+        try {
+            dispatchers.remove(key)
+        } finally {
+            lock.unlock()
+        }
     }
 
-    fun findAny(): WasmlineHostDispatcher? = dispatchers.values.firstOrNull()
+    fun find(key: String): WasmlineHostDispatcher? {
+        lock.lock()
+        return try {
+            dispatchers[key]
+        } finally {
+            lock.unlock()
+        }
+    }
 }
 
+internal object WasmlineComponentHostCallbackRegistry {
+    private val dispatchers = mutableMapOf<String, WasmlineComponentHostDispatcher>()
+    private val lock = NSLock()
+
+    fun register(key: String, dispatcher: WasmlineComponentHostDispatcher) {
+        lock.lock()
+        try {
+            dispatchers[key] = dispatcher
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    fun unregister(key: String) {
+        lock.lock()
+        try {
+            dispatchers.remove(key)
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    fun find(key: String): WasmlineComponentHostDispatcher? {
+        lock.lock()
+        return try {
+            dispatchers[key]
+        } finally {
+            lock.unlock()
+        }
+    }
+}
+
+private fun callbackLength(value: ULong): Int? =
+    if (value > Int.MAX_VALUE.toULong()) null else value.toInt()
+
 internal fun iosStaticOutboundCallback(
+    key: CPointer<ByteVar>?,
+    keyLen: ULong,
     action: CPointer<ByteVar>?,
     actionLen: ULong,
     payload: CPointer<ByteVar>?,
     payloadLen: ULong,
     outLen: CPointer<ULongVar>?,
 ): CPointer<ByteVar>? {
-    val actionStr = action?.toKString() ?: ""
-    val payloadBytes = payload?.readBytes(payloadLen.toInt()) ?: byteArrayOf()
-
-    val dispatcher = WasmlineCallbackRegistry.findAny()
-    val response = try {
-        if (dispatcher == null) {
-            WasmlineResponseCodec.encodeFailure(
-                WasmlineCallError(
-                    code = WasmlineErrorCode.ACTION_NOT_BOUND,
-                    message = "No Wasmline outbound action is bound.",
-                ),
-            )
-        } else {
-            dispatcher.dispatch(actionStr, payloadBytes)
-        }
-    } catch (error: Throwable) {
+    val keySize = callbackLength(keyLen)
+    val actionSize = callbackLength(actionLen)
+    val payloadSize = callbackLength(payloadLen)
+    val response = if (keySize == null || actionSize == null || payloadSize == null) {
         WasmlineResponseCodec.encodeFailure(
             WasmlineCallError(
-                code = WasmlineErrorCode.HANDLER_FAILED,
-                message = error.message ?: "Wasmline outbound action handler failed.",
+                code = WasmlineErrorCode.TRANSPORT_FAILURE,
+                message = "iOS outbound callback received an oversized buffer.",
             ),
         )
+    } else if ((keySize > 0 && key == null) || (actionSize > 0 && action == null) || (payloadSize > 0 && payload == null)) {
+        WasmlineResponseCodec.encodeFailure(
+            WasmlineCallError(
+                code = WasmlineErrorCode.TRANSPORT_FAILURE,
+                message = "iOS outbound callback received a null buffer.",
+            ),
+        )
+    } else {
+        val keyStr = key?.readBytes(keySize)?.decodeToString() ?: ""
+        val actionStr = action?.readBytes(actionSize)?.decodeToString() ?: ""
+        val payloadBytes = payload?.readBytes(payloadSize) ?: byteArrayOf()
+        val dispatcher = WasmlineCallbackRegistry.find(keyStr)
+        try {
+            if (dispatcher == null) {
+                WasmlineResponseCodec.encodeFailure(
+                    WasmlineCallError(
+                        code = WasmlineErrorCode.ACTION_NOT_BOUND,
+                        message = "No Wasmline outbound action is bound.",
+                    ),
+                )
+            } else {
+                dispatcher.dispatch(actionStr, payloadBytes)
+            }
+        } catch (error: Throwable) {
+            WasmlineResponseCodec.encodeFailure(
+                WasmlineCallError(
+                    code = WasmlineErrorCode.HANDLER_FAILED,
+                    message = error.message ?: "Wasmline outbound action handler failed.",
+                ),
+            )
+        }
     }
 
+    outLen?.pointed?.value = response.size.toULong()
+    if (response.isEmpty()) return null
+
+    val result = nativeHeap.allocArray<ByteVar>(response.size)
+    response.forEachIndexed { index, value -> result[index] = value }
+    return result
+}
+
+private fun encodeComponentHostFailure(code: WasmlineErrorCode, message: String): ByteArray {
+    return when (
+        val encoded = WasmlineTypedInvocationCodec.encodeComponentResult(
+            WasmlineCallResult.Failure(WasmlineCallError(code, message)),
+        )
+    ) {
+        is WasmlineCallResult.Success -> encoded.value
+        is WasmlineCallResult.Failure -> byteArrayOf()
+    }
+}
+
+/** Dispatches one typed Component host import to the immutable iOS registry. */
+internal fun iosStaticComponentHostCallback(
+    key: CPointer<ByteVar>?,
+    keyLen: ULong,
+    interfaceName: CPointer<ByteVar>?,
+    interfaceNameLen: ULong,
+    functionName: CPointer<ByteVar>?,
+    functionNameLen: ULong,
+    arguments: CPointer<ByteVar>?,
+    argumentsLen: ULong,
+    outLen: CPointer<ULongVar>?,
+): CPointer<ByteVar>? {
+    val keySize = callbackLength(keyLen)
+    val interfaceSize = callbackLength(interfaceNameLen)
+    val functionSize = callbackLength(functionNameLen)
+    val argumentsSize = callbackLength(argumentsLen)
+    val response: ByteArray? = if (keySize == null || interfaceSize == null || functionSize == null || argumentsSize == null) {
+        encodeComponentHostFailure(
+            WasmlineErrorCode.TRANSPORT_FAILURE,
+            "iOS typed Component callback received an oversized buffer.",
+        )
+    } else if ((keySize > 0 && key == null) ||
+        (interfaceSize > 0 && interfaceName == null) ||
+        (functionSize > 0 && functionName == null) ||
+        (argumentsSize > 0 && arguments == null)
+    ) {
+        encodeComponentHostFailure(
+            WasmlineErrorCode.TRANSPORT_FAILURE,
+            "iOS typed Component callback received a null buffer.",
+        )
+    } else {
+        val keyString = key?.readBytes(keySize)?.decodeToString() ?: ""
+        val interfaceString = interfaceName?.readBytes(interfaceSize)?.decodeToString() ?: ""
+        val functionString = functionName?.readBytes(functionSize)?.decodeToString() ?: ""
+        val argumentBytes = arguments?.readBytes(argumentsSize) ?: byteArrayOf()
+        val dispatcher = WasmlineComponentHostCallbackRegistry.find(keyString)
+        try {
+            dispatcher?.dispatch(interfaceString, functionString, argumentBytes)
+        } catch (error: Throwable) {
+            encodeComponentHostFailure(
+                WasmlineErrorCode.HANDLER_FAILED,
+                error.message ?: "iOS typed Component host adapter failed.",
+            )
+        }
+    }
+
+    if (response == null) {
+        outLen?.pointed?.value = 0uL
+        return null
+    }
     outLen?.pointed?.value = response.size.toULong()
     if (response.isEmpty()) return null
 

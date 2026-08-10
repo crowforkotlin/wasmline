@@ -20,6 +20,24 @@ import java.nio.file.StandardCopyOption
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
 
+/** Selects either the runtime-only asset or the full build-time Wasmtime CLI. */
+enum class WasmtimeDistribution {
+    MINIMAL,
+    FULL,
+}
+
+internal fun matchesWasmtimeDistributionAsset(assetName: String, platform: String, distribution: WasmtimeDistribution): Boolean {
+    val name = assetName.lowercase()
+    val isMinimal = name.contains("-min")
+    return !name.contains("c-api") &&
+        !name.contains("-pulley") &&
+        (platform == "all" || name.contains(platform.lowercase())) &&
+        when (distribution) {
+            WasmtimeDistribution.MINIMAL -> isMinimal
+            WasmtimeDistribution.FULL -> !isMinimal
+        }
+}
+
 /**
  * Downloads and extracts Wasmtime releases.
  *
@@ -38,10 +56,11 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         githubToken: String? = null,
         version: String = "latest",
         platform: String = PlatformDetector.detectPlatform(),
+        distribution: WasmtimeDistribution = WasmtimeDistribution.MINIMAL,
         outputDir: File = File("build/wasmline/wasmtime"),
         force: Boolean = false,
     ): File = withContext(Dispatchers.IO) {
-        println("Downloading wasmtime v$version for $platform...")
+        println("Downloading ${distribution.name.lowercase()} wasmtime v$version for $platform...")
 
         // Resolve release information
         val releaseJson = resolveRelease(version, githubToken)
@@ -52,11 +71,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         // Filter assets for the correct platform
         val filteredAssets = assets.map { it.jsonObject }.filter { asset ->
             val name = asset["name"]?.jsonPrimitive?.content ?: ""
-            val isNotCApi = !name.contains("c-api")
-            val isNotPulley = !name.contains("-pulley")
-            val isMin = name.contains("-min")
-            val matchesPlatform = platform == "all" || name.contains(platform)
-            isNotCApi && isNotPulley && isMin && matchesPlatform
+            matchesWasmtimeDistributionAsset(name, platform, distribution)
         }
 
         if (filteredAssets.isEmpty()) {
@@ -68,7 +83,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         val downloadedFolders = mutableListOf<File>()
         var hasFailure = false
         filteredAssets.forEach { asset ->
-            downloadAndExtract(asset, outputDir, force, githubToken, version, platform)
+            downloadAndExtract(asset, outputDir, force, githubToken, version, platform, distribution)
                 .onSuccess(downloadedFolders::add)
                 .onFailure { error ->
                     hasFailure = true
@@ -96,6 +111,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         githubToken: String? = null,
         version: String = "latest",
         platform: String = PlatformDetector.detectPlatform(),
+        distribution: WasmtimeDistribution = WasmtimeDistribution.MINIMAL,
     ): Result<File> = runCatching {
         val fileName = asset["name"]?.jsonPrimitive?.content
             ?: throw IllegalStateException("Missing asset name in release metadata")
@@ -150,7 +166,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         }
 
         // Confirm that the extracted files contain Wasmtime.
-        val wasmtimeExecutable = findWasmtimeExecutable(targetFolder)
+        val wasmtimeExecutable = findWasmtimeExecutable(targetFolder, distribution)
             ?: throw IllegalStateException(
                 "Downloaded asset '$fileName' did not contain wasmtime executable",
             )
@@ -285,20 +301,17 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
     }
 
     /** Finds a Wasmtime executable in an extracted release. */
-    private fun findWasmtimeExecutable(directory: File): File? {
+    private fun findWasmtimeExecutable(directory: File, distribution: WasmtimeDistribution): File? {
         val isWindows = System.getProperty("os.name").lowercase().contains("win")
-        val candidateNames = if (isWindows) {
-            listOf("wasmtime-min.exe", "wasmtime.exe")
-        } else {
-            listOf("wasmtime-min", "wasmtime")
+        val targetName = when (distribution) {
+            WasmtimeDistribution.MINIMAL -> if (isWindows) "wasmtime-min.exe" else "wasmtime-min"
+            WasmtimeDistribution.FULL -> if (isWindows) "wasmtime.exe" else "wasmtime"
         }
-        return candidateNames.firstNotNullOfOrNull { targetName ->
-            directory.walk()
-                .filter { it.isFile && it.name.equals(targetName, ignoreCase = true) }
-                .firstOrNull()
-        }?.also {
-            if (!isWindows) it.setExecutable(true)
-        }
+        return directory.walk()
+            .firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
+            ?.also {
+                if (!isWindows) it.setExecutable(true)
+            }
     }
 
     /** Resolves release metadata from GitHub. */

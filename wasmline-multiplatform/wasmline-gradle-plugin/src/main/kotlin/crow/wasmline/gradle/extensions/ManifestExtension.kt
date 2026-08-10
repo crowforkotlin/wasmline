@@ -81,7 +81,15 @@ abstract class ManifestExtension @Inject constructor(objects: ObjectFactory) {
 
     /** Invocation protocol used by the published binary. */
     val invocationProtocol: Property<WasmlineInvocationProtocol> = objects.property(WasmlineInvocationProtocol::class.java)
-        .convention(WasmlineInvocationProtocol.WASMLINE_CORE_V1)
+        .convention(
+            executionModel.map { model ->
+                if (model == WasmlineExecutionModel.COMPONENT_MODEL) {
+                    WasmlineInvocationProtocol.COMPONENT_EXPORT
+                } else {
+                    WasmlineInvocationProtocol.WASMLINE_CORE
+                }
+            },
+        )
 
     /** Export name required by direct export invocation protocols. */
     val exportName: Property<String> = objects.property(String::class.java)
