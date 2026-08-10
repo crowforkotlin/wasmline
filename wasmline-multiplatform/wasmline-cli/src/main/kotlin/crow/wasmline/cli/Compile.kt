@@ -81,6 +81,7 @@ class Compile : CliktCommand(name = "compile") {
             )
             val artifacts = when (invocation.executionModel) {
                 WasmlineExecutionModel.CORE_WASM -> compileCore(outputDir, productName)
+
                 WasmlineExecutionModel.COMPONENT_MODEL -> compileComponent(
                     outputDir = outputDir,
                     productName = productName,

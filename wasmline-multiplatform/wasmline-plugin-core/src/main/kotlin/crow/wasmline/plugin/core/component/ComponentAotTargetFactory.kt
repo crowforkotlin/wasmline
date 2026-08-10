@@ -22,6 +22,7 @@ object ComponentAotTargetFactory {
             val targetCpu = WasmtimeCompiler.normalizeTarget(target).substringBefore('-')
             val backend = when (targetCpu) {
                 "pulley32", "pulley64" -> ComponentAotBackend.PULLEY
+
                 else -> {
                     require(!targetCpu.startsWith("pulley")) {
                         "Unsupported Pulley Component target: $target"

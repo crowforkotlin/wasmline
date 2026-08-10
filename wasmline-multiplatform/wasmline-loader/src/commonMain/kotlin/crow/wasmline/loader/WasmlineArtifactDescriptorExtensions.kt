@@ -19,6 +19,7 @@ fun WasmlineArtifact.toDescriptor(path: String): WasmlineArtifactDescriptor = Wa
         -> WasmlineArtifactFormat.RAW_WASM
 
         WasmlineArtifactType.CWASM -> WasmlineArtifactFormat.CWASM
+
         WasmlineArtifactType.PWASM -> WasmlineArtifactFormat.PWASM
     },
     targetCpu = targetCpu,

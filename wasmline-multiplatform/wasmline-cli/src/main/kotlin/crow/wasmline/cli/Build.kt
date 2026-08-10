@@ -91,6 +91,7 @@ class Build : CliktCommand(name = "build") {
             val outputDir = File("build/wasmline/output", productName + "-" + version).apply { mkdirs() }
             val artifacts = when (invocation.executionModel) {
                 WasmlineExecutionModel.CORE_WASM -> compileCore(outputDir, productName)
+
                 WasmlineExecutionModel.COMPONENT_MODEL -> compileComponent(
                     outputDir = outputDir,
                     productName = productName,

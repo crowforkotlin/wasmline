@@ -66,8 +66,11 @@ object WasmlineInvocationBenchmark {
     fun main(args: Array<String>) {
         when (stringProperty(MODE_PROPERTY, INVOCATION_MODE)) {
             INVOCATION_MODE -> runInvocationBenchmark()
+
             COLD_LOAD_MODE -> runColdLoadBenchmark()
+
             COLD_LOAD_CHILD_MODE -> runColdLoadChild()
+
             else -> error(
                 "Unsupported $MODE_PROPERTY='${stringProperty(MODE_PROPERTY, "")}'. " +
                     "Expected $INVOCATION_MODE, $COLD_LOAD_MODE, or $COLD_LOAD_CHILD_MODE.",
@@ -401,7 +404,9 @@ object WasmlineInvocationBenchmark {
 
     internal fun aotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
+
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
+
         else -> throw IllegalArgumentException(
             "Benchmark artifacts must be precompiled .cwasm or .pwasm files, not '$filename'.",
         )

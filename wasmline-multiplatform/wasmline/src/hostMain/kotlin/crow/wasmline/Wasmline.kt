@@ -41,18 +41,18 @@ fun Wasmline.bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmlin
  * `wasmline:rpc/host`. The handler is invoked when the Component calls back
  * into the host and returns the raw RPC payload or a structured failure.
  */
-fun Wasmline.bindComponentRpc(
-    handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>,
-): Wasmline {
+fun Wasmline.bindComponentRpc(handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>): Wasmline {
     require(descriptor.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
         "Component RPC handlers can only bind to COMPONENT_MODEL artifacts."
     }
-    setOutbound(WasmlineHostDispatcher { action, payload ->
-        when (val result = handler(action, payload)) {
-            is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(result.value)
-            is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.error)
-        }
-    })
+    setOutbound(
+        WasmlineHostDispatcher { action, payload ->
+            when (val result = handler(action, payload)) {
+                is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(result.value)
+                is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.error)
+            }
+        },
+    )
     return this
 }
 

@@ -151,7 +151,9 @@ class NativeTypedComponentHostImportIntegrationTest {
 
     private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
+
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
+
         else -> throw IllegalArgumentException(
             "Typed Component host fixture must be a precompiled .cwasm or .pwasm artifact, not '$filename'.",
         )
