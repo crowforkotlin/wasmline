@@ -517,16 +517,6 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/kotlin/run-sample-common.sh",
-            (
-                Rule(
-                    r"# v[0-9]+\.[0-9]+\.[0-9]+\+ min artifact extracts to a -min suffixed directory",
-                    lambda v: f"# v{v['wasmtime_version']}+ min artifact extracts to a -min suffixed directory",
-                    min_count=0,
-                ),
-            ),
-        ),
-        FileSpec(
             "wasmline-samples/kotlin/run-ios.sh",
             (
                 Rule(

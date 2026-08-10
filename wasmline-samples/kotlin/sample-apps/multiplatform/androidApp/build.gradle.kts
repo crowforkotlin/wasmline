@@ -52,13 +52,9 @@ require(requestedArtifactFormat in setOf("pwasm32", "pwasm64", "cwasm")) {
     "Unsupported wasmline.artifact.format '$requestedArtifactFormat'. Expected pwasm32, pwasm64, or cwasm."
 }
 
-val requestedCwasmTarget = providers.gradleProperty("wasmline.compile.target").orNull
-if (requestedArtifactFormat == "cwasm" && requestedCwasmTarget == null) {
-    error(
-        "Android CWASM requires -Pwasmline.compile.target=aarch64-linux-android " +
-            "so the plugin artifact matches the Android runtime.",
-    )
-}
+val requestedCwasmTarget = providers.gradleProperty("wasmline.compile.target")
+    .orElse("aarch64-linux-android")
+    .get()
 
 val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
     "wasmline/output/crow.wasmline.demo-1.0.0",

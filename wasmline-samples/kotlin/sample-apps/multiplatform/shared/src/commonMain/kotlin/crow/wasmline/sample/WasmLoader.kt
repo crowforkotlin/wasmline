@@ -237,9 +237,9 @@ internal class WasmSampleRunner(
             val runtime = checkNotNull(current)
             val invokeMark = TimeSource.Monotonic.markNow()
             val result = when (request.mode) {
-                WasmSampleMode.CORE_WASM -> runCore(runtime, inputPayload, log)
-                WasmSampleMode.RAW_EXPORT -> runRaw(runtime, request.rawValue, log)
-                WasmSampleMode.COMPONENT_MODEL -> runComponent(runtime, request.content, log)
+                WasmSampleMode.CORE_WASM -> runCore(runtime, inputPayload, ::log)
+                WasmSampleMode.RAW_EXPORT -> runRaw(runtime, request.rawValue, ::log)
+                WasmSampleMode.COMPONENT_MODEL -> runComponent(runtime, request.content, ::log)
             }
             val invokeDurationMs = invokeMark.elapsedNow().inWholeMilliseconds
             val totalDurationMs = totalMark.elapsedNow().inWholeMilliseconds
