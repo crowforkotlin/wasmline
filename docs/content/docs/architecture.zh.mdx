@@ -28,15 +28,17 @@ Platform actual  (jniMain / iosMain)
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
         │  Engine.cpp   — wasmtime Engine singleton; global init / shutdown
-        │  Module.cpp   — AOT / Pulley module compilation; keyed module cache
+        │  Module.cpp   — CWASM / PWASM 反序列化；键控模块缓存
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context
         │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
         ▼
 wasmtime C-API  v47.0.2
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
-Core Wasmline binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
+Core Wasmline binary  (.cwasm — Cranelift 原生 AOT  |  .pwasm — Cranelift 生成的 Pulley 字节码)
 ```
+
+产物层与引擎层是两组独立能力。Cranelift Wasmtime 构建同时包含 Cranelift 编译器和 Pulley 解释器，因此可以加载匹配的 `.cwasm`，并在缺少时回退到 `.pwasm`。Pulley 引擎构建只包含 Pulley 解释器，仅接受 `.pwasm`。iOS 使用 Pulley 引擎，因此始终选择 `.pwasm`。
 
 ### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
 
@@ -78,15 +80,15 @@ Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding
 
 | 执行模型 | 调用协议 | 运行时边界 | Core 响应帧 |
 |---|---|---|---|
-| `CORE_WASM` | `WASMLINE_CORE_V1` | `Session`、action 路由和线性内存 | 使用 |
+| `CORE_WASM` | `WASMLINE_CORE` | `Session`、action 路由和线性内存 | 使用 |
 | `CORE_WASM` | `RAW_EXPORT` | `RawModuleSession` 和已声明的 Core 数值 ABI | 不使用 |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` 和 Component Model 值 | 不使用 |
 
-`WASMLINE_CORE_V1` 是 Core Wasmline 模块的服务协议。其响应字节使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别响应格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。读取方只有在该字段为 `1` 时才按 V1 布局解析。
+`WASMLINE_CORE` 是 Core Wasmline 模块的服务协议。其响应字节使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别响应格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。读取方只有在该字段为 `1` 时才按 V1 布局解析。
 
 Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。该路径不分配或解析 Core 响应帧。
 
-Component Model 调用通过 Wasmtime Component Model API 加载完整且已经编译完成的 component binary。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。Wasmline 不编译 WIT、WIT-Kotlin，也不运行 `wit-bindgen` 或生成 component adapter。可选的 `contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
+Component Model 调用通过 Wasmtime Component Model API 加载完整且已经编译完成的 component binary。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen` 或 `wasm-tools`；可选的 plugin 构建流水线会在加载前由 `wasmline-plugin-core`、Gradle 插件或 CLI 生成绑定并组装 component。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
 
 三种路径共享相同的结果语义。未绑定 action 返回失败结果 `ACTION_NOT_BOUND`，不表示为空的成功 payload，也不要求抛出异常。Core 路径通过响应帧传递该结果；Raw Export 和 Component Model 通过 typed result carrier 传递该结果。违反编程契约、运行时状态不可恢复，或无法构造可靠结果时，才使用异常。
 

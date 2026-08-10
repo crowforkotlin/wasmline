@@ -24,6 +24,77 @@ class WasmlineLocalArtifactBridgeTest {
         assertEquals(0, platform.resolveCalls)
     }
 
+    @Test
+    fun rejectsIncompatibleAotMetadataBeforeResolution() {
+        val runtime = WasmlineRuntimeCapabilities(
+            wasmtimeVersion = "47.0.2",
+            supportsCranelift = true,
+            supportsPulley = true,
+            targetOs = "linux",
+            targetCpu = "x86_64",
+            is64Bit = true,
+        )
+        val platform = FakePlatform(
+            descriptorValidation = { descriptor -> descriptor.runtimeCompatibilityError(runtime) },
+        )
+
+        val result = WasmlineLocalArtifactBridge.load(
+            descriptor = WasmlineArtifactDescriptor(
+                path = "plugin.cwasm",
+                artifactFormat = WasmlineArtifactFormat.CWASM,
+                targetCpu = "x86_64",
+                targetOs = "linux",
+                targetCompilerVersion = "wasmtime-46.0.0",
+                is64Bit = true,
+            ),
+            config = WasmlineConfig(),
+            platform = platform,
+        )
+
+        val failure = assertIs<WasmlineLoadState.Failure>(result)
+        assertTrue(failure.cause.contains("requires Wasmtime 46.0.0"))
+        assertEquals(0, platform.resolveCalls)
+        assertEquals(0, platform.loadCalls)
+    }
+
+    @Test
+    fun requiresAnExplicitFormatBeforeNativeResolution() {
+        val platform = FakePlatform(requiresExplicitFormat = true)
+
+        val result = WasmlineLocalArtifactBridge.load(
+            descriptor = WasmlineArtifactDescriptor(path = "plugin.cwasm"),
+            config = WasmlineConfig(),
+            platform = platform,
+        )
+
+        val failure = assertIs<WasmlineLoadState.Failure>(result)
+        assertTrue(failure.cause.contains("requires an explicit artifactFormat"))
+        assertEquals(0, platform.resolveCalls)
+        assertEquals(0, platform.loadCalls)
+    }
+
+    @Test
+    fun usesTheExplicitFormatInsteadOfTheFileExtensionForLoadState() {
+        val cwasm = WasmlineArtifactDescriptor(
+            path = "misleading.pwasm",
+            artifactFormat = WasmlineArtifactFormat.CWASM,
+        )
+        val pwasm = WasmlineArtifactDescriptor(
+            path = "misleading.wasm",
+            artifactFormat = WasmlineArtifactFormat.PWASM,
+        )
+        val rawExport = WasmlineArtifactDescriptor(
+            path = "misleading.cwasm",
+            artifactFormat = WasmlineArtifactFormat.PWASM,
+            invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+            exportName = "run",
+        )
+
+        assertEquals(WasmlineLoadState.CODE_SUCCESS_AOT, cwasm.backendCodeOrNull())
+        assertEquals(WasmlineLoadState.CODE_SUCCESS_PULLEY, pwasm.backendCodeOrNull())
+        assertEquals(WasmlineLoadState.CODE_SUCCESS_RAW_EXPORT, rawExport.backendCodeOrNull())
+    }
+
     /** Missing local files return a failure without calling the native backend. */
     @Test
     fun reportsMissingArtifact() {
@@ -68,7 +139,10 @@ class WasmlineLocalArtifactBridgeTest {
         )
 
         val result = WasmlineLocalArtifactBridge.load(
-            artifactPath = "plugin.wasm",
+            descriptor = WasmlineArtifactDescriptor(
+                path = "plugin.wasm",
+                artifactFormat = WasmlineArtifactFormat.RAW_WASM,
+            ),
             config = WasmlineConfig(),
             platform = platform,
         )
@@ -81,6 +155,8 @@ class WasmlineLocalArtifactBridgeTest {
     private class FakePlatform(
         private val resolvedArtifact: ResolvedPrecompiledArtifact? = ResolvedPrecompiledArtifact("plugin.pwasm", "module"),
         private val loadResult: Boolean = true,
+        private val descriptorValidation: (WasmlineArtifactDescriptor) -> String? = { null },
+        private val requiresExplicitFormat: Boolean = false,
     ) : WasmlinePlatformArtifactBridge {
         var resolveCalls: Int = 0
         var loadCalls: Int = 0
@@ -92,6 +168,10 @@ class WasmlineLocalArtifactBridgeTest {
             resolveCalls++
             return resolvedArtifact
         }
+
+        override fun validationError(descriptor: WasmlineArtifactDescriptor): String? = descriptorValidation(descriptor)
+
+        override fun requiresExplicitArtifactFormat(): Boolean = requiresExplicitFormat
 
         override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
             loadCalls++

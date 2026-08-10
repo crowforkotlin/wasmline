@@ -33,6 +33,15 @@ Load this skill when working in the `wasmline` repository.
 
 ---
 
+## Artifact Model (always active)
+
+- Raw `.wasm` is the source format and is accepted by the browser path only; native Wasmline loading requires a precompiled artifact.
+- `.cwasm` is platform-specific native AOT code produced by the Cranelift compiler. It needs a matching OS, CPU, bitness, and Wasmtime version.
+- `.pwasm` is portable Pulley bytecode produced through the Cranelift compilation pipeline and executed by the Pulley interpreter. It is not raw `.wasm`.
+- The Cranelift engine distribution includes both Cranelift and Pulley support: prefer a matching `.cwasm`, then fall back to matching-bitness `.pwasm` (`pulley32` or `pulley64`).
+- The Pulley engine distribution includes Pulley only and therefore supports `.pwasm` only.
+- iOS is interpreter-only in Wasmline: ship and select `pulley64` `.pwasm`; never use an iOS `.cwasm` artifact.
+
 ## Workflow Summary
 
 1. Pre-check → 2. Asset verification → 3. Module targeting → 4. Execute on instruction.

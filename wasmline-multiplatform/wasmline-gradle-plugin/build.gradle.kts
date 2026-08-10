@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.ktor.server.cio)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(projects.wasmlinePluginCore)
 }
 
 kotlin {

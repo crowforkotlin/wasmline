@@ -179,6 +179,18 @@ tasks.register<JavaExec>("wasmlineBenchmark") {
     val jvmTestTask = tasks.named<Test>("jvmTest")
     mainClass.set("crow.wasmline.test.wasmtime.WasmlineInvocationBenchmark")
     classpath = jvmTestTask.get().classpath
+    systemProperty("wasmline.benchmark.mode", providers.gradleProperty("benchmark.mode").orNull ?: "invocation")
     systemProperty("wasmline.benchmark.warmup", providers.gradleProperty("benchmark.warmup").orNull ?: "32")
     systemProperty("wasmline.benchmark.iterations", providers.gradleProperty("benchmark.iterations").orNull ?: "256")
+    systemProperty("wasmline.benchmark.coldSamples", providers.gradleProperty("benchmark.coldSamples").orNull ?: "5")
+    systemProperty("wasmline.benchmark.supportConcurrent", providers.gradleProperty("benchmark.supportConcurrent").orNull ?: "false")
+    providers.gradleProperty("benchmark.wasmlineCoreAot").orNull?.let {
+        systemProperty("wasmline.benchmark.wasmlineCoreAot", it)
+    }
+    providers.gradleProperty("benchmark.rawExportAot").orNull?.let {
+        systemProperty("wasmline.benchmark.rawExportAot", it)
+    }
+    providers.gradleProperty("benchmark.componentAot").orNull?.let {
+        systemProperty("wasmline.benchmark.componentAot", it)
+    }
 }

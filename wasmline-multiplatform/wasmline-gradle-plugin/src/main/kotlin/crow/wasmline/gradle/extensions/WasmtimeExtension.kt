@@ -2,10 +2,13 @@
 
 package crow.wasmline.gradle.extensions
 
+import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import java.io.File
 import javax.inject.Inject
 
 /**
@@ -57,7 +60,9 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      * targets defined by `wasmline-plugin-core` are used.
      *
      * Supported values include: "pulley64", "x86_64-linux", "aarch64-linux",
-     * "aarch64-android", "aarch64-macos", "aarch64-ios", "x86_64-windows".
+     * "aarch64-android", "aarch64-macos", "x86_64-windows".
+     * iOS always uses the portable `pulley64` PWASM target because its native
+     * runtime is interpreter-only; direct iOS CWASM targets are rejected.
      */
     val targets: ListProperty<String> = objects.listProperty(String::class.java)
         .convention(emptyList())
@@ -86,6 +91,18 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      */
     val version: Property<String> = objects.property(String::class.java)
         .convention("latest")
+
+    /** Exact full Wasmtime CLI version used only for Component AOT compilation. */
+    val compilerVersion: Property<String> = objects.property(String::class.java)
+        .convention(ToolchainCatalog.WASMTIME_VERSION)
+
+    /** Separate cache root for the full build-time CLI; runtime-min remains in [directory]. */
+    val compilerDirectory: DirectoryProperty = objects.directoryProperty().apply {
+        set(File(System.getProperty("user.home"), ".wasmline/wasmtime-compiler"))
+    }
+
+    /** Optional explicit full Wasmtime CLI executable. `wasmtime-min` is rejected. */
+    val compilerExecutable: RegularFileProperty = objects.fileProperty()
 
     /**
      * GitHub token for authenticated API requests.

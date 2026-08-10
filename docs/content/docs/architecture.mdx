@@ -28,15 +28,17 @@ Platform actual  (jniMain / iosMain)
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
         │  Engine.cpp   — wasmtime Engine singleton; global init / shutdown
-        │  Module.cpp   — AOT / Pulley module compilation; keyed module cache
+        │  Module.cpp   — CWASM / PWASM deserialization; keyed module cache
         │  Session.cpp  — Per-invocation isolated linear memory region; execution context
         │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
         ▼
 wasmtime C-API  v47.0.2
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
-Core Wasmline binary  (.cwasm — platform-specific AOT  |  .pwasm — Pulley portable bytecode)
+Core Wasmline binary  (.cwasm — Cranelift native AOT  |  .pwasm — Cranelift-produced Pulley bytecode)
 ```
+
+The artifact and engine layers are separate capabilities. The Cranelift Wasmtime build includes both the Cranelift compiler and the Pulley interpreter, so it can load matching `.cwasm` artifacts and fall back to `.pwasm`. The Pulley engine build contains only the Pulley interpreter and accepts `.pwasm` only. iOS uses the Pulley engine and therefore always selects `.pwasm`.
 
 ### Web Target Stack — Kotlin/JS · Kotlin/WasmJS
 
@@ -78,15 +80,15 @@ The runtime selects the backend from `WasmlineArtifactDescriptor`. File extensio
 
 | Execution model | Invocation protocol | Runtime boundary | Core response frame |
 |---|---|---|---|
-| `CORE_WASM` | `WASMLINE_CORE_V1` | `Session`, action router, and linear memory | Yes |
+| `CORE_WASM` | `WASMLINE_CORE` | `Session`, action router, and linear memory | Yes |
 | `CORE_WASM` | `RAW_EXPORT` | `RawModuleSession` and declared Core numeric ABI | No |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` and Component Model values | No |
 
-`WASMLINE_CORE_V1` is the service protocol for a Core Wasmline module. Its response bytes use the fixed `WLMF` magic marker and a one-byte `frameVersion` with the current value `1`. The magic marker identifies the response format. It is not authentication. `frameVersion` identifies the response byte layout. It is not a Wasmtime, Kotlin, framework, or business API version. A reader accepts the V1 layout only when the frame version is `1`.
+`WASMLINE_CORE` is the service protocol for a Core Wasmline module. Its response bytes use the fixed `WLMF` magic marker and a one-byte `frameVersion` with the current value `1`. The magic marker identifies the response format. It is not authentication. `frameVersion` identifies the response byte layout. It is not a Wasmtime, Kotlin, framework, or business API version. A reader accepts the V1 layout only when the frame version is `1`.
 
 Raw Export calls use an explicitly declared numeric ABI. The current public raw value set is `i32`, `i64`, `f32`, and `f64`. They do not allocate or parse a Core response frame.
 
-Component Model calls load a complete, already compiled component binary through the Wasmtime Component Model API. They use Component Model typed values and do not require Core linear memory, `__wasmline_wasi_entry`, or the Core response frame. Wasmline does not compile WIT, WIT-Kotlin, `wit-bindgen`, or component adapters. Optional `contractMetadata` records a call contract for validation and documentation; it is not compiler input.
+Component Model calls load a complete, already compiled component binary through the Wasmtime Component Model API. They use Component Model typed values and do not require Core linear memory, `__wasmline_wasi_entry`, or the Core response frame. The runtime loader does not run `wit-bindgen` or `wasm-tools`; the optional plugin build pipeline in `wasmline-plugin-core`, the Gradle plugin, and the CLI can generate bindings and assemble the component before loading. Optional `contractMetadata` records a call contract for validation and documentation; it is not compiler input.
 
 All three paths expose the same result semantics. A missing action binding returns `ACTION_NOT_BOUND` as a failure result. It is not encoded as an empty successful payload and does not require an exception. The Core path reports this through its response frame; Raw Export and Component Model report it through their typed result carrier. Exceptions remain for invalid programming contracts, unrecoverable runtime state, and failures that prevent construction of a result.
 

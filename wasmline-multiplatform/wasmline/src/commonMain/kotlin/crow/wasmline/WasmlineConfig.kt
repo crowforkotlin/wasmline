@@ -12,7 +12,8 @@ import crow.wasmline.serialization.WasmlineSerializationConfig
  *           When `false` (default), the loading path is lock-free.
  * @property networkClient HTTP transport for remote package loading. Null means no remote loading.
  * @property trustedKeys Trusted public keys for manifest signature verification.
- *           When null, signature verification is skipped (permissive mode).
+ *           Package sources require matching keys before their manifest metadata is trusted.
+ *           Direct local artifact sources remain caller-trusted inputs.
  * @property cache Cache for downloaded manifests and artifacts.
  *           When null, a platform-default file-system cache is used.
  * @property manifestTtlMs Time-to-live for cached manifests in milliseconds.

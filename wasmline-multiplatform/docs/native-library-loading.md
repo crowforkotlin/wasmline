@@ -63,8 +63,8 @@ Wasmline provides two engine modules. They are mutually exclusive — a project 
 
 | Module | Artifact ID | Description |
 |--------|------------|-------------|
-| `wasmline-engine-pulley` | `crow.wasmline:wasmline-engine-pulley` | Interpreter-based engine. Smaller binary, broader platform support. |
-| `wasmline-engine-cranelift` | `crow.wasmline:wasmline-engine-cranelift` | JIT compiler engine. Faster execution, limited platform support. |
+| `wasmline-engine-pulley` | `crow.wasmline:wasmline-engine-pulley` | Pulley-only interpreter. Supports `.pwasm` only; smaller binary and broader platform support. Use `pulley32` or `pulley64` to match host bitness. |
+| `wasmline-engine-cranelift` | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime. Supports `.cwasm` and `.pwasm`; prefers matching `.cwasm`, then matching-bitness `.pwasm`. |
 
 Both modules follow the same build and publishing structure. The examples below use `pulley`.
 

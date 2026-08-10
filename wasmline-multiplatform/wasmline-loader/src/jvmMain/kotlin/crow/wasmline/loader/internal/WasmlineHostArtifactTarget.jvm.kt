@@ -1,11 +1,18 @@
 package crow.wasmline.loader.internal
 
+import crow.wasmline.wasmlineNativeRuntimeInfo
+
 internal actual val currentHostArtifactTarget: WasmlineHostArtifactTarget
-    get() = WasmlineHostArtifactTarget(
-        os = normalizeHostOs(System.getProperty("os.name")),
-        cpu = normalizeHostCpu(System.getProperty("os.arch")),
-        is64Bit = is64BitArch(System.getProperty("os.arch")),
-    )
+    get() {
+        val runtimeInfo = wasmlineNativeRuntimeInfo()
+        return WasmlineHostArtifactTarget(
+            os = normalizeHostOs(System.getProperty("os.name")),
+            cpu = normalizeHostCpu(System.getProperty("os.arch")),
+            is64Bit = is64BitArch(System.getProperty("os.arch")),
+            nativeBackend = runtimeInfo?.backend,
+            wasmtimeVersion = runtimeInfo?.wasmtimeVersion,
+        )
+    }
 
 private fun normalizeHostOs(osName: String?): String {
     val value = osName?.lowercase() ?: return "unknown"

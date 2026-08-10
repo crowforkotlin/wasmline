@@ -72,6 +72,9 @@ kotlin {
         val hostTest by creating { dependsOn(other = commonTest) }
         val jvmTest by getting {
             dependsOn(other = hostTest)
+            dependencies {
+                implementation(projects.wasmlineEngineCranelift)
+            }
         }
 
         if (HostManager.hostIsMac) {

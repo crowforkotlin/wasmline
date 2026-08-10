@@ -5,9 +5,11 @@ package crow.wasmline.engine.pulley
 /**
  * Marker object for the Pulley engine variant.
  *
- * This module bundles the Pulley interpreter-based Wasmtime runtime as a leaf
- * dependency. It provides `libwasmtime` native libraries for all supported
- * platforms (including 32-bit Android and iOS).
+ * This module bundles the Pulley-only interpreter-based Wasmtime runtime as a
+ * leaf dependency. It supports portable `.pwasm` artifacts only and provides
+ * `libwasmtime` native libraries for all supported platforms (including
+ * 32-bit Android and iOS). It does not include the Cranelift native compiler,
+ * so `.cwasm` artifacts are not supported by this module.
  *
  * Usage:
  * ```kotlin

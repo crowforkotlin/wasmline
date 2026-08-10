@@ -5,14 +5,12 @@ package crow.wasmline.loader.internal
 import crow.wasmline.WasmlineCache
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineLog
-import crow.wasmline.WasmlineTrustedKeys
+import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
-import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineManifest
 import crow.wasmline.loader.toDescriptor
 import crow.wasmline.network.WasmlineNetworkClient
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -63,18 +61,29 @@ internal object WasmlineRemotePackageResolution {
             return failure("Failed to parse manifest envelope from '$manifestUrl'.")
         }
 
-        // Step 4: Verify signature (if trustedKeys provided)
-        val signatureResult = verifySignatureIfNeeded(envelope, request.config.trustedKeys, manifestUrl)
-        if (signatureResult != null) return signatureResult
+        // Step 4: Verify signature before consuming package metadata.
+        val manifest = when (
+            val verification = WasmlinePackageSignatureVerifier.verify(
+                envelope = envelope,
+                trustedKeys = request.config.trustedKeys,
+                packageLocation = manifestUrl,
+            )
+        ) {
+            is WasmlineManifestVerification.Verified -> verification.manifest
+            is WasmlineManifestVerification.Rejected -> return failure(verification.cause)
+        }
 
         // Step 5: Select compatible artifact
-        val artifact = WasmlineLocalPackageResolution.selectArtifact(envelope.manifest.artifacts)
+        val artifact = WasmlineLocalPackageResolution.selectArtifact(manifest.artifacts)
             ?: return failure(
                 "No compatible artifact found in remote package '$manifestUrl' " +
                     "for host ${describe(currentHostArtifactTarget)}.",
             )
         val descriptor = artifact.toDescriptor(path = "pending")
         descriptor.validationError()?.let { return failure("Invalid artifact descriptor for '${artifact.url}': $it") }
+        if (artifact.sha256.isBlank()) {
+            return failure("Artifact '${artifact.url}' from '$manifestUrl' is missing sha256 metadata.")
+        }
 
         // Step 6: Resolve artifact URL
         val artifactUrl = resolveArtifactUrl(manifestUrl, artifact.url)
@@ -114,9 +123,9 @@ internal object WasmlineRemotePackageResolution {
             ?: return failure("Failed to write cached artifact to local file system.")
 
         return WasmlineSourceResolution.ContinueWith(
-            WasmlineSource.LocalArtifactPath(
-                path = localPath,
+            VerifiedPackageArtifact(
                 descriptor = artifact.toDescriptor(localPath),
+                expectedSha256 = artifact.sha256,
             ),
         )
     }
@@ -216,51 +225,6 @@ internal object WasmlineRemotePackageResolution {
         }
     }
 
-    private fun verifySignatureIfNeeded(
-        envelope: SignedManifestEnvelope,
-        trustedKeys: WasmlineTrustedKeys?,
-        manifestUrl: String,
-    ): WasmlineSourceResolution.Complete? {
-        val log = WasmlineLog.logger
-        // No trusted keys = permissive mode (skip verification)
-        if (trustedKeys == null) {
-            log?.debug("$P Signature verification skipped (permissive mode)")
-            return null
-        }
-
-        val algorithmId = try {
-            SignatureAlgorithmId.valueOf(envelope.algorithm)
-        } catch (_: IllegalArgumentException) {
-            log?.warn("$P Unknown signature algorithm: ${envelope.algorithm}")
-            return failure("Unknown signature algorithm '${envelope.algorithm}' in manifest from '$manifestUrl'.")
-        }
-
-        val publicKey = trustedKeys.getPublicKey(envelope.algorithm, envelope.publicKeyId)
-            ?: run {
-                log?.warn("$P No trusted key for algorithm=${envelope.algorithm}, keyId=${envelope.publicKeyId}")
-                return failure(
-                    "No trusted key found for algorithm='${envelope.algorithm}', " +
-                        "keyId='${envelope.publicKeyId}' in manifest from '$manifestUrl'.",
-                )
-            }
-
-        val algorithm = algorithmId.get()
-        val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), envelope.manifest)
-        val verified = algorithm.verify(
-            message = manifestBytes.toByteString(),
-            signature = envelope.signature.toByteString(),
-            publicKey = publicKey.toByteString(),
-        )
-
-        return if (verified) {
-            log?.info("$P Manifest signature verified for $manifestUrl")
-            null
-        } else {
-            log?.error("$P Signature verification failed for $manifestUrl")
-            failure("Manifest signature verification failed for '$manifestUrl'.")
-        }
-    }
-
     private fun resolveArtifactUrl(manifestUrl: String, artifactUrl: String): String {
         // Absolute URL: use as-is
         if (artifactUrl.startsWith("http://") || artifactUrl.startsWith("https://")) {
@@ -281,6 +245,7 @@ internal object WasmlineRemotePackageResolution {
             crow.wasmline.loader.model.WasmlineArtifactType.WASM -> ".wasm"
             crow.wasmline.loader.model.WasmlineArtifactType.CWASM -> ".cwasm"
             crow.wasmline.loader.model.WasmlineArtifactType.PWASM -> ".pwasm"
+            crow.wasmline.loader.model.WasmlineArtifactType.COMPONENT_WASM -> ".component.wasm"
         }
         val localPath = "$cacheDir/$cacheKey$extension"
         return if (writeHostFileBytes(localPath, bytes)) localPath else null

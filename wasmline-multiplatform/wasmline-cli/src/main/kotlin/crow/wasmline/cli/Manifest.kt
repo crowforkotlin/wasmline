@@ -10,6 +10,8 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.long
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.manifest.ManifestSigner
 import java.io.File
@@ -42,8 +44,8 @@ class Manifest : CliktCommand(name = "manifest") {
     private val description by option("--description")
     private val iconUrl by option("--icon-url")
     private val homeUrl by option("--home-url")
-    private val executionModel by option("--execution-model").default("CORE_WASM")
-    private val invocationProtocol by option("--invocation-protocol").default("WASMLINE_CORE_V1")
+    private val executionModel by option("--execution-model")
+    private val invocationProtocol by option("--invocation-protocol")
     private val exportName by option("--export-name")
     private val contractMetadata by option("--contract-metadata").multiple().unique()
     private val key by option("-k", "--key").required().help("Ed25519 private key: file path or hex string")
@@ -56,7 +58,17 @@ class Manifest : CliktCommand(name = "manifest") {
         }
         val result = WasmtimeCompiler().readCompileResult(resultFile)
         val resolvedPluginId = pluginId ?: File(result.inputFile).nameWithoutExtension
-        val invocation = parseInvocationOptions(executionModel, invocationProtocol, exportName, contractMetadata)
+        val inferredArtifact = result.artifacts.firstOrNull {
+            it.executionModel != WasmlineExecutionModel.CORE_WASM ||
+                it.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_CORE
+        }
+        val invocation = parseInvocationOptions(
+            executionModelName = executionModel ?: inferredArtifact?.executionModel?.name ?: WasmlineExecutionModel.CORE_WASM.name,
+            invocationProtocolName = invocationProtocol ?: inferredArtifact?.invocationProtocol?.name
+                ?: WasmlineInvocationProtocol.WASMLINE_CORE.name,
+            exportName = exportName ?: inferredArtifact?.exportName,
+            contractMetadataEntries = contractMetadata,
+        )
         ManifestSigner().createSignedManifest(
             artifacts = result.artifacts,
             pluginId = resolvedPluginId,

@@ -46,10 +46,10 @@ cd wasmline-multiplatform
 build/wasmline/
 ├── output/{name}-{version}/
 │   ├── manifest.wlm                      # Signed manifest (Protobuf + Ed25519 signature)
-│   ├── {name}-pulley64.pwasm             # Pulley portable bytecode — all native wasmtime targets
+│   ├── {name}-pulley32.pwasm             # Portable Pulley bytecode — 32-bit Android
+│   ├── {name}-pulley64.pwasm             # Portable Pulley bytecode — 64-bit native targets and iOS
 │   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
 │   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
-│   ├── {name}-aarch64-ios.cwasm          # AOT — iOS arm64
 │   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
 │   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
 │   └── debug/

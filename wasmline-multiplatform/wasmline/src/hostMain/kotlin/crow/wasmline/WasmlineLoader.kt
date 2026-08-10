@@ -18,7 +18,13 @@ internal object WasmlineLocalArtifactBridge {
         platform: WasmlinePlatformArtifactBridge,
     ): WasmlineLoadState {
         val log = WasmlineLog.logger
+        val requiredFormatError = if (platform.requiresExplicitArtifactFormat() && descriptor.artifactFormat == null) {
+            "Native artifact loading requires an explicit artifactFormat."
+        } else {
+            null
+        }
         val validationError = descriptor.validationError()
+            ?: requiredFormatError
             ?: platform.validationError(descriptor)
         if (validationError != null) {
             return WasmlineLoadState.Failure(
@@ -84,7 +90,8 @@ internal interface WasmlinePlatformArtifactBridge {
     fun resolveArtifact(path: String): ResolvedPrecompiledArtifact?
     fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean
     fun validationError(descriptor: WasmlineArtifactDescriptor): String? = null
-    fun backendCodeOrNull(path: String, descriptor: WasmlineArtifactDescriptor): Byte? = descriptor.backendCodeOrNull(path)
+    fun requiresExplicitArtifactFormat(): Boolean = false
+    fun backendCodeOrNull(path: String, descriptor: WasmlineArtifactDescriptor): Byte? = descriptor.backendCodeOrNull()
     fun unsupportedArtifactMessage(descriptor: WasmlineArtifactDescriptor): String = "[Wasmline] Load failure for " +
         "${descriptor.executionModel}/${descriptor.invocationProtocol}: ${descriptor.path}"
     fun loadFailureMessage(descriptor: WasmlineArtifactDescriptor): String =
@@ -92,17 +99,17 @@ internal interface WasmlinePlatformArtifactBridge {
             descriptor.path
 }
 
-private fun WasmlineArtifactDescriptor.backendCodeOrNull(path: String): Byte? {
-    val extensionCode = when (path.substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
-        "cwasm" -> WasmlineLoadState.CODE_SUCCESS_AOT
-        "pwasm" -> WasmlineLoadState.CODE_SUCCESS_PULLEY
-        "wasm" -> WasmlineLoadState.CODE_SUCCESS_WASM
-        else -> null
+internal fun WasmlineArtifactDescriptor.backendCodeOrNull(): Byte? {
+    val formatCode = when (artifactFormat) {
+        WasmlineArtifactFormat.RAW_WASM -> WasmlineLoadState.CODE_SUCCESS_WASM
+        WasmlineArtifactFormat.CWASM -> WasmlineLoadState.CODE_SUCCESS_AOT
+        WasmlineArtifactFormat.PWASM -> WasmlineLoadState.CODE_SUCCESS_PULLEY
+        null -> return null
     }
     return when (executionModel) {
-        WasmlineExecutionModel.CORE_WASM -> extensionCode
-        WasmlineExecutionModel.COMPONENT_MODEL -> extensionCode?.let { WasmlineLoadState.CODE_SUCCESS_COMPONENT }
-    }?.let { code ->
+        WasmlineExecutionModel.CORE_WASM -> formatCode
+        WasmlineExecutionModel.COMPONENT_MODEL -> WasmlineLoadState.CODE_SUCCESS_COMPONENT
+    }.let { code ->
         if (invocationProtocol == WasmlineInvocationProtocol.RAW_EXPORT) {
             WasmlineLoadState.CODE_SUCCESS_RAW_EXPORT
         } else {

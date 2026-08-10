@@ -184,7 +184,7 @@ select_variant() {
             ;;
         aarch64-ios-pulley-min-c-api|aarch64-ios-sim-pulley-min-c-api|armv7-android|x86-android)
             VARIANT="pulley"
-            log_info "Platform requires Pulley runtime (no Cranelift support)."
+            log_info "Platform requires Pulley runtime; use matching-bitness PWASM."
             ;;
         *)
             can_choose=true

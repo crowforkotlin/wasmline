@@ -10,4 +10,7 @@ import crow.wasmline.internal.protocol.WasmlineResponseCodec
 import crow.wasmline.invocation.WasmlineCallResult
 
 fun Wasmline.callResult(action: String, payload: ByteArray = ByteArray(0)): WasmlineCallResult<ByteArray> =
-    WasmlineResponseCodec.decodeLegacyCompatible(call(action, payload))
+    when (descriptor.executionModel) {
+        WasmlineExecutionModel.CORE_WASM -> WasmlineResponseCodec.decodeLegacyCompatible(call(action, payload))
+        WasmlineExecutionModel.COMPONENT_MODEL -> WasmlineComponentRpc.invoke(this, action, payload)
+    }

@@ -303,7 +303,7 @@ class ManifestTest {
         assertNull(artifact.targetCompilerVersion)
         assertTrue(artifact.is64Bit, "is64Bit should default to true")
         assertEquals(WasmlineExecutionModel.CORE_WASM, artifact.executionModel)
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE_V1, artifact.invocationProtocol)
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE, artifact.invocationProtocol)
         assertNull(artifact.exportName)
         assertEquals(emptyMap(), artifact.contractMetadata)
         println("Artifact default values verified.")
@@ -325,6 +325,64 @@ class ManifestTest {
         val decoded = ProtoBuf.decodeFromByteArray(WasmlineArtifact.serializer(), bytes)
 
         assertEquals(artifact, decoded)
+    }
+
+    @Test
+    fun `test native AOT type and execution model combinations survive protobuf`() {
+        val artifacts = listOf(
+            WasmlineArtifact(
+                type = WasmlineArtifactType.CWASM,
+                url = "core.cwasm",
+                sha256 = "core-cwasm",
+                executionModel = WasmlineExecutionModel.CORE_WASM,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+            ),
+            WasmlineArtifact(
+                type = WasmlineArtifactType.PWASM,
+                url = "core.pwasm",
+                sha256 = "core-pwasm",
+                targetCpu = "pulley64",
+                executionModel = WasmlineExecutionModel.CORE_WASM,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+            ),
+            WasmlineArtifact(
+                type = WasmlineArtifactType.CWASM,
+                url = "component.cwasm",
+                sha256 = "component-cwasm",
+                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+                invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                exportName = "plugin/invoke",
+            ),
+            WasmlineArtifact(
+                type = WasmlineArtifactType.PWASM,
+                url = "component.pwasm",
+                sha256 = "component-pwasm",
+                targetCpu = "pulley64",
+                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+                invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                exportName = "plugin/invoke",
+            ),
+        )
+
+        artifacts.forEach { artifact ->
+            val bytes = ProtoBuf.encodeToByteArray(WasmlineArtifact.serializer(), artifact)
+            val decoded = ProtoBuf.decodeFromByteArray(WasmlineArtifact.serializer(), bytes)
+
+            assertEquals(artifact, decoded)
+        }
+    }
+
+    @Test
+    fun `test artifact type enum order remains backward compatible`() {
+        assertEquals(
+            listOf(
+                WasmlineArtifactType.WASM,
+                WasmlineArtifactType.CWASM,
+                WasmlineArtifactType.PWASM,
+                WasmlineArtifactType.COMPONENT_WASM,
+            ),
+            WasmlineArtifactType.entries,
+        )
     }
 
     @Test

@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,11 +24,26 @@ void wasmline_warmup_engine(bool usePulley);
 /** Releases the global engine and cached runtime state. */
 void wasmline_release_engine();
 
+/** Returns the exact linked Wasmtime version. */
+const char* wasmline_wasmtime_version();
+
+/** Returns whether the linked runtime supports Cranelift artifacts. */
+bool wasmline_supports_cranelift();
+
+/** Returns whether the linked runtime supports Pulley artifacts. */
+bool wasmline_supports_pulley();
+
 /** Loads a Core Wasm artifact. */
 bool wasmline_load_module(const char* key, const char* path, bool isUnsafe);
 
+/** Loads a Core Wasm artifact with an explicit physical artifact format. */
+bool wasmline_load_module_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe);
+
 /** Loads a Component Model artifact. */
 bool wasmline_load_component(const char* key, const char* path, bool isUnsafe);
+
+/** Loads a Component Model artifact with an explicit physical artifact format. */
+bool wasmline_load_component_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe);
 
 /** Releases a previously loaded artifact. */
 void wasmline_release_module(const char* key);
@@ -59,14 +75,30 @@ char* wasmline_invoke_component(const char* key,
 void wasmline_free_memory(char* ptr);
 
 /** Defines the callback signature for outbound host calls. */
-typedef char* (*OutboundCallback)(const char* action,
+typedef char* (*OutboundCallback)(const char* key,
+                                  size_t keyLen,
+                                  const char* action,
                                   size_t actionLen,
                                   const char* payload,
                                   size_t payloadLen,
                                   size_t* outLen);
 
 /** Registers the outbound callback for an artifact. */
-void wasmline_set_outbound_handler(const char* key, OutboundCallback callback);
+void wasmline_set_outbound_handler(const char* key, const char* codec, OutboundCallback callback);
+
+/** Defines the callback signature for typed Component host imports. */
+typedef char* (*ComponentHostCallback)(const char* key,
+                                       size_t keyLen,
+                                       const char* interfaceName,
+                                       size_t interfaceNameLen,
+                                       const char* functionName,
+                                       size_t functionNameLen,
+                                       const char* arguments,
+                                       size_t argumentsLen,
+                                       size_t* outLen);
+
+/** Registers the typed Component host callback for an artifact. */
+bool wasmline_set_component_host_handler(const char* key, ComponentHostCallback callback);
 
 #ifdef __cplusplus
 }

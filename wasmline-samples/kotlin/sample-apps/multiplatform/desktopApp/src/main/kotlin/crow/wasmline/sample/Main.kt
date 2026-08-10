@@ -37,6 +37,10 @@ import java.io.File
 
 private const val artifactFormatProperty = "wasmline.artifact.format"
 private const val artifactFormatEnvironment = "WASMLINE_ARTIFACT_FORMAT"
+private const val rawArtifactProperty = "wasmline.sample.raw"
+private const val rawArtifactEnvironment = "WASMLINE_SAMPLE_RAW"
+private const val componentArtifactProperty = "wasmline.sample.component"
+private const val componentArtifactEnvironment = "WASMLINE_SAMPLE_COMPONENT"
 
 private val bundledPluginResources = listOf(
     "plugin.cwasm",
@@ -55,6 +59,11 @@ private fun requestedBundledArtifactFormat(): String? {
         else -> error("Unsupported runtime artifact format '$rawFormat'. Expected pwasm or cwasm.")
     }
 }
+
+private fun configuredArtifact(property: String, environment: String): String =
+    System.getProperty(property)?.ifBlank { "" }
+        ?: System.getenv(environment)?.ifBlank { "" }
+        ?: ""
 
 private fun findBundledPluginResource(vararg candidates: String): String? {
     val classLoader = Thread.currentThread().contextClassLoader
@@ -102,6 +111,11 @@ fun main() = application {
         App(
             wasmPath = wasmFile.absolutePath,
             assetRefresher = refresher,
+            artifacts = SampleArtifacts(
+                corePath = wasmFile.absolutePath,
+                rawExportPath = configuredArtifact(rawArtifactProperty, rawArtifactEnvironment),
+                componentPath = configuredArtifact(componentArtifactProperty, componentArtifactEnvironment),
+            ),
         )
     }
 }

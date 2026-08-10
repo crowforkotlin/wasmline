@@ -137,6 +137,7 @@ fn addSourceFiles(b: *std.Build, lib: *std.Build.Step.Compile, core_dir: []const
 
     // Desktop Adapter (ConsoleLogger, JniHostHandler)
     lib.root_module.addCSourceFile(.{ .file = b.path("src/jvmMain/native/ConsoleLogger.cpp"), .flags = CPP_FLAGS });
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniComponentHostHandler.cpp"), .flags = CPP_FLAGS });
     lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniHostHandler.cpp"), .flags = CPP_FLAGS });
 
     // External Core Sources
