@@ -48,15 +48,56 @@ WASMTIME_COMPILER=/absolute/path/to/wasmtime \
 
 ## Other targets
 
-The desktop and web Gradle tasks remain available:
+Desktop defaults to the Pulley engine and a matching `pwasm64` artifact:
 
 ```shell
 ./gradlew :sample-apps:multiplatform:desktopApp:run
+```
+
+Run Desktop with a native Cranelift artifact:
+
+```shell
+./gradlew :sample-apps:multiplatform:desktopApp:run \
+  -Pwasmline.engine=cranelift \
+  -Pwasmline.artifact.format=cwasm
+```
+
+The two Android applications expose Gradle tasks that assemble and sync the
+plugin into APK assets, install the debug APK, and launch the activity with
+`adb`:
+
+```shell
+./gradlew :sample-apps:android:wasmlineRunDebug
+./gradlew :sample-apps:multiplatform:androidApp:wasmlineRunDebug
+```
+
+Select a device with `-Pandroid.device=SERIAL`:
+
+```shell
+./gradlew :sample-apps:multiplatform:androidApp:wasmlineRunDebug \
+  -Pandroid.device=emulator-5554
+```
+
+Android defaults to Pulley + `pwasm64`. For Android CWASM, select Cranelift
+and compile the plugin for the Android target:
+
+```shell
+./gradlew :sample-apps:android:wasmlineRunDebug \
+  -Pwasmline.engine=cranelift \
+  -Pwasmline.artifact.format=cwasm \
+  -Pwasmline.compile.target=aarch64-linux-android
+```
+
+Web tasks assemble and sync the raw `.wasm` into the browser resources before
+starting the development server:
+
+```shell
 ./gradlew :sample-apps:multiplatform:webApp:jsBrowserDevelopmentRun
 ./gradlew :sample-apps:multiplatform:webApp:wasmJsBrowserDevelopmentRun
 ```
 
-Android tasks still need a connected device for installation and launch:
+To only build an Android APK without installing it, use the normal Android
+Gradle task:
 
 ```shell
 ./gradlew :sample-apps:android:installDebug
@@ -69,7 +110,3 @@ selection, framework builds, installation, and launch:
 ```shell
 ./run-ios.sh
 ```
-
-The Android, desktop, and web shell scripts are still compatibility helpers
-for resource synchronization and device/browser launch. They can be removed
-after those remaining copy and launch steps are modeled as Gradle task inputs.

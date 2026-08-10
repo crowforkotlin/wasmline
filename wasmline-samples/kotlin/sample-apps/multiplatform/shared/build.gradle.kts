@@ -18,6 +18,14 @@ java {
     }
 }
 
+val wasmlineEngine = providers.gradleProperty("wasmline.engine")
+    .map { it.lowercase() }
+    .orElse("pulley")
+    .get()
+require(wasmlineEngine in setOf("pulley", "cranelift")) {
+    "Unsupported wasmline.engine '$wasmlineEngine'. Expected pulley or cranelift."
+}
+
 kotlin {
     sourceSets {
         val commonMain by getting {
@@ -51,8 +59,12 @@ kotlin {
             dependencies {
                 api(libs.androidx.activity.compose)
                 api(libs.ktor.client.okhttp)
-                // Engine module provides native libwasmline.so for Android via variant publishing
-                implementation(libs.crow.wasmline.engine.pulley)
+                // Consumers select exactly one engine; Pulley is the Android default.
+                if (wasmlineEngine == "cranelift") {
+                    implementation(libs.crow.wasmline.engine.cranelift)
+                } else {
+                    implementation(libs.crow.wasmline.engine.pulley)
+                }
             }
         }
         val desktopMain by getting {
@@ -62,8 +74,7 @@ kotlin {
                 api(libs.conveyor)
                 api(libs.ktor.client.cio)
                 // Engine module: selected via `wasmline.engine` property in gradle.properties
-                val engine = project.findProperty("wasmline.engine") as? String ?: "pulley"
-                if (engine == "cranelift") {
+                if (wasmlineEngine == "cranelift") {
                     implementation(libs.crow.wasmline.engine.cranelift)
                 } else {
                     implementation(libs.crow.wasmline.engine.pulley)

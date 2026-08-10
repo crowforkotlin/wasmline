@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.Sync
+import org.gradle.language.jvm.tasks.ProcessResources
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -41,4 +44,68 @@ compose.desktop {
 
 dependencies {
     implementation(projects.sampleApps.multiplatform.shared)
+}
+
+val wasmlineEngine = providers.gradleProperty("wasmline.engine")
+    .map { it.lowercase() }
+    .orElse("pulley")
+    .get()
+require(wasmlineEngine in setOf("pulley", "cranelift")) {
+    "Unsupported wasmline.engine '$wasmlineEngine'. Expected pulley or cranelift."
+}
+
+val requestedArtifactFormat = providers.gradleProperty("wasmline.artifact.format")
+    .orElse(providers.environmentVariable("WASMLINE_ARTIFACT_FORMAT"))
+    .map { it.lowercase() }
+    .orElse(if (wasmlineEngine == "cranelift") "cwasm" else "pwasm64")
+    .map { if (it == "pwasm") "pwasm64" else it }
+    .get()
+require(requestedArtifactFormat in setOf("pwasm64", "cwasm")) {
+    "Desktop supports pwasm64 or cwasm artifacts. Received '$requestedArtifactFormat'."
+}
+if (requestedArtifactFormat == "cwasm" && wasmlineEngine != "cranelift") {
+    error("Desktop CWASM requires -Pwasmline.engine=cranelift.")
+}
+
+val defaultCwasmTarget = when {
+    System.getProperty("os.name").lowercase().contains("mac") &&
+        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-macos"
+    System.getProperty("os.name").lowercase().contains("mac") -> "x86_64-macos"
+    System.getProperty("os.name").lowercase().contains("linux") &&
+        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-linux"
+    System.getProperty("os.name").lowercase().contains("linux") -> "x86_64-linux"
+    System.getProperty("os.name").lowercase().contains("windows") -> "x86_64-windows"
+    else -> error("Unsupported Wasmtime host: ${System.getProperty("os.name")} ${System.getProperty("os.arch")}")
+}
+val requestedCwasmTarget = providers.gradleProperty("wasmline.compile.target")
+    .orElse(defaultCwasmTarget)
+    .get()
+val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
+    "wasmline/output/crow.wasmline.demo-1.0.0",
+)
+val samplePluginArtifactName = when (requestedArtifactFormat) {
+    "pwasm64" -> "demo-pulley64.pwasm"
+    "cwasm" -> "demo-$requestedCwasmTarget.cwasm"
+    else -> error("Unsupported wasmline artifact format: $requestedArtifactFormat")
+}
+val samplePluginArtifactExtension = samplePluginArtifactName.substringAfterLast('.')
+val syncWasmlineSamplePlugin = tasks.register<Sync>("syncWasmlineSamplePlugin") {
+    group = "wasmline"
+    description = "Build and expose the selected Wasmline plugin artifact to desktop resources"
+    dependsOn(project(":sample-plugin").tasks.named("wasmlineAssembleDebug"))
+    from(samplePluginOutput) {
+        include(samplePluginArtifactName)
+        rename { "plugin.$samplePluginArtifactExtension" }
+    }
+    into(layout.buildDirectory.dir("generated/desktop-resources"))
+}
+
+tasks.named<ProcessResources>("processResources") {
+    dependsOn(syncWasmlineSamplePlugin)
+    from(syncWasmlineSamplePlugin)
+}
+
+tasks.withType<JavaExec>().matching { it.name == "run" }.configureEach {
+    dependsOn(syncWasmlineSamplePlugin)
+    systemProperty("wasmline.artifact.format", if (requestedArtifactFormat == "pwasm64") "pwasm" else "cwasm")
 }
