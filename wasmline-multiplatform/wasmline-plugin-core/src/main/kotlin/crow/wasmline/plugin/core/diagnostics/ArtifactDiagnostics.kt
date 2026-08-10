@@ -38,6 +38,7 @@ object WasmlineArtifactDiagnostics {
             -> WasmlineArtifactFormat.RAW_WASM to WasmlineArtifactBackend.RAW
 
             WasmlineArtifactType.CWASM -> WasmlineArtifactFormat.CWASM to WasmlineArtifactBackend.CRANELIFT
+
             WasmlineArtifactType.PWASM -> WasmlineArtifactFormat.PWASM to WasmlineArtifactBackend.PULLEY
         }
         return WasmlineArtifactDiagnostic(

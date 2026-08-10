@@ -374,7 +374,9 @@ class NativeDirectInvocationTest {
 
     private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
+
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
+
         else -> throw IllegalArgumentException(
             "Direct Component fixture must be a precompiled .cwasm or .pwasm artifact, not '$filename'.",
         )
@@ -382,7 +384,9 @@ class NativeDirectInvocationTest {
 
     private fun coreAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
+
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
+
         else -> throw IllegalArgumentException(
             "Core RAW_EXPORT fixture must be a precompiled .cwasm or .pwasm artifact, not '$filename'.",
         )
