@@ -60,7 +60,7 @@ tasks.named<Test>("jvmTest") {
     systemProperty("wasmline.plugin.artifact.path", testPluginArtifact.get().asFile.absolutePath)
 }
 
-// WASMTIME directory uses relative path from multiplatform root (same pattern as run-sample-common.sh)
+// WASMTIME directory uses a path relative to the multiplatform root.
 wasmline {
     val wasmtimeVersion = "47.0.2"
     val wasmtimePlatformDir = "wasmtime-v$wasmtimeVersion-$testPluginCompileTarget-min"

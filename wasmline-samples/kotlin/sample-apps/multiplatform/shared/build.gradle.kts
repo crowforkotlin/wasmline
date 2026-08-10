@@ -43,6 +43,7 @@ kotlin {
                 api(libs.jetbrains.compose.components.resources)
 
                 api(libs.jetbrains.compose.material.icons.core)
+                api(libs.jetbrains.compose.material.icons.extended)
                 api(libs.jetbrains.compose.material.window)
 
 
