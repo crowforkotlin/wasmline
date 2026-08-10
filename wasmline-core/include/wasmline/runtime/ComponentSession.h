@@ -69,22 +69,19 @@ namespace wasmline {
 
         bool registerComponentHostImports();
 
-        static wasmtime_error_t* invokeHost(void* data, wasmtime_context_t* context,
-                                            const wasmtime_component_func_type_t* functionType,
-                                            wasmtime_component_val_t* arguments, size_t argumentCount,
-                                            wasmtime_component_val_t* results, size_t resultCount);
+        static wasmtime_error_t* invokeHost(void* data, wasmtime_context_t* context, const wasmtime_component_func_type_t* functionType,
+                                            wasmtime_component_val_t* arguments, size_t argumentCount, wasmtime_component_val_t* results,
+                                            size_t resultCount);
 
         static wasmtime_error_t* invokeComponentHost(void* data, wasmtime_context_t* context,
-                                                      const wasmtime_component_func_type_t* functionType,
-                                                      wasmtime_component_val_t* arguments, size_t argumentCount,
-                                                      wasmtime_component_val_t* results, size_t resultCount);
+                                                     const wasmtime_component_func_type_t* functionType,
+                                                     wasmtime_component_val_t* arguments, size_t argumentCount,
+                                                     wasmtime_component_val_t* results, size_t resultCount);
 
-        wasmtime_error_t* handleHostInvoke(const wasmtime_component_func_type_t* functionType,
-                                           wasmtime_component_val_t* arguments, size_t argumentCount,
-                                           wasmtime_component_val_t* results, size_t resultCount);
+        wasmtime_error_t* handleHostInvoke(const wasmtime_component_func_type_t* functionType, wasmtime_component_val_t* arguments,
+                                           size_t argumentCount, wasmtime_component_val_t* results, size_t resultCount);
 
-        wasmtime_error_t* handleComponentHostInvoke(const ComponentHostBinding& binding,
-                                                    const wasmtime_component_func_type_t* functionType,
+        wasmtime_error_t* handleComponentHostInvoke(const ComponentHostBinding& binding, const wasmtime_component_func_type_t* functionType,
                                                     wasmtime_component_val_t* arguments, size_t argumentCount,
                                                     wasmtime_component_val_t* results, size_t resultCount);
 

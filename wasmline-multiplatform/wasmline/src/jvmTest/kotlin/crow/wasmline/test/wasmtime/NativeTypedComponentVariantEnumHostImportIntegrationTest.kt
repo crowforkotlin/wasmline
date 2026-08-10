@@ -91,10 +91,12 @@ class NativeTypedComponentVariantEnumHostImportIntegrationTest {
                     val shade = assertIs<WasmlineComponentValue.EnumValue>(arguments[1])
                     val choiceScore = when (choice.discriminant) {
                         "number" -> assertIs<WasmlineComponentValue.S32>(choice.value).value
+
                         "none" -> {
                             check(choice.value == null) { "The none variant must not carry a payload." }
                             0
                         }
+
                         else -> error("Unexpected variant case: ${choice.discriminant}")
                     }
                     val shadeScore = when (shade.name) {
