@@ -67,7 +67,6 @@ class ComponentCompiler internal constructor(private val runner: ComponentCompil
     private fun verifyCompiler(executable: File, expectedVersion: String) {
         val versionOutput = runChecked(executable, listOf("--version")).output
         verifyToolVersion("wasmtime", versionOutput, expectedVersion)
-        runChecked(executable, listOf("compile", "--help"))
     }
 
     private fun compileTarget(request: ComponentAotCompileRequest, target: ComponentAotTarget): ComponentAotCompileOutput {

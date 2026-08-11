@@ -15,6 +15,7 @@ import crow.wasmline.bind
 import crow.wasmline.callResult
 import crow.wasmline.invokeRawResult
 import crow.wasmline.link
+import crow.wasmline.wasmlineNativeRuntimeInfo
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.getPlatformBean
@@ -318,7 +319,7 @@ internal class WasmSampleRunner(
 
     private fun descriptorFor(mode: WasmSampleMode, path: String): WasmlineArtifactDescriptor {
         val format = path.artifactFormat()
-        return when (mode) {
+        val descriptor = when (mode) {
             WasmSampleMode.CORE_WASM -> WasmlineArtifactDescriptor(
                 path = path,
                 artifactFormat = format,
@@ -351,6 +352,33 @@ internal class WasmSampleRunner(
                 ),
             )
         }
+        return descriptor.withNativeArtifactMetadata()
+    }
+
+    private fun WasmlineArtifactDescriptor.withNativeArtifactMetadata(): WasmlineArtifactDescriptor {
+        val format = artifactFormat ?: return this
+        if (format == WasmlineArtifactFormat.RAW_WASM) return this
+
+        val runtime = wasmlineNativeRuntimeInfo()
+            ?: error("Native runtime metadata is unavailable for AOT artifact '$path'. Use a raw .wasm artifact on browser runtimes.")
+        val runtimeBitness = runtime.is64Bit
+            ?: error("Native runtime did not report bitness for AOT artifact '$path'.")
+
+        return copy(
+            targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
+            targetCpu = when (format) {
+                WasmlineArtifactFormat.PWASM -> if (runtimeBitness) "pulley64" else "pulley32"
+                WasmlineArtifactFormat.CWASM -> runtime.targetCpu
+                    ?: error("Native runtime did not report CPU for CWASM artifact '$path'.")
+                WasmlineArtifactFormat.RAW_WASM -> null
+            },
+            targetOs = when (format) {
+                WasmlineArtifactFormat.CWASM -> runtime.targetOs
+                    ?: error("Native runtime did not report OS for CWASM artifact '$path'.")
+                WasmlineArtifactFormat.PWASM, WasmlineArtifactFormat.RAW_WASM -> null
+            },
+            is64Bit = runtimeBitness,
+        )
     }
 
     private fun runCore(
