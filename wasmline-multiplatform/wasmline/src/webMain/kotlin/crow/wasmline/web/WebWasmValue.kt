@@ -3,7 +3,7 @@ package crow.wasmline.web
 /**
  * Type-safe model of the wasm core values exchanged with a plugin module.
  *
- * The four numeric types are boxed once here so that later RPC code only
+ * The four numeric types are boxed once here so that later bridge code only
  * deals with [WebWasmValue]; [WebWasmValueCodec] performs the single
  * boundary conversion to and from JS value handles.
  *

@@ -10,18 +10,18 @@ import kotlin.test.assertTrue
 
 class WasmlineComponentFacadeTest {
     @Test
-    fun rejectsTypedCapabilityForCoreAndComponentRpcArtifacts() {
+    fun rejectsTypedCapabilityForCoreAndComponentServiceArtifacts() {
         assertFailsWith<IllegalArgumentException> { handle(WasmlineExecutionModel.CORE_WASM).component() }
         assertFailsWith<IllegalArgumentException> {
             handle(
                 model = WasmlineExecutionModel.COMPONENT_MODEL,
-                protocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                protocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
             ).component()
         }
     }
 
     @Test
-    fun typedAndComponentRpcCapabilitiesNeverFallbackToEachOther() {
+    fun typedAndComponentServiceCapabilitiesNeverFallbackToEachOther() {
         val typed = handle(
             model = WasmlineExecutionModel.COMPONENT_MODEL,
             protocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
@@ -29,17 +29,17 @@ class WasmlineComponentFacadeTest {
         val serviceCall = assertIs<WasmlineCallResult.Failure>(typed.callResult("service/action"))
         assertEquals(WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH, serviceCall.error.code)
         assertFailsWith<IllegalArgumentException> {
-            typed.bindComponentRpc { _, _ -> WasmlineCallResult.Success(ByteArray(0)) }
+            typed.bindComponentService { _, _ -> WasmlineCallResult.Success(ByteArray(0)) }
         }
 
-        val rpc = handle(
+        val service = handle(
             model = WasmlineExecutionModel.COMPONENT_MODEL,
-            protocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            protocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
         )
         assertFailsWith<IllegalArgumentException> {
-            rpc.bindComponentHost(WasmlineComponentHostRegistry.builder().build())
+            service.bindComponentHost(WasmlineComponentHostRegistry.builder().build())
         }
-        assertFailsWith<IllegalArgumentException> { rpc.component() }
+        assertFailsWith<IllegalArgumentException> { service.component() }
     }
 
     @Test
@@ -137,7 +137,7 @@ class WasmlineComponentFacadeTest {
 
     private fun handle(
         model: WasmlineExecutionModel,
-        protocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+        protocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
     ): Wasmline = Wasmline("facade-test", WasmlineConfig(), descriptor(model = model, protocol = protocol))
 
     private fun descriptor(

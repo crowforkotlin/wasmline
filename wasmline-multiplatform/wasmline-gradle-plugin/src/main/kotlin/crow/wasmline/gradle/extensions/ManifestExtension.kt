@@ -86,7 +86,7 @@ abstract class ManifestExtension @Inject constructor(objects: ObjectFactory) {
                 if (model == WasmlineExecutionModel.COMPONENT_MODEL) {
                     WasmlineInvocationProtocol.COMPONENT_EXPORT
                 } else {
-                    WasmlineInvocationProtocol.WASMLINE_CORE
+                    WasmlineInvocationProtocol.WASMLINE_SERVICE
                 }
             },
         )

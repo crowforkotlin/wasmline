@@ -1,5 +1,5 @@
 /**
- * Tests the fixed wasmline:rpc Component envelope adapter.
+ * Tests the fixed wasmline:service Component envelope adapter.
  *
  * Date: 2026-08-05
  * Author: crowforkotlin
@@ -13,7 +13,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-class WasmlineComponentRpcTest {
+class WasmlineComponentServiceTest {
     @Test
     fun serviceCallsRejectTypedComponentsBeforeInvokingTheCarrier() {
         val wasmline = componentHandle(WasmlineInvocationProtocol.COMPONENT_EXPORT)
@@ -26,7 +26,7 @@ class WasmlineComponentRpcTest {
     @Test
     fun decodesSuccessfulBytePayload() {
         val payload = byteArrayOf(0, 1, -1, 42)
-        val result = WasmlineComponentRpc.decode(
+        val result = WasmlineComponentService.decode(
             WasmlineComponentCallResult(
                 listOf(WasmlineComponentValue.ResultValue(isOk = true, value = payload.componentBytes())),
             ),
@@ -36,13 +36,13 @@ class WasmlineComponentRpcTest {
     }
 
     @Test
-    fun decodesNumericRpcError() {
-        val result = WasmlineComponentRpc.decode(
+    fun decodesNumericServiceError() {
+        val result = WasmlineComponentService.decode(
             WasmlineComponentCallResult(
                 listOf(
                     WasmlineComponentValue.ResultValue(
                         isOk = false,
-                        value = rpcError("1002", "missing", byteArrayOf(7, 8)),
+                        value = serviceError("1002", "missing", byteArrayOf(7, 8)),
                     ),
                 ),
             ),
@@ -56,13 +56,13 @@ class WasmlineComponentRpcTest {
     }
 
     @Test
-    fun decodesSymbolicRpcError() {
-        val result = WasmlineComponentRpc.decode(
+    fun decodesSymbolicServiceError() {
+        val result = WasmlineComponentService.decode(
             WasmlineComponentCallResult(
                 listOf(
                     WasmlineComponentValue.ResultValue(
                         isOk = false,
-                        value = rpcError("handler-failed", "failed", byteArrayOf()),
+                        value = serviceError("handler-failed", "failed", byteArrayOf()),
                     ),
                 ),
             ),
@@ -75,13 +75,13 @@ class WasmlineComponentRpcTest {
 
     @Test
     fun rejectsMalformedComponentResult() {
-        val result = WasmlineComponentRpc.decode(WasmlineComponentCallResult(emptyList()))
+        val result = WasmlineComponentService.decode(WasmlineComponentCallResult(emptyList()))
 
         val failure = assertIs<WasmlineCallResult.Failure>(result)
         assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, failure.error.code)
     }
 
-    private fun rpcError(code: String, message: String, details: ByteArray): WasmlineComponentValue.RecordValue =
+    private fun serviceError(code: String, message: String, details: ByteArray): WasmlineComponentValue.RecordValue =
         WasmlineComponentValue.RecordValue(
             listOf(
                 WasmlineComponentValue.RecordField("code", WasmlineComponentValue.StringValue(code)),
@@ -95,7 +95,7 @@ class WasmlineComponentRpcTest {
     )
 
     private fun componentHandle(protocol: WasmlineInvocationProtocol): Wasmline = Wasmline(
-        moduleKey = "component-rpc-test",
+        moduleKey = "component-service-test",
         config = WasmlineConfig(),
         descriptor = WasmlineArtifactDescriptor(
             path = "component.cwasm",

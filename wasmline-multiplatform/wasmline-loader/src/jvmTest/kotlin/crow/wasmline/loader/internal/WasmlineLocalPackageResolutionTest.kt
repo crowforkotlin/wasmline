@@ -1,6 +1,6 @@
 package crow.wasmline.loader.internal
 
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -77,10 +77,10 @@ class WasmlineLocalPackageResolutionTest {
         val descriptor = artifact.descriptor
         assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, descriptor.executionModel)
         assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, descriptor.invocationProtocol)
-        assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, descriptor.exportName)
+        assertEquals(WasmlineComponentServiceContract.DEFAULT_EXPORT, descriptor.exportName)
         assertEquals(
-            WasmlineComponentRpcContract.DEFAULT_CODEC,
-            descriptor.contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC],
+            WasmlineComponentServiceContract.DEFAULT_CODEC,
+            descriptor.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC],
         )
     }
 
@@ -350,8 +350,8 @@ class WasmlineLocalPackageResolutionTest {
     @Test
     fun `selection enforces the complete physical type model and protocol matrix`() {
         val eligibleContracts = setOf(
-            Triple(WasmlineArtifactType.WASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_CORE),
-            Triple(WasmlineArtifactType.CWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_CORE),
+            Triple(WasmlineArtifactType.WASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_SERVICE),
+            Triple(WasmlineArtifactType.CWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_SERVICE),
             Triple(WasmlineArtifactType.CWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.RAW_EXPORT),
             Triple(
                 WasmlineArtifactType.CWASM,
@@ -361,9 +361,9 @@ class WasmlineLocalPackageResolutionTest {
             Triple(
                 WasmlineArtifactType.CWASM,
                 WasmlineExecutionModel.COMPONENT_MODEL,
-                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                WasmlineInvocationProtocol.WASMLINE_SERVICE,
             ),
-            Triple(WasmlineArtifactType.PWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_CORE),
+            Triple(WasmlineArtifactType.PWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_SERVICE),
             Triple(WasmlineArtifactType.PWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.RAW_EXPORT),
             Triple(
                 WasmlineArtifactType.PWASM,
@@ -373,7 +373,7 @@ class WasmlineLocalPackageResolutionTest {
             Triple(
                 WasmlineArtifactType.PWASM,
                 WasmlineExecutionModel.COMPONENT_MODEL,
-                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                WasmlineInvocationProtocol.WASMLINE_SERVICE,
             ),
         )
         val browserTarget = WasmlineHostArtifactTarget(os = "browser", cpu = "wasmjs", is64Bit = true)
@@ -593,14 +593,6 @@ class WasmlineLocalPackageResolutionTest {
                 invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
                 exportName = null,
             ) to pulleyTarget,
-            pulleyArtifact(
-                cpu = "pulley64",
-                is64Bit = true,
-                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            ).copy(
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
-                exportName = null,
-            ) to pulleyTarget,
         )
 
         invalidCandidates.forEach { (artifact, target) ->
@@ -701,7 +693,7 @@ class WasmlineLocalPackageResolutionTest {
         executionModel: WasmlineExecutionModel,
         invocationProtocol: WasmlineInvocationProtocol,
     ): WasmlineArtifact {
-        val exportName = if (invocationProtocol == WasmlineInvocationProtocol.WASMLINE_CORE) null else "plugin/invoke"
+        val exportName = if (invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE) null else "plugin/invoke"
         return when (type) {
             WasmlineArtifactType.WASM -> WasmlineArtifact(
                 type = type,
@@ -796,7 +788,7 @@ class WasmlineLocalPackageResolutionTest {
         if (executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
             WasmlineInvocationProtocol.COMPONENT_EXPORT
         } else {
-            WasmlineInvocationProtocol.WASMLINE_CORE
+            WasmlineInvocationProtocol.WASMLINE_SERVICE
         }
 
     private fun exportName(executionModel: WasmlineExecutionModel): String? =

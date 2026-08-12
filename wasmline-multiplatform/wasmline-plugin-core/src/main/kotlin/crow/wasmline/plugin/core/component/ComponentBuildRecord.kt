@@ -1,6 +1,6 @@
 package crow.wasmline.plugin.core.component
 
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineTypedComponentContract
@@ -24,7 +24,7 @@ data class ComponentBuildRecord(
     val invocationProtocol: WasmlineInvocationProtocol? = null,
     val exportName: String? = null,
     val codec: String? = null,
-    val rpcProtocolVersion: String? = null,
+    val serviceProtocolVersion: String? = null,
     val componentSha256: String,
     val witSha256: String,
     val adapterSha256: String? = null,
@@ -67,16 +67,16 @@ data class ComponentBuildRecord(
                 adapterVersion?.let { put("component.adapter.version", it) }
                 witBindgenVersion?.let { put("component.wit-bindgen.version", it) }
                 put("component.wasm-tools.version", wasmToolsVersion)
-                if (protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
-                    put(WasmlineComponentRpcContract.METADATA_WIT_PACKAGE, WasmlineComponentRpcContract.WIT_PACKAGE)
-                    put(WasmlineComponentRpcContract.METADATA_PROFILE, WasmlineComponentRpcContract.PROFILE)
+                if (protocol == WasmlineInvocationProtocol.WASMLINE_SERVICE) {
+                    put(WasmlineComponentServiceContract.METADATA_WIT_PACKAGE, WasmlineComponentServiceContract.WIT_PACKAGE)
+                    put(WasmlineComponentServiceContract.METADATA_PROFILE, WasmlineComponentServiceContract.PROFILE)
                     put(
-                        WasmlineComponentRpcContract.METADATA_CODEC,
-                        requireNotNull(codec) { "Component RPC build record is missing codec metadata." },
+                        WasmlineComponentServiceContract.METADATA_CODEC,
+                        requireNotNull(codec) { "Wasmline Service build record is missing codec metadata." },
                     )
                     put(
-                        WasmlineComponentRpcContract.METADATA_VERSION,
-                        requireNotNull(rpcProtocolVersion) { "Component RPC build record is missing version metadata." },
+                        WasmlineComponentServiceContract.METADATA_VERSION,
+                        requireNotNull(serviceProtocolVersion) { "Wasmline Service build record is missing version metadata." },
                     )
                 } else {
                     witPackage?.let { put(WasmlineTypedComponentContract.METADATA_WIT_PACKAGE, it) }
@@ -86,16 +86,16 @@ data class ComponentBuildRecord(
     }
 
     internal fun resolvedInvocationProtocol(): WasmlineInvocationProtocol = invocationProtocol ?: when {
-        exportName == WasmlineComponentRpcContract.DEFAULT_EXPORT &&
+        exportName == WasmlineComponentServiceContract.DEFAULT_EXPORT &&
             !codec.isNullOrBlank() &&
-            !rpcProtocolVersion.isNullOrBlank() -> WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC
+            !serviceProtocolVersion.isNullOrBlank() -> WasmlineInvocationProtocol.WASMLINE_SERVICE
 
         else -> WasmlineInvocationProtocol.COMPONENT_EXPORT
     }
 
     internal fun resolvedExportName(): String? = when (resolvedInvocationProtocol()) {
-        WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC ->
-            exportName ?: WasmlineComponentRpcContract.DEFAULT_EXPORT
+        WasmlineInvocationProtocol.WASMLINE_SERVICE ->
+            exportName ?: WasmlineComponentServiceContract.DEFAULT_EXPORT
 
         else -> exportName
     }
@@ -129,7 +129,7 @@ object ComponentBuildRecords {
             invocationProtocol = result.invocationProtocol,
             exportName = result.exportName,
             codec = result.codec,
-            rpcProtocolVersion = result.rpcProtocolVersion,
+            serviceProtocolVersion = result.serviceProtocolVersion,
             componentSha256 = result.componentSha256,
             witSha256 = result.witSha256,
             adapterSha256 = result.adapterSha256,
@@ -143,6 +143,6 @@ object ComponentBuildRecords {
 
     fun read(inputFile: File): ComponentBuildRecord {
         require(inputFile.isFile) { "Component build result does not exist: " + inputFile.absolutePath }
-        return json.decodeFromString(inputFile.readText())
+        return json.decodeFromString<ComponentBuildRecord>(inputFile.readText())
     }
 }

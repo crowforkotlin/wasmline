@@ -1,5 +1,5 @@
 /**
- * Exercises the wasmline:rpc Component callback boundary through JNI and Wasmtime.
+ * Exercises the wasmline:service Component callback boundary through JNI and Wasmtime.
  *
  * Date: 2026-08-06
  * Author: crowforkotlin
@@ -9,7 +9,7 @@ package crow.wasmline.test.wasmtime
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -32,9 +32,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
-class NativeComponentRpcIntegrationTest {
+class NativeComponentServiceIntegrationTest {
     @Test
-    fun componentRpcFixturesRequirePrecompiledAotSuffixes() {
+    fun componentServiceFixturesRequirePrecompiledAotSuffixes() {
         assertEquals(WasmlineArtifactFormat.CWASM, componentAotFormat("fixture.cwasm"))
         assertEquals(WasmlineArtifactFormat.PWASM, componentAotFormat("fixture.pwasm"))
         assertFailsWith<IllegalArgumentException> {
@@ -193,12 +193,12 @@ class NativeComponentRpcIntegrationTest {
                 targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
                 is64Bit = runtime.is64Bit,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
-                exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
                 contractMetadata = mapOf(
-                    WasmlineComponentRpcContract.METADATA_PROFILE to WasmlineComponentRpcContract.PROFILE,
-                    WasmlineComponentRpcContract.METADATA_CODEC to WasmlineComponentRpcContract.DEFAULT_CODEC,
-                    WasmlineComponentRpcContract.METADATA_VERSION to WasmlineComponentRpcContract.VERSION,
+                    WasmlineComponentServiceContract.METADATA_PROFILE to WasmlineComponentServiceContract.PROFILE,
+                    WasmlineComponentServiceContract.METADATA_CODEC to WasmlineComponentServiceContract.DEFAULT_CODEC,
+                    WasmlineComponentServiceContract.METADATA_VERSION to WasmlineComponentServiceContract.VERSION,
                 ),
             ),
             config = WasmlineConfig(supportConcurrent = false),
@@ -212,7 +212,7 @@ class NativeComponentRpcIntegrationTest {
         }.let(::File)
         require(source.isFile) { "$environmentVariable does not point to a file: ${source.absolutePath}" }
         val suffix = componentAotFormat(source.name).fileSuffix()
-        return File.createTempFile("wasmline-component-rpc-", suffix).apply {
+        return File.createTempFile("wasmline-component-service-", suffix).apply {
             source.copyTo(this, overwrite = true)
             deleteOnExit()
         }
@@ -224,26 +224,26 @@ class NativeComponentRpcIntegrationTest {
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
 
         else -> throw IllegalArgumentException(
-            "Component RPC fixture must be a precompiled .cwasm or .pwasm artifact, not '$filename'.",
+            "Wasmline Service fixture must be a precompiled .cwasm or .pwasm artifact, not '$filename'.",
         )
     }
 
     private fun WasmlineArtifactFormat.fileSuffix(): String = when (this) {
         WasmlineArtifactFormat.CWASM -> ".cwasm"
         WasmlineArtifactFormat.PWASM -> ".pwasm"
-        WasmlineArtifactFormat.RAW_WASM -> error("Component RPC fixtures cannot use raw Wasm.")
+        WasmlineArtifactFormat.RAW_WASM -> error("Wasmline Service fixtures cannot use raw Wasm.")
     }
 
     private fun targetCpuFor(artifactFormat: WasmlineArtifactFormat, is64Bit: Boolean, runtimeCpu: String): String = when (artifactFormat) {
         WasmlineArtifactFormat.CWASM -> runtimeCpu
         WasmlineArtifactFormat.PWASM -> if (is64Bit) "pulley64" else "pulley32"
-        WasmlineArtifactFormat.RAW_WASM -> error("Component RPC fixtures cannot use raw Wasm.")
+        WasmlineArtifactFormat.RAW_WASM -> error("Wasmline Service fixtures cannot use raw Wasm.")
     }
 
     private fun targetOsFor(artifactFormat: WasmlineArtifactFormat, runtimeOs: String): String? = when (artifactFormat) {
         WasmlineArtifactFormat.CWASM -> runtimeOs
         WasmlineArtifactFormat.PWASM -> null
-        WasmlineArtifactFormat.RAW_WASM -> error("Component RPC fixtures cannot use raw Wasm.")
+        WasmlineArtifactFormat.RAW_WASM -> error("Wasmline Service fixtures cannot use raw Wasm.")
     }
 
     private fun liveTestsEnabled(): Boolean = System.getenv(LIVE_TESTS_ENV) == "1"
@@ -256,8 +256,8 @@ class NativeComponentRpcIntegrationTest {
 
     private companion object {
         const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val COMPONENT_FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_RPC"
-        const val KOTLIN_COMPONENT_FIXTURE_ENV = "WASMLINE_TEST_KOTLIN_COMPONENT_RPC"
+        const val COMPONENT_FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_SERVICE"
+        const val KOTLIN_COMPONENT_FIXTURE_ENV = "WASMLINE_TEST_KOTLIN_COMPONENT_SERVICE"
         const val ACTION_ECHO = "sample.echo"
         const val ACTION_CALLBACK = "sample.callback"
         const val HOST_CALLBACK_ACTION = "sample.host.callback"

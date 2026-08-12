@@ -46,7 +46,7 @@ class ComponentCompilerModelsTest {
 
     @Test
     fun requestSeparatesFullCompilerInputTargetsAndComponentMetadata() {
-        val metadata = ComponentAotArtifactMetadata(contractMetadata = mapOf("wasmline.rpc.codec" to "protobuf"))
+        val metadata = ComponentAotArtifactMetadata(contractMetadata = mapOf("wasmline.service.codec" to "protobuf"))
         val target = ComponentAotTarget(
             target = "x86_64-linux",
             backend = ComponentAotBackend.CRANELIFT,
@@ -71,7 +71,7 @@ class ComponentCompilerModelsTest {
     fun resultAcceptsOnlyComponentArtifactsInTheBackendPhysicalFormat() {
         val metadata = ComponentAotArtifactMetadata(
             exportName = "plugin/invoke",
-            contractMetadata = mapOf("wasmline.rpc.codec" to "protobuf"),
+            contractMetadata = mapOf("wasmline.service.codec" to "protobuf"),
         )
         val artifact = componentArtifact(metadata)
         val output = ComponentAotCompileOutput(
@@ -100,7 +100,7 @@ class ComponentCompilerModelsTest {
         val metadata = ComponentAotArtifactMetadata()
         val coreArtifact = componentArtifact(metadata).copy(
             executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
         )
 
         assertFailsWith<IllegalArgumentException> {

@@ -4,14 +4,15 @@
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
+
 package crow.wasmline
 
 import kotlinx.serialization.Serializable
 
 @Serializable
 enum class WasmlineInvocationProtocol {
-    WASMLINE_CORE,
+    /** Wasmline Service invocation over the artifact's selected execution model. */
+    WASMLINE_SERVICE,
     COMPONENT_EXPORT,
     RAW_EXPORT,
-    WASMLINE_COMPONENT_RPC,
 }

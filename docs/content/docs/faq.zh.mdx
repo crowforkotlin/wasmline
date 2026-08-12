@@ -60,9 +60,9 @@ Wasmline 原生运行时不会通过 Pulley 引擎加载原始 `.wasm`。必须�
 <details>
 <summary><strong>Core Wasm、Raw Export 和 Component Model 调用有什么区别？</strong></summary>
 
-对于使用 action 名称和字节 payload 的 Wasmline 服务模块，使用 `CORE_WASM` 与 `WASMLINE_CORE`。对于具有明确数值 export ABI 的 Core Wasm 模块，使用 `CORE_WASM` 与 `RAW_EXPORT`。对于完整的 component binary 和 Component Model typed value，使用 `COMPONENT_MODEL` 与 `COMPONENT_EXPORT`。
+同一套 action 与字节 payload 服务 API 可以让 `WASMLINE_SERVICE` 与两种执行模型组合：Core 使用既有线性内存桥接，Component Model 使用固定 `wasmline.wit` envelope。明确的数值 export ABI 使用 `CORE_WASM + RAW_EXPORT`；业务专用 typed WIT value 使用 `COMPONENT_MODEL + COMPONENT_EXPORT`。
 
-运行时 Component Model 路径的输入是已经编译完成的 component binary。加载时不会运行 `wit-bindgen` 或生成 adapter；可选的 plugin 构建流水线可以通过 plugin-core、Gradle 和 CLI 在加载前完成 WIT 绑定与 Component 组装。`contractMetadata` 仍然只是描述 export 契约，不是 WIT 编译器的输入。详见 [Component RPC 指南](/zh/docs/component-rpc)。
+运行时 Component Model 路径的输入是已经编译完成的 component binary。加载时不会运行 `wit-bindgen` 或生成 adapter；可选的 plugin 构建流水线可以通过 plugin-core、Gradle 和 CLI 在加载前完成 WIT 绑定与 Component 组装。`contractMetadata` 仍然只是描述 export 契约，不是 WIT 编译器的输入。详见 [Wasmline Service 指南](/zh/docs/component-service)。
 
 </details>
 
@@ -80,7 +80,7 @@ Wasmline 原生运行时不会通过 Pulley 引擎加载原始 `.wasm`。必须�
 
 `WLMF` 是 Wasmline Core 响应帧的四字节 magic 标记，用于识别响应格式。它不是签名、加密机制或安全校验。完整性和真实性由产物 hash、manifest 与签名机制负责。
 
-`frameVersion` 是一个字节的响应布局版本。当前值为 `1`；它不表示 Wasmtime、Kotlin、框架或业务 API 版本。V1 读取方只接受版本 `1`。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
+`frameVersion` 是一个字节的响应布局版本。当前值为 `1`；它不表示 Wasmtime、Kotlin、框架或业务 API 版本。读取方只接受当前值 `1`。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
 
 </details>
 

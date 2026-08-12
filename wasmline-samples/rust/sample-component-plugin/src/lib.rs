@@ -7,7 +7,7 @@ struct RustPlugin;
 impl exports::plugin::Guest for RustPlugin {
     fn invoke(
         request: exports::plugin::Request,
-    ) -> Result<Vec<u8>, exports::plugin::RpcError> {
+    ) -> Result<Vec<u8>, exports::plugin::ServiceError> {
         let exports::plugin::Request {
             action,
             codec,
@@ -39,13 +39,13 @@ impl exports::plugin::Guest for RustPlugin {
 fn callback_host(
     codec: String,
     payload: Vec<u8>,
-) -> Result<Vec<u8>, exports::plugin::RpcError> {
+) -> Result<Vec<u8>, exports::plugin::ServiceError> {
     host::invoke(&host::Request {
         action: HOST_CALLBACK_ACTION.to_owned(),
         codec,
         payload,
     })
-    .map_err(|error| exports::plugin::RpcError {
+    .map_err(|error| exports::plugin::ServiceError {
         code: error.code,
         message: error.message,
         details: error.details,
@@ -56,8 +56,8 @@ fn plugin_error(
     code: &str,
     message: impl Into<String>,
     details: Vec<u8>,
-) -> exports::plugin::RpcError {
-    exports::plugin::RpcError {
+) -> exports::plugin::ServiceError {
+    exports::plugin::ServiceError {
         code: code.to_owned(),
         message: message.into(),
         details,

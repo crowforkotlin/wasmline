@@ -1,6 +1,6 @@
 package crow.wasmline.plugin.core.component
 
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineTypedComponentContract
 import crow.wasmline.loader.model.WasmlineArtifactType
@@ -38,7 +38,7 @@ class ComponentPipelineTest {
         assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, result.invocationProtocol)
         assertEquals(null, result.toArtifact().exportName)
         assertEquals("test:plugin", result.toArtifact().contractMetadata[WasmlineTypedComponentContract.METADATA_WIT_PACKAGE])
-        assertEquals(null, result.toArtifact().contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC])
+        assertEquals(null, result.toArtifact().contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC])
     }
 
     @Test
@@ -63,34 +63,34 @@ class ComponentPipelineTest {
     }
 
     @Test
-    fun recordsComponentRpcMetadataOnlyForTheExplicitRpcProtocol() = withPipelineDirectory { root ->
+    fun recordsComponentServiceMetadataOnlyForTheWasmlineServiceProtocol() = withPipelineDirectory { root ->
         val component = File(root, "plugin.component.wasm").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         val result = ComponentPipeline(RecordingWasmTools()).describeExisting(
             ExistingComponentRequest(
                 componentWasm = component,
                 outputDirectory = File(root, "output"),
                 productName = "plugin",
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
-                exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
-                codec = WasmlineComponentRpcContract.DEFAULT_CODEC,
-                rpcProtocolVersion = WasmlineComponentRpcContract.VERSION,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
+                codec = WasmlineComponentServiceContract.DEFAULT_CODEC,
+                serviceProtocolVersion = WasmlineComponentServiceContract.VERSION,
             ),
         )
 
         val artifact = result.toArtifact()
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC, artifact.invocationProtocol)
-        assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, artifact.exportName)
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_SERVICE, artifact.invocationProtocol)
+        assertEquals(WasmlineComponentServiceContract.DEFAULT_EXPORT, artifact.exportName)
         assertEquals(
-            WasmlineComponentRpcContract.DEFAULT_CODEC,
-            artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC],
+            WasmlineComponentServiceContract.DEFAULT_CODEC,
+            artifact.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC],
         )
     }
 
     @Test
-    fun componentRpcRejectsCoreTransportAbiBeforeEmbedding() = withPipelineDirectory { root ->
+    fun componentServiceRejectsCoreTransportAbiBeforeEmbedding() = withPipelineDirectory { root ->
         val core = File(root, "plugin.wasm").apply { writeBytes(byteArrayOf(0, 97, 115, 109)) }
         val wit = File(root, "wit").apply { mkdirs() }
-        File(wit, "world.wit").writeText("package wasmline:rpc@1.0.0; world plugin {}")
+        File(wit, "wasmline.wit").writeText("package wasmline:service@1.0.0; world plugin {}")
         val adapter = File(root, "adapter.wasm").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         val tools = RecordingWasmTools(
             coreWat = """
@@ -111,10 +111,10 @@ class ComponentPipelineTest {
                     wasiPreview1Adapter = adapter,
                     outputDirectory = File(root, "output"),
                     productName = "plugin",
-                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
-                    exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
-                    codec = WasmlineComponentRpcContract.DEFAULT_CODEC,
-                    rpcProtocolVersion = WasmlineComponentRpcContract.VERSION,
+                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                    exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
+                    codec = WasmlineComponentServiceContract.DEFAULT_CODEC,
+                    serviceProtocolVersion = WasmlineComponentServiceContract.VERSION,
                 ),
             )
         }
