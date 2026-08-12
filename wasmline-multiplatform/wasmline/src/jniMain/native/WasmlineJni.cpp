@@ -203,7 +203,7 @@ Java_crow_wasmline_Wasmline_nativeInvokeInbound(JNIEnv *env, jclass thiz, jstrin
 }
 
 static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr, jstring exportStr, jbyteArray inputBytes,
-                                    wasmline::TypedInvocationKind kind) {
+                                    wasmline::TypedInvocationKind kind, bool componentInstance = false) {
     wasmline::InvocationResult result = wasmline::InvocationResult::failure(
         wasmline::WasmlineErrorCode::TRANSPORT_FAILURE,
         "Typed invocation could not be executed.");
@@ -248,7 +248,9 @@ static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr, jstring exportS
                 result = wasmline::InvocationResult::failure(wasmline::WasmlineErrorCode::INVALID_PAYLOAD,
                                                              decodeError.empty() ? "Component invocation payload is invalid." : decodeError);
             } else {
-                result = wasmline::Api::invokeComponent(key, exportName, arguments);
+                result = componentInstance
+                             ? wasmline::Api::invokeComponentInstance(key, exportName, arguments)
+                             : wasmline::Api::invokeComponent(key, exportName, arguments);
             }
         }
     }
@@ -270,6 +272,89 @@ JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmline_Wasmline_nativeInvokeComponent(JNIEnv *env, jclass thiz, jstring keyStr, jstring exportStr,
                                                    jbyteArray inputBytes) {
     return invokeTypedCommon(env, keyStr, exportStr, inputBytes, wasmline::TypedInvocationKind::COMPONENT);
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_Wasmline_nativeInvokeComponentInstance(JNIEnv *env, jclass thiz, jstring instanceKeyStr,
+                                                           jstring exportStr, jbyteArray inputBytes) {
+    return invokeTypedCommon(env, instanceKeyStr, exportStr, inputBytes, wasmline::TypedInvocationKind::COMPONENT, true);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmline_Wasmline_nativeInstantiateComponent(JNIEnv* env, jclass thiz, jstring artifactKeyStr,
+                                                        jstring instanceKeyStr, jobject jDispatcher) {
+    if (!env || !artifactKeyStr || !instanceKeyStr || !jDispatcher) return JNI_FALSE;
+    const char* artifactKey = env->GetStringUTFChars(artifactKeyStr, nullptr);
+    const char* instanceKey = env->GetStringUTFChars(instanceKeyStr, nullptr);
+    if (!artifactKey || !instanceKey) {
+        if (instanceKey) env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
+        if (artifactKey) env->ReleaseStringUTFChars(artifactKeyStr, artifactKey);
+        return JNI_FALSE;
+    }
+
+    auto handler = std::make_unique<JniComponentHostHandler>(env, jDispatcher);
+    const bool instantiated = handler->isValid() &&
+                              wasmline::Api::instantiateComponent(artifactKey, instanceKey, std::move(handler));
+    env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
+    env->ReleaseStringUTFChars(artifactKeyStr, artifactKey);
+    return instantiated ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_crow_wasmline_Wasmline_nativeReleaseComponentInstance(JNIEnv* env, jclass thiz, jstring instanceKeyStr) {
+    if (!env || !instanceKeyStr) return;
+    const char* instanceKey = env->GetStringUTFChars(instanceKeyStr, nullptr);
+    if (!instanceKey) return;
+    wasmline::Api::releaseComponentInstance(instanceKey);
+    env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_crow_wasmline_Wasmline_nativeDropComponentResource(JNIEnv* env, jclass thiz, jstring instanceKeyStr, jbyteArray resourceBytes) {
+    if (!env || !instanceKeyStr || !resourceBytes) return JNI_FALSE;
+    const char* instanceKey = env->GetStringUTFChars(instanceKeyStr, nullptr);
+    if (!instanceKey) return JNI_FALSE;
+    const jsize length = env->GetArrayLength(resourceBytes);
+    jbyte* bytes = env->GetByteArrayElements(resourceBytes, nullptr);
+    if (length > 0 && !bytes) {
+        env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
+        return JNI_FALSE;
+    }
+    const auto* input = reinterpret_cast<const uint8_t*>(bytes);
+    std::vector<wasmline::ComponentValue> values;
+    std::string error;
+    const bool decoded = wasmline::TypedInvocationCodec::decodeComponentArguments(
+        std::string_view(reinterpret_cast<const char*>(input), static_cast<size_t>(length)), &values, &error);
+    const bool dropped = decoded && values.size() == 1 && values.front().kind() == wasmline::ComponentValue::Kind::RESOURCE &&
+                         wasmline::Api::dropComponentResource(instanceKey, values.front().resourceValue());
+    if (bytes) env->ReleaseByteArrayElements(resourceBytes, bytes, JNI_ABORT);
+    env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
+    return dropped ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_Wasmline_nativeCreateComponentHostResource(JNIEnv* env, jclass thiz, jstring instanceKeyStr,
+                                                               jstring interfaceIdStr, jstring resourceNameStr,
+                                                               jint representation) {
+    if (!env || !instanceKeyStr || !interfaceIdStr || !resourceNameStr || representation == 0) return nullptr;
+    const char* instanceKey = env->GetStringUTFChars(instanceKeyStr, nullptr);
+    const char* interfaceId = env->GetStringUTFChars(interfaceIdStr, nullptr);
+    const char* resourceName = env->GetStringUTFChars(resourceNameStr, nullptr);
+    if (!instanceKey || !interfaceId || !resourceName) {
+        if (resourceName) env->ReleaseStringUTFChars(resourceNameStr, resourceName);
+        if (interfaceId) env->ReleaseStringUTFChars(interfaceIdStr, interfaceId);
+        if (instanceKey) env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
+        return nullptr;
+    }
+    wasmline::ComponentResourceReference reference;
+    const bool created = wasmline::Api::createComponentHostResource(
+        instanceKey, interfaceId, resourceName, static_cast<uint32_t>(representation), &reference);
+    env->ReleaseStringUTFChars(resourceNameStr, resourceName);
+    env->ReleaseStringUTFChars(interfaceIdStr, interfaceId);
+    env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
+    if (!created) return nullptr;
+    return newByteArray(env, wasmline::TypedInvocationCodec::encodeComponentArguments(
+                                 {wasmline::ComponentValue::resource(std::move(reference))}));
 }
 
 JNIEXPORT void JNICALL

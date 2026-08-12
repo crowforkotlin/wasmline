@@ -9,6 +9,7 @@ import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
+import crow.wasmline.loader.isLegacyComponentRpcManifestArtifact
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.toDescriptor
@@ -79,6 +80,12 @@ internal object WasmlineRemotePackageResolution {
                 "No compatible artifact found in remote package '$manifestUrl' " +
                     "for host ${describe(currentHostArtifactTarget)}.",
             )
+        if (artifact.isLegacyComponentRpcManifestArtifact()) {
+            WasmlineLog.logger?.warn(
+                "$P Legacy COMPONENT_EXPORT metadata for '${artifact.url}' was normalized to " +
+                    "WASMLINE_COMPONENT_RPC. Rebuild the package with the current Wasmline plugin.",
+            )
+        }
         val descriptor = artifact.toDescriptor(path = "pending")
         descriptor.validationError()?.let { return failure("Invalid artifact descriptor for '${artifact.url}': $it") }
         if (artifact.sha256.isBlank()) {

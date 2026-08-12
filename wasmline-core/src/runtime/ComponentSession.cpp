@@ -57,6 +57,26 @@ namespace wasmline {
 
         constexpr size_t kMaxComponentInvocationDepth = 32;
         thread_local std::vector<const ComponentSession*> activeComponentSessions;
+        thread_local ComponentSession* activeConversionSession = nullptr;
+        thread_local std::vector<uint64_t>* activeTransientResources = nullptr;
+
+        class ComponentConversionScope {
+        public:
+            ComponentConversionScope(ComponentSession* session, std::vector<uint64_t>* transient = nullptr)
+                : previous_(activeConversionSession), previousTransient_(activeTransientResources) {
+                activeConversionSession = session;
+                activeTransientResources = transient;
+            }
+
+            ~ComponentConversionScope() {
+                activeConversionSession = previous_;
+                activeTransientResources = previousTransient_;
+            }
+
+        private:
+            ComponentSession* previous_;
+            std::vector<uint64_t>* previousTransient_;
+        };
 
         class ComponentInvocationScope {
         public:
@@ -214,6 +234,22 @@ namespace wasmline {
             if (exact) {
                 guard->values.push_back(exact);
                 return true;
+            }
+
+            // WIT interface exports use the unambiguous `interface-id#function-name` form in the Host facade.
+            // The Component instance exposes these as an interface instance followed by its function export.
+            const size_t interfaceSeparator = path.rfind('#');
+            if (interfaceSeparator != std::string_view::npos && interfaceSeparator > 0 && interfaceSeparator + 1 < path.size()) {
+                const std::string_view interfaceName = path.substr(0, interfaceSeparator);
+                const std::string_view functionName = path.substr(interfaceSeparator + 1);
+                auto* nested =
+                    wasmtime_component_instance_get_export_index(instance, context, parent, interfaceName.data(), interfaceName.size());
+                if (nested) {
+                    const size_t checkpoint = guard->values.size();
+                    guard->values.push_back(nested);
+                    if (resolveExportPath(instance, context, nested, functionName, guard)) return true;
+                    guard->rollback(checkpoint);
+                }
             }
 
             size_t separator = path.rfind('/');
@@ -576,6 +612,9 @@ namespace wasmline {
                 }
                 return true;
             }
+            case WASMTIME_COMPONENT_VALTYPE_OWN:
+            case WASMTIME_COMPONENT_VALTYPE_BORROW:
+                return activeConversionSession && activeConversionSession->lowerResource(value, type, result);
             default:
                 return false;
             }
@@ -781,6 +820,9 @@ namespace wasmline {
                 *result = ComponentValue::map(std::move(entries));
                 return true;
             }
+            case WASMTIME_COMPONENT_VALTYPE_OWN:
+            case WASMTIME_COMPONENT_VALTYPE_BORROW:
+                return activeConversionSession && activeConversionSession->liftResource(value, type, result, activeTransientResources);
             default:
                 return false;
             }
@@ -806,8 +848,311 @@ namespace wasmline {
     }
 
     ComponentSession::~ComponentSession() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        clearResources();
         if (linker_) wasmtime_component_linker_delete(linker_);
+        linker_ = nullptr;
         if (store_) wasmtime_store_delete(store_);
+        store_ = nullptr;
+        context_ = nullptr;
+        clearHostRepresentations();
+        for (auto& item : resourceTypes_) {
+            if (item.second) wasmtime_component_resource_type_delete(item.second);
+        }
+        resourceTypes_.clear();
+        for (auto& binding : importedResourceBindings_) {
+            if (binding->type) {
+                wasmtime_component_resource_type_delete(binding->type);
+                binding->type = nullptr;
+            }
+        }
+        importedResourceBindings_.clear();
+    }
+
+    bool ComponentSession::registerResource(wasmtime_component_resource_any_t* value, ComponentResourceOwnership ownership,
+                                            ComponentResourceOrigin origin, ComponentResourceReference* reference) {
+        if (!value || !reference || !context_) return false;
+        std::unique_ptr<wasmtime_component_resource_type_t, decltype(&wasmtime_component_resource_type_delete)> type(
+            wasmtime_component_resource_any_type(value), &wasmtime_component_resource_type_delete);
+        if (!type) return false;
+
+        uint32_t typeId = 0;
+        for (const auto& item : resourceTypes_) {
+            if (wasmtime_component_resource_type_equal(item.second, type.get())) {
+                typeId = item.first;
+                break;
+            }
+        }
+        if (typeId == 0) {
+            typeId = nextResourceType_++;
+            if (typeId == 0) return false;
+            resourceTypes_.emplace(typeId, type.release());
+        }
+
+        const uint64_t handleId = nextResourceHandle_++;
+        const uint32_t generation = nextResourceGeneration_++;
+        if (handleId == 0 || generation == 0) return false;
+        ResourceEntry entry;
+        entry.typeId = typeId;
+        entry.handleId = handleId;
+        entry.generation = generation;
+        entry.ownership = ownership;
+        entry.origin = origin;
+        entry.value = value;
+        entry.type = resourceTypes_.at(typeId);
+        resources_.emplace(handleId, entry);
+        reference->instanceKey = key_;
+        reference->typeId = typeId;
+        reference->handleId = handleId;
+        reference->generation = generation;
+        reference->ownership = ownership;
+        reference->origin = origin;
+        return true;
+    }
+
+    bool ComponentSession::dropResourceUnlocked(const ComponentResourceReference& reference) {
+        if (reference.instanceKey != key_ || reference.handleId == 0 || reference.typeId == 0 || reference.generation == 0 ||
+            reference.ownership != ComponentResourceOwnership::OWN) {
+            return false;
+        }
+        const auto found = resources_.find(reference.handleId);
+        if (found == resources_.end()) return false;
+        const ResourceEntry entry = found->second;
+        if (entry.typeId != reference.typeId || entry.generation != reference.generation || entry.ownership != reference.ownership ||
+            entry.origin != reference.origin || !entry.value) {
+            return false;
+        }
+        resources_.erase(found);
+        ComponentInvocationScope invocationScope(this);
+        wasmtime_error_t* error = wasmtime_component_resource_any_drop(context_, entry.value);
+        if (error) {
+            wasmtime_error_delete(error);
+            wasmtime_component_resource_any_delete(entry.value);
+            return false;
+        }
+        wasmtime_component_resource_any_delete(entry.value);
+        if (entry.origin == ComponentResourceOrigin::HOST && !notifyHostResourceDrop(entry.hostRepresentation, entry.hostType)) {
+            return false;
+        }
+        return true;
+    }
+
+    bool ComponentSession::dropResource(const ComponentResourceReference& reference) {
+        if (std::find(activeComponentSessions.begin(), activeComponentSessions.end(), this) != activeComponentSessions.end()) return false;
+        std::lock_guard<std::mutex> lock(mutex_);
+        return dropResourceUnlocked(reference);
+    }
+
+    void ComponentSession::clearTransientResources(const std::vector<uint64_t>& handles) {
+        for (const uint64_t handle : handles) {
+            const auto found = resources_.find(handle);
+            if (found == resources_.end()) continue;
+            const ResourceEntry entry = found->second;
+            if (entry.ownership == ComponentResourceOwnership::BORROW && entry.value) {
+                resources_.erase(found);
+                wasmtime_error_t* error = context_ ? wasmtime_component_resource_any_drop(context_, entry.value) : nullptr;
+                if (error) wasmtime_error_delete(error);
+                wasmtime_component_resource_any_delete(entry.value);
+            }
+        }
+    }
+
+    void ComponentSession::clearResources() {
+        while (!resources_.empty()) {
+            const auto found = resources_.begin();
+            const ResourceEntry entry = found->second;
+            resources_.erase(found);
+            if (entry.value) {
+                if (context_) {
+                    ComponentInvocationScope invocationScope(this);
+                    wasmtime_error_t* error = wasmtime_component_resource_any_drop(context_, entry.value);
+                    if (error) wasmtime_error_delete(error);
+                }
+                wasmtime_component_resource_any_delete(entry.value);
+            }
+            if (entry.origin == ComponentResourceOrigin::HOST) {
+                notifyHostResourceDrop(entry.hostRepresentation, entry.hostType);
+            }
+        }
+    }
+
+    bool ComponentSession::notifyHostResourceDrop(uint32_t representation, uint32_t hostType) {
+        const auto trusted = hostRepresentations_.find(representation);
+        if (trusted == hostRepresentations_.end()) return true;
+        const auto binding =
+            std::find_if(importedResourceBindings_.begin(), importedResourceBindings_.end(), [hostType, &trusted, this](const auto& item) {
+                if (hostType != 0 && item->hostType != hostType) return false;
+                const auto type = resourceTypes_.find(trusted->second.typeId);
+                return type != resourceTypes_.end() && item->type && wasmtime_component_resource_type_equal(item->type, type->second);
+            });
+        if (binding == importedResourceBindings_.end() || !componentHostHandler_) return false;
+        InvocationResult result =
+            componentHostHandler_->onComponentHostResourceDrop((*binding)->interfaceName, (*binding)->resourceName, representation);
+        if (!result.isSuccess()) return false;
+        hostRepresentations_.erase(trusted);
+        return true;
+    }
+
+    void ComponentSession::clearHostRepresentations() {
+        std::vector<uint32_t> representations;
+        representations.reserve(hostRepresentations_.size());
+        for (const auto& item : hostRepresentations_)
+            representations.push_back(item.first);
+        for (const uint32_t representation : representations) {
+            if (!notifyHostResourceDrop(representation)) {
+                LOGE("[Wasmtime] ComponentSession -> Failed to release Host resource representation %u: %s", representation, key_.c_str());
+                hostRepresentations_.erase(representation);
+            }
+        }
+    }
+
+    bool ComponentSession::lowerResource(const ComponentValue& value, const wasmtime_component_valtype_t& type,
+                                         wasmtime_component_val_t* result) {
+        const auto invalid = [this]() {
+            resourceConversionInvalid_ = true;
+            return false;
+        };
+        if (!result || value.kind() != ComponentValue::Kind::RESOURCE || !context_ ||
+            (type.kind != WASMTIME_COMPONENT_VALTYPE_OWN && type.kind != WASMTIME_COMPONENT_VALTYPE_BORROW)) {
+            return invalid();
+        }
+        const ComponentResourceReference& reference = value.resourceValue();
+        if (reference.instanceKey != key_ || reference.handleId == 0 || reference.typeId == 0 || reference.generation == 0)
+            return invalid();
+        const auto* expectedType = type.kind == WASMTIME_COMPONENT_VALTYPE_OWN ? type.of.own : type.of.borrow;
+        const auto found = resources_.find(reference.handleId);
+        if (found == resources_.end() && reference.origin == ComponentResourceOrigin::HOST &&
+            type.kind == WASMTIME_COMPONENT_VALTYPE_BORROW) {
+            const auto trusted = std::find_if(hostRepresentations_.begin(), hostRepresentations_.end(), [&reference](const auto& item) {
+                return item.second.typeId == reference.typeId && item.second.handleId == reference.handleId &&
+                       item.second.generation == reference.generation;
+            });
+            if (trusted == hostRepresentations_.end()) return invalid();
+            const auto binding =
+                std::find_if(importedResourceBindings_.begin(), importedResourceBindings_.end(),
+                             [expectedType](const auto& item) { return wasmtime_component_resource_type_equal(item->type, expectedType); });
+            if (binding == importedResourceBindings_.end()) return invalid();
+            wasmtime_component_resource_host_t* host = wasmtime_component_resource_host_new(false, trusted->first, (*binding)->hostType);
+            if (!host) return invalid();
+            wasmtime_component_resource_any_t* any = nullptr;
+            wasmtime_error_t* error = wasmtime_component_resource_host_to_any(context_, host, &any);
+            wasmtime_component_resource_host_delete(host);
+            if (error) {
+                wasmtime_error_delete(error);
+                return invalid();
+            }
+            initializeValue(result);
+            result->kind = WASMTIME_COMPONENT_RESOURCE;
+            result->of.resource = any;
+            return any != nullptr;
+        }
+        if (found == resources_.end()) return invalid();
+        const ResourceEntry& entry = found->second;
+        if (!expectedType || entry.typeId != reference.typeId || entry.generation != reference.generation ||
+            entry.ownership != reference.ownership || entry.origin != reference.origin || !entry.value ||
+            !wasmtime_component_resource_type_equal(entry.type, expectedType)) {
+            return invalid();
+        }
+        if (type.kind == WASMTIME_COMPONENT_VALTYPE_OWN && reference.ownership != ComponentResourceOwnership::OWN) return invalid();
+        if (type.kind == WASMTIME_COMPONENT_VALTYPE_BORROW && reference.ownership != ComponentResourceOwnership::BORROW &&
+            reference.ownership != ComponentResourceOwnership::OWN)
+            return invalid();
+        wasmtime_component_resource_any_t* clone = wasmtime_component_resource_any_clone(entry.value);
+        if (!clone) return invalid();
+        initializeValue(result);
+        result->kind = WASMTIME_COMPONENT_RESOURCE;
+        result->of.resource = clone;
+        if (type.kind == WASMTIME_COMPONENT_VALTYPE_OWN) {
+            if (found->second.origin == ComponentResourceOrigin::HOST) {
+                hostRepresentations_[found->second.hostRepresentation] = reference;
+            }
+            wasmtime_component_resource_any_delete(found->second.value);
+            resources_.erase(found);
+        }
+        return true;
+    }
+
+    bool ComponentSession::liftResource(const wasmtime_component_val_t& value, const wasmtime_component_valtype_t& type,
+                                        ComponentValue* result, std::vector<uint64_t>* transientBorrowed) {
+        if (!result || value.kind != WASMTIME_COMPONENT_RESOURCE || !value.of.resource ||
+            (type.kind != WASMTIME_COMPONENT_VALTYPE_OWN && type.kind != WASMTIME_COMPONENT_VALTYPE_BORROW)) {
+            return false;
+        }
+        const auto expectedType = type.kind == WASMTIME_COMPONENT_VALTYPE_OWN ? type.of.own : type.of.borrow;
+        if (!expectedType) return false;
+        const bool owned = type.kind == WASMTIME_COMPONENT_VALTYPE_OWN;
+        if (wasmtime_component_resource_any_owned(value.of.resource) != owned) return false;
+        wasmtime_component_resource_host_t* host = nullptr;
+        wasmtime_error_t* hostError = wasmtime_component_resource_any_to_host(context_, value.of.resource, &host);
+        if (!hostError && host) {
+            const uint32_t representation = wasmtime_component_resource_host_rep(host);
+            const uint32_t hostType = wasmtime_component_resource_host_type(host);
+            const auto trusted = hostRepresentations_.find(representation);
+            if (trusted == hostRepresentations_.end()) {
+                wasmtime_component_resource_host_delete(host);
+                return false;
+            }
+            const auto entry = resources_.find(trusted->second.handleId);
+            if (entry != resources_.end()) {
+                if (!wasmtime_component_resource_type_equal(entry->second.type, expectedType) || entry->second.hostType != hostType) {
+                    wasmtime_component_resource_host_delete(host);
+                    return false;
+                }
+            } else {
+                const auto binding = std::find_if(importedResourceBindings_.begin(), importedResourceBindings_.end(),
+                                                  [hostType](const auto& item) { return item->hostType == hostType; });
+                if (binding == importedResourceBindings_.end() || !wasmtime_component_resource_type_equal((*binding)->type, expectedType)) {
+                    wasmtime_component_resource_host_delete(host);
+                    return false;
+                }
+                if (owned) {
+                    wasmtime_component_resource_any_t* restored = nullptr;
+                    wasmtime_error_t* restoreError = wasmtime_component_resource_host_to_any(context_, host, &restored);
+                    if (restoreError) wasmtime_error_delete(restoreError);
+                    if (restoreError || !restored) {
+                        wasmtime_component_resource_host_delete(host);
+                        return false;
+                    }
+                    ResourceEntry restoredEntry;
+                    restoredEntry.typeId = trusted->second.typeId;
+                    restoredEntry.handleId = trusted->second.handleId;
+                    restoredEntry.generation = trusted->second.generation;
+                    restoredEntry.ownership = ComponentResourceOwnership::OWN;
+                    restoredEntry.origin = ComponentResourceOrigin::HOST;
+                    restoredEntry.value = restored;
+                    restoredEntry.type = resourceTypes_.at(trusted->second.typeId);
+                    restoredEntry.hostRepresentation = representation;
+                    restoredEntry.hostType = hostType;
+                    resources_.emplace(restoredEntry.handleId, restoredEntry);
+                }
+            }
+            wasmtime_component_resource_host_delete(host);
+            *result = ComponentValue::resource(ComponentResourceReference{
+                key_,
+                trusted->second.typeId,
+                trusted->second.handleId,
+                trusted->second.generation,
+                owned ? ComponentResourceOwnership::OWN : ComponentResourceOwnership::BORROW,
+                ComponentResourceOrigin::HOST,
+            });
+            return true;
+        }
+        if (hostError) wasmtime_error_delete(hostError);
+        wasmtime_component_resource_any_t* clone = wasmtime_component_resource_any_clone(value.of.resource);
+        if (!clone) return false;
+        ComponentResourceReference reference;
+        const ComponentResourceOwnership ownership = owned ? ComponentResourceOwnership::OWN : ComponentResourceOwnership::BORROW;
+        if (!registerResource(clone, ownership, ComponentResourceOrigin::GUEST, &reference)) {
+            wasmtime_component_resource_any_delete(clone);
+            return false;
+        }
+        if (!wasmtime_component_resource_type_equal(resourceTypes_.at(reference.typeId), expectedType)) {
+            dropResourceUnlocked(reference);
+            return false;
+        }
+        if (!owned && transientBorrowed) transientBorrowed->push_back(reference.handleId);
+        *result = ComponentValue::resource(std::move(reference));
+        return true;
     }
 
     void ComponentSession::setOutboundHandler(std::unique_ptr<OutboundHandler> handler, std::string codec) {
@@ -826,6 +1171,60 @@ namespace wasmline {
         std::string interfaceName;
         std::string functionName;
     };
+
+    bool ComponentSession::createHostResource(std::string_view interfaceName, std::string_view resourceName, uint32_t representation,
+                                              ComponentResourceReference* reference) {
+        if (std::find(activeComponentSessions.begin(), activeComponentSessions.end(), this) != activeComponentSessions.end()) return false;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!initialized_ || !reference || representation == 0) return false;
+        const auto binding = std::find_if(importedResourceBindings_.begin(), importedResourceBindings_.end(),
+                                          [interfaceName, resourceName](const auto& item) {
+                                              return item->interfaceName == interfaceName && item->resourceName == resourceName;
+                                          });
+        if (binding == importedResourceBindings_.end()) return false;
+        wasmtime_component_resource_host_t* host = wasmtime_component_resource_host_new(true, representation, (*binding)->hostType);
+        if (!host) return false;
+        wasmtime_component_resource_any_t* any = nullptr;
+        wasmtime_error_t* error = wasmtime_component_resource_host_to_any(context_, host, &any);
+        wasmtime_component_resource_host_delete(host);
+        if (error) {
+            wasmtime_error_delete(error);
+            return false;
+        }
+        if (!any) return false;
+        uint32_t typeId = 0;
+        for (const auto& item : resourceTypes_) {
+            if (wasmtime_component_resource_type_equal(item.second, (*binding)->type)) {
+                typeId = item.first;
+                break;
+            }
+        }
+        if (typeId == 0) {
+            typeId = nextResourceType_++;
+            resourceTypes_.emplace(typeId, wasmtime_component_resource_type_clone((*binding)->type));
+        }
+        const uint64_t handleId = nextResourceHandle_++;
+        const uint32_t generation = nextResourceGeneration_++;
+        if (typeId == 0 || handleId == 0 || generation == 0) {
+            wasmtime_component_resource_any_delete(any);
+            return false;
+        }
+        ResourceEntry entry;
+        entry.typeId = typeId;
+        entry.handleId = handleId;
+        entry.generation = generation;
+        entry.ownership = ComponentResourceOwnership::OWN;
+        entry.origin = ComponentResourceOrigin::HOST;
+        entry.value = any;
+        entry.type = resourceTypes_.at(typeId);
+        entry.hostRepresentation = representation;
+        entry.hostType = (*binding)->hostType;
+        resources_.emplace(handleId, entry);
+        *reference =
+            ComponentResourceReference{key_, typeId, handleId, generation, ComponentResourceOwnership::OWN, ComponentResourceOrigin::HOST};
+        hostRepresentations_[representation] = *reference;
+        return true;
+    }
 
     bool ComponentSession::registerRpcImports() {
         wasmtime_component_type_t* componentType = wasmtime_component_type(component_);
@@ -940,6 +1339,32 @@ namespace wasmline {
                     return false;
                 }
                 function.active = true;
+                if (function.value.kind == WASMTIME_COMPONENT_ITEM_RESOURCE) {
+                    auto binding = std::make_unique<ImportedResourceBinding>();
+                    binding->session = this;
+                    binding->interfaceName = interfaceName;
+                    binding->resourceName = nameString(functionName, functionNameSize);
+                    binding->hostType = nextHostResourceType_++;
+                    binding->type = wasmtime_component_resource_type_new_host(binding->hostType);
+                    if (!binding->type) {
+                        wasmtime_component_linker_instance_delete(hostInstance);
+                        wasmtime_component_type_delete(componentType);
+                        return false;
+                    }
+                    wasmtime_error_t* resourceError = wasmtime_component_linker_instance_add_resource(
+                        hostInstance, functionName, functionNameSize, binding->type, dropImportedResource, binding.get(), nullptr);
+                    if (resourceError) {
+                        const std::string message = wasmtime::errorMessage(resourceError);
+                        wasmtime_error_delete(resourceError);
+                        wasmtime_component_linker_instance_delete(hostInstance);
+                        wasmtime_component_type_delete(componentType);
+                        LOGE("[Wasmtime] ComponentSession -> Failed to register imported resource '%s/%s': %s", interfaceName.c_str(),
+                             binding->resourceName.c_str(), message.c_str());
+                        return false;
+                    }
+                    importedResourceBindings_.push_back(std::move(binding));
+                    continue;
+                }
                 if (function.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC) continue;
 
                 const std::string functionNameText = nameString(functionName, functionNameSize);
@@ -999,7 +1424,10 @@ namespace wasmline {
         parameterType.active = true;
 
         ComponentValue request;
+        std::vector<uint64_t> transientBorrowed;
+        ComponentConversionScope conversionScope(this, &transientBorrowed);
         if (!fromWasmtimeValue(arguments[0], parameterType.value, &request) || request.kind() != ComponentValue::Kind::RECORD) {
+            clearTransientResources(transientBorrowed);
             return componentError("Wasmline RPC request value is invalid.");
         }
 
@@ -1010,6 +1438,7 @@ namespace wasmline {
         std::string payload;
         if (!actionValue || actionValue->kind() != ComponentValue::Kind::STRING || !codecValue ||
             codecValue->kind() != ComponentValue::Kind::STRING || !payloadValue || !componentBytes(*payloadValue, &payload)) {
+            clearTransientResources(transientBorrowed);
             return componentError("Wasmline RPC request fields are invalid.");
         }
 
@@ -1048,8 +1477,10 @@ namespace wasmline {
         }
         resultType.active = true;
         if (!toWasmtimeValue(response, resultType.value, &results[0])) {
+            clearTransientResources(transientBorrowed);
             return componentError("Wasmline RPC response could not be lowered to the component result type.");
         }
+        clearTransientResources(transientBorrowed);
         return nullptr;
     }
 
@@ -1064,6 +1495,20 @@ namespace wasmline {
         return binding->session->handleComponentHostInvoke(*binding, functionType, arguments, argumentCount, results, resultCount);
     }
 
+    wasmtime_error_t* ComponentSession::dropImportedResource(void* data, wasmtime_context_t* context, uint32_t representation) {
+        auto* binding = static_cast<ImportedResourceBinding*>(data);
+        if (!binding || !binding->session || context != binding->session->context_) {
+            return componentError("Imported Component resource drop has no active session.");
+        }
+        return binding->session->handleImportedResourceDrop(*binding, representation);
+    }
+
+    wasmtime_error_t* ComponentSession::handleImportedResourceDrop(const ImportedResourceBinding& binding, uint32_t representation) {
+        if (!notifyHostResourceDrop(representation, binding.hostType))
+            return componentError("Typed Component host resource is stale or its drop handler failed.");
+        return nullptr;
+    }
+
     wasmtime_error_t* ComponentSession::handleComponentHostInvoke(const ComponentHostBinding& binding,
                                                                   const wasmtime_component_func_type_t* functionType,
                                                                   wasmtime_component_val_t* arguments, size_t argumentCount,
@@ -1076,6 +1521,8 @@ namespace wasmline {
 
         std::vector<ComponentValue> convertedArguments;
         convertedArguments.reserve(argumentCount);
+        std::vector<uint64_t> transientBorrowed;
+        ComponentConversionScope conversionScope(this, &transientBorrowed);
         for (size_t index = 0; index < argumentCount; ++index) {
             const char* argumentName = nullptr;
             size_t argumentNameSize = 0;
@@ -1086,6 +1533,7 @@ namespace wasmline {
             argumentType.active = true;
             ComponentValue argument;
             if (!fromWasmtimeValue(arguments[index], argumentType.value, &argument)) {
+                clearTransientResources(transientBorrowed);
                 return componentError("Typed Component host import '" + functionLabel + "' argument " + std::to_string(index) +
                                       " does not match its Component type.");
             }
@@ -1093,6 +1541,7 @@ namespace wasmline {
         }
 
         if (!componentHostHandler_) {
+            clearTransientResources(transientBorrowed);
             return componentError("No typed Component host adapter is registered for '" + functionLabel + "'.");
         }
 
@@ -1106,6 +1555,7 @@ namespace wasmline {
             }
         }();
         if (!invocationResult.isSuccess()) {
+            clearTransientResources(transientBorrowed);
             if (invocationResult.errorCode() == WasmlineErrorCode::ACTION_NOT_BOUND) {
                 return componentError("No typed Component host adapter is registered for '" + functionLabel + "'.");
             }
@@ -1130,6 +1580,7 @@ namespace wasmline {
 
         const bool converted = toWasmtimeValue(values[0], resultType, &results[0]);
         wasmtime_component_valtype_delete(&resultType);
+        clearTransientResources(transientBorrowed);
         if (!converted) {
             return componentError("Typed Component host adapter for '" + functionLabel +
                                   "' returned a value that does not match its Component type.");
@@ -1224,6 +1675,9 @@ namespace wasmline {
         std::vector<wasmtime_component_valtype_t> parameterTypes(parameterCount);
         std::vector<bool> parameterTypeOwned(parameterCount, false);
         std::vector<wasmtime_component_val_t> callArguments(parameterCount);
+        std::vector<uint64_t> transientBorrowed;
+        ComponentConversionScope conversionScope(this, &transientBorrowed);
+        resourceConversionInvalid_ = false;
         for (size_t index = 0; index < parameterCount; ++index) {
             const char* parameterName = nullptr;
             size_t parameterNameSize = 0;
@@ -1242,9 +1696,15 @@ namespace wasmline {
                     if (typeIndex <= index) wasmtime_component_val_delete(&callArguments[typeIndex]);
                 }
                 wasmtime_component_func_type_delete(functionType);
-                return InvocationResult::failure(WasmlineErrorCode::INVALID_PAYLOAD, "Component parameter value does not match its type.");
+                const bool invalidResource = resourceConversionInvalid_;
+                resourceConversionInvalid_ = false;
+                return InvocationResult::failure(
+                    invalidResource ? WasmlineErrorCode::COMPONENT_RESOURCE_INVALID : WasmlineErrorCode::INVALID_PAYLOAD,
+                    invalidResource ? "Component resource is stale or has the wrong instance, type, generation, or ownership."
+                                    : "Component parameter value does not match its type.");
             }
         }
+        resourceConversionInvalid_ = false;
 
         wasmtime_component_valtype_t resultType{};
         const bool hasResult = wasmtime_component_func_type_result(functionType, &resultType);
@@ -1265,6 +1725,7 @@ namespace wasmline {
             for (auto& value : callResults)
                 wasmtime_component_val_delete(&value);
             if (hasResult) wasmtime_component_valtype_delete(&resultType);
+            clearTransientResources(transientBorrowed);
             return InvocationResult::failure(trap ? WasmlineErrorCode::COMPONENT_TRAP : WasmlineErrorCode::COMPONENT_CALL_FAILED, message);
         }
 
@@ -1274,21 +1735,25 @@ namespace wasmline {
             const bool converted = convertFromWasmtime(callResults[0], resultType, &value);
             wasmtime_component_val_delete(&callResults[0]);
             wasmtime_component_valtype_delete(&resultType);
+            clearTransientResources(transientBorrowed);
             if (!converted) {
                 return InvocationResult::failure(WasmlineErrorCode::INVALID_PAYLOAD, "Component result value does not match its type.");
             }
             values.push_back(std::move(value));
         }
+        clearTransientResources(transientBorrowed);
         return InvocationResult::successComponent(std::move(values));
     }
 
     bool ComponentSession::toWasmtimeValue(const ComponentValue& value, const wasmtime_component_valtype_t& type,
                                            wasmtime_component_val_t* result) {
+        ComponentConversionScope scope(this);
         return convertToWasmtime(value, type, result);
     }
 
     bool ComponentSession::fromWasmtimeValue(const wasmtime_component_val_t& value, const wasmtime_component_valtype_t& type,
-                                             ComponentValue* result) {
+                                             ComponentValue* result, std::vector<uint64_t>* transientBorrowed) {
+        ComponentConversionScope scope(this, transientBorrowed);
         return convertFromWasmtime(value, type, result);
     }
 

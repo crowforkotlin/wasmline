@@ -116,7 +116,7 @@ class ComponentAotBuildRecordTest {
     }
 
     private fun compileResult(rawFile: File, cwasm: File, pwasm: File): ComponentAotCompileResult {
-        val metadata = ComponentAotArtifactMetadata(exportName = "plugin/invoke")
+        val metadata = ComponentAotArtifactMetadata()
         return ComponentAotCompileResult(
             inputComponent = rawFile,
             inputComponentSha256 = FileDigest.sha256Hex(rawFile),

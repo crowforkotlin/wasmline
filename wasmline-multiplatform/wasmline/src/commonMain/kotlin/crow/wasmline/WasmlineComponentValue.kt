@@ -51,7 +51,48 @@ sealed interface WasmlineComponentValue {
 
     data class MapValue(val entries: List<MapEntry>) : WasmlineComponentValue
 
+    /** Session-scoped carrier for a validated Component Model resource. */
+    class ResourceValue internal constructor(
+        val instanceKey: String,
+        val typeId: UInt,
+        val handleId: ULong,
+        val generation: UInt,
+        val ownership: WasmlineComponentResourceOwnership,
+        val origin: WasmlineComponentResourceOrigin,
+    ) : WasmlineComponentValue {
+        init {
+            require(instanceKey.isNotBlank()) { "Component resource instance key must not be blank." }
+            require(typeId != 0u) { "Component resource type id must not be zero." }
+            require(handleId != 0uL) { "Component resource handle id must not be zero." }
+            require(generation != 0u) { "Component resource generation must not be zero." }
+        }
+
+        override fun equals(other: Any?): Boolean = other is ResourceValue &&
+            instanceKey == other.instanceKey &&
+            typeId == other.typeId &&
+            handleId == other.handleId &&
+            generation == other.generation &&
+            ownership == other.ownership &&
+            origin == other.origin
+
+        override fun hashCode(): Int {
+            var result = instanceKey.hashCode()
+            result = 31 * result + typeId.hashCode()
+            result = 31 * result + handleId.hashCode()
+            result = 31 * result + generation.hashCode()
+            result = 31 * result + ownership.hashCode()
+            return 31 * result + origin.hashCode()
+        }
+
+        override fun toString(): String =
+            "ResourceValue(instanceKey=$instanceKey, typeId=$typeId, handleId=$handleId, generation=$generation, ownership=$ownership, origin=$origin)"
+    }
+
     data class RecordField(val name: String, val value: WasmlineComponentValue)
 
     data class MapEntry(val key: WasmlineComponentValue, val value: WasmlineComponentValue)
 }
+
+enum class WasmlineComponentResourceOwnership { OWN, BORROW }
+
+enum class WasmlineComponentResourceOrigin { GUEST, HOST }

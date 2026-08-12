@@ -13,4 +13,5 @@ enum class WasmlineInvocationProtocol {
     WASMLINE_CORE,
     COMPONENT_EXPORT,
     RAW_EXPORT,
+    WASMLINE_COMPONENT_RPC,
 }

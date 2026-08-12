@@ -63,8 +63,14 @@ data class ComponentAotBuildRecord(
         require(artifact.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
             "Component AOT build record artifacts must use executionModel=COMPONENT_MODEL."
         }
-        require(artifact.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT) {
-            "Component AOT build record artifacts must use invocationProtocol=COMPONENT_EXPORT."
+        require(
+            artifact.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
+                artifact.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+        ) {
+            "Component AOT build record artifacts must use a Component invocation protocol."
+        }
+        require(artifact.invocationProtocol == rawComponent.resolvedInvocationProtocol()) {
+            "Component AOT artifact protocol does not match the raw Component build record."
         }
         require(artifact.targetCompilerVersion == "wasmtime-$wasmtimeVersion") {
             "Component AOT artifact compiler version must be wasmtime-$wasmtimeVersion."
@@ -73,7 +79,7 @@ data class ComponentAotBuildRecord(
             "Component AOT artifact SHA-256 must contain 64 hexadecimal characters."
         }
         require(artifact.url.isNotBlank()) { "Component AOT artifact URL must not be blank." }
-        require(artifact.exportName == rawComponent.exportName) {
+        require(artifact.exportName == rawComponent.resolvedExportName()) {
             "Component AOT artifact export does not match the raw Component build record."
         }
     }

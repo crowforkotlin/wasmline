@@ -48,6 +48,21 @@ bool wasmline_load_component_with_format(const char* key, const char* path, int3
 /** Releases a previously loaded artifact. */
 void wasmline_release_module(const char* key);
 
+/** Releases one explicitly instantiated Component session. */
+void wasmline_release_component_instance(const char* instanceKey);
+
+/** Drops one owned Component resource associated with an instance. */
+bool wasmline_drop_component_resource(const char* instanceKey,
+                                     const void* data,
+                                     size_t dataLen);
+
+/** Creates one owned imported Host resource and returns its typed carrier. */
+char* wasmline_create_component_host_resource(const char* instanceKey,
+                                              const char* interfaceId,
+                                              const char* resourceName,
+                                              uint32_t representation,
+                                              size_t* outLen);
+
 /** Invokes the Core Wasmline entry point. */
 char* wasmline_invoke_inbound(const char* key,
                               const char* action, size_t actionLen,
@@ -70,6 +85,14 @@ char* wasmline_invoke_component(const char* key,
                                 const void* data,
                                 size_t dataLen,
                                 size_t* outLen);
+
+/** Invokes an export on one explicitly instantiated Component session. */
+char* wasmline_invoke_component_instance(const char* instanceKey,
+                                         const char* exportName,
+                                         size_t exportNameLen,
+                                         const void* data,
+                                         size_t dataLen,
+                                         size_t* outLen);
 
 /** Releases memory returned by the native bridge. */
 void wasmline_free_memory(char* ptr);
@@ -99,6 +122,11 @@ typedef char* (*ComponentHostCallback)(const char* key,
 
 /** Registers the typed Component host callback for an artifact. */
 bool wasmline_set_component_host_handler(const char* key, ComponentHostCallback callback);
+
+/** Creates an isolated Component session with its host callback installed before instantiation. */
+bool wasmline_instantiate_component(const char* artifactKey,
+                                    const char* instanceKey,
+                                    ComponentHostCallback callback);
 
 #ifdef __cplusplus
 }

@@ -2,11 +2,34 @@ package crow.wasmline.kotlin
 
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @OptIn(CompilerConfiguration.Internals::class)
 class WasmlineCommandLineProcessorTest {
+
+    @Test
+    fun guestTransportOptionSelectsComponentRpc() {
+        val processor = WasmlineCommandLineProcessor()
+        val option = processor.pluginOptions.single { it.optionName == GUEST_TRANSPORT_OPTION_NAME }
+        val configuration = CompilerConfiguration()
+
+        processor.processOption(option, "component_rpc", configuration)
+
+        assertEquals(WasmlineGuestTransport.COMPONENT_RPC, configuration.get(GUEST_TRANSPORT_OPTION))
+    }
+
+    @Test
+    fun invalidGuestTransportIsRejected() {
+        val processor = WasmlineCommandLineProcessor()
+        val option = processor.pluginOptions.single { it.optionName == GUEST_TRANSPORT_OPTION_NAME }
+
+        assertFailsWith<IllegalStateException> {
+            processor.processOption(option, "dynamic", CompilerConfiguration())
+        }
+    }
 
     @Test
     fun compilerPluginOptionCanDisableIrGeneration() {

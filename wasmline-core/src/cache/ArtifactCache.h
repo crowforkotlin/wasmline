@@ -33,7 +33,10 @@ namespace wasmline::cache {
             std::unique_lock<std::mutex> lock(mutex_);
             while (true) {
                 const auto cached = cache_.find(key);
-                if (cached != cache_.end()) return cached->second;
+                if (cached != cache_.end()) {
+                    ++cached->second.references;
+                    return cached->second.handle;
+                }
                 if (loading_.find(key) == loading_.end()) break;
                 condition_.wait(lock);
             }
@@ -52,7 +55,7 @@ namespace wasmline::cache {
             lock.lock();
             if (loaded) {
                 try {
-                    cache_.emplace(key, loaded);
+                    cache_.emplace(key, Entry{loaded, 1});
                     owned.release();
                 } catch (...) {
                     loaded = nullptr;
@@ -65,7 +68,10 @@ namespace wasmline::cache {
 
         Handle* loadUnsafe(const std::string& key, const std::string& path, const Loader& loader) {
             const auto cached = cache_.find(key);
-            if (cached != cache_.end()) return cached->second;
+            if (cached != cache_.end()) {
+                ++cached->second.references;
+                return cached->second.handle;
+            }
 
             Handle* loaded = nullptr;
             try {
@@ -77,7 +83,7 @@ namespace wasmline::cache {
 
             std::unique_ptr<Handle, Deleter> owned(loaded, deleter_);
             try {
-                cache_.emplace(key, loaded);
+                cache_.emplace(key, Entry{loaded, 1});
                 owned.release();
             } catch (...) {
                 return nullptr;
@@ -88,21 +94,25 @@ namespace wasmline::cache {
         Handle* get(const std::string& key) const {
             std::lock_guard<std::mutex> lock(mutex_);
             const auto cached = cache_.find(key);
-            return cached == cache_.end() ? nullptr : cached->second;
+            return cached == cache_.end() ? nullptr : cached->second.handle;
         }
 
-        void release(const std::string& key) {
+        bool release(const std::string& key) {
             std::lock_guard<std::mutex> lock(mutex_);
             const auto cached = cache_.find(key);
-            if (cached == cache_.end()) return;
-            deleter_(cached->second);
-            cache_.erase(cached);
+            if (cached == cache_.end()) return false;
+            if (--cached->second.references == 0) {
+                deleter_(cached->second.handle);
+                cache_.erase(cached);
+                return true;
+            }
+            return false;
         }
 
         void clear() {
             std::lock_guard<std::mutex> lock(mutex_);
             for (const auto& item : cache_) {
-                deleter_(item.second);
+                deleter_(item.second.handle);
             }
             cache_.clear();
         }
@@ -114,8 +124,13 @@ namespace wasmline::cache {
             condition_.notify_all();
         }
 
+        struct Entry {
+            Handle* handle;
+            size_t references;
+        };
+
         Deleter deleter_;
-        std::unordered_map<std::string, Handle*> cache_;
+        std::unordered_map<std::string, Entry> cache_;
         std::unordered_set<std::string> loading_;
         mutable std::mutex mutex_;
         std::condition_variable condition_;

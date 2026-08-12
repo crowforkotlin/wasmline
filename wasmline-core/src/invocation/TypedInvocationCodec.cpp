@@ -146,6 +146,7 @@ namespace wasmline {
             RESULT = 19,
             FLAGS = 20,
             MAP = 21,
+            RESOURCE = 22,
         };
 
         /** Reads a length field and applies the protocol limit. */
@@ -356,6 +357,30 @@ namespace wasmline {
                 *value = ComponentValue::map(std::move(entries));
                 return true;
             }
+            case ValueTag::RESOURCE: {
+                std::string instanceKey;
+                uint32_t typeId = 0;
+                uint64_t handleId = 0;
+                uint32_t generation = 0;
+                uint8_t ownership = 0;
+                uint8_t origin = 0;
+                if (!readString(reader, &instanceKey, error) || !reader.readU32(&typeId) || !reader.readU64(&handleId) ||
+                    !reader.readU32(&generation) || !reader.readByte(&ownership) || !reader.readByte(&origin) ||
+                    (ownership != 0 && ownership != 1) || (origin != 0 && origin != 1) || instanceKey.empty() || typeId == 0 ||
+                    handleId == 0 || generation == 0) {
+                    if (error && error->empty()) *error = "Component resource reference is invalid.";
+                    return false;
+                }
+                *value = ComponentValue::resource(ComponentResourceReference{
+                    std::move(instanceKey),
+                    typeId,
+                    handleId,
+                    generation,
+                    ownership == 0 ? ComponentResourceOwnership::OWN : ComponentResourceOwnership::BORROW,
+                    origin == 0 ? ComponentResourceOrigin::GUEST : ComponentResourceOrigin::HOST,
+                });
+                return true;
+            }
             default:
                 if (error) *error = "Typed invocation value tag is unknown.";
                 return false;
@@ -499,6 +524,15 @@ namespace wasmline {
                     writeComponentValue(writer, entry.first);
                     writeComponentValue(writer, entry.second);
                 }
+                break;
+            case Kind::RESOURCE:
+                writer.byte(static_cast<uint8_t>(ValueTag::RESOURCE));
+                writeString(writer, value.resourceValue().instanceKey);
+                writer.u32(value.resourceValue().typeId);
+                writer.u64(value.resourceValue().handleId);
+                writer.u32(value.resourceValue().generation);
+                writer.byte(value.resourceValue().ownership == ComponentResourceOwnership::OWN ? 0 : 1);
+                writer.byte(value.resourceValue().origin == ComponentResourceOrigin::GUEST ? 0 : 1);
                 break;
             }
         }

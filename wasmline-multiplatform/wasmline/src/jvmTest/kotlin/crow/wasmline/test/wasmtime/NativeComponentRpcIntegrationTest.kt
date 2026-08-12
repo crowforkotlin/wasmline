@@ -169,7 +169,7 @@ class NativeComponentRpcIntegrationTest {
                 KotlinEchoRequest("hello"),
             )
             val result = assertIs<WasmlineCallResult.Success<ByteArray>>(
-                handle.callResult(ACTION_ECHO, request),
+                handle.callResult(KOTLIN_ACTION_ECHO, request),
             )
             val response = ProtoBuf.decodeFromByteArray(KotlinEchoResponse.serializer(), result.value)
 
@@ -193,7 +193,7 @@ class NativeComponentRpcIntegrationTest {
                 targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
                 is64Bit = runtime.is64Bit,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-                invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
                 exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
                 contractMetadata = mapOf(
                     WasmlineComponentRpcContract.METADATA_PROFILE to WasmlineComponentRpcContract.PROFILE,
@@ -261,5 +261,6 @@ class NativeComponentRpcIntegrationTest {
         const val ACTION_ECHO = "sample.echo"
         const val ACTION_CALLBACK = "sample.callback"
         const val HOST_CALLBACK_ACTION = "sample.host.callback"
+        const val KOTLIN_ACTION_ECHO = "crow.wasmline.sample.component.ComponentPluginService#echo"
     }
 }

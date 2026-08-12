@@ -3,16 +3,8 @@
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallResult
-import kotlinx.cinterop.ByteVar
-import kotlinx.cinterop.CPointer
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.ULongVar
-import kotlinx.cinterop.alloc
-import kotlinx.cinterop.allocArray
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.nativeHeap
-import kotlinx.cinterop.ptr
-import kotlinx.cinterop.readBytes
+import crow.wasmline.native.c.wasmline_free_memory
+import kotlinx.cinterop.*
 import kotlinx.cinterop.toKString
 import platform.posix.getenv
 import kotlin.test.Test
@@ -130,45 +122,36 @@ class WasmlineIosComponentHostCallbackTest {
     }
 
     private fun invokeCallback(key: String, interfaceName: String, functionName: String, arguments: ByteArray): ByteArray? = memScoped {
+        val outLen = alloc<ULongVar>()
+        val outLenPointer = outLen.ptr
         val keyBytes = key.encodeToByteArray()
         val interfaceBytes = interfaceName.encodeToByteArray()
         val functionBytes = functionName.encodeToByteArray()
-        val keyPointer = allocate(keyBytes)
-        val interfacePointer = allocate(interfaceBytes)
-        val functionPointer = allocate(functionBytes)
-        val argumentsPointer = allocate(arguments)
-        val outLen = alloc<ULongVar>()
-        try {
-            val response = iosStaticComponentHostCallback(
-                keyPointer,
-                keyBytes.size.toULong(),
-                interfacePointer,
-                interfaceBytes.size.toULong(),
-                functionPointer,
-                functionBytes.size.toULong(),
-                argumentsPointer,
-                arguments.size.toULong(),
-                outLen.ptr,
-            )
-            if (response == null) {
-                assertEquals(0uL, outLen.value)
-                return@memScoped null
+        keyBytes.usePinned { keyPinned ->
+            interfaceBytes.usePinned { interfacePinned ->
+                functionBytes.usePinned { functionPinned ->
+                    arguments.usePinned { argumentsPinned ->
+                        val response = iosStaticComponentHostCallback(
+                            keyPinned.addressOf(0),
+                            keyBytes.size.toULong(),
+                            interfacePinned.addressOf(0),
+                            interfaceBytes.size.toULong(),
+                            functionPinned.addressOf(0),
+                            functionBytes.size.toULong(),
+                            argumentsPinned.addressOf(0),
+                            arguments.size.toULong(),
+                            outLenPointer,
+                        )
+                        if (response == null) {
+                            assertEquals(0uL, outLenPointer.pointed.value)
+                            return@usePinned null
+                        }
+                        val result = response.readBytes(outLenPointer.pointed.value.toInt())
+                        wasmline_free_memory(response)
+                        result
+                    }
+                }
             }
-            val result = response.readBytes(outLen.value.toInt())
-            nativeHeap.free(response)
-            result
-        } finally {
-            keyPointer?.let(nativeHeap::free)
-            interfacePointer?.let(nativeHeap::free)
-            functionPointer?.let(nativeHeap::free)
-            argumentsPointer?.let(nativeHeap::free)
-        }
-    }
-
-    private fun allocate(value: ByteArray): CPointer<ByteVar>? {
-        if (value.isEmpty()) return null
-        return nativeHeap.allocArray<ByteVar>(value.size).also { pointer ->
-            value.forEachIndexed { index, byte -> pointer[index] = byte }
         }
     }
 

@@ -40,7 +40,7 @@ namespace wasmline {
         wasmtime_module_t* get(const std::string& key);
 
         /** Releases one cached module. */
-        void release(const std::string& key);
+        bool release(const std::string& key);
 
         /** Releases all cached modules. */
         void clear();

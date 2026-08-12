@@ -41,7 +41,7 @@ namespace wasmline {
         wasmtime_component_t* get(const std::string& key);
 
         /** Releases one cached component. */
-        void release(const std::string& key);
+        bool release(const std::string& key);
 
         /** Releases all cached components. */
         void clear();

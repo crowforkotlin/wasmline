@@ -18,6 +18,8 @@ actual class Wasmline actual internal constructor(
     actual val config: WasmlineConfig,
     actual val descriptor: WasmlineArtifactDescriptor,
 ) {
+    actual internal val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
+    actual internal val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
 
     actual internal fun setOutbound(dispatcher: WasmlineHostDispatcher) {
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
@@ -80,7 +82,76 @@ actual class Wasmline actual internal constructor(
             wasmline_invoke_component(moduleKey, exportName, exportName.length.toULong(), dataPtr, dataSize, outLen)
         }
 
+    actual internal fun instantiateComponentInstance(instanceKey: String, dispatcher: WasmlineComponentHostDispatcher,): Boolean {
+        WasmlineComponentHostCallbackRegistry.register(instanceKey, dispatcher)
+        if (wasmline_instantiate_component(moduleKey, instanceKey, staticCFunction(::iosStaticComponentHostCallback))) return true
+        WasmlineComponentHostCallbackRegistry.unregister(instanceKey)
+        return false
+    }
+
+    actual internal fun invokeComponentInstanceCarrier(
+        instanceKey: String,
+        exportName: String,
+        arguments: ByteArray,
+    ): WasmlineCallResult<ByteArray> = invokeTypedCarrier(arguments) { dataPtr, dataSize, outLen ->
+        wasmline_invoke_component_instance(
+            instanceKey,
+            exportName,
+            exportName.length.toULong(),
+            dataPtr,
+            dataSize,
+            outLen,
+        )
+    }
+
+    actual internal fun releaseComponentInstance(instanceKey: String) {
+        WasmlineComponentHostCallbackRegistry.unregister(instanceKey)
+        wasmline_release_component_instance(instanceKey)
+    }
+
+    actual internal fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean {
+        val encoded = WasmlineTypedInvocationCodec.encodeComponentArguments(listOf(reference))
+        return encoded is WasmlineCallResult.Success &&
+            encoded.value.usePinned { pinned ->
+            wasmline_drop_component_resource(
+                instanceKey,
+                if (encoded.value.isEmpty()) null else pinned.addressOf(0),
+                encoded.value.size.toULong(),
+            )
+        }
+    }
+
+    actual internal fun createComponentHostResource(
+        instanceKey: String,
+        interfaceId: String,
+        resourceName: String,
+        representation: UInt,
+    ): WasmlineCallResult<WasmlineComponentValue.ResourceValue> = memScoped {
+        val outLen = alloc<ULongVar>()
+        val pointer = wasmline_create_component_host_resource(instanceKey, interfaceId, resourceName, representation, outLen.ptr)
+            ?: return@memScoped WasmlineCallResult.Failure(
+                WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource creation failed."),
+            )
+        val encoded = pointer.readBytes(outLen.value.toInt())
+        wasmline_free_memory(pointer)
+        when (val decoded = WasmlineTypedInvocationCodec.decodeComponentArguments(encoded)) {
+            is WasmlineCallResult.Failure -> decoded
+            is WasmlineCallResult.Success -> {
+                val resource = decoded.value.singleOrNull() as? WasmlineComponentValue.ResourceValue
+                if (resource != null) {
+                    WasmlineCallResult.Success(resource)
+                } else {
+                    WasmlineCallResult.Failure(
+                    WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is invalid."),
+                )
+                }
+            }
+        }
+    }
+
     actual fun close() {
+        componentModuleState.close()
+        hostServiceRegistry.clear()
         WasmlineCallbackRegistry.unregister(moduleKey)
         WasmlineComponentHostCallbackRegistry.unregister(moduleKey)
         wasmline_release_module(moduleKey)
@@ -110,6 +181,19 @@ private fun invokeTypedCarrier(
     val result = resultPtr.readBytes(outLen.value.toInt())
     wasmline_free_memory(resultPtr)
     WasmlineCallResult.Success(result)
+}
+
+internal actual class WasmlineHostServiceLock {
+    private val lock = NSLock()
+
+    actual fun <T> withLock(block: () -> T): T {
+        lock.lock()
+        return try {
+            block()
+        } finally {
+            lock.unlock()
+        }
+    }
 }
 
 private fun iosBootstrap() {
@@ -256,8 +340,7 @@ internal object WasmlineComponentHostCallbackRegistry {
     }
 }
 
-private fun callbackLength(value: ULong): Int? =
-    if (value > Int.MAX_VALUE.toULong()) null else value.toInt()
+private fun callbackLength(value: ULong): Int? = if (value > Int.MAX_VALUE.toULong()) null else value.toInt()
 
 internal fun iosStaticOutboundCallback(
     key: CPointer<ByteVar>?,

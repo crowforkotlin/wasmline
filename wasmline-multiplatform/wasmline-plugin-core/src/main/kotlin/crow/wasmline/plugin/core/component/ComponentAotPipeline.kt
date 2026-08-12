@@ -50,9 +50,8 @@ class ComponentAotPipeline internal constructor(private val compileComponent: (C
         val rawArtifact = rawComponent.toArtifact(componentDirectory)
         val componentFile = rawComponent.resolveComponentFile(componentDirectory)
         val artifactMetadata = ComponentAotArtifactMetadata(
-            exportName = requireNotNull(rawArtifact.exportName) {
-                "Raw Component build record is missing its export name."
-            },
+            invocationProtocol = rawArtifact.invocationProtocol,
+            exportName = rawArtifact.exportName,
             contractMetadata = rawArtifact.contractMetadata,
         )
         val compileResult = compileComponent(

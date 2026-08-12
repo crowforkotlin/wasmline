@@ -24,6 +24,16 @@ import org.jetbrains.kotlin.config.CompilerConfigurationKey
 
 internal const val ENABLE_WASI_INIT_EXPORT_OPTION_NAME = "enableWasiInitExport"
 internal const val ENABLE_COMPILER_PLUGIN_OPTION_NAME = "enabled"
+internal const val GUEST_TRANSPORT_OPTION_NAME = "guestTransport"
+internal enum class WasmlineGuestTransport {
+    CORE,
+    COMPONENT_RPC,
+    NONE,
+}
+
+internal val GUEST_TRANSPORT_OPTION = CompilerConfigurationKey<WasmlineGuestTransport>(
+    "Wasmline guest transport",
+)
 internal val ENABLE_COMPILER_PLUGIN_OPTION = CompilerConfigurationKey<Boolean>(
     "enable Wasmline IR generation",
 )
@@ -35,6 +45,13 @@ internal val ENABLE_WASI_INIT_EXPORT_OPTION = CompilerConfigurationKey<Boolean>(
 class WasmlineCommandLineProcessor : CommandLineProcessor {
     override val pluginId: String = BuildConfig.KOTLIN_PLUGIN_ID
     override val pluginOptions = listOf(
+        CliOption(
+            optionName = GUEST_TRANSPORT_OPTION_NAME,
+            valueDescription = "CORE|COMPONENT_RPC|NONE",
+            description = "Select the statically linked Wasmline guest transport.",
+            required = false,
+            allowMultipleOccurrences = false,
+        ),
         CliOption(
             optionName = ENABLE_COMPILER_PLUGIN_OPTION_NAME,
             valueDescription = "true|false",
@@ -53,6 +70,14 @@ class WasmlineCommandLineProcessor : CommandLineProcessor {
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         when (option.optionName) {
+            GUEST_TRANSPORT_OPTION_NAME -> {
+                configuration.put(
+                    GUEST_TRANSPORT_OPTION,
+                    WasmlineGuestTransport.entries.firstOrNull { it.name == value.uppercase() }
+                        ?: error("Unknown Wasmline guest transport: $value"),
+                )
+            }
+
             ENABLE_COMPILER_PLUGIN_OPTION_NAME -> {
                 configuration.put(ENABLE_COMPILER_PLUGIN_OPTION, value.toBooleanStrictOrNull() ?: true)
             }

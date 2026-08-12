@@ -27,7 +27,25 @@ dependencies {
     runtimeOnly(libs.slf4j.nop)
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(projects.sampleCommon)
+    testImplementation(libs.kotlin.test)
 
+}
+
+val componentRpcAotOutput = project(":sample-component-plugin").layout.buildDirectory.dir(
+    "wasmline/component-aot/debug",
+)
+
+tasks.test {
+    dependsOn(project(":sample-component-plugin").tasks.named("wasmlineComponentAotDebug"))
+    useJUnitPlatform()
+    systemProperty(
+        "wasmline.test.componentRpc.cwasm",
+        componentRpcAotOutput.map { it.file("sample-aarch64-macos.cwasm").asFile.absolutePath }.get(),
+    )
+    systemProperty(
+        "wasmline.test.componentRpc.pwasm",
+        componentRpcAotOutput.map { it.file("sample-pulley64.pwasm").asFile.absolutePath }.get(),
+    )
 }
 
 val defaultCwasmTarget = when {

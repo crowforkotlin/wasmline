@@ -56,7 +56,6 @@ open class ComponentExtension @Inject constructor(project: Project) {
 
     /** Export implementing the fixed Wasmline Component RPC envelope. */
     val exportName: Property<String> = objects.property(String::class.java)
-        .convention(WasmlineComponentRpcContract.DEFAULT_EXPORT)
 
     /** Serialization factory id carried by the Component RPC envelope. */
     val codec: Property<String> = objects.property(String::class.java)
@@ -69,6 +68,23 @@ open class ComponentExtension @Inject constructor(project: Project) {
     /** Generated Kotlin source directory. */
     val generatedSourcesDirectory: DirectoryProperty = objects.directoryProperty()
         .convention(project.layout.buildDirectory.dir("generated/wasmline/wit"))
+
+    /** Enables ordinary Kotlin Host facade generation for the selected WIT world. */
+    val hostBindingsEnabled: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
+
+    /** Kotlin package used by generated Host-only bindings. */
+    val hostKotlinPackage: Property<String> = objects.property(String::class.java)
+        .convention("crow.wasmline.generated.host")
+
+    /** Host source set receiving generated bindings in a Kotlin Multiplatform project. */
+    val hostSourceSet: Property<String> = objects.property(String::class.java).convention("jvmMain")
+
+    /** Generated Host Kotlin source directory, separate from guest wit-bindgen output. */
+    val hostGeneratedSourcesDirectory: DirectoryProperty = objects.directoryProperty()
+        .convention(project.layout.buildDirectory.dir("generated/wasmline/host-wit"))
+
+    /** Enables own/borrow resource facade generation when the runtime supports it. */
+    val hostResourceSupport: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
 
     /** Intermediate and final raw Component output root. */
     val outputDirectory: DirectoryProperty = objects.directoryProperty()

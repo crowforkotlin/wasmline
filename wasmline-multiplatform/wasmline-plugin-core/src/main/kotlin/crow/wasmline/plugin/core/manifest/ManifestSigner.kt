@@ -75,6 +75,25 @@ class ManifestSigner {
             contractMetadata = contractMetadata,
         ).validationError()
         require(descriptorError == null) { "Invalid artifact invocation descriptor: $descriptorError" }
+        artifacts.filter { it.executionModel == WasmlineExecutionModel.COMPONENT_MODEL }.forEach { artifact ->
+            require(executionModel == artifact.executionModel) {
+                "Component artifact '${artifact.url}' execution model cannot be overwritten during manifest signing."
+            }
+            require(invocationProtocol == artifact.invocationProtocol) {
+                "Component artifact '${artifact.url}' invocation protocol cannot be overwritten during manifest signing: " +
+                    "artifact=${artifact.invocationProtocol}, requested=$invocationProtocol."
+            }
+            require(exportName == artifact.exportName) {
+                "Component artifact '${artifact.url}' export metadata cannot be overwritten during manifest signing."
+            }
+            val conflictingMetadata = contractMetadata.keys.filter { key ->
+                key in artifact.contractMetadata && artifact.contractMetadata[key] != contractMetadata[key]
+            }
+            require(conflictingMetadata.isEmpty()) {
+                "Component artifact '${artifact.url}' has conflicting contract metadata: " +
+                    conflictingMetadata.sorted().joinToString()
+            }
+        }
         val describedArtifacts = artifacts.map { artifact ->
             artifact.copy(
                 executionModel = executionModel,

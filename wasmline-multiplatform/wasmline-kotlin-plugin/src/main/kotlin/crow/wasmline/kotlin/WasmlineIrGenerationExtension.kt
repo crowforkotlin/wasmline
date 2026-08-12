@@ -13,13 +13,16 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
  * This entrypoint keeps orchestration small and delegates validation, bridge generation, and
  * typed entrypoint rewriting to focused collaborators.
  */
-internal class WasmlineIrGenerationExtension(private val messageCollector: MessageCollector, private val enableWasiInitExport: Boolean) :
-    IrGenerationExtension {
+internal class WasmlineIrGenerationExtension(
+    private val messageCollector: MessageCollector,
+    private val guestTransport: WasmlineGuestTransport,
+    private val enableCoreWasiExports: Boolean,
+) : IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         val runtimeSymbols = WasmlineRuntimeSymbols(pluginContext)
         val validator = WasmlineServiceContractValidator(messageCollector)
-        val typedEntryPointRewriter = WasmlineTypedEntryPointRewriter(messageCollector)
+        val typedEntryPointRewriter = WasmlineTypedEntryPointRewriter(messageCollector, guestTransport)
         val generatedBridges = linkedMapOf<IrClassSymbol, IrClass>()
 
         moduleFragment.files.forEach { file ->
@@ -38,19 +41,26 @@ internal class WasmlineIrGenerationExtension(private val messageCollector: Messa
             }
         }
 
-        typedEntryPointRewriter.rewrite(
+        val rewriteResult = typedEntryPointRewriter.rewrite(
             moduleFragment = moduleFragment,
             pluginContext = pluginContext,
             runtimeSymbols = runtimeSymbols,
             generatedBridges = generatedBridges,
         )
 
-        if (enableWasiInitExport) {
+        if (enableCoreWasiExports) {
             generateWasiEntryExport(
                 moduleFragment = moduleFragment,
                 pluginContext = pluginContext,
                 runtimeSymbols = runtimeSymbols,
                 messageCollector = messageCollector,
+            )
+        } else if (guestTransport == WasmlineGuestTransport.COMPONENT_RPC) {
+            wireComponentRpcInitHook(
+                moduleFragment = moduleFragment,
+                pluginContext = pluginContext,
+                messageCollector = messageCollector,
+                rewrittenBindCalls = rewriteResult.bindCalls,
             )
         }
     }

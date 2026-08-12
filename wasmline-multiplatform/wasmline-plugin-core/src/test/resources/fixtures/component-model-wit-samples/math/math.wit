@@ -1,0 +1,63 @@
+package wasmline:math@0.1.0;
+
+/// A mostly self-contained numerical API. It exercises value types without imports.
+interface math {
+  enum rounding-mode {
+    nearest,
+    floor,
+    ceiling,
+    toward-zero,
+  }
+
+  flags operations {
+    add,
+    subtract,
+    multiply,
+    divide,
+    statistics,
+    transform,
+  }
+
+  record vector2 {
+    x: f64,
+    y: f64,
+  }
+
+  record matrix2 {
+    m11: f64,
+    m12: f64,
+    m21: f64,
+    m22: f64,
+  }
+
+  record summary {
+    count: u64,
+    minimum: f64,
+    maximum: f64,
+    mean: f64,
+    variance: f64,
+  }
+
+  variant number {
+    integer(s64),
+    floating(f64),
+  }
+
+  variant math-error {
+    empty-input,
+    division-by-zero,
+    non-finite(string),
+  }
+
+  add: func(lhs: f64, rhs: f64) -> f64;
+  divide: func(lhs: f64, rhs: f64) -> result<f64, math-error>;
+  round: func(value: f64, mode: rounding-mode, digits: option<u8>) -> f64;
+  summarize: func(values: list<f64>) -> result<summary, math-error>;
+  transform: func(matrix: matrix2, points: list<vector2>) -> list<vector2>;
+  describe: func(value: number) -> string;
+  supported-operations: func() -> operations;
+}
+
+world math-plugin {
+  export math;
+}

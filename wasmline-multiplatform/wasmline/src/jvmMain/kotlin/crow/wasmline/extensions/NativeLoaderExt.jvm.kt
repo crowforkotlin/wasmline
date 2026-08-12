@@ -1,6 +1,7 @@
 package crow.wasmline.extensions
 
 import crow.wasmline.Wasmline
+import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -8,6 +9,16 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Locale.US
 
 actual fun loadNativeLibrary() {
+    val overridePath = System.getProperty(NATIVE_LIBRARY_PROPERTY)
+        ?.takeIf(String::isNotBlank)
+        ?: System.getenv(NATIVE_LIBRARY_ENV)?.takeIf(String::isNotBlank)
+    if (overridePath != null) {
+        val library = File(overridePath).absoluteFile
+        require(library.isFile) { "Wasmline native library override does not exist: ${library.path}" }
+        System.load(library.path)
+        return
+    }
+
     val osName = System.getProperty("os.name").lowercase(US)
     val osArch = normalizeArch(System.getProperty("os.arch"))
     val platform = normalizePlatform(osName)
@@ -32,6 +43,9 @@ actual fun loadNativeLibrary() {
         )
     extractAndLoad(Wasmline::class.java, wasmlineJarPath)
 }
+
+private const val NATIVE_LIBRARY_PROPERTY = "wasmline.native.library.path"
+private const val NATIVE_LIBRARY_ENV = "WASMLINE_NATIVE_LIBRARY_PATH"
 
 private fun extractAndLoad(loaderClass: Class<*>, jarPath: String) {
     val url = loaderClass.getResource(jarPath)

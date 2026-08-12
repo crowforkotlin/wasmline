@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unordered_map>
 
 #include "wasmline/invocation/InvocationResult.h"
 #include "wasmline/value/ComponentValue.h"
@@ -22,6 +23,7 @@
 #include <wasmtime/component/types/component.h>
 #include <wasmtime/component/types/func.h>
 #include <wasmtime/component/types/val.h>
+#include <wasmtime/component/val.h>
 #include <wasmtime/store.h>
 
 namespace wasmline {
@@ -49,6 +51,20 @@ namespace wasmline {
         /** Sets the typed handler for non-WASI Component Model imports. */
         void setComponentHostHandler(std::unique_ptr<ComponentHostHandler> handler);
 
+        /** Drops one owned resource previously returned by this session. */
+        bool dropResource(const ComponentResourceReference& reference);
+
+        /** Creates one owned Host resource for an imported Component resource type. */
+        bool createHostResource(std::string_view interfaceName, std::string_view resourceName, uint32_t representation,
+                                ComponentResourceReference* reference);
+
+        /** Lowers a resource carrier after validating it against this session. */
+        bool lowerResource(const ComponentValue& value, const wasmtime_component_valtype_t& type, wasmtime_component_val_t* result);
+
+        /** Lifts a Wasmtime resource and records its session-scoped lifetime. */
+        bool liftResource(const wasmtime_component_val_t& value, const wasmtime_component_valtype_t& type, ComponentValue* result,
+                          std::vector<uint64_t>* transientBorrowed);
+
     private:
         std::string key_;
         wasm_engine_t* engine_;
@@ -65,6 +81,43 @@ namespace wasmline {
         struct ComponentHostBinding;
         std::vector<std::unique_ptr<ComponentHostBinding>> componentHostBindings_;
 
+        struct ResourceEntry {
+            uint32_t typeId = 0;
+            uint64_t handleId = 0;
+            uint32_t generation = 0;
+            ComponentResourceOwnership ownership = ComponentResourceOwnership::OWN;
+            ComponentResourceOrigin origin = ComponentResourceOrigin::GUEST;
+            wasmtime_component_resource_any_t* value = nullptr;
+            wasmtime_component_resource_type_t* type = nullptr;
+            uint32_t hostRepresentation = 0;
+            uint32_t hostType = 0;
+        };
+        std::unordered_map<uint64_t, ResourceEntry> resources_;
+        std::unordered_map<uint32_t, wasmtime_component_resource_type_t*> resourceTypes_;
+        std::unordered_map<uint32_t, ComponentResourceReference> hostRepresentations_;
+        uint64_t nextResourceHandle_ = 1;
+        uint32_t nextResourceType_ = 1;
+        uint32_t nextResourceGeneration_ = 1;
+        uint32_t nextHostResourceType_ = 1;
+        bool resourceConversionInvalid_ = false;
+
+        struct ImportedResourceBinding {
+            ComponentSession* session = nullptr;
+            std::string interfaceName;
+            std::string resourceName;
+            uint32_t hostType = 0;
+            wasmtime_component_resource_type_t* type = nullptr;
+        };
+        std::vector<std::unique_ptr<ImportedResourceBinding>> importedResourceBindings_;
+
+        bool registerResource(wasmtime_component_resource_any_t* value, ComponentResourceOwnership ownership,
+                              ComponentResourceOrigin origin, ComponentResourceReference* reference);
+        bool dropResourceUnlocked(const ComponentResourceReference& reference);
+        bool notifyHostResourceDrop(uint32_t representation, uint32_t hostType = 0);
+        void clearTransientResources(const std::vector<uint64_t>& handles);
+        void clearResources();
+        void clearHostRepresentations();
+
         bool registerRpcImports();
 
         bool registerComponentHostImports();
@@ -78,6 +131,10 @@ namespace wasmline {
                                                      wasmtime_component_val_t* arguments, size_t argumentCount,
                                                      wasmtime_component_val_t* results, size_t resultCount);
 
+        static wasmtime_error_t* dropImportedResource(void* data, wasmtime_context_t* context, uint32_t representation);
+
+        wasmtime_error_t* handleImportedResourceDrop(const ImportedResourceBinding& binding, uint32_t representation);
+
         wasmtime_error_t* handleHostInvoke(const wasmtime_component_func_type_t* functionType, wasmtime_component_val_t* arguments,
                                            size_t argumentCount, wasmtime_component_val_t* results, size_t resultCount);
 
@@ -85,11 +142,10 @@ namespace wasmline {
                                                     wasmtime_component_val_t* arguments, size_t argumentCount,
                                                     wasmtime_component_val_t* results, size_t resultCount);
 
-        static bool toWasmtimeValue(const ComponentValue& value, const wasmtime_component_valtype_t& type,
-                                    wasmtime_component_val_t* result);
+        bool toWasmtimeValue(const ComponentValue& value, const wasmtime_component_valtype_t& type, wasmtime_component_val_t* result);
 
-        static bool fromWasmtimeValue(const wasmtime_component_val_t& value, const wasmtime_component_valtype_t& type,
-                                      ComponentValue* result);
+        bool fromWasmtimeValue(const wasmtime_component_val_t& value, const wasmtime_component_valtype_t& type, ComponentValue* result,
+                               std::vector<uint64_t>* transientBorrowed = nullptr);
 
         static bool hasWasmTrace(const wasmtime_error_t* error);
     };

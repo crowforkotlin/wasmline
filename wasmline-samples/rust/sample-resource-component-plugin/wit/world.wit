@@ -1,0 +1,29 @@
+package wasmline:resource-fixture@1.0.0;
+
+interface host {
+  resource callback {
+    call: func(value: u32) -> u32;
+  }
+}
+
+interface resources {
+  use host.{callback};
+
+  resource counter {
+    constructor(initial: u32);
+    get: func() -> u32;
+    add: func(delta: u32) -> u32;
+    drop-count: static func() -> u32;
+  }
+
+  inspect: func(value: borrow<counter>) -> u32;
+  round-trip: func(value: counter) -> counter;
+  callback-with-borrow: func(callback: borrow<callback>, value: borrow<counter>) -> u32;
+  consume-callback: func(callback: callback, value: u32) -> u32;
+  trap-with-borrow: func(value: borrow<counter>);
+}
+
+world resource-plugin {
+  import host;
+  export resources;
+}

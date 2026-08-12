@@ -72,7 +72,7 @@ namespace wasmline {
 
     std::unordered_map<std::string, std::unique_ptr<Session>> Api::sessionCache;
     std::unordered_map<std::string, std::unique_ptr<RawModuleSession>> Api::rawSessionCache;
-    std::unordered_map<std::string, std::unique_ptr<ComponentSession>> Api::componentSessionCache;
+    std::unordered_map<std::string, std::shared_ptr<ComponentSession>> Api::componentSessionCache;
     std::shared_mutex Api::sessionMutex;
 
     void Api::initEngine() {
@@ -121,12 +121,14 @@ namespace wasmline {
     }
 
     void Api::releaseEngine() {
+        std::unordered_map<std::string, std::shared_ptr<ComponentSession>> componentSessions;
         {
             std::unique_lock<std::shared_mutex> lock(sessionMutex);
             sessionCache.clear();
             rawSessionCache.clear();
-            componentSessionCache.clear();
+            componentSessions.swap(componentSessionCache);
         }
+        componentSessions.clear();
 
         Module::getInstance().clear();
         Component::getInstance().clear();
@@ -225,19 +227,25 @@ namespace wasmline {
     }
 
     void Api::releaseModule(const std::string& key) {
+        std::shared_ptr<ComponentSession> componentSession;
         {
             std::unique_lock<std::shared_mutex> lock(sessionMutex);
             sessionCache.erase(key);
             rawSessionCache.erase(key);
-            componentSessionCache.erase(key);
+            const auto found = componentSessionCache.find(key);
+            if (found != componentSessionCache.end()) {
+                componentSession = std::move(found->second);
+                componentSessionCache.erase(found);
+            }
         }
+        componentSession.reset();
         Module::getInstance().release(key);
         Component::getInstance().release(key);
     }
 
     void Api::setOutboundHandler(const std::string& key, std::string codec, std::unique_ptr<OutboundHandler> handler) {
         if (Component::getInstance().get(key)) {
-            ComponentSession* componentSession = getOrCreateComponentSession(key);
+            std::shared_ptr<ComponentSession> componentSession = getOrCreateComponentSession(key);
             if (componentSession) componentSession->setOutboundHandler(std::move(handler), std::move(codec));
             return;
         }
@@ -260,7 +268,7 @@ namespace wasmline {
             return true;
         }
 
-        auto session = std::make_unique<ComponentSession>(engine, component, key);
+        auto session = std::make_shared<ComponentSession>(engine, component, key);
         session->setComponentHostHandler(std::move(handler));
         if (!session->initialize()) {
             LOGE("[Wasmtime] Api --> Failed to initialize component session for typed host handler: %s", key.c_str());
@@ -290,7 +298,7 @@ namespace wasmline {
 
     InvocationResult Api::invokeComponent(const std::string& key, std::string_view exportName,
                                           const std::vector<ComponentValue>& arguments) {
-        ComponentSession* session = getOrCreateComponentSession(key);
+        std::shared_ptr<ComponentSession> session = getOrCreateComponentSession(key);
         if (!session) {
             return InvocationResult::failure(WasmlineErrorCode::ENGINE_NOT_INITIALIZED, "Component session could not be created.");
         }
@@ -309,9 +317,90 @@ namespace wasmline {
         return createCachedSession<RawModuleSession>(key, rawSessionCache, sessionMutex, engine, module, "raw");
     }
 
-    ComponentSession* Api::getOrCreateComponentSession(const std::string& key) {
+    std::shared_ptr<ComponentSession> Api::getOrCreateComponentSession(const std::string& key) {
+        {
+            std::shared_lock<std::shared_mutex> lock(sessionMutex);
+            const auto cached = componentSessionCache.find(key);
+            if (cached != componentSessionCache.end()) return cached->second;
+        }
         wasm_engine_t* engine = Engine::getInstance().getEngine();
         wasmtime_component_t* component = Component::getInstance().get(key);
-        return createCachedSession<ComponentSession>(key, componentSessionCache, sessionMutex, engine, component, "component");
+        if (!engine || !component) return nullptr;
+
+        auto session = std::make_shared<ComponentSession>(engine, component, key);
+        if (!session->initialize()) return nullptr;
+
+        std::unique_lock<std::shared_mutex> lock(sessionMutex);
+        const auto [cached, inserted] = componentSessionCache.emplace(key, session);
+        return inserted ? std::move(session) : cached->second;
+    }
+
+    bool Api::instantiateComponent(const std::string& artifactKey, const std::string& instanceKey,
+                                   std::unique_ptr<ComponentHostHandler> handler) {
+        if (artifactKey.empty() || instanceKey.empty() || !handler) return false;
+        {
+            std::shared_lock<std::shared_mutex> lock(sessionMutex);
+            if (componentSessionCache.find(instanceKey) != componentSessionCache.end()) return false;
+        }
+
+        wasm_engine_t* engine = Engine::getInstance().getEngine();
+        wasmtime_component_t* component = Component::getInstance().get(artifactKey);
+        if (!engine || !component) return false;
+
+        auto session = std::make_shared<ComponentSession>(engine, component, instanceKey);
+        session->setComponentHostHandler(std::move(handler));
+        if (!session->initialize()) return false;
+
+        std::unique_lock<std::shared_mutex> lock(sessionMutex);
+        return componentSessionCache.emplace(instanceKey, std::move(session)).second;
+    }
+
+    InvocationResult Api::invokeComponentInstance(const std::string& instanceKey, std::string_view exportName,
+                                                  const std::vector<ComponentValue>& arguments) {
+        std::shared_ptr<ComponentSession> session;
+        {
+            std::shared_lock<std::shared_mutex> lock(sessionMutex);
+            const auto cached = componentSessionCache.find(instanceKey);
+            if (cached != componentSessionCache.end()) session = cached->second;
+        }
+        if (!session) {
+            return InvocationResult::failure(WasmlineErrorCode::ENGINE_NOT_INITIALIZED,
+                                             "Component instance is not initialized or has been closed.");
+        }
+        return session->invoke(exportName, arguments);
+    }
+
+    bool Api::dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference) {
+        std::shared_ptr<ComponentSession> session;
+        {
+            std::shared_lock<std::shared_mutex> lock(sessionMutex);
+            const auto cached = componentSessionCache.find(instanceKey);
+            if (cached != componentSessionCache.end()) session = cached->second;
+        }
+        return session && session->dropResource(reference);
+    }
+
+    bool Api::createComponentHostResource(const std::string& instanceKey, std::string_view interfaceName, std::string_view resourceName,
+                                          uint32_t representation, ComponentResourceReference* reference) {
+        std::shared_ptr<ComponentSession> session;
+        {
+            std::shared_lock<std::shared_mutex> lock(sessionMutex);
+            const auto cached = componentSessionCache.find(instanceKey);
+            if (cached != componentSessionCache.end()) session = cached->second;
+        }
+        return session && session->createHostResource(interfaceName, resourceName, representation, reference);
+    }
+
+    void Api::releaseComponentInstance(const std::string& instanceKey) {
+        std::shared_ptr<ComponentSession> session;
+        {
+            std::unique_lock<std::shared_mutex> lock(sessionMutex);
+            const auto found = componentSessionCache.find(instanceKey);
+            if (found != componentSessionCache.end()) {
+                session = std::move(found->second);
+                componentSessionCache.erase(found);
+            }
+        }
+        session.reset();
     }
 } // namespace wasmline

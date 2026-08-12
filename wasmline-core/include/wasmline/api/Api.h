@@ -108,6 +108,25 @@ namespace wasmline {
         static InvocationResult invokeComponent(const std::string& key, std::string_view exportName,
                                                 const std::vector<ComponentValue>& arguments);
 
+        /** Creates one isolated Component instance from a cached compiled artifact. */
+        static bool instantiateComponent(const std::string& artifactKey, const std::string& instanceKey,
+                                         std::unique_ptr<ComponentHostHandler> handler);
+
+        /** Invokes an export on one explicitly instantiated Component session. */
+        static InvocationResult invokeComponentInstance(const std::string& instanceKey, std::string_view exportName,
+                                                        const std::vector<ComponentValue>& arguments);
+
+        /** Drops one owned Component resource associated with an instance. */
+        static bool dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference);
+
+        /** Creates one owned imported Host resource for a Component instance. */
+        static bool createComponentHostResource(const std::string& instanceKey, std::string_view interfaceName,
+                                                std::string_view resourceName, uint32_t representation,
+                                                ComponentResourceReference* reference);
+
+        /** Releases one explicitly instantiated Component session without releasing its artifact. */
+        static void releaseComponentInstance(const std::string& instanceKey);
+
         /** Sets the host handler and serialization codec for outbound calls. */
         static void setOutboundHandler(const std::string& key, std::string codec, std::unique_ptr<OutboundHandler> handler);
 
@@ -122,13 +141,13 @@ namespace wasmline {
 
         static RawModuleSession* getOrCreateRawSession(const std::string& key);
 
-        static ComponentSession* getOrCreateComponentSession(const std::string& key);
+        static std::shared_ptr<ComponentSession> getOrCreateComponentSession(const std::string& key);
 
         static std::unordered_map<std::string, std::unique_ptr<Session>> sessionCache;
 
         static std::unordered_map<std::string, std::unique_ptr<RawModuleSession>> rawSessionCache;
 
-        static std::unordered_map<std::string, std::unique_ptr<ComponentSession>> componentSessionCache;
+        static std::unordered_map<std::string, std::shared_ptr<ComponentSession>> componentSessionCache;
 
         static std::shared_mutex sessionMutex;
     };

@@ -24,9 +24,12 @@ internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFact
 
 @PublishedApi
 internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
+    val additions = linkedMapOf<String, Callback>()
     bridge.bind { action, handler ->
-        WasmlineRouter.register(action) { params -> handler(params ?: ByteArray(0)) }
+        check(action !in additions) { "Generated service bridge declares duplicate action '$action'." }
+        additions[action] = Callback { params -> handler(params ?: ByteArray(0)) }
     }
+    WasmlineRouter.registerAll(additions)
 }
 
 fun <T : WasmlineService> Wasmline.link(): T {

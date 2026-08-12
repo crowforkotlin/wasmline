@@ -90,8 +90,8 @@ namespace wasmline {
         return impl_->cache.get(key);
     }
 
-    void Component::release(const std::string& key) {
-        impl_->cache.release(key);
+    bool Component::release(const std::string& key) {
+        return impl_->cache.release(key);
     }
 
     void Component::clear() {

@@ -3,7 +3,6 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
-import crow.wasmline.internal.protocol.WasmlineResponseCodec
 import crow.wasmline.invocation.WasmlineCallResult
 
 /**
@@ -18,19 +17,35 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
 
     val config: WasmlineConfig
     val descriptor: WasmlineArtifactDescriptor
+    internal val hostServiceRegistry: WasmlineHostServiceRegistry
+    internal val componentModuleState: WasmlineComponentModuleState
 
     internal fun setOutbound(dispatcher: WasmlineHostDispatcher)
     internal fun setComponentHostDispatcher(dispatcher: WasmlineComponentHostDispatcher)
     internal fun call(action: String, inputBytes: ByteArray): ByteArray
     internal fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray>
     internal fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray>
+    internal fun instantiateComponentInstance(instanceKey: String, dispatcher: WasmlineComponentHostDispatcher): Boolean
+    internal fun invokeComponentInstanceCarrier(
+        instanceKey: String,
+        exportName: String,
+        arguments: ByteArray,
+    ): WasmlineCallResult<ByteArray>
+    internal fun releaseComponentInstance(instanceKey: String)
+    internal fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean
+    internal fun createComponentHostResource(
+        instanceKey: String,
+        interfaceId: String,
+        resourceName: String,
+        representation: UInt,
+    ): WasmlineCallResult<WasmlineComponentValue.ResourceValue>
     fun close()
 }
 
 /** Binds an immutable typed host registry to one loaded Component handle. */
 fun Wasmline.bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmline {
-    require(descriptor.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
-        "Typed Component host registries can only bind to COMPONENT_MODEL artifacts."
+    require(descriptor.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT) {
+        "Typed Component host registries require invocationProtocol=COMPONENT_EXPORT."
     }
     setComponentHostDispatcher(WasmlineComponentHostDispatcher(registry))
     return this
@@ -42,17 +57,10 @@ fun Wasmline.bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmlin
  * into the host and returns the raw RPC payload or a structured failure.
  */
 fun Wasmline.bindComponentRpc(handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>): Wasmline {
-    require(descriptor.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
-        "Component RPC handlers can only bind to COMPONENT_MODEL artifacts."
+    require(descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
+        "Component RPC handlers require invocationProtocol=WASMLINE_COMPONENT_RPC."
     }
-    setOutbound(
-        WasmlineHostDispatcher { action, payload ->
-            when (val result = handler(action, payload)) {
-                is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(result.value)
-                is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.error)
-            }
-        },
-    )
+    if (hostServiceRegistry.registerRaw(handler)) setOutbound(hostServiceRegistry.dispatcher)
     return this
 }
 

@@ -22,6 +22,7 @@ namespace wasmline {
     struct ComponentCharacter;
     struct ComponentTupleData;
     struct ComponentEnumData;
+    struct ComponentResourceReference;
 
     using ComponentList = std::vector<ComponentValue>;
     using ComponentTuple = std::vector<ComponentValue>;
@@ -56,6 +57,7 @@ namespace wasmline {
             RESULT,
             FLAGS,
             MAP,
+            RESOURCE,
         };
 
         /** Creates an empty value. */
@@ -105,6 +107,8 @@ namespace wasmline {
         static ComponentValue flags(ComponentFlags value);
         /** Creates a map value. */
         static ComponentValue map(ComponentMap value);
+        /** Creates a session-scoped resource reference. */
+        static ComponentValue resource(ComponentResourceReference value);
 
         /** Returns the stored value kind. */
         Kind kind() const;
@@ -153,6 +157,8 @@ namespace wasmline {
         const ComponentFlags& flagsValue() const;
         /** Returns the stored map. */
         const ComponentMap& mapValue() const;
+        /** Returns the stored resource reference. */
+        const ComponentResourceReference& resourceValue() const;
 
     private:
         struct Storage;
@@ -198,10 +204,24 @@ namespace wasmline {
         std::string name;
     };
 
+    enum class ComponentResourceOwnership : uint8_t { OWN, BORROW };
+
+    enum class ComponentResourceOrigin : uint8_t { GUEST, HOST };
+
+    struct ComponentResourceReference {
+        std::string instanceKey;
+        uint32_t typeId;
+        uint64_t handleId;
+        uint32_t generation;
+        ComponentResourceOwnership ownership;
+        ComponentResourceOrigin origin;
+    };
+
     struct ComponentValue::Storage {
-        using Data = std::variant<bool, int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float, double,
-                                  ComponentCharacter, std::string, ComponentList, ComponentRecord, ComponentTupleData, ComponentVariant,
-                                  ComponentEnumData, std::shared_ptr<ComponentValue>, ComponentResult, ComponentFlags, ComponentMap>;
+        using Data =
+            std::variant<bool, int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float, double, ComponentCharacter,
+                         std::string, ComponentList, ComponentRecord, ComponentTupleData, ComponentVariant, ComponentEnumData,
+                         std::shared_ptr<ComponentValue>, ComponentResult, ComponentFlags, ComponentMap, ComponentResourceReference>;
 
         explicit Storage(Data data) : data(std::move(data)) {}
 

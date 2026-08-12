@@ -1,5 +1,6 @@
 package crow.wasmline.plugin.core.component
 
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.toolchain.FileDigest
@@ -23,6 +24,7 @@ class ComponentAotPipelineTest {
             componentWasm = component,
             inspectedWit = inspectedWit,
             world = "plugin",
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
             exportName = "plugin/invoke",
             codec = "protobuf",
             rpcProtocolVersion = "1",

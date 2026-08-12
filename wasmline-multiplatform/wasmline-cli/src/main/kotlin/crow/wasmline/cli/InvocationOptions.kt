@@ -41,6 +41,9 @@ internal fun parseInvocationOptions(
     return InvocationOptions(executionModel, invocationProtocol, exportName, contractMetadata)
 }
 
+internal fun <T> componentRpcValue(protocol: WasmlineInvocationProtocol, value: T): T? =
+    value.takeIf { protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC }
+
 private inline fun <reified T : Enum<T>> parseEnum(value: String, label: String): T =
     enumValues<T>().firstOrNull { it.name.equals(value, ignoreCase = true) }
         ?: error("Unknown $label '$value'.")

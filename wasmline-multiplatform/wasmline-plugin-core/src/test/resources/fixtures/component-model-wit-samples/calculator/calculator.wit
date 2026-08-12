@@ -1,0 +1,64 @@
+package wasmline:calculator@0.1.0;
+
+/// Host functionality consumed by the calculator guest.
+interface host-log {
+  enum log-level {
+    trace,
+    info,
+    warn,
+    error,
+  }
+
+  log: func(level: log-level, message: string);
+}
+
+/// A batch calculator with nested algebraic data types.
+interface calculator {
+  enum operator {
+    add,
+    subtract,
+    multiply,
+    divide,
+    power,
+  }
+
+  variant operand {
+    scalar(f64),
+    vector(list<f64>),
+    variable(string),
+  }
+
+  record request {
+    operator: operator,
+    operands: list<operand>,
+    precision: option<u8>,
+  }
+
+  variant value {
+    scalar(f64),
+    vector(list<f64>),
+  }
+
+  record calculation {
+    value: value,
+    elapsed-nanos: u64,
+    warnings: list<string>,
+  }
+
+  variant calculator-error {
+    invalid-arity(tuple<u32, u32>),
+    unknown-variable(string),
+    division-by-zero,
+    domain-error(string),
+  }
+
+  evaluate: func(request: request) -> result<calculation, calculator-error>;
+  evaluate-all: func(requests: list<request>) -> list<result<calculation, calculator-error>>;
+  variables: func() -> list<tuple<string, f64>>;
+  set-variable: func(name: string, value: f64) -> option<f64>;
+}
+
+world calculator-plugin {
+  import host-log;
+  export calculator;
+}

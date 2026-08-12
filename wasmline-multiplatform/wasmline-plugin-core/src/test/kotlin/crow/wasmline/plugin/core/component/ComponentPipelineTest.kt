@@ -1,5 +1,8 @@
 package crow.wasmline.plugin.core.component
 
+import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineTypedComponentContract
 import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
 import java.io.File
@@ -32,8 +35,10 @@ class ComponentPipelineTest {
         assertTrue(result.componentWasm.isFile)
         assertTrue(result.inspectedWit?.isFile == true)
         assertEquals(WasmlineArtifactType.COMPONENT_WASM, result.toArtifact().type)
-        assertEquals("plugin/invoke", result.toArtifact().exportName)
-        assertEquals("protobuf", result.toArtifact().contractMetadata["wasmline.rpc.codec"])
+        assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, result.invocationProtocol)
+        assertEquals(null, result.toArtifact().exportName)
+        assertEquals("test:plugin", result.toArtifact().contractMetadata[WasmlineTypedComponentContract.METADATA_WIT_PACKAGE])
+        assertEquals(null, result.toArtifact().contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC])
     }
 
     @Test
@@ -53,11 +58,81 @@ class ComponentPipelineTest {
 
         assertEquals(listOf("version", "validate", "inspect"), tools.operations)
         assertEquals("plugin-component.wasm", result.componentWasm.name)
-        assertEquals("plugin/invoke", result.exportName)
+        assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, result.invocationProtocol)
+        assertEquals(null, result.exportName)
+    }
+
+    @Test
+    fun recordsComponentRpcMetadataOnlyForTheExplicitRpcProtocol() = withPipelineDirectory { root ->
+        val component = File(root, "plugin.component.wasm").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val result = ComponentPipeline(RecordingWasmTools()).describeExisting(
+            ExistingComponentRequest(
+                componentWasm = component,
+                outputDirectory = File(root, "output"),
+                productName = "plugin",
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
+                codec = WasmlineComponentRpcContract.DEFAULT_CODEC,
+                rpcProtocolVersion = WasmlineComponentRpcContract.VERSION,
+            ),
+        )
+
+        val artifact = result.toArtifact()
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC, artifact.invocationProtocol)
+        assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, artifact.exportName)
+        assertEquals(
+            WasmlineComponentRpcContract.DEFAULT_CODEC,
+            artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC],
+        )
+    }
+
+    @Test
+    fun componentRpcRejectsCoreTransportAbiBeforeEmbedding() = withPipelineDirectory { root ->
+        val core = File(root, "plugin.wasm").apply { writeBytes(byteArrayOf(0, 97, 115, 109)) }
+        val wit = File(root, "wit").apply { mkdirs() }
+        File(wit, "world.wit").writeText("package wasmline:rpc@1.0.0; world plugin {}")
+        val adapter = File(root, "adapter.wasm").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val tools = RecordingWasmTools(
+            coreWat = """
+                (module
+                  (import "host" "invoke" (func))
+                  (import "env" "bridge_outbound_call_host" (func))
+                  (memory (export "memory") 1)
+                  (func (export "plugin#invoke"))
+                  (func (export "cabi_realloc")))
+            """.trimIndent(),
+        )
+
+        val failure = kotlin.test.assertFailsWith<IllegalArgumentException> {
+            ComponentPipeline(tools).componentize(
+                ComponentizeRequest(
+                    coreWasm = core,
+                    witPath = wit,
+                    wasiPreview1Adapter = adapter,
+                    outputDirectory = File(root, "output"),
+                    productName = "plugin",
+                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                    exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
+                    codec = WasmlineComponentRpcContract.DEFAULT_CODEC,
+                    rpcProtocolVersion = WasmlineComponentRpcContract.VERSION,
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("env.bridge_outbound_call_host"))
+        assertEquals(listOf("version", "print"), tools.operations)
     }
 }
 
-private class RecordingWasmTools : WasmTools {
+private class RecordingWasmTools(
+    private val coreWat: String = """
+        (module
+          (import "host" "invoke" (func))
+          (memory (export "memory") 1)
+          (func (export "plugin#invoke"))
+          (func (export "cabi_realloc")))
+    """.trimIndent(),
+) : WasmTools {
     val operations = mutableListOf<String>()
 
     override fun version(): String {
@@ -85,6 +160,11 @@ private class RecordingWasmTools : WasmTools {
     override fun inspectWit(component: File): String {
         operations += "inspect"
         return "package test:plugin; world plugin {}"
+    }
+
+    override fun printCoreModule(module: File): String {
+        operations += "print"
+        return coreWat
     }
 
     private fun success(): ToolExecutionResult = ToolExecutionResult(emptyList(), 0, "")

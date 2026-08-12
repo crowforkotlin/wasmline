@@ -11,6 +11,7 @@ import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
 import crow.wasmline.WasmlineComponentRpcContract
 import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
@@ -72,7 +73,13 @@ class Compile : CliktCommand(name = "compile") {
             } else {
                 "WASMLINE_CORE"
             }
-            val effectiveExport = exportName ?: if (componentBuild) WasmlineComponentRpcContract.DEFAULT_EXPORT else null
+            val effectiveExport = exportName ?: if (
+                effectiveProtocol.equals(WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC.name, ignoreCase = true)
+            ) {
+                WasmlineComponentRpcContract.DEFAULT_EXPORT
+            } else {
+                null
+            }
             val invocation = parseInvocationOptions(
                 executionModelName = executionModel,
                 invocationProtocolName = effectiveProtocol,
@@ -85,7 +92,7 @@ class Compile : CliktCommand(name = "compile") {
                 WasmlineExecutionModel.COMPONENT_MODEL -> compileComponent(
                     outputDir = outputDir,
                     productName = productName,
-                    componentExportName = requireNotNull(invocation.exportName),
+                    invocation = invocation,
                 )
             }.map { artifact ->
                 artifact.copy(
@@ -134,7 +141,7 @@ class Compile : CliktCommand(name = "compile") {
         return artifacts
     }
 
-    private suspend fun compileComponent(outputDir: File, productName: String, componentExportName: String): List<WasmlineArtifact> {
+    private suspend fun compileComponent(outputDir: File, productName: String, invocation: InvocationOptions): List<WasmlineArtifact> {
         val downloader = ToolDownloader(logger = ::echo)
         try {
             val platform = PlatformDetector.detectPlatform()
@@ -157,9 +164,10 @@ class Compile : CliktCommand(name = "compile") {
                         productName = productName,
                         witPath = witPath,
                         world = world,
-                        exportName = componentExportName,
-                        codec = codec,
-                        rpcProtocolVersion = rpcProtocolVersion,
+                        invocationProtocol = invocation.invocationProtocol,
+                        exportName = invocation.exportName,
+                        codec = componentRpcValue(invocation.invocationProtocol, codec),
+                        rpcProtocolVersion = componentRpcValue(invocation.invocationProtocol, rpcProtocolVersion),
                         wasmToolsVersion = wasmToolsVersion,
                     ),
                 )
@@ -184,9 +192,10 @@ class Compile : CliktCommand(name = "compile") {
                         outputDirectory = outputDir,
                         productName = productName,
                         world = world,
-                        exportName = componentExportName,
-                        codec = codec,
-                        rpcProtocolVersion = rpcProtocolVersion,
+                        invocationProtocol = invocation.invocationProtocol,
+                        exportName = invocation.exportName,
+                        codec = componentRpcValue(invocation.invocationProtocol, codec),
+                        rpcProtocolVersion = componentRpcValue(invocation.invocationProtocol, rpcProtocolVersion),
                         wasmToolsVersion = wasmToolsVersion,
                         adapterVersion = if (adapterPath == null) {
                             ToolchainCatalog.WASI_PREVIEW1_ADAPTER_VERSION

@@ -58,10 +58,37 @@ class WasmlineArtifactDescriptorTest {
             path = "plugin.cwasm",
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
             invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-            exportName = "add",
         )
 
         assertNull(descriptor.validationError())
+    }
+
+    @Test
+    fun componentRpcAcceptsItsFixedOrImplicitExport() {
+        val implicit = WasmlineArtifactDescriptor(
+            path = "plugin.cwasm",
+            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+        )
+        val explicit = implicit.copy(exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT)
+
+        assertNull(implicit.validationError())
+        assertNull(explicit.validationError())
+    }
+
+    @Test
+    fun componentRpcRejectsAnArbitraryExport() {
+        val descriptor = WasmlineArtifactDescriptor(
+            path = "plugin.cwasm",
+            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            exportName = "calculator/evaluate",
+        )
+
+        assertEquals(
+            "WASMLINE_COMPONENT_RPC exportName must be '${WasmlineComponentRpcContract.DEFAULT_EXPORT}'.",
+            descriptor.validationError(),
+        )
     }
 
     @Test
@@ -124,6 +151,17 @@ class WasmlineArtifactDescriptorTest {
         )
 
         assertEquals("COMPONENT_EXPORT requires COMPONENT_MODEL.", descriptor.validationError())
+    }
+
+    @Test
+    fun rejectsComponentRpcOnCoreArtifact() {
+        val descriptor = WasmlineArtifactDescriptor(
+            path = "plugin.cwasm",
+            executionModel = WasmlineExecutionModel.CORE_WASM,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+        )
+
+        assertEquals("WASMLINE_COMPONENT_RPC requires COMPONENT_MODEL.", descriptor.validationError())
     }
 
     /** Accepts a Core Wasm artifact with an explicitly named raw export. */

@@ -1,7 +1,10 @@
 package crow.wasmline.plugin.core.component
 
 import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
+import crow.wasmline.plugin.core.component.hostgen.WitParser
+import crow.wasmline.plugin.core.component.hostgen.WitSources
 import crow.wasmline.plugin.core.toolchain.FileDigest
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import java.io.File
@@ -17,9 +20,10 @@ data class ComponentizeRequest(
     val outputDirectory: File,
     val productName: String,
     val world: String? = null,
-    val exportName: String = WasmlineComponentRpcContract.DEFAULT_EXPORT,
-    val codec: String = WasmlineComponentRpcContract.DEFAULT_CODEC,
-    val rpcProtocolVersion: String = WasmlineComponentRpcContract.VERSION,
+    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+    val exportName: String? = null,
+    val codec: String? = null,
+    val rpcProtocolVersion: String? = null,
     val wasmToolsVersion: String = ToolchainCatalog.WASM_TOOLS_VERSION,
     val witBindgenVersion: String? = null,
     val adapterVersion: String? = null,
@@ -34,9 +38,10 @@ data class ExistingComponentRequest(
     val productName: String,
     val witPath: File? = null,
     val world: String? = null,
-    val exportName: String = WasmlineComponentRpcContract.DEFAULT_EXPORT,
-    val codec: String = WasmlineComponentRpcContract.DEFAULT_CODEC,
-    val rpcProtocolVersion: String = WasmlineComponentRpcContract.VERSION,
+    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+    val exportName: String? = null,
+    val codec: String? = null,
+    val rpcProtocolVersion: String? = null,
     val wasmToolsVersion: String = ToolchainCatalog.WASM_TOOLS_VERSION,
     val validate: Boolean = true,
     val writeInspectedWit: Boolean = true,
@@ -49,9 +54,11 @@ data class ComponentizeResult(
     val componentWasm: File,
     val inspectedWit: File?,
     val world: String?,
-    val exportName: String,
-    val codec: String,
-    val rpcProtocolVersion: String,
+    val witPackage: String? = null,
+    val invocationProtocol: WasmlineInvocationProtocol,
+    val exportName: String?,
+    val codec: String?,
+    val rpcProtocolVersion: String?,
     val componentSha256: String,
     val witSha256: String,
     val adapterSha256: String?,
@@ -65,6 +72,8 @@ data class ComponentizeResult(
         embeddedFile = embeddedWasm.name,
         inspectedWitFile = inspectedWit?.name,
         world = world,
+        witPackage = witPackage,
+        invocationProtocol = invocationProtocol,
         exportName = exportName,
         codec = codec,
         rpcProtocolVersion = rpcProtocolVersion,
@@ -88,6 +97,9 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
     fun componentize(request: ComponentizeRequest): ComponentizeResult {
         validateRequest(request)
         val verifiedWasmToolsVersion = wasmTools.verify(request.wasmToolsVersion)
+        if (request.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
+            validateComponentRpcCoreAbi(wasmTools.printCoreModule(request.coreWasm))
+        }
         request.outputDirectory.mkdirs()
 
         val embeddedWasm = File(request.outputDirectory, request.productName + "-embedded.wasm")
@@ -118,6 +130,8 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
             componentWasm = componentWasm,
             inspectedWit = inspectedWit,
             world = request.world,
+            witPackage = findWitPackage(request.witPath),
+            invocationProtocol = request.invocationProtocol,
             exportName = request.exportName,
             codec = request.codec,
             rpcProtocolVersion = request.rpcProtocolVersion,
@@ -139,7 +153,7 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
         request.witPath?.let { witPath ->
             require(witPath.exists()) { "WIT path does not exist: " + witPath.absolutePath }
         }
-        validateContract(request.exportName, request.codec, request.rpcProtocolVersion)
+        validateContract(request.invocationProtocol, request.exportName, request.codec, request.rpcProtocolVersion)
         val verifiedWasmToolsVersion = wasmTools.verify(request.wasmToolsVersion)
         request.outputDirectory.mkdirs()
 
@@ -166,11 +180,13 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
             componentWasm = component,
             inspectedWit = inspectedWit,
             world = request.world,
+            witPackage = request.witPath?.let(::findWitPackage),
+            invocationProtocol = request.invocationProtocol,
             exportName = request.exportName,
             codec = request.codec,
             rpcProtocolVersion = request.rpcProtocolVersion,
             componentSha256 = FileDigest.sha256Hex(component),
-            witSha256 = request.witPath?.let(::hashWitPath) ?: sha256Hex(inspectedText.encodeToByteArray()),
+            witSha256 = request.witPath?.let(::hashWitPath) ?: sha256Text(inspectedText),
             adapterSha256 = null,
             adapterVersion = null,
             witBindgenVersion = null,
@@ -185,7 +201,7 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
             "WASI Preview 1 adapter does not exist: " + request.wasiPreview1Adapter.absolutePath
         }
         validateProductName(request.productName)
-        validateContract(request.exportName, request.codec, request.rpcProtocolVersion)
+        validateContract(request.invocationProtocol, request.exportName, request.codec, request.rpcProtocolVersion)
     }
 
     private fun validateProductName(productName: String) {
@@ -194,37 +210,75 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
         }
     }
 
-    private fun validateContract(exportName: String, codec: String, rpcProtocolVersion: String) {
-        require(exportName.isNotBlank()) { "Component export name must not be blank." }
-        require(codec.isNotBlank()) { "Component RPC codec must not be blank." }
-        require(rpcProtocolVersion.isNotBlank()) { "Component RPC protocol version must not be blank." }
-    }
+    private fun findWitPackage(path: File): String? = WitParser.parse(path).packageId
 
-    private fun hashWitPath(path: File): String {
-        if (path.isFile) return sha256Hex(normalizedWitBytes(path))
-        require(path.isDirectory) { "WIT path does not exist: " + path.absolutePath }
-        val digestInput = path.walkTopDown()
-            .filter { it.isFile && it.extension.equals("wit", ignoreCase = true) }
-            .sortedBy { it.relativeTo(path).invariantSeparatorsPath }
-            .toList()
-        require(digestInput.isNotEmpty()) { "WIT directory contains no .wit files: " + path.absolutePath }
-
-        val digest = MessageDigest.getInstance("SHA-256")
-        digestInput.forEach { file ->
-            digest.update(file.relativeTo(path).invariantSeparatorsPath.toByteArray(Charsets.UTF_8))
-            digest.update(0.toByte())
-            digest.update(normalizedWitBytes(file))
-            digest.update(0.toByte())
+    private fun validateComponentRpcCoreAbi(wat: String) {
+        val imports = CORE_IMPORT.findAll(wat).map { it.groupValues[1] to it.groupValues[2] }.toSet()
+        val exports = CORE_EXPORT.findAll(wat).map { it.groupValues[1] }.toSet()
+        require("host" to "invoke" in imports) {
+            "Component RPC Core Wasm must import the canonical WIT function host/invoke."
         }
-        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+        require("plugin#invoke" in exports) {
+            "Component RPC Core Wasm must export the canonical WIT function plugin#invoke."
+        }
+        require("cabi_realloc" in exports && "memory" in exports) {
+            "Component RPC Core Wasm must export cabi_realloc and memory for Canonical ABI."
+        }
+        val forbiddenImports = imports.filter { (module, name) ->
+            module == "env" && (name.startsWith("bridge_inbound_") || name.startsWith("bridge_outbound_"))
+        }
+        require(forbiddenImports.isEmpty()) {
+            "Component RPC Core Wasm contains forbidden Core transport imports: " +
+                forbiddenImports.joinToString { (module, name) -> "$module.$name" } + "."
+        }
+        val forbiddenExports = exports.filter { name ->
+            name == "__wasmline_wasi_entry" || name == "__wasmline_wasi_init"
+        }
+        require(forbiddenExports.isEmpty()) {
+            "Component RPC Core Wasm contains forbidden Core transport exports: " +
+                forbiddenExports.joinToString() + "."
+        }
     }
 
-    private fun normalizedWitBytes(file: File): ByteArray = file.readText(Charsets.UTF_8)
-        .replace("\r\n", "\n")
-        .replace('\r', '\n')
-        .encodeToByteArray()
+    private fun validateContract(
+        invocationProtocol: WasmlineInvocationProtocol,
+        exportName: String?,
+        codec: String?,
+        rpcProtocolVersion: String?,
+    ) {
+        require(
+            invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
+                invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+        ) {
+            "Component builds require COMPONENT_EXPORT or WASMLINE_COMPONENT_RPC, not $invocationProtocol."
+        }
+        when (invocationProtocol) {
+            WasmlineInvocationProtocol.COMPONENT_EXPORT -> {
+                require(codec == null) { "Typed Component builds cannot declare a Component RPC codec." }
+                require(rpcProtocolVersion == null) { "Typed Component builds cannot declare a Component RPC version." }
+                require(exportName == null || exportName.isNotBlank()) { "Component export name must not be blank." }
+            }
 
-    private fun sha256Hex(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
-        .digest(bytes)
+            WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC -> {
+                require(exportName == WasmlineComponentRpcContract.DEFAULT_EXPORT) {
+                    "Component RPC export must be '${WasmlineComponentRpcContract.DEFAULT_EXPORT}'."
+                }
+                require(!codec.isNullOrBlank()) { "Component RPC codec must not be blank." }
+                require(!rpcProtocolVersion.isNullOrBlank()) { "Component RPC protocol version must not be blank." }
+            }
+
+            else -> error("Unsupported Component invocation protocol: $invocationProtocol")
+        }
+    }
+
+    private fun hashWitPath(path: File): String = WitSources.load(path).sha256
+
+    private fun sha256Text(text: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(text.encodeToByteArray())
         .joinToString("") { byte -> "%02x".format(byte) }
+
+    private companion object {
+        val CORE_IMPORT = Regex("""\(import\s+\"([^\"]+)\"\s+\"([^\"]+)\"""")
+        val CORE_EXPORT = Regex("""\(export\s+\"([^\"]+)\"""")
+    }
 }
