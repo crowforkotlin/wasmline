@@ -23,15 +23,15 @@ data class WasmlineArtifactDescriptor(
 ) {
     fun validationError(): String? {
         if (path.isBlank()) return "Artifact path must not be blank."
-        if (
-            (
-                executionModel == WasmlineExecutionModel.COMPONENT_MODEL ||
-                    invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
-                    invocationProtocol == WasmlineInvocationProtocol.RAW_EXPORT
-                ) &&
-            exportName.isNullOrBlank()
-        ) {
+        if (invocationProtocol == WasmlineInvocationProtocol.RAW_EXPORT && exportName.isNullOrBlank()) {
             return "An exportName is required for direct export invocation."
+        }
+        if (
+            invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC &&
+            exportName != null &&
+            exportName != WasmlineComponentRpcContract.DEFAULT_EXPORT
+        ) {
+            return "WASMLINE_COMPONENT_RPC exportName must be '${WasmlineComponentRpcContract.DEFAULT_EXPORT}'."
         }
         return when (executionModel) {
             WasmlineExecutionModel.CORE_WASM -> when (invocationProtocol) {
@@ -41,10 +41,15 @@ data class WasmlineArtifactDescriptor(
 
                 WasmlineInvocationProtocol.COMPONENT_EXPORT ->
                     "COMPONENT_EXPORT requires COMPONENT_MODEL."
+
+                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC ->
+                    "WASMLINE_COMPONENT_RPC requires COMPONENT_MODEL."
             }
 
             WasmlineExecutionModel.COMPONENT_MODEL -> when (invocationProtocol) {
-                WasmlineInvocationProtocol.COMPONENT_EXPORT -> null
+                WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                -> null
 
                 WasmlineInvocationProtocol.WASMLINE_CORE ->
                     "COMPONENT_MODEL cannot use WASMLINE_CORE."

@@ -1,5 +1,7 @@
 package crow.wasmline.plugin.core.component
 
+import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import java.io.File
 import kotlin.io.path.createTempDirectory
@@ -62,6 +64,10 @@ class ComponentToolchainIntegrationTest {
                     outputDirectory = File(root, "component"),
                     productName = "live-fixture",
                     world = "plugin",
+                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                    exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
+                    codec = WasmlineComponentRpcContract.DEFAULT_CODEC,
+                    rpcProtocolVersion = WasmlineComponentRpcContract.VERSION,
                     witBindgenVersion = "0.57.1",
                     adapterVersion = "47.0.2",
                 ),

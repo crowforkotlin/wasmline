@@ -1,0 +1,50 @@
+package wasmline:fileio@0.1.0;
+
+/// A resource-oriented file API. The resource lifetime becomes a component handle.
+interface file-io {
+  flags open-options {
+    read,
+    write,
+    append,
+    create,
+    truncate,
+  }
+
+  enum seek-origin {
+    start,
+    current,
+    end,
+  }
+
+  record metadata {
+    size: u64,
+    created-at-millis: option<u64>,
+    modified-at-millis: option<u64>,
+    is-directory: bool,
+  }
+
+  variant io-error {
+    not-found,
+    permission-denied,
+    already-exists,
+    invalid-offset(s64),
+    closed,
+    other(string),
+  }
+
+  resource file {
+    constructor(path: string, options: open-options);
+    read: func(max-bytes: u64) -> result<list<u8>, io-error>;
+    write: func(bytes: list<u8>) -> result<u64, io-error>;
+    seek: func(offset: s64, origin: seek-origin) -> result<u64, io-error>;
+    metadata: func() -> result<metadata, io-error>;
+    flush: func() -> result<_, io-error>;
+  }
+
+  stat: func(path: string) -> result<metadata, io-error>;
+  read-all: func(path: string) -> result<list<u8>, io-error>;
+}
+
+world fileio-plugin {
+  export file-io;
+}

@@ -9,6 +9,7 @@ package crow.wasmline.test.wasmtime
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentCallResult
+import crow.wasmline.WasmlineComponentExport
 import crow.wasmline.WasmlineComponentFunctionId
 import crow.wasmline.WasmlineComponentHostAdapter
 import crow.wasmline.WasmlineComponentHostRegistry
@@ -19,6 +20,7 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.bindComponentHost
+import crow.wasmline.component
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invokeComponentResult
@@ -103,7 +105,37 @@ class NativeTypedComponentHostImportIntegrationTest {
         }
     }
 
-    private fun typedHostRegistry(): WasmlineComponentHostRegistry {
+    @Test
+    fun facadeCreatesIsolatedInstancesFromOneLoadedModule() {
+        if (!liveTestsEnabled()) return
+
+        val artifact = copyFixture()
+        try {
+            val handle = loadComponent(artifact)
+            try {
+                val module = handle.component()
+                val first = module.instantiate { bindImports(typedHostRegistry(1)) }
+                val second = module.instantiate { bindImports(typedHostRegistry(100)) }
+                val run = WasmlineComponentExport.root("run")
+                try {
+                    assertEquals(42, first.invoke(run, listOf(WasmlineComponentValue.S32(41))).singleS32())
+                    assertEquals(141, second.invoke(run, listOf(WasmlineComponentValue.S32(41))).singleS32())
+                    first.close()
+                    assertEquals(142, second.invoke(run, listOf(WasmlineComponentValue.S32(42))).singleS32())
+                } finally {
+                    first.close()
+                    second.close()
+                }
+            } finally {
+                handle.close()
+            }
+        } finally {
+            wasmlineShutdown()
+            artifact.delete()
+        }
+    }
+
+    private fun typedHostRegistry(increment: Int = 1): WasmlineComponentHostRegistry {
         val interfaceId = WasmlineComponentInterfaceId.of("example:host/api")
         val functionId = WasmlineComponentFunctionId.of(interfaceId, "increment")
         return WasmlineComponentHostRegistry.builder()
@@ -111,11 +143,15 @@ class NativeTypedComponentHostImportIntegrationTest {
                 functionId,
                 WasmlineComponentHostAdapter { arguments ->
                     val value = assertIs<WasmlineComponentValue.S32>(arguments.single()).value
-                    WasmlineCallResult.Success(listOf(WasmlineComponentValue.S32(value + 1)))
+                    WasmlineCallResult.Success(listOf(WasmlineComponentValue.S32(value + increment)))
                 },
             )
             .build()
     }
+
+    private fun WasmlineCallResult<WasmlineComponentCallResult>.singleS32(): Int = assertIs<WasmlineComponentValue.S32>(
+        assertIs<WasmlineCallResult.Success<WasmlineComponentCallResult>>(this).value.values.single(),
+    ).value
 
     private fun loadComponent(artifact: File): crow.wasmline.Wasmline {
         val artifactFormat = componentAotFormat(artifact.name)

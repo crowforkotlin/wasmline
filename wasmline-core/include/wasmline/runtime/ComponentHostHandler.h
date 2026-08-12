@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -28,5 +29,12 @@ namespace wasmline {
         /** Dispatches an imported Component function. */
         virtual InvocationResult onComponentHostInvoke(std::string_view interfaceName, std::string_view functionName,
                                                        const std::vector<ComponentValue>& arguments) = 0;
+
+        /** Notifies the host registry that an imported resource representation was dropped. */
+        virtual InvocationResult onComponentHostResourceDrop(std::string_view interfaceName, std::string_view resourceName,
+                                                             uint32_t representation) {
+            return onComponentHostInvoke(interfaceName, "[resource-drop]" + std::string(resourceName),
+                                         {ComponentValue::u32(representation)});
+        }
     };
 } // namespace wasmline

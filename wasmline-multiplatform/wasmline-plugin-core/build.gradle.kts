@@ -19,6 +19,7 @@ dependencies {
     api(libs.okio.core)
     api(projects.wasmlineLoader)
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.compiler.embeddable)
 }
 
 kotlin {

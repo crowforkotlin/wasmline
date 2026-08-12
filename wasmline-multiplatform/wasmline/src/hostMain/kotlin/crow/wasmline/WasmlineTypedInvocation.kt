@@ -38,6 +38,17 @@ fun Wasmline.invokeComponentResult(
     val protocolError = validateProtocol(WasmlineInvocationProtocol.COMPONENT_EXPORT, exportName)
     if (protocolError != null) return protocolError
 
+    return invokeComponentTransportResult(exportName, arguments)
+}
+
+internal fun Wasmline.invokeComponentTransportResult(
+    exportName: String,
+    arguments: List<WasmlineComponentValue> = emptyList(),
+): WasmlineCallResult<WasmlineComponentCallResult> {
+    if (exportName.isBlank()) {
+        return failure(WasmlineErrorCode.INVALID_PAYLOAD, "Export name must not be blank.")
+    }
+
     return when (val encoded = WasmlineTypedInvocationCodec.encodeComponentArguments(arguments)) {
         is WasmlineCallResult.Failure -> encoded
 

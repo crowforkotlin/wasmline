@@ -1,5 +1,7 @@
 package crow.wasmline.gradle.tasks
 
+import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
@@ -50,6 +52,10 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
     abstract val world: Property<String>
 
     @get:Input
+    abstract val invocationProtocol: Property<WasmlineInvocationProtocol>
+
+    @get:Input
+    @get:Optional
     abstract val exportName: Property<String>
 
     @get:Input
@@ -107,6 +113,16 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
             val pipeline = ComponentPipeline(
                 WasmToolsTool(wasmTools, ExternalToolRunner(logger = { message -> logger.info(message) })),
             )
+            val protocol = invocationProtocol.get()
+            val effectiveExportName = when (protocol) {
+                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC ->
+                    exportName.orNull ?: WasmlineComponentRpcContract.DEFAULT_EXPORT
+
+                else -> exportName.orNull
+            }
+            val effectiveCodec = codec.get().takeIf { protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC }
+            val effectiveRpcVersion = rpcProtocolVersion.get()
+                .takeIf { protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC }
             val result = componentInput.orNull?.asFile?.let { component ->
                 pipeline.describeExisting(
                     ExistingComponentRequest(
@@ -115,9 +131,10 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
                         productName = productName.get(),
                         witPath = witDirectory.orNull?.asFile?.takeIf(File::exists),
                         world = world.orNull,
-                        exportName = exportName.get(),
-                        codec = codec.get(),
-                        rpcProtocolVersion = rpcProtocolVersion.get(),
+                        invocationProtocol = protocol,
+                        exportName = effectiveExportName,
+                        codec = effectiveCodec,
+                        rpcProtocolVersion = effectiveRpcVersion,
                         wasmToolsVersion = wasmToolsVersion.get(),
                     ),
                 )
@@ -139,9 +156,10 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
                         outputDirectory = output,
                         productName = productName.get(),
                         world = world.orNull,
-                        exportName = exportName.get(),
-                        codec = codec.get(),
-                        rpcProtocolVersion = rpcProtocolVersion.get(),
+                        invocationProtocol = protocol,
+                        exportName = effectiveExportName,
+                        codec = effectiveCodec,
+                        rpcProtocolVersion = effectiveRpcVersion,
                         wasmToolsVersion = wasmToolsVersion.get(),
                         witBindgenVersion = witBindgenVersion.get(),
                         adapterVersion = if (adapterWasExplicit) {

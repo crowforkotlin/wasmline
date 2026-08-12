@@ -1,6 +1,7 @@
 package crow.wasmline.gradle.tasks
 
 import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.component.ComponentAotBuildRecords
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
@@ -26,6 +27,7 @@ class WasmlineComponentAotTaskTest {
             componentWasm = component,
             inspectedWit = null,
             world = "plugin",
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
             exportName = "plugin/invoke",
             codec = "protobuf",
             rpcProtocolVersion = "1",

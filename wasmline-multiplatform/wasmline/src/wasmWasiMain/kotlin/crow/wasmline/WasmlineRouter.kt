@@ -11,7 +11,17 @@ internal object WasmlineRouter {
     private val handlers = mutableMapOf<String, Callback>()
 
     internal fun register(action: String, callback: Callback) {
-        handlers[action] = callback
+        registerAll(mapOf(action to callback))
+    }
+
+    internal fun registerAll(additions: Map<String, Callback>) {
+        val conflict = additions.keys.firstOrNull(handlers::containsKey)
+        check(conflict == null) { "Wasmline action '$conflict' is already registered in this guest instance." }
+        handlers.putAll(additions)
+    }
+
+    internal fun clear() {
+        handlers.clear()
     }
 
     internal fun dispatch(action: String?, args: ByteArray?): WasmlineCallResult<ByteArray> {

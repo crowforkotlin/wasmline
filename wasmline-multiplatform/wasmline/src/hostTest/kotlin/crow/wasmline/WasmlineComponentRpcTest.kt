@@ -15,6 +15,15 @@ import kotlin.test.assertIs
 
 class WasmlineComponentRpcTest {
     @Test
+    fun serviceCallsRejectTypedComponentsBeforeInvokingTheCarrier() {
+        val wasmline = componentHandle(WasmlineInvocationProtocol.COMPONENT_EXPORT)
+
+        val result = assertIs<WasmlineCallResult.Failure>(wasmline.callResult("service.action"))
+
+        assertEquals(WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH, result.error.code)
+    }
+
+    @Test
     fun decodesSuccessfulBytePayload() {
         val payload = byteArrayOf(0, 1, -1, 42)
         val result = WasmlineComponentRpc.decode(
@@ -83,5 +92,16 @@ class WasmlineComponentRpcTest {
 
     private fun ByteArray.componentBytes(): WasmlineComponentValue.ListValue = WasmlineComponentValue.ListValue(
         map { WasmlineComponentValue.U8(it.toUByte()) },
+    )
+
+    private fun componentHandle(protocol: WasmlineInvocationProtocol): Wasmline = Wasmline(
+        moduleKey = "component-rpc-test",
+        config = WasmlineConfig(),
+        descriptor = WasmlineArtifactDescriptor(
+            path = "component.cwasm",
+            artifactFormat = WasmlineArtifactFormat.CWASM,
+            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+            invocationProtocol = protocol,
+        ),
     )
 }

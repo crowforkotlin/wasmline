@@ -13,6 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** Verifies dispatch independent of JNI ownership and Component instantiation. */
 class WasmlineComponentHostDispatcherTest {
@@ -70,6 +71,104 @@ class WasmlineComponentHostDispatcherTest {
     }
 
     @Test
+    fun dispatchesImportedResourceMethodsByTrustedIdentityAndDropsExactlyOnce() {
+        val resourceId = WasmlineComponentResourceId(
+            WasmlineComponentInterfaceId.of("example:host/callbacks"),
+            "callback",
+        )
+        var dropCount = 0
+        val registry = WasmlineComponentHostRegistry.builder()
+            .registerResource(
+                resourceId,
+                WasmlineComponentHostResourceBinding(
+                    methods = mapOf(
+                        "call" to { implementation, arguments ->
+                            val prefix = implementation as String
+                            val input = assertIs<WasmlineComponentValue.StringValue>(arguments.single()).value
+                            WasmlineCallResult.Success(listOf(WasmlineComponentValue.StringValue(prefix + input)))
+                        },
+                    ),
+                    drop = { dropCount++ },
+                ),
+            )
+            .build()
+        val dispatcher = WasmlineComponentHostDispatcher(registry)
+        val representation = dispatcher.createResource(resourceId, "host:")
+        val owned = resource("instance-a", generation = 7u, WasmlineComponentResourceOwnership.OWN)
+        dispatcher.bindResourceReference(representation, owned)
+
+        val response = requireNotNull(
+            dispatcher.dispatch(
+                resourceId.interfaceId.value,
+                "[method]callback.call",
+                encodeArguments(
+                    resource("instance-a", generation = 7u, WasmlineComponentResourceOwnership.BORROW),
+                    WasmlineComponentValue.StringValue("value"),
+                ),
+            ),
+        )
+        val success = assertIs<WasmlineCallResult.Success<WasmlineComponentCallResult>>(
+            WasmlineTypedInvocationCodec.decodeComponentResult(response),
+        )
+        assertEquals(listOf(WasmlineComponentValue.StringValue("host:value")), success.value.values)
+        assertEquals(1, dispatcher.activeResourceCount())
+
+        val staleResponse = requireNotNull(
+            dispatcher.dispatch(
+                resourceId.interfaceId.value,
+                "[method]callback.call",
+                encodeArguments(resource("instance-a", generation = 8u, WasmlineComponentResourceOwnership.BORROW)),
+            ),
+        )
+        val stale = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeComponentResult(staleResponse))
+        assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, stale.error.code)
+
+        val dropResponse = requireNotNull(
+            dispatcher.dispatch(
+                resourceId.interfaceId.value,
+                "[resource-drop]callback",
+                encodeArguments(WasmlineComponentValue.U32(representation)),
+            ),
+        )
+        assertIs<WasmlineCallResult.Success<WasmlineComponentCallResult>>(
+            WasmlineTypedInvocationCodec.decodeComponentResult(dropResponse),
+        )
+        assertEquals(1, dropCount)
+        assertEquals(0, dispatcher.activeResourceCount())
+
+        val duplicate = requireNotNull(
+            dispatcher.dispatch(
+                resourceId.interfaceId.value,
+                "[resource-drop]callback",
+                encodeArguments(WasmlineComponentValue.U32(representation)),
+            ),
+        )
+        val duplicateFailure = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeComponentResult(duplicate))
+        assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, duplicateFailure.error.code)
+        assertEquals(1, dropCount)
+    }
+
+    @Test
+    fun instanceTeardownReleasesAllRemainingHostResourceImplementations() {
+        val resourceId = WasmlineComponentResourceId(WasmlineComponentInterfaceId.of("example:host/callbacks"), "callback")
+        val dropped = mutableListOf<String>()
+        val registry = WasmlineComponentHostRegistry.builder()
+            .registerResource(
+                resourceId,
+                WasmlineComponentHostResourceBinding(emptyMap()) { implementation -> dropped += implementation as String },
+            )
+            .build()
+        val dispatcher = WasmlineComponentHostDispatcher(registry)
+        dispatcher.createResource(resourceId, "first")
+        dispatcher.createResource(resourceId, "second")
+
+        assertEquals(2, dispatcher.releaseResources())
+        assertEquals(listOf("first", "second"), dropped)
+        assertEquals(0, dispatcher.releaseResources())
+        assertTrue(dispatcher.activeResourceCount() == 0)
+    }
+
+    @Test
     fun rejectsBindingAComponentRegistryToACoreHandleBeforeJni() {
         val wasmline = Wasmline(
             moduleKey = "core-test",
@@ -94,4 +193,21 @@ class WasmlineComponentHostDispatcherTest {
             .build()
         return WasmlineComponentHostDispatcher(registry)
     }
+
+    private fun encodeArguments(vararg values: WasmlineComponentValue): ByteArray = assertIs<WasmlineCallResult.Success<ByteArray>>(
+        WasmlineTypedInvocationCodec.encodeComponentArguments(values.toList()),
+    ).value
+
+    private fun resource(
+        instanceKey: String,
+        generation: UInt,
+        ownership: WasmlineComponentResourceOwnership,
+    ): WasmlineComponentValue.ResourceValue = WasmlineComponentValue.ResourceValue(
+        instanceKey = instanceKey,
+        typeId = 3u,
+        handleId = 11uL,
+        generation = generation,
+        ownership = ownership,
+        origin = WasmlineComponentResourceOrigin.HOST,
+    )
 }

@@ -1,0 +1,62 @@
+package wasmline:kv@0.1.0;
+
+interface host-clock {
+  now-millis: func() -> u64;
+}
+
+/// A stateful key/value service with two exported resource types.
+interface key-value {
+  flags permissions {
+    read,
+    write,
+    delete,
+    watch,
+  }
+
+  record entry {
+    key: string,
+    value: list<u8>,
+    version: u64,
+    expires-at-millis: option<u64>,
+  }
+
+  record bucket-stats {
+    entries: u64,
+    bytes: u64,
+    revision: u64,
+  }
+
+  variant change {
+    inserted(entry),
+    updated(entry),
+    removed(string),
+  }
+
+  variant kv-error {
+    not-found,
+    permission-denied,
+    conflict(u64),
+    invalid-key(string),
+    closed,
+  }
+
+  resource watch-handle {
+    next: func() -> result<option<change>, kv-error>;
+  }
+
+  resource bucket {
+    get: func(key: string) -> result<option<entry>, kv-error>;
+    put: func(key: string, value: list<u8>, expected-version: option<u64>, ttl-millis: option<u64>) -> result<u64, kv-error>;
+    delete: func(key: string, expected-version: option<u64>) -> result<bool, kv-error>;
+    scan: func(prefix: string, cursor: option<string>, limit: u32) -> result<tuple<list<entry>, option<string>>, kv-error>;
+    stats: func() -> result<bucket-stats, kv-error>;
+    watch: func(prefix: string) -> result<own<watch-handle>, kv-error>;
+  }
+
+  open: func(name: string, permissions: permissions) -> result<own<bucket>, kv-error>;
+}
+
+world kv-plugin {
+  import host-clock;
+  export key-value;
+}

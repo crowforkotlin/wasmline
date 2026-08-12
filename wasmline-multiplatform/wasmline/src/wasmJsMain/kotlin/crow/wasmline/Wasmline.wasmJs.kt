@@ -8,6 +8,8 @@ actual class Wasmline internal actual constructor(
     actual val config: WasmlineConfig,
     actual val descriptor: WasmlineArtifactDescriptor,
 ) {
+    internal actual val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
+    internal actual val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
     private val delegate = BrowserWasmline(moduleKey)
 
     internal actual fun setOutbound(dispatcher: WasmlineHostDispatcher) {
@@ -25,7 +27,33 @@ actual class Wasmline internal actual constructor(
     internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         delegate.invokeComponentCarrier(exportName, arguments)
 
+    internal actual fun instantiateComponentInstance(instanceKey: String, dispatcher: WasmlineComponentHostDispatcher): Boolean =
+        throw UnsupportedOperationException("Browser host does not support Component Model instances.")
+
+    internal actual fun invokeComponentInstanceCarrier(
+        instanceKey: String,
+        exportName: String,
+        arguments: ByteArray,
+    ): WasmlineCallResult<ByteArray> = throw UnsupportedOperationException(
+        "Browser host does not support Component Model instances.",
+    )
+
+    internal actual fun releaseComponentInstance(instanceKey: String) = Unit
+
+    internal actual fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean = false
+
+    internal actual fun createComponentHostResource(
+        instanceKey: String,
+        interfaceId: String,
+        resourceName: String,
+        representation: UInt,
+    ): WasmlineCallResult<WasmlineComponentValue.ResourceValue> = throw UnsupportedOperationException(
+        "Browser host does not support Component Model resources.",
+    )
+
     actual fun close() {
+        componentModuleState.close()
+        hostServiceRegistry.clear()
         delegate.close()
     }
 }
@@ -47,3 +75,7 @@ private fun browserRuntimeCapabilities(): WasmlineRuntimeCapabilities = Wasmline
     targetCpu = "wasmjs",
     is64Bit = false,
 )
+
+internal actual class WasmlineHostServiceLock {
+    actual fun <T> withLock(block: () -> T): T = block()
+}

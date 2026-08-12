@@ -358,12 +358,22 @@ class WasmlineLocalPackageResolutionTest {
                 WasmlineExecutionModel.COMPONENT_MODEL,
                 WasmlineInvocationProtocol.COMPONENT_EXPORT,
             ),
+            Triple(
+                WasmlineArtifactType.CWASM,
+                WasmlineExecutionModel.COMPONENT_MODEL,
+                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            ),
             Triple(WasmlineArtifactType.PWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_CORE),
             Triple(WasmlineArtifactType.PWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.RAW_EXPORT),
             Triple(
                 WasmlineArtifactType.PWASM,
                 WasmlineExecutionModel.COMPONENT_MODEL,
                 WasmlineInvocationProtocol.COMPONENT_EXPORT,
+            ),
+            Triple(
+                WasmlineArtifactType.PWASM,
+                WasmlineExecutionModel.COMPONENT_MODEL,
+                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
             ),
         )
         val browserTarget = WasmlineHostArtifactTarget(os = "browser", cpu = "wasmjs", is64Bit = true)
@@ -579,9 +589,6 @@ class WasmlineLocalPackageResolutionTest {
                 invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
                 exportName = null,
             ) to craneliftTarget,
-            cwasmArtifact(WasmlineExecutionModel.COMPONENT_MODEL).copy(
-                exportName = null,
-            ) to craneliftTarget,
             pulleyArtifact(cpu = "pulley64", is64Bit = true).copy(
                 invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
                 exportName = null,
@@ -594,11 +601,6 @@ class WasmlineLocalPackageResolutionTest {
                 invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
                 exportName = null,
             ) to pulleyTarget,
-            pulleyArtifact(
-                cpu = "pulley64",
-                is64Bit = true,
-                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            ).copy(exportName = null) to pulleyTarget,
         )
 
         invalidCandidates.forEach { (artifact, target) ->

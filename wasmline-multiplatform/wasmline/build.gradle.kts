@@ -65,20 +65,12 @@ kotlin {
         val configureCInterop = { target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget ->
             val platformRoot = iosPlatformRoot(target.name)
             val wasmtimeHeaderDir = platformRoot.resolve("include")
-            val wasmtimeLibDir = platformRoot.resolve("lib")
-            val coreLibAbsPath = iosBuildDir(target.name).resolve("libwasmline_core_ios.a").absolutePath
-            val wasmtimeLibAbsPath = wasmtimeLibDir.resolve("libwasmtime.a").absolutePath
             target.compilations.getByName("main") {
                 val wasmline by cinterops.creating {
                     defFile(project.file("src/iosMain/native/cinterop/wasmline.def"))
                     includeDirs(nativeHeaderDir)
                     includeDirs(wasmtimeHeaderDir)
                     compilerOpts("-I${nativeHeaderDir.absolutePath}", "-I${wasmtimeHeaderDir.absolutePath}")
-                    linkerOpts("-Wl,-force_load,$coreLibAbsPath")
-                    linkerOpts("-Wl,-force_load,$wasmtimeLibAbsPath")
-                    linkerOpts("-lc++")
-                    linkerOpts("-framework", "CoreFoundation")
-                    linkerOpts("-framework", "Security")
                 }
             }
         }
@@ -88,9 +80,7 @@ kotlin {
                 val coreLibAbsPath = iosBuildDir(target.name).resolve("libwasmline_core_ios.a").absolutePath
                 val wasmtimeLibAbsPath = iosPlatformRoot(target.name).resolve("lib/libwasmtime.a").absolutePath
                 configureCInterop(target)
-                target.binaries.framework {
-                    isStatic = false
-                    freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
+                target.binaries.all {
                     linkerOpts(
                         "-Wl,-force_load,$coreLibAbsPath",
                         "-Wl,-force_load,$wasmtimeLibAbsPath",
@@ -103,6 +93,10 @@ kotlin {
                     linkTaskProvider.configure {
                         dependsOn(nativeBridgeTask)
                     }
+                }
+                target.binaries.framework {
+                    isStatic = false
+                    freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
                 }
             }
         }

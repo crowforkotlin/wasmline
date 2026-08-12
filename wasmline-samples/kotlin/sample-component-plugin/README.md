@@ -1,11 +1,12 @@
 # Kotlin Component RPC sample
 
-This module demonstrates the fixed `wasmline:rpc@1.0.0` envelope:
+This module uses ordinary `WasmlineService`, `link`, and `bind` source code while the
+Wasmline build plugin generates the fixed `wasmline:rpc@1.0.0` transport:
 
-- `sample.echo` decodes and encodes Kotlin Serialization Protobuf bytes;
-- `sample.callback` calls the generated `Host.Import.invoke` binding and returns the host bytes;
-- `sample.empty` returns an empty byte payload;
-- `sample.trap` intentionally traps;
+- `ComponentPluginService.echo` decodes and encodes Kotlin Serialization Protobuf bytes;
+- `ComponentPluginService.callback` calls `link<ComponentHostService>()`;
+- `ComponentPluginService.empty` returns an empty byte payload;
+- `ComponentPluginService.trap` intentionally traps;
 - unknown actions and codec mismatches return a WIT `rpc-error`.
 
 The complete build is owned by the Wasmline Gradle plugin:
@@ -14,7 +15,8 @@ The complete build is owned by the Wasmline Gradle plugin:
 ./gradlew :sample-component-plugin:wasmlineAssembleDebug
 ```
 
-The task chain generates Kotlin bindings under `build/generated`, compiles the
+The task chain materializes Wasmline's canonical WIT, generates Kotlin bindings and the
+Wasmline transport adapter under `build/generated`, compiles the
 Kotlin/Wasm WASI library with JDK 21, embeds WIT, creates and validates the
 Component with the pinned `wit-bindgen` 0.57.1 and `wasm-tools` 1.255.0, then
 uses the full Wasmtime CLI to produce matching `.pwasm` and `.cwasm` Component
@@ -23,7 +25,6 @@ are not committed. Configure `WASMTIME_COMPILER` or run
 `./gradlew :sample-component-plugin:wasmlineDownloadWasmtimeCompiler` before
 assembling when the compiler is not already available.
 
-The generated bindings are imported through `impl.*`; this is why the guest
-implementation lives in the `impl` package. The WIT world is the fixed
-`wasmline:rpc@1.0.0` envelope, so the payload remains Wasmline codec bytes
-inside the WIT `list<u8>` fields.
+The guest never imports generated `Host`/`Plugin` types directly and does not maintain an
+action switch or RPC error conversion. The fixed WIT `list<u8>` payload remains exactly the
+bytes produced by the selected Wasmline serialization factory.

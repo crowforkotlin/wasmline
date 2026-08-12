@@ -7,6 +7,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.file
 import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
@@ -33,7 +34,9 @@ class Componentize : CliktCommand(name = "componentize") {
         .default(File("build/wasmline/component"))
     private val name by option("-n", "--name").default("component")
     private val world by option("--world")
-    private val exportName by option("--export-name").default(WasmlineComponentRpcContract.DEFAULT_EXPORT)
+    private val invocationProtocol by option("--invocation-protocol")
+        .default(WasmlineInvocationProtocol.COMPONENT_EXPORT.name)
+    private val exportName by option("--export-name")
     private val codec by option("--codec").default(WasmlineComponentRpcContract.DEFAULT_CODEC)
     private val rpcProtocolVersion by option("--rpc-version").default(WasmlineComponentRpcContract.VERSION)
     private val wasmToolsPath by option("--wasm-tools")
@@ -47,6 +50,19 @@ class Componentize : CliktCommand(name = "componentize") {
     override fun run() = runBlocking {
         val downloader = ToolDownloader(logger = ::echo)
         try {
+            val protocol = enumValues<WasmlineInvocationProtocol>()
+                .firstOrNull { it.name.equals(invocationProtocol, ignoreCase = true) }
+                ?: error("Unknown invocation protocol '$invocationProtocol'.")
+            require(
+                protocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
+                    protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            ) {
+                "componentize requires COMPONENT_EXPORT or WASMLINE_COMPONENT_RPC, not $protocol."
+            }
+            val effectiveExport = exportName ?: componentRpcValue(
+                protocol,
+                WasmlineComponentRpcContract.DEFAULT_EXPORT,
+            )
             val tools = resolveComponentToolFiles(
                 cacheDirectory = cacheDirectory,
                 downloader = downloader,
@@ -66,9 +82,10 @@ class Componentize : CliktCommand(name = "componentize") {
                     outputDirectory = outputDirectory,
                     productName = name,
                     world = world,
-                    exportName = exportName,
-                    codec = codec,
-                    rpcProtocolVersion = rpcProtocolVersion,
+                    invocationProtocol = protocol,
+                    exportName = effectiveExport,
+                    codec = componentRpcValue(protocol, codec),
+                    rpcProtocolVersion = componentRpcValue(protocol, rpcProtocolVersion),
                     wasmToolsVersion = version,
                     adapterVersion = if (adapterPath == null) {
                         ToolchainCatalog.WASI_PREVIEW1_ADAPTER_VERSION

@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORE_SRC="${PROJECT_ROOT}/wasmline-core/src"
 IOS_SRC="${PROJECT_ROOT}/wasmline-multiplatform/wasmline/src/iosMain/native"
+IOS_MODULE="${PROJECT_ROOT}/wasmline-multiplatform/wasmline"
 
 # Resolve wasmtime version tag (e.g. "release-v47.0.2")
 if [ -z "${WASMTIME_VERSION:-}" ]; then
@@ -21,12 +22,12 @@ case "$TARGET_KIND" in
     simulator-arm64|simulator|sim)
         SDK="iphonesimulator"
         PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/${WASMTIME_VERSION}/pulley/ios/simulator-arm64"
-        BUILD_DIR="${SCRIPT_DIR}/build/ios/simulator-arm64"
+        BUILD_DIR="${IOS_MODULE}/build/ios/simulator-arm64"
         ;;
     arm64|device|ios-arm64)
         SDK="iphoneos"
         PLATFORM_DIR="${PROJECT_ROOT}/build/platforms/${WASMTIME_VERSION}/pulley/ios/arm64"
-        BUILD_DIR="${SCRIPT_DIR}/build/ios/arm64"
+        BUILD_DIR="${IOS_MODULE}/build/ios/arm64"
         ;;
     *)
         echo "Unsupported iOS target kind: ${TARGET_KIND}" >&2

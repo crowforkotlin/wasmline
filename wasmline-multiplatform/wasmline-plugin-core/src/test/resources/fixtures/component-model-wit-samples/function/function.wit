@@ -1,0 +1,36 @@
+package wasmline:functions@0.1.0;
+
+/// WIT has no first-class function type. A callback is modeled as an imported resource.
+interface host-callbacks {
+  variant callback-error {
+    rejected(string),
+    unavailable,
+  }
+
+  resource callback {
+    call: func(input: string) -> result<string, callback-error>;
+  }
+}
+
+interface function-runner {
+  use host-callbacks.{callback};
+
+  record call-spec {
+    input: string,
+    repeat: u32,
+    stop-on-error: bool,
+  }
+
+  variant call-result {
+    returned(string),
+    failed(string),
+    skipped,
+  }
+
+  run: func(callback: borrow<callback>, calls: list<call-spec>) -> list<call-result>;
+}
+
+world function-plugin {
+  import host-callbacks;
+  export function-runner;
+}

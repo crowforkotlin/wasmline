@@ -106,6 +106,10 @@ namespace wasmline {
         return create(Kind::MAP, std::move(value));
     }
 
+    ComponentValue ComponentValue::resource(ComponentResourceReference value) {
+        return create(Kind::RESOURCE, std::move(value));
+    }
+
     ComponentValue::Kind ComponentValue::kind() const {
         return kind_;
     }
@@ -196,5 +200,9 @@ namespace wasmline {
 
     const ComponentMap& ComponentValue::mapValue() const {
         return std::get<ComponentMap>(storage_->data);
+    }
+
+    const ComponentResourceReference& ComponentValue::resourceValue() const {
+        return std::get<ComponentResourceReference>(storage_->data);
     }
 } // namespace wasmline

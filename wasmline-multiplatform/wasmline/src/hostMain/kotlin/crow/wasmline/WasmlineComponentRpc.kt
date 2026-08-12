@@ -26,8 +26,8 @@ internal object WasmlineComponentRpc {
             ),
         )
         return when (
-            val result = wasmline.invokeComponentResult(
-                exportName = wasmline.descriptor.exportName ?: DEFAULT_EXPORT,
+            val result = wasmline.invokeComponentTransportResult(
+                exportName = DEFAULT_EXPORT,
                 arguments = listOf(request),
             )
         ) {

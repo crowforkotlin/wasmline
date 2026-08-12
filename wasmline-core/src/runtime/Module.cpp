@@ -103,9 +103,10 @@ namespace wasmline {
         return impl_->cache.get(key);
     }
 
-    void Module::release(const std::string& key) {
-        impl_->cache.release(key);
-        LOGI("[Wasmtime] Module --> Released module key: %s", key.c_str());
+    bool Module::release(const std::string& key) {
+        const bool released = impl_->cache.release(key);
+        if (released) LOGI("[Wasmtime] Module --> Released module key: %s", key.c_str());
+        return released;
     }
 
     void Module::clear() {

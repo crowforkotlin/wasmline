@@ -77,6 +77,8 @@ class ComponentCliIntegrationTest {
                 witDirectory.absolutePath,
                 "--world",
                 "plugin",
+                "--invocation-protocol",
+                "WASMLINE_COMPONENT_RPC",
                 "--adapter",
                 adapter.absolutePath,
                 "--wasm-tools",
@@ -153,6 +155,8 @@ class ComponentCliIntegrationTest {
                 compileRoot.absolutePath,
                 "--execution-model",
                 "COMPONENT_MODEL",
+                "--invocation-protocol",
+                "WASMLINE_COMPONENT_RPC",
                 "--raw-component",
                 "--wit",
                 witDirectory.absolutePath,
@@ -192,6 +196,8 @@ class ComponentCliIntegrationTest {
                 "1.0.0",
                 "--execution-model",
                 "COMPONENT_MODEL",
+                "--invocation-protocol",
+                "WASMLINE_COMPONENT_RPC",
                 "--raw-component",
                 "--wit",
                 witDirectory.absolutePath,
@@ -252,7 +258,7 @@ class ComponentCliIntegrationTest {
         assertFalse(artifacts.any { it.type == WasmlineArtifactType.COMPONENT_WASM })
         artifacts.forEach { artifact ->
             assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, artifact.executionModel)
-            assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, artifact.invocationProtocol)
+            assertEquals(WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC, artifact.invocationProtocol)
             assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, artifact.exportName)
             assertEquals("wasmtime-${BuildConfig.WASMTIME_VERSION}", artifact.targetCompilerVersion)
             assertEquals(

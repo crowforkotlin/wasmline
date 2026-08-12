@@ -326,6 +326,26 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
             min_count=0,
         ),
+        Rule(
+            r'(?m)(\\`)[0-9]+\.[0-9]+\.[0-9]+(\\`)(?=\s+\|\s+Version string for output directory)',
+            lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
+            min_count=0,
+        ),
+        Rule(
+            r'(?m)(\\`)[0-9]+\.[0-9]+\.[0-9]+(\\`)(?=\s+\|\s+Integer version code)',
+            lambda v: rf'\g<1>{v["sample_plugin_version"].split(".")[0]}\g<2>',
+            min_count=0,
+        ),
+        Rule(
+            r'(?m)(\\`)[0-9]+\.[0-9]+\.[0-9]+(\\`)(?=\s+\|\s+Semantic version\s*$)',
+            lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
+            min_count=0,
+        ),
+        Rule(
+            r'(?m)(download -v )v[0-9]+\.[0-9]+\.[0-9]+',
+            lambda v: rf'\g<1>v{v["wasmtime_version"]}',
+            min_count=0,
+        ),
     )
     development_guide_rules = (
         Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}", min_count=0),
@@ -715,54 +735,6 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r'(?m)^    private val version by option\("--version"\)\.default\("[0-9A-Za-z.\-]+"\)$',
                     lambda v: f'    private val version by option("--version").default("{v["sample_plugin_version"]}")',
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-cli/compile.md",
-            (
-                Rule(
-                    r"(?<![0-9])[0-9]+\.[0-9]+\.[0-9]+(?![0-9])",
-                    lambda v: v["sample_plugin_version"],
-                ),
-                Rule(
-                    r"wasmtime-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"wasmtime-v{v['wasmtime_version']}",
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-cli/build.md",
-            (
-                Rule(
-                    r"(?<![0-9])[0-9]+\.[0-9]+\.[0-9]+(?![0-9])",
-                    lambda v: v["sample_plugin_version"],
-                ),
-                Rule(
-                    r"wasmtime-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"wasmtime-v{v['wasmtime_version']}",
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-cli/manifest.md",
-            (
-                Rule(
-                    r"(?<![0-9])[0-9]+\.[0-9]+\.[0-9]+(?![0-9])",
-                    lambda v: v["sample_plugin_version"],
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-cli/download.md",
-            (
-                Rule(
-                    r"v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"v{v['wasmtime_version']}",
-                ),
-                Rule(
-                    r"wasmtime-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"wasmtime-v{v['wasmtime_version']}",
                 ),
             ),
         ),

@@ -1,6 +1,5 @@
 package crow.wasmline.plugin.core.component
 
-import crow.wasmline.WasmlineComponentRpcContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
@@ -58,17 +57,21 @@ data class ComponentAotEngineOptions(
 /** Contract metadata copied onto every compiled Component artifact. */
 @Serializable
 data class ComponentAotArtifactMetadata(
-    val exportName: String = WasmlineComponentRpcContract.DEFAULT_EXPORT,
+    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+    val exportName: String? = null,
     val contractMetadata: Map<String, String> = emptyMap(),
 ) {
     val executionModel: WasmlineExecutionModel
         get() = WasmlineExecutionModel.COMPONENT_MODEL
 
-    val invocationProtocol: WasmlineInvocationProtocol
-        get() = WasmlineInvocationProtocol.COMPONENT_EXPORT
-
     init {
-        require(exportName.isNotBlank()) { "Component export name must not be blank." }
+        val descriptorError = crow.wasmline.WasmlineArtifactDescriptor(
+            path = "component-aot",
+            executionModel = executionModel,
+            invocationProtocol = invocationProtocol,
+            exportName = exportName,
+        ).validationError()
+        require(descriptorError == null) { "Invalid Component AOT metadata: $descriptorError" }
     }
 }
 
@@ -123,8 +126,11 @@ data class ComponentAotCompileOutput(
         require(artifact.executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
             "Component AOT artifacts must use executionModel=COMPONENT_MODEL."
         }
-        require(artifact.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT) {
-            "Component AOT artifacts must use invocationProtocol=COMPONENT_EXPORT."
+        require(
+            artifact.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
+                artifact.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+        ) {
+            "Component AOT artifacts must use a Component invocation protocol."
         }
     }
 }
@@ -145,6 +151,9 @@ data class ComponentAotCompileResult(
         }
         require(outputs.isNotEmpty()) { "Component AOT compilation must produce at least one output." }
         outputs.forEach { output ->
+            require(output.artifact.invocationProtocol == artifactMetadata.invocationProtocol) {
+                "Component AOT artifact protocol does not match the compile request."
+            }
             require(output.artifact.targetCompilerVersion == "wasmtime-$wasmtimeVersion") {
                 "Component AOT artifact compiler version must be wasmtime-$wasmtimeVersion."
             }

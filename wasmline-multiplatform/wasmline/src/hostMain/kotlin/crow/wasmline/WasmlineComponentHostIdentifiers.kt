@@ -65,7 +65,8 @@ fun interface WasmlineComponentHostAdapter {
  * independent snapshot, so later changes to its [Builder] cannot alter an active Component.
  */
 class WasmlineComponentHostRegistry private constructor(
-    private val adapters: Map<WasmlineComponentFunctionId, WasmlineComponentHostAdapter>,
+    internal val adapters: Map<WasmlineComponentFunctionId, WasmlineComponentHostAdapter>,
+    internal val resources: Map<WasmlineComponentResourceId, WasmlineComponentHostResourceBinding>,
 ) {
     /** Returns the adapter registered for [functionId], or null when the import is not bound. */
     fun lookup(functionId: WasmlineComponentFunctionId): WasmlineComponentHostAdapter? = adapters[functionId]
@@ -80,6 +81,7 @@ class WasmlineComponentHostRegistry private constructor(
     /** Mutable construction scope for one immutable [WasmlineComponentHostRegistry] snapshot. */
     class Builder {
         private val adapters = linkedMapOf<WasmlineComponentFunctionId, WasmlineComponentHostAdapter>()
+        private val resources = linkedMapOf<WasmlineComponentResourceId, WasmlineComponentHostResourceBinding>()
 
         /** Registers [adapter], rejecting ambiguous duplicate function identifiers. */
         fun register(functionId: WasmlineComponentFunctionId, adapter: WasmlineComponentHostAdapter): Builder {
@@ -88,14 +90,44 @@ class WasmlineComponentHostRegistry private constructor(
             return this
         }
 
+        /** Merges an immutable registry, rejecting duplicate function identifiers. */
+        fun registerAll(registry: WasmlineComponentHostRegistry): Builder {
+            registry.adapters.forEach { (functionId, adapter) -> register(functionId, adapter) }
+            registry.resources.forEach { (resourceId, binding) -> registerResource(resourceId, binding) }
+            return this
+        }
+
+        fun registerResource(resourceId: WasmlineComponentResourceId, binding: WasmlineComponentHostResourceBinding): Builder {
+            check(resourceId !in resources) { "Component Host resource is already registered: $resourceId." }
+            resources[resourceId] = binding
+            return this
+        }
+
         /** Removes one pending registration and reports whether it existed. */
         fun unregister(functionId: WasmlineComponentFunctionId): Boolean = adapters.remove(functionId) != null
 
         /** Builds a detached immutable registry snapshot. */
-        fun build(): WasmlineComponentHostRegistry = WasmlineComponentHostRegistry(adapters.toMap())
+        fun build(): WasmlineComponentHostRegistry = WasmlineComponentHostRegistry(adapters.toMap(), resources.toMap())
     }
 
     companion object {
         fun builder(): Builder = Builder()
+    }
+}
+
+/** Identifies one resource type imported through a Component interface. */
+data class WasmlineComponentResourceId(val interfaceId: WasmlineComponentInterfaceId, val resourceName: String) {
+    init {
+        requireComponentIdentifier(resourceName, "Component resource identifier")
+    }
+}
+
+/** Dispatches methods for Host objects backing an imported resource. */
+class WasmlineComponentHostResourceBinding(
+    val methods: Map<String, (Any, List<WasmlineComponentValue>) -> WasmlineCallResult<List<WasmlineComponentValue>>>,
+    val drop: (Any) -> Unit = {},
+) {
+    init {
+        require(methods.keys.none(String::isBlank)) { "Component Host resource method names must not be blank." }
     }
 }

@@ -32,17 +32,25 @@ class WasmlineCompilerPluginRegistrar : CompilerPluginRegistrar() {
             CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
             MessageCollector.NONE,
         )
-        if (!configuration.get(ENABLE_COMPILER_PLUGIN_OPTION, true)) {
+        val transport = configuration.get(GUEST_TRANSPORT_OPTION) ?: if (
+            configuration.get(ENABLE_COMPILER_PLUGIN_OPTION, true)
+        ) {
+            WasmlineGuestTransport.CORE
+        } else {
+            WasmlineGuestTransport.NONE
+        }
+        if (transport == WasmlineGuestTransport.NONE) {
             messageCollector.report(CompilerMessageSeverity.INFO, "[Wasmline] compiler plugin disabled")
             return
         }
-        val enableWasiInitExport = configuration.get(ENABLE_WASI_INIT_EXPORT_OPTION, false)
+        val legacyWasiInitExport = configuration.get(ENABLE_WASI_INIT_EXPORT_OPTION, false)
         IrGenerationExtension.registerExtension(
             WasmlineIrGenerationExtension(
                 messageCollector = messageCollector,
-                enableWasiInitExport = enableWasiInitExport,
+                guestTransport = transport,
+                enableCoreWasiExports = transport == WasmlineGuestTransport.CORE || legacyWasiInitExport,
             ),
         )
-        messageCollector.report(CompilerMessageSeverity.INFO, "[Wasmline] compiler plugin registered")
+        messageCollector.report(CompilerMessageSeverity.INFO, "[Wasmline] compiler plugin registered for $transport")
     }
 }

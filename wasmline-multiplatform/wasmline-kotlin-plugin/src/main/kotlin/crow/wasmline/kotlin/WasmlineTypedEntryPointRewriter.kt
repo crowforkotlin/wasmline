@@ -29,14 +29,21 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 /**
  * Rewrites typed Wasmline entrypoints such as `link()` and `bind()` into generated bridge usage.
  */
-internal class WasmlineTypedEntryPointRewriter(private val messageCollector: MessageCollector) {
+internal data class WasmlineRewriteResult(val bindCalls: Int)
+
+internal class WasmlineTypedEntryPointRewriter(
+    private val messageCollector: MessageCollector,
+    private val guestTransport: WasmlineGuestTransport,
+) {
+    private var rewrittenBindCalls = 0
+
     /** Walks the module and rewrites typed entrypoints in-place after bridge generation. */
     fun rewrite(
         moduleFragment: IrModuleFragment,
         pluginContext: IrPluginContext,
         runtimeSymbols: WasmlineRuntimeSymbols,
         generatedBridges: MutableMap<IrClassSymbol, IrClass>,
-    ) {
+    ): WasmlineRewriteResult {
         moduleFragment.files.forEach { file ->
             val ownerDeclarations = ArrayDeque<IrDeclaration>()
             file.transformChildrenVoid(object : IrElementTransformerVoid() {
@@ -73,6 +80,7 @@ internal class WasmlineTypedEntryPointRewriter(private val messageCollector: Mes
                 }
             })
         }
+        return WasmlineRewriteResult(bindCalls = rewrittenBindCalls)
     }
 
     private fun replaceTypedEntryPoint(
@@ -91,13 +99,23 @@ internal class WasmlineTypedEntryPointRewriter(private val messageCollector: Mes
         return when {
             runtimeSymbols.isHostLinkCall(call.symbol) -> {
                 val wasmline = call.extensionReceiverArgument() ?: return null
-                val endpointClass = runtimeSymbols.generatedHostEndpointClass ?: return null
-                val endpointConstructor = endpointClass.owner.constructors.single()
                 val bridgeConstructor = bridgeClass.constructors.single()
                 val serializationFactory = builder.generatedSerializationFactory(wasmline, runtimeSymbols) ?: return null
                 builder.irCallConstructor(bridgeConstructor.symbol, emptyList()).apply {
-                    arguments[0] = builder.irCallConstructor(endpointConstructor.symbol, emptyList()).apply {
-                        arguments[0] = wasmline
+                    arguments[0] = when (guestTransport) {
+                        WasmlineGuestTransport.CORE -> {
+                            val endpointClass = runtimeSymbols.generatedHostEndpointClass ?: return null
+                            val endpointConstructor = endpointClass.owner.constructors.single()
+                            builder.irCallConstructor(endpointConstructor.symbol, emptyList()).apply {
+                                arguments[0] = wasmline
+                            }
+                        }
+
+                        WasmlineGuestTransport.COMPONENT_RPC -> builder.irGetObject(
+                            runtimeSymbols.generatedComponentRpcEndpointObject ?: return null,
+                        )
+
+                        WasmlineGuestTransport.NONE -> return null
                     }
                     arguments[1] = builder.irNull()
                     arguments[2] = serializationFactory
@@ -110,6 +128,7 @@ internal class WasmlineTypedEntryPointRewriter(private val messageCollector: Mes
                 val bindGenerated = runtimeSymbols.hostBindGeneratedFunction ?: return null
                 val implementation = bindImplementationArgument(call, runtimeSymbols) ?: return null
                 val serializationFactory = builder.generatedSerializationFactory(wasmline, runtimeSymbols) ?: return null
+                rewrittenBindCalls += 1
                 builder.irInvoke(
                     null,
                     bindGenerated,
@@ -124,6 +143,7 @@ internal class WasmlineTypedEntryPointRewriter(private val messageCollector: Mes
                 val bindGenerated = runtimeSymbols.topLevelBindGeneratedFunction ?: return null
                 val implementation = bindImplementationArgument(call, runtimeSymbols) ?: return null
                 val serializationFactory = builder.currentGeneratedSerializationFactory(runtimeSymbols) ?: return null
+                rewrittenBindCalls += 1
                 builder.irInvoke(
                     null,
                     bindGenerated,

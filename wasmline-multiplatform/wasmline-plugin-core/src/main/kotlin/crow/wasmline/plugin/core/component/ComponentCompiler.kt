@@ -15,6 +15,7 @@ class ComponentCompiler internal constructor(private val runner: ComponentCompil
     fun compile(request: ComponentAotCompileRequest): ComponentAotCompileResult {
         validateRequest(request)
         verifyCompiler(request.wasmtimeCompiler, request.wasmtimeVersion)
+        verifyComponentCompileSupport(request.wasmtimeCompiler)
 
         val outputs = request.targets.map { target -> compileTarget(request, target) }
         return ComponentAotCompileResult(
@@ -67,6 +68,10 @@ class ComponentCompiler internal constructor(private val runner: ComponentCompil
     private fun verifyCompiler(executable: File, expectedVersion: String) {
         val versionOutput = runChecked(executable, listOf("--version")).output
         verifyToolVersion("wasmtime", versionOutput, expectedVersion)
+    }
+
+    private fun verifyComponentCompileSupport(executable: File) {
+        runChecked(executable, listOf("compile", "--help"))
     }
 
     private fun compileTarget(request: ComponentAotCompileRequest, target: ComponentAotTarget): ComponentAotCompileOutput {

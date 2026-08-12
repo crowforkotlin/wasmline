@@ -14,6 +14,8 @@ actual class Wasmline internal actual constructor(
     actual val config: WasmlineConfig,
     actual val descriptor: WasmlineArtifactDescriptor,
 ) {
+    internal actual val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
+    internal actual val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
 
     internal companion object {
         @JvmStatic private external fun nativeLoadAot(key: String, path: String): Boolean
@@ -43,6 +45,26 @@ actual class Wasmline internal actual constructor(
         @JvmStatic private external fun nativeInvokeRaw(key: String, exportName: String, arguments: ByteArray): ByteArray?
 
         @JvmStatic private external fun nativeInvokeComponent(key: String, exportName: String, arguments: ByteArray): ByteArray?
+
+        @JvmStatic private external fun nativeInstantiateComponent(
+            artifactKey: String,
+            instanceKey: String,
+            dispatcher: WasmlineComponentHostDispatcher,
+        ): Boolean
+
+        @JvmStatic
+        private external fun nativeInvokeComponentInstance(instanceKey: String, exportName: String, arguments: ByteArray): ByteArray?
+
+        @JvmStatic private external fun nativeReleaseComponentInstance(instanceKey: String)
+
+        @JvmStatic private external fun nativeDropComponentResource(instanceKey: String, resource: ByteArray): Boolean
+
+        @JvmStatic private external fun nativeCreateComponentHostResource(
+            instanceKey: String,
+            interfaceId: String,
+            resourceName: String,
+            representation: Int,
+        ): ByteArray?
 
         @JvmStatic private external fun nativeWarmup(usePulley: Boolean)
 
@@ -109,7 +131,33 @@ actual class Wasmline internal actual constructor(
     internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         decodeNativeCarrier(nativeInvokeComponent(moduleKey, exportName, arguments))
 
+    internal actual fun instantiateComponentInstance(instanceKey: String, dispatcher: WasmlineComponentHostDispatcher): Boolean =
+        nativeInstantiateComponent(moduleKey, instanceKey, dispatcher)
+
+    internal actual fun invokeComponentInstanceCarrier(
+        instanceKey: String,
+        exportName: String,
+        arguments: ByteArray,
+    ): WasmlineCallResult<ByteArray> = decodeNativeCarrier(nativeInvokeComponentInstance(instanceKey, exportName, arguments))
+
+    internal actual fun releaseComponentInstance(instanceKey: String) = nativeReleaseComponentInstance(instanceKey)
+
+    internal actual fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean {
+        val encoded = WasmlineTypedInvocationCodec.encodeComponentArguments(listOf(reference))
+        return encoded is WasmlineCallResult.Success && nativeDropComponentResource(instanceKey, encoded.value)
+    }
+
+    internal actual fun createComponentHostResource(
+        instanceKey: String,
+        interfaceId: String,
+        resourceName: String,
+        representation: UInt,
+    ): WasmlineCallResult<WasmlineComponentValue.ResourceValue> =
+        decodeResourceCarrier(nativeCreateComponentHostResource(instanceKey, interfaceId, resourceName, representation.toInt()))
+
     actual fun close() {
+        componentModuleState.close()
+        hostServiceRegistry.clear()
         nativeReleaseModule(moduleKey)
     }
 }
@@ -123,6 +171,30 @@ private fun decodeNativeCarrier(bytes: ByteArray?): WasmlineCallResult<ByteArray
     )
 } else {
     WasmlineCallResult.Success(bytes)
+}
+
+private fun decodeResourceCarrier(bytes: ByteArray?): WasmlineCallResult<WasmlineComponentValue.ResourceValue> =
+    when (val carrier = decodeNativeCarrier(bytes)) {
+        is WasmlineCallResult.Failure -> carrier
+
+        is WasmlineCallResult.Success -> when (val decoded = WasmlineTypedInvocationCodec.decodeComponentArguments(carrier.value)) {
+            is WasmlineCallResult.Failure -> decoded
+
+            is WasmlineCallResult.Success -> {
+                val resource = decoded.value.singleOrNull() as? WasmlineComponentValue.ResourceValue
+                if (resource != null) {
+                    WasmlineCallResult.Success(resource)
+                } else {
+                    WasmlineCallResult.Failure(
+                        WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is invalid."),
+                    )
+                }
+            }
+        }
+    }
+
+internal actual class WasmlineHostServiceLock {
+    actual fun <T> withLock(block: () -> T): T = synchronized(this, block)
 }
 
 @Volatile

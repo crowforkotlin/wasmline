@@ -1,0 +1,128 @@
+package crow.wasmline.sample.application
+
+import crow.wasmline.Wasmline
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineConfig
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.bind
+import crow.wasmline.link
+import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.sample.component.ComponentEchoRequest
+import crow.wasmline.sample.component.ComponentHostService
+import crow.wasmline.sample.component.ComponentPluginService
+import crow.wasmline.serialization.WasmlineSerializationConfig
+import crow.wasmline.wasmlineNativeRuntimeInfo
+import java.io.File
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class ComponentRpcServiceIntegrationTest {
+    @BeforeTest
+    fun bootstrap() {
+        WasmlineLoader.bootstrap()
+    }
+
+    @AfterTest
+    fun shutdown() {
+        WasmlineLoader.shutdown()
+    }
+
+    @Test
+    fun cwasmUsesGeneratedLinkBindInBothDirections() {
+        verifyGeneratedServiceRoundTrip(
+            artifact = File(requireNotNull(System.getProperty(CWASM_PROPERTY))),
+            format = WasmlineArtifactFormat.CWASM,
+        )
+    }
+
+    @Test
+    fun pwasmUsesGeneratedLinkBindInBothDirections() {
+        verifyGeneratedServiceRoundTrip(
+            artifact = File(requireNotNull(System.getProperty(PWASM_PROPERTY))),
+            format = WasmlineArtifactFormat.PWASM,
+        )
+    }
+
+    @Test
+    fun initializationAndRouterStateAreInstanceScoped() {
+        val artifact = File(requireNotNull(System.getProperty(CWASM_PROPERTY)))
+        val first = loadComponent(artifact, WasmlineArtifactFormat.CWASM)
+        val second = loadComponent(artifact, WasmlineArtifactFormat.CWASM)
+        try {
+            val firstService = first.link<ComponentPluginService>()
+            val secondService = second.link<ComponentPluginService>()
+
+            assertEquals(1, firstService.initializationCount())
+            assertEquals(1, firstService.initializationCount())
+            assertEquals(1, secondService.initializationCount())
+        } finally {
+            first.close()
+            second.close()
+        }
+    }
+
+    private fun verifyGeneratedServiceRoundTrip(artifact: File, format: WasmlineArtifactFormat) {
+        assertTrue(artifact.isFile, "Missing Component RPC fixture: ${artifact.absolutePath}")
+        val plugin = loadComponent(artifact, format)
+        try {
+            var callbacks = 0
+            plugin.bind(
+                object : ComponentHostService {
+                    override fun callback(payload: ByteArray): ByteArray {
+                        callbacks += 1
+                        return payload + byteArrayOf(9)
+                    }
+                },
+            )
+
+            val service = plugin.link<ComponentPluginService>()
+            assertEquals("plugin:hello", service.echo(ComponentEchoRequest("hello")).value)
+            assertContentEquals(byteArrayOf(1, 2, 9), service.callback(byteArrayOf(1, 2)))
+            assertEquals(1, callbacks)
+            assertContentEquals(ByteArray(0), service.empty())
+            assertEquals(1, service.initializationCount())
+        } finally {
+            plugin.close()
+        }
+    }
+
+    private fun loadComponent(artifact: File, format: WasmlineArtifactFormat): Wasmline {
+        val runtime = requireNotNull(wasmlineNativeRuntimeInfo())
+        val descriptor = WasmlineArtifactDescriptor(
+            path = artifact.absolutePath,
+            artifactFormat = format,
+            targetCpu = if (format == WasmlineArtifactFormat.PWASM) "pulley64" else runtime.targetCpu,
+            targetOs = if (format == WasmlineArtifactFormat.PWASM) null else runtime.targetOs,
+            targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
+            is64Bit = true,
+            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
+            contractMetadata = mapOf(
+                WasmlineComponentRpcContract.METADATA_PROFILE to WasmlineComponentRpcContract.PROFILE,
+                WasmlineComponentRpcContract.METADATA_WIT_PACKAGE to WasmlineComponentRpcContract.WIT_PACKAGE,
+                WasmlineComponentRpcContract.METADATA_CODEC to WasmlineComponentRpcContract.DEFAULT_CODEC,
+                WasmlineComponentRpcContract.METADATA_VERSION to WasmlineComponentRpcContract.VERSION,
+            ),
+        )
+        val result = WasmlineLoader.load(
+            descriptor = descriptor,
+            config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+        )
+        return (result as? WasmlineLoadResult.Success)?.wasmline
+            ?: error("Unable to load Component RPC fixture: $result")
+    }
+
+    private companion object {
+        const val CWASM_PROPERTY = "wasmline.test.componentRpc.cwasm"
+        const val PWASM_PROPERTY = "wasmline.test.componentRpc.pwasm"
+    }
+}

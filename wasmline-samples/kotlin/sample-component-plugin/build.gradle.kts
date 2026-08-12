@@ -1,6 +1,7 @@
 @file:Suppress("OPT_IN_USAGE")
 
 import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 
 val configuredWasmtimeCompiler = System.getenv("WASMTIME_COMPILER")
 
@@ -24,6 +25,7 @@ kotlin {
 
     sourceSets {
         wasmWasiMain.dependencies {
+            implementation(projects.sampleCommon)
             implementation(libs.kotlin.stdlib)
             implementation(libs.kotlinx.serialization.protobuf)
         }
@@ -36,15 +38,13 @@ wasmline {
         version = "1.0.0"
         signingKey = file("../keys/private.key")
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL
+        invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC
         exportName = "plugin/invoke"
     }
     wasmtime {
         configuredWasmtimeCompiler?.let { compilerExecutable.set(file(it)) }
     }
     component {
-        witDirectory = layout.projectDirectory.dir("wit")
-        world = "plugin"
-        kotlinImports = "impl.*"
         codec = "protobuf"
         rpcProtocolVersion = "1"
     }

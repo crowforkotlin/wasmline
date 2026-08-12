@@ -23,6 +23,8 @@ interface WasmTools {
     fun validate(component: File): ToolExecutionResult
 
     fun inspectWit(component: File): String
+
+    fun printCoreModule(module: File): String
 }
 
 /** Typed wrapper around the wasm-tools Component Model commands. */
@@ -45,6 +47,7 @@ class WasmToolsTool(private val executable: File, private val runner: ExternalTo
             listOf("component", "new", "--help"),
             listOf("validate", "--help"),
             listOf("component", "wit", "--help"),
+            listOf("print", "--help"),
         ).forEach { arguments -> silentRunner.run(executable, arguments) }
         return output
     }
@@ -98,6 +101,12 @@ class WasmToolsTool(private val executable: File, private val runner: ExternalTo
     override fun inspectWit(component: File): String {
         require(component.isFile) { "Component Wasm does not exist: " + component.absolutePath }
         return silentRunner.run(executable, listOf("component", "wit", component.absolutePath)).output
+    }
+
+    /** Prints a Core Wasm module as WAT for static import/export validation. */
+    override fun printCoreModule(module: File): String {
+        require(module.isFile) { "Core Wasm module does not exist: " + module.absolutePath }
+        return silentRunner.run(executable, listOf("print", module.absolutePath)).output
     }
 
     private fun requireOutput(output: File, operation: String) {

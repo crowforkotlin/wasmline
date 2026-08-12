@@ -272,6 +272,16 @@ internal object WasmlineTypedInvocationCodec {
                     writeComponentValue(writer, it.value, depth + 1)
                 }
             }
+
+            is WasmlineComponentValue.ResourceValue -> {
+                writer.byte(22)
+                writer.string(value.instanceKey)
+                writer.u32(value.typeId.toLong())
+                writer.u64(value.handleId)
+                writer.u32(value.generation.toLong())
+                writer.byte(if (value.ownership == WasmlineComponentResourceOwnership.OWN) 0 else 1)
+                writer.byte(if (value.origin == WasmlineComponentResourceOrigin.GUEST) 0 else 1)
+            }
         }
     }
 
@@ -338,6 +348,7 @@ internal object WasmlineTypedInvocationCodec {
             19 -> readResult(reader, depth)
             20 -> readFlags(reader)?.let(WasmlineComponentValue::FlagsValue)
             21 -> readMap(reader, depth)?.let(WasmlineComponentValue::MapValue)
+            22 -> readResource(reader)
             else -> reader.fail("Typed invocation value tag is unknown.")
         }
     }
@@ -402,6 +413,28 @@ internal object WasmlineTypedInvocationCodec {
             entries += WasmlineComponentValue.MapEntry(key, value)
         }
         return entries
+    }
+
+    private fun readResource(reader: Reader): WasmlineComponentValue.ResourceValue? {
+        val instanceKey = reader.string() ?: return null
+        val typeId = reader.u32()?.toUInt() ?: return null
+        val handleId = reader.u64() ?: return null
+        val generation = reader.u32()?.toUInt() ?: return null
+        val ownership = when (reader.byte()) {
+            0 -> WasmlineComponentResourceOwnership.OWN
+            1 -> WasmlineComponentResourceOwnership.BORROW
+            else -> return reader.fail("Component resource ownership marker is invalid.")
+        }
+        val origin = when (reader.byte()) {
+            0 -> WasmlineComponentResourceOrigin.GUEST
+            1 -> WasmlineComponentResourceOrigin.HOST
+            else -> return reader.fail("Component resource origin marker is invalid.")
+        }
+        return try {
+            WasmlineComponentValue.ResourceValue(instanceKey, typeId, handleId, generation, ownership, origin)
+        } catch (error: IllegalArgumentException) {
+            reader.fail(error.message ?: "Component resource reference is invalid.")
+        }
     }
 
     private data class Header(val status: Int, val valueCount: Long, val error: WasmlineCallError)

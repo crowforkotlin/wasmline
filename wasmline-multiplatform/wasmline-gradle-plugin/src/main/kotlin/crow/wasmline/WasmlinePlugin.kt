@@ -9,6 +9,7 @@ import crow.wasmline.gradle.tasks.DownloadWasmtimeTask
 import crow.wasmline.gradle.tasks.WasmlineAssembleTask
 import crow.wasmline.gradle.tasks.WasmlineComponentAotTask
 import crow.wasmline.gradle.tasks.WasmlineComponentizeTask
+import crow.wasmline.gradle.tasks.WasmlineGenerateHostWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineServerDeployTask
 import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
@@ -23,6 +24,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
@@ -86,15 +88,15 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> =
         kotlinCompilation.target.project.provider {
             val extension = kotlinCompilation.target.project.extensions.getByType(WasmlineExtension::class.java)
-            val compilerPluginEnabled = extension.manifest.executionModel.get() != WasmlineExecutionModel.COMPONENT_MODEL
+            val guestTransport = resolveGuestTransport(
+                compilation = kotlinCompilation,
+                executionModel = extension.manifest.executionModel.get(),
+                invocationProtocol = extension.manifest.invocationProtocol.get(),
+            )
             listOf(
                 SubpluginOption(
-                    key = ENABLE_COMPILER_PLUGIN_OPTION,
-                    value = compilerPluginEnabled.toString(),
-                ),
-                SubpluginOption(
-                    key = ENABLE_WASI_INIT_EXPORT_OPTION,
-                    value = (compilerPluginEnabled && shouldEnableWasiInitExport(kotlinCompilation)).toString(),
+                    key = GUEST_TRANSPORT_OPTION,
+                    value = guestTransport,
                 ),
             )
         }
@@ -107,7 +109,12 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
         // 2. Get Kotlin multiplatform extension if available
         val kotlinExtension = target.extensions.findByType(KotlinMultiplatformExtension::class.java)
-            ?: return
+        val kotlinJvmExtension = target.extensions.findByType(KotlinJvmProjectExtension::class.java)
+
+        target.afterEvaluate {
+            configureHostBindings(target, extension, kotlinExtension, kotlinJvmExtension)
+        }
+        if (kotlinExtension == null) return
 
         val wasiTasksRegistered = AtomicBoolean(false)
         target.afterEvaluate {
@@ -408,16 +415,66 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     ) { task ->
         task.group = "wasmline"
         task.description = "Generate Kotlin Component bindings from WIT"
-        task.witDirectory.set(ext.component.witDirectory)
-        task.outputDirectory.set(ext.component.generatedSourcesDirectory)
+        if (ext.manifest.invocationProtocol.get() != WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
+            task.witDirectory.set(ext.component.witDirectory)
+        }
+        task.outputDirectory.set(
+            ext.manifest.invocationProtocol.flatMap { protocol ->
+                if (protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
+                    project.layout.buildDirectory.dir("generated/wasmline/component-rpc")
+                } else {
+                    ext.component.generatedSourcesDirectory
+                }
+            },
+        )
         task.world.set(ext.component.world)
         task.kotlinImports.set(ext.component.kotlinImports)
+        task.invocationProtocol.set(ext.manifest.invocationProtocol)
         task.witBindgenVersion.set(ext.component.witBindgenVersion)
         task.platform.convention(detectCurrentPlatform())
         task.autoDownload.set(ext.component.autoDownload)
         task.witBindgenExecutable.set(ext.component.witBindgenExecutable)
         task.toolCacheDirectory.set(ext.component.toolCacheDirectory)
         task.githubToken.set(ext.wasmtime.githubToken)
+    }
+
+    private fun configureHostBindings(
+        project: Project,
+        ext: WasmlineExtension,
+        kotlinExtension: KotlinMultiplatformExtension?,
+        kotlinJvmExtension: KotlinJvmProjectExtension?,
+    ) {
+        if (!ext.component.hostBindingsEnabled.get()) return
+        val task = project.tasks.register(
+            "wasmlineGenerateHostWitBindings",
+            WasmlineGenerateHostWitBindingsTask::class.java,
+        ) { generation ->
+            generation.group = "wasmline"
+            generation.description = "Generate Kotlin Host facades from the configured WIT world"
+            generation.witDirectory.set(ext.component.witDirectory)
+            generation.outputDirectory.set(ext.component.hostGeneratedSourcesDirectory)
+            generation.world.set(ext.component.world)
+            generation.kotlinPackage.set(ext.component.hostKotlinPackage)
+            generation.resourceSupport.set(ext.component.hostResourceSupport)
+        }
+        if (kotlinExtension != null) {
+            val sourceSetName = ext.component.hostSourceSet.get()
+            val sourceSet = kotlinExtension.sourceSets.findByName(sourceSetName)
+                ?: throw GradleException(
+                    "Wasmline Host WIT source set '$sourceSetName' does not exist. " +
+                        "Set component.hostSourceSet to a Host Kotlin source set.",
+                )
+            sourceSet.kotlin.srcDir(task.flatMap { it.outputDirectory })
+            project.tasks.matching { compilationTask ->
+                compilationTask.name.startsWith("compile", ignoreCase = true) &&
+                    compilationTask.name.contains(sourceSetName.removeSuffix("Main"), ignoreCase = true)
+            }.configureEach { it.dependsOn(task) }
+        } else if (kotlinJvmExtension != null) {
+            kotlinJvmExtension.sourceSets.getByName("main").kotlin.srcDir(task.flatMap { it.outputDirectory })
+            project.tasks.matching { it.name == "compileKotlin" }.configureEach { it.dependsOn(task) }
+        } else {
+            throw GradleException("Wasmline Host WIT generation requires a Kotlin JVM or Kotlin Multiplatform project.")
+        }
     }
 
     internal fun configureAssembleTaskGraph(project: Project, ext: WasmlineExtension) {
@@ -514,7 +571,8 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.outputDirectory.set(ext.component.outputDirectory.dir(variantName))
             task.productName.set(ext.manifest.pluginId.map { id -> id.substringAfterLast('.') })
             task.world.set(ext.component.world)
-            task.exportName.set(ext.component.exportName)
+            task.invocationProtocol.set(ext.manifest.invocationProtocol)
+            task.exportName.set(ext.component.exportName.orElse(ext.manifest.exportName))
             task.codec.set(ext.component.codec)
             task.rpcProtocolVersion.set(ext.component.rpcProtocolVersion)
             task.witBindgenVersion.set(ext.component.witBindgenVersion)
@@ -603,8 +661,21 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
                         "compileSync/wasmWasi/main/$libraryDir/optimized",
                     ),
                 )
-                componentizeTask.witDirectory.set(ext.component.witDirectory)
+                val generatedBindings = project.tasks.named(
+                    "wasmlineGenerateWitBindings",
+                    WasmlineGenerateWitBindingsTask::class.java,
+                )
+                componentizeTask.witDirectory.set(
+                    ext.manifest.invocationProtocol.flatMap { protocol ->
+                        if (protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
+                            generatedBindings.flatMap { it.outputDirectory.dir("wit") }
+                        } else {
+                            ext.component.witDirectory
+                        }
+                    },
+                )
                 componentizeTask.dependsOn(compileTaskName)
+                componentizeTask.dependsOn(generatedBindings)
             }
         }
     }
@@ -674,9 +745,30 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
     // ==================== Existing helpers ====================
 
-    private fun shouldEnableWasiInitExport(kotlinCompilation: KotlinCompilation<*>): Boolean =
+    private fun isWasmWasiCompilation(kotlinCompilation: KotlinCompilation<*>): Boolean =
         kotlinCompilation.target.platformType == KotlinPlatformType.wasm &&
             kotlinCompilation.defaultSourceSet.name == "wasmWasiMain"
+
+    private fun resolveGuestTransport(
+        compilation: KotlinCompilation<*>,
+        executionModel: WasmlineExecutionModel,
+        invocationProtocol: WasmlineInvocationProtocol,
+    ): String = when (executionModel) {
+        WasmlineExecutionModel.CORE_WASM -> when (invocationProtocol) {
+            WasmlineInvocationProtocol.WASMLINE_CORE -> "CORE"
+            WasmlineInvocationProtocol.RAW_EXPORT -> "NONE"
+            else -> throw GradleException("CORE_WASM cannot use invocation protocol $invocationProtocol.")
+        }
+
+        WasmlineExecutionModel.COMPONENT_MODEL -> when (invocationProtocol) {
+            WasmlineInvocationProtocol.COMPONENT_EXPORT -> "NONE"
+
+            WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC ->
+                if (isWasmWasiCompilation(compilation)) "COMPONENT_RPC" else "NONE"
+
+            else -> throw GradleException("COMPONENT_MODEL cannot use invocation protocol $invocationProtocol.")
+        }
+    }
 
     private fun manifestToolClasspathPriority(file: File): Int = when {
         file.name.startsWith("kotlinx-serialization-core") -> 0
@@ -702,8 +794,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     }
 
     private companion object {
-        const val ENABLE_COMPILER_PLUGIN_OPTION = "enabled"
-        const val ENABLE_WASI_INIT_EXPORT_OPTION = "enableWasiInitExport"
+        const val GUEST_TRANSPORT_OPTION = "guestTransport"
     }
 
     @Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER") // Access :zipline-loader internals.

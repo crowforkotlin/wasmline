@@ -4,11 +4,7 @@ package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineEndpoint
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
-import crow.wasmline.internal.bridge.WasmlineHostDispatcher
-import crow.wasmline.internal.protocol.WasmlineResponseCodec
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
-import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.serialization.WasmlineSerializationFactory
 import crow.wasmline.serialization.WasmlineSerializationRegistry
 import kotlin.reflect.KClass
@@ -26,12 +22,14 @@ internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFact
 
 @PublishedApi
 internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
-    val handlers = linkedMapOf<String, (ByteArray) -> ByteArray>()
-    bridge.bind { action, handler ->
-        check(action !in handlers) { "Action '$action' is already bound in this Wasmline binding scope." }
-        handlers[action] = handler
+    require(
+        descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_CORE ||
+            descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+    ) {
+        "Generated Wasmline services require WASMLINE_CORE or WASMLINE_COMPONENT_RPC, not " +
+            descriptor.invocationProtocol + "."
     }
-    setOutbound(handlers.toHostDispatcher())
+    if (hostServiceRegistry.registerAll(bridge)) setOutbound(hostServiceRegistry.dispatcher)
 }
 
 fun <T : WasmlineService> Wasmline.link(): T {
@@ -52,33 +50,4 @@ fun <T : WasmlineService> Wasmline.bind(contract: KClass<T>, implementation: T) 
  */
 fun Wasmline.bind(implementation: WasmlineService) {
     error("Wasmline compiler plugin is not applied or failed to replace Wasmline.bind(implementation).")
-}
-
-private fun Map<String, (ByteArray) -> ByteArray>.toHostDispatcher(): WasmlineHostDispatcher = WasmlineHostDispatcher { action, payload ->
-    val handler = this[action]
-    if (handler == null) {
-        val error = if (isEmpty()) {
-            WasmlineCallError(
-                code = WasmlineErrorCode.ACTION_NOT_BOUND,
-                message = "No Wasmline action is bound.",
-            )
-        } else {
-            WasmlineCallError(
-                code = WasmlineErrorCode.UNKNOWN_ACTION,
-                message = "Wasmline action is not registered: $action.",
-            )
-        }
-        return@WasmlineHostDispatcher WasmlineResponseCodec.encodeFailure(error)
-    }
-
-    return@WasmlineHostDispatcher try {
-        handler(payload)
-    } catch (error: Throwable) {
-        WasmlineResponseCodec.encodeFailure(
-            WasmlineCallError(
-                code = WasmlineErrorCode.HANDLER_FAILED,
-                message = error.message ?: "Wasmline action handler failed.",
-            ),
-        )
-    }
 }
