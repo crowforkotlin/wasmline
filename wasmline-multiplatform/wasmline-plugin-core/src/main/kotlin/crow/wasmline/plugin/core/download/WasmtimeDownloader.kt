@@ -1,5 +1,6 @@
 package crow.wasmline.plugin.core.download
 
+import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.util.PlatformDetector
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -166,7 +167,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         }
 
         // Confirm that the extracted files contain Wasmtime.
-        val wasmtimeExecutable = findWasmtimeExecutable(targetFolder, distribution)
+        val wasmtimeExecutable = findExtractedWasmtimeExecutable(targetFolder, distribution)
             ?: throw IllegalStateException(
                 "Downloaded asset '$fileName' did not contain wasmtime executable",
             )
@@ -300,20 +301,6 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         }
     }
 
-    /** Finds a Wasmtime executable in an extracted release. */
-    private fun findWasmtimeExecutable(directory: File, distribution: WasmtimeDistribution): File? {
-        val isWindows = System.getProperty("os.name").lowercase().contains("win")
-        val targetName = when (distribution) {
-            WasmtimeDistribution.MINIMAL -> if (isWindows) "wasmtime-min.exe" else "wasmtime-min"
-            WasmtimeDistribution.FULL -> if (isWindows) "wasmtime.exe" else "wasmtime"
-        }
-        return directory.walk()
-            .firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
-            ?.also {
-                if (!isWindows) it.setExecutable(true)
-            }
-    }
-
     /** Resolves release metadata from GitHub. */
     private suspend fun resolveRelease(version: String, githubToken: String? = null): JsonObject {
         val urls = if (version == "latest") {
@@ -382,4 +369,10 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
             "release-$raw",
         ).distinct()
     }
+}
+
+/** Finds the expected Wasmtime executable inside an extracted release directory. */
+internal fun findExtractedWasmtimeExecutable(directory: File, distribution: WasmtimeDistribution): File? = when (distribution) {
+    WasmtimeDistribution.MINIMAL -> WasmtimeCompiler.findWasmtimeExecutable(directory)
+    WasmtimeDistribution.FULL -> WasmtimeCompiler.findWasmtimeCompilerExecutable(directory)
 }
