@@ -81,9 +81,9 @@ internal object BrowserWasmlineRuntime {
 
                 override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =
                     if (descriptor.executionModel != WasmlineExecutionModel.CORE_WASM ||
-                        descriptor.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_CORE
+                        descriptor.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_SERVICE
                     ) {
-                        "Browser host supports only CORE_WASM with WASMLINE_CORE."
+                        "Browser host supports only CORE_WASM with WASMLINE_SERVICE."
                     } else {
                         null
                     }

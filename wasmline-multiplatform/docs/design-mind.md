@@ -251,6 +251,6 @@
     - Factory id is part of the binary protocol — must be stable across versions
 
 - Web payload encoding (deprecated)
-  - BrowserPayloadEncoding: ByteArray ↔ Base64 conversion (removed in Phase 2 refactor)
+  - BrowserPayloadEncoding: ByteArray ↔ Base64 conversion (removed when direct ByteArray transmission replaced Base64 encoding)
   - Replaced with direct ByteArray transmission through Kotlin layer
   - Fetch API-based artifact loading replaces synchronous XHR

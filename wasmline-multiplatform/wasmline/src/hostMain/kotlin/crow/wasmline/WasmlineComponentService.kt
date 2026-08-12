@@ -1,5 +1,5 @@
 /**
- * Adapts the Wasmline byte protocol to the fixed wasmline:rpc Component interface.
+ * Adapts the Wasmline byte protocol to the fixed wasmline:service Component interface.
  *
  * Date: 2026-08-05
  * Author: crowforkotlin
@@ -10,8 +10,8 @@ import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
-internal object WasmlineComponentRpc {
-    const val DEFAULT_EXPORT = WasmlineComponentRpcContract.DEFAULT_EXPORT
+internal object WasmlineComponentService {
+    const val DEFAULT_EXPORT = WasmlineComponentServiceContract.DEFAULT_EXPORT
 
     fun invoke(wasmline: Wasmline, action: String, payload: ByteArray): WasmlineCallResult<ByteArray> {
         contractFailure(wasmline)?.let { return it }
@@ -38,30 +38,30 @@ internal object WasmlineComponentRpc {
 
     private fun contractFailure(wasmline: Wasmline): WasmlineCallResult.Failure? {
         val metadata = wasmline.descriptor.contractMetadata
-        val version = metadata[WasmlineComponentRpcContract.METADATA_VERSION]
-        if (version != null && version != WasmlineComponentRpcContract.VERSION) {
+        val version = metadata[WasmlineComponentServiceContract.METADATA_VERSION]
+        if (version != null && version != WasmlineComponentServiceContract.VERSION) {
             return WasmlineCallResult.Failure(
                 WasmlineCallError(
                     code = WasmlineErrorCode.RESPONSE_UNSUPPORTED_VERSION,
-                    message = "Unsupported Wasmline Component RPC version '$version'.",
+                    message = "Unsupported Wasmline Service version '$version'.",
                 ),
             )
         }
-        val profile = metadata[WasmlineComponentRpcContract.METADATA_PROFILE]
-        if (profile != null && profile != WasmlineComponentRpcContract.PROFILE) {
+        val profile = metadata[WasmlineComponentServiceContract.METADATA_PROFILE]
+        if (profile != null && profile != WasmlineComponentServiceContract.PROFILE) {
             return WasmlineCallResult.Failure(
                 WasmlineCallError(
                     code = WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH,
-                    message = "Unsupported Wasmline Component RPC profile '$profile'.",
+                    message = "Unsupported Wasmline Service profile '$profile'.",
                 ),
             )
         }
-        val codec = metadata[WasmlineComponentRpcContract.METADATA_CODEC]
+        val codec = metadata[WasmlineComponentServiceContract.METADATA_CODEC]
         if (codec != null && codec != wasmline.config.serialization.factoryId) {
             return WasmlineCallResult.Failure(
                 WasmlineCallError(
                     code = WasmlineErrorCode.SERIALIZATION_FAILED,
-                    message = "Wasmline Component RPC codec mismatch. Expected '$codec' but host uses '" +
+                    message = "Wasmline Service codec mismatch. Expected '$codec' but host uses '" +
                         wasmline.config.serialization.factoryId + "'.",
                 ),
             )
@@ -71,10 +71,10 @@ internal object WasmlineComponentRpc {
 
     internal fun decode(result: WasmlineComponentCallResult): WasmlineCallResult<ByteArray> {
         if (result.values.size != 1) return malformed("Wasmline Component invoke must return exactly one result.")
-        val rpcResult = result.values.single() as? WasmlineComponentValue.ResultValue
+        val serviceResult = result.values.single() as? WasmlineComponentValue.ResultValue
             ?: return malformed("Wasmline Component invoke result is not a WIT result value.")
-        val value = rpcResult.value ?: return malformed("Wasmline Component invoke result has no payload.")
-        return if (rpcResult.isOk) {
+        val value = serviceResult.value ?: return malformed("Wasmline Component invoke result has no payload.")
+        return if (serviceResult.isOk) {
             value.toByteArrayOrNull()?.let { WasmlineCallResult.Success(value = it) }
                 ?: malformed("Wasmline Component success payload is not list<u8>.")
         } else {
@@ -84,13 +84,13 @@ internal object WasmlineComponentRpc {
 
     private fun decodeError(value: WasmlineComponentValue): WasmlineCallResult.Failure {
         val record = value as? WasmlineComponentValue.RecordValue
-            ?: return malformed("Wasmline Component error payload is not rpc-error.")
+            ?: return malformed("Wasmline Component error payload is not service-error.")
         val code = record.field("code") as? WasmlineComponentValue.StringValue
-            ?: return malformed("Wasmline Component rpc-error.code is not a string.")
+            ?: return malformed("Wasmline Component service-error.code is not a string.")
         val message = record.field("message") as? WasmlineComponentValue.StringValue
-            ?: return malformed("Wasmline Component rpc-error.message is not a string.")
+            ?: return malformed("Wasmline Component service-error.message is not a string.")
         val details = record.field("details")?.toByteArrayOrNull()
-            ?: return malformed("Wasmline Component rpc-error.details is not list<u8>.")
+            ?: return malformed("Wasmline Component service-error.details is not list<u8>.")
         val rawCode = code.value.toIntOrNull()
         val errorCode = rawCode?.let(WasmlineErrorCode::fromValue) ?: code.value.toErrorCode()
         return WasmlineCallResult.Failure(

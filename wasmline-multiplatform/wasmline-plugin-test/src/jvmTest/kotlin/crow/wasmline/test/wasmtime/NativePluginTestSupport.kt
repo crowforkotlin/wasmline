@@ -42,7 +42,7 @@ internal object NativePluginTestSupport {
                     targetCompilerVersion = "wasmtime-47.0.2",
                     is64Bit = true,
                     executionModel = WasmlineExecutionModel.CORE_WASM,
-                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
                 ),
                 config = WasmlineConfig(supportConcurrent = supportConcurrent),
             )

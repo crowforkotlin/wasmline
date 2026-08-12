@@ -121,7 +121,7 @@ private fun loadDirectArtifact(path: String, config: WasmlineConfig): WasmlineLo
                 WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.RAW_WASM -> runtime?.is64Bit
             },
             executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
         ),
         config = config,
     )

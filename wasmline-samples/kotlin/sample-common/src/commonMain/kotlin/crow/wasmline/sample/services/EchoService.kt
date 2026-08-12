@@ -3,7 +3,7 @@ package crow.wasmline.sample.ir
 import crow.wasmline.WasmlineService
 
 /*
- * Copy-ready phase-one Wasmline IR fixture.
+ * Copy-ready Wasmline IR fixture.
  *
  * Uncomment and adapt locally when you want to smoke-test the compiler plugin:
  *
@@ -19,4 +19,3 @@ interface EchoService : WasmlineService {
 class EchoServiceImpl : EchoService {
     override fun echo() {}
 }
-

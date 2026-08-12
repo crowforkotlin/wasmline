@@ -1,28 +1,28 @@
 ---
-title: Component RPC
+title: Wasmline Service
 description: WIT envelope, Component build pipeline, and cross-language callbacks
 ---
 
-# Component RPC
+# Wasmline Service
 
-Wasmline's first Component contract is the fixed `wasmline:rpc@1.0.0` world. WIT
+Wasmline's first Component contract is the fixed `wasmline:service@1.0.0` world. WIT
 defines the Component boundary and Canonical ABI; the `payload: list<u8>` field
 still carries the selected Wasmline serialization bytes.
 
 ```wit
-package wasmline:rpc@1.0.0;
+package wasmline:service@1.0.0;
 
 world plugin {
   import host: interface {
     record request { action: string, codec: string, payload: list<u8> }
-    record rpc-error { code: string, message: string, details: list<u8> }
-    invoke: func(request: request) -> result<list<u8>, rpc-error>
+    record service-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, service-error>
   }
 
   export plugin: interface {
     record request { action: string, codec: string, payload: list<u8> }
-    record rpc-error { code: string, message: string, details: list<u8> }
-    invoke: func(request: request) -> result<list<u8>, rpc-error>
+    record service-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, service-error>
   }
 }
 ```
@@ -36,7 +36,7 @@ For the Kotlin/Wasm WASI sample, the build order is:
 3. `wasm-tools component embed` embeds the WIT world.
 4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` creates the raw Component.
 5. `wasm-tools validate` and `wasm-tools component wit` verify the result.
-6. The manifest records `COMPONENT_MODEL`, `COMPONENT_EXPORT`, the export path, codec, protocol version, and artifact digest.
+6. The manifest records `COMPONENT_MODEL`, `WASMLINE_SERVICE`, the fixed export path, codec, protocol version, and artifact digest.
 
 The Gradle entry point is `wasmlineAssembleDebug` or
 `wasmlineAssembleRelease`. The CLI exposes the same shared plugin-core stages
@@ -65,7 +65,7 @@ of these flows patches Wasmtime, `wit-bindgen`, or the canonical WIT source.
 | Kotlin | `wit-bindgen kotlin --world plugin` | `PluginImpl.invoke` | `Host.Import.invoke` |
 | Rust | `wit_bindgen::generate!({ world: "plugin" })` | `exports::plugin::Guest::invoke` | `host::invoke` |
 | C | `wit-bindgen c --world plugin` | `plugin_invoke` | `host_invoke` |
-| C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::rpc::Invoke` | `wasmline::rpc::Invoke` |
+| C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::service::Invoke` | `wasmline::service::Invoke` |
 
 Generated source and Component type objects remain build outputs. The C and
 C++ fixtures enforce `wit-bindgen 0.57.1` and `wasm-tools 1.255.0` at CMake
@@ -81,9 +81,9 @@ runtime:
 ```shell
 cd wasmline-multiplatform
 WASMLINE_LIVE_TESTS=1 \
-WASMLINE_TEST_COMPONENT_RPC=/absolute/path/to/plugin.component.wasm \
+WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.component.wasm \
 ./gradlew :wasmline:jvmTest \
-  --tests 'crow.wasmline.test.wasmtime.NativeComponentRpcIntegrationTest' \
+  --tests 'crow.wasmline.test.wasmtime.NativeComponentServiceIntegrationTest' \
   --rerun-tasks --console=plain
 ```
 
@@ -112,7 +112,7 @@ Matching only the `protobuf` label is not enough.
 The generated guest binding calls the WIT import `host.invoke`. Wasmline's
 Component session registers that import and maps its `action`, `codec`, and
 `payload` fields to the existing `HostDispatcher`. The dispatcher response is
-converted back to `result<list<u8>, rpc-error>` by the runtime.
+converted back to `result<list<u8>, service-error>` by the runtime.
 
 Therefore a Rust, C, C++, or Kotlin Component plugin implements the WIT world,
 not these Core Wasm-only imports:
@@ -126,7 +126,7 @@ The plugin still needs the generated language binding and a WIT `host.invoke`
 call. That binding is the portable Component contract; the Wasmline host owns
 the adapter into its dispatcher. The Kotlin, Rust, C, and C++ fixtures all
 exercise `sample.callback` through their generated host import and propagate
-the WIT success or `rpc-error` back through the plugin export.
+the WIT success or `service-error` back through the plugin export.
 
 The native Wasmtime backend supports this Component path. Browser targets still
 advertise only the Core Wasmline bridge and reject Component descriptors during

@@ -111,12 +111,13 @@ module.close()
 
 ## Execution Models and Call Results
 
-Wasmline supports three explicit host-side invocation paths:
+Wasmline supports four explicit host-side invocation paths:
 
 | Execution model | Invocation protocol | Input | Result |
 |---|---|---|---|
-| `CORE_WASM` | `WASMLINE_CORE` | action name and byte payload | `WasmlineCallResult<ByteArray>` |
+| `CORE_WASM` | `WASMLINE_SERVICE` | action name and byte payload | `WasmlineCallResult<ByteArray>` |
 | `CORE_WASM` | `RAW_EXPORT` | declared Core Wasm numeric values | `WasmlineCallResult<WasmlineRawCallResult>` |
+| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | action name and byte payload through `wasmline.wit` | `WasmlineCallResult<ByteArray>` |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | declared Component Model values | `WasmlineCallResult<WasmlineComponentCallResult>` |
 
 The runtime side of the Component Model path loads an already compiled component
@@ -124,7 +125,7 @@ binary. The optional plugin build pipeline can generate bindings and create that
 binary from WIT through `wasmline-plugin-core`, the Gradle plugin, or the CLI;
 the loader itself does not run those tools. `contractMetadata` describes the
 call contract when needed; it is not a WIT compiler input. See the
-[Component RPC guide](docs/content/docs/component-rpc.mdx).
+[Wasmline Service guide](docs/content/docs/component-service.mdx).
 
 The current browser runtime supports the Core Wasmline bridge. Raw Export and Component Model typed calls are provided by the native host backend, where the Wasmtime C API is available.
 
@@ -148,7 +149,7 @@ when (val result = module.callResult("echo", payload)) {
 
 An unbound action returns `ACTION_NOT_BOUND`. It does not return an empty payload and does not crash the host. The same result-first rule applies to unknown actions, invalid payloads, traps, and handler failures. `throwOnFailure()` is an explicit adapter for code that chooses exception-style handling; it is not used by the result API by default.
 
-The `WASMLINE_CORE` response frame starts with the four-byte `WLMF` magic marker and a one-byte `frameVersion` whose current value is `1`. The magic marker identifies the frame format; it is not a security check. `frameVersion` identifies the response byte layout; it is not a Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not use this Core response frame.
+The `WASMLINE_SERVICE` response frame starts with the four-byte `WLMF` magic marker and a one-byte `frameVersion` whose current value is `1`. The magic marker identifies the frame format; it is not a security check. `frameVersion` identifies the response byte layout; it is not a Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not use this Core response frame.
 
 For direct calls, the descriptor must declare both the execution model and protocol:
 

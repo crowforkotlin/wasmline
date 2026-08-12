@@ -38,7 +38,7 @@ wasmline {
         version = "1.0.0"
         signingKey = file("../keys/private.key")
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL
-        invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC
+        invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE
         exportName = "plugin/invoke"
     }
     wasmtime {
@@ -46,6 +46,6 @@ wasmline {
     }
     component {
         codec = "protobuf"
-        rpcProtocolVersion = "1"
+        serviceProtocolVersion = "1"
     }
 }

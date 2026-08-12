@@ -11,14 +11,14 @@ import kotlin.test.assertTrue
 class WasmlineCommandLineProcessorTest {
 
     @Test
-    fun guestTransportOptionSelectsComponentRpc() {
+    fun guestTransportOptionSelectsComponentService() {
         val processor = WasmlineCommandLineProcessor()
         val option = processor.pluginOptions.single { it.optionName == GUEST_TRANSPORT_OPTION_NAME }
         val configuration = CompilerConfiguration()
 
-        processor.processOption(option, "component_rpc", configuration)
+        processor.processOption(option, "component_service", configuration)
 
-        assertEquals(WasmlineGuestTransport.COMPONENT_RPC, configuration.get(GUEST_TRANSPORT_OPTION))
+        assertEquals(WasmlineGuestTransport.COMPONENT_SERVICE, configuration.get(GUEST_TRANSPORT_OPTION))
     }
 
     @Test

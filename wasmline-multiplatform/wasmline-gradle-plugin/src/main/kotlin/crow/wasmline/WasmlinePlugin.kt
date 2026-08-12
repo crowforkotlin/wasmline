@@ -415,13 +415,18 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     ) { task ->
         task.group = "wasmline"
         task.description = "Generate Kotlin Component bindings from WIT"
-        if (ext.manifest.invocationProtocol.get() != WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
+        val componentService = ext.manifest.executionModel.get() == WasmlineExecutionModel.COMPONENT_MODEL &&
+            ext.manifest.invocationProtocol.get() == WasmlineInvocationProtocol.WASMLINE_SERVICE
+        if (!componentService) {
             task.witDirectory.set(ext.component.witDirectory)
         }
         task.outputDirectory.set(
-            ext.manifest.invocationProtocol.flatMap { protocol ->
-                if (protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
-                    project.layout.buildDirectory.dir("generated/wasmline/component-rpc")
+            ext.manifest.executionModel.zip(ext.manifest.invocationProtocol) { model, protocol ->
+                model == WasmlineExecutionModel.COMPONENT_MODEL &&
+                    protocol == WasmlineInvocationProtocol.WASMLINE_SERVICE
+            }.flatMap { isComponentService ->
+                if (isComponentService) {
+                    project.layout.buildDirectory.dir("generated/wasmline/component-service")
                 } else {
                     ext.component.generatedSourcesDirectory
                 }
@@ -430,6 +435,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         task.world.set(ext.component.world)
         task.kotlinImports.set(ext.component.kotlinImports)
         task.invocationProtocol.set(ext.manifest.invocationProtocol)
+        task.executionModel.set(ext.manifest.executionModel)
         task.witBindgenVersion.set(ext.component.witBindgenVersion)
         task.platform.convention(detectCurrentPlatform())
         task.autoDownload.set(ext.component.autoDownload)
@@ -574,7 +580,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.invocationProtocol.set(ext.manifest.invocationProtocol)
             task.exportName.set(ext.component.exportName.orElse(ext.manifest.exportName))
             task.codec.set(ext.component.codec)
-            task.rpcProtocolVersion.set(ext.component.rpcProtocolVersion)
+            task.serviceProtocolVersion.set(ext.component.serviceProtocolVersion)
             task.witBindgenVersion.set(ext.component.witBindgenVersion)
             task.wasmToolsVersion.set(ext.component.wasmToolsVersion)
             task.platform.convention(detectCurrentPlatform())
@@ -667,7 +673,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
                 )
                 componentizeTask.witDirectory.set(
                     ext.manifest.invocationProtocol.flatMap { protocol ->
-                        if (protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
+                        if (protocol == WasmlineInvocationProtocol.WASMLINE_SERVICE) {
                             generatedBindings.flatMap { it.outputDirectory.dir("wit") }
                         } else {
                             ext.component.witDirectory
@@ -755,7 +761,7 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         invocationProtocol: WasmlineInvocationProtocol,
     ): String = when (executionModel) {
         WasmlineExecutionModel.CORE_WASM -> when (invocationProtocol) {
-            WasmlineInvocationProtocol.WASMLINE_CORE -> "CORE"
+            WasmlineInvocationProtocol.WASMLINE_SERVICE -> "CORE"
             WasmlineInvocationProtocol.RAW_EXPORT -> "NONE"
             else -> throw GradleException("CORE_WASM cannot use invocation protocol $invocationProtocol.")
         }
@@ -763,8 +769,8 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         WasmlineExecutionModel.COMPONENT_MODEL -> when (invocationProtocol) {
             WasmlineInvocationProtocol.COMPONENT_EXPORT -> "NONE"
 
-            WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC ->
-                if (isWasmWasiCompilation(compilation)) "COMPONENT_RPC" else "NONE"
+            WasmlineInvocationProtocol.WASMLINE_SERVICE ->
+                if (isWasmWasiCompilation(compilation)) "COMPONENT_SERVICE" else "NONE"
 
             else -> throw GradleException("COMPONENT_MODEL cannot use invocation protocol $invocationProtocol.")
         }

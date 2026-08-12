@@ -128,7 +128,7 @@ data class ComponentAotCompileOutput(
         }
         require(
             artifact.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
-                artifact.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                artifact.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE,
         ) {
             "Component AOT artifacts must use a Component invocation protocol."
         }

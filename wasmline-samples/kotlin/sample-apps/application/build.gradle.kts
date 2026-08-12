@@ -31,7 +31,7 @@ dependencies {
 
 }
 
-val componentRpcAotOutput = project(":sample-component-plugin").layout.buildDirectory.dir(
+val componentServiceAotOutput = project(":sample-component-plugin").layout.buildDirectory.dir(
     "wasmline/component-aot/debug",
 )
 
@@ -39,12 +39,12 @@ tasks.test {
     dependsOn(project(":sample-component-plugin").tasks.named("wasmlineComponentAotDebug"))
     useJUnitPlatform()
     systemProperty(
-        "wasmline.test.componentRpc.cwasm",
-        componentRpcAotOutput.map { it.file("sample-aarch64-macos.cwasm").asFile.absolutePath }.get(),
+        "wasmline.test.componentService.cwasm",
+        componentServiceAotOutput.map { it.file("sample-aarch64-macos.cwasm").asFile.absolutePath }.get(),
     )
     systemProperty(
-        "wasmline.test.componentRpc.pwasm",
-        componentRpcAotOutput.map { it.file("sample-pulley64.pwasm").asFile.absolutePath }.get(),
+        "wasmline.test.componentService.pwasm",
+        componentServiceAotOutput.map { it.file("sample-pulley64.pwasm").asFile.absolutePath }.get(),
     )
 }
 

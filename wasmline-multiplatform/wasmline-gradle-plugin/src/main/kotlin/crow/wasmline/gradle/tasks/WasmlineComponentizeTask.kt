@@ -1,6 +1,6 @@
 package crow.wasmline.gradle.tasks
 
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.component.ComponentPipeline
@@ -62,7 +62,7 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
     abstract val codec: Property<String>
 
     @get:Input
-    abstract val rpcProtocolVersion: Property<String>
+    abstract val serviceProtocolVersion: Property<String>
 
     @get:Input
     abstract val witBindgenVersion: Property<String>
@@ -115,14 +115,14 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
             )
             val protocol = invocationProtocol.get()
             val effectiveExportName = when (protocol) {
-                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC ->
-                    exportName.orNull ?: WasmlineComponentRpcContract.DEFAULT_EXPORT
+                WasmlineInvocationProtocol.WASMLINE_SERVICE ->
+                    exportName.orNull ?: WasmlineComponentServiceContract.DEFAULT_EXPORT
 
                 else -> exportName.orNull
             }
-            val effectiveCodec = codec.get().takeIf { protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC }
-            val effectiveRpcVersion = rpcProtocolVersion.get()
-                .takeIf { protocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC }
+            val effectiveCodec = codec.get().takeIf { protocol == WasmlineInvocationProtocol.WASMLINE_SERVICE }
+            val effectiveServiceVersion = serviceProtocolVersion.get()
+                .takeIf { protocol == WasmlineInvocationProtocol.WASMLINE_SERVICE }
             val result = componentInput.orNull?.asFile?.let { component ->
                 pipeline.describeExisting(
                     ExistingComponentRequest(
@@ -134,7 +134,7 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
                         invocationProtocol = protocol,
                         exportName = effectiveExportName,
                         codec = effectiveCodec,
-                        rpcProtocolVersion = effectiveRpcVersion,
+                        serviceProtocolVersion = effectiveServiceVersion,
                         wasmToolsVersion = wasmToolsVersion.get(),
                     ),
                 )
@@ -159,7 +159,7 @@ abstract class WasmlineComponentizeTask : DefaultTask() {
                         invocationProtocol = protocol,
                         exportName = effectiveExportName,
                         codec = effectiveCodec,
-                        rpcProtocolVersion = effectiveRpcVersion,
+                        serviceProtocolVersion = effectiveServiceVersion,
                         wasmToolsVersion = wasmToolsVersion.get(),
                         witBindgenVersion = witBindgenVersion.get(),
                         adapterVersion = if (adapterWasExplicit) {

@@ -1,6 +1,6 @@
-# Rust Component RPC fixture
+# Rust Wasmline Service fixture
 
-This fixture implements the same `wasmline:rpc@1.0.0` WIT world as the Kotlin
+This fixture implements the same `wasmline:service@1.0.0` WIT world as the Kotlin
 Component sample. It exports `plugin.invoke` and uses the generated
 `host.invoke` import for `sample.callback`; it does not define any of
 Wasmline's four Core Wasm bridge imports.
@@ -17,8 +17,8 @@ compilation and are not committed:
 ```shell
 rustup target add wasm32-wasip2
 cargo build --target wasm32-wasip2
-wasm-tools validate target/wasm32-wasip2/debug/wasmline_rpc_rust_fixture.wasm
-wasm-tools component wit target/wasm32-wasip2/debug/wasmline_rpc_rust_fixture.wasm
+wasm-tools validate target/wasm32-wasip2/debug/wasmline_service_rust_fixture.wasm
+wasm-tools component wit target/wasm32-wasip2/debug/wasmline_service_rust_fixture.wasm
 ```
 
 `wasm32-wasip2` produces a Component Wasm artifact directly. The Kotlin/Wasm

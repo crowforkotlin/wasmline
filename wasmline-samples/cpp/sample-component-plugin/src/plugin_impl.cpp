@@ -3,12 +3,12 @@
 #include <string_view>
 #include <utility>
 
-namespace plugin_api = exports::wasmline::rpc;
-namespace host_api = ::wasmline::rpc;
+namespace plugin_api = exports::wasmline::service;
+namespace host_api = ::wasmline::service;
 
 namespace {
 
-    using InvokeResult = std::expected<wit::vector<uint8_t>, plugin_api::RpcError>;
+    using InvokeResult = std::expected<wit::vector<uint8_t>, plugin_api::ServiceError>;
 
     constexpr std::string_view SUPPORTED_CODEC = "protobuf";
     constexpr std::string_view ACTION_ECHO = "sample.echo";
@@ -18,7 +18,7 @@ namespace {
     constexpr std::string_view HOST_CALLBACK_ACTION = "sample.host.callback";
 
     InvokeResult failure(std::string_view code, std::string_view message) {
-        return std::unexpected<plugin_api::RpcError>(plugin_api::RpcError{
+        return std::unexpected<plugin_api::ServiceError>(plugin_api::ServiceError{
             wit::string::from_view(code),
             wit::string::from_view(message),
             wit::vector<uint8_t>{},
@@ -36,7 +36,7 @@ namespace {
         }
 
         auto error = std::move(result).error();
-        return std::unexpected<plugin_api::RpcError>(plugin_api::RpcError{
+        return std::unexpected<plugin_api::ServiceError>(plugin_api::ServiceError{
             std::move(error.code),
             std::move(error.message),
             std::move(error.details),
@@ -45,9 +45,9 @@ namespace {
 
 } // namespace
 
-namespace exports::wasmline::rpc {
+namespace exports::wasmline::service {
 
-    std::expected<wit::vector<uint8_t>, RpcError> Invoke(Request request) {
+    std::expected<wit::vector<uint8_t>, ServiceError> Invoke(Request request) {
         if (request.codec.get_view() != SUPPORTED_CODEC) {
             return failure("1005", "Unsupported codec. Expected protobuf.");
         }
@@ -68,4 +68,4 @@ namespace exports::wasmline::rpc {
         return failure("1002", "Unknown C++ Component action.");
     }
 
-} // namespace exports::wasmline::rpc
+} // namespace exports::wasmline::service

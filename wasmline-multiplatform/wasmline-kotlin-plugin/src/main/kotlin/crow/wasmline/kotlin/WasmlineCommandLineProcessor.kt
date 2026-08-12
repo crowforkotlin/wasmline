@@ -27,7 +27,7 @@ internal const val ENABLE_COMPILER_PLUGIN_OPTION_NAME = "enabled"
 internal const val GUEST_TRANSPORT_OPTION_NAME = "guestTransport"
 internal enum class WasmlineGuestTransport {
     CORE,
-    COMPONENT_RPC,
+    COMPONENT_SERVICE,
     NONE,
 }
 
@@ -47,7 +47,7 @@ class WasmlineCommandLineProcessor : CommandLineProcessor {
     override val pluginOptions = listOf(
         CliOption(
             optionName = GUEST_TRANSPORT_OPTION_NAME,
-            valueDescription = "CORE|COMPONENT_RPC|NONE",
+            valueDescription = "CORE|COMPONENT_SERVICE|NONE",
             description = "Select the statically linked Wasmline guest transport.",
             required = false,
             allowMultipleOccurrences = false,

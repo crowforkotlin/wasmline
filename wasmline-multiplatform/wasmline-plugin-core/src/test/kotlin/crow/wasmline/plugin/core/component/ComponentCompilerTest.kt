@@ -27,7 +27,7 @@ class ComponentCompilerTest {
             }
         }
         val metadata = ComponentAotArtifactMetadata(
-            contractMetadata = mapOf("wasmline.rpc.codec" to "protobuf"),
+            contractMetadata = mapOf("wasmline.service.codec" to "protobuf"),
         )
 
         val result = ComponentCompiler(runner).compile(
