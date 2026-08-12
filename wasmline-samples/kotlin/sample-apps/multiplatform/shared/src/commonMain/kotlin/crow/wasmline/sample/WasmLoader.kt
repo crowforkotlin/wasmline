@@ -11,6 +11,7 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRawValue
+import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.bind
 import crow.wasmline.callResult
 import crow.wasmline.invokeRawResult
@@ -27,6 +28,14 @@ import crow.wasmline.serialization.WasmlineSerializationConfig
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlin.time.TimeSource
+
+private val samplePackageTrustedKeys = WasmlineTrustedKeySet.Builder()
+    .addHex(
+        algorithm = "Ed25519",
+        keyId = null,
+        publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+    )
+    .build()
 
 enum class WasmSampleMode(
     val title: String,
@@ -162,6 +171,7 @@ internal class WasmSampleRunner(
 ) {
     private var wasmline: Wasmline? = null
     private var loadedKey: String? = null
+    private var coreInvocationLog: ((String) -> Unit)? = null
 
     suspend fun execute(request: WasmExecutionRequest): WasmExecutionReport {
         val logs = mutableListOf<String>()
@@ -188,6 +198,13 @@ internal class WasmSampleRunner(
                 )
             }
 
+            var current = wasmline
+            if (current != null && request.freshMode) {
+                log("[Sample] closing cached runtime before refreshing the artifact")
+                closeRuntime()
+                current = null
+            }
+
             val resolvedPath = if (request.freshMode) {
                 log("[Sample] refreshing ${request.artifactPath}")
                 assetRefresher.refresh(request.artifactPath)
@@ -197,7 +214,6 @@ internal class WasmSampleRunner(
             val key = "${request.mode.name}:$resolvedPath"
             var reloadOccurred = false
             var loadDurationMs = 0L
-            var current = wasmline
 
             if (current != null && (request.forceReload || loadedKey != key)) {
                 log("[Sample] closing cached runtime")
@@ -225,8 +241,24 @@ internal class WasmSampleRunner(
                     }
 
                     is WasmlineLoadResult.Success -> {
-                        current = result.wasmline
-                        wasmline = current
+                        val loadedRuntime = result.wasmline
+                        try {
+                            configureLoadedRuntime(request.mode, loadedRuntime)
+                        } catch (error: Throwable) {
+                            loadedRuntime.close()
+                            return failure(
+                                request = request,
+                                artifactName = artifactName,
+                                inputPayload = inputPayload,
+                                inputJson = inputJson,
+                                logs = logs + "[Sample] host binding failure: ${error.message}",
+                                loadDurationMs = loadDurationMs,
+                                totalDurationMs = totalMark.elapsedNow().inWholeMilliseconds,
+                                message = error.message ?: "Failed to bind host services.",
+                            )
+                        }
+                        current = loadedRuntime
+                        wasmline = loadedRuntime
                         loadedKey = key
                         log("[Sample] loaded ${request.mode.title} in ${loadDurationMs} ms")
                     }
@@ -306,6 +338,7 @@ internal class WasmSampleRunner(
     private fun load(mode: WasmSampleMode, path: String): WasmlineLoadResult {
         val config = WasmlineConfig(
             serialization = WasmlineSerializationConfig.protobuf(),
+            trustedKeys = samplePackageTrustedKeys,
         )
         if (path.endsWith(".wlm", ignoreCase = true)) {
             return WasmlineLoader.load(source = path, config = config)
@@ -355,6 +388,17 @@ internal class WasmSampleRunner(
         return descriptor.withNativeArtifactMetadata()
     }
 
+    private fun configureLoadedRuntime(mode: WasmSampleMode, runtime: Wasmline) {
+        if (mode != WasmSampleMode.CORE_WASM) return
+
+        runtime.bind(object : EchoService {
+            override fun echo() {
+                val message = "[Core Wasm] plugin called host EchoService.echo"
+                coreInvocationLog?.invoke(message) ?: message.info()
+            }
+        })
+    }
+
     private fun WasmlineArtifactDescriptor.withNativeArtifactMetadata(): WasmlineArtifactDescriptor {
         val format = artifactFormat ?: return this
         if (format == WasmlineArtifactFormat.RAW_WASM) return this
@@ -386,21 +430,21 @@ internal class WasmSampleRunner(
         input: PlatformBean,
         log: (String) -> Unit,
     ): SampleInvocation {
-        runtime.bind(object : EchoService {
-            override fun echo() {
-                log("[Core Wasm] plugin called host EchoService.echo")
-            }
-        })
-        val result = runtime.link<TimeSyncService>().timeSync(input)
-        log("[Core Wasm] invoked TimeSyncService.timeSync")
-        return SampleInvocation.Success(
-            action = "TimeSyncService.timeSync",
-            detail = "Core Wasmline service call completed.",
-            inputPayload = input,
-            outputPayload = result,
-            inputJson = toJsonString(input),
-            outputJson = toJsonString(result),
-        )
+        coreInvocationLog = log
+        return try {
+            val result = runtime.link<TimeSyncService>().timeSync(input)
+            log("[Core Wasm] invoked TimeSyncService.timeSync")
+            SampleInvocation.Success(
+                action = "TimeSyncService.timeSync",
+                detail = "Core Wasmline service call completed.",
+                inputPayload = input,
+                outputPayload = result,
+                inputJson = toJsonString(input),
+                outputJson = toJsonString(result),
+            )
+        } finally {
+            coreInvocationLog = null
+        }
     }
 
     private fun runRaw(
@@ -472,6 +516,7 @@ internal class WasmSampleRunner(
     }
 
     private fun closeRuntime() {
+        coreInvocationLog = null
         wasmline?.close()
         wasmline = null
         loadedKey = null

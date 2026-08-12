@@ -48,13 +48,16 @@ WASMTIME_COMPILER=/absolute/path/to/wasmtime \
 
 ## Other targets
 
-Desktop defaults to the Pulley engine and a matching `pwasm64` artifact:
+Desktop defaults to the Pulley engine. It loads the signed `manifest.wlm`
+package, which verifies the manifest and artifact digest before selecting the
+matching `pwasm64` artifact:
 
 ```shell
 ./gradlew :sample-apps:multiplatform:desktopApp:run
 ```
 
-Run Desktop with a native Cranelift artifact:
+Run Desktop with Cranelift and assemble a package containing the matching
+native artifact:
 
 ```shell
 ./gradlew :sample-apps:multiplatform:desktopApp:run \

@@ -9,6 +9,13 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+        vendor.set(JvmVendorSpec.JETBRAINS)
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "crow.wasmline.sample.MainKt"
@@ -67,35 +74,16 @@ if (requestedArtifactFormat == "cwasm" && wasmlineEngine != "cranelift") {
     error("Desktop CWASM requires -Pwasmline.engine=cranelift.")
 }
 
-val defaultCwasmTarget = when {
-    System.getProperty("os.name").lowercase().contains("mac") &&
-        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-macos"
-    System.getProperty("os.name").lowercase().contains("mac") -> "x86_64-macos"
-    System.getProperty("os.name").lowercase().contains("linux") &&
-        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-linux"
-    System.getProperty("os.name").lowercase().contains("linux") -> "x86_64-linux"
-    System.getProperty("os.name").lowercase().contains("windows") -> "x86_64-windows"
-    else -> error("Unsupported Wasmtime host: ${System.getProperty("os.name")} ${System.getProperty("os.arch")}")
-}
-val requestedCwasmTarget = providers.gradleProperty("wasmline.compile.target")
-    .orElse(defaultCwasmTarget)
-    .get()
 val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
     "wasmline/output/crow.wasmline.demo-1.0.0",
 )
-val samplePluginArtifactName = when (requestedArtifactFormat) {
-    "pwasm64" -> "demo-pulley64.pwasm"
-    "cwasm" -> "demo-$requestedCwasmTarget.cwasm"
-    else -> error("Unsupported wasmline artifact format: $requestedArtifactFormat")
-}
-val samplePluginArtifactExtension = samplePluginArtifactName.substringAfterLast('.')
 val syncWasmlineSamplePlugin = tasks.register<Sync>("syncWasmlineSamplePlugin") {
     group = "wasmline"
-    description = "Build and expose the selected Wasmline plugin artifact to desktop resources"
+    description = "Build and expose the signed Wasmline plugin package to desktop resources"
     dependsOn(project(":sample-plugin").tasks.named("wasmlineAssembleDebug"))
     from(samplePluginOutput) {
-        include(samplePluginArtifactName)
-        rename { "plugin.$samplePluginArtifactExtension" }
+        include("manifest.wlm", "*.wasm", "*.pwasm", "*.cwasm")
+        into("wasmline-package")
     }
     into(layout.buildDirectory.dir("generated/desktop-resources"))
 }
@@ -103,9 +91,16 @@ val syncWasmlineSamplePlugin = tasks.register<Sync>("syncWasmlineSamplePlugin") 
 tasks.named<ProcessResources>("processResources") {
     dependsOn(syncWasmlineSamplePlugin)
     from(syncWasmlineSamplePlugin)
+    from(layout.projectDirectory.file("appIcons/LinuxIcon.png")) {
+        rename { "wasmline-icon.png" }
+    }
 }
 
+val jbrLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+    vendor.set(JvmVendorSpec.JETBRAINS)
+}
 tasks.withType<JavaExec>().matching { it.name == "run" }.configureEach {
     dependsOn(syncWasmlineSamplePlugin)
-    systemProperty("wasmline.artifact.format", if (requestedArtifactFormat == "pwasm64") "pwasm" else "cwasm")
+    javaLauncher.set(jbrLauncher)
 }

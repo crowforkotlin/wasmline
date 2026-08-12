@@ -34,10 +34,13 @@ the current 64-bit desktop runtime rejects it by design. Component AOT builds
 need the full Wasmtime CLI, supplied with `WASMTIME_COMPILER` or downloaded by
 the `wasmlineDownloadWasmtimeCompiler` task.
 
-On Desktop, the optional paths can be supplied without changing the UI. Raw
-`.wasm` is a browser/source artifact; native Wasmline requires a matching
-`.cwasm` or `.pwasm` artifact. For example, create the raw fixture and its
-Linux AOT artifact with:
+Desktop uses the bundled Core Wasm package's signed `manifest.wlm` as its
+default path. The host configures the sample public key, and the loader selects
+the compatible artifact after verifying the manifest signature and artifact
+digest. Optional direct paths can still be supplied without changing the UI.
+Raw `.wasm` is a browser/source artifact; native Wasmline requires a matching
+`.cwasm` or `.pwasm` artifact. For example, create the raw fixture and its Linux
+AOT artifact with:
 
 ```shell
 wasm-tools parse wasmline-samples/raw/sample-export-plugin/plugin.wat -o /tmp/sample-export.wasm
@@ -57,6 +60,5 @@ Then pass direct AOT artifacts to the Desktop app:
 ```
 
 The runner supplies the current native runtime's Wasmtime version, CPU, OS, and
-bitness when loading direct AOT paths. Signed `.wlm` packages remain the
-preferred distribution format, but package loading also requires configuring
-the package's trusted public key in `WasmlineConfig.trustedKeys`.
+bitness when loading direct AOT paths. Other signed `.wlm` packages require the
+host to add their trusted public keys to `WasmlineConfig.trustedKeys`.

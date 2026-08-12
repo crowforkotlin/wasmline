@@ -236,13 +236,17 @@ abstract class WasmlineAssembleTask @Inject constructor(private val execOperatio
             "wasmtime " + wasmtimeVersion.get() + " was not found in " + wasmtimeBaseDirectory.absolutePath + ". " +
                 "Run './gradlew wasmlineDownloadWasmtime' first.",
         )
+        val compilerVersion = WasmtimeCompiler.detectWasmtimeVersion(executable)
+            ?: throw GradleException(
+                "Unable to determine the exact Wasmtime version from ${executable.absolutePath}.",
+            )
         val artifacts = WasmtimeCompiler().compileAll(
             wasmtimeExec = executable,
             inputWasm = wasmFile,
             outputDir = packageDirectory,
             productName = productName,
             targets = compileTargets.get(),
-            wasmtimeVersion = wasmtimeVersion.get(),
+            wasmtimeVersion = compilerVersion,
             logger = ::logCompilerMessage,
         )
         if (artifacts.isEmpty()) {
@@ -251,7 +255,7 @@ abstract class WasmlineAssembleTask @Inject constructor(private val execOperatio
         return PreparedArtifacts(
             inputFile = wasmFile,
             artifacts = artifacts,
-            compilerVersion = wasmtimeVersion.get(),
+            compilerVersion = compilerVersion,
         )
     }
 
