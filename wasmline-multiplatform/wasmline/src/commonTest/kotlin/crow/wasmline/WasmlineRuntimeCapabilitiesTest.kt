@@ -132,7 +132,7 @@ class WasmlineRuntimeCapabilitiesTest {
             invocationProtocol = if (component) {
                 WasmlineInvocationProtocol.COMPONENT_EXPORT
             } else {
-                WasmlineInvocationProtocol.WASMLINE_CORE
+                WasmlineInvocationProtocol.WASMLINE_SERVICE
             },
             exportName = if (component) "plugin/invoke" else null,
         )

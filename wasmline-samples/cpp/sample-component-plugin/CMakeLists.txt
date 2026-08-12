@@ -7,9 +7,9 @@ find_program(WASM_TOOLS_EXECUTABLE NAMES wasm-tools REQUIRED)
 
 set(
     WASMLINE_WIT_DIR
-    "${CMAKE_CURRENT_LIST_DIR}/../../../wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/wit/wasmline-rpc"
+    "${CMAKE_CURRENT_LIST_DIR}/../../../wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/wit/wasmline-service"
     CACHE PATH
-    "Directory containing the canonical wasmline:rpc WIT world"
+    "Directory containing the canonical wasmline:service WIT world"
 )
 set(
     WASI_PREVIEW1_ADAPTER
@@ -18,9 +18,9 @@ set(
     "Optional wasi_snapshot_preview1 reactor adapter"
 )
 
-set(WIT_WORLD "${WASMLINE_WIT_DIR}/world.wit")
+set(WIT_WORLD "${WASMLINE_WIT_DIR}/wasmline.wit")
 if(NOT EXISTS "${WIT_WORLD}")
-    message(FATAL_ERROR "Wasmline RPC WIT world does not exist: ${WIT_WORLD}")
+    message(FATAL_ERROR "Wasmline Service WIT world does not exist: ${WIT_WORLD}")
 endif()
 if(WASI_PREVIEW1_ADAPTER AND NOT EXISTS "${WASI_PREVIEW1_ADAPTER}")
     message(FATAL_ERROR "WASI Preview 1 adapter does not exist: ${WASI_PREVIEW1_ADAPTER}")
@@ -85,7 +85,7 @@ add_custom_command(
     DEPENDS
         "${WIT_WORLD}"
         "${CMAKE_CURRENT_LIST_DIR}/cmake/PatchWitBindgen057Expected.cmake"
-    COMMENT "Generating C++ bindings for wasmline:rpc@1.0.0"
+    COMMENT "Generating C++ bindings for wasmline:service@1.0.0"
     VERBATIM
 )
 

@@ -151,7 +151,7 @@ namespace wasmline {
                    recordFieldMatches(type.of.record, 2, "details", typeIsByteList);
         }
 
-        bool rpcFunctionTypeMatches(const wasmtime_component_func_type_t* type) {
+        bool serviceFunctionTypeMatches(const wasmtime_component_func_type_t* type) {
             if (!type || wasmtime_component_func_type_param_count(type) != 1) return false;
 
             const char* parameterName = nullptr;
@@ -175,12 +175,13 @@ namespace wasmline {
             return typeIsByteList(okType.value) && errorTypeMatches(errorType.value);
         }
 
-        bool rpcInstanceTypeMatches(const wasmtime_component_instance_type_t* type, const wasm_engine_t* engine) {
+        bool serviceInstanceTypeMatches(const wasmtime_component_instance_type_t* type, const wasm_engine_t* engine) {
             if (!type || !engine) return false;
             ComponentItemGuard invoke;
             if (!wasmtime_component_instance_type_export_get(type, engine, "invoke", 6, &invoke.value)) return false;
             invoke.active = true;
-            return invoke.value.kind == WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC && rpcFunctionTypeMatches(invoke.value.of.component_func);
+            return invoke.value.kind == WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC &&
+                   serviceFunctionTypeMatches(invoke.value.of.component_func);
         }
 
         const ComponentValue* recordField(const ComponentRecord& record, std::string_view name) {
@@ -210,11 +211,11 @@ namespace wasmline {
             return ComponentValue::list(std::move(values));
         }
 
-        ComponentValue rpcSuccess(std::string_view payload) {
+        ComponentValue serviceSuccess(std::string_view payload) {
             return ComponentValue::result(true, std::make_shared<ComponentValue>(byteList(payload)));
         }
 
-        ComponentValue rpcFailure(uint32_t code, std::string message, std::string_view details = {}) {
+        ComponentValue serviceFailure(uint32_t code, std::string message, std::string_view details = {}) {
             ComponentRecord fields;
             fields.push_back(ComponentRecordField{"code", ComponentValue::string(std::to_string(code))});
             fields.push_back(ComponentRecordField{"message", ComponentValue::string(std::move(message))});
@@ -1226,7 +1227,7 @@ namespace wasmline {
         return true;
     }
 
-    bool ComponentSession::registerRpcImports() {
+    bool ComponentSession::registerServiceImports() {
         wasmtime_component_type_t* componentType = wasmtime_component_type(component_);
         if (!componentType) {
             LOGE("[Wasmtime] ComponentSession -> Component type is unavailable: %s", key_.c_str());
@@ -1246,7 +1247,7 @@ namespace wasmline {
             import.active = true;
             const std::string importNameText = nameString(importName, importNameSize);
             if (import.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
-                !rpcInstanceTypeMatches(import.value.of.component_instance, engine_)) {
+                !serviceInstanceTypeMatches(import.value.of.component_instance, engine_)) {
                 continue;
             }
 
@@ -1257,24 +1258,24 @@ namespace wasmline {
                 return false;
             }
 
-            wasmtime_component_linker_instance_t* rpcInstance = nullptr;
-            wasmtime_error_t* error = wasmtime_component_linker_instance_add_instance(root, importName, importNameSize, &rpcInstance);
-            if (!error && rpcInstance) {
-                error = wasmtime_component_linker_instance_add_func(rpcInstance, "invoke", 6, invokeHost, this, nullptr);
+            wasmtime_component_linker_instance_t* serviceInstance = nullptr;
+            wasmtime_error_t* error = wasmtime_component_linker_instance_add_instance(root, importName, importNameSize, &serviceInstance);
+            if (!error && serviceInstance) {
+                error = wasmtime_component_linker_instance_add_func(serviceInstance, "invoke", 6, invokeHost, this, nullptr);
             } else if (!error) {
-                error = componentError("Wasmline RPC linker instance is unavailable.");
+                error = componentError("Wasmline Service linker instance is unavailable.");
             }
-            if (rpcInstance) wasmtime_component_linker_instance_delete(rpcInstance);
+            if (serviceInstance) wasmtime_component_linker_instance_delete(serviceInstance);
             wasmtime_component_linker_instance_delete(root);
 
             if (error) {
                 const std::string message = wasmtime::errorMessage(error);
                 wasmtime_error_delete(error);
                 wasmtime_component_type_delete(componentType);
-                LOGE("[Wasmtime] ComponentSession -> Failed to register RPC import '%s': %s", importNameText.c_str(), message.c_str());
+                LOGE("[Wasmtime] ComponentSession -> Failed to register Service import '%s': %s", importNameText.c_str(), message.c_str());
                 return false;
             }
-            LOGI("[Wasmtime] ComponentSession -> Registered RPC import: %s", importNameText.c_str());
+            LOGI("[Wasmtime] ComponentSession -> Registered Service import: %s", importNameText.c_str());
         }
 
         wasmtime_component_type_delete(componentType);
@@ -1302,7 +1303,7 @@ namespace wasmline {
 
             const std::string interfaceName = nameString(importName, importNameSize);
             if (isWasiImport(interfaceName) || import.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
-                rpcInstanceTypeMatches(import.value.of.component_instance, engine_)) {
+                serviceInstanceTypeMatches(import.value.of.component_instance, engine_)) {
                 continue;
             }
 
@@ -1404,22 +1405,22 @@ namespace wasmline {
                                                    const wasmtime_component_func_type_t* functionType, wasmtime_component_val_t* arguments,
                                                    size_t argumentCount, wasmtime_component_val_t* results, size_t resultCount) {
         auto* session = static_cast<ComponentSession*>(data);
-        if (!session || context != session->context_) return componentError("Wasmline RPC callback has no active component session.");
+        if (!session || context != session->context_) return componentError("Wasmline Service callback has no active component session.");
         return session->handleHostInvoke(functionType, arguments, argumentCount, results, resultCount);
     }
 
     wasmtime_error_t* ComponentSession::handleHostInvoke(const wasmtime_component_func_type_t* functionType,
                                                          wasmtime_component_val_t* arguments, size_t argumentCount,
                                                          wasmtime_component_val_t* results, size_t resultCount) {
-        if (!rpcFunctionTypeMatches(functionType) || argumentCount != 1 || resultCount != 1 || !arguments || !results) {
-            return componentError("Wasmline RPC host.invoke signature does not match wasmline:rpc@1.0.0.");
+        if (!serviceFunctionTypeMatches(functionType) || argumentCount != 1 || resultCount != 1 || !arguments || !results) {
+            return componentError("Wasmline Service host.invoke signature does not match wasmline:service@1.0.0.");
         }
 
         const char* parameterName = nullptr;
         size_t parameterNameSize = 0;
         ValueTypeGuard parameterType;
         if (!wasmtime_component_func_type_param_nth(functionType, 0, &parameterName, &parameterNameSize, &parameterType.value)) {
-            return componentError("Wasmline RPC request type is unavailable.");
+            return componentError("Wasmline Service request type is unavailable.");
         }
         parameterType.active = true;
 
@@ -1428,7 +1429,7 @@ namespace wasmline {
         ComponentConversionScope conversionScope(this, &transientBorrowed);
         if (!fromWasmtimeValue(arguments[0], parameterType.value, &request) || request.kind() != ComponentValue::Kind::RECORD) {
             clearTransientResources(transientBorrowed);
-            return componentError("Wasmline RPC request value is invalid.");
+            return componentError("Wasmline Service request value is invalid.");
         }
 
         const auto& requestFields = request.recordValue();
@@ -1439,16 +1440,16 @@ namespace wasmline {
         if (!actionValue || actionValue->kind() != ComponentValue::Kind::STRING || !codecValue ||
             codecValue->kind() != ComponentValue::Kind::STRING || !payloadValue || !componentBytes(*payloadValue, &payload)) {
             clearTransientResources(transientBorrowed);
-            return componentError("Wasmline RPC request fields are invalid.");
+            return componentError("Wasmline Service request fields are invalid.");
         }
 
         ComponentValue response;
         if (!codec_.empty() && codecValue->stringValue() != codec_) {
-            response =
-                rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::SERIALIZATION_FAILED),
-                           "Wasmline RPC codec mismatch. Expected '" + codec_ + "' but received '" + codecValue->stringValue() + "'.");
+            response = serviceFailure(static_cast<uint32_t>(WasmlineErrorCode::SERIALIZATION_FAILED),
+                                      "Wasmline Service codec mismatch. Expected '" + codec_ + "' but received '" +
+                                          codecValue->stringValue() + "'.");
         } else if (!outboundHandler_) {
-            response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::ACTION_NOT_BOUND), "No Wasmline outbound action is bound.");
+            response = serviceFailure(static_cast<uint32_t>(WasmlineErrorCode::ACTION_NOT_BOUND), "No Wasmline outbound action is bound.");
         } else {
             std::string encodedResponse;
             try {
@@ -1463,22 +1464,22 @@ namespace wasmline {
             WasmlineResponseFrame frame;
             std::string decodeError;
             if (!WasmlineResponseCodec::decode(encodedResponse, &frame, &decodeError)) {
-                response = rpcFailure(static_cast<uint32_t>(WasmlineErrorCode::RESPONSE_MALFORMED), std::move(decodeError));
+                response = serviceFailure(static_cast<uint32_t>(WasmlineErrorCode::RESPONSE_MALFORMED), std::move(decodeError));
             } else if (frame.isSuccess) {
-                response = rpcSuccess(frame.payload);
+                response = serviceSuccess(frame.payload);
             } else {
-                response = rpcFailure(frame.errorCode, std::move(frame.message), frame.payload);
+                response = serviceFailure(frame.errorCode, std::move(frame.message), frame.payload);
             }
         }
 
         ValueTypeGuard resultType;
         if (!wasmtime_component_func_type_result(functionType, &resultType.value)) {
-            return componentError("Wasmline RPC result type is unavailable.");
+            return componentError("Wasmline Service result type is unavailable.");
         }
         resultType.active = true;
         if (!toWasmtimeValue(response, resultType.value, &results[0])) {
             clearTransientResources(transientBorrowed);
-            return componentError("Wasmline RPC response could not be lowered to the component result type.");
+            return componentError("Wasmline Service response could not be lowered to the component result type.");
         }
         clearTransientResources(transientBorrowed);
         return nullptr;
@@ -1615,7 +1616,7 @@ namespace wasmline {
         }
 #endif
 
-        if (!registerRpcImports() || !registerComponentHostImports()) return false;
+        if (!registerServiceImports() || !registerComponentHostImports()) return false;
 
         wasmtime_error_t* instantiateError = wasmtime_component_linker_instantiate(linker_, context_, component_, &instance_);
         if (instantiateError) {

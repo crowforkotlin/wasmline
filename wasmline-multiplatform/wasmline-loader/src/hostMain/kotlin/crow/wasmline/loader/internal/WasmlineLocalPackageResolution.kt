@@ -5,13 +5,11 @@ package crow.wasmline.loader.internal
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineLog
 import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
-import crow.wasmline.loader.isLegacyComponentRpcManifestArtifact
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
@@ -44,12 +42,6 @@ internal object WasmlineLocalPackageResolution {
             "No compatible artifact found in local package '${source.path}' for host ${describe(currentHostArtifactTarget)}.",
         )
         val artifactPath = resolveArtifactPath(manifestPath, artifact.url)
-        if (artifact.isLegacyComponentRpcManifestArtifact()) {
-            WasmlineLog.logger?.warn(
-                "Legacy COMPONENT_EXPORT metadata for '${artifact.url}' was normalized to WASMLINE_COMPONENT_RPC. " +
-                    "Rebuild the package with the current Wasmline plugin.",
-            )
-        }
         val descriptor = artifact.toDescriptor(artifactPath)
         descriptor.validationError()?.let { return failure("Invalid artifact descriptor for '${artifact.url}': $it") }
         if (artifact.sha256.isBlank()) {
@@ -117,7 +109,7 @@ internal object WasmlineLocalPackageResolution {
         return when (type) {
             WasmlineArtifactType.WASM ->
                 executionModel == WasmlineExecutionModel.CORE_WASM &&
-                    invocationProtocol == WasmlineInvocationProtocol.WASMLINE_CORE
+                    invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE
 
             WasmlineArtifactType.CWASM,
             WasmlineArtifactType.PWASM,

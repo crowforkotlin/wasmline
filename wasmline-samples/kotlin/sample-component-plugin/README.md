@@ -1,13 +1,13 @@
-# Kotlin Component RPC sample
+# Kotlin Wasmline Service sample
 
 This module uses ordinary `WasmlineService`, `link`, and `bind` source code while the
-Wasmline build plugin generates the fixed `wasmline:rpc@1.0.0` transport:
+Wasmline build plugin generates the fixed `wasmline:service@1.0.0` transport:
 
 - `ComponentPluginService.echo` decodes and encodes Kotlin Serialization Protobuf bytes;
 - `ComponentPluginService.callback` calls `link<ComponentHostService>()`;
 - `ComponentPluginService.empty` returns an empty byte payload;
 - `ComponentPluginService.trap` intentionally traps;
-- unknown actions and codec mismatches return a WIT `rpc-error`.
+- unknown actions and codec mismatches return a WIT `service-error`.
 
 The complete build is owned by the Wasmline Gradle plugin:
 
@@ -26,5 +26,5 @@ are not committed. Configure `WASMTIME_COMPILER` or run
 assembling when the compiler is not already available.
 
 The guest never imports generated `Host`/`Plugin` types directly and does not maintain an
-action switch or RPC error conversion. The fixed WIT `list<u8>` payload remains exactly the
+action switch or Service error conversion. The fixed WIT `list<u8>` payload remains exactly the
 bytes produced by the selected Wasmline serialization factory.

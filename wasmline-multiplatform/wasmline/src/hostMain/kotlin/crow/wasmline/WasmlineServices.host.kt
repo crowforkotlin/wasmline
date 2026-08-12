@@ -22,12 +22,8 @@ internal fun Wasmline.generatedSerializationFactory(): WasmlineSerializationFact
 
 @PublishedApi
 internal fun Wasmline.bindGenerated(bridge: WasmlineGeneratedBridge) {
-    require(
-        descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_CORE ||
-            descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
-    ) {
-        "Generated Wasmline services require WASMLINE_CORE or WASMLINE_COMPONENT_RPC, not " +
-            descriptor.invocationProtocol + "."
+    require(descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE) {
+        "Generated Wasmline services require WASMLINE_SERVICE, not ${descriptor.invocationProtocol}."
     }
     if (hostServiceRegistry.registerAll(bridge)) setOutbound(hostServiceRegistry.dispatcher)
 }

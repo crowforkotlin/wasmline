@@ -14,30 +14,30 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.FqName
 
-private val COMPONENT_RPC_INIT_ANNOTATION = FqName("crow.wasmline.WasmlineComponentRpcInit")
+private val COMPONENT_SERVICE_INIT_ANNOTATION = FqName("crow.wasmline.WasmlineComponentServiceInit")
 
-internal fun wireComponentRpcInitHook(
+internal fun wireComponentServiceInitHook(
     moduleFragment: IrModuleFragment,
     pluginContext: IrPluginContext,
     messageCollector: MessageCollector,
     rewrittenBindCalls: Int,
 ) {
     val functions = moduleFragment.files.flatMap { file -> file.declarations.filterIsInstance<IrSimpleFunction>() }
-    val markers = functions.filter { it.hasAnnotation(COMPONENT_RPC_INIT_ANNOTATION) }
+    val markers = functions.filter { it.hasAnnotation(COMPONENT_SERVICE_INIT_ANNOTATION) }
     if (markers.size != 1) {
         messageCollector.report(
             CompilerMessageSeverity.ERROR,
-            "[Wasmline] Component RPC requires exactly one generated init marker, found ${markers.size}. " +
-                "Run the Wasmline Component RPC binding generation task and do not declare this marker manually.",
+            "[Wasmline] Wasmline Service requires exactly one generated init marker, found ${markers.size}. " +
+                "Run the Wasmline Service binding generation task and do not declare this marker manually.",
         )
         return
     }
 
-    val mains = functions.filter { function -> isComponentRpcUserMain(function, pluginContext) }
+    val mains = functions.filter { function -> isComponentServiceUserMain(function, pluginContext) }
     if (mains.size > 1) {
         messageCollector.report(
             CompilerMessageSeverity.ERROR,
-            "[Wasmline] Component RPC found multiple top-level main(): Unit initializers: " +
+            "[Wasmline] Wasmline Service found multiple top-level main(): Unit initializers: " +
                 mains.joinToString { it.fqNameWhenAvailable?.asString() ?: it.name.asString() } + ".",
         )
         return
@@ -47,7 +47,7 @@ internal fun wireComponentRpcInitHook(
         if (rewrittenBindCalls > 0) {
             messageCollector.report(
                 CompilerMessageSeverity.ERROR,
-                "[Wasmline] Component RPC rewrote $rewrittenBindCalls bind call(s), but no top-level main(): Unit " +
+                "[Wasmline] Wasmline Service rewrote $rewrittenBindCalls bind call(s), but no top-level main(): Unit " +
                     "initializer was found.",
             )
         }
@@ -60,12 +60,12 @@ internal fun wireComponentRpcInitHook(
     }
     messageCollector.report(
         CompilerMessageSeverity.INFO,
-        "[Wasmline] wired Component RPC one-shot init marker to " +
+        "[Wasmline] wired Wasmline Service one-shot init marker to " +
             (userMain.fqNameWhenAvailable?.asString() ?: userMain.name.asString()) + ".",
     )
 }
 
-private fun isComponentRpcUserMain(function: IrSimpleFunction, pluginContext: IrPluginContext): Boolean =
+private fun isComponentServiceUserMain(function: IrSimpleFunction, pluginContext: IrPluginContext): Boolean =
     function.name.asString() == "main" &&
         function.parent is IrFile &&
         function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&

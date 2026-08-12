@@ -94,7 +94,7 @@ class ArtifactDiagnosticsTest {
         invocationProtocol = if (executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
             WasmlineInvocationProtocol.COMPONENT_EXPORT
         } else {
-            WasmlineInvocationProtocol.WASMLINE_CORE
+            WasmlineInvocationProtocol.WASMLINE_SERVICE
         },
         exportName = if (executionModel == WasmlineExecutionModel.COMPONENT_MODEL) "plugin/invoke" else null,
     )

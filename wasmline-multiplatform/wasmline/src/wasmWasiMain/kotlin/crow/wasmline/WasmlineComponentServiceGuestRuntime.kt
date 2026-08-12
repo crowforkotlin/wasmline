@@ -13,27 +13,27 @@ import crow.wasmline.invocation.WasmlineErrorCode
 @Retention(AnnotationRetention.BINARY)
 annotation class WasmlineTransportApi
 
-/** Marks the generated Component RPC initializer that the compiler wires to user `main()`. */
+/** Marks the generated Wasmline Service initializer that the compiler wires to user `main()`. */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 @WasmlineTransportApi
-annotation class WasmlineComponentRpcInit
+annotation class WasmlineComponentServiceInit
 
-/** Outbound fixed-WIT transport installed by the generated Component RPC adapter. */
+/** Outbound fixed-WIT transport installed by the generated Wasmline Service adapter. */
 @WasmlineTransportApi
-fun interface WasmlineComponentRpcOutboundTransport {
+fun interface WasmlineComponentServiceOutboundTransport {
     fun invoke(action: String, codec: String, payload: ByteArray): WasmlineCallResult<ByteArray>
 }
 
 /**
- * Guest-side Service runtime used by the generated fixed-WIT Component RPC adapter.
+ * Guest-side Service runtime used by the generated fixed-WIT Wasmline Service adapter.
  *
  * All fields become instance-local Wasm globals after componentization. Registration and
  * initialization therefore cannot leak between two Component instances.
  */
 @WasmlineTransportApi
 object WasmlineGuestServiceRuntime {
-    private var outboundTransport: WasmlineComponentRpcOutboundTransport? = null
+    private var outboundTransport: WasmlineComponentServiceOutboundTransport? = null
     private var initializationState = InitializationState.UNINITIALIZED
     private var initializationFailure: WasmlineCallError? = null
 
@@ -44,7 +44,7 @@ object WasmlineGuestServiceRuntime {
         action: String,
         codec: String,
         payload: ByteArray,
-        transport: WasmlineComponentRpcOutboundTransport,
+        transport: WasmlineComponentServiceOutboundTransport,
         initialize: () -> Unit,
     ): WasmlineCallResult<ByteArray> {
         validateRequest(action, codec, payload)?.let { return WasmlineCallResult.Failure(it) }
@@ -57,24 +57,24 @@ object WasmlineGuestServiceRuntime {
         if (initializationState == InitializationState.INITIALIZING) {
             return failure(
                 WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH,
-                "Component RPC does not support Host calls while guest main() is initializing.",
+                "Wasmline Service does not support Host calls while guest main() is initializing.",
             )
         }
         if (action.encodeToByteArray().size > MAX_ACTION_BYTES) {
             return failure(
                 WasmlineErrorCode.INVALID_PAYLOAD,
-                "Component RPC action exceeds the $MAX_ACTION_BYTES-byte limit.",
+                "Wasmline Service action exceeds the $MAX_ACTION_BYTES-byte limit.",
             )
         }
         if (payload.size > MAX_PAYLOAD_BYTES) {
             return failure(
                 WasmlineErrorCode.INVALID_PAYLOAD,
-                "Component RPC payload exceeds the $MAX_PAYLOAD_BYTES-byte limit.",
+                "Wasmline Service payload exceeds the $MAX_PAYLOAD_BYTES-byte limit.",
             )
         }
         val transport = outboundTransport ?: return failure(
             WasmlineErrorCode.TRANSPORT_FAILURE,
-            "Component RPC outbound transport is not installed.",
+            "Wasmline Service outbound transport is not installed.",
         )
         return transport.invoke(action, codecId, payload)
     }
@@ -82,28 +82,28 @@ object WasmlineGuestServiceRuntime {
     private fun validateRequest(action: String, codec: String, payload: ByteArray): WasmlineCallError? = when {
         action.encodeToByteArray().size > MAX_ACTION_BYTES -> WasmlineCallError(
             code = WasmlineErrorCode.INVALID_PAYLOAD,
-            message = "Component RPC action exceeds the $MAX_ACTION_BYTES-byte limit.",
+            message = "Wasmline Service action exceeds the $MAX_ACTION_BYTES-byte limit.",
         )
 
         codec.encodeToByteArray().size > MAX_CODEC_BYTES -> WasmlineCallError(
             code = WasmlineErrorCode.INVALID_PAYLOAD,
-            message = "Component RPC codec id exceeds the $MAX_CODEC_BYTES-byte limit.",
+            message = "Wasmline Service codec id exceeds the $MAX_CODEC_BYTES-byte limit.",
         )
 
         payload.size > MAX_PAYLOAD_BYTES -> WasmlineCallError(
             code = WasmlineErrorCode.INVALID_PAYLOAD,
-            message = "Component RPC payload exceeds the $MAX_PAYLOAD_BYTES-byte limit.",
+            message = "Wasmline Service payload exceeds the $MAX_PAYLOAD_BYTES-byte limit.",
         )
 
         codec != codecId -> WasmlineCallError(
             code = WasmlineErrorCode.SERIALIZATION_FAILED,
-            message = "Unsupported Component RPC codec '$codec'. Expected '$codecId'.",
+            message = "Unsupported Wasmline Service codec '$codec'. Expected '$codecId'.",
         )
 
         else -> null
     }
 
-    private fun installTransport(transport: WasmlineComponentRpcOutboundTransport): WasmlineCallError? {
+    private fun installTransport(transport: WasmlineComponentServiceOutboundTransport): WasmlineCallError? {
         val installed = outboundTransport
         if (installed == null) {
             outboundTransport = transport
@@ -114,7 +114,7 @@ object WasmlineGuestServiceRuntime {
         } else {
             WasmlineCallError(
                 code = WasmlineErrorCode.TRANSPORT_FAILURE,
-                message = "A different Component RPC outbound transport is already installed.",
+                message = "A different Wasmline Service outbound transport is already installed.",
             )
         }
     }
@@ -126,7 +126,7 @@ object WasmlineGuestServiceRuntime {
 
         InitializationState.INITIALIZING -> WasmlineCallError(
             code = WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH,
-            message = "Recursive Component RPC guest initialization is not supported.",
+            message = "Recursive Wasmline Service guest initialization is not supported.",
         )
 
         InitializationState.UNINITIALIZED -> {
@@ -138,8 +138,8 @@ object WasmlineGuestServiceRuntime {
             } catch (error: Throwable) {
                 val failure = WasmlineCallError(
                     code = WasmlineErrorCode.HANDLER_FAILED,
-                    message = error.message?.let { "Component RPC guest initialization failed: $it" }
-                        ?: "Component RPC guest initialization failed.",
+                    message = error.message?.let { "Wasmline Service guest initialization failed: $it" }
+                        ?: "Wasmline Service guest initialization failed.",
                 )
                 initializationFailure = failure
                 initializationState = InitializationState.FAILED
@@ -163,9 +163,9 @@ object WasmlineGuestServiceRuntime {
     const val MAX_PAYLOAD_BYTES: Int = 16 * 1024 * 1024
 }
 
-/** Component-RPC endpoint selected statically by compiler-generated Service proxies. */
+/** Component Service endpoint selected statically by compiler-generated Service proxies. */
 @PublishedApi
-internal object GeneratedWasmlineComponentRpcEndpoint : WasmlineEndpoint {
+internal object GeneratedWasmlineComponentServiceEndpoint : WasmlineEndpoint {
     override fun invoke(action: String, payload: ByteArray): ByteArray = invokeResult(action, payload).throwOnFailure()
 
     @OptIn(WasmlineTransportApi::class)

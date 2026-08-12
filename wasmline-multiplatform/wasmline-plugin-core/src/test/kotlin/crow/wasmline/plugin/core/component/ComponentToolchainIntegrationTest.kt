@@ -1,6 +1,6 @@
 package crow.wasmline.plugin.core.component
 
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import java.io.File
@@ -20,7 +20,7 @@ class ComponentToolchainIntegrationTest {
         val root = createTempDirectory("wasmline-component-live").toFile()
         try {
             val witDirectory = File(root, "wit").apply { mkdirs() }
-            copyResource(CANONICAL_WIT_RESOURCE, File(witDirectory, "world.wit"))
+            copyResource(CANONICAL_WIT_RESOURCE, File(witDirectory, "wasmline.wit"))
 
             val generatedDirectory = File(root, "generated")
             val verificationLogs = mutableListOf<String>()
@@ -42,8 +42,8 @@ class ComponentToolchainIntegrationTest {
             assertTrue(verificationLogs.any { it.contains("Generating") })
             verificationLogs.clear()
 
-            val wat = File(root, "component-rpc-core.wat")
-            val coreWasm = File(root, "component-rpc-core.wasm")
+            val wat = File(root, "component-service-core.wat")
+            val coreWasm = File(root, "component-service-core.wasm")
             copyResource(CORE_WAT_RESOURCE, wat)
             ExternalToolRunner().run(
                 executable = wasmTools,
@@ -64,10 +64,10 @@ class ComponentToolchainIntegrationTest {
                     outputDirectory = File(root, "component"),
                     productName = "live-fixture",
                     world = "plugin",
-                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
-                    exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
-                    codec = WasmlineComponentRpcContract.DEFAULT_CODEC,
-                    rpcProtocolVersion = WasmlineComponentRpcContract.VERSION,
+                    invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                    exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
+                    codec = WasmlineComponentServiceContract.DEFAULT_CODEC,
+                    serviceProtocolVersion = WasmlineComponentServiceContract.VERSION,
                     witBindgenVersion = "0.57.1",
                     adapterVersion = "47.0.2",
                 ),
@@ -80,7 +80,7 @@ class ComponentToolchainIntegrationTest {
             assertTrue(inspectedWit.contains("export plugin:"))
             assertTrue(inspectedWit.contains("invoke: func"))
             assertEquals("protobuf", result.codec)
-            assertEquals("1", result.rpcProtocolVersion)
+            assertEquals("1", result.serviceProtocolVersion)
         } finally {
             root.deleteRecursively()
         }
@@ -112,7 +112,7 @@ class ComponentToolchainIntegrationTest {
         const val WIT_BINDGEN_ENV = "WASMLINE_TEST_WIT_BINDGEN"
         const val WASM_TOOLS_ENV = "WASMLINE_TEST_WASM_TOOLS"
         const val WASI_ADAPTER_ENV = "WASMLINE_TEST_WASI_ADAPTER"
-        const val CANONICAL_WIT_RESOURCE = "META-INF/wasmline/wit/wasmline-rpc/world.wit"
-        const val CORE_WAT_RESOURCE = "fixtures/component-rpc-core.wat"
+        const val CANONICAL_WIT_RESOURCE = "META-INF/wasmline/wit/wasmline-service/wasmline.wit"
+        const val CORE_WAT_RESOURCE = "fixtures/component-service-core.wat"
     }
 }

@@ -111,8 +111,8 @@ internal class WasmlineTypedEntryPointRewriter(
                             }
                         }
 
-                        WasmlineGuestTransport.COMPONENT_RPC -> builder.irGetObject(
-                            runtimeSymbols.generatedComponentRpcEndpointObject ?: return null,
+                        WasmlineGuestTransport.COMPONENT_SERVICE -> builder.irGetObject(
+                            runtimeSymbols.generatedComponentServiceEndpointObject ?: return null,
                         )
 
                         WasmlineGuestTransport.NONE -> return null

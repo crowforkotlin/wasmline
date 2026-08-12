@@ -11,7 +11,7 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.unique
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.long
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
@@ -53,8 +53,8 @@ class Build : CliktCommand(name = "build") {
     private val executionModel by option("--execution-model").default(WasmlineExecutionModel.CORE_WASM.name)
     private val invocationProtocol by option("--invocation-protocol")
     private val exportName by option("--export-name")
-    private val codec by option("--codec").default(WasmlineComponentRpcContract.DEFAULT_CODEC)
-    private val rpcProtocolVersion by option("--rpc-version").default(WasmlineComponentRpcContract.VERSION)
+    private val codec by option("--codec").default(WasmlineComponentServiceContract.DEFAULT_CODEC)
+    private val serviceProtocolVersion by option("--service-version").default(WasmlineComponentServiceContract.VERSION)
     private val rawComponent by option("--raw-component")
         .flag(default = false)
     private val contractMetadata by option("--contract-metadata").multiple().unique()
@@ -78,12 +78,12 @@ class Build : CliktCommand(name = "build") {
             val effectiveProtocol = invocationProtocol ?: if (componentBuild) {
                 WasmlineInvocationProtocol.COMPONENT_EXPORT.name
             } else {
-                WasmlineInvocationProtocol.WASMLINE_CORE.name
+                WasmlineInvocationProtocol.WASMLINE_SERVICE.name
             }
             val effectiveExport = exportName ?: if (
-                effectiveProtocol.equals(WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC.name, ignoreCase = true)
+                componentBuild && effectiveProtocol.equals(WasmlineInvocationProtocol.WASMLINE_SERVICE.name, ignoreCase = true)
             ) {
-                WasmlineComponentRpcContract.DEFAULT_EXPORT
+                WasmlineComponentServiceContract.DEFAULT_EXPORT
             } else {
                 null
             }
@@ -192,8 +192,8 @@ class Build : CliktCommand(name = "build") {
                         world = world,
                         invocationProtocol = invocation.invocationProtocol,
                         exportName = invocation.exportName,
-                        codec = componentRpcValue(invocation.invocationProtocol, codec),
-                        rpcProtocolVersion = componentRpcValue(invocation.invocationProtocol, rpcProtocolVersion),
+                        codec = componentServiceValue(invocation.invocationProtocol, codec),
+                        serviceProtocolVersion = componentServiceValue(invocation.invocationProtocol, serviceProtocolVersion),
                         wasmToolsVersion = wasmToolsVersion,
                     ),
                 )
@@ -220,8 +220,8 @@ class Build : CliktCommand(name = "build") {
                         world = world,
                         invocationProtocol = invocation.invocationProtocol,
                         exportName = invocation.exportName,
-                        codec = componentRpcValue(invocation.invocationProtocol, codec),
-                        rpcProtocolVersion = componentRpcValue(invocation.invocationProtocol, rpcProtocolVersion),
+                        codec = componentServiceValue(invocation.invocationProtocol, codec),
+                        serviceProtocolVersion = componentServiceValue(invocation.invocationProtocol, serviceProtocolVersion),
                         wasmToolsVersion = wasmToolsVersion,
                         adapterVersion = if (adapterPath == null) {
                             ToolchainCatalog.WASI_PREVIEW1_ADAPTER_VERSION

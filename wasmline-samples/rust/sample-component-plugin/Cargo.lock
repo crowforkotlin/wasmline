@@ -227,7 +227,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasmline-rpc-rust-fixture"
+name = "wasmline-service-rust-fixture"
 version = "1.0.0"
 dependencies = [
  "wit-bindgen",

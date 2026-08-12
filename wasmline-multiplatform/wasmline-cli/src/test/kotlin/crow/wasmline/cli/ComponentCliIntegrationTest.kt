@@ -1,6 +1,6 @@
 package crow.wasmline.cli
 
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.SignedManifestEnvelope
@@ -78,7 +78,7 @@ class ComponentCliIntegrationTest {
                 "--world",
                 "plugin",
                 "--invocation-protocol",
-                "WASMLINE_COMPONENT_RPC",
+                "WASMLINE_SERVICE",
                 "--adapter",
                 adapter.absolutePath,
                 "--wasm-tools",
@@ -156,7 +156,7 @@ class ComponentCliIntegrationTest {
                 "--execution-model",
                 "COMPONENT_MODEL",
                 "--invocation-protocol",
-                "WASMLINE_COMPONENT_RPC",
+                "WASMLINE_SERVICE",
                 "--raw-component",
                 "--wit",
                 witDirectory.absolutePath,
@@ -197,7 +197,7 @@ class ComponentCliIntegrationTest {
                 "--execution-model",
                 "COMPONENT_MODEL",
                 "--invocation-protocol",
-                "WASMLINE_COMPONENT_RPC",
+                "WASMLINE_SERVICE",
                 "--raw-component",
                 "--wit",
                 witDirectory.absolutePath,
@@ -258,16 +258,16 @@ class ComponentCliIntegrationTest {
         assertFalse(artifacts.any { it.type == WasmlineArtifactType.COMPONENT_WASM })
         artifacts.forEach { artifact ->
             assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, artifact.executionModel)
-            assertEquals(WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC, artifact.invocationProtocol)
-            assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, artifact.exportName)
+            assertEquals(WasmlineInvocationProtocol.WASMLINE_SERVICE, artifact.invocationProtocol)
+            assertEquals(WasmlineComponentServiceContract.DEFAULT_EXPORT, artifact.exportName)
             assertEquals("wasmtime-${BuildConfig.WASMTIME_VERSION}", artifact.targetCompilerVersion)
             assertEquals(
-                WasmlineComponentRpcContract.DEFAULT_CODEC,
-                artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_CODEC],
+                WasmlineComponentServiceContract.DEFAULT_CODEC,
+                artifact.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC],
             )
             assertEquals(
-                WasmlineComponentRpcContract.VERSION,
-                artifact.contractMetadata[WasmlineComponentRpcContract.METADATA_VERSION],
+                WasmlineComponentServiceContract.VERSION,
+                artifact.contractMetadata[WasmlineComponentServiceContract.METADATA_VERSION],
             )
         }
     }
@@ -321,7 +321,7 @@ class ComponentCliIntegrationTest {
             File("wasmline-multiplatform/wasmline-plugin-core/src/main/resources/$CANONICAL_WIT_PATH"),
         )
         return candidates.firstOrNull(File::isDirectory)?.canonicalFile
-            ?: error("Unable to locate the canonical Wasmline RPC WIT directory.")
+            ?: error("Unable to locate the canonical Wasmline Service WIT directory.")
     }
 
     private fun requireExecutable(name: String): File = requireFile(name).also { file ->
@@ -356,6 +356,6 @@ class ComponentCliIntegrationTest {
         const val WASI_ADAPTER_ENV = "WASMLINE_TEST_WASI_ADAPTER"
         const val WASMTIME_DIRECTORY_ENV = "WASMLINE_TEST_WASMTIME_DIR"
         const val WIT_DIRECTORY_ENV = "WASMLINE_TEST_WIT_DIRECTORY"
-        const val CANONICAL_WIT_PATH = "META-INF/wasmline/wit/wasmline-rpc"
+        const val CANONICAL_WIT_PATH = "META-INF/wasmline/wit/wasmline-service"
     }
 }

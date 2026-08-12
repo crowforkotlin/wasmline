@@ -24,10 +24,10 @@ class ComponentAotPipelineTest {
             componentWasm = component,
             inspectedWit = inspectedWit,
             world = "plugin",
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
             exportName = "plugin/invoke",
             codec = "protobuf",
-            rpcProtocolVersion = "1",
+            serviceProtocolVersion = "1",
             componentSha256 = FileDigest.sha256Hex(component),
             witSha256 = "a".repeat(64),
             adapterSha256 = "b".repeat(64),
@@ -62,7 +62,7 @@ class ComponentAotPipelineTest {
         val request = requireNotNull(capturedRequest)
         assertEquals(component.canonicalFile, request.inputComponent.canonicalFile)
         assertEquals("plugin/invoke", request.artifactMetadata.exportName)
-        assertEquals("protobuf", request.artifactMetadata.contractMetadata["wasmline.rpc.codec"])
+        assertEquals("protobuf", request.artifactMetadata.contractMetadata["wasmline.service.codec"])
         assertTrue(componentRecordFile.isFile)
         assertTrue(aotRecordFile.isFile)
         assertEquals(result.rawComponent, ComponentBuildRecords.read(componentRecordFile))

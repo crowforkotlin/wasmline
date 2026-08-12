@@ -6,7 +6,7 @@ import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
@@ -37,7 +37,7 @@ enum class WasmSampleMode(
     CORE_WASM(
         title = "Core Wasm",
         description = "WasmlineService + action bridge",
-        protocol = "WASMLINE_CORE",
+        protocol = "WASMLINE_SERVICE",
         defaultExport = "TimeSyncService.timeSync",
     ),
     RAW_EXPORT(
@@ -324,7 +324,7 @@ internal class WasmSampleRunner(
                 path = path,
                 artifactFormat = format,
                 executionModel = WasmlineExecutionModel.CORE_WASM,
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
             )
 
             WasmSampleMode.RAW_EXPORT -> WasmlineArtifactDescriptor(
@@ -346,9 +346,9 @@ internal class WasmSampleRunner(
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = WasmSampleMode.COMPONENT_MODEL.defaultExport,
                 contractMetadata = mapOf(
-                    WasmlineComponentRpcContract.METADATA_PROFILE to WasmlineComponentRpcContract.PROFILE,
-                    WasmlineComponentRpcContract.METADATA_CODEC to WasmlineComponentRpcContract.DEFAULT_CODEC,
-                    WasmlineComponentRpcContract.METADATA_VERSION to WasmlineComponentRpcContract.VERSION,
+                    WasmlineComponentServiceContract.METADATA_PROFILE to WasmlineComponentServiceContract.PROFILE,
+                    WasmlineComponentServiceContract.METADATA_CODEC to WasmlineComponentServiceContract.DEFAULT_CODEC,
+                    WasmlineComponentServiceContract.METADATA_VERSION to WasmlineComponentServiceContract.VERSION,
                 ),
             )
         }

@@ -69,7 +69,7 @@ class ComponentAotBuildRecordTest {
             bytesFile = rawFile,
         ).copy(
             executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
         )
 
         assertFailsWith<IllegalArgumentException> { buildRecord(rawRecord, componentArtifact) }
@@ -115,20 +115,22 @@ class ComponentAotBuildRecordTest {
         assertTrue(error.message.orEmpty().contains("portable PWASM"))
     }
 
-    private fun compileResult(rawFile: File, cwasm: File, pwasm: File): ComponentAotCompileResult {
-        val metadata = ComponentAotArtifactMetadata()
-        return ComponentAotCompileResult(
-            inputComponent = rawFile,
-            inputComponentSha256 = FileDigest.sha256Hex(rawFile),
-            wasmtimeVersion = "47.0.2",
-            engineOptions = ComponentAotEngineOptions(),
-            artifactMetadata = metadata,
-            outputs = listOf(
-                output(ComponentAotBackend.CRANELIFT, "x86_64-linux", "x86_64-unknown-linux-gnu", cwasm, metadata),
-                output(ComponentAotBackend.PULLEY, "pulley64", "pulley64", pwasm, metadata),
-            ),
-        )
-    }
+    private fun compileResult(
+        rawFile: File,
+        cwasm: File,
+        pwasm: File,
+        metadata: ComponentAotArtifactMetadata = ComponentAotArtifactMetadata(),
+    ): ComponentAotCompileResult = ComponentAotCompileResult(
+        inputComponent = rawFile,
+        inputComponentSha256 = FileDigest.sha256Hex(rawFile),
+        wasmtimeVersion = "47.0.2",
+        engineOptions = ComponentAotEngineOptions(),
+        artifactMetadata = metadata,
+        outputs = listOf(
+            output(ComponentAotBackend.CRANELIFT, "x86_64-linux", "x86_64-unknown-linux-gnu", cwasm, metadata),
+            output(ComponentAotBackend.PULLEY, "pulley64", "pulley64", pwasm, metadata),
+        ),
+    )
 
     private fun output(
         backend: ComponentAotBackend,

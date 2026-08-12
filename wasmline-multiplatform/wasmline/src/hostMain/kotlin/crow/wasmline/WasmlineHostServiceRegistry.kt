@@ -7,7 +7,7 @@ import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
-/** Instance-owned dispatcher registry shared by Core and Component RPC callbacks. */
+/** Instance-owned dispatcher registry shared by Core and Wasmline Service callbacks. */
 internal class WasmlineHostServiceRegistry {
     private val lock = WasmlineHostServiceLock()
     private var state = State()
@@ -30,7 +30,7 @@ internal class WasmlineHostServiceRegistry {
             val current = state
             checkCanRegister(current, "generated service '$contractId'")
             check(current.mode != OwnershipMode.RAW) {
-                "Cannot bind generated service '$contractId' after a raw Component RPC handler was selected."
+                "Cannot bind generated service '$contractId' after a raw Wasmline Service handler was selected."
             }
             val conflict = additions.keys.firstOrNull(current.handlers::containsKey)
             check(conflict == null) {
@@ -47,14 +47,14 @@ internal class WasmlineHostServiceRegistry {
         }
     }
 
-    /** Selects the mutually exclusive raw Component RPC ownership mode. */
+    /** Selects the mutually exclusive raw Wasmline Service ownership mode. */
     fun registerRaw(handler: (String, ByteArray) -> WasmlineCallResult<ByteArray>): Boolean = lock.withLock {
         val current = state
-        checkCanRegister(current, "raw Component RPC handler")
+        checkCanRegister(current, "raw Wasmline Service handler")
         check(current.mode != OwnershipMode.GENERATED) {
-            "Cannot bind a raw Component RPC handler after generated Wasmline services were selected."
+            "Cannot bind a raw Wasmline Service handler after generated Wasmline services were selected."
         }
-        check(current.rawHandler == null) { "A raw Component RPC handler is already bound to this Wasmline instance." }
+        check(current.rawHandler == null) { "A raw Wasmline Service handler is already bound to this Wasmline instance." }
         val next = current.copy(
             mode = OwnershipMode.RAW,
             rawHandler = handler,

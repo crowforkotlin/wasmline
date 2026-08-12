@@ -1,6 +1,6 @@
 package crow.wasmline.gradle.extensions
 
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
@@ -54,16 +54,16 @@ open class ComponentExtension @Inject constructor(project: Project) {
     /** Optional finished Component Wasm to validate and package without rebuilding it. */
     val componentInput: RegularFileProperty = objects.fileProperty()
 
-    /** Export implementing the fixed Wasmline Component RPC envelope. */
+    /** Export implementing the fixed Wasmline Service envelope. */
     val exportName: Property<String> = objects.property(String::class.java)
 
-    /** Serialization factory id carried by the Component RPC envelope. */
+    /** Serialization factory id carried by the Wasmline Service envelope. */
     val codec: Property<String> = objects.property(String::class.java)
-        .convention(WasmlineComponentRpcContract.DEFAULT_CODEC)
+        .convention(WasmlineComponentServiceContract.DEFAULT_CODEC)
 
-    /** Wasmline Component RPC envelope version. */
-    val rpcProtocolVersion: Property<String> = objects.property(String::class.java)
-        .convention(WasmlineComponentRpcContract.VERSION)
+    /** Wasmline Service envelope version. */
+    val serviceProtocolVersion: Property<String> = objects.property(String::class.java)
+        .convention(WasmlineComponentServiceContract.VERSION)
 
     /** Generated Kotlin source directory. */
     val generatedSourcesDirectory: DirectoryProperty = objects.directoryProperty()

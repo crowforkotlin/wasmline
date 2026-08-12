@@ -52,7 +52,7 @@ object WasmlineInvocationBenchmark {
     private const val ITERATIONS_PROPERTY = "wasmline.benchmark.iterations"
     private const val COLD_SAMPLES_PROPERTY = "wasmline.benchmark.coldSamples"
     private const val SUPPORT_CONCURRENT_PROPERTY = "wasmline.benchmark.supportConcurrent"
-    private const val WASMLINE_CORE_AOT_PROPERTY = "wasmline.benchmark.wasmlineCoreAot"
+    private const val WASMLINE_SERVICE_AOT_PROPERTY = "wasmline.benchmark.wasmlineCoreAot"
     private const val RAW_EXPORT_AOT_PROPERTY = "wasmline.benchmark.rawExportAot"
     private const val COMPONENT_AOT_PROPERTY = "wasmline.benchmark.componentAot"
     private const val COLD_ARTIFACT_PATH_PROPERTY = "wasmline.benchmark.cold.artifactPath"
@@ -85,8 +85,8 @@ object WasmlineInvocationBenchmark {
         require(iterations > 0) { "Benchmark iterations must be positive." }
 
         val wasmlineCore = optionalAotArtifact(
-            kind = ArtifactKind.WASMLINE_CORE,
-            propertyName = WASMLINE_CORE_AOT_PROPERTY,
+            kind = ArtifactKind.WASMLINE_SERVICE,
+            propertyName = WASMLINE_SERVICE_AOT_PROPERTY,
         )
         val rawExportArtifact = requiredAotArtifact(
             kind = ArtifactKind.RAW_EXPORT,
@@ -171,7 +171,7 @@ object WasmlineInvocationBenchmark {
         require(samples > 0) { "Cold-load sample count must be positive." }
 
         val artifacts = buildList {
-            optionalAotArtifact(ArtifactKind.WASMLINE_CORE, WASMLINE_CORE_AOT_PROPERTY)?.let(::add)
+            optionalAotArtifact(ArtifactKind.WASMLINE_SERVICE, WASMLINE_SERVICE_AOT_PROPERTY)?.let(::add)
             add(requiredAotArtifact(ArtifactKind.RAW_EXPORT, RAW_EXPORT_AOT_PROPERTY))
             add(requiredAotArtifact(ArtifactKind.COMPONENT_EXPORT, COMPONENT_AOT_PROPERTY))
         }
@@ -525,10 +525,10 @@ object WasmlineInvocationBenchmark {
         val invocationProtocol: WasmlineInvocationProtocol,
         val exportName: String?,
     ) {
-        WASMLINE_CORE(
+        WASMLINE_SERVICE(
             label = "wasmline-core",
             executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
             exportName = null,
         ),
         RAW_EXPORT(

@@ -37,7 +37,7 @@ class WasmlineArtifactDescriptorTest {
 
         assertNull(descriptor.artifactFormat)
         assertEquals(WasmlineExecutionModel.CORE_WASM, descriptor.executionModel)
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_CORE, descriptor.invocationProtocol)
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_SERVICE, descriptor.invocationProtocol)
         assertNull(descriptor.validationError())
     }
 
@@ -64,29 +64,29 @@ class WasmlineArtifactDescriptorTest {
     }
 
     @Test
-    fun componentRpcAcceptsItsFixedOrImplicitExport() {
+    fun componentServiceAcceptsItsFixedOrImplicitExport() {
         val implicit = WasmlineArtifactDescriptor(
             path = "plugin.cwasm",
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
         )
-        val explicit = implicit.copy(exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT)
+        val explicit = implicit.copy(exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT)
 
         assertNull(implicit.validationError())
         assertNull(explicit.validationError())
     }
 
     @Test
-    fun componentRpcRejectsAnArbitraryExport() {
+    fun componentServiceRejectsAnArbitraryExport() {
         val descriptor = WasmlineArtifactDescriptor(
             path = "plugin.cwasm",
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
             exportName = "calculator/evaluate",
         )
 
         assertEquals(
-            "WASMLINE_COMPONENT_RPC exportName must be '${WasmlineComponentRpcContract.DEFAULT_EXPORT}'.",
+            "WASMLINE_SERVICE Component exportName must be '${WasmlineComponentServiceContract.DEFAULT_EXPORT}'.",
             descriptor.validationError(),
         )
     }
@@ -107,7 +107,7 @@ class WasmlineArtifactDescriptorTest {
                 invocationProtocol = if (component) {
                     WasmlineInvocationProtocol.COMPONENT_EXPORT
                 } else {
-                    WasmlineInvocationProtocol.WASMLINE_CORE
+                    WasmlineInvocationProtocol.WASMLINE_SERVICE
                 },
                 exportName = if (component) "plugin/invoke" else null,
             )
@@ -129,15 +129,18 @@ class WasmlineArtifactDescriptorTest {
     }
 
     @Test
-    fun rejectsComponentWithCoreProtocol() {
+    fun rejectsComponentServiceWithArbitraryExport() {
         val descriptor = WasmlineArtifactDescriptor(
             path = "plugin.cwasm",
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
             exportName = "add",
         )
 
-        assertEquals("COMPONENT_MODEL cannot use WASMLINE_CORE.", descriptor.validationError())
+        assertEquals(
+            "WASMLINE_SERVICE Component exportName must be '${WasmlineComponentServiceContract.DEFAULT_EXPORT}'.",
+            descriptor.validationError(),
+        )
     }
 
     /** Rejects the component export protocol on a Core Wasm artifact. */
@@ -151,17 +154,6 @@ class WasmlineArtifactDescriptorTest {
         )
 
         assertEquals("COMPONENT_EXPORT requires COMPONENT_MODEL.", descriptor.validationError())
-    }
-
-    @Test
-    fun rejectsComponentRpcOnCoreArtifact() {
-        val descriptor = WasmlineArtifactDescriptor(
-            path = "plugin.cwasm",
-            executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
-        )
-
-        assertEquals("WASMLINE_COMPONENT_RPC requires COMPONENT_MODEL.", descriptor.validationError())
     }
 
     /** Accepts a Core Wasm artifact with an explicitly named raw export. */

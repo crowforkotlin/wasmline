@@ -15,7 +15,7 @@ static bool string_equals(const plugin_string_t* value, const char* expected) {
     return value->len == expected_length && memcmp(value->ptr, expected, expected_length) == 0;
 }
 
-static bool return_error(plugin_rpc_error_t* error, const char* code, const char* message) {
+static bool return_error(plugin_service_error_t* error, const char* code, const char* message) {
     plugin_string_dup(&error->code, code);
     plugin_string_dup(&error->message, message);
     error->details.ptr = NULL;
@@ -38,13 +38,13 @@ static bool copy_payload(const plugin_list_u8_t* payload, plugin_list_u8_t* resu
     return true;
 }
 
-static bool invoke_host(plugin_request_t* request, plugin_list_u8_t* result, plugin_rpc_error_t* error) {
+static bool invoke_host(plugin_request_t* request, plugin_list_u8_t* result, plugin_service_error_t* error) {
     host_request_t host_request;
     plugin_string_set(&host_request.action, HOST_CALLBACK_ACTION);
     host_request.codec = request->codec;
     host_request.payload = request->payload;
 
-    host_rpc_error_t host_error;
+    host_service_error_t host_error;
     if (host_invoke(&host_request, result, &host_error)) {
         return true;
     }
@@ -55,7 +55,7 @@ static bool invoke_host(plugin_request_t* request, plugin_list_u8_t* result, plu
     return false;
 }
 
-bool plugin_invoke(plugin_request_t* request, plugin_list_u8_t* result, plugin_rpc_error_t* error) {
+bool plugin_invoke(plugin_request_t* request, plugin_list_u8_t* result, plugin_service_error_t* error) {
     if (!string_equals(&request->codec, SUPPORTED_CODEC)) {
         return return_error(error, "1005", "Unsupported codec. Expected protobuf.");
     }
