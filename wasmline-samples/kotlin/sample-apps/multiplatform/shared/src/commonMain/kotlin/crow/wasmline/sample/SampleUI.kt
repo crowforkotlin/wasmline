@@ -2,6 +2,7 @@ package crow.wasmline.sample
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,17 +19,18 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -44,7 +45,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -319,18 +322,14 @@ private fun RequestPanel(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 SettingRow(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Refresh,
                     label = "Force reload",
                     checked = state.forceReload,
                     onCheckedChange = onForceReloadChange,
                 )
                 SettingRow(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Schedule,
                     label = "Fresh asset",
                     checked = state.freshMode,
                     onCheckedChange = onFreshModeChange,
@@ -367,27 +366,58 @@ private fun Field(
 
 @Composable
 private fun SettingRow(
-    modifier: Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val containerShape = RoundedCornerShape(7.dp)
+    val checkboxShape = RoundedCornerShape(5.dp)
     Row(
-        modifier = modifier,
+        modifier = Modifier
+            .clip(containerShape)
+            .background(if (checked) Green.copy(alpha = 0.08f) else Color.Transparent)
+            .border(
+                width = 1.dp,
+                color = if (checked) Green.copy(alpha = 0.4f) else Border,
+                shape = containerShape,
+            )
+            .toggleable(
+                value = checked,
+                role = Role.Checkbox,
+                onValueChange = onCheckedChange,
+            )
+            .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(icon, contentDescription = label, tint = MutedInk, modifier = Modifier.size(18.dp))
+        Box(
+            modifier = Modifier
+                .size(18.dp)
+                .clip(checkboxShape)
+                .background(if (checked) Green else Color.Transparent)
+                .border(
+                    width = 1.dp,
+                    color = if (checked) Green else MutedInk,
+                    shape = checkboxShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (checked) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = Color.White,
+                )
+            }
+        }
         Text(
             text = label,
-            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall,
             color = Ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="128" y1="96" x2="896" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9A3CF5"/>
+      <stop offset="0.48" stop-color="#6244E9"/>
+      <stop offset="1" stop-color="#244BC5"/>
+    </linearGradient>
+    <linearGradient id="circuit" x1="208" y1="512" x2="816" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.5" stop-color="#B8EEFF"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <linearGradient id="cubeTop" x1="382" y1="340" x2="642" y2="488" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EDF4FF"/>
+    </linearGradient>
+    <linearGradient id="cubeLeft" x1="358" y1="440" x2="500" y2="692" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFF"/>
+      <stop offset="1" stop-color="#CEE3FF"/>
+    </linearGradient>
+    <linearGradient id="cubeRight" x1="524" y1="440" x2="666" y2="692" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCEBFF"/>
+    </linearGradient>
+    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="190%">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#17256D" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect x="16" y="16" width="992" height="992" rx="224" fill="url(#background)"/>
+  <rect x="29" y="29" width="966" height="966" rx="211" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="4"/>
+
+  <!-- The circuit rail wraps the package with strict horizontal and vertical symmetry. -->
+  <path d="M512 188Q530 188 548 198L798 342Q816 352 816 373V651Q816 672 798 682L548 826Q512 846 476 826L226 682Q208 672 208 651V373Q208 352 226 342L476 198Q494 188 512 188Z"
+        fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M512 188Q530 188 548 198L798 342Q816 352 816 373V651Q816 672 798 682L548 826Q512 846 476 826L226 682Q208 672 208 651V373Q208 352 226 342L476 198Q494 188 512 188Z"
+        fill="none" stroke="url(#circuit)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Paired terminals and inward traces enrich the rail without implying direction. -->
+  <g>
+    <circle cx="512" cy="188" r="16" fill="#FFFFFF"/>
+    <circle cx="512" cy="188" r="6" fill="#65D8F4"/>
+    <circle cx="512" cy="836" r="16" fill="#FFFFFF"/>
+    <circle cx="512" cy="836" r="6" fill="#65D8F4"/>
+    <circle cx="351" cy="270" r="14" fill="#FFFFFF"/>
+    <circle cx="351" cy="270" r="5" fill="#65D8F4"/>
+    <circle cx="673" cy="270" r="14" fill="#FFFFFF"/>
+    <circle cx="673" cy="270" r="5" fill="#65D8F4"/>
+    <circle cx="351" cy="754" r="14" fill="#FFFFFF"/>
+    <circle cx="351" cy="754" r="5" fill="#65D8F4"/>
+    <circle cx="673" cy="754" r="14" fill="#FFFFFF"/>
+    <circle cx="673" cy="754" r="5" fill="#65D8F4"/>
+    <circle cx="208" cy="512" r="18" fill="#FFFFFF"/>
+    <circle cx="208" cy="512" r="7" fill="#65D8F4"/>
+    <circle cx="816" cy="512" r="18" fill="#FFFFFF"/>
+    <circle cx="816" cy="512" r="7" fill="#65D8F4"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round">
+    <path d="M208 430H258"/>
+    <path d="M208 594H258"/>
+    <path d="M816 430H766"/>
+    <path d="M816 594H766"/>
+  </g>
+  <g fill="#65D8F4">
+    <circle cx="258" cy="430" r="8"/>
+    <circle cx="258" cy="594" r="8"/>
+    <circle cx="766" cy="430" r="8"/>
+    <circle cx="766" cy="594" r="8"/>
+  </g>
+
+  <!-- Central WebAssembly package. -->
+  <g filter="url(#softShadow)">
+    <path d="M358 421L487 346Q512 331 537 346L666 421L512 510L358 421Z" fill="url(#cubeTop)"/>
+    <path d="M358 441L500 523V692L377 621Q358 610 358 588V441Z" fill="url(#cubeLeft)"/>
+    <path d="M666 441L524 523V692L647 621Q666 610 666 588V441Z" fill="url(#cubeRight)"/>
+  </g>
+
+  <!-- Custom vector lettering keeps the WA engraving stable across every export format. -->
+  <g fill="none" stroke="#5C48D8" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" opacity="0.88">
+    <path d="M432 402L448 454L466 428L484 454L500 402"/>
+    <path d="M520 454L544 402L568 454M529 435H559"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.55" transform="translate(0 -4)">
+    <path d="M432 402L448 454L466 428L484 454L500 402"/>
+    <path d="M520 454L544 402L568 454M529 435H559"/>
+  </g>
+</svg>

@@ -43,6 +43,14 @@ class WasmtimeCompilerTest {
     }
 
     @Test
+    fun parsesExactVersionFromWasmtimeOutput() {
+        assertEquals("47.0.2", WasmtimeCompiler.parseWasmtimeVersion("wasmtime 47.0.2 (abc123 2026-01-01)"))
+        assertEquals("47.0.2", WasmtimeCompiler.parseWasmtimeVersion("Wasmtime 47.0.2\n"))
+        assertNull(WasmtimeCompiler.parseWasmtimeVersion("wasmtime v47.0.2"))
+        assertNull(WasmtimeCompiler.parseWasmtimeVersion("unrelated 47.0.2"))
+    }
+
+    @Test
     fun fullCompilerDiscoveryNeverReturnsWasmtimeMin() {
         val root = createTempDirectory("wasmtime-compiler-discovery").toFile()
         try {

@@ -53,6 +53,21 @@ class WasmtimeCompiler {
         /** Returns the Wasmtime target triple for a configured target name. */
         fun normalizeTarget(target: String): String = targetAliases[target] ?: target
 
+        /** Reads the exact x.y.z version reported by a Wasmtime executable. */
+        fun detectWasmtimeVersion(executable: File): String? = runCatching {
+            val process = ProcessBuilder(executable.absolutePath, "--version")
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            if (process.waitFor() == 0) parseWasmtimeVersion(output) else null
+        }.getOrNull()
+
+        internal fun parseWasmtimeVersion(output: String): String? =
+            Regex("(?:^|\\s)wasmtime\\s+(\\d+\\.\\d+\\.\\d+)(?:\\s|$)", RegexOption.IGNORE_CASE)
+                .find(output)
+                ?.groupValues
+                ?.get(1)
+
         /** Finds a matching Wasmtime executable in the base directory. */
         fun findWasmtimeInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
             findDirectWasmtimeExecutable(baseDir)?.let { executable ->
@@ -134,13 +149,7 @@ class WasmtimeCompiler {
             val expectedVersion = requestedVersion
                 .removePrefix("release-")
                 .removePrefix("v")
-            return runCatching {
-                val process = ProcessBuilder(executable.absolutePath, "--version")
-                    .redirectErrorStream(true)
-                    .start()
-                val output = process.inputStream.bufferedReader().use { it.readText() }
-                process.waitFor() == 0 && output.contains("wasmtime $expectedVersion")
-            }.getOrDefault(false)
+            return detectWasmtimeVersion(executable) == expectedVersion
         }
     }
 

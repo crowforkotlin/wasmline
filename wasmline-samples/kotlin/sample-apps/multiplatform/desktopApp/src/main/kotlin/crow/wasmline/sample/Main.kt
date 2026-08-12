@@ -5,18 +5,20 @@ package crow.wasmline.sample
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.model.SignedManifestEnvelope
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.InternalResourceApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -34,85 +36,33 @@ import org.jetbrains.jewel.window.styling.TitleBarColors
 import org.jetbrains.jewel.window.styling.TitleBarStyle
 import java.awt.Dimension
 import java.io.File
+import java.nio.file.Paths
+import javax.imageio.ImageIO
 
-private const val artifactFormatProperty = "wasmline.artifact.format"
-private const val artifactFormatEnvironment = "WASMLINE_ARTIFACT_FORMAT"
 private const val rawArtifactProperty = "wasmline.sample.raw"
 private const val rawArtifactEnvironment = "WASMLINE_SAMPLE_RAW"
 private const val componentArtifactProperty = "wasmline.sample.component"
 private const val componentArtifactEnvironment = "WASMLINE_SAMPLE_COMPONENT"
-
-private val bundledPluginResources = listOf(
-    "plugin.cwasm",
-    "plugin.pwasm",
-    "plugin.generated.cwasm",
-    "plugin.generated.pwasm",
-)
-
-private fun requestedBundledArtifactFormat(): String? {
-    val rawFormat = System.getProperty(artifactFormatProperty)?.ifBlank { null }
-        ?: System.getenv(artifactFormatEnvironment)?.ifBlank { null }
-        ?: return null
-    val normalized = rawFormat.lowercase()
-    return when (normalized) {
-        "pwasm", "cwasm" -> normalized
-        else -> error("Unsupported runtime artifact format '$rawFormat'. Expected pwasm or cwasm.")
-    }
-}
+private const val bundledPluginPackageRoot = "wasmline-package"
+private const val bundledPluginManifest = "$bundledPluginPackageRoot/manifest.wlm"
 
 private fun configuredArtifact(property: String, environment: String): String =
     System.getProperty(property)?.ifBlank { "" }
         ?: System.getenv(environment)?.ifBlank { "" }
         ?: ""
 
-private fun findBundledPluginResource(vararg candidates: String): String? {
-    val classLoader = Thread.currentThread().contextClassLoader
-    return candidates.firstOrNull { classLoader.getResource(it) != null }
-}
-
-private fun resolveBundledPluginResourceNames(): List<String> {
-    val classLoader = Thread.currentThread().contextClassLoader
-    val requestedFormat = requestedBundledArtifactFormat()
-    if (requestedFormat != null) {
-        val selected = when (requestedFormat) {
-            "pwasm" -> findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm")
-            "cwasm" -> findBundledPluginResource("plugin.cwasm", "plugin.generated.cwasm")
-            else -> null
-        }
-        if (selected != null) {
-            return listOf(selected)
-        }
-
-        val available = bundledPluginResources.filter { classLoader.getResource(it) != null }
-        error(
-            "Requested ${requestedFormat} bundled artifact was not found. " +
-                "Available resources: ${available.ifEmpty { listOf("<none>") }.joinToString(", ")}"
-        )
-    }
-
-    val preferredResources = listOfNotNull(
-        findBundledPluginResource("plugin.cwasm", "plugin.generated.cwasm"),
-        findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm"),
-    )
-    if (preferredResources.isNotEmpty()) {
-        return preferredResources
-    }
-
-    error("Resource not found: ${bundledPluginResources.joinToString(" or ")}")
-}
-
 @OptIn(ExperimentalResourceApi::class)
 fun main() = application {
     WasmlineLoader.bootstrap()
-    val (resourceName, wasmFile) = extractPluginArtifactToTemp()
-    println("Wasm extracted from $resourceName to: ${wasmFile.absolutePath}")
-    val refresher = remember(resourceName) { DesktopAssetRefresher(resourceName) }
+    val pluginPackage = extractPluginPackageToTemp()
+    println("Wasmline package extracted to: ${pluginPackage.manifestFile.absolutePath}")
+    val refresher = remember(pluginPackage) { DesktopAssetRefresher(pluginPackage) }
     AppWindows {
         App(
-            wasmPath = wasmFile.absolutePath,
+            wasmPath = pluginPackage.manifestFile.absolutePath,
             assetRefresher = refresher,
             artifacts = SampleArtifacts(
-                corePath = wasmFile.absolutePath,
+                corePath = pluginPackage.manifestFile.absolutePath,
                 rawExportPath = configuredArtifact(rawArtifactProperty, rawArtifactEnvironment),
                 componentPath = configuredArtifact(componentArtifactProperty, componentArtifactEnvironment),
             ),
@@ -122,10 +72,8 @@ fun main() = application {
 
 @Composable
 fun ApplicationScope.AppWindows(content: @Composable () -> Unit) {
-    var iconPainter by remember { mutableStateOf<BitmapPainter?>(null) }
-    LaunchedEffect(Unit) {
-//        iconPainter = BitmapPainter(image = readResourceBytes("favicon.ico").decodeToImageBitmap())
-    }
+    val iconPainter = remember { loadWindowIcon() }
+    val windowState = rememberWindowState(size = DpSize(width = 800.dp, height = 860.dp))
     IntUiTheme(
         theme = JewelTheme.lightThemeDefinition(),
         styling = ComponentStyling.default()
@@ -138,17 +86,24 @@ fun ApplicationScope.AppWindows(content: @Composable () -> Unit) {
         MaterialTheme {
             DecoratedWindow(
                 onCloseRequest = ::exitApplication,
-                title = "Wasmline Sample ",
+                state = windowState,
+                title = "Wasmline",
                 enabled = true,
                 visible = true,
-                icon = iconPainter
+                icon = iconPainter,
             ) {
-                window.minimumSize = Dimension(352, 320)
+                window.minimumSize = Dimension(640, 600)
                 DesktopTitleBar()
                 content()
             }
         }
     }
+}
+
+private fun loadWindowIcon(): BitmapPainter {
+    val stream = Thread.currentThread().contextClassLoader.getResourceAsStream("wasmline-icon.png")
+        ?: error("Resource not found: wasmline-icon.png")
+    return stream.use { BitmapPainter(ImageIO.read(it).toComposeImageBitmap()) }
 }
 
 @Composable
@@ -177,55 +132,88 @@ fun copyResourceToFile(resourcePath: String, targetFile: File) {
     }
 }
 
-@OptIn(ExperimentalResourceApi::class)
-fun extractResourceToTemp(resourcePath: String): File {
-    val suffix = "." + resourcePath.substringAfterLast('.', missingDelimiterValue = "bin")
-    val prefix = "wasmline_plugin_${resourcePath.substringAfterLast('.', missingDelimiterValue = "bin")}_"
-    val tempFile = File.createTempFile(prefix, suffix)
-    tempFile.deleteOnExit()
-    copyResourceToFile(resourcePath, tempFile)
-    return tempFile
+private data class BundledPluginPackage(
+    val directory: File,
+    val manifestFile: File,
+    val resourcePaths: Map<String, String>,
+)
+
+@OptIn(ExperimentalSerializationApi::class)
+private fun bundledPluginResourcePaths(): Map<String, String> {
+    val classLoader = Thread.currentThread().contextClassLoader
+    val manifestBytes = classLoader.getResourceAsStream(bundledPluginManifest)?.use { it.readBytes() }
+        ?: error("Resource not found: $bundledPluginManifest")
+    val envelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
+    val relativePaths = buildList {
+        add("manifest.wlm")
+        envelope.manifest.artifacts.mapTo(this) { it.url }
+    }.distinct()
+
+    return relativePaths.associate { relativePath ->
+        val safePath = requireSafePackageRelativePath(relativePath)
+        val resourcePath = "$bundledPluginPackageRoot/$safePath".also { resourcePath ->
+            require(classLoader.getResource(resourcePath) != null) {
+                "Wasmline package resource not found: $resourcePath"
+            }
+        }
+        safePath to resourcePath
+    }
+}
+
+private fun requireSafePackageRelativePath(path: String): String {
+    val normalized = Paths.get(path).normalize()
+    val safePath = normalized.joinToString("/")
+    require(
+        path.isNotBlank() &&
+            safePath.isNotBlank() &&
+            safePath != "." &&
+            !normalized.isAbsolute &&
+            !normalized.startsWith(".."),
+    ) {
+        "Wasmline package contains an invalid relative artifact path: $path"
+    }
+    return safePath
 }
 
 @OptIn(ExperimentalResourceApi::class)
-fun extractPluginArtifactToTemp(): Pair<String, File> {
-    val resourceNames = resolveBundledPluginResourceNames()
-    if (resourceNames.size == 1) {
-        val resourceName = resourceNames.single()
-        return resourceName to extractResourceToTemp(resourceName)
-    }
-
-    val markerFile = File.createTempFile("wasmline_plugin_bundle_", ".tmp")
-    val parentDir = markerFile.parentFile
-    val baseName = markerFile.name.removeSuffix(".tmp")
-    markerFile.delete()
-
-    val extractedFiles = linkedMapOf<String, File>()
-    for (resourceName in resourceNames) {
-        val suffix = "." + resourceName.substringAfterLast('.', missingDelimiterValue = "bin")
-        val targetFile = File(parentDir, baseName + suffix)
+private fun copyBundledPluginPackage(pluginPackage: BundledPluginPackage) {
+    pluginPackage.resourcePaths.forEach { (relativePath, resourcePath) ->
+        val targetFile = File(pluginPackage.directory, relativePath)
+        copyResourceToFile(resourcePath, targetFile)
         targetFile.deleteOnExit()
-        copyResourceToFile(resourceName, targetFile)
-        extractedFiles[resourceName] = targetFile
     }
+}
 
-    val primaryResourceName = resourceNames.first()
-    return primaryResourceName to checkNotNull(extractedFiles[primaryResourceName])
+@OptIn(ExperimentalResourceApi::class)
+private fun extractPluginPackageToTemp(): BundledPluginPackage {
+    val packageDirectory = kotlin.io.path.createTempDirectory("wasmline_plugin_package_").toFile()
+    packageDirectory.deleteOnExit()
+    val pluginPackage = BundledPluginPackage(
+        directory = packageDirectory,
+        manifestFile = File(packageDirectory, "manifest.wlm"),
+        resourcePaths = bundledPluginResourcePaths(),
+    )
+    copyBundledPluginPackage(pluginPackage)
+    return pluginPackage
 }
 
 /**
  * Desktop implementation of [AssetRefresher].
- * Deletes the current temp file and re-extracts from classpath resources.
+ * Re-extracts the complete classpath package over its stable temp directory.
  */
 @OptIn(ExperimentalResourceApi::class)
 private class DesktopAssetRefresher(
-    private val primaryResourceName: String,
+    private val pluginPackage: BundledPluginPackage,
 ) : AssetRefresher {
     override suspend fun refresh(wasmPath: String): String {
-        val oldFile = File(wasmPath)
-        oldFile.delete()
-        val newFile = extractResourceToTemp(primaryResourceName)
-        println("[DesktopAssetRefresher] Re-extracted to: ${newFile.absolutePath}")
-        return newFile.absolutePath
+        val requestedFile = File(wasmPath).canonicalFile
+        if (requestedFile != pluginPackage.manifestFile.canonicalFile) {
+            println("[DesktopAssetRefresher] Custom artifact is already current: ${requestedFile.path}")
+            return requestedFile.path
+        }
+
+        copyBundledPluginPackage(pluginPackage)
+        println("[DesktopAssetRefresher] Re-extracted package to: ${pluginPackage.directory.path}")
+        return pluginPackage.manifestFile.path
     }
 }
