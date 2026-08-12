@@ -45,7 +45,7 @@ namespace wasmline {
         /** Invokes an exported component function. */
         InvocationResult invoke(std::string_view exportName, const std::vector<ComponentValue>& arguments);
 
-        /** Sets the handler and codec expected by the imported Wasmline RPC interface. */
+        /** Sets the handler and codec expected by the imported Wasmline Service interface. */
         void setOutboundHandler(std::unique_ptr<OutboundHandler> handler, std::string codec);
 
         /** Sets the typed handler for non-WASI Component Model imports. */
@@ -118,7 +118,7 @@ namespace wasmline {
         void clearResources();
         void clearHostRepresentations();
 
-        bool registerRpcImports();
+        bool registerServiceImports();
 
         bool registerComponentHostImports();
 

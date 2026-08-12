@@ -10,7 +10,7 @@ The screen exposes these boundaries:
 
 | Mode | Descriptor | Host call |
 |---|---|---|
-| Core Wasm | `CORE_WASM + WASMLINE_CORE` | `link<TimeSyncService>()` |
+| Core Wasm | `CORE_WASM + WASMLINE_SERVICE` | `link<TimeSyncService>()` |
 | Raw Export | `CORE_WASM + RAW_EXPORT` | `invokeRawResult("add_i32", ...)` |
 | Component Model | `COMPONENT_MODEL + COMPONENT_EXPORT` | `callResult("sample.echo", ...)` through the WIT envelope |
 

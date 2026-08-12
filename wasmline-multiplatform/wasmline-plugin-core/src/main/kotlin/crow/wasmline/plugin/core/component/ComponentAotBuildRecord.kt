@@ -65,7 +65,7 @@ data class ComponentAotBuildRecord(
         }
         require(
             artifact.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT ||
-                artifact.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                artifact.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE,
         ) {
             "Component AOT build record artifacts must use a Component invocation protocol."
         }
@@ -137,7 +137,7 @@ object ComponentAotBuildRecords {
 
     fun read(inputFile: File): ComponentAotBuildRecord {
         require(inputFile.isFile) { "Component AOT build result does not exist: " + inputFile.absolutePath }
-        return json.decodeFromString(inputFile.readText())
+        return json.decodeFromString<ComponentAotBuildRecord>(inputFile.readText())
     }
 
     /** Copies verified native artifacts into a flat package directory. */

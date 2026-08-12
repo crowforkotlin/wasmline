@@ -1,6 +1,6 @@
-# C Component RPC fixture
+# C Wasmline Service fixture
 
-This fixture implements the canonical `wasmline:rpc@1.0.0` world without
+This fixture implements the canonical `wasmline:service@1.0.0` world without
 copying or modifying its WIT source. CMake reads the world directly from
 `wasmline-plugin-core`, and `wit-bindgen c` writes `plugin.c`, `plugin.h`, and
 `plugin_component_type.o` under the local build directory.
@@ -13,7 +13,7 @@ Core bridge imports. The `protobuf` payload is treated as opaque bytes:
 - `sample.callback` forwards the payload to `sample.host.callback`;
 - `sample.empty` returns an empty payload;
 - `sample.trap` emits a Wasm trap;
-- unsupported codecs and actions return a WIT `rpc-error`.
+- unsupported codecs and actions return a WIT `service-error`.
 
 ## Build
 

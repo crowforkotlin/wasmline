@@ -3,7 +3,7 @@ package crow.wasmline.sample.application
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineComponentRpcContract
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -24,7 +24,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ComponentRpcServiceIntegrationTest {
+class ComponentServiceIntegrationTest {
     @BeforeTest
     fun bootstrap() {
         WasmlineLoader.bootstrap()
@@ -70,7 +70,7 @@ class ComponentRpcServiceIntegrationTest {
     }
 
     private fun verifyGeneratedServiceRoundTrip(artifact: File, format: WasmlineArtifactFormat) {
-        assertTrue(artifact.isFile, "Missing Component RPC fixture: ${artifact.absolutePath}")
+        assertTrue(artifact.isFile, "Missing Wasmline Service fixture: ${artifact.absolutePath}")
         val plugin = loadComponent(artifact, format)
         try {
             var callbacks = 0
@@ -104,13 +104,13 @@ class ComponentRpcServiceIntegrationTest {
             targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
             is64Bit = true,
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
-            exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+            exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
             contractMetadata = mapOf(
-                WasmlineComponentRpcContract.METADATA_PROFILE to WasmlineComponentRpcContract.PROFILE,
-                WasmlineComponentRpcContract.METADATA_WIT_PACKAGE to WasmlineComponentRpcContract.WIT_PACKAGE,
-                WasmlineComponentRpcContract.METADATA_CODEC to WasmlineComponentRpcContract.DEFAULT_CODEC,
-                WasmlineComponentRpcContract.METADATA_VERSION to WasmlineComponentRpcContract.VERSION,
+                WasmlineComponentServiceContract.METADATA_PROFILE to WasmlineComponentServiceContract.PROFILE,
+                WasmlineComponentServiceContract.METADATA_WIT_PACKAGE to WasmlineComponentServiceContract.WIT_PACKAGE,
+                WasmlineComponentServiceContract.METADATA_CODEC to WasmlineComponentServiceContract.DEFAULT_CODEC,
+                WasmlineComponentServiceContract.METADATA_VERSION to WasmlineComponentServiceContract.VERSION,
             ),
         )
         val result = WasmlineLoader.load(
@@ -118,11 +118,11 @@ class ComponentRpcServiceIntegrationTest {
             config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
         )
         return (result as? WasmlineLoadResult.Success)?.wasmline
-            ?: error("Unable to load Component RPC fixture: $result")
+            ?: error("Unable to load Wasmline Service fixture: $result")
     }
 
     private companion object {
-        const val CWASM_PROPERTY = "wasmline.test.componentRpc.cwasm"
-        const val PWASM_PROPERTY = "wasmline.test.componentRpc.pwasm"
+        const val CWASM_PROPERTY = "wasmline.test.componentService.cwasm"
+        const val PWASM_PROPERTY = "wasmline.test.componentService.pwasm"
     }
 }

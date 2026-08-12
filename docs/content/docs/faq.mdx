@@ -60,9 +60,9 @@ The engine module and artifact format are related but not interchangeable names:
 <details>
 <summary><strong>How do Core Wasm, Raw Export, and Component Model calls differ?</strong></summary>
 
-Use `CORE_WASM` with `WASMLINE_CORE` for a Wasmline service module that exchanges action names and byte payloads. Use `CORE_WASM` with `RAW_EXPORT` for a Core Wasm module with an explicitly declared numeric export ABI. Use `COMPONENT_MODEL` with `COMPONENT_EXPORT` for a complete component binary and Component Model typed values.
+Use `WASMLINE_SERVICE` with either execution model for the same action-and-byte service API: Core uses the existing linear-memory bridge, while Component Model uses the fixed `wasmline.wit` envelope. Use `CORE_WASM` with `RAW_EXPORT` for an explicitly declared numeric export ABI. Use `COMPONENT_MODEL` with `COMPONENT_EXPORT` for business-specific typed WIT values.
 
-The runtime path starts with an already compiled component binary. Wasmline does not run `wit-bindgen` or generate adapters while loading it. The optional plugin build pipeline does support WIT binding generation and Component assembly through plugin-core, Gradle, and CLI; `contractMetadata` still describes the export contract and is not a WIT compiler input. See the [Component RPC guide](/en/docs/component-rpc).
+The runtime path starts with an already compiled component binary. Wasmline does not run `wit-bindgen` or generate adapters while loading it. The optional plugin build pipeline does support WIT binding generation and Component assembly through plugin-core, Gradle, and CLI; `contractMetadata` still describes the export contract and is not a WIT compiler input. See the [Wasmline Service guide](/en/docs/component-service).
 
 </details>
 
@@ -80,7 +80,7 @@ Use `callResult`, `invokeRawResult`, or `invokeComponentResult` and inspect `Fai
 
 `WLMF` is a four-byte magic marker for the Wasmline Core response frame. It identifies the response format and is not a signature, encryption mechanism, or security check. Integrity and authenticity are handled by the artifact hash, manifest, and signature mechanisms.
 
-`frameVersion` is a one-byte response layout version. The current value is `1`; it is not a Wasmtime version, Kotlin version, framework version, or business API version. A V1 reader accepts only version `1`. Raw Export and Component Model calls do not use this Core response frame.
+`frameVersion` is a one-byte response layout version. The current value is `1`; it is not a Wasmtime version, Kotlin version, framework version, or business API version. Readers accept only the current value, `1`. Raw Export and Component Model calls do not use this Core response frame.
 
 </details>
 

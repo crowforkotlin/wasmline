@@ -4,6 +4,7 @@
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
+
 package crow.wasmline
 
 import kotlinx.serialization.Serializable
@@ -17,7 +18,7 @@ data class WasmlineArtifactDescriptor(
     val targetCompilerVersion: String? = null,
     val is64Bit: Boolean? = null,
     val executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
-    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+    val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
     val exportName: String? = null,
     val contractMetadata: Map<String, String> = emptyMap(),
 ) {
@@ -27,32 +28,27 @@ data class WasmlineArtifactDescriptor(
             return "An exportName is required for direct export invocation."
         }
         if (
-            invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC &&
+            executionModel == WasmlineExecutionModel.COMPONENT_MODEL &&
+            invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE &&
             exportName != null &&
-            exportName != WasmlineComponentRpcContract.DEFAULT_EXPORT
+            exportName != WasmlineComponentServiceContract.DEFAULT_EXPORT
         ) {
-            return "WASMLINE_COMPONENT_RPC exportName must be '${WasmlineComponentRpcContract.DEFAULT_EXPORT}'."
+            return "WASMLINE_SERVICE Component exportName must be '${WasmlineComponentServiceContract.DEFAULT_EXPORT}'."
         }
         return when (executionModel) {
             WasmlineExecutionModel.CORE_WASM -> when (invocationProtocol) {
-                WasmlineInvocationProtocol.WASMLINE_CORE,
+                WasmlineInvocationProtocol.WASMLINE_SERVICE,
                 WasmlineInvocationProtocol.RAW_EXPORT,
                 -> null
 
                 WasmlineInvocationProtocol.COMPONENT_EXPORT ->
                     "COMPONENT_EXPORT requires COMPONENT_MODEL."
-
-                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC ->
-                    "WASMLINE_COMPONENT_RPC requires COMPONENT_MODEL."
             }
 
             WasmlineExecutionModel.COMPONENT_MODEL -> when (invocationProtocol) {
                 WasmlineInvocationProtocol.COMPONENT_EXPORT,
-                WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC,
+                WasmlineInvocationProtocol.WASMLINE_SERVICE,
                 -> null
-
-                WasmlineInvocationProtocol.WASMLINE_CORE ->
-                    "COMPONENT_MODEL cannot use WASMLINE_CORE."
 
                 WasmlineInvocationProtocol.RAW_EXPORT ->
                     "COMPONENT_MODEL cannot use RAW_EXPORT."

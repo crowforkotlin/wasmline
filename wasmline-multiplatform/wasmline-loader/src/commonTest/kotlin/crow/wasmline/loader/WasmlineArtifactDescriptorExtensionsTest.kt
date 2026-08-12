@@ -1,7 +1,6 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineComponentRpcContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
@@ -35,7 +34,7 @@ class WasmlineArtifactDescriptorExtensionsTest {
                 invocationProtocol = if (component) {
                     WasmlineInvocationProtocol.COMPONENT_EXPORT
                 } else {
-                    WasmlineInvocationProtocol.WASMLINE_CORE
+                    WasmlineInvocationProtocol.WASMLINE_SERVICE
                 },
                 exportName = if (component) "plugin/invoke" else null,
             )
@@ -50,53 +49,18 @@ class WasmlineArtifactDescriptorExtensionsTest {
     }
 
     @Test
-    fun legacyComponentRpcMetadataIsNormalizedToTheExplicitProtocol() {
-        val artifact = legacyComponentRpcArtifact()
+    fun coreServiceDoesNotReceiveAComponentExport() {
+        val descriptor = WasmlineArtifact(
+            type = WasmlineArtifactType.CWASM,
+            url = "plugin.cwasm",
+            sha256 = "hash",
+            executionModel = WasmlineExecutionModel.CORE_WASM,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+        ).toDescriptor("/package/plugin.cwasm")
 
-        val descriptor = artifact.toDescriptor("/package/plugin.cwasm")
-
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC, descriptor.invocationProtocol)
-        assertEquals(WasmlineComponentRpcContract.DEFAULT_EXPORT, descriptor.exportName)
-        assertEquals(artifact.contractMetadata, descriptor.contractMetadata)
+        assertEquals(null, descriptor.exportName)
+        assertEquals(emptyMap(), descriptor.contractMetadata)
     }
-
-    @Test
-    fun incompleteRpcMetadataRemainsANativeTypedComponent() {
-        val complete = legacyComponentRpcArtifact()
-        WasmlineComponentRpcContract.let { contract ->
-            listOf(
-                contract.METADATA_WIT_PACKAGE,
-                contract.METADATA_PROFILE,
-                contract.METADATA_CODEC,
-                contract.METADATA_VERSION,
-            ).forEach { missingKey ->
-                val descriptor = complete.copy(
-                    contractMetadata = complete.contractMetadata - missingKey,
-                ).toDescriptor("/package/plugin.cwasm")
-
-                assertEquals(
-                    WasmlineInvocationProtocol.COMPONENT_EXPORT,
-                    descriptor.invocationProtocol,
-                    "Missing $missingKey must not trigger legacy RPC normalization.",
-                )
-            }
-        }
-    }
-
-    private fun legacyComponentRpcArtifact(): WasmlineArtifact = WasmlineArtifact(
-        type = WasmlineArtifactType.CWASM,
-        url = "plugin.cwasm",
-        sha256 = "hash",
-        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-        exportName = WasmlineComponentRpcContract.DEFAULT_EXPORT,
-        contractMetadata = mapOf(
-            WasmlineComponentRpcContract.METADATA_WIT_PACKAGE to WasmlineComponentRpcContract.WIT_PACKAGE,
-            WasmlineComponentRpcContract.METADATA_PROFILE to WasmlineComponentRpcContract.PROFILE,
-            WasmlineComponentRpcContract.METADATA_CODEC to WasmlineComponentRpcContract.DEFAULT_CODEC,
-            WasmlineComponentRpcContract.METADATA_VERSION to WasmlineComponentRpcContract.VERSION,
-        ),
-    )
 
     private data class MappingCase(
         val type: WasmlineArtifactType,

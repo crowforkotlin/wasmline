@@ -84,7 +84,7 @@ data class WasmlineArtifact(
     @property:ProtoNumber(6) val targetCompilerVersion: String? = null,
     @property:ProtoNumber(7) val is64Bit: Boolean = true,
     @property:ProtoNumber(8) val executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
-    @property:ProtoNumber(9) val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_CORE,
+    @property:ProtoNumber(9) val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
     @property:ProtoNumber(10) val exportName: String? = null,
     @property:ProtoNumber(11) val contractMetadata: Map<String, String> = emptyMap(),
 )

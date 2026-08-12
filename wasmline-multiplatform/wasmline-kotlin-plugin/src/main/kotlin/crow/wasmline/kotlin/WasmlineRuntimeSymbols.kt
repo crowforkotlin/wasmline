@@ -37,8 +37,8 @@ internal class WasmlineRuntimeSymbols(private val pluginContext: IrPluginContext
     val generatedBridgeBindFunction: IrSimpleFunctionSymbol = requireFunction(generatedBridgeClass, "bind", 1)
     val unlinkedEndpointObject: IrClassSymbol = requireClass(SPI_PACKAGE, "UnlinkedWasmlineEndpoint")
     val generatedHostEndpointClass: IrClassSymbol? = referenceClass(MAIN_PACKAGE, "GeneratedWasmlineHostEndpoint")
-    val generatedComponentRpcEndpointObject: IrClassSymbol? =
-        referenceClass(MAIN_PACKAGE, "GeneratedWasmlineComponentRpcEndpoint")
+    val generatedComponentServiceEndpointObject: IrClassSymbol? =
+        referenceClass(MAIN_PACKAGE, "GeneratedWasmlineComponentServiceEndpoint")
     val wasmlineHandleInboundFunction: IrSimpleFunctionSymbol? = referenceTopLevelFunction(
         callableId = CallableId(FqName(MAIN_PACKAGE), Name.identifier("wasmlineHandleInbound")),
         regularParameterCount = 2,

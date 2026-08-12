@@ -55,8 +55,8 @@ internal class WasmlineIrGenerationExtension(
                 runtimeSymbols = runtimeSymbols,
                 messageCollector = messageCollector,
             )
-        } else if (guestTransport == WasmlineGuestTransport.COMPONENT_RPC) {
-            wireComponentRpcInitHook(
+        } else if (guestTransport == WasmlineGuestTransport.COMPONENT_SERVICE) {
+            wireComponentServiceInitHook(
                 moduleFragment = moduleFragment,
                 pluginContext = pluginContext,
                 messageCollector = messageCollector,

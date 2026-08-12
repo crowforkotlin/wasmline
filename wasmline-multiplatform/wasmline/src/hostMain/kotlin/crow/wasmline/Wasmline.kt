@@ -52,13 +52,16 @@ fun Wasmline.bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmlin
 }
 
 /**
- * Binds the Wasmline Component RPC envelope used by Components that import
- * `wasmline:rpc/host`. The handler is invoked when the Component calls back
- * into the host and returns the raw RPC payload or a structured failure.
+ * Binds the Wasmline Service envelope used by Components that import
+ * `wasmline:service/host`. The handler is invoked when the Component calls back
+ * into the host and returns the raw service payload or a structured failure.
  */
-fun Wasmline.bindComponentRpc(handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>): Wasmline {
-    require(descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_COMPONENT_RPC) {
-        "Component RPC handlers require invocationProtocol=WASMLINE_COMPONENT_RPC."
+fun Wasmline.bindComponentService(handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>): Wasmline {
+    require(
+        descriptor.executionModel == WasmlineExecutionModel.COMPONENT_MODEL &&
+            descriptor.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE,
+    ) {
+        "Component Service handlers require COMPONENT_MODEL with invocationProtocol=WASMLINE_SERVICE."
     }
     if (hostServiceRegistry.registerRaw(handler)) setOutbound(hostServiceRegistry.dispatcher)
     return this

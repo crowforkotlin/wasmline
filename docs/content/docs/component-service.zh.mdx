@@ -1,28 +1,28 @@
 ---
-title: Component RPC
+title: Wasmline Service
 description: WIT envelope、Component 构建流水线与跨语言回调
 ---
 
-# Component RPC
+# Wasmline Service
 
-Wasmline 第一版 Component 契约是固定的 `wasmline:rpc@1.0.0` world。WIT 负责
+Wasmline 的 Component Service 契约是固定的 `wasmline:service@1.0.0` world。WIT 负责
 Component 边界和 Canonical ABI；`payload: list<u8>` 仍然承载选定的 Wasmline
 序列化字节，并不会自动把业务对象变成跨语言对象。
 
 ```wit
-package wasmline:rpc@1.0.0;
+package wasmline:service@1.0.0;
 
 world plugin {
   import host: interface {
     record request { action: string, codec: string, payload: list<u8> }
-    record rpc-error { code: string, message: string, details: list<u8> }
-    invoke: func(request: request) -> result<list<u8>, rpc-error>
+    record service-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, service-error>
   }
 
   export plugin: interface {
     record request { action: string, codec: string, payload: list<u8> }
-    record rpc-error { code: string, message: string, details: list<u8> }
-    invoke: func(request: request) -> result<list<u8>, rpc-error>
+    record service-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, service-error>
   }
 }
 ```
@@ -36,7 +36,7 @@ Kotlin/Wasm WASI sample 的顺序是：
 3. `wasm-tools component embed` 嵌入 WIT world。
 4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` 生成 raw Component。
 5. `wasm-tools validate` 与 `wasm-tools component wit` 校验产物。
-6. manifest 记录 `COMPONENT_MODEL`、`COMPONENT_EXPORT`、export path、codec、协议版本和产物 digest。
+6. manifest 记录 `COMPONENT_MODEL`、`WASMLINE_SERVICE`、固定 export path、codec、协议版本和产物 digest。
 
 Gradle 入口是 `wasmlineAssembleDebug` 或 `wasmlineAssembleRelease`。CLI 通过
 `wit generate`、`componentize`、`component validate` 和 `component inspect`
@@ -65,7 +65,7 @@ Wasmtime、`wit-bindgen` 或 canonical WIT 源码。
 | Kotlin | `wit-bindgen kotlin --world plugin` | `PluginImpl.invoke` | `Host.Import.invoke` |
 | Rust | `wit_bindgen::generate!({ world: "plugin" })` | `exports::plugin::Guest::invoke` | `host::invoke` |
 | C | `wit-bindgen c --world plugin` | `plugin_invoke` | `host_invoke` |
-| C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::rpc::Invoke` | `wasmline::rpc::Invoke` |
+| C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::service::Invoke` | `wasmline::service::Invoke` |
 
 生成源码和 Component type object 都只属于 build 输出。C 与 C++ fixture 会在
 CMake configure 阶段严格检查 `wit-bindgen 0.57.1` 和
@@ -80,9 +80,9 @@ C++ 0.57.1 generator 会对 move-only WIT error 生成一次
 ```shell
 cd wasmline-multiplatform
 WASMLINE_LIVE_TESTS=1 \
-WASMLINE_TEST_COMPONENT_RPC=/absolute/path/to/plugin.component.wasm \
+WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.component.wasm \
 ./gradlew :wasmline:jvmTest \
-  --tests 'crow.wasmline.test.wasmtime.NativeComponentRpcIntegrationTest' \
+  --tests 'crow.wasmline.test.wasmtime.NativeComponentServiceIntegrationTest' \
   --rerun-tasks --console=plain
 ```
 
@@ -111,7 +111,7 @@ request 的一部分，并由宿主 runtime 检查。
 生成的 guest binding 调用 WIT import `host.invoke`。Wasmline 的 Component
 session 注册这个 import，并把其中的 `action`、`codec`、`payload` 映射到已有的
 `HostDispatcher`；宿主返回值再由 runtime 转换成
-`result<list<u8>, rpc-error>`。
+`result<list<u8>, service-error>`。
 
 因此 Rust、C、C++ 或 Kotlin Component 插件实现的是 WIT world，不需要实现
 下面这些仅属于 Core Wasm 路径的 import：
@@ -124,7 +124,7 @@ session 注册这个 import，并把其中的 `action`、`codec`、`payload` 映
 插件仍然需要使用生成的语言 binding 调用 WIT `host.invoke`。这个 binding 是
 可移植的 Component 契约；Wasmline 宿主负责把它接入自己的 dispatcher。
 Kotlin、Rust、C 和 C++ fixture 都通过各自生成的 host import 执行
-`sample.callback`，并把 WIT success 或 `rpc-error` 继续传回插件 export。
+`sample.callback`，并把 WIT success 或 `service-error` 继续传回插件 export。
 
 原生 Wasmtime backend 支持这条 Component 路径。浏览器 target 当前仍只声明
 支持 Core Wasmline bridge，并会在加载阶段拒绝 Component descriptor。
