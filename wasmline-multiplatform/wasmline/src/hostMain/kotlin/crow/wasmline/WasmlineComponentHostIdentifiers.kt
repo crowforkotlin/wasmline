@@ -46,13 +46,6 @@ class WasmlineComponentFunctionId private constructor(val interfaceId: WasmlineC
     }
 }
 
-private fun requireComponentIdentifier(value: String, label: String): String {
-    require(value.isNotBlank()) { "$label must not be blank." }
-    require(value == value.trim()) { "$label must not have leading or trailing whitespace." }
-    require(value.none(Char::isWhitespace)) { "$label must not contain whitespace." }
-    return value
-}
-
 /** Handles one typed Component Model import without introducing an envelope codec. */
 fun interface WasmlineComponentHostAdapter {
     fun invoke(arguments: List<WasmlineComponentValue>): WasmlineCallResult<List<WasmlineComponentValue>>
@@ -130,4 +123,11 @@ class WasmlineComponentHostResourceBinding(
     init {
         require(methods.keys.none(String::isBlank)) { "Component Host resource method names must not be blank." }
     }
+}
+
+private fun requireComponentIdentifier(value: String, label: String): String {
+    require(value.isNotBlank()) { "$label must not be blank." }
+    require(value == value.trim()) { "$label must not have leading or trailing whitespace." }
+    require(value.none(Char::isWhitespace)) { "$label must not contain whitespace." }
+    return value
 }

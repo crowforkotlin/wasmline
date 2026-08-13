@@ -21,6 +21,19 @@ zig build --release=small -p src/jvmMain/resources
 If Java is not exported as `JAVA_HOME`, the build now falls back to the active `java` command.
 You can still override it explicitly with `-Djava-home=/path/to/jdk`.
 
+## Editor Integration
+
+Generate the C/C++ compilation database from this directory:
+
+```shell
+zig build cdb
+```
+
+The database is generated for the JNI and `wasmline-core` sources and synchronized to
+the repository root as `../../compile_commands.json`. `clangd` can then discover it
+automatically when editing files under either source tree. The file is machine-local
+build output and is ignored by Git.
+
 **Debug:**
 
 ```shell

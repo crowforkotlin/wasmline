@@ -84,13 +84,39 @@ pub fn build(b: *std.Build) !void {
     var compile_steps_to_include: std.ArrayList(*std.Build.Step.Compile) = .empty;
     try compile_steps_to_include.append(b.allocator, lib);
     const cdb_internal_step = zcc.createStep(b, "generate_compile_commands_internal", compile_steps_to_include.items);
-    b.step("cdb", "Generate compile_commands.json for editor integration.").dependOn(cdb_internal_step);
-    b.getInstallStep().dependOn(cdb_internal_step);
+    const cdb_sync_step = createCompileCommandsSyncStep(b);
+    cdb_sync_step.dependOn(cdb_internal_step);
+    b.step("cdb", "Generate compile_commands.json for editor integration.").dependOn(cdb_sync_step);
+    b.getInstallStep().dependOn(cdb_sync_step);
 }
 
 // ============================================================================
 // 3. Helper Functions
 // ============================================================================
+
+fn createCompileCommandsSyncStep(b: *std.Build) *std.Build.Step {
+    const step = b.allocator.create(std.Build.Step) catch @panic("Allocation failure, probably OOM");
+    step.* = std.Build.Step.init(.{
+        .id = .custom,
+        .name = "sync_compile_commands_to_repo_root",
+        .makeFn = syncCompileCommandsToRepoRoot,
+        .owner = b,
+    });
+    return step;
+}
+
+fn syncCompileCommandsToRepoRoot(step: *std.Build.Step, make_options: std.Build.Step.MakeOptions) !void {
+    _ = make_options;
+    const b = step.owner;
+    const build_root = b.build_root.path orelse return error.FailedToGetPath;
+    const repo_root = try std.fs.path.resolve(b.allocator, &.{ build_root, ROOT_OFFSET });
+    const source_path = b.pathJoin(&.{ build_root, "compile_commands.json" });
+    const destination_path = b.pathJoin(&.{ repo_root, "compile_commands.json" });
+
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+    try std.Io.Dir.copyFileAbsolute(source_path, destination_path, io, .{ .replace = true });
+}
 
 fn createDynamicLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addLibrary(.{
