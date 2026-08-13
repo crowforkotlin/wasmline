@@ -1,9 +1,3 @@
-/**
- * Exercises the wasmline:service Component callback boundary through JNI and Wasmtime.
- *
- * Date: 2026-08-06
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
@@ -32,6 +26,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
+/**
+ * Exercises the wasmline:service Component callback boundary through JNI and Wasmtime.
+ *
+ * Date: 2026-08-06
+ * Author: crowforkotlin
+ */
 class NativeComponentServiceIntegrationTest {
     @Test
     fun componentServiceFixturesRequirePrecompiledAotSuffixes() {

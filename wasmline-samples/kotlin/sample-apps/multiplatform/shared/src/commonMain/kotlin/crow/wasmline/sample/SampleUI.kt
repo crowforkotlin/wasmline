@@ -174,7 +174,7 @@ private fun Header(report: WasmExecutionReport) {
                     color = Ink,
                 )
                 Text(
-                    text = "Three host invocation boundaries in one small app",
+                    text = "Four packaged contracts plus a cross-language Component fixture",
                     style = MaterialTheme.typography.bodySmall,
                     color = MutedInk,
                 )
@@ -219,9 +219,12 @@ private fun ModeSelector(
                     ) {
                         Icon(
                             imageVector = when (mode) {
-                                WasmSampleMode.CORE_WASM -> Icons.Default.Memory
+                                WasmSampleMode.CORE_SERVICE -> Icons.Default.Memory
                                 WasmSampleMode.RAW_EXPORT -> Icons.Default.Code
-                                WasmSampleMode.COMPONENT_MODEL -> Icons.Default.AccountTree
+                                WasmSampleMode.COMPONENT_SERVICE,
+                                WasmSampleMode.COMPONENT_FIXTURE,
+                                WasmSampleMode.COMPONENT_EXPORT,
+                                -> Icons.Default.AccountTree
                             },
                             contentDescription = mode.title,
                             tint = if (selectedMode) Green else MutedInk,
@@ -303,7 +306,7 @@ private fun RequestPanel(
                 onValueChange = onArtifactPathChange,
             )
 
-            if (state.mode == WasmSampleMode.RAW_EXPORT) {
+            if (state.mode.usesNumericInput) {
                 Field(
                     label = "i32 input",
                     value = state.rawValue,

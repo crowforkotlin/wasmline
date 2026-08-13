@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
  *
  * These tests validate basic functionality of the Wasmtime runtime through Wasmline's public APIs.
  *
- * @author crowforkotlin
+ * Author: crowforkotlin
  */
 class NativeModuleLoadingTest {
 

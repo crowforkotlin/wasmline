@@ -1,9 +1,3 @@
-/**
- * Dispatches typed Component Model host imports to an immutable registry.
- *
- * Date: 2026-08-07
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallError
@@ -12,11 +6,16 @@ import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineInvocationException
 
 /**
+ * Dispatches typed Component Model host imports to an immutable registry.
+ *
  * JVM-callable typed Component host dispatcher.
  *
  * Native bridges pass exact Component identifiers separately and exchange only
  * typed-value frames with this object. A null return is reserved for a missing
  * adapter so native code can preserve the canonical missing-adapter error.
+ *
+ * Date: 2026-08-07
+ * Author: crowforkotlin
  */
 internal class WasmlineComponentHostDispatcher(private val registry: WasmlineComponentHostRegistry) {
     private val lock = WasmlineHostServiceLock()

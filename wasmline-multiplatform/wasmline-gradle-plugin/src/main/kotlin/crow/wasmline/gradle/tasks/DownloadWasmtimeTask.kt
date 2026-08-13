@@ -10,8 +10,6 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 import java.nio.file.Files
@@ -23,8 +21,8 @@ import java.nio.file.StandardCopyOption
  * The task checks the local executable on every invocation. This keeps the
  * toolchain check correct when a directory is changed outside Gradle.
  *
- * 2026/7/31
- * @author crowforkotlin
+ * Date: 2026-07-31
+ * Author: crowforkotlin
  */
 abstract class DownloadWasmtimeTask : DefaultTask() {
 
@@ -50,8 +48,8 @@ abstract class DownloadWasmtimeTask : DefaultTask() {
     @get:Internal
     abstract val githubToken: Property<String>
 
-    @get:OutputFile
-    @get:Optional
+    // The executable lives in a cache shared by every Wasmline project, so no individual task owns it as an output.
+    @get:Internal
     abstract val installedExecutable: RegularFileProperty
 
     /** Downloads Wasmtime when the requested platform or version is unavailable. */

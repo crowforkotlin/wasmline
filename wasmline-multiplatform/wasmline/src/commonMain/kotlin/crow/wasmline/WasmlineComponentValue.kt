@@ -1,11 +1,11 @@
+package crow.wasmline
+
 /**
  * Defines values for direct Component Model export calls.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
-package crow.wasmline
-
 sealed interface WasmlineComponentValue {
     data class Bool(val value: Boolean) : WasmlineComponentValue
 

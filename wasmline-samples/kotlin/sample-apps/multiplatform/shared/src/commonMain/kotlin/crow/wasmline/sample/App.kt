@@ -26,16 +26,18 @@ fun App(
     autoExecute: Boolean = false,
     execDispatcher: CoroutineDispatcher = Dispatchers.Main,
     assetRefresher: AssetRefresher = NoOpAssetRefresher,
-    artifacts: SampleArtifacts = SampleArtifacts(corePath = wasmPath),
+    artifacts: SampleArtifacts = SampleArtifacts(coreServicePath = wasmPath),
 ) {
     val scope = rememberCoroutineScope()
     val runner = remember(assetRefresher) { WasmSampleRunner(assetRefresher) }
     val basePlatformBean = remember { getPlatformBean() }
 
-    var mode by remember { mutableStateOf(WasmSampleMode.CORE_WASM) }
-    var corePath by remember(artifacts.corePath) { mutableStateOf(artifacts.corePath) }
+    var mode by remember { mutableStateOf(WasmSampleMode.CORE_SERVICE) }
+    var coreServicePath by remember(artifacts.coreServicePath) { mutableStateOf(artifacts.coreServicePath) }
     var rawExportPath by remember(artifacts.rawExportPath) { mutableStateOf(artifacts.rawExportPath) }
-    var componentPath by remember(artifacts.componentPath) { mutableStateOf(artifacts.componentPath) }
+    var componentServicePath by remember(artifacts.componentServicePath) { mutableStateOf(artifacts.componentServicePath) }
+    var componentFixturePath by remember(artifacts.componentFixturePath) { mutableStateOf(artifacts.componentFixturePath) }
+    var componentExportPath by remember(artifacts.componentExportPath) { mutableStateOf(artifacts.componentExportPath) }
     var content by remember { mutableStateOf(basePlatformBean.content) }
     var rawValue by remember { mutableStateOf("21") }
     var forceReload by remember { mutableStateOf(false) }
@@ -46,26 +48,32 @@ fun App(
     }
 
     val artifactPath = when (mode) {
-        WasmSampleMode.CORE_WASM -> corePath
+        WasmSampleMode.CORE_SERVICE -> coreServicePath
         WasmSampleMode.RAW_EXPORT -> rawExportPath
-        WasmSampleMode.COMPONENT_MODEL -> componentPath
+        WasmSampleMode.COMPONENT_SERVICE -> componentServicePath
+        WasmSampleMode.COMPONENT_FIXTURE -> componentFixturePath
+        WasmSampleMode.COMPONENT_EXPORT -> componentExportPath
     }
 
     fun updateMode(nextMode: WasmSampleMode) {
         mode = nextMode
         activeTab = OutputTab.Result
         report = WasmExecutionReport.idle(nextMode, when (nextMode) {
-            WasmSampleMode.CORE_WASM -> corePath
+            WasmSampleMode.CORE_SERVICE -> coreServicePath
             WasmSampleMode.RAW_EXPORT -> rawExportPath
-            WasmSampleMode.COMPONENT_MODEL -> componentPath
+            WasmSampleMode.COMPONENT_SERVICE -> componentServicePath
+            WasmSampleMode.COMPONENT_FIXTURE -> componentFixturePath
+            WasmSampleMode.COMPONENT_EXPORT -> componentExportPath
         })
     }
 
     fun updateArtifactPath(path: String) {
         when (mode) {
-            WasmSampleMode.CORE_WASM -> corePath = path
+            WasmSampleMode.CORE_SERVICE -> coreServicePath = path
             WasmSampleMode.RAW_EXPORT -> rawExportPath = path
-            WasmSampleMode.COMPONENT_MODEL -> componentPath = path
+            WasmSampleMode.COMPONENT_SERVICE -> componentServicePath = path
+            WasmSampleMode.COMPONENT_FIXTURE -> componentFixturePath = path
+            WasmSampleMode.COMPONENT_EXPORT -> componentExportPath = path
         }
         if (report.status != WasmExecutionStatus.Running) {
             report = WasmExecutionReport.idle(mode, path)

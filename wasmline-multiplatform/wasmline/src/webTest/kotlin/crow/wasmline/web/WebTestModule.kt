@@ -16,8 +16,8 @@ package crow.wasmline.web
  *   (memory (export "memory") 1))
  * ```
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal object WebTestModule {
 

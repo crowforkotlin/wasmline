@@ -1,15 +1,15 @@
-/**
- * Encodes typed invocation values for native host bridges.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
+/**
+ * Encodes typed invocation values for native host bridges.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 internal object WasmlineTypedInvocationCodec {
     private const val RAW_KIND = 1
     private const val COMPONENT_KIND = 2

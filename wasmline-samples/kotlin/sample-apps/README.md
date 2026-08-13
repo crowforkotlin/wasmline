@@ -4,21 +4,27 @@ The Compose sample is split into three layers:
 
 - `App.kt` owns screen state, mode selection, and event-to-request conversion.
 - `SampleUI.kt` is a presentational Compose screen. It does not load Wasm or call Wasmline APIs.
-- `WasmLoader.kt` contains `WasmSampleRunner`, which owns runtime caching and dispatches the three invocation protocols.
+- `WasmLoader.kt` contains `WasmSampleRunner`, which owns runtime caching and dispatches the packaged contracts plus the cross-language fixture.
 
-The screen exposes these boundaries:
+The screen exposes all four packaged runtime contracts and one cross-language fixture mode:
 
 | Mode | Descriptor | Host call |
 |---|---|---|
-| Core Wasm | `CORE_WASM + WASMLINE_SERVICE` | `link<TimeSyncService>()` |
+| Core Service | `CORE_WASM + WASMLINE_SERVICE` | `link<TimeSyncService>()` |
 | Raw Export | `CORE_WASM + RAW_EXPORT` | `invokeRawResult("add_i32", ...)` |
-| Component Model | `COMPONENT_MODEL + COMPONENT_EXPORT` | `callResult("sample.echo", ...)` through the WIT envelope |
+| Component Service | `COMPONENT_MODEL + WASMLINE_SERVICE` | `link<ComponentPluginService>()` through `plugin/invoke` |
+| Component Export | `COMPONENT_MODEL + COMPONENT_EXPORT` | `invokeComponentResult("wasmline:sample-component-export/calculator@1.0.0#add", ...)` |
+| Component Fixture | `COMPONENT_MODEL + WASMLINE_SERVICE` | Direct `callResult("sample.*", bytes)` plus `bindComponentService` |
 
-The raw fixture is in `wasmline-samples/raw/sample-export-plugin/plugin.wat`.
-The Component fixture is `sample-component-plugin`; build it with:
+The Desktop app builds and bundles all four signed packages automatically. The
+corresponding guest modules are `sample-plugin`, `sample-raw-export-plugin`,
+`sample-component-plugin`, and `sample-component-export-plugin`.
+
+Build both Component packages with:
 
 ```shell
 ./gradlew :sample-component-plugin:wasmlineAssembleDebug
+./gradlew :sample-component-export-plugin:wasmlineAssembleDebug
 ```
 
 The Core Wasm application sample is also a Gradle task. It assembles the sample
@@ -31,16 +37,25 @@ plugin, selects the requested artifact, and runs the host application:
 
 Use `-Pwasmline.artifact.format=pwasm32` only with a 32-bit native runtime;
 the current 64-bit desktop runtime rejects it by design. Component AOT builds
-need the full Wasmtime CLI, supplied with `WASMTIME_COMPILER` or downloaded by
-the `wasmlineDownloadWasmtimeCompiler` task.
+download the pinned full Wasmtime CLI automatically through the Gradle plugin.
 
-Desktop uses the bundled Core Wasm package's signed `manifest.wlm` as its
-default path. The host configures the sample public key, and the loader selects
-the compatible artifact after verifying the manifest signature and artifact
-digest. Optional direct paths can still be supplied without changing the UI.
-Raw `.wasm` is a browser/source artifact; native Wasmline requires a matching
-`.cwasm` or `.pwasm` artifact. For example, create the raw fixture and its Linux
-AOT artifact with:
+Desktop uses one signed `manifest.wlm` per mode. The host configures the sample
+public key, and the loader selects the compatible artifact after verifying the
+manifest signature and artifact digest. Optional direct paths can still be
+entered in the UI. Raw `.wasm` is a browser/source artifact; native Wasmline
+requires a matching `.cwasm` or `.pwasm` artifact.
+
+Start Desktop and select any contract from the mode control:
+
+```shell
+./gradlew :sample-apps:multiplatform:desktopApp:run
+```
+
+Verify the four bundled manifests and invocation paths without opening the UI:
+
+```shell
+./gradlew :sample-apps:multiplatform:desktopApp:verifyWasmlineSamples
+```
 
 ```shell
 wasm-tools parse wasmline-samples/raw/sample-export-plugin/plugin.wat -o /tmp/sample-export.wasm
@@ -52,13 +67,29 @@ wasmtime compile /tmp/sample-export.wasm -o /tmp/sample-export.cwasm \
   -O signals-based-traps=n -O opt-level=2
 ```
 
-Then pass direct AOT artifacts to the Desktop app:
+Override bundled packages when validating custom builds:
 
 ```shell
--Dwasmline.sample.raw=/tmp/sample-export.cwasm
--Dwasmline.sample.component=/absolute/path/to/sample-x86_64-linux.cwasm
+-Dwasmline.sample.coreService=/path/to/manifest.wlm
+-Dwasmline.sample.rawExport=/path/to/manifest.wlm
+-Dwasmline.sample.componentService=/path/to/manifest.wlm
+-Dwasmline.sample.componentExport=/path/to/manifest.wlm
 ```
 
-The runner supplies the current native runtime's Wasmtime version, CPU, OS, and
-bitness when loading direct AOT paths. Other signed `.wlm` packages require the
-host to add their trusted public keys to `WasmlineConfig.trustedKeys`.
+The Component Fixture accepts a signed `.wlm` package. Build a C or C++ raw
+Component, copy it into `sample-component-fixture/input/plugin.component.wasm`,
+then package it with the Wasmline Gradle task:
+
+```shell
+cp ../c/build/plugin.component.wasm sample-component-fixture/input/plugin.component.wasm
+./gradlew :sample-component-fixture:wasmlineAssembleDebug
+
+WASMLINE_SAMPLE_COMPONENT_FIXTURE="$PWD/sample-component-fixture/build/wasmline/output/crow.wasmline.component.fixture-1.0.0/manifest.wlm" \
+  ./gradlew :sample-apps:multiplatform:desktopApp:run
+```
+
+Use the **Component Fixture** mode to run the C or C++ canonical-service
+fixture. It checks opaque-byte echo, host callback, and empty payload behavior;
+it is not a substitute for the Kotlin business-service sample.
+
+The fixture is signed with the sample key already trusted by the Desktop host.

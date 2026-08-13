@@ -1,9 +1,3 @@
-/**
- * Tests the typed invocation carrier codec.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallError
@@ -14,7 +8,14 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/** Verifies the typed invocation carrier codec for raw and component values. */
+/**
+ * Tests the typed invocation carrier codec.
+ *
+ * Verifies the typed invocation carrier codec for raw and component values.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 class WasmlineTypedInvocationCodecTest {
     @Test
     fun encodesRawArgumentsWithLittleEndianValues() {

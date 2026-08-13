@@ -1,9 +1,3 @@
-/**
- * Verifies Component Model resource ownership through a Rust wit-bindgen guest.
- *
- * Date: 2026-08-12
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
@@ -37,7 +31,14 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-/** Runs only when the external precompiled Component fixture is explicitly supplied. */
+/**
+ * Verifies Component Model resource ownership through a Rust wit-bindgen guest.
+ *
+ * Runs only when the external precompiled Component fixture is explicitly supplied.
+ *
+ * Date: 2026-08-12
+ * Author: crowforkotlin
+ */
 class NativeComponentResourceIntegrationTest {
     @Test
     fun guestOwnedResourceSupportsBorrowMethodsMoveAndDeterministicDrop() = withResourceModule { module ->

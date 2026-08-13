@@ -8,8 +8,8 @@ import kotlin.test.assertEquals
 /**
  * End-to-end tests for EchoService validating string round-trip communication.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 class NativeEchoServiceTest {
 

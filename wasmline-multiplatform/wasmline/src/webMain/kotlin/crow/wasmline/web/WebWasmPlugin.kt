@@ -18,8 +18,8 @@ import kotlin.random.Random
  * All payloads cross the boundary as raw ByteArray; linear memory access
  * goes through [WebWasmMemory] so no interop leaks out of this class.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal class WebWasmPlugin(binary: ByteArray) {
 

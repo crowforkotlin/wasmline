@@ -8,8 +8,8 @@ package crow.wasmline.web
  * artifact first; the loader then resolves the cached bytes synchronously and
  * instantiates the module in the same call.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal object WebWasmArtifacts {
 

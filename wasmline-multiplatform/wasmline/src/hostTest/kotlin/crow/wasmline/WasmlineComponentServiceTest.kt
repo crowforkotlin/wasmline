@@ -1,9 +1,3 @@
-/**
- * Tests the fixed wasmline:service Component envelope adapter.
- *
- * Date: 2026-08-05
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallResult
@@ -13,6 +7,12 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+/**
+ * Tests the fixed wasmline:service Component envelope adapter.
+ *
+ * Date: 2026-08-05
+ * Author: crowforkotlin
+ */
 class WasmlineComponentServiceTest {
     @Test
     fun serviceCallsRejectTypedComponentsBeforeInvokingTheCarrier() {

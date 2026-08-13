@@ -7,8 +7,8 @@ import crow.wasmline.WasmlineService
  *
  * Validates bidirectional data flow between host and WASM plugin.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 interface EchoService : WasmlineService {
     fun echo(message: String): String
@@ -18,8 +18,8 @@ interface EchoService : WasmlineService {
 /**
  * Implementation of EchoService that returns messages unchanged or with prefix.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 class EchoServiceImpl : EchoService {
     override fun echo(message: String): String = message

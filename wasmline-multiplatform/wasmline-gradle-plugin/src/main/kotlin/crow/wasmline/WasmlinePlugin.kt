@@ -70,8 +70,8 @@ import kotlin.jvm.java
  * }
  * ```
  *
- * 2026/6/5
- * @author crowforkotlin
+ * Date: 2026-06-05
+ * Author: crowforkotlin
  */
 class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 

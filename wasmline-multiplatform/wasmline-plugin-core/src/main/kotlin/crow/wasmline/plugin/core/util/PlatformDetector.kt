@@ -5,8 +5,8 @@ import java.io.File
 /**
  * Detects the platform name used by Wasmtime downloads.
  *
- * 2026/7/31
- * @author crowforkotlin
+ * Date: 2026-07-31
+ * Author: crowforkotlin
  */
 object PlatformDetector {
 
