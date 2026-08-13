@@ -8,8 +8,8 @@ import kotlinx.serialization.Serializable
  *
  * The manifest command reads this file to create a signed manifest.
  *
- * 2026/7/31
- * @author crowforkotlin
+ * Date: 2026-07-31
+ * Author: crowforkotlin
  */
 @Serializable
 data class CompileResult(val wasmtimeVersion: String, val inputFile: String, val artifacts: List<WasmlineArtifact>)

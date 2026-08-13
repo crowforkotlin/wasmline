@@ -74,23 +74,44 @@ if (requestedArtifactFormat == "cwasm" && wasmlineEngine != "cranelift") {
     error("Desktop CWASM requires -Pwasmline.engine=cranelift.")
 }
 
-val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
-    "wasmline/output/crow.wasmline.demo-1.0.0",
+val samplePackages = listOf(
+    Triple(
+        project(":sample-plugin"),
+        "wasmline/output/crow.wasmline.demo-1.0.0",
+        "wasmline-packages/core-service",
+    ),
+    Triple(
+        project(":sample-raw-export-plugin"),
+        "wasmline/output/crow.wasmline.sample.raw-export-1.0.0",
+        "wasmline-packages/raw-export",
+    ),
+    Triple(
+        project(":sample-component-plugin"),
+        "wasmline/output/crow.wasmline.component.sample-1.0.0",
+        "wasmline-packages/component-service",
+    ),
+    Triple(
+        project(":sample-component-export-plugin"),
+        "wasmline/output/crow.wasmline.sample.component-export-1.0.0",
+        "wasmline-packages/component-export",
+    ),
 )
-val syncWasmlineSamplePlugin = tasks.register<Sync>("syncWasmlineSamplePlugin") {
+val syncWasmlineSamplePackages = tasks.register<Sync>("syncWasmlineSamplePackages") {
     group = "wasmline"
-    description = "Build and expose the signed Wasmline plugin package to desktop resources"
-    dependsOn(project(":sample-plugin").tasks.named("wasmlineAssembleDebug"))
-    from(samplePluginOutput) {
-        include("manifest.wlm", "*.wasm", "*.pwasm", "*.cwasm")
-        into("wasmline-package")
+    description = "Build and expose all four signed Wasmline sample packages to Desktop resources"
+    samplePackages.forEach { (sampleProject, outputPath, resourcePath) ->
+        dependsOn(sampleProject.tasks.named("wasmlineAssembleDebug"))
+        from(sampleProject.layout.buildDirectory.dir(outputPath)) {
+            include("manifest.wlm", "*.wasm", "*.pwasm", "*.cwasm")
+            into(resourcePath)
+        }
     }
     into(layout.buildDirectory.dir("generated/desktop-resources"))
 }
 
 tasks.named<ProcessResources>("processResources") {
-    dependsOn(syncWasmlineSamplePlugin)
-    from(syncWasmlineSamplePlugin)
+    dependsOn(syncWasmlineSamplePackages)
+    from(syncWasmlineSamplePackages)
     from(layout.projectDirectory.file("appIcons/LinuxIcon.png")) {
         rename { "wasmline-icon.png" }
     }
@@ -101,6 +122,16 @@ val jbrLauncher = javaToolchains.launcherFor {
     vendor.set(JvmVendorSpec.JETBRAINS)
 }
 tasks.withType<JavaExec>().matching { it.name == "run" }.configureEach {
-    dependsOn(syncWasmlineSamplePlugin)
+    dependsOn(syncWasmlineSamplePackages)
     javaLauncher.set(jbrLauncher)
+}
+
+tasks.register<JavaExec>("verifyWasmlineSamples") {
+    group = "verification"
+    description = "Load and invoke all four bundled Wasmline sample contracts without opening the UI"
+    dependsOn(tasks.named("classes"), syncWasmlineSamplePackages)
+    mainClass.set("crow.wasmline.sample.MainKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    javaLauncher.set(jbrLauncher)
+    systemProperty("wasmline.sample.smoke", "true")
 }

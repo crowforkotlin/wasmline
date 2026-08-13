@@ -1,9 +1,3 @@
-/**
- * Verifies native linking for synchronous typed Component Model host imports.
- *
- * Date: 2026-08-07
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.WasmlineArtifactDescriptor
@@ -35,7 +29,14 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-/** Validates typed Component JNI registry dispatch with external AOT artifacts only. */
+/**
+ * Verifies native linking for synchronous typed Component Model host imports.
+ *
+ * Validates typed Component JNI registry dispatch with external AOT artifacts only.
+ *
+ * Date: 2026-08-07
+ * Author: crowforkotlin
+ */
 class NativeTypedComponentHostImportIntegrationTest {
 
     @Test

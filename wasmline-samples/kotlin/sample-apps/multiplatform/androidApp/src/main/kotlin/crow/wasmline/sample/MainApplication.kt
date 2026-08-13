@@ -6,8 +6,8 @@ import crow.wasmline.WasmlineWarmupMode
 import crow.wasmline.loader.WasmlineLoader
 
 /**
- * 2026/1/2 20:54
- * @author crowforkotlin
+ * Date: 2026-01-02
+ * Author: crowforkotlin
  * @formatter:on
  */
 class MainApplication: Application() {

@@ -17,6 +17,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.model.SignedManifestEnvelope
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.compose.resources.ExperimentalResourceApi
@@ -39,36 +40,94 @@ import java.io.File
 import java.nio.file.Paths
 import javax.imageio.ImageIO
 
-private const val rawArtifactProperty = "wasmline.sample.raw"
-private const val rawArtifactEnvironment = "WASMLINE_SAMPLE_RAW"
-private const val componentArtifactProperty = "wasmline.sample.component"
-private const val componentArtifactEnvironment = "WASMLINE_SAMPLE_COMPONENT"
-private const val bundledPluginPackageRoot = "wasmline-package"
-private const val bundledPluginManifest = "$bundledPluginPackageRoot/manifest.wlm"
-
-private fun configuredArtifact(property: String, environment: String): String =
-    System.getProperty(property)?.ifBlank { "" }
-        ?: System.getenv(environment)?.ifBlank { "" }
-        ?: ""
+private const val coreServicePackageRoot = "wasmline-packages/core-service"
+private const val rawExportPackageRoot = "wasmline-packages/raw-export"
+private const val componentServicePackageRoot = "wasmline-packages/component-service"
+private const val componentExportPackageRoot = "wasmline-packages/component-export"
 
 @OptIn(ExperimentalResourceApi::class)
-fun main() = application {
+fun main() {
     WasmlineLoader.bootstrap()
-    val pluginPackage = extractPluginPackageToTemp()
-    println("Wasmline package extracted to: ${pluginPackage.manifestFile.absolutePath}")
-    val refresher = remember(pluginPackage) { DesktopAssetRefresher(pluginPackage) }
-    AppWindows {
-        App(
-            wasmPath = pluginPackage.manifestFile.absolutePath,
-            assetRefresher = refresher,
-            artifacts = SampleArtifacts(
-                corePath = pluginPackage.manifestFile.absolutePath,
-                rawExportPath = configuredArtifact(rawArtifactProperty, rawArtifactEnvironment),
-                componentPath = configuredArtifact(componentArtifactProperty, componentArtifactEnvironment),
-            ),
-        )
+    if (System.getProperty("wasmline.sample.smoke").toBoolean()) {
+        runDesktopSmokeTest()
+        return
+    }
+
+    application {
+        val packages = extractPluginPackagesToTemp().also(::logExtractedPackages)
+        val refresher = remember(packages) { DesktopAssetRefresher(packages.values) }
+        val artifacts = configuredSampleArtifacts(packages)
+        AppWindows {
+            App(
+                wasmPath = artifacts.coreServicePath,
+                assetRefresher = refresher,
+                artifacts = artifacts,
+            )
+        }
     }
 }
+
+private fun runDesktopSmokeTest() {
+    val packages = extractPluginPackagesToTemp().also(::logExtractedPackages)
+    val reports = runBlocking {
+        verifySampleArtifacts(
+            artifacts = configuredSampleArtifacts(packages),
+            assetRefresher = DesktopAssetRefresher(packages.values),
+        )
+    }
+    reports.forEach { report ->
+        println(
+            "[Sample smoke] ${report.mode.title}: ${report.status}; " +
+                "action=${report.executedAction}; output=${report.outputJson}",
+        )
+    }
+    val failures = reports.filter { it.status != WasmExecutionStatus.Success }
+    check(failures.isEmpty()) {
+        failures.joinToString(prefix = "Sample smoke test failed: ", separator = "; ") { report ->
+            "${report.mode.title}: ${report.errorMessage.ifBlank { report.detail }}"
+        }
+    }
+}
+
+private fun logExtractedPackages(packages: Map<WasmSampleMode, BundledPluginPackage>) {
+    packages.forEach { (mode, pluginPackage) ->
+        println("${mode.title} package extracted to: ${pluginPackage.manifestFile.absolutePath}")
+    }
+}
+
+private fun configuredSampleArtifacts(packages: Map<WasmSampleMode, BundledPluginPackage>): SampleArtifacts =
+    SampleArtifacts(
+        coreServicePath = configuredArtifact(
+            property = "wasmline.sample.coreService",
+            environment = "WASMLINE_SAMPLE_CORE_SERVICE",
+            default = packages.getValue(WasmSampleMode.CORE_SERVICE).manifestFile.absolutePath,
+        ),
+        rawExportPath = configuredArtifact(
+            property = "wasmline.sample.rawExport",
+            environment = "WASMLINE_SAMPLE_RAW_EXPORT",
+            default = packages.getValue(WasmSampleMode.RAW_EXPORT).manifestFile.absolutePath,
+        ),
+        componentServicePath = configuredArtifact(
+            property = "wasmline.sample.componentService",
+            environment = "WASMLINE_SAMPLE_COMPONENT_SERVICE",
+            default = packages.getValue(WasmSampleMode.COMPONENT_SERVICE).manifestFile.absolutePath,
+        ),
+        componentFixturePath = configuredArtifact(
+            property = "wasmline.sample.componentFixture",
+            environment = "WASMLINE_SAMPLE_COMPONENT_FIXTURE",
+            default = "",
+        ),
+        componentExportPath = configuredArtifact(
+            property = "wasmline.sample.componentExport",
+            environment = "WASMLINE_SAMPLE_COMPONENT_EXPORT",
+            default = packages.getValue(WasmSampleMode.COMPONENT_EXPORT).manifestFile.absolutePath,
+        ),
+    )
+
+private fun configuredArtifact(property: String, environment: String, default: String): String =
+    System.getProperty(property)?.takeIf(String::isNotBlank)
+        ?: System.getenv(environment)?.takeIf(String::isNotBlank)
+        ?: default
 
 @Composable
 fun ApplicationScope.AppWindows(content: @Composable () -> Unit) {
@@ -139,10 +198,11 @@ private data class BundledPluginPackage(
 )
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun bundledPluginResourcePaths(): Map<String, String> {
+private fun bundledPluginResourcePaths(packageRoot: String): Map<String, String> {
     val classLoader = Thread.currentThread().contextClassLoader
-    val manifestBytes = classLoader.getResourceAsStream(bundledPluginManifest)?.use { it.readBytes() }
-        ?: error("Resource not found: $bundledPluginManifest")
+    val manifestResource = "$packageRoot/manifest.wlm"
+    val manifestBytes = classLoader.getResourceAsStream(manifestResource)?.use { it.readBytes() }
+        ?: error("Resource not found: $manifestResource")
     val envelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
     val relativePaths = buildList {
         add("manifest.wlm")
@@ -151,7 +211,7 @@ private fun bundledPluginResourcePaths(): Map<String, String> {
 
     return relativePaths.associate { relativePath ->
         val safePath = requireSafePackageRelativePath(relativePath)
-        val resourcePath = "$bundledPluginPackageRoot/$safePath".also { resourcePath ->
+        val resourcePath = "$packageRoot/$safePath".also { resourcePath ->
             require(classLoader.getResource(resourcePath) != null) {
                 "Wasmline package resource not found: $resourcePath"
             }
@@ -185,17 +245,30 @@ private fun copyBundledPluginPackage(pluginPackage: BundledPluginPackage) {
 }
 
 @OptIn(ExperimentalResourceApi::class)
-private fun extractPluginPackageToTemp(): BundledPluginPackage {
-    val packageDirectory = kotlin.io.path.createTempDirectory("wasmline_plugin_package_").toFile()
+private fun extractPluginPackageToTemp(mode: WasmSampleMode, packageRoot: String): BundledPluginPackage {
+    val packageDirectory = kotlin.io.path.createTempDirectory("wasmline_${mode.name.lowercase()}_").toFile()
     packageDirectory.deleteOnExit()
     val pluginPackage = BundledPluginPackage(
         directory = packageDirectory,
         manifestFile = File(packageDirectory, "manifest.wlm"),
-        resourcePaths = bundledPluginResourcePaths(),
+        resourcePaths = bundledPluginResourcePaths(packageRoot),
     )
     copyBundledPluginPackage(pluginPackage)
     return pluginPackage
 }
+
+private fun extractPluginPackagesToTemp(): Map<WasmSampleMode, BundledPluginPackage> = mapOf(
+    WasmSampleMode.CORE_SERVICE to extractPluginPackageToTemp(WasmSampleMode.CORE_SERVICE, coreServicePackageRoot),
+    WasmSampleMode.RAW_EXPORT to extractPluginPackageToTemp(WasmSampleMode.RAW_EXPORT, rawExportPackageRoot),
+    WasmSampleMode.COMPONENT_SERVICE to extractPluginPackageToTemp(
+        WasmSampleMode.COMPONENT_SERVICE,
+        componentServicePackageRoot,
+    ),
+    WasmSampleMode.COMPONENT_EXPORT to extractPluginPackageToTemp(
+        WasmSampleMode.COMPONENT_EXPORT,
+        componentExportPackageRoot,
+    ),
+)
 
 /**
  * Desktop implementation of [AssetRefresher].
@@ -203,11 +276,14 @@ private fun extractPluginPackageToTemp(): BundledPluginPackage {
  */
 @OptIn(ExperimentalResourceApi::class)
 private class DesktopAssetRefresher(
-    private val pluginPackage: BundledPluginPackage,
+    pluginPackages: Collection<BundledPluginPackage>,
 ) : AssetRefresher {
+    private val packagesByManifest = pluginPackages.associateBy { it.manifestFile.canonicalFile }
+
     override suspend fun refresh(wasmPath: String): String {
         val requestedFile = File(wasmPath).canonicalFile
-        if (requestedFile != pluginPackage.manifestFile.canonicalFile) {
+        val pluginPackage = packagesByManifest[requestedFile]
+        if (pluginPackage == null) {
             println("[DesktopAssetRefresher] Custom artifact is already current: ${requestedFile.path}")
             return requestedFile.path
         }

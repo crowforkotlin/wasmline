@@ -42,8 +42,8 @@ internal fun matchesWasmtimeDistributionAsset(assetName: String, platform: Strin
 /**
  * Downloads and extracts Wasmtime releases.
  *
- * 2026/7/31
- * @author crowforkotlin
+ * Date: 2026-07-31
+ * Author: crowforkotlin
  */
 class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) : Closeable {
 

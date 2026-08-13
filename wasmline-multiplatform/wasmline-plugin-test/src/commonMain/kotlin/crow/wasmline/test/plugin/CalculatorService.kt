@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
 /**
  * Input data class for calculator operations.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 @Serializable
 data class CalculatorInput(val numbers: List<Int>, val operation: String)
@@ -15,8 +15,8 @@ data class CalculatorInput(val numbers: List<Int>, val operation: String)
 /**
  * Output data class for calculator results.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 @Serializable
 data class CalculatorOutput(val result: Int)
@@ -26,8 +26,8 @@ data class CalculatorOutput(val result: Int)
  *
  * Supports sum, product, max, and min operations on integer lists.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 interface CalculatorService : WasmlineService {
     fun calculate(input: CalculatorInput): CalculatorOutput
@@ -36,8 +36,8 @@ interface CalculatorService : WasmlineService {
 /**
  * Implementation of CalculatorService with list-based arithmetic.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 class CalculatorServiceImpl : CalculatorService {
     override fun calculate(input: CalculatorInput): CalculatorOutput {

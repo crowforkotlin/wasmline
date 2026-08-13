@@ -26,8 +26,8 @@ import org.gradle.api.tasks.TaskAction
  * The server will listen on the configured port (default 8080) and serve
  * all files in the assembly output directory, including `manifest.wlm`.
  *
- * 2026/6/5
- * @author crowforkotlin
+ * Date: 2026-06-05
+ * Author: crowforkotlin
  */
 abstract class WasmlineServerDeployTask : DefaultTask() {
 

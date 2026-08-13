@@ -11,8 +11,8 @@ import kotlin.test.assertTrue
  * Runs on both web targets, so the same assertions validate the js number
  * bridging and the wasmJs BigInt bridging.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 class WebWasmValueCodecTest {
 

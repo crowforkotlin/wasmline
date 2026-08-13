@@ -6,7 +6,7 @@
 # ==============================================================================
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-source "${CURRENT_DIR}/context.sh" || exit 1
+source "${CURRENT_DIR}/lib/context.sh" || exit 1
 
 REPO="crowforkotlin/wasmtime"
 ERROR_FLAG_FILE="${TEMP_WORK_DIR}/.has_error"

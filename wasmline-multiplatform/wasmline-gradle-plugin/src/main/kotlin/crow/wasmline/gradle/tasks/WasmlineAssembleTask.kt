@@ -122,7 +122,13 @@ abstract class WasmlineAssembleTask @Inject constructor(private val execOperatio
         val variant = buildVariant.get()
         val id = pluginId.get()
         val version = pluginVersion.get()
-        val packageDirectory = File(outputDir.get().asFile, id + "-" + version).apply { mkdirs() }
+        val packageDirectory = File(outputDir.get().asFile, id + "-" + version)
+        if (packageDirectory.exists() && !packageDirectory.deleteRecursively()) {
+            throw GradleException("Unable to clean stale Wasmline package output: ${packageDirectory.absolutePath}")
+        }
+        if (!packageDirectory.mkdirs()) {
+            throw GradleException("Unable to create Wasmline package output: ${packageDirectory.absolutePath}")
+        }
         val debugDirectory = File(packageDirectory, "debug").apply { mkdirs() }
         val productName = id.substringAfterLast('.')
 

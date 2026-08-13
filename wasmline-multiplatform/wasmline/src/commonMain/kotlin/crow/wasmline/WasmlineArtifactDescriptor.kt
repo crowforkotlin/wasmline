@@ -1,14 +1,13 @@
+package crow.wasmline
+
+import kotlinx.serialization.Serializable
+
 /**
  * Describes a binary artifact and its invocation boundary.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
-
-package crow.wasmline
-
-import kotlinx.serialization.Serializable
-
 @Serializable
 data class WasmlineArtifactDescriptor(
     val path: String,

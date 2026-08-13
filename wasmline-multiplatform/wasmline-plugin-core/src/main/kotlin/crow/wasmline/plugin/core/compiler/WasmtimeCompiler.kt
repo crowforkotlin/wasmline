@@ -13,8 +13,8 @@ import java.security.MessageDigest
 /**
  * Compiles WebAssembly modules with Wasmtime.
  *
- * 2026/7/31
- * @author crowforkotlin
+ * Date: 2026-07-31
+ * Author: crowforkotlin
  */
 class WasmtimeCompiler {
 

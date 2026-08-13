@@ -88,5 +88,8 @@ fun includeModule(topName: String, file: File) {
 
 includeModule(topName = "sample-apps", file = file("sample-apps"))
 include(":sample-common")
+include(":sample-component-fixture")
+include(":sample-component-export-plugin")
 include(":sample-component-plugin")
 include(":sample-plugin")
+include(":sample-raw-export-plugin")

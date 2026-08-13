@@ -1,9 +1,3 @@
-/**
- * Measures AOT-only Wasmline invocation and cold native loading paths on the JVM host.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
@@ -31,6 +25,8 @@ import java.security.MessageDigest
 import kotlin.math.roundToLong
 
 /**
+ * Measures AOT-only Wasmline invocation and cold native loading paths on the JVM host.
+ *
  * Runs two distinct benchmark modes:
  *
  * - `invocation`: measures warm calls using externally supplied `.cwasm` or `.pwasm` inputs.
@@ -38,6 +34,9 @@ import kotlin.math.roundToLong
  *
  * Raw Wasm is deliberately not accepted by either mode. Any compile-time baseline belongs to an
  * external Wasmtime CLI process and must never be routed through the JNI runtime.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
  */
 object WasmlineInvocationBenchmark {
     private const val DEFAULT_WARMUP = 32

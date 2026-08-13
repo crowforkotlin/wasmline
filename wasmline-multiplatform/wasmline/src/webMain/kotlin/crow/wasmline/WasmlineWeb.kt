@@ -15,8 +15,8 @@ import crow.wasmline.web.WebWasmArtifacts
  * val result = WasmlineLoader.load("plugin.wasm")
  * ```
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 object WasmlineWeb {
 
