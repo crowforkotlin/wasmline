@@ -19,7 +19,7 @@ import kotlin.test.fail
  * - Thread-safe shutdown
  * - Platform capabilities detection
  *
- * @author crowforkotlin
+ * Author: crowforkotlin
  */
 class NativeWasmtimeLifecycleTest {
 

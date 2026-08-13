@@ -1,11 +1,11 @@
+package crow.wasmline.invocation
+
 /**
  * Describes a failed Wasmline invocation.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
-package crow.wasmline.invocation
-
 data class WasmlineCallError(
     val code: WasmlineErrorCode,
     val message: String,

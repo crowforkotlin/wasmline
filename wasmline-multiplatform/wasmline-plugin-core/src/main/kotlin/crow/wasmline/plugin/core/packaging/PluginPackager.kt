@@ -9,8 +9,8 @@ import java.util.zip.ZipOutputStream
 /**
  * Packages a manifest and compiled artifacts into a plugin archive.
  *
- * 2026/7/31
- * @author crowforkotlin
+ * Date: 2026-07-31
+ * Author: crowforkotlin
  */
 object PluginPackager {
     /** Creates the plugin archive at the given destination. */

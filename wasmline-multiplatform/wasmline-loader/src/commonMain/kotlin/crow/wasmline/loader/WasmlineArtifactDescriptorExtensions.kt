@@ -1,9 +1,3 @@
-/**
- * Converts manifest artifact metadata to a runtime descriptor.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineArtifactDescriptor
@@ -11,6 +5,12 @@ import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
 
+/**
+ * Converts manifest artifact metadata to a runtime descriptor.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 fun WasmlineArtifact.toDescriptor(path: String): WasmlineArtifactDescriptor = WasmlineArtifactDescriptor(
     path = path,
     artifactFormat = when (type) {

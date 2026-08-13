@@ -1,9 +1,3 @@
-/**
- * Tests the typed Component Model host dispatcher.
- *
- * Date: 2026-08-07
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallResult
@@ -15,7 +9,14 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Verifies dispatch independent of JNI ownership and Component instantiation. */
+/**
+ * Tests the typed Component Model host dispatcher.
+ *
+ * Verifies dispatch independent of JNI ownership and Component instantiation.
+ *
+ * Date: 2026-08-07
+ * Author: crowforkotlin
+ */
 class WasmlineComponentHostDispatcherTest {
     @Test
     fun dispatchesTypedArgumentsAndEncodesTypedResults() {

@@ -1,11 +1,11 @@
+package crow.wasmline.invocation
+
 /**
  * Defines stable Wasmline invocation error codes.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
-package crow.wasmline.invocation
-
 enum class WasmlineErrorCode(val value: Int) {
     UNKNOWN(-1),
     ACTION_NOT_BOUND(1001),

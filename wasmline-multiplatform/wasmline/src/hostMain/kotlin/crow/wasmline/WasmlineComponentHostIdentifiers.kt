@@ -1,18 +1,17 @@
-/**
- * Identifiers for typed Component Model host imports.
- *
- * Date: 2026-08-07
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallResult
 
 /**
+ * Identifiers for typed Component Model host imports.
+ *
  * Identifies one imported Component interface instance.
  *
  * The value is intentionally opaque. Wasmline preserves the exact Component import text instead
  * of attempting to parse every current and future WIT package, resource, or version syntax.
+ *
+ * Date: 2026-08-07
+ * Author: crowforkotlin
  */
 class WasmlineComponentInterfaceId private constructor(val value: String) {
     override fun equals(other: Any?): Boolean = other is WasmlineComponentInterfaceId && value == other.value

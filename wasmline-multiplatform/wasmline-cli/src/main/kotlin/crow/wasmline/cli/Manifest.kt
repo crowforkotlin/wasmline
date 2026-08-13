@@ -28,8 +28,8 @@ import java.io.File
  *       └── compile-result.json
  * ```
  *
- * 2026/2/12
- * @author crowforkotlin
+ * Date: 2026-02-12
+ * Author: crowforkotlin
  * @formatter:on
  */
 class Manifest : CliktCommand(name = "manifest") {

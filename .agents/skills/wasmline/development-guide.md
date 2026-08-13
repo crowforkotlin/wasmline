@@ -177,13 +177,15 @@ cd wasmline-multiplatform
 cd wasmline-multiplatform/wasmline
 zig build --release=small -p src/jvmMain/resources
 
-# Format check
-./gradlew ktlintCheck
-find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+# Check changed Kotlin, C/C++, and Zig sources
+bash scripts/lint.sh
 
-# Format fix
-./gradlew ktlintFormat
-find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | xargs clang-format -i
+# Check all supported source files, as used by CI
+bash scripts/lint.sh --all
+
+# Format changed sources, or format all supported source files
+bash scripts/lint.sh format
+bash scripts/lint.sh --all format
 ```
 
 ---
@@ -192,13 +194,13 @@ find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | xarg
 
 | Language | Tool | Config |
 |----------|------|--------|
-| Kotlin | ktlint (via `org.jlleitschuh.gradle.ktlint`) | `wasmline-multiplatform/.editorconfig` |
+| Kotlin | ktlint | `wasmline-multiplatform/.editorconfig` |
 | C/C++ | clang-format | `wasmline-core/.clang-format` |
+| Zig / ZON | zig fmt | Zig built-in formatter |
 
-- ktlint is applied to **all modules** via root `build.gradle.kts` `allprojects {}`.
-- Run `./gradlew ktlintCheck` before committing Kotlin changes.
-- Run `clang-format --dry-run --Werror` before committing C++ changes.
-- CI enforces both checks on every PR.
+- `bash scripts/lint.sh` checks only changed and untracked source files by default.
+- Use `--all` for the full repository scope used by CI.
+- CI enforces Kotlin, C/C++, and Zig formatting on every PR.
 
 ---
 
@@ -208,16 +210,16 @@ Workflow: `.github/workflows/ci.yml`
 
 **Trigger:** push to `main` / PR to `main` (ignores docs-only changes)
 
-### Job Structure (4 parallel/sequential lanes)
+### Job Structure
 
 ```
 ┌──────────────┐   ┌──────────────┐
-│ lint-kotlin  │   │ lint-clang   │
-└──────┬───────┘   └──────┬───────┘
-       │                  │
-       └────────┬─────────┘
+│ lint-kotlin  │   │ lint-clang   │   │ lint-zig   │
+└──────┬───────┘   └──────┬───────┘   └─────┬──────┘
+       │                  │                  │
+       └──────────────────┴────────┬─────────┘
                 │
-         (both must pass)
+         (all must pass)
                 │
        ┌────────▼─────────┐
        │ compile-all      │
@@ -236,15 +238,15 @@ Workflow: `.github/workflows/ci.yml`
 
 **Conditions:**
 
-- `compile-all` only runs if **both** lint jobs succeed
+- `compile-all` only runs if **all** lint jobs succeed
 - `test-all` runs **after compile-all completes** (even if failed via `if: always()`)
 - **Exception**: `workflow_dispatch` triggers bypass lint checks (manual run allowed)
 
-### Why Split Into 4 Jobs?
+### Why Split Lint and Build Jobs?
 
 | Stage | Purpose | Benefit |
 | ------- | --------- | -------- |
-| **lint-kotlin / lint-clang** | Fast format failures | Instant feedback, no wasted compute on heavy builds |
+| **lint-kotlin / lint-clang / lint-zig** | Fast format failures | Instant feedback, no wasted compute on heavy builds |
 | **compile-all** | Heavy native build + multi-platform compilation | Isolated error context for toolchain/runtime issues |
 | **test-all** | Execute unit + integration tests | Clear separation between "can we build?" and "does it work?" |
 

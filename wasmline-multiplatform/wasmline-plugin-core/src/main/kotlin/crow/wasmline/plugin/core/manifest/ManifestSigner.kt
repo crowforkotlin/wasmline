@@ -20,8 +20,8 @@ import java.io.File
 /**
  * Creates signed Wasmline manifests.
  *
- * 2026/7/31
- * @author crowforkotlin
+ * Date: 2026-07-31
+ * Author: crowforkotlin
  */
 class ManifestSigner {
 

@@ -33,7 +33,7 @@ import kotlin.test.assertTrue
  * Unlike webtest which uses hand-encoded wasm binaries, these tests use the full
  * Wasmline runtime pipeline including artifact loading and module caching.
  *
- * @author crowforkotlin
+ * Author: crowforkotlin
  */
 class NativeWasmtimeIntegrationTest {
 

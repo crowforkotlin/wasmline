@@ -13,8 +13,8 @@ import kotlin.test.assertTrue
  * Host functions registered through the builder are invoked directly via
  * [webCallFunction], so the JS glue is validated without a wasm module.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 class WebWasmImportsBuilderTest {
 

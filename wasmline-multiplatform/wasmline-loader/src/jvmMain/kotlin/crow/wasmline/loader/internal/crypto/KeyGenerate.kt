@@ -7,8 +7,8 @@ import okio.ByteString.Companion.toByteString
  * KeyGenerate
  * Returns a new `<publicKey / privateKey>` KeyPair.
  *
- * 2026/2/10 19:56
- * @author crowforkotlin
+ * Date: 2026-02-10
+ * Author: crowforkotlin
  * @formatter:on
  */
 internal fun generateEd25519KeyPair(): KeyPair {

@@ -7,8 +7,8 @@ import kotlin.contracts.ExperimentalContracts
 /**
  * Wasmline load module state.
  *
- * 2026-01-02
- * @author crowforkotlin
+ * Date: 2026-01-02
+ * Author: crowforkotlin
  */
 sealed class WasmlineLoadState {
     companion object Companion {

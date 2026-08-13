@@ -32,9 +32,8 @@ jobs:
           chmod +x ktlint
           sudo mv ktlint /usr/local/bin/
 
-      - name: ktlint check
-        working-directory: wasmline-multiplatform
-        run: ktlint --relative '!**/wasmline-build-logic/**' '!**/iosMain/**' '!**/build/**'
+      - name: Kotlin format check
+        run: bash scripts/lint.sh --all kotlin
 
   lint-clang:
     runs-on: ubuntu-latest
@@ -46,10 +45,23 @@ jobs:
       - name: Install clang-format
         run: sudo apt-get install -y clang-format
 
-      - name: clang-format check
-        run: |
-          find wasmline-core/src wasmline-core/include -name '*.cpp' -o -name '*.h' | \
-            xargs clang-format --dry-run --Werror
+      - name: C/C++ format check
+        run: bash scripts/lint.sh --all cpp
+
+  lint-zig:
+    runs-on: ubuntu-latest
+    name: lint-zig
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Zig format and AST check
+        run: bash scripts/lint.sh --all zig
 
   # ───────────────────────────────────────────────────────────────
   # JOB 3: Build native assets (Wasmtime platform libraries)
@@ -386,7 +398,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   publish:
-    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
+    needs: [lint-kotlin, lint-clang, lint-zig, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
     runs-on: ubuntu-latest
     name: publish
 
@@ -399,7 +411,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────
 
   release:
-    needs: [lint-kotlin, lint-clang, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
+    needs: [lint-kotlin, lint-clang, lint-zig, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
     runs-on: ubuntu-latest
     name: release
 

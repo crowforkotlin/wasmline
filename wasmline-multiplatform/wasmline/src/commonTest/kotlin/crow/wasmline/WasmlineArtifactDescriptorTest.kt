@@ -1,16 +1,17 @@
-/**
- * Tests artifact execution model validation.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** Verifies execution-model and invocation-protocol validation rules. */
+/**
+ * Tests artifact execution model validation.
+ *
+ * Verifies execution-model and invocation-protocol validation rules.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 class WasmlineArtifactDescriptorTest {
     /** Rejects an artifact descriptor without a path. */
     @Test

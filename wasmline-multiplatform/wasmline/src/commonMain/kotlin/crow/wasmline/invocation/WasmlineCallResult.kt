@@ -1,11 +1,11 @@
+package crow.wasmline.invocation
+
 /**
  * Represents the result of a Wasmline invocation.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
-package crow.wasmline.invocation
-
 sealed interface WasmlineCallResult<out T> {
     data class Success<T>(val value: T) : WasmlineCallResult<T>
     data class Failure(val error: WasmlineCallError) : WasmlineCallResult<Nothing>

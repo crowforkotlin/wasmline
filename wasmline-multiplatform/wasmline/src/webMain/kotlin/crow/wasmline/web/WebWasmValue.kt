@@ -7,8 +7,8 @@ package crow.wasmline.web
  * deals with [WebWasmValue]; [WebWasmValueCodec] performs the single
  * boundary conversion to and from JS value handles.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal sealed interface WebWasmValue {
     val type: WebWasmType
@@ -45,8 +45,8 @@ internal enum class WebWasmType {
  * carry the wasm type, so guessing from the runtime representation is
  * deliberately not supported.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal object WebWasmValueCodec {
 

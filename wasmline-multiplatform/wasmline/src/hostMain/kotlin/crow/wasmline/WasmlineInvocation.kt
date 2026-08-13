@@ -1,9 +1,3 @@
-/**
- * Provides result-based Wasmline invocation.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
@@ -11,6 +5,12 @@ import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
+/**
+ * Provides result-based Wasmline invocation.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 fun Wasmline.callResult(action: String, payload: ByteArray = ByteArray(0)): WasmlineCallResult<ByteArray> =
     if (descriptor.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_SERVICE) {
         WasmlineCallResult.Failure(

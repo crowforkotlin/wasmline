@@ -11,8 +11,8 @@ import kotlin.coroutines.suspendCoroutine
  * asynchronously and delivered either through callbacks or as a suspend
  * function for coroutine-based call sites.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal object WebArtifactFetcher {
 
