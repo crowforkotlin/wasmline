@@ -1,15 +1,15 @@
-/**
- * Parses invocation metadata used by CLI manifest commands.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline.cli
 
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 
+/**
+ * Parses invocation metadata used by CLI manifest commands.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 internal data class InvocationOptions(
     val executionModel: WasmlineExecutionModel,
     val invocationProtocol: WasmlineInvocationProtocol,

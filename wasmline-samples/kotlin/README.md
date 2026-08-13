@@ -27,33 +27,52 @@ Assemble the Core Wasm plugin package without running the host:
 ./gradlew :sample-plugin:wasmlineAssembleDebug
 ```
 
-## Component Model
+## Four execution contracts
 
-Assemble the Component Model sample package:
+Each valid execution-model/protocol pair has a standalone signed sample package:
+
+| Module | Runtime contract |
+|---|---|
+| `sample-plugin` | `CORE_WASM + WASMLINE_SERVICE` |
+| `sample-raw-export-plugin` | `CORE_WASM + RAW_EXPORT` |
+| `sample-component-plugin` | `COMPONENT_MODEL + WASMLINE_SERVICE` |
+| `sample-component-export-plugin` | `COMPONENT_MODEL + COMPONENT_EXPORT` |
+| `sample-component-fixture` | Packages an external C/C++ `wasmline:service` Component |
+
+`sample-plugin` intentionally omits both manifest properties to exercise the
+defaults. The other four modules declare both properties explicitly.
+
+Assemble them independently:
 
 ```shell
+./gradlew :sample-plugin:wasmlineAssembleDebug
+./gradlew :sample-raw-export-plugin:wasmlineAssembleDebug
 ./gradlew :sample-component-plugin:wasmlineAssembleDebug
+./gradlew :sample-component-export-plugin:wasmlineAssembleDebug
 ```
 
-Component AOT requires the full Wasmtime CLI. Configure it explicitly or run
-the download task first:
+Component AOT requires the full Wasmtime CLI. The Gradle plugin downloads its
+pinned compiler automatically for Component package tasks; no shell export is
+required.
 
 ```shell
-WASMTIME_COMPILER=/absolute/path/to/wasmtime \
-  ./gradlew :sample-component-plugin:wasmlineAssembleDebug
-
-./gradlew :sample-component-plugin:wasmlineDownloadWasmtimeCompiler
 ./gradlew :sample-component-plugin:wasmlineAssembleDebug
 ```
 
 ## Other targets
 
-Desktop defaults to the Pulley engine. It loads the signed `manifest.wlm`
-package, which verifies the manifest and artifact digest before selecting the
-matching `pwasm64` artifact:
+Desktop defaults to the Pulley engine. Its `run` task assembles and bundles all
+four signed packages. Select any mode in the first row; no artifact path or JVM
+property is required:
 
 ```shell
 ./gradlew :sample-apps:multiplatform:desktopApp:run
+```
+
+Verify the four bundled manifests and invocation paths without opening the UI:
+
+```shell
+./gradlew :sample-apps:multiplatform:desktopApp:verifyWasmlineSamples
 ```
 
 Run Desktop with Cranelift and assemble a package containing the matching
@@ -113,3 +132,31 @@ selection, framework builds, installation, and launch:
 ```shell
 ./run-ios.sh
 ```
+
+## C/C++ Component fixtures
+
+The C and C++ fixtures implement the canonical `wasmline:service@1.0.0` WIT
+world while treating payloads as opaque bytes. Their `build.sh` scripts need
+only the WASI SDK and produce a raw Component:
+
+```shell
+export WASI_SDK_PATH=/path/to/wasi-sdk-33.0
+bash ../c/build.sh
+```
+
+Package the Component through the Kotlin Gradle fixture module:
+
+```shell
+cd wasmline-samples/kotlin
+cp ../c/build/plugin.component.wasm sample-component-fixture/input/plugin.component.wasm
+./gradlew :sample-component-fixture:wasmlineAssembleDebug
+
+WASMLINE_SAMPLE_COMPONENT_FIXTURE="$PWD/sample-component-fixture/build/wasmline/output/crow.wasmline.component.fixture-1.0.0/manifest.wlm" \
+  ./gradlew :sample-apps:multiplatform:desktopApp:run
+```
+
+Select **Component Fixture** in the application. It verifies `sample.echo`,
+`sample.callback` through the Kotlin host callback, and `sample.empty`. Replace
+the copied C Component with `../cpp/build/plugin.component.wasm` for the C++
+fixture. The Gradle package contains the matching `.pwasm`, `.cwasm`, and
+signed `manifest.wlm` artifacts.

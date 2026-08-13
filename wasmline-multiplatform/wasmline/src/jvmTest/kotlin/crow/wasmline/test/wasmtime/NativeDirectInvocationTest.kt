@@ -1,9 +1,3 @@
-/**
- * Tests direct typed Component AOT calls and native raw artifact boundaries.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.WasmlineArtifactDescriptor
@@ -31,7 +25,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
-/** Verifies direct typed Component AOT calls and native raw Core/Component rejection boundaries. */
+/**
+ * Tests direct typed Component AOT calls and native raw artifact boundaries.
+ *
+ * Verifies direct typed Component AOT calls and native raw Core/Component rejection boundaries.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 class NativeDirectInvocationTest {
 
     @Test

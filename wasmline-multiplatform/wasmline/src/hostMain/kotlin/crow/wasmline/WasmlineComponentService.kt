@@ -1,15 +1,15 @@
-/**
- * Adapts the Wasmline byte protocol to the fixed wasmline:service Component interface.
- *
- * Date: 2026-08-05
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
+/**
+ * Adapts the Wasmline byte protocol to the fixed wasmline:service Component interface.
+ *
+ * Date: 2026-08-05
+ * Author: crowforkotlin
+ */
 internal object WasmlineComponentService {
     const val DEFAULT_EXPORT = WasmlineComponentServiceContract.DEFAULT_EXPORT
 

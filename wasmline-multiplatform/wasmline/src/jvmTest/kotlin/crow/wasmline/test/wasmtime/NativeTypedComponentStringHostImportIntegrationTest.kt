@@ -1,9 +1,3 @@
-/**
- * Verifies typed string Component Model host imports through AOT JNI artifacts.
- *
- * Date: 2026-08-07
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.WasmlineArtifactDescriptor
@@ -29,7 +23,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/** Validates string-valued Component imports with external `.cwasm`/`.pwasm`. */
+/**
+ * Verifies typed string Component Model host imports through AOT JNI artifacts.
+ *
+ * Validates string-valued Component imports with external `.cwasm`/`.pwasm`.
+ *
+ * Date: 2026-08-07
+ * Author: crowforkotlin
+ */
 class NativeTypedComponentStringHostImportIntegrationTest {
 
     @Test

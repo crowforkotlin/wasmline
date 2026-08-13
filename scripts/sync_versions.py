@@ -685,7 +685,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "scripts/context.sh",
+            "scripts/lib/context.sh",
             (
                 Rule(
                     r"release-v[0-9]+\.[0-9]+\.[0-9]+",

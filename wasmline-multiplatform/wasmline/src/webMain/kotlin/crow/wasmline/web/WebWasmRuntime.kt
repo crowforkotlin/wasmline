@@ -10,8 +10,8 @@ internal class WebWasmException(message: String, cause: Throwable? = null) : Run
  * code never calls the binding primitives directly, and every failure
  * surfaces as a [WebWasmException] carrying the failed stage.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal object WebWasmRuntime {
 
@@ -41,8 +41,8 @@ internal object WebWasmRuntime {
  * Exported functions and memories are handed out as small typed handles
  * instead of raw JS values.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal class WebWasmInstanceHandle internal constructor(private val instance: WebWasmInstance) {
     val exports: WebJsObject = webExportsOf(instance)
@@ -74,8 +74,8 @@ internal class WebWasmInstanceHandle internal constructor(private val instance: 
  * Arguments and results travel as [WebWasmValue], so call sites declare
  * the expected result types explicitly instead of guessing from raw numbers.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal class WebWasmFunction internal constructor(private val name: String, private val function: WebJsValue) {
     fun invoke(args: List<WebWasmValue> = emptyList(), resultTypes: List<WebWasmType> = emptyList()): List<WebWasmValue> {
@@ -95,8 +95,8 @@ internal class WebWasmFunction internal constructor(private val name: String, pr
  * A fresh view is created per operation because `memory.buffer` is detached
  * and replaced whenever the module grows its memory.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal class WebWasmMemory internal constructor(private val memory: WebJsValue) {
     fun read(pointer: Int, length: Int): ByteArray {

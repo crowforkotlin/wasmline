@@ -21,9 +21,8 @@ Kotlin/Wasm WASI library with JDK 21, embeds WIT, creates and validates the
 Component with the pinned `wit-bindgen` 0.57.1 and `wasm-tools` 1.255.0, then
 uses the full Wasmtime CLI to produce matching `.pwasm` and `.cwasm` Component
 artifacts. Generated bindings and intermediate Wasm files are build outputs and
-are not committed. Configure `WASMTIME_COMPILER` or run
-`./gradlew :sample-component-plugin:wasmlineDownloadWasmtimeCompiler` before
-assembling when the compiler is not already available.
+are not committed. The Gradle plugin downloads the pinned full Wasmtime CLI
+automatically when the compiler is not already available.
 
 The guest never imports generated `Host`/`Plugin` types directly and does not maintain an
 action switch or Service error conversion. The fixed WIT `list<u8>` payload remains exactly the

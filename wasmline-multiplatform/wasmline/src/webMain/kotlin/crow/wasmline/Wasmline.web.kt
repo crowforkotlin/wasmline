@@ -16,14 +16,10 @@ import crow.wasmline.web.WebWasmPlugin
  * expect/actual toolkit in `crow.wasmline.web` (value codec, WebAssembly
  * runtime wrappers, import builder, and Fetch-based artifact cache).
  *
- * 2026-07-29
- * @author crowforkotlin
- */
-
-/** Per-module handle used by the platform `Wasmline` actual classes.
+ * Per-module handle used by the platform `Wasmline` actual classes.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal class BrowserWasmline(private val moduleKey: String) {
     fun setOutbound(dispatcher: WasmlineHostDispatcher) {
@@ -51,8 +47,8 @@ private fun unsupportedTypedInvocation(exportName: String): WasmlineCallResult<B
 
 /** Lifecycle entry points shared by both web targets.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal object BrowserWasmlineRuntime {
     fun load(

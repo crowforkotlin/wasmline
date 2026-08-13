@@ -23,8 +23,8 @@ import java.io.File
  * The server runs in **foreground blocking mode** — the calling Gradle task
  * will block until the user interrupts the process (Ctrl+C).
  *
- * 2026/6/5
- * @author crowforkotlin
+ * Date: 2026-06-05
+ * Author: crowforkotlin
  */
 internal object WasmlineHttpServer {
 

@@ -1,15 +1,15 @@
-/**
- * Encodes and decodes the Core Wasmline response frame.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline.internal.protocol
 
 import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
+/**
+ * Encodes and decodes the Core Wasmline response frame.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 internal object WasmlineResponseCodec {
     const val FRAME_VERSION: Int = 1
 

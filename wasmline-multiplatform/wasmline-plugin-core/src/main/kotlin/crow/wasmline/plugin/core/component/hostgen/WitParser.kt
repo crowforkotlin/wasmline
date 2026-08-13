@@ -81,7 +81,7 @@ private class Parser(private val tokens: List<Token>, private val sha256: String
 
                 "interface" -> parseInterface().also { requireUnique(interfaces, it.name, "interface", it) }
 
-                "world" -> parseWorld().also { requireUnique(worlds, it.name, "world", it) }
+                "world" -> parseWorld(interfaces).also { requireUnique(worlds, it.name, "world", it) }
 
                 else -> fail("Expected package, interface or world, found '${peek().text}'.")
             }
@@ -111,6 +111,10 @@ private class Parser(private val tokens: List<Token>, private val sha256: String
     private fun parseInterface(): WitInterface {
         expect("interface")
         val name = identifier("interface name")
+        return parseInterfaceBody(name)
+    }
+
+    private fun parseInterfaceBody(name: String): WitInterface {
         expect("{")
         val types = mutableListOf<WitTypeDefinition>()
         val functions = mutableListOf<WitFunction>()
@@ -306,7 +310,7 @@ private class Parser(private val tokens: List<Token>, private val sha256: String
         return type
     }
 
-    private fun parseWorld(): WitWorld {
+    private fun parseWorld(interfaces: MutableMap<String, WitInterface>): WitWorld {
         expect("world")
         val name = identifier("world name")
         expect("{")
@@ -314,12 +318,25 @@ private class Parser(private val tokens: List<Token>, private val sha256: String
         val exports = mutableListOf<String>()
         while (!consume("}")) {
             when {
-                consume("import") -> imports += identifier("world import").also { expect(";") }
-                consume("export") -> exports += identifier("world export").also { expect(";") }
+                consume("import") -> imports += parseWorldInterface("world import", interfaces)
+                consume("export") -> exports += parseWorldInterface("world export", interfaces)
                 else -> fail("Expected import or export in world '$name'.")
             }
         }
         return WitWorld(name, imports, exports)
+    }
+
+    private fun parseWorldInterface(label: String, interfaces: MutableMap<String, WitInterface>): String {
+        val name = identifier(label)
+        if (consume(":")) {
+            expect("interface")
+            val inlineInterface = parseInterfaceBody(name)
+            requireUnique(interfaces, name, "interface", inlineInterface)
+            consume(";")
+        } else {
+            expect(";")
+        }
+        return name
     }
 
     private fun expect(text: String) {

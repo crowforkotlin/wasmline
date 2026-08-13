@@ -15,8 +15,8 @@ import kotlin.test.assertEquals
  * These tests load actual Wasmline plugins compiled from Kotlin/Wasm code and
  * perform real host-to-WASM bidirectional calls.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 class NativeMathServiceTest {
 

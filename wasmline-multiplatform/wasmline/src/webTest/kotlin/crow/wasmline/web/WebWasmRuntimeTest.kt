@@ -13,8 +13,8 @@ import kotlin.test.assertTrue
  * Covers compile, instantiate, typed export invocation (i32/i64), host
  * function imports, linear memory access, and failure paths.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 class WebWasmRuntimeTest {
 

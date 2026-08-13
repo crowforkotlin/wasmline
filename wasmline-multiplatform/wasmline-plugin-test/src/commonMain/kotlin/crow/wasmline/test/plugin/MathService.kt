@@ -8,8 +8,8 @@ import crow.wasmline.WasmlineService
  * Provides add, subtract, and multiply operations to validate
  * host-to-WASM bidirectional communication.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 interface MathService : WasmlineService {
     fun add(a: Int, b: Int): Int
@@ -20,8 +20,8 @@ interface MathService : WasmlineService {
 /**
  * Implementation of MathService with straightforward arithmetic.
  *
- * 2026-07-30
- * @author crowforkotlin
+ * Date: 2026-07-30
+ * Author: crowforkotlin
  */
 class MathServiceImpl : MathService {
     override fun add(a: Int, b: Int): Int = a + b

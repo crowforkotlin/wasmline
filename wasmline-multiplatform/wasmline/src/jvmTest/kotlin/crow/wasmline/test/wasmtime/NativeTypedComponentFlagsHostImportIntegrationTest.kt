@@ -1,9 +1,3 @@
-/**
- * Verifies flags Component host imports through AOT JNI artifacts.
- *
- * Date: 2026-08-07
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.WasmlineArtifactDescriptor
@@ -29,7 +23,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/** Validates flags arguments and results with external `.cwasm`/`.pwasm` only. */
+/**
+ * Verifies flags Component host imports through AOT JNI artifacts.
+ *
+ * Validates flags arguments and results with external `.cwasm`/`.pwasm` only.
+ *
+ * Date: 2026-08-07
+ * Author: crowforkotlin
+ */
 class NativeTypedComponentFlagsHostImportIntegrationTest {
 
     @Test

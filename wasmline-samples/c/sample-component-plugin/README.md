@@ -17,23 +17,31 @@ Core bridge imports. The `protobuf` payload is treated as opaque bytes:
 
 ## Build
 
-Use the WASI SDK 33 CMake toolchain (the verified baseline), `wit-bindgen 0.57.1`, and
-`wasm-tools 1.255.0`:
+Use the WASI SDK 33 CMake toolchain (the verified baseline), `wit-bindgen 0.57.1`,
+and `wasm-tools 1.255.0`:
 
 ```shell
-cmake -S . -B build -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE="$WASI_SDK_PATH/share/cmake/wasi-sdk.cmake" \
-  -DWIT_BINDGEN_EXECUTABLE=/path/to/wit-bindgen \
-  -DWASM_TOOLS_EXECUTABLE=/path/to/wasm-tools
-cmake --build build --target wasmline_component
+export WASI_SDK_PATH=/path/to/wasi-sdk-33.0
+bash ../configure.sh
+bash ../build.sh
 ```
 
-The output is `build/plugin.component.wasm`. If the selected WASI SDK leaves
-Preview 1 imports in the Core Wasm, also pass the pinned adapter:
+The build writes one raw Component:
+
+- `../build/plugin.component.wasm`
+
+Copy that file to `wasmline-samples/kotlin/sample-component-fixture/input/` and
+run the Kotlin fixture package task to generate signed `.pwasm`, `.cwasm`, and
+`manifest.wlm` outputs. If the selected WASI SDK leaves Preview 1 imports in the
+Core Wasm, also pass the pinned adapter:
 
 ```shell
--DWASI_PREVIEW1_ADAPTER=/path/to/wasi_snapshot_preview1.reactor.wasm
+export WASI_PREVIEW1_ADAPTER=/path/to/wasi_snapshot_preview1.reactor.wasm
 ```
+
+`../build.sh` runs configuration before building, so it cannot invoke CMake on
+an unconfigured build directory. The scripts use Ninja by default; set
+`CMAKE_GENERATOR` to use a different locally installed generator.
 
 CMake rejects unpinned `wit-bindgen` and `wasm-tools` versions, validates the
 Component, and prints its reconstructed WIT world. Generated bindings, object

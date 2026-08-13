@@ -1,11 +1,11 @@
+package crow.wasmline
+
 /**
  * Defines values for direct Core Wasm export calls.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin
  */
-package crow.wasmline
-
 sealed interface WasmlineRawValue {
     data class I32(val value: Int) : WasmlineRawValue
 

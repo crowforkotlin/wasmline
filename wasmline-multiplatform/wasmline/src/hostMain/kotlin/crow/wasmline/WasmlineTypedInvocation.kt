@@ -1,15 +1,15 @@
-/**
- * Provides direct typed export calls for host runtimes.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
+/**
+ * Provides direct typed export calls for host runtimes.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 data class WasmlineRawCallResult(val values: List<WasmlineRawValue>)
 
 data class WasmlineComponentCallResult(val values: List<WasmlineComponentValue>)

@@ -8,11 +8,11 @@ package crow.wasmline.web
  * `WebBindings.wasmJs.kt` (JsAny + constant `js()` snippets), so no
  * platform-specific interop ever leaks into shared web code.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Opaque handle to an arbitrary JavaScript value.
+ *
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
-
-/** Opaque handle to an arbitrary JavaScript value. */
 internal expect class WebJsValue
 
 /** Opaque handle to a plain JavaScript object used as a property bag. */

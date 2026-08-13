@@ -39,8 +39,8 @@ import javax.inject.Inject
  * }
  * ```
  *
- * 2026/6/5
- * @author crowforkotlin
+ * Date: 2026-06-05
+ * Author: crowforkotlin
  */
 open class WasmlineExtension @Inject constructor(project: Project) {
 

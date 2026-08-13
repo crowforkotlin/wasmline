@@ -7,26 +7,30 @@ import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineComponentServiceContract
+import crow.wasmline.WasmlineComponentValue
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRawValue
 import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.bind
+import crow.wasmline.bindComponentService
 import crow.wasmline.callResult
+import crow.wasmline.invokeComponentResult
 import crow.wasmline.invokeRawResult
 import crow.wasmline.link
+import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.wasmlineNativeRuntimeInfo
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.sample.bean.PlatformBean
+import crow.wasmline.sample.component.ComponentEchoRequest
+import crow.wasmline.sample.component.ComponentPluginService
 import crow.wasmline.sample.extensions.getPlatformBean
 import crow.wasmline.sample.extensions.info
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
 import crow.wasmline.serialization.WasmlineSerializationConfig
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.protobuf.ProtoBuf
 import kotlin.time.TimeSource
 
 private val samplePackageTrustedKeys = WasmlineTrustedKeySet.Builder()
@@ -42,36 +46,58 @@ enum class WasmSampleMode(
     val description: String,
     val protocol: String,
     val defaultExport: String,
+    val usesNumericInput: Boolean,
 ) {
-    CORE_WASM(
-        title = "Core Wasm",
+    CORE_SERVICE(
+        title = "Core Service",
         description = "WasmlineService + action bridge",
         protocol = "WASMLINE_SERVICE",
         defaultExport = "TimeSyncService.timeSync",
+        usesNumericInput = false,
     ),
     RAW_EXPORT(
         title = "Raw Export",
         description = "Direct numeric Core export",
         protocol = "RAW_EXPORT",
         defaultExport = "add_i32",
+        usesNumericInput = true,
     ),
-    COMPONENT_MODEL(
-        title = "Component Model",
-        description = "WIT Component export",
-        protocol = "COMPONENT_EXPORT",
+    COMPONENT_SERVICE(
+        title = "Component Service",
+        description = "WasmlineService over the canonical WIT envelope",
+        protocol = "WASMLINE_SERVICE",
         defaultExport = "plugin/invoke",
+        usesNumericInput = false,
+    ),
+    COMPONENT_FIXTURE(
+        title = "Component Fixture",
+        description = "Cross-language opaque-byte Component transport",
+        protocol = "WASMLINE_SERVICE",
+        defaultExport = "sample.echo",
+        usesNumericInput = false,
+    ),
+    COMPONENT_EXPORT(
+        title = "Component Export",
+        description = "Direct typed WIT export",
+        protocol = "COMPONENT_EXPORT",
+        defaultExport = "wasmline:sample-component-export/calculator@1.0.0#add",
+        usesNumericInput = true,
     ),
 }
 
 data class SampleArtifacts(
-    val corePath: String,
+    val coreServicePath: String,
     val rawExportPath: String = "",
-    val componentPath: String = "",
+    val componentServicePath: String = "",
+    val componentFixturePath: String = "",
+    val componentExportPath: String = "",
 ) {
     fun pathFor(mode: WasmSampleMode): String = when (mode) {
-        WasmSampleMode.CORE_WASM -> corePath
+        WasmSampleMode.CORE_SERVICE -> coreServicePath
         WasmSampleMode.RAW_EXPORT -> rawExportPath
-        WasmSampleMode.COMPONENT_MODEL -> componentPath
+        WasmSampleMode.COMPONENT_SERVICE -> componentServicePath
+        WasmSampleMode.COMPONENT_FIXTURE -> componentFixturePath
+        WasmSampleMode.COMPONENT_EXPORT -> componentExportPath
     }
 }
 
@@ -172,6 +198,7 @@ internal class WasmSampleRunner(
     private var wasmline: Wasmline? = null
     private var loadedKey: String? = null
     private var coreInvocationLog: ((String) -> Unit)? = null
+    private var componentFixtureInvocationLog: ((String) -> Unit)? = null
 
     suspend fun execute(request: WasmExecutionRequest): WasmExecutionReport {
         val logs = mutableListOf<String>()
@@ -270,9 +297,11 @@ internal class WasmSampleRunner(
             val runtime = checkNotNull(current)
             val invokeMark = TimeSource.Monotonic.markNow()
             val result = when (request.mode) {
-                WasmSampleMode.CORE_WASM -> runCore(runtime, inputPayload, ::log)
+                WasmSampleMode.CORE_SERVICE -> runCoreService(runtime, inputPayload, ::log)
                 WasmSampleMode.RAW_EXPORT -> runRaw(runtime, request.rawValue, ::log)
-                WasmSampleMode.COMPONENT_MODEL -> runComponent(runtime, request.content, ::log)
+                WasmSampleMode.COMPONENT_SERVICE -> runComponentService(runtime, request.content, ::log)
+                WasmSampleMode.COMPONENT_FIXTURE -> runComponentFixture(runtime, request.content, ::log)
+                WasmSampleMode.COMPONENT_EXPORT -> runComponentExport(runtime, request.rawValue, ::log)
             }
             val invokeDurationMs = invokeMark.elapsedNow().inWholeMilliseconds
             val totalDurationMs = totalMark.elapsedNow().inWholeMilliseconds
@@ -340,6 +369,9 @@ internal class WasmSampleRunner(
             serialization = WasmlineSerializationConfig.protobuf(),
             trustedKeys = samplePackageTrustedKeys,
         )
+        require(mode != WasmSampleMode.COMPONENT_FIXTURE || path.endsWith(".wlm", ignoreCase = true)) {
+            "Component Fixture must be a signed manifest.wlm package produced by :sample-component-fixture."
+        }
         if (path.endsWith(".wlm", ignoreCase = true)) {
             return WasmlineLoader.load(source = path, config = config)
         }
@@ -353,7 +385,7 @@ internal class WasmSampleRunner(
     private fun descriptorFor(mode: WasmSampleMode, path: String): WasmlineArtifactDescriptor {
         val format = path.artifactFormat()
         val descriptor = when (mode) {
-            WasmSampleMode.CORE_WASM -> WasmlineArtifactDescriptor(
+            WasmSampleMode.CORE_SERVICE -> WasmlineArtifactDescriptor(
                 path = path,
                 artifactFormat = format,
                 executionModel = WasmlineExecutionModel.CORE_WASM,
@@ -372,16 +404,42 @@ internal class WasmSampleRunner(
                 ),
             )
 
-            WasmSampleMode.COMPONENT_MODEL -> WasmlineArtifactDescriptor(
+            WasmSampleMode.COMPONENT_SERVICE -> WasmlineArtifactDescriptor(
                 path = path,
                 artifactFormat = format,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-                invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-                exportName = WasmSampleMode.COMPONENT_MODEL.defaultExport,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                exportName = WasmSampleMode.COMPONENT_SERVICE.defaultExport,
                 contractMetadata = mapOf(
                     WasmlineComponentServiceContract.METADATA_PROFILE to WasmlineComponentServiceContract.PROFILE,
                     WasmlineComponentServiceContract.METADATA_CODEC to WasmlineComponentServiceContract.DEFAULT_CODEC,
                     WasmlineComponentServiceContract.METADATA_VERSION to WasmlineComponentServiceContract.VERSION,
+                ),
+            )
+
+            WasmSampleMode.COMPONENT_FIXTURE -> WasmlineArtifactDescriptor(
+                path = path,
+                artifactFormat = format,
+                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
+                contractMetadata = mapOf(
+                    WasmlineComponentServiceContract.METADATA_PROFILE to WasmlineComponentServiceContract.PROFILE,
+                    WasmlineComponentServiceContract.METADATA_WIT_PACKAGE to WasmlineComponentServiceContract.WIT_PACKAGE,
+                    WasmlineComponentServiceContract.METADATA_CODEC to WasmlineComponentServiceContract.DEFAULT_CODEC,
+                    WasmlineComponentServiceContract.METADATA_VERSION to WasmlineComponentServiceContract.VERSION,
+                ),
+            )
+
+            WasmSampleMode.COMPONENT_EXPORT -> WasmlineArtifactDescriptor(
+                path = path,
+                artifactFormat = format,
+                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+                invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                exportName = WasmSampleMode.COMPONENT_EXPORT.defaultExport,
+                contractMetadata = mapOf(
+                    "params" to "s32,s32",
+                    "result" to "s32",
                 ),
             )
         }
@@ -389,14 +447,33 @@ internal class WasmSampleRunner(
     }
 
     private fun configureLoadedRuntime(mode: WasmSampleMode, runtime: Wasmline) {
-        if (mode != WasmSampleMode.CORE_WASM) return
-
-        runtime.bind(object : EchoService {
-            override fun echo() {
-                val message = "[Core Wasm] plugin called host EchoService.echo"
-                coreInvocationLog?.invoke(message) ?: message.info()
+        when (mode) {
+            WasmSampleMode.CORE_SERVICE -> {
+                runtime.bind(object : EchoService {
+                    override fun echo() {
+                        val message = "[Core Wasm] plugin called host EchoService.echo"
+                        coreInvocationLog?.invoke(message) ?: message.info()
+                    }
+                })
             }
-        })
+
+            WasmSampleMode.COMPONENT_FIXTURE -> {
+                runtime.bindComponentService { action, payload ->
+                    check(action == COMPONENT_FIXTURE_HOST_CALLBACK_ACTION) {
+                        "Unexpected Component fixture host action: $action"
+                    }
+                    componentFixtureInvocationLog?.invoke(
+                        "[Component Fixture] host callback received ${payload.size} byte(s)",
+                    )
+                    WasmlineCallResult.Success(payload + COMPONENT_FIXTURE_CALLBACK_SUFFIX)
+                }
+            }
+
+            WasmSampleMode.RAW_EXPORT,
+            WasmSampleMode.COMPONENT_SERVICE,
+            WasmSampleMode.COMPONENT_EXPORT,
+            -> Unit
+        }
     }
 
     private fun WasmlineArtifactDescriptor.withNativeArtifactMetadata(): WasmlineArtifactDescriptor {
@@ -425,7 +502,7 @@ internal class WasmSampleRunner(
         )
     }
 
-    private fun runCore(
+    private fun runCoreService(
         runtime: Wasmline,
         input: PlatformBean,
         log: (String) -> Unit,
@@ -477,29 +554,100 @@ internal class WasmSampleRunner(
         }
     }
 
-    private fun runComponent(
+    private fun runComponentService(
         runtime: Wasmline,
         content: String,
         log: (String) -> Unit,
     ): SampleInvocation {
         val request = ComponentEchoRequest(value = content.ifBlank { "hello" })
-        val payload = ProtoBuf.encodeToByteArray(ComponentEchoRequest.serializer(), request)
-        val result = runtime.callResult(action = "sample.echo", payload = payload)
+        val response = runtime.link<ComponentPluginService>().echo(request)
+        log("[Component Service] invoked ComponentPluginService.echo via plugin/invoke")
+        return SampleInvocation.Success(
+            action = "plugin/invoke -> ComponentPluginService.echo",
+            detail = "Component Wasmline Service call completed.",
+            inputJson = toJsonString(request),
+            outputJson = toJsonString(response),
+        )
+    }
+
+    private fun runComponentFixture(
+        runtime: Wasmline,
+        content: String,
+        log: (String) -> Unit,
+    ): SampleInvocation {
+        val payload = content.ifBlank { "hello from Kotlin host" }.encodeToByteArray()
+        componentFixtureInvocationLog = log
+        return try {
+            val echoed = when (val result = runtime.callResult(COMPONENT_FIXTURE_ECHO_ACTION, payload)) {
+                is WasmlineCallResult.Success -> result.value
+                is WasmlineCallResult.Failure -> return SampleInvocation.Failure(
+                    "$COMPONENT_FIXTURE_ECHO_ACTION failed: ${result.error.message}",
+                )
+            }
+            if (!echoed.contentEquals(payload)) {
+                return SampleInvocation.Failure("Component fixture echo changed the opaque payload.")
+            }
+            log("[Component Fixture] $COMPONENT_FIXTURE_ECHO_ACTION echoed ${echoed.size} byte(s)")
+
+            val callback = when (val result = runtime.callResult(COMPONENT_FIXTURE_CALLBACK_ACTION, payload)) {
+                is WasmlineCallResult.Success -> result.value
+                is WasmlineCallResult.Failure -> return SampleInvocation.Failure(
+                    "$COMPONENT_FIXTURE_CALLBACK_ACTION failed: ${result.error.message}",
+                )
+            }
+            val expectedCallback = payload + COMPONENT_FIXTURE_CALLBACK_SUFFIX
+            if (!callback.contentEquals(expectedCallback)) {
+                return SampleInvocation.Failure("Component fixture callback response did not preserve the host suffix.")
+            }
+            log("[Component Fixture] $COMPONENT_FIXTURE_CALLBACK_ACTION completed through host.invoke")
+
+            val empty = when (val result = runtime.callResult(COMPONENT_FIXTURE_EMPTY_ACTION)) {
+                is WasmlineCallResult.Success -> result.value
+                is WasmlineCallResult.Failure -> return SampleInvocation.Failure(
+                    "$COMPONENT_FIXTURE_EMPTY_ACTION failed: ${result.error.message}",
+                )
+            }
+            if (empty.isNotEmpty()) {
+                return SampleInvocation.Failure("Component fixture empty action returned ${empty.size} byte(s).")
+            }
+            log("[Component Fixture] $COMPONENT_FIXTURE_EMPTY_ACTION returned an empty payload")
+
+            SampleInvocation.Success(
+                action = "$COMPONENT_FIXTURE_ECHO_ACTION -> $COMPONENT_FIXTURE_CALLBACK_ACTION -> $COMPONENT_FIXTURE_EMPTY_ACTION",
+                detail = "Cross-language Component transport and host callback completed.",
+                inputJson = "{\"payloadBytes\":${payload.size}}",
+                outputJson = "{\"echoBytes\":${echoed.size},\"callbackBytes\":${callback.size},\"emptyBytes\":0}",
+            )
+        } finally {
+            componentFixtureInvocationLog = null
+        }
+    }
+
+    private fun runComponentExport(
+        runtime: Wasmline,
+        value: Int,
+        log: (String) -> Unit,
+    ): SampleInvocation {
+        val result = runtime.invokeComponentResult(
+            exportName = WasmSampleMode.COMPONENT_EXPORT.defaultExport,
+            arguments = listOf(
+                WasmlineComponentValue.S32(value),
+                WasmlineComponentValue.S32(1),
+            ),
+        )
         return when (result) {
             is crow.wasmline.invocation.WasmlineCallResult.Failure ->
                 SampleInvocation.Failure(result.error.message)
 
             is crow.wasmline.invocation.WasmlineCallResult.Success -> {
-                val response = ProtoBuf.decodeFromByteArray(
-                    ComponentEchoResponse.serializer(),
-                    result.value,
-                )
-                log("[Component Model] invoked plugin/invoke via WIT envelope")
+                val output = result.value.values.singleOrNull() as? WasmlineComponentValue.S32
+                    ?: return SampleInvocation.Failure("Component export did not return exactly one s32 value.")
+                log("[Component Export] invoked ${WasmSampleMode.COMPONENT_EXPORT.defaultExport}($value, 1)")
                 SampleInvocation.Success(
-                    action = "plugin/invoke -> sample.echo",
-                    detail = "Component Model export call completed.",
-                    inputJson = toJsonString(request),
-                    outputJson = toJsonString(response),
+                    action = WasmSampleMode.COMPONENT_EXPORT.defaultExport,
+                    detail = "Direct typed Component export call completed.",
+                    inputJson = "{\"value\":$value,\"increment\":1}",
+                    outputJson = "{\"value\":${output.value}}",
                 )
             }
         }
@@ -517,6 +665,7 @@ internal class WasmSampleRunner(
 
     private fun closeRuntime() {
         coreInvocationLog = null
+        componentFixtureInvocationLog = null
         wasmline?.close()
         wasmline = null
         loadedKey = null
@@ -553,6 +702,34 @@ internal class WasmSampleRunner(
     )
 }
 
+/** Runs every configured sample contract through the same lifecycle used by the UI. */
+suspend fun verifySampleArtifacts(
+    artifacts: SampleArtifacts,
+    assetRefresher: AssetRefresher = NoOpAssetRefresher,
+): List<WasmExecutionReport> {
+    val runner = WasmSampleRunner(assetRefresher)
+    return try {
+        WasmSampleMode.entries
+            .filter { mode -> mode != WasmSampleMode.COMPONENT_FIXTURE }
+            .filter { mode -> artifacts.pathFor(mode).isNotBlank() }
+            .map { mode ->
+                runner.execute(
+                    WasmExecutionRequest(
+                        mode = mode,
+                        artifactPath = artifacts.pathFor(mode),
+                        platform = "Desktop smoke test",
+                        content = "hello from the four-mode smoke test",
+                        rawValue = 21,
+                        timeOffsetMs = 0,
+                        forceReload = false,
+                    ),
+                )
+            }
+    } finally {
+        runner.close()
+    }
+}
+
 private sealed interface SampleInvocation {
     data class Success(
         val action: String,
@@ -565,12 +742,6 @@ private sealed interface SampleInvocation {
 
     data class Failure(val message: String) : SampleInvocation
 }
-
-@Serializable
-private data class ComponentEchoRequest(val value: String)
-
-@Serializable
-private data class ComponentEchoResponse(val value: String)
 
 private fun rawValueText(value: WasmlineRawValue): String = when (value) {
     is WasmlineRawValue.I32 -> value.value.toString()
@@ -588,3 +759,9 @@ private fun String.artifactFormat(): WasmlineArtifactFormat = when {
 
 private fun String.fileName(): String =
     substringAfterLast('/').substringAfterLast('\\').ifBlank { "—" }
+
+private const val COMPONENT_FIXTURE_ECHO_ACTION = "sample.echo"
+private const val COMPONENT_FIXTURE_CALLBACK_ACTION = "sample.callback"
+private const val COMPONENT_FIXTURE_EMPTY_ACTION = "sample.empty"
+private const val COMPONENT_FIXTURE_HOST_CALLBACK_ACTION = "sample.host.callback"
+private val COMPONENT_FIXTURE_CALLBACK_SUFFIX = byteArrayOf(9)

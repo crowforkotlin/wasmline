@@ -16,8 +16,8 @@ import kotlinx.serialization.protobuf.ProtoNumber
  * signature information so the loader layer can verify integrity before it
  * resolves a concrete runtime artifact.
  *
- * 2026-04-08
- * @author crowforkotlin
+ * Date: 2026-04-08
+ * Author: crowforkotlin
  */
 @Serializable
 data class SignedManifestEnvelope(
@@ -49,8 +49,8 @@ data class SignedManifestEnvelope(
 /**
  * Package manifest model owned by the loader layer.
  *
- * 2026-04-08
- * @author crowforkotlin
+ * Date: 2026-04-08
+ * Author: crowforkotlin
  */
 @Serializable
 data class WasmlineManifest(
@@ -71,8 +71,8 @@ data class WasmlineManifest(
 /**
  * Describes one compiled runtime artifact published by a Wasmline package.
  *
- * 2026-04-08
- * @author crowforkotlin
+ * Date: 2026-04-08
+ * Author: crowforkotlin
  */
 @Serializable
 data class WasmlineArtifact(
@@ -92,8 +92,8 @@ data class WasmlineArtifact(
 /**
  * Supported runtime artifact kinds for the current package pipeline.
  *
- * 2026-04-08
- * @author crowforkotlin
+ * Date: 2026-04-08
+ * Author: crowforkotlin
  */
 @Serializable
 enum class WasmlineArtifactType {

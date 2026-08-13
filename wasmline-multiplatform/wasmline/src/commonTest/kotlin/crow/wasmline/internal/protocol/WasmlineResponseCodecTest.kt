@@ -1,9 +1,3 @@
-/**
- * Tests the Core Wasmline response frame codec.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
 package crow.wasmline.internal.protocol
 
 import crow.wasmline.invocation.WasmlineCallError
@@ -14,7 +8,14 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/** Verifies valid and malformed Core response frames. */
+/**
+ * Tests the Core Wasmline response frame codec.
+ *
+ * Verifies valid and malformed Core response frames.
+ *
+ * Date: 2026-08-02
+ * Author: crowforkotlin
+ */
 class WasmlineResponseCodecTest {
     @Test
     fun encodesAndDecodesSuccessPayload() {

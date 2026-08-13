@@ -7,8 +7,8 @@ package crow.wasmline.web
  * `wasi_snapshot_preview1`). Host callbacks are plain Kotlin lambdas; the
  * JS glue is produced once by the bindings layer.
  *
- * 2026-07-29
- * @author crowforkotlin
+ * Date: 2026-07-29
+ * Author: crowforkotlin
  */
 internal class WebWasmImportsBuilder {
 

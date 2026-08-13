@@ -1,0 +1,9 @@
+package wasmline:sample-component-export@1.0.0;
+
+interface calculator {
+  add: func(left: s32, right: s32) -> s32;
+}
+
+world plugin {
+  export calculator;
+}

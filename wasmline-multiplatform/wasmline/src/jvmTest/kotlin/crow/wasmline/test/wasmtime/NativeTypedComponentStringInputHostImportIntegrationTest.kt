@@ -1,9 +1,3 @@
-/**
- * Verifies a string-valued Component host import with a scalar result.
- *
- * Date: 2026-08-07
- * Author: crowforkotlin
- */
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.WasmlineArtifactDescriptor
@@ -29,7 +23,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/** Validates a string Component import with a scalar result and AOT artifacts. */
+/**
+ * Verifies a string-valued Component host import with a scalar result.
+ *
+ * Validates a string Component import with a scalar result and AOT artifacts.
+ *
+ * Date: 2026-08-07
+ * Author: crowforkotlin
+ */
 class NativeTypedComponentStringInputHostImportIntegrationTest {
 
     @Test

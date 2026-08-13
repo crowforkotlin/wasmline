@@ -1,11 +1,11 @@
+package crow.wasmline
+
 /**
  * Stable identifiers for the Wasmline Service envelope Component contract.
  *
  * Date: 2026-08-05
  * Author: crowforkotlin
  */
-package crow.wasmline
-
 object WasmlineComponentServiceContract {
     const val WIT_PACKAGE = "wasmline:service@1.0.0"
     const val WORLD = "plugin"
