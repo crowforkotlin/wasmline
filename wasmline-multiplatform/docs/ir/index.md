@@ -1,59 +1,51 @@
 # IR Test Documentation
 
-Welcome to Wasmline's IR test documentation. This directory contains guides for writing compiler plugin tests.
+The Kotlin compiler plugin currently registers one generated test model: JVM box tests.
 
-## Quick Links
+## Guides
 
-- [Test Directives](test-directives.md) - Compiler directives and error markers
-- [Box Tests](box-ir.md) - Runtime verification tests
-- [Diagnostic Tests](diagnostics-ir.md) - Compiler error detection tests
+- [Box Tests](box-ir.md) — current executable IR fixtures and snapshot workflow
+- [Test Directives](test-directives.md) — directives used by the current box fixtures
+- [Diagnostic Test Status](diagnostics-ir.md) — dormant diagnostic infrastructure that is not currently registered
 
-## Overview
+## Current Test Model
 
-Wasmline uses two types of compiler plugin tests:
+Box fixtures live in `wasmline-kotlin-plugin/testData/box/`. Each fixture contains `fun box(): String` and returns `"OK"` on success.
 
-### Box Tests (`testData/box/`)
+The generator in `test-fixtures/crow/wasmline/kotlin/GenerateTests.kt` registers only `AbstractJvmBoxTest`. It produces:
 
-Verify IR code generation at runtime. Each test defines a service interface and includes a `fun box(): String` function that returns `"OK"` on success.
+```text
+wasmline-kotlin-plugin/test-gen/
+└── crow/wasmline/kotlin/runners/JvmBoxTestGenerated.java
+```
 
-**Use case**: Test that the plugin generates correct IR for various service patterns.
+There is no generated `JvmDiagnosticsTestGenerated` class and no active `testData/diagnostics/` directory.
 
-### Diagnostic Tests (`testData/diagnostics/`)
+## Run
 
-Verify compiler plugin validation behavior. These tests check that invalid code triggers appropriate diagnostics using error markers like `<!ERROR_CODE!>message<!>`.
-
-**Use case**: Ensure the plugin correctly validates input and reports errors.
-
-## Run Tests
-
-Generate test classes:
+Run only with explicit user instruction:
 
 ```bash
+cd wasmline-multiplatform
 ./gradlew :wasmline-kotlin-plugin:generateTests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
 ```
 
-Run tests:
+## Fixture Structure
 
-```bash
-cd ../../
-./gradlew :wasmline-kotlin-plugin:test --tests '*JvmBoxTestGenerated*'
-./gradlew :wasmline-kotlin-plugin:test --tests '*JvmDiagnosticsTestGenerated*'
+```text
+wasmline-kotlin-plugin/testData/box/
+├── 01_emptyService.kt
+├── 02_simpleMethod.kt
+├── 03_parameterService.kt
+├── 04_multiMethod.kt
+├── 05_complexTypes.kt
+└── 06_linkBindPattern.kt
 ```
 
-## Structure
+Each `.kt` fixture has generated `.fir.txt` and `.fir.ir.txt` snapshots.
 
-```
-wasmline-multiplatform/wasmline-kotlin-plugin/testData/
-├── box/                      # Box tests (6 files)
-│   ├── 01_emptyService.kt    # Empty interface
-│   ├── 02_simpleMethod.kt    # Single method
-│   ├── 03_parameterService.kt # Parameters
-│   ├── 04_multiMethod.kt     # Multiple methods
-│   ├── 05_complexTypes.kt    # Complex types
-│   └── 06_linkBindPattern.kt # Link/bind pattern
-└── diagnostics/              # Diagnostic tests (2 files)
-    ├── 01_typeMismatch.kt
-    └── 02_unresolvedReference.kt
-```
+## Generated-file Rule
 
-For detailed instructions, see the linked documents above.
+Edit only the source fixture. Generate the runner and snapshots through the Gradle tasks, review them, and commit the intended generated changes. Never repair an IR failure by editing `test-gen/`, `*.fir.txt`, or `*.fir.ir.txt` manually.

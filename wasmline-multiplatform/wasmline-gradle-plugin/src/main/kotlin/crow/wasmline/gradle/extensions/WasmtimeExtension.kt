@@ -43,7 +43,7 @@ import javax.inject.Inject
  * Date: 2026-06-05
  * Author: crowforkotlin
  */
-abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
+public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
 
     /**
      * Directory for locating the `wasmtime` executable.
@@ -59,14 +59,15 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      * `{dir}/wasmtime-{version}-{platform}-min/`, so pointing [directory]
      * at the CLI output directory is the recommended convention.
      */
-    val directory: DirectoryProperty = objects.directoryProperty()
+    public val directory: DirectoryProperty = objects.directoryProperty()
 
     /**
      * Target architectures for AOT compilation.
      *
      * By default, the plugin compiles every target in [WasmtimeTarget.ALL]. An
      * explicit assignment replaces that convention, similar to an NDK ABI
-     * filter.
+     * filter. Assigning an empty list restores all targets. Duplicate targets
+     * are removed while preserving their first declaration order.
      *
      * ```kotlin
      * targets = listOf(
@@ -85,10 +86,10 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
     internal val targetsProvider: Provider<List<WasmtimeTarget>>
         get() = configuredTargets
 
-    var targets: List<WasmtimeTarget>
+    public var targets: List<WasmtimeTarget>
         get() = configuredTargets.get()
         set(value) {
-            configuredTargets.set(value)
+            configuredTargets.set(value.ifEmpty { WasmtimeTarget.ALL }.distinct())
         }
 
     /**
@@ -100,7 +101,7 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      *
      * Default: `false` (explicit opt-in for safety)
      */
-    val autoDownload: Property<Boolean> = objects.property(Boolean::class.java)
+    public val autoDownload: Property<Boolean> = objects.property(Boolean::class.java)
         .convention(false)
 
     /**
@@ -113,20 +114,20 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      *
      * Default: `"latest"`
      */
-    val version: Property<String> = objects.property(String::class.java)
+    public val version: Property<String> = objects.property(String::class.java)
         .convention("latest")
 
     /** Exact full Wasmtime CLI version used only for Component AOT compilation. */
-    val compilerVersion: Property<String> = objects.property(String::class.java)
+    public val compilerVersion: Property<String> = objects.property(String::class.java)
         .convention(ToolchainCatalog.WASMTIME_VERSION)
 
     /** Separate cache root for the full build-time CLI; runtime-min remains in [directory]. */
-    val compilerDirectory: DirectoryProperty = objects.directoryProperty().apply {
+    public val compilerDirectory: DirectoryProperty = objects.directoryProperty().apply {
         set(File(System.getProperty("user.home"), ".wasmline/wasmtime-compiler"))
     }
 
     /** Optional explicit full Wasmtime CLI executable. `wasmtime-min` is rejected. */
-    val compilerExecutable: RegularFileProperty = objects.fileProperty()
+    public val compilerExecutable: RegularFileProperty = objects.fileProperty()
 
     /**
      * GitHub token for authenticated API requests.
@@ -159,5 +160,5 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
      * }
      * ```
      */
-    val githubToken: Property<String> = objects.property(String::class.java)
+    public val githubToken: Property<String> = objects.property(String::class.java)
 }

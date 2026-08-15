@@ -33,7 +33,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /** Builds, signs and packages either a Core Wasm or Component Model plugin. */
-class Build : CliktCommand(name = "build") {
+internal class Build : CliktCommand(name = "build") {
     private val inputFile by option("-i", "--input")
         .file(mustExist = true, canBeFile = true, canBeDir = false)
         .required()

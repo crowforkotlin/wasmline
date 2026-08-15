@@ -31,7 +31,7 @@ import java.io.File
 /**
  * Compiles a Core Wasm module or a Component Model plugin into native AOT artifacts.
  */
-class Compile : CliktCommand(name = "compile") {
+internal class Compile : CliktCommand(name = "compile") {
     private val inputFile by option("-i", "--input")
         .file(mustExist = true, canBeFile = true, canBeDir = false)
         .required()

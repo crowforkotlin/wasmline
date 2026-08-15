@@ -33,7 +33,7 @@ import java.util.Properties
 import javax.inject.Inject
 
 /** Assembles and signs a Core Wasm or native Component Model plugin package. */
-abstract class WasmlineAssembleTask @Inject constructor(private val execOperations: ExecOperations) : DefaultTask() {
+internal abstract class WasmlineAssembleTask @Inject constructor(private val execOperations: ExecOperations) : DefaultTask() {
     init {
         group = "wasmline"
         description = "Assemble wasmline plugin package"

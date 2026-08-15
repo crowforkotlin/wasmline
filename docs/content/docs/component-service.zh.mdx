@@ -36,12 +36,14 @@ Kotlin/Wasm WASI sample 的顺序是：
 3. `wasm-tools component embed` 嵌入 WIT world。
 4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` 生成 raw Component。
 5. `wasm-tools validate` 与 `wasm-tools component wit` 校验产物。
-6. manifest 记录 `COMPONENT_MODEL`、`WASMLINE_SERVICE`、固定 export path、codec、协议版本和产物 digest。
+6. 完整 Wasmtime CLI 将 raw Component 编译为已配置目标的 `.cwasm` 和 `.pwasm`。
+7. manifest 记录 `COMPONENT_MODEL`、`WASMLINE_SERVICE`、固定 export path、codec、协议版本、目标编译器版本和产物 digest。
 
 Gradle 入口是 `wasmlineAssembleDebug` 或 `wasmlineAssembleRelease`。CLI 通过
 `wit generate`、`componentize`、`component validate` 和 `component inspect`
-复用相同的 plugin-core 阶段。运行时 loader 只接收成品 Component，不在加载
-时运行生成器。
+提供 raw Component 的各个阶段；`compile --execution-model COMPONENT_MODEL`
+还会执行 Component AOT。完整任务图参见 [Gradle 插件参考](/zh/docs/gradle-plugin)。
+native loader 只接收预编译 Component 产物，加载时不运行生成器或编译器。
 
 Rust 可以使用 `wasm32-wasip2` 直接生成 Component。Rust fixture 位于
 `wasmline-samples/rust/sample-component-plugin`，并固定 fork 的
@@ -75,12 +77,12 @@ C++ 0.57.1 generator 会对 move-only WIT error 生成一次
 `has_value()` 之后将它切换为 `operator*`；该流程不修改 `wit-bindgen` 源码，也不
 提交生成代码。
 
-每次只把一个完成的 Rust、C 或 C++ fixture 交给 native runtime 验证：
+先将一个完成的 Rust、C 或 C++ Component 编译为 `.cwasm` 或 `.pwasm`，再把该 AOT 产物交给 native runtime 验证：
 
 ```shell
 cd wasmline-multiplatform
 WASMLINE_LIVE_TESTS=1 \
-WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.component.wasm \
+WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.pwasm \
 ./gradlew :wasmline:jvmTest \
   --tests 'crow.wasmline.test.wasmtime.NativeComponentServiceIntegrationTest' \
   --rerun-tasks --console=plain

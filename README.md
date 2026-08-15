@@ -186,6 +186,35 @@ val component = WasmlineLoader.load(
 >
 > ![Kotlin/Wasm runtime support matrix](docs/public/images/kotlin_support.png)
 
+## Gradle Wrapper Tasks
+
+After applying the released Wasmline Gradle plugin, run:
+
+```bash
+# Build a debug package for local testing
+./gradlew wasmlineAssembleDebug
+
+# Build a release package for distribution
+./gradlew wasmlineAssembleRelease
+
+# Build and serve the configured package
+./gradlew wasmlineServerDeploy
+```
+
+Select the package served by `wasmlineServerDeploy` with a typed value:
+
+```kotlin
+import crow.wasmline.gradle.WasmlineBuildVariant
+
+wasmline {
+    server {
+        deployVariant = WasmlineBuildVariant.RELEASE
+    }
+}
+```
+
+The default is `DEBUG`, served at `http://localhost:8080`. Required toolchain and Component pipeline tasks run automatically. The [Gradle plugin task reference](docs/content/docs/gradle-plugin.mdx) covers all 15 user-facing tasks and their registration conditions.
+
 ## Architecture Mind Map
 
 ![Wasmline Architecture Mind Map](docs/public/images/wasmline_mind_en.png)

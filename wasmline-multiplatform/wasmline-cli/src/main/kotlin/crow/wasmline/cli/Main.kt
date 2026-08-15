@@ -6,7 +6,7 @@ import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.versionOption
 import crow.wasmline.extensions.printHeader
 
-fun main(vararg args: String) {
+public fun main(vararg args: String) {
     printHeader("wasmline command line")
 
     val tools = NoOpCliktCommand(name = "tools")

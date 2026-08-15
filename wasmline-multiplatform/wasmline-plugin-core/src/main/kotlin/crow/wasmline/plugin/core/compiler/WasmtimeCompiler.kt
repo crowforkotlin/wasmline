@@ -2,6 +2,7 @@ package crow.wasmline.plugin.core.compiler
 
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -16,6 +17,8 @@ import java.security.MessageDigest
  * Date: 2026-07-31
  * Author: crowforkotlin
  */
+
+@InternalWasmlineToolingApi
 class WasmtimeCompiler {
 
     companion object {

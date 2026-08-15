@@ -1,10 +1,13 @@
 package crow.wasmline.plugin.core.component
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
 import java.io.File
 
 /** Input for Kotlin guest binding generation. */
+
+@InternalWasmlineToolingApi
 data class KotlinBindingsRequest(
     val witDirectory: File,
     val outputDirectory: File,
@@ -15,6 +18,8 @@ data class KotlinBindingsRequest(
 )
 
 /** Typed wrapper around the wit-bindgen Kotlin generator. */
+
+@InternalWasmlineToolingApi
 class WitBindgenTool(private val executable: File, private val runner: ExternalToolRunner = ExternalToolRunner()) {
     private val verificationRunner = ExternalToolRunner()
 

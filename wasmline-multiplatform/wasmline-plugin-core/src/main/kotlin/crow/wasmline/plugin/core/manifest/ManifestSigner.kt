@@ -1,20 +1,22 @@
-@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
-@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:OptIn(
+    crow.wasmline.loader.tooling.WasmlineLoaderToolingApi::class,
+    kotlinx.serialization.ExperimentalSerializationApi::class,
+)
 
 package crow.wasmline.plugin.core.manifest
 
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.loader.tooling.WasmlineSigningTooling
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.decodeHex
-import okio.ByteString.Companion.toByteString
 import java.io.File
 
 /**
@@ -23,6 +25,8 @@ import java.io.File
  * Date: 2026-07-31
  * Author: crowforkotlin
  */
+
+@InternalWasmlineToolingApi
 class ManifestSigner {
 
     companion object {
@@ -118,9 +122,9 @@ class ManifestSigner {
         )
         val privateKey = resolveKey(signingKey).decodeHex()
         val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
-        val signature = Ed25519.sign(manifestBytes.toByteString(), privateKey)
+        val signature = WasmlineSigningTooling.signEd25519(manifestBytes, privateKey.toByteArray())
         val envelope = SignedManifestEnvelope(
-            signature = signature.toByteArray(),
+            signature = signature,
             algorithm = "Ed25519",
             manifest = manifest,
         )

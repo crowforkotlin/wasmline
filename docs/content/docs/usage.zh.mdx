@@ -9,7 +9,7 @@ description: 服务契约定义、插件实现与宿主端模块加载
 
 ## 定义服务契约
 
-服务契约是在共享源码（`commonMain`）中声明的 Kotlin `interface`，并扩展 `WasmlineService`。该契约定义了宿主与插件之间的二进制协议边界；方法签名是 SHA-256 动作标识符派生的基础。
+服务契约是在共享源码（`commonMain`）中声明并继承 `WasmlineService` 的 Kotlin `interface`。该契约定义宿主与插件之间的二进制协议边界。每个方法使用 `<完全限定契约名>#<方法名>` 形式的 action；不支持同名重载方法。
 
 ```kotlin
 // shared/src/commonMain/kotlin/com/example/EchoService.kt
@@ -42,7 +42,7 @@ fun main() {
 
 ## 宿主端模块加载与服务调用
 
-宿主通过 `WasmlineLoader.load()` 加载插件——传入本地路径（`.pwasm` / `.cwasm` / `.wasm` / `manifest.wlm`）或远程 URL 均可，`http(s)://` 地址会自动按远程 manifest 下载并校验。加载后通过 `bind(impl)` 注册插件可访问的宿主侧服务实现，并通过 `link<T>()` 获取插件侧服务的类型安全代理：
+宿主通过 `WasmlineLoader.load()` 加载插件。原生目标使用已验证的 manifest 或预编译 `.pwasm` / `.cwasm` 产物；raw `.wasm` 仅适用于浏览器的 Core Wasmline 路径。`http(s)://` source 按远程 manifest 解析并完成校验后再加载产物。加载后通过 `bind(impl)` 注册插件可访问的宿主侧服务实现，并通过 `link<T>()` 获取插件侧服务的类型安全代理：
 
 ```kotlin
 import crow.wasmline.WasmlineConfig
@@ -80,6 +80,7 @@ module.close()
 
 ```kotlin
 import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentValue
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -87,13 +88,20 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.invokeComponentResult
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.wasmlineNativeRuntimeInfo
 
+val runtime = requireNotNull(wasmlineNativeRuntimeInfo())
+val is64Bit = requireNotNull(runtime.is64Bit)
 val result = WasmlineLoader.load(
     WasmlineArtifactDescriptor(
-        path = "component.wasm",
+        path = "component.pwasm",
+        artifactFormat = WasmlineArtifactFormat.PWASM,
+        targetCpu = if (is64Bit) "pulley64" else "pulley32",
+        targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
+        is64Bit = is64Bit,
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
         invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-        exportName = "add",
+        exportName = "wasmline:sample-component-export/calculator@1.0.0#add",
         contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
     ),
 )
@@ -160,4 +168,4 @@ Core 响应帧使用固定的 `WLMF` magic 标记和一个字节的 `frameVersio
 | `sample-apps/android` | Android 宿主——加载 `.pwasm` 产物，注册宿主回调，并调用插件服务 |
 | `sample-apps/application` | JVM 无界面桌面宿主 |
 | `sample-apps/multiplatform` | Compose Multiplatform 应用——Android 与 Desktop |
-| `sample-apps/web` | Web 宿主——Kotlin/JS 与 Kotlin/WasmJS 目标 |
+| `sample-apps/multiplatform/webApp` | Web 宿主——Kotlin/JS 与 Kotlin/WasmJS 目标 |

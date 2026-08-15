@@ -1,6 +1,7 @@
 package crow.wasmline.plugin.core.packaging
 
 import crow.wasmline.loader.model.WasmlineArtifact
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipEntry
@@ -12,6 +13,8 @@ import java.util.zip.ZipOutputStream
  * Date: 2026-07-31
  * Author: crowforkotlin
  */
+
+@InternalWasmlineToolingApi
 object PluginPackager {
     /** Creates the plugin archive at the given destination. */
     fun createZip(
