@@ -18,7 +18,7 @@ Core bridge imports. The `protobuf` payload is treated as opaque bytes:
 ## Build
 
 Use the WASI SDK 33 CMake toolchain (the verified baseline), `wit-bindgen 0.57.1`,
-and `wasm-tools 1.255.0`:
+and `wasm-tools 1.256.0`:
 
 ```shell
 export WASI_SDK_PATH=/path/to/wasi-sdk-33.0

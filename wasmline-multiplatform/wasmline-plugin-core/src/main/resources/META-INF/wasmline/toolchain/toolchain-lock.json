@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/sync_version.py",
+  "sourceManifest": "scripts/versions.json",
+  "versions": {
+    "wit_bindgen_version": "0.57.1",
+    "wasm_tools_version": "1.256.0",
+    "wasmtime_version": "47.0.2"
+  },
+  "tools": [
+    {
+      "tool": "WIT_BINDGEN",
+      "version": "0.57.1",
+      "versionKey": "wit_bindgen_version",
+      "repository": "crowforkotlin/wit-bindgen",
+      "releaseTag": "v0.57.1",
+      "releaseId": 365253583,
+      "assets": [
+        {
+          "platform": "aarch64-linux",
+          "assetId": 502063413,
+          "size": 5799868,
+          "updatedAt": "2026-08-05T02:26:29Z",
+          "archiveName": "wit-bindgen-0.57.1-aarch64-linux.tar.gz",
+          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-aarch64-linux.tar.gz",
+          "sha256": "70e4177a8dedbb82a464716fa81abffab8f2e33def42b03a5e0ce69f19731319",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wit-bindgen",
+          "executable": true
+        },
+        {
+          "platform": "aarch64-macos",
+          "assetId": 502063418,
+          "size": 5010133,
+          "updatedAt": "2026-08-05T02:26:29Z",
+          "archiveName": "wit-bindgen-0.57.1-aarch64-macos.tar.gz",
+          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-aarch64-macos.tar.gz",
+          "sha256": "e61cdd06d86fe39ed988d89324dda620753872a19aa94dca562262ef09e021b5",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wit-bindgen",
+          "executable": true
+        },
+        {
+          "platform": "aarch64-windows",
+          "assetId": 502063414,
+          "size": 4187005,
+          "updatedAt": "2026-08-05T02:26:29Z",
+          "archiveName": "wit-bindgen-0.57.1-aarch64-windows.zip",
+          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-aarch64-windows.zip",
+          "sha256": "545cf586b853f3524c8344d369ea6365113b1a01b9fa26fef42f31c049027786",
+          "distribution": "ZIP",
+          "entryFileName": "wit-bindgen.exe",
+          "executable": true
+        },
+        {
+          "platform": "riscv64gc-linux",
+          "assetId": 502063417,
+          "size": 6201514,
+          "updatedAt": "2026-08-05T02:26:29Z",
+          "archiveName": "wit-bindgen-0.57.1-riscv64gc-linux.tar.gz",
+          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-riscv64gc-linux.tar.gz",
+          "sha256": "38b000ddbaf25fc4079fedf32b3e722a2b1af5ee0466261e73c2432e9abb6cea",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wit-bindgen",
+          "executable": true
+        },
+        {
+          "platform": "x86_64-linux",
+          "assetId": 502063416,
+          "size": 5725783,
+          "updatedAt": "2026-08-05T02:26:29Z",
+          "archiveName": "wit-bindgen-0.57.1-x86_64-linux.tar.gz",
+          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-x86_64-linux.tar.gz",
+          "sha256": "f8a4e8f8f60a4b0eada43a722c94dba0bcb8a214ca1d35884c129b4279ef9dd0",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wit-bindgen",
+          "executable": true
+        },
+        {
+          "platform": "x86_64-macos",
+          "assetId": 502063427,
+          "size": 5427748,
+          "updatedAt": "2026-08-05T02:26:30Z",
+          "archiveName": "wit-bindgen-0.57.1-x86_64-macos.tar.gz",
+          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-x86_64-macos.tar.gz",
+          "sha256": "30a7c5064bfb876f3397cb6d6235e87f5c6ead45477f6ad2ce105c9c90a7dbac",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wit-bindgen",
+          "executable": true
+        },
+        {
+          "platform": "x86_64-windows",
+          "assetId": 502063429,
+          "size": 4465170,
+          "updatedAt": "2026-08-05T02:26:30Z",
+          "archiveName": "wit-bindgen-0.57.1-x86_64-windows.zip",
+          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-x86_64-windows.zip",
+          "sha256": "9425d143f9394b500c5827ba540e6d03926a454575fe51507a366bf1d04d7563",
+          "distribution": "ZIP",
+          "entryFileName": "wit-bindgen.exe",
+          "executable": true
+        }
+      ]
+    },
+    {
+      "tool": "WASM_TOOLS",
+      "version": "1.256.0",
+      "versionKey": "wasm_tools_version",
+      "repository": "bytecodealliance/wasm-tools",
+      "releaseTag": "v1.256.0",
+      "releaseId": 368044653,
+      "assets": [
+        {
+          "platform": "aarch64-linux",
+          "assetId": 508962495,
+          "size": 5981750,
+          "updatedAt": "2026-08-10T16:07:45Z",
+          "archiveName": "wasm-tools-1.256.0-aarch64-linux.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-aarch64-linux.tar.gz",
+          "sha256": "d75de3cd49d39f9bf7688aa776ac02d6cf9068c7926e8149300ad811b1e65443",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "aarch64-macos",
+          "assetId": 508962498,
+          "size": 5146877,
+          "updatedAt": "2026-08-10T16:07:45Z",
+          "archiveName": "wasm-tools-1.256.0-aarch64-macos.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-aarch64-macos.tar.gz",
+          "sha256": "6e6a2df459b9f29ecfce148146d40178a4e6275de417e4ab7ebc1e27b9a41a24",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "aarch64-musl",
+          "assetId": 508962496,
+          "size": 6030155,
+          "updatedAt": "2026-08-10T16:07:45Z",
+          "archiveName": "wasm-tools-1.256.0-aarch64-musl.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-aarch64-musl.tar.gz",
+          "sha256": "9164a8a2de77b7ebbdada6bbb718d49dad376d64a3e43f5b9b76fa3a2c36ebdf",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "aarch64-windows",
+          "assetId": 508962494,
+          "size": 4310073,
+          "updatedAt": "2026-08-10T16:07:45Z",
+          "archiveName": "wasm-tools-1.256.0-aarch64-windows.zip",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-aarch64-windows.zip",
+          "sha256": "52ccb633ff026fe0377d95b1923333a63e0166cd8ebf374a9b4541d2f62d0693",
+          "distribution": "ZIP",
+          "entryFileName": "wasm-tools.exe",
+          "executable": true
+        },
+        {
+          "platform": "riscv64-linux",
+          "assetId": 508962497,
+          "size": 6411090,
+          "updatedAt": "2026-08-10T16:07:45Z",
+          "archiveName": "wasm-tools-1.256.0-riscv64-linux.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-riscv64-linux.tar.gz",
+          "sha256": "f4cd98218c3c4c6f27e12a282a0965460f19d07516b4df34144a4aeac2582308",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "wasm32-wasip1",
+          "assetId": 508962510,
+          "size": 3716799,
+          "updatedAt": "2026-08-10T16:07:46Z",
+          "archiveName": "wasm-tools-1.256.0-wasm32-wasip1.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-wasm32-wasip1.tar.gz",
+          "sha256": "e54ab005eac55da72c0876b399a855346cea9880e3f50ab1249ac816544a8aaf",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "x86_64-linux",
+          "assetId": 508962511,
+          "size": 5872407,
+          "updatedAt": "2026-08-10T16:07:46Z",
+          "archiveName": "wasm-tools-1.256.0-x86_64-linux.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-x86_64-linux.tar.gz",
+          "sha256": "0b488be25c9e8a74dfa09f7eac614a927ea197f389d8fa5a21ffb1c15deb469d",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "x86_64-macos",
+          "assetId": 508962514,
+          "size": 5557137,
+          "updatedAt": "2026-08-10T16:07:46Z",
+          "archiveName": "wasm-tools-1.256.0-x86_64-macos.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-x86_64-macos.tar.gz",
+          "sha256": "a73cd71796275f4bd19b0616d09584168a147aec2e9f39a24d00ef88d0cc2350",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "x86_64-musl",
+          "assetId": 508962513,
+          "size": 6257499,
+          "updatedAt": "2026-08-10T16:07:46Z",
+          "archiveName": "wasm-tools-1.256.0-x86_64-musl.tar.gz",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-x86_64-musl.tar.gz",
+          "sha256": "486e4721ea0f3e5ea43b7291f97cb97d1e9dc549e35549701291a4ed6bf1ca62",
+          "distribution": "TAR_GZ",
+          "entryFileName": "wasm-tools",
+          "executable": true
+        },
+        {
+          "platform": "x86_64-windows",
+          "assetId": 508962517,
+          "size": 4633633,
+          "updatedAt": "2026-08-10T16:07:46Z",
+          "archiveName": "wasm-tools-1.256.0-x86_64-windows.zip",
+          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-x86_64-windows.zip",
+          "sha256": "8ce28d91e40ac077a40e133d332d7909747f5179e795e3f022cfbad95e5df3b7",
+          "distribution": "ZIP",
+          "entryFileName": "wasm-tools.exe",
+          "executable": true
+        }
+      ]
+    },
+    {
+      "tool": "WASI_PREVIEW1_REACTOR_ADAPTER",
+      "version": "47.0.2",
+      "versionKey": "wasmtime_version",
+      "repository": "bytecodealliance/wasmtime",
+      "releaseTag": "v47.0.2",
+      "releaseId": 357602411,
+      "assets": [
+        {
+          "platform": "universal",
+          "assetId": 485094799,
+          "size": 52675,
+          "updatedAt": "2026-07-21T19:57:11Z",
+          "archiveName": "wasi_snapshot_preview1.reactor.wasm",
+          "downloadUrl": "https://github.com/bytecodealliance/wasmtime/releases/download/v47.0.2/wasi_snapshot_preview1.reactor.wasm",
+          "sha256": "928546f9b8f704e0e01e656a2c12f08f6e0da6f5b29da0179ee282a4138ef5c4",
+          "distribution": "FILE",
+          "entryFileName": "wasi_snapshot_preview1.reactor.wasm",
+          "executable": false
+        }
+      ]
+    }
+  ]
+}

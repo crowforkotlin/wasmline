@@ -61,12 +61,13 @@ The repository retains an `AbstractJvmDiagnosticTest` scaffold, but its generato
 `scripts/versions.json` is the source of truth for project, sample-plugin, Wasmtime, Kotlin, AGP, Zig, and JBR versions. The synchronizer updates all managed build files, scripts, documentation, and CI fallbacks in one operation:
 
 ```bash
+python3 scripts/sync_version.py
 python3 scripts/sync_version.py --set wasmtime_version=47.0.2
 python3 scripts/sync_version.py --check
-python3 scripts/test_sync_versions.py
+python3 scripts/test_sync_version.py
 ```
 
-`sync_versions.py` remains available for existing automation. Both entry points use the same implementation and manifest.
+Run the command without arguments after editing `versions.json`, or use `--set` to update the manifest and synchronize in one command. The test command runs an independent regression suite and does not update versions.
 
 ## Kotlin Documentation Style
 

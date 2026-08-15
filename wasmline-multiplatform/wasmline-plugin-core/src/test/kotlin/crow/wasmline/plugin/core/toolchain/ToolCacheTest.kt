@@ -32,10 +32,22 @@ class ToolCacheTest {
         }
     }
 
+    @Test
+    fun rejectsMismatchedDownloadedSize() = withTemporaryDirectory { root ->
+        val download = File(root, "tool.bin").apply { writeText("truncated") }
+        ToolDownloader().use { downloader ->
+            assertFailsWith<IllegalArgumentException> {
+                downloader.verifySize(download, testSpec())
+            }
+        }
+    }
+
     private fun testSpec(): ToolAssetSpec = ToolAssetSpec(
         tool = WasmlineTool.WASM_TOOLS,
         version = "test",
         platform = "test-platform",
+        assetId = 1,
+        size = 5,
         archiveName = "tool.bin",
         downloadUrl = "https://example.invalid/tool.bin",
         sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",

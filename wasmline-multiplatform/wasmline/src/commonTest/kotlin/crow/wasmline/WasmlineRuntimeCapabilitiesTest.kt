@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
+private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
+
 class WasmlineRuntimeCapabilitiesTest {
     private val host = WasmlineRuntimeCapabilities(
         wasmtimeVersion = "47.0.2",
@@ -68,8 +70,11 @@ class WasmlineRuntimeCapabilitiesTest {
             cwasmDescriptor().copy(targetCompilerVersion = "47.0.2").runtimeCompatibilityError(host),
         )
         assertEquals(
-            "AOT artifact requires Wasmtime 46.0.0, but the native runtime is 47.0.2.",
-            cwasmDescriptor().copy(targetCompilerVersion = "wasmtime-46.0.0").runtimeCompatibilityError(host),
+            "AOT artifact requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION, " +
+                "but the native runtime is 47.0.2.",
+            cwasmDescriptor()
+                .copy(targetCompilerVersion = "wasmtime-$INCOMPATIBLE_WASMTIME_VERSION")
+                .runtimeCompatibilityError(host),
         )
     }
 

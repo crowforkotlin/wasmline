@@ -15,6 +15,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+private const val FIXTURE_WASM_TOOLS_VERSION = "0.0.0-test"
+
 class WasmlineComponentAotTaskTest {
     @Test
     fun compilesRawRecordToCwasmAndPwasm() = withTaskDirectory { root ->
@@ -36,7 +38,7 @@ class WasmlineComponentAotTaskTest {
             adapterSha256 = null,
             adapterVersion = null,
             witBindgenVersion = "0.57.1",
-            wasmToolsVersion = "1.255.0",
+            wasmToolsVersion = FIXTURE_WASM_TOOLS_VERSION,
         )
         val componentRecord = File(componentDirectory, ComponentBuildRecords.FILE_NAME)
         ComponentBuildRecords.write(componentResult, componentRecord)

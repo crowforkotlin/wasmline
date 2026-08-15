@@ -2,6 +2,18 @@
 
 Operational reference for the Wasmline repository. All paths are relative to the repository root.
 
+## Contents
+
+- [Environment Pre-check](#environment-pre-check)
+- [Platform Runtime Assets](#platform-runtime-assets)
+- [Module Ownership](#module-ownership)
+- [Key Source Maps](#key-source-maps)
+- [Generated Artifact Rules](#generated-artifact-rules)
+- [Commands](#commands)
+- [Formatting Scope](#formatting-scope)
+- [CI Pipeline](#ci-pipeline)
+- [Cross-Environment Work](#cross-environment-work)
+
 ## Environment Pre-check
 
 Gradle work requires **JBR 21**. Run the pre-check once per session, immediately before the first validation of changes to files in this repository:
@@ -98,7 +110,7 @@ Read [`web-bindings-guide.md`](./web-bindings-guide.md) before changing `webMain
 
 ### Component Model
 
-Read the [Component Service Guide](../../../docs/content/docs/component-service.mdx) before changing WIT, Component build stages, generated host bindings, or cross-language fixtures.
+Read the [Component Service Guide](../../../../docs/content/docs/component-service.mdx) before changing WIT, Component build stages, generated host bindings, or cross-language fixtures.
 
 ## Generated Artifact Rules
 
@@ -130,8 +142,10 @@ Compilation and test commands below require explicit user instruction.
 bash ./scripts/doctor.sh
 
 # Version synchronization checks
+python3 scripts/sync_version.py
 python3 scripts/sync_version.py --check
-python3 scripts/test_sync_versions.py
+python3 scripts/sync_version.py --verify-upstream
+python3 scripts/test_sync_version.py
 
 # Changed/untracked source formatting checks
 bash scripts/lint.sh

@@ -13,6 +13,8 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+private const val FIXTURE_WASM_TOOLS_VERSION = "0.0.0-test"
+
 class ComponentAotBuildRecordTest {
     @Test
     fun persistsRawMetadataAndBothNativePhysicalFormats() = withAotRecordDirectory { root ->
@@ -171,7 +173,7 @@ class ComponentAotBuildRecordTest {
         world = "plugin",
         componentSha256 = FileDigest.sha256Hex(rawFile),
         witSha256 = "a".repeat(64),
-        wasmToolsVersion = "1.255.0",
+        wasmToolsVersion = FIXTURE_WASM_TOOLS_VERSION,
     )
 
     private fun buildRecord(rawRecord: ComponentBuildRecord, artifact: WasmlineArtifact): ComponentAotBuildRecord = ComponentAotBuildRecord(

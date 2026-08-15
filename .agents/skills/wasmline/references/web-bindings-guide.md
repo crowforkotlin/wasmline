@@ -4,6 +4,19 @@ Reference for the Kotlin/JS and Kotlin/WasmJS host runtime. Read it before chang
 
 Paths below are relative to `wasmline-multiplatform/`.
 
+## Contents
+
+- [Supported Boundary](#supported-boundary)
+- [Source-set Layers](#source-set-layers)
+- [Naming](#naming)
+- [Layer Constraints](#layer-constraints)
+- [Value Codec](#value-codec)
+- [Asynchronous Prefetch and Synchronous Load](#asynchronous-prefetch-and-synchronous-load)
+- [WASI Preview 1 Imports](#wasi-preview-1-imports)
+- [Environment Bridge Imports](#environment-bridge-imports)
+- [Tests and CI](#tests-and-ci)
+- [File Map](#file-map)
+
 ## Supported Boundary
 
 The browser host accepts only:
@@ -123,7 +136,9 @@ Loading a URL that was not prefetched fails with an explicit instruction. Use `W
 
 Do not document an import until it is registered in `WebWasmPlugin.buildImports()`.
 
-## `env.bridge_*` Imports
+## Environment Bridge Imports
+
+The following imports use the `env.bridge_*` namespace:
 
 | Import | Current boundary |
 | --- | --- |
