@@ -52,7 +52,7 @@ import kotlin.jvm.java
  *
  * Toolchain and signing tasks:
  * - `wasmlineDownloadWasmtime` — download wasmtime binary
- * - `wasmlineDownloadWasmtimeCompiler` — download the full Wasmtime CLI
+ * - `wasmlineDownloadWasmtimeCompiler` — download the minimal Cranelift Component AOT compiler
  * - `wasmlineDownloadComponentTools` — download Component Model tools
  * - `checkWasmlineToolchain` — verify wasmtime is available
  * - `generateWasmlineManifestKeyPairEd25519` — generate an Ed25519 manifest key pair
@@ -173,14 +173,14 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         }
         project.tasks.register("wasmlineDownloadWasmtimeCompiler", DownloadWasmtimeTask::class.java) { task ->
             task.group = "wasmline"
-            task.description = "Download the full Wasmtime CLI used for Component AOT compilation"
+            task.description = "Download the minimal Cranelift CLI used for Component AOT compilation"
             task.wasmtimeDirectory.set(ext.wasmtime.compilerDirectory)
             task.version.set(ext.wasmtime.compilerVersion)
             task.platform.convention(detectCurrentPlatform())
-            task.distribution.set(WasmtimeDistribution.FULL)
+            task.distribution.set(WasmtimeDistribution.MINIMAL)
             task.githubToken.set(ext.wasmtime.githubToken)
             task.installedExecutable.set(
-                ext.wasmtime.compilerDirectory.file(fullWasmtimeExecutableName()),
+                ext.wasmtime.compilerDirectory.file(minimalWasmtimeExecutableName()),
             )
         }
     }
@@ -367,8 +367,8 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
     private fun detectCurrentPlatform(): String = PlatformDetector.detectPlatform()
 
-    private fun fullWasmtimeExecutableName(): String =
-        if (System.getProperty("os.name").lowercase().contains("win")) "wasmtime.exe" else "wasmtime"
+    private fun minimalWasmtimeExecutableName(): String =
+        if (System.getProperty("os.name").lowercase().contains("win")) "wasmtime-min.exe" else "wasmtime-min"
 
     private fun runCommand(command: List<String>): String = try {
         val process = ProcessBuilder(command).redirectErrorStream(true).start()
@@ -633,15 +633,15 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
                     ext.wasmtime.compilerExecutable.orNull?.asFile ?: run {
                         val directory = ext.wasmtime.compilerDirectory.get().asFile
                         val version = ext.wasmtime.compilerVersion.get()
-                        WasmtimeCompiler.findWasmtimeCompilerInDirectory(
+                        WasmtimeCompiler.findComponentCompilerInDirectory(
                             baseDir = directory,
                             platform = detectCurrentPlatform(),
                             version = version,
                         ) ?: if (ext.wasmtime.autoDownload.get()) {
-                            File(directory, fullWasmtimeExecutableName())
+                            File(directory, minimalWasmtimeExecutableName())
                         } else {
                             throw GradleException(
-                                "Full Wasmtime CLI $version was not found in ${directory.absolutePath}. " +
+                                "A compile-capable Wasmtime CLI $version was not found in ${directory.absolutePath}. " +
                                     "Configure wasmline.wasmtime.compilerExecutable or run " +
                                     "./gradlew wasmlineDownloadWasmtimeCompiler.",
                             )

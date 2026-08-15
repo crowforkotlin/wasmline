@@ -19,29 +19,29 @@ private const val FIXTURE_WASM_TOOLS_VERSION = "0.0.0-test"
 
 class ComponentAotCliSupportTest {
     @Test
-    fun `resolves exact full compiler and returns only component aot artifacts`() = withCliAotDirectory { root ->
+    fun `resolves exact component compiler and returns only component aot artifacts`() = withCliAotDirectory { root ->
         val component = File(root, "component/plugin.component.wasm").apply {
             parentFile.mkdirs()
             writeBytes(byteArrayOf(1, 2, 3))
         }
         val rawRecord = rawRecord(component)
-        val fullCompiler = File(root, "wasmtime/wasmtime").apply {
+        val componentCompiler = File(root, "wasmtime/wasmtime-min").apply {
             parentFile.mkdirs()
-            writeText("full")
+            writeText("minimal")
         }
         var resolvedVersion: String? = null
         var pipelineCalls = 0
         val adapter = ComponentAotCliAdapter(
             compilerResolver = ComponentAotCompilerResolver { directory, version ->
-                assertEquals(fullCompiler.parentFile, directory)
+                assertEquals(componentCompiler.parentFile, directory)
                 resolvedVersion = version
-                fullCompiler
+                componentCompiler
             },
             pipelineRunner = ComponentAotPipelineRunner { capturedRaw, componentDirectory, request ->
                 pipelineCalls += 1
                 assertEquals(rawRecord, capturedRaw)
                 assertEquals(component.parentFile, componentDirectory)
-                assertEquals(fullCompiler, request.wasmtimeCompiler)
+                assertEquals(componentCompiler, request.wasmtimeCompiler)
                 val artifacts = request.targets.map { target ->
                     target.outputFile.writeBytes(target.target.encodeToByteArray())
                     val pulley = target.backend.artifactType == WasmlineArtifactType.PWASM
@@ -75,7 +75,7 @@ class ComponentAotCliSupportTest {
                 componentDirectory = component.parentFile,
                 outputDirectory = File(root, "aot"),
                 productName = "plugin",
-                wasmtimeDirectory = fullCompiler.parentFile,
+                wasmtimeDirectory = componentCompiler.parentFile,
                 targets = listOf("x86_64-linux", "pulley64"),
                 wasmtimeVersion = "47.0.2",
             ),
@@ -89,7 +89,7 @@ class ComponentAotCliSupportTest {
     }
 
     @Test
-    fun `rejects component aot when no full compiler matches`() = withCliAotDirectory { root ->
+    fun `rejects component aot when no compiler candidate matches`() = withCliAotDirectory { root ->
         val component = File(root, "plugin.component.wasm").apply { writeBytes(byteArrayOf(1)) }
         var pipelineCalls = 0
         val adapter = ComponentAotCliAdapter(
@@ -114,8 +114,8 @@ class ComponentAotCliSupportTest {
             )
         }
 
-        assertTrue(error.message.orEmpty().contains("full Wasmtime 47.0.2"))
-        assertTrue(error.message.orEmpty().contains("wasmtime-min is runtime-only"))
+        assertTrue(error.message.orEmpty().contains("Wasmtime 47.0.2 CLI"))
+        assertTrue(error.message.orEmpty().contains("minimal distribution"))
         assertEquals(0, pipelineCalls)
     }
 

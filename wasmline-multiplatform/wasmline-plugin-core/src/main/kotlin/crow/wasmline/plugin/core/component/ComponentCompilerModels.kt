@@ -91,7 +91,7 @@ data class ComponentAotTarget(val target: String, val backend: ComponentAotBacke
     }
 }
 
-/** Inputs for compiling a finished Component Wasm with the full Wasmtime CLI. */
+/** Inputs for compiling a finished Component Wasm with a compile-capable Wasmtime CLI. */
 
 @InternalWasmlineToolingApi
 data class ComponentAotCompileRequest(

@@ -36,7 +36,7 @@ Kotlin/Wasm WASI sample 的顺序是：
 3. `wasm-tools component embed` 嵌入 WIT world。
 4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` 生成 raw Component。
 5. `wasm-tools validate` 与 `wasm-tools component wit` 校验产物。
-6. 完整 Wasmtime CLI 将 raw Component 编译为已配置目标的 `.cwasm` 和 `.pwasm`。
+6. 具备编译能力的 Wasmtime CLI 将 raw Component 编译为已配置目标的 `.cwasm` 和 `.pwasm`。默认使用 fork 的 `cranelift-min` CLI，完整 CLI 作为后备方案。
 7. manifest 记录 `COMPONENT_MODEL`、`WASMLINE_SERVICE`、固定 export path、codec、协议版本、目标编译器版本和产物 digest。
 
 Gradle 入口是 `wasmlineAssembleDebug` 或 `wasmlineAssembleRelease`。CLI 通过

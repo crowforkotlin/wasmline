@@ -36,7 +36,7 @@ For the Kotlin/Wasm WASI sample, the build order is:
 3. `wasm-tools component embed` embeds the WIT world.
 4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` creates the raw Component.
 5. `wasm-tools validate` and `wasm-tools component wit` verify the result.
-6. The full Wasmtime CLI compiles the raw Component into the configured `.cwasm` and `.pwasm` targets.
+6. A compile-capable Wasmtime CLI compiles the raw Component into the configured `.cwasm` and `.pwasm` targets. The fork's `cranelift-min` CLI is the default; full CLIs are fallbacks.
 7. The manifest records `COMPONENT_MODEL`, `WASMLINE_SERVICE`, the fixed export path, codec, protocol version, target compiler version, and artifact digest.
 
 The Gradle entry point is `wasmlineAssembleDebug` or
