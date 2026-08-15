@@ -58,7 +58,7 @@ function(require_pinned_tool_version executable expected)
 endfunction()
 
 require_pinned_tool_version("${WIT_BINDGEN_EXECUTABLE}" "wit-bindgen-cli 0.57.1")
-require_pinned_tool_version("${WASM_TOOLS_EXECUTABLE}" "wasm-tools 1.255.0")
+require_pinned_tool_version("${WASM_TOOLS_EXECUTABLE}" "wasm-tools 1.256.0")
 
 set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(GENERATED_SOURCE "${GENERATED_DIR}/plugin.c")

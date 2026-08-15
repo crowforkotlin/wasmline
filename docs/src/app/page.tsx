@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import Image from 'next/image';
+import { LoaderCircle } from 'lucide-react';
+import wasmlineIcon from './icon.png';
 
-// 静态导出下中间件不会运行，因此在客户端根据浏览器语言跳转到对应语言版本。
-// 默认进入英文页面，仅当浏览器语言为中文时进入中文页面。
+// Static exports do not run middleware, so the browser picks the root locale.
 export default function RootPage() {
   useEffect(() => {
     const languages = navigator.languages?.length
@@ -19,17 +21,39 @@ export default function RootPage() {
 
   return (
     <main
+      className="flex min-h-svh items-center justify-center bg-zinc-950 px-6 text-zinc-100"
       style={{
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '1rem',
-        fontFamily: 'sans-serif',
+        minHeight: '100svh',
+        backgroundColor: '#09090b',
+        color: '#f4f4f5',
       }}
     >
-      <a href="/wasmline/en">English</a>
-      <a href="/wasmline/zh">中文</a>
+      <div className="flex flex-col items-center gap-5 text-center">
+        <Image
+          src={wasmlineIcon}
+          alt=""
+          width={88}
+          height={88}
+          priority
+          className="size-[88px] rounded-[22px] shadow-2xl shadow-violet-950/50"
+        />
+        <div className="space-y-2">
+          <p className="text-xl font-semibold">wasmline</p>
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex h-6 items-center justify-center gap-2 text-sm text-zinc-400"
+          >
+            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            <span>Loading documentation...</span>
+          </div>
+        </div>
+        <noscript>
+          <a className="text-sm underline" href="/wasmline/en">
+            Open Wasmline documentation
+          </a>
+        </noscript>
+      </div>
     </main>
   );
 }

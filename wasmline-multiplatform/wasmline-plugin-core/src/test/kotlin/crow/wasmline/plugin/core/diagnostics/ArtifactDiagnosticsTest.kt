@@ -9,6 +9,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
+private const val FIXTURE_WASM_TOOLS_VERSION = "0.0.0-test"
+
 class ArtifactDiagnosticsTest {
     @Test
     fun `describes core cwasm without changing its execution model`() {
@@ -51,7 +53,7 @@ class ArtifactDiagnosticsTest {
         val diagnostic = WasmlineArtifactDiagnostics.describe(
             artifact(
                 type = WasmlineArtifactType.COMPONENT_WASM,
-                compiler = "wasm-tools-1.255.0",
+                compiler = "wasm-tools-$FIXTURE_WASM_TOOLS_VERSION",
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
             ),
         )

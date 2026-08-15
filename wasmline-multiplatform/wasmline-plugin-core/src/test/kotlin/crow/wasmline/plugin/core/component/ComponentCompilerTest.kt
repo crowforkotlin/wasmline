@@ -14,6 +14,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
+
 class ComponentCompilerTest {
     @Test
     fun compilesOneHostComponentToCwasmWithTheVerifiedEngineProfile() = withCompilerDirectory { root ->
@@ -158,7 +160,9 @@ class ComponentCompilerTest {
     fun rejectsExactWasmtimeVersionMismatchBeforeCompileHelp() = withCompilerDirectory { root ->
         val compilerFile = executable(File(root, "wasmtime"))
         val input = File(root, "plugin-component.wasm").apply { writeBytes(byteArrayOf(1)) }
-        val runner = RecordingComponentCompilerRunner(versionOutput = "wasmtime 46.0.0")
+        val runner = RecordingComponentCompilerRunner(
+            versionOutput = "wasmtime $INCOMPATIBLE_WASMTIME_VERSION",
+        )
 
         val error = assertFailsWith<IllegalStateException> {
             ComponentCompiler(runner).compile(
@@ -166,7 +170,7 @@ class ComponentCompilerTest {
             )
         }
 
-        assertTrue(error.message.orEmpty().contains("expected 47.0.2, actual 46.0.0"))
+        assertTrue(error.message.orEmpty().contains("expected 47.0.2, actual $INCOMPATIBLE_WASMTIME_VERSION"))
         assertEquals(listOf(listOf("--version")), runner.arguments)
     }
 

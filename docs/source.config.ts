@@ -1,12 +1,16 @@
-import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from 'fumadocs-mdx/config';
+import {
+  defineConfig,
+  defineDocs,
+  frontmatterSchema,
+  metaSchema,
+} from 'fumadocs-mdx/config';
 
-// You can customise Zod schemas for frontmatter and `meta.json` here
-// see https://fumadocs.dev/docs/mdx/collections
 export const docs = defineDocs({
   dir: 'content/docs',
   docs: {
     schema: frontmatterSchema,
     postprocess: {
+      // `/llms-full.txt` reads this processed Markdown at build time.
       includeProcessedMarkdown: true,
     },
   },
@@ -15,8 +19,4 @@ export const docs = defineDocs({
   },
 });
 
-export default defineConfig({
-  mdxOptions: {
-    // MDX options
-  },
-});
+export default defineConfig({});

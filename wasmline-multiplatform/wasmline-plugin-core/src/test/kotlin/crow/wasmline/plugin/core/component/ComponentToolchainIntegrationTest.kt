@@ -3,6 +3,7 @@ package crow.wasmline.plugin.core.component
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
+import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -17,6 +18,9 @@ class ComponentToolchainIntegrationTest {
         val witBindgen = requireExecutable(WIT_BINDGEN_ENV)
         val wasmTools = requireExecutable(WASM_TOOLS_ENV)
         val adapter = requireFile(WASI_ADAPTER_ENV)
+        val witBindgenVersion = ToolchainCatalog.WIT_BINDGEN_VERSION
+        val wasmToolsVersion = ToolchainCatalog.WASM_TOOLS_VERSION
+        val adapterVersion = ToolchainCatalog.WASI_PREVIEW1_ADAPTER_VERSION
         val root = createTempDirectory("wasmline-component-live").toFile()
         try {
             val witDirectory = File(root, "wit").apply { mkdirs() }
@@ -28,14 +32,14 @@ class ComponentToolchainIntegrationTest {
                 witBindgen,
                 ExternalToolRunner(logger = verificationLogs::add),
             )
-            witBindgenTool.verify("0.57.1")
+            witBindgenTool.verify(witBindgenVersion)
             assertTrue(verificationLogs.isEmpty())
             witBindgenTool.generateKotlin(
                 KotlinBindingsRequest(
                     witDirectory = witDirectory,
                     outputDirectory = generatedDirectory,
                     world = "plugin",
-                    witBindgenVersion = "0.57.1",
+                    witBindgenVersion = witBindgenVersion,
                 ),
             )
             assertTrue(generatedDirectory.walkTopDown().any { it.isFile && it.extension == "kt" })
@@ -54,7 +58,7 @@ class ComponentToolchainIntegrationTest {
                 wasmTools,
                 ExternalToolRunner(logger = verificationLogs::add),
             )
-            wasmToolsTool.verify("1.255.0")
+            wasmToolsTool.verify(wasmToolsVersion)
             assertTrue(verificationLogs.isEmpty())
             val result = ComponentPipeline(wasmToolsTool).componentize(
                 ComponentizeRequest(
@@ -68,8 +72,9 @@ class ComponentToolchainIntegrationTest {
                     exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
                     codec = WasmlineComponentServiceContract.DEFAULT_CODEC,
                     serviceProtocolVersion = WasmlineComponentServiceContract.VERSION,
-                    witBindgenVersion = "0.57.1",
-                    adapterVersion = "47.0.2",
+                    wasmToolsVersion = wasmToolsVersion,
+                    witBindgenVersion = witBindgenVersion,
+                    adapterVersion = adapterVersion,
                 ),
             )
 

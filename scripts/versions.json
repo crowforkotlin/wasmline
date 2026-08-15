@@ -3,6 +3,8 @@
     "wasmline_version": "1.0.0",
     "sample_plugin_version": "1.0.0",
     "wasmtime_version": "47.0.2",
+    "wasm_tools_version": "1.256.0",
+    "wit_bindgen_version": "0.57.1",
     "kotlin_version": "2.4.0",
     "kotlin_min_version": "2.3.0-RC2",
     "agp_version": "9.3.0",

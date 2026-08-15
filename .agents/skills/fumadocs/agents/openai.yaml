@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fumadocs Docs"
+  short_description: "Maintain the Wasmline Fumadocs site"
+  default_prompt: "Use $fumadocs to update the Wasmline documentation site."

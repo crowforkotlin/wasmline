@@ -2,6 +2,16 @@
 
 This document records the repository's current branch, version, tag, and publication model. It does not authorize pushing, tagging, or publishing.
 
+## Contents
+
+- [Branch Model](#branch-model)
+- [Version Sources](#version-sources)
+- [Maven Version Model](#maven-version-model)
+- [Release Tag](#release-tag)
+- [Tag and Maven Pairing](#tag-and-maven-pairing)
+- [Change Scenarios](#change-scenarios)
+- [Old Release Hotfix](#old-release-hotfix)
+
 ## Branch Model
 
 | Role | Convention |

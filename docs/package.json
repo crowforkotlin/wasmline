@@ -2,6 +2,10 @@
   "name": "wasmline",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev",

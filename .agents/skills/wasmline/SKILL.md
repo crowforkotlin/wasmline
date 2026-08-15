@@ -1,6 +1,6 @@
 ---
 name: wasmline
-description: Repository-level workflow and architecture rules for the Wasmline repository.
+description: Apply repository-level workflow, architecture, versioning, release, and validation rules for Wasmline. Use when changing, diagnosing, reviewing, building, testing, or releasing anything in this repository, including the Kotlin Multiplatform runtime, native Wasmtime bridge, loaders, engines, plugins, samples, scripts, and documentation.
 ---
 
 # Wasmline Repository Skill
@@ -11,12 +11,12 @@ Use this skill for work in the `wasmline` repository. Paths in the referenced do
 
 Read only the documents required by the current task.
 
-| Document | Read when working on |
+| Reference | Read when working on |
 | --- | --- |
-| [`development-guide.md`](./development-guide.md) | Environment checks, module selection, generated files, commands, validation, or CI |
-| [`version-sync.md`](./version-sync.md) | Version changes or additions of duplicated version references |
-| [`branching-and-release.md`](./branching-and-release.md) | Branches, tags, Maven publication, releases, or hotfixes |
-| [`web-bindings-guide.md`](./web-bindings-guide.md) | `webMain`, `jsMain`, `wasmJsMain`, browser loading, or Web tests |
+| [`development-guide.md`](./references/development-guide.md) | Environment checks, module selection, generated files, commands, validation, or CI |
+| [`version-sync.md`](./references/version-sync.md) | Version changes or additions of duplicated version references |
+| [`branching-and-release.md`](./references/branching-and-release.md) | Branches, tags, Maven publication, releases, or hotfixes |
+| [`web-bindings-guide.md`](./references/web-bindings-guide.md) | `webMain`, `jsMain`, `wasmJsMain`, browser loading, or Web tests |
 | [Technical Mind Map](../../../wasmline-multiplatform/docs/design-mind.md) | Runtime architecture, execution models, invocation protocols, Component Model, or IR flow |
 | [Component Service Guide](../../../docs/content/docs/component-service.mdx) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
 | [IR Test Documentation](../../../wasmline-multiplatform/docs/ir/index.md) | Compiler-plugin fixtures, generated runners, or IR snapshots |
@@ -27,7 +27,7 @@ Read only the documents required by the current task.
 2. **Compilation and tests require explicit instruction.** Do not run Gradle, Zig, CMake, native builds, or test suites unless the user explicitly requests the relevant build, test, or verification.
 3. **Generated files are not edited manually.** This includes `test-gen/`, `*.fir.txt`, `*.fir.ir.txt`, `**/build/`, `build/platforms/`, `.zig-cache/`, and `zig-out/`.
 4. **Select the owning module first.** Confirm the module and source set before changing code.
-5. **Versions come from one manifest.** `scripts/versions.json` is authoritative. Use `python3 scripts/sync_version.py --set key=value` for managed version changes, and extend the synchronizer and its tests when adding a duplicated version reference.
+5. **Versions come from one manifest.** `scripts/versions.json` is authoritative. Edit the manifest and run `python3 scripts/sync_version.py`, or use `--set key=value` for the same operation. Extend the synchronizer and its tests when adding a duplicated version reference.
 6. **Tags and Maven releases remain paired.** The release tag format is `release-x.y.z.v`. Do not create a release tag without its Maven release, and do not publish a Maven release without its tag.
 7. **Maven modules use one project version.** All published modules, including engine modules, use `wasmline.version` in `x.y.z` form. Do not introduce four-segment engine Maven versions.
 8. **Use `main` and temporary sub-branches.** Do not create long-lived release or Wasmtime-version branches.

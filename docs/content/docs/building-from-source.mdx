@@ -158,8 +158,9 @@ cd ../wasmline-samples/kotlin
 Shared documentation and duplicated config version strings are synchronized from `scripts/versions.json`:
 
 ```bash
-python3 scripts/sync_version.py --check
+python3 scripts/sync_version.py
 python3 scripts/sync_version.py --set wasmtime_version=<new-version>
+python3 scripts/sync_version.py --check
 ```
 
-The plural `sync_versions.py` entry point remains available for existing automation.
+Run the command without arguments after editing `versions.json`. The `--set` form is an alternative that updates the manifest before synchronizing.
