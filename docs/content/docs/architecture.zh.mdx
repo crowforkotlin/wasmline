@@ -27,15 +27,15 @@ Platform actual  (jniMain / iosMain)
         │  Kotlin/Native C Interop (.def)     — iOS
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
-        │  Engine.cpp   — wasmtime Engine singleton; global init / shutdown
-        │  Module.cpp   — CWASM / PWASM 反序列化；键控模块缓存
-        │  Session.cpp  — Per-invocation isolated linear memory region; execution context
-        │  Api.cpp      — JNI / C Interop surface (load, invoke, setOutbound, release)
+        │  Engine.cpp               — Wasmtime engine 生命周期与 backend 选择
+        │  Module.cpp/Component.cpp — 仅反序列化 Core 与 Component 产物的缓存
+        │  Session variants         — Wasmline Service、Raw Export 与 Component 调用
+        │  Api.cpp                  — JNI / C Interop surface (load, invoke, setOutbound, release)
         ▼
 wasmtime C-API  v47.0.2
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
         ▼
-Core Wasmline binary  (.cwasm — Cranelift 原生 AOT  |  .pwasm — Cranelift 生成的 Pulley 字节码)
+Precompiled artifact  (.cwasm — Cranelift 原生 AOT  |  .pwasm — Pulley 字节码；Core 或 Component 需独立声明)
 ```
 
 产物层与引擎层是两组独立能力。Cranelift Wasmtime 构建同时包含 Cranelift 编译器和 Pulley 解释器，因此可以加载匹配的 `.cwasm`，并在缺少时回退到 `.pwasm`。Pulley 引擎构建只包含 Pulley 解释器，仅接受 `.pwasm`。iOS 使用 Pulley 引擎，因此始终选择 `.pwasm`。
@@ -49,8 +49,8 @@ Host Application  (commonMain / hostMain)
         │  module.bind(impl)     — dispatch registration (same IR pipeline as native)
         │
         ▼
-webMain / jsMain / wasmJsMain  actual
-        │  BrowserWasmlineRuntime · WasmlineWebModuleRegistry · WasmlineWebModule
+webMain / jsMain / wasmJsMain
+        │  WasmlineWeb · WebWasmArtifacts · WebWasmPlugin
         ▼
 Inline JS runtime  (Kotlin js() interop — no external .js files emitted)
         │
@@ -58,11 +58,9 @@ Inline JS runtime  (Kotlin js() interop — no external .js files emitted)
 Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
         │
         ├── Import namespace: wasi_snapshot_preview1
-        │     fd_write         — console.log (fd=1) / console.error (fd=2)
-        │     random_get       — globalThis.crypto.getRandomValues
-        │     clock_time_get   — Date.now() * 1_000_000  (nanosecond resolution)
-        │     proc_exit        — throws JS Error
-        │     all others       — ENOSYS stub
+        │     fd_write         — UTF-8 stdout/stderr 经 WasmlineLog 或 println 输出
+        │     random_get       — Kotlin Random.nextBytes
+        │     clock_time_get   — 将 Date.now() 的毫秒值转换为纳秒值
         │
         └── Import namespace: env  (Wasmline bridge protocol)
               bridge_inbound_copy_params     — write action + payload into Wasm linear memory
@@ -71,7 +69,7 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
               bridge_outbound_get_response   — copy oversized outbound response to caller buffer
         │
         ▼
-Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding)
+Plugin binary  (raw .wasm — 先通过 Fetch 异步预取，再从字节缓存同步加载)
 ```
 
 ## 执行模型
@@ -89,7 +87,7 @@ Plugin binary  (raw .wasm — synchronous XMLHttpRequest; binary string decoding
 
 Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。该路径不分配或解析 Core 响应帧。
 
-Component Model 调用通过 Wasmtime Component Model API 加载完整且已经编译完成的 component binary。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen` 或 `wasm-tools`；可选的 plugin 构建流水线会在加载前由 `wasmline-plugin-core`、Gradle 插件或 CLI 生成绑定并组装 component。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
+Component Model 调用通过 Wasmtime Component Model API 反序列化预编译的 Component `.cwasm` 或 `.pwasm` 产物。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen`、`wasm-tools` 或 `wasmtime compile`；可选的 `wasmline-plugin-core`、Gradle 插件与 CLI 构建流水线会在加载前完成这些步骤。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
 
 三种路径共享相同的结果语义。未绑定 action 返回失败结果 `ACTION_NOT_BOUND`，不表示为空的成功 payload，也不要求抛出异常。Core 路径通过响应帧传递该结果；Raw Export 和 Component Model 通过 typed result carrier 传递该结果。违反编程契约、运行时状态不可恢复，或无法构造可靠结果时，才使用异常。
 
@@ -98,12 +96,14 @@ Component Model 调用通过 Wasmtime Component Model API 加载完整且已经�
 ## 模块依赖关系图
 
 ```text
-wasmline-cli  ──────►  wasmline-loader  ──────►  wasmline  (core runtime)
-                                                       ▲
-                               wasmline-core  (C/C++) ─┘  (JNI / C Interop)
+wasmline-cli ───────────► wasmline-plugin-core ───────► wasmline-loader ──► wasmline
+wasmline-gradle-plugin ─► wasmline-plugin-core
+        │
+        └───────────────► wasmline-kotlin-plugin  (编译期 IR 变换)
 
-wasmline-kotlin-plugin   (compile-time only; no runtime artifact)
-wasmline-gradle-plugin  ──►  wasmline-kotlin-plugin
+wasmline ◄──── native runtime assets ──── wasmline-engine-cranelift / wasmline-engine-pulley
+wasmline-network-ktor / wasmline-network-okhttp ──────► wasmline-loader
+wasmline-core (C/C++) ◄──── JNI / C Interop ────────── wasmline
 ```
 
 ## 仓库目录结构
@@ -117,22 +117,28 @@ wasmline/
 │   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
 │   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
 │   │   ├── iosMain/                    # iOS actual — Kotlin/Native C Interop
-│   │   ├── webMain/                    # Web actual — BrowserWasmlineRuntime + inline JS bridge
-│   │   ├── jsMain/                     # Kotlin/JS delegation → webMain
-│   │   ├── wasmJsMain/                 # Kotlin/WasmJS delegation → webMain
-│   │   └── wasmWasiMain/               # Plugin-side runtime — WasmlineRouter, WasmBridge
+│   │   ├── webMain/                    # 共享 Web host runtime 与 expect binding contract
+│   │   ├── jsMain/                     # Kotlin/JS binding actual
+│   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actual
+│   │   └── wasmWasiMain/               # Core 与 Component Service guest hook
 │   ├── wasmline-loader/                # WasmlineLoader, .wlm manifest parsing, Ed25519/ECDSA-P256
-│   ├── wasmline-cli/                   # CLI: download, compile, manifest, build, generate-key-pair
+│   ├── wasmline-plugin-core/           # 共享 Core/Component 构建、签名、打包与工具链逻辑
+│   ├── wasmline-cli/                   # plugin-core 与 loader 操作的 CLI adapter
 │   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
 │   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — bridge synthesis, call-site rewriting
-│   ├── wasmline-gradle-plugin/         # Applies the IR plugin to consumer Gradle projects
+│   ├── wasmline-gradle-plugin/         # 基于 compiler plugin 与 plugin-core 的消费端 DSL 和任务
+│   ├── wasmline-engine-cranelift/      # Cranelift runtime distribution 与平台变体
+│   ├── wasmline-engine-pulley/         # Pulley runtime distribution 与平台变体
+│   ├── wasmline-network-ktor/          # Ktor loader 网络 adapter
+│   ├── wasmline-network-okhttp/        # OkHttp loader 网络 adapter
+│   ├── wasmline-plugin-test/           # 端到端 plugin 与 native 集成测试
 │   └── wasmline-build-logic/           # Shared Gradle convention plugins
 ├── wasmline-samples/
-│   └── kotlin/
-│       ├── sample-common/              # Shared service contract interface definitions
-│       ├── sample-plugin/              # Kotlin/WasmWasi WASI plugin implementation
-│       └── sample-apps/                # Android, JVM desktop, Compose Multiplatform, and Web hosts
-├── scripts/                            # Asset initialization: init-wasmtime.sh / init-wasmtime.py / init-wasmtime.mjs
+│   ├── kotlin/                         # Kotlin plugin、Component fixture 与 host app
+│   ├── rust/                           # Rust Component fixture
+│   ├── c/                              # C Component fixture
+│   └── cpp/                            # C++ Component fixture
+├── scripts/                            # 环境、资产、lint 与版本同步
 ├── build/                              # Root build outputs, including build/platforms/ wasmtime min C-API assets
 └── docs/                               # Documentation site (Next.js + Fumadocs)
 ```

@@ -83,6 +83,10 @@ java {
     }
 }
 
+kotlin {
+    explicitApi()
+}
+
 buildConfig {
     val packageName = libs.plugins.wasmline.kotlin.get()
     useKotlinOutput(configure = { internalVisibility = true })

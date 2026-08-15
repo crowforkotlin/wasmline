@@ -20,7 +20,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /** Converts a compiled Core Wasm file into a validated Component Wasm. */
-class Componentize : CliktCommand(name = "componentize") {
+internal class Componentize : CliktCommand(name = "componentize") {
     private val inputFile by option("-i", "--input")
         .file(mustExist = true, canBeFile = true, canBeDir = false)
         .required()
@@ -108,7 +108,7 @@ class Componentize : CliktCommand(name = "componentize") {
 }
 
 /** Validates a Component Wasm with the locked wasm-tools binary. */
-class ComponentValidate : CliktCommand(name = "validate") {
+internal class ComponentValidate : CliktCommand(name = "validate") {
     private val component by option("-i", "--input")
         .file(mustExist = true, canBeFile = true, canBeDir = false)
         .required()
@@ -143,7 +143,7 @@ class ComponentValidate : CliktCommand(name = "validate") {
 }
 
 /** Prints the WIT world extracted from a Component Wasm. */
-class ComponentInspect : CliktCommand(name = "inspect") {
+internal class ComponentInspect : CliktCommand(name = "inspect") {
     private val component by option("-i", "--input")
         .file(mustExist = true, canBeFile = true, canBeDir = false)
         .required()

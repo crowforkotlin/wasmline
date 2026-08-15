@@ -22,7 +22,7 @@ import org.gradle.api.tasks.TaskAction
 
 /** Compiles a raw Component build record into native CWASM/PWASM artifacts. */
 @CacheableTask
-abstract class WasmlineComponentAotTask : DefaultTask() {
+internal abstract class WasmlineComponentAotTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val componentDirectory: DirectoryProperty

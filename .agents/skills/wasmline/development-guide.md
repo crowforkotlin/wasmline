@@ -1,278 +1,193 @@
-# Development Guide
+# Development and Verification Guide
 
-Detailed operational reference for the wasmline repository. This document is referenced by `SKILL.md` — read it when performing builds, tests, or code changes.
-
----
+Operational reference for the Wasmline repository. All paths are relative to the repository root.
 
 ## Environment Pre-check
 
-Gradle builds require **JBR 21** (JetBrains Runtime). Run once per session:
+Gradle work requires **JBR 21**. Run the pre-check once per session, immediately before the first validation of changes to files in this repository:
 
 ```bash
 bash ./scripts/doctor.sh
 ```
 
-Details:
+Rules:
 
-- Checks `JAVA_HOME`, `java -version`, `<JAVA_HOME>/release`, and shell config declarations.
-- Reads `~/.zshrc`, `~/.bashrc`, `~/.bash_profile` in **read-only** mode. Modification forbidden.
-- If JBR 21 is unavailable → stop all Gradle operations.
-- Do not hardcode local JBR paths into any file.
-- Reports Wasmtime platform asset status under `build/platforms/` (WARNING only, not a hard block).
-- Reports Zig version (requires **0.16.0**) and desktop JNI artifact status.
+- Do not run it for read-only work, tasks unrelated to Wasmline, or changes that require no validation.
+- Creating a goal or requesting edits does not trigger it by itself. Validation of the resulting repository changes is the trigger.
+- If a later turn first introduces a change that must be validated, run it then.
+- Never run it again in the same session.
+- A failed JBR 21 gate blocks Gradle commands. Asset and desktop sections are advisory unless the requested command needs those assets.
+- The script reads `~/.zshrc`, `~/.bashrc`, and `~/.bash_profile` without modifying them. Do not edit these files.
+- Do not write local JBR paths into repository files.
 
----
+The pre-check also reports the configured Wasmtime platform assets, Zig version (requires **0.16.0**), and desktop native-library status.
 
-## Platform Runtime Asset Initialization
+## Platform Runtime Assets
 
-If `build/platforms/` is not ready:
+Use one initializer when the required target is absent from `build/platforms/`:
 
 ```bash
-sh ./scripts/init-wasmtime.sh            # Bash
-python3 ./scripts/init-wasmtime.py       # Python 3.9+
-node ./scripts/init-wasmtime.mjs         # Node.js 18+
+bash ./scripts/init-wasmtime.sh
+python3 ./scripts/init-wasmtime.py
+node ./scripts/init-wasmtime.mjs
 ```
 
-All three are functionally equivalent. Support:
+The three entry points provide the same target and runtime-variant selection workflow. They support concurrent downloads, an optional proxy argument such as `127.0.0.1:7890`, and extraction under `build/platforms/release-v<wasmtime-version>/`.
 
-- Interactive platform/architecture selection
-- Configurable concurrent downloads
-- Optional proxy (first argument, e.g., `127.0.0.1:7890`)
-- Auto-extraction to `build/platforms/`
+Do not initialize assets merely because the directory exists or is absent. Confirm that the requested build needs them and that the user authorized the download or build.
 
-Do not assume assets exist on any machine. Skip if `doctor.sh` confirms presence.
+## Module Ownership
 
----
-
-## Repository Structure
-
-| Directory | Description |
+| Path | Responsibility |
 | --- | --- |
-| `wasmline-core/` | Native Wasmtime Bridge (C/C++): Engine, Module, Session, Api |
-| `wasmline-multiplatform/` | Kotlin Multiplatform main project (standalone Gradle) |
-| `wasmline-multiplatform/wasmline/` | Core runtime library (multi-platform source sets) |
-| `wasmline-multiplatform/wasmline-kotlin-plugin/` | Kotlin IR compiler plugin |
-| `wasmline-multiplatform/wasmline-cli/` | CLI tool |
-| `wasmline-multiplatform/wasmline-loader/` | Loader module |
-| `wasmline-multiplatform/wasmline-gradle-plugin/` | Gradle plugin |
-| `wasmline-multiplatform/wasmline-android/` | Android JNI wrapper |
-| `wasmline-multiplatform/wasmline-build-logic/` | Convention Plugins |
-| `wasmline-samples/kotlin/` | Sample project (standalone Composite Build via `includeBuild`) |
-| `scripts/` | Repository-level utility scripts |
-| `build/platforms/` | Platform runtime assets |
+| `wasmline-core/` | Native C/C++ Wasmtime bridge for Core Wasm and Component Model execution |
+| `wasmline-multiplatform/wasmline/` | Kotlin runtime API, host runtime, platform actuals, browser runtime, and guest runtime |
+| `wasmline-multiplatform/wasmline-loader/` | Local and remote manifests, signatures, artifact selection, and network-neutral loading |
+| `wasmline-multiplatform/wasmline-engine-cranelift/` | Cranelift native runtime distribution |
+| `wasmline-multiplatform/wasmline-engine-pulley/` | Pulley native runtime distribution |
+| `wasmline-multiplatform/wasmline-android/` | Android native build integration |
+| `wasmline-multiplatform/wasmline-kotlin-plugin/` | Kotlin IR validation, bridge generation, entry-point rewriting, and WASI/Component hooks |
+| `wasmline-multiplatform/wasmline-plugin-core/` | Shared plugin build pipeline, Component tooling, manifest signing, packaging, and host WIT generation |
+| `wasmline-multiplatform/wasmline-gradle-plugin/` | Consumer DSL and Gradle tasks built on the compiler plugin and plugin core |
+| `wasmline-multiplatform/wasmline-cli/` | CLI adapters for download, compilation, Component tools, manifests, and packaging |
+| `wasmline-multiplatform/wasmline-network-ktor/` | Ktor network adapter for the loader |
+| `wasmline-multiplatform/wasmline-network-okhttp/` | OkHttp network adapter for the loader |
+| `wasmline-multiplatform/wasmline-plugin-test/` | End-to-end Gradle-plugin and native-plugin integration tests |
+| `wasmline-samples/` | Kotlin, Rust, C, and C++ examples and fixtures |
+| `scripts/` | Repository automation, environment checks, lint, assets, and version synchronization |
 | `docs/` | Documentation site |
 
----
+## Key Source Maps
 
-## Module File References
+### Native Runtime
 
-### Runtime / Bridge
+- Public headers: `wasmline-core/include/wasmline/`
+- API entry: `wasmline-core/src/api/Api.cpp`
+- Engine and artifacts: `wasmline-core/src/runtime/Engine.cpp`, `Module.cpp`, `Component.cpp`
+- Invocation sessions: `Session.cpp`, `RawModuleSession.cpp`, `ComponentSession.cpp`
+- Typed Component values: `wasmline-core/src/value/ComponentValue.cpp`
+- Kotlin JNI/iOS bridges: `wasmline-multiplatform/wasmline/src/jniMain/` and `iosMain/`
 
-**C/C++ Layer:**
+### Kotlin Runtime
 
-- `wasmline-core/include/Engine.h`, `src/Engine.cpp`, `src/Module.cpp`, `src/Session.cpp`, `src/Api.cpp`
+- `commonMain`: artifact descriptors, execution models, invocation protocols, service contracts, result types, serialization, and bridge contracts
+- `hostMain`: `Wasmline`, loader bridge, service registration, raw invocation, Component invocation, Component instances, and host imports
+- `wasmWasiMain`: Core guest router and Component Service guest initialization
+- `webMain`, `jsMain`, `wasmJsMain`: browser host implementation
+- Internal generated-bridge contracts: `wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/`
 
-**Kotlin Bridge Layer:**
+The `wasmline/` paths in this section are relative to `wasmline-multiplatform/`.
 
-- `wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/` — GeneratedBridge, GeneratedSerialization, Endpoint, HostDispatcher, Payload
+### Kotlin Compiler Plugin
 
-**Tests:**
+- Orchestration: `WasmlineIrGenerationExtension.kt`
+- Validation: `WasmlineServiceContractValidator.kt`
+- Bridge generation: `WasmlineBridgeGenerator.kt`
+- `link()` and `bind()` rewriting: `WasmlineTypedEntryPointRewriter.kt`
+- Core WASI export: `WasmlineWasiEntryExportGenerator.kt`
+- Component Service initializer: `WasmlineComponentServiceInitGenerator.kt`
+- Utilities: `WasmlineRuntimeSymbols.kt`, `WasmlineIrDiagnostics.kt`, `SignatureHash.kt`, `Ir.kt`, `TypeToString.kt`, and `package.kt`
+- Fixtures: `wasmline-kotlin-plugin/testData/box/`
+- Generated runner: `wasmline-kotlin-plugin/test-gen/`
 
-- `wasmline/src/commonTest/kotlin/crow/wasmline/WasmlineServiceRuntimeTest.kt`
+The compiler plugin performs IR transformation; it is not a source generator. Treat runtime bridge contracts, IR logic, fixtures, generated runners, and snapshots as one system.
 
-### Kotlin Runtime API
+### Web Runtime
 
-- `commonMain/` — WasmlineService, WasmlineConfig
-- `hostMain/` — Wasmline, WasmlineServices.host, WasmlineLoader, WasmlineLoadState, WasmlineWarmupMode
-- `wasmWasiMain/` — WasmlineServices.wasmWasi, WasmlineWasmBridge, WasmlineRouter, WasmMain
-- `iosMain/`, `jsMain/`, `wasmJsMain/`, `webMain/`, `jniMain/` — Platform implementations
+Read [`web-bindings-guide.md`](./web-bindings-guide.md) before changing `webMain`, `jsMain`, `wasmJsMain`, or browser tests.
 
-Core concepts: `WasmlineEndpoint`, `WasmlineGeneratedBridge`, `bindGeneratedBridgeAction(...)`, `requireGeneratedImplementation(...)`, `unknownGeneratedAction(...)`
+### Component Model
 
-### Kotlin Compiler Plugin / IR
+Read the [Component Service Guide](../../../docs/content/docs/component-service.mdx) before changing WIT, Component build stages, generated host bindings, or cross-language fixtures.
 
-**Entry:** WasmlineCompilerPluginRegistrar, WasmlineCommandLineProcessor
+## Generated Artifact Rules
 
-**IR Core:** WasmlineIrGenerationExtension, WasmlineBridgeGenerator, WasmlineTypedEntryPointRewriter, WasmlineServiceContractValidator, WasmlineWasiEntryExportGenerator
+Do not hand-edit:
 
-**Utilities:** WasmlineRuntimeSymbols, WasmlineIrDiagnostics, SignatureHash, ir.kt, typeToString.kt, package.kt
+- `wasmline-kotlin-plugin/test-gen/`
+- `wasmline-kotlin-plugin/testData/box/*.fir.txt`
+- `wasmline-kotlin-plugin/testData/box/*.fir.ir.txt`
+- `**/build/`
+- `build/platforms/`
+- `.zig-cache/` and `zig-out/`
+- generated WIT/Kotlin/C/C++ binding output under build directories
 
-**Tests:** `testData/box/`, `testData/diagnostics/`, `test-gen/` (auto-generated runners)
+For an IR fixture change:
 
-**IR test documentation:** [`docs/ir/index.md`](../../../wasmline-multiplatform/docs/ir/index.md)
+1. Edit the `.kt` fixture under `testData/box/`.
+2. Generate the runner through the Gradle task.
+3. Run the box suite so snapshots are produced and compared.
+4. Review every generated change; never repair a logic failure by editing a snapshot.
 
-> This is an **IR plugin**, not a source generator. Understand Runtime Helper + plugin code + box tests as a unified system.
+The repository currently generates only `JvmBoxTestGenerated`. Diagnostic runner infrastructure exists, but the diagnostics model is disabled and no `testData/diagnostics/` suite is registered.
 
-### CLI / Loader / Packaging
+## Commands
 
-- `wasmline-multiplatform/wasmline-loader/`
-- `wasmline-multiplatform/wasmline-cli/`
-- `wasmline-multiplatform/wasmline-gradle-plugin/`
-
-### Desktop Native
-
-- `wasmline-multiplatform/docs/zig-build.md`
-- `wasmline-multiplatform/wasmline/build.zig`
-- `wasmline/src/jniMain/native/`, `src/jvmMain/native/`
-
-Build (only on explicit user instruction):
-
-```bash
-cd wasmline-multiplatform/wasmline
-zig build --release=small -p src/jvmMain/resources
-```
-
-- `src/jvmMain/resources/jni/` = Zig install output, not a stable source entry.
-- Default output: `zig-out/jni/`.
-- Requires Zig **0.16.0**.
-
----
-
-## Generated Artifact Constraints
-
-**Forbidden to hand-edit** (unless task explicitly requires regeneration):
-
-- `wasmline-kotlin-plugin/test-gen/` — Auto-generated test runners
-- `testData/box/*.fir.txt`, `*.fir.ir.txt` — FIR/IR snapshots
-- `testData/diagnostics/*.fir.txt` — Diagnostic snapshots
-- `build/platforms/` — Platform assets
-- `**/build/` — Build outputs
-
-IR test notes:
-
-- Snapshots are auto-generated and auto-compared.
-- First run may fail (missing snapshots); second run passes.
-- Never manually edit snapshots for logic changes.
-
-Box test workflow:
-
-1. Create `.kt` under `testData/box/`
-2. `./gradlew :wasmline-kotlin-plugin:generateTests`
-3. Run tests → snapshots auto-generate
-4. Verify before committing
-
----
-
-## Common Commands
+Compilation and test commands below require explicit user instruction.
 
 ```bash
-# Environment pre-check (once per session)
+# Conditional environment pre-check; see the rules above
 bash ./scripts/doctor.sh
 
-# Initialize platform assets
-sh ./scripts/init-wasmtime.sh
+# Version synchronization checks
+python3 scripts/sync_version.py --check
+python3 scripts/test_sync_versions.py
 
-# Build native libraries (requires init-wasmtime first)
-bash scripts/build-native-assets.sh
-
-# Generate + run box tests (requires explicit user instruction)
-cd wasmline-multiplatform
-./gradlew :wasmline-kotlin-plugin:generateTests
-./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
-
-# Diagnostic tests
-./gradlew :wasmline-kotlin-plugin:test --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
-
-# Desktop JNI (requires Zig 0.16.0, explicit instruction)
-cd wasmline-multiplatform/wasmline
-zig build --release=small -p src/jvmMain/resources
-
-# Check changed Kotlin, C/C++, and Zig sources
+# Changed/untracked source formatting checks
 bash scripts/lint.sh
 
-# Check all supported source files, as used by CI
+# Full source formatting checks used by CI
 bash scripts/lint.sh --all
 
-# Format changed sources, or format all supported source files
+# Format changed sources, or all supported sources
 bash scripts/lint.sh format
 bash scripts/lint.sh --all format
+
+# Build native engine assets after platform initialization
+bash scripts/build-native-assets.sh [pulley|cranelift|all]
+
+# IR runner generation and box tests
+cd wasmline-multiplatform
+./gradlew :wasmline-kotlin-plugin:generateTests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+
+# Browser tests
+./gradlew :wasmline:jsBrowserTest :wasmline:wasmJsBrowserTest
+
+# Wasm/WASI Node tests
+./gradlew :wasmline:wasmWasiNodeTest
 ```
 
----
+## Formatting Scope
 
-## Code Formatting
+| Language | Tool | Repository scope |
+| --- | --- | --- |
+| Kotlin | ktlint | Supported Kotlin files under `wasmline-multiplatform/`, excluding generated and platform-specific exclusions defined by the script |
+| C/C++ | clang-format | Supported sources under `wasmline-core/` |
+| Zig/ZON | `zig fmt` | Zig build files under `wasmline-multiplatform/wasmline/` |
 
-| Language | Tool | Config |
-|----------|------|--------|
-| Kotlin | ktlint | `wasmline-multiplatform/.editorconfig` |
-| C/C++ | clang-format | `wasmline-core/.clang-format` |
-| Zig / ZON | zig fmt | Zig built-in formatter |
-
-- `bash scripts/lint.sh` checks only changed and untracked source files by default.
-- Use `--all` for the full repository scope used by CI.
-- CI enforces Kotlin, C/C++, and Zig formatting on every PR.
-
----
+Use `bash scripts/lint.sh`; language-specific scripts under `scripts/lint/` are implementation details.
 
 ## CI Pipeline
 
 Workflow: `.github/workflows/ci.yml`
 
-**Trigger:** push to `main` / PR to `main` (ignores docs-only changes)
+Pushes and pull requests targeting `main` ignore `docs/**`, root `*.md`, and `.agents/**`. Manual `workflow_dispatch` runs the same jobs.
 
-### Job Structure
+| Job | Role | Dependency |
+| --- | --- | --- |
+| `lint-kotlin`, `lint-clang`, `lint-zig` | Full repository formatting checks | None |
+| `build-assets` | Build and cache native Wasmtime assets | None |
+| `test-jvm` | Compiler plugin, loader, runtime, and CLI JVM tests | `build-assets` |
+| `test-web` | Runtime and loader JS/WasmJS browser tests | `build-assets` |
+| `test-node` | Wasm/WASI Node tests | `build-assets` |
+| `test-ios` | Runtime and loader iOS simulator tests | `build-assets` |
+| `test-plugin` | Gradle-plugin integration tests | `build-assets` |
+| `publish`, `release` | Current placeholders | All lint, build, and test jobs |
 
-```
-┌──────────────┐   ┌──────────────┐
-│ lint-kotlin  │   │ lint-clang   │   │ lint-zig   │
-└──────┬───────┘   └──────┬───────┘   └─────┬──────┘
-       │                  │                  │
-       └──────────────────┴────────┬─────────┘
-                │
-         (all must pass)
-                │
-       ┌────────▼─────────┐
-       │ compile-all      │
-       │ - Native build   │
-       │ - Compile all    │
-       └────────┬─────────┘
-                │
-                ▼
-       ┌──────────────────┐
-       │ test-all         │
-       │ - Box tests      │
-       │ - Diagnostics    │
-       │ - Loader jvmTest │
-       └──────────────────┘
-```
+The CI `publish` and `release` jobs do not publish artifacts or create a GitHub release yet.
 
-**Conditions:**
+## Cross-Environment Work
 
-- `compile-all` only runs if **all** lint jobs succeed
-- `test-all` runs **after compile-all completes** (even if failed via `if: always()`)
-- **Exception**: `workflow_dispatch` triggers bypass lint checks (manual run allowed)
-
-### Why Split Lint and Build Jobs?
-
-| Stage | Purpose | Benefit |
-| ------- | --------- | -------- |
-| **lint-kotlin / lint-clang / lint-zig** | Fast format failures | Instant feedback, no wasted compute on heavy builds |
-| **compile-all** | Heavy native build + multi-platform compilation | Isolated error context for toolchain/runtime issues |
-| **test-all** | Execute unit + integration tests | Clear separation between "can we build?" and "does it work?" |
-
-> `publishToMavenCentral` is NOT part of CI at this stage (project in development).
-
----
-
-## Recommended Reading Order
-
-1. `README_zh.md` / `README.md` — Project overview
-2. `.agents/skills/wasmline/SKILL.md` — Skill constraints
-3. `scripts/init-wasmtime.sh` — Platform asset initialization
-4. `wasmline-multiplatform/settings.gradle.kts` — Module structure
-5. `wasmline-samples/kotlin/settings.gradle.kts` — Sample Composite Build
-6. `wasmline-core/` — C/C++ Bridge
-7. `wasmline-multiplatform/wasmline/` — Kotlin runtime
-8. `wasmline-multiplatform/wasmline-kotlin-plugin/` — IR plugin
-9. [`docs/ir/index.md`](../../../wasmline-multiplatform/docs/ir/index.md) — IR test documentation
-
----
-
-## Cross-Environment Strategy
-
-If workspace is **Windows/Linux** but task involves macOS/iOS:
-
-- Mark Apple platform items as **Environment Deferred**.
-- Prioritize work runnable in current environment (JNI, Loader, Runtime, IR, docs).
-- Document-only tasks: continue but do not mark as "completed".
-- Resume Apple work only in macOS/iOS environment.
+If the current host cannot execute Apple-specific validation, complete host-independent work and report the unavailable Apple checks as deferred. Documentation work can still be completed; only claims that require an unavailable platform must remain unverified.

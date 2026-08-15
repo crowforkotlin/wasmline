@@ -5,7 +5,7 @@ description: Wasmline 测试矩阵、生成产物规则与本地验证方式
 
 # 测试
 
-Wasmline 按边界拆分测试。执行任何 Gradle 命令前，先在仓库根目录运行一次环境预检：
+Wasmline 按边界拆分测试。每个会话仅执行一次仓库预检，执行时机是修改 Wasmline 文件后首次进行必要验证之前。没有需要验证的 Wasmline 文件修改时无需执行：
 
 ```bash
 bash ./scripts/doctor.sh
@@ -23,7 +23,7 @@ bash ./scripts/doctor.sh
 | Kotlin/WasmWasi | `wasmline` | WASI 运行时集成 | `./gradlew :wasmline:wasmWasiNodeTest` |
 | Loader | `wasmline-loader` | manifest、签名、本地与远程包解析 | `./gradlew :wasmline-loader:jvmTest` |
 | CLI | `wasmline-cli` | 平台检测与密钥生成 | `./gradlew :wasmline-cli:test` |
-| IR box/diagnostics | `wasmline-kotlin-plugin` | 生成 bridge 结构与编译器校验 | 参见[编译器插件](/zh/docs/compiler-plugin) |
+| IR box | `wasmline-kotlin-plugin` | 生成 bridge 行为、编译器校验与 FIR/IR snapshot | 参见[编译器插件](/zh/docs/compiler-plugin) |
 
 在 `wasmline-multiplatform/` 下运行主要 JVM 检查：
 
@@ -39,10 +39,9 @@ Native Wasmtime 测试要求 `wasmline/src/jvmMain/resources/jni/` 下存在 nat
 
 ## IR 测试规则
 
-IR 夹具位于 `wasmline-kotlin-plugin/testData/`：
+当前启用的 IR 夹具位于 `wasmline-kotlin-plugin/testData/box/`：
 
 - `box/*.kt` 通过 `fun box(): String` 校验生成的 bridge 行为。
-- `diagnostics/*.kt` 校验编译器 diagnostics 与 directives。
 - `test-gen/` 与 FIR/IR snapshot 属于生成产物。
 
 只编辑源夹具，然后用以下命令重新生成 runner 和 snapshot：
@@ -51,11 +50,11 @@ IR 夹具位于 `wasmline-kotlin-plugin/testData/`：
 ./gradlew :wasmline-kotlin-plugin:generateTests
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
-./gradlew :wasmline-kotlin-plugin:test \
-  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
 ```
 
 不要手动编辑 `test-gen/`、`*.fir.txt` 或 `*.fir.ir.txt`。
+
+仓库保留了 `AbstractJvmDiagnosticTest` 框架，但生成器中的 diagnostics model 尚未启用。当前没有 `testData/diagnostics/` 目录或 `JvmDiagnosticsTestGenerated` runner。
 
 ## 版本校验
 

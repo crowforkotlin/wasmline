@@ -55,3 +55,10 @@ tasks.named<Jar>("jar") {
 }
 
 application { mainClass = "crow.wasmline.cli.MainKt" }
+
+kotlin {
+    explicitApi()
+    compilerOptions {
+        optIn.add("crow.wasmline.plugin.core.InternalWasmlineToolingApi")
+    }
+}

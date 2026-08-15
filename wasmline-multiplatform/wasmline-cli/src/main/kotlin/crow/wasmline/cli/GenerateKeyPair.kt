@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
-
 package crow.wasmline.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
@@ -25,17 +23,16 @@ import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.file
-import crow.wasmline.loader.internal.crypto.KeyPair
-import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
-import crow.wasmline.loader.internal.crypto.generateKeyPair
+import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
+import crow.wasmline.plugin.core.manifest.ManifestSigningAlgorithm
 import java.io.File
 import java.io.PrintStream
 
-class GenerateKeyPair(private val out: PrintStream = System.out) : CliktCommand(NAME) {
+internal class GenerateKeyPair(private val out: PrintStream = System.out) : CliktCommand(NAME) {
 
     private val algorithm by option("-a", "--algorithm")
-        .enum<SignatureAlgorithmId>()
-        .default(SignatureAlgorithmId.Ed25519)
+        .enum<ManifestSigningAlgorithm>()
+        .default(ManifestSigningAlgorithm.Ed25519)
         .help("Signing algorithm to use.")
 
     private val save by option("-s", "--save")
@@ -48,9 +45,9 @@ class GenerateKeyPair(private val out: PrintStream = System.out) : CliktCommand(
         .help("Output directory for key files. Default: $DEFAULT_OUTPUT_DIR")
 
     override fun run() {
-        val keyPair: KeyPair = generateKeyPair(algorithm)
-        val publicKeyHex = keyPair.publicKey.hex()
-        val privateKeyHex = keyPair.privateKey.hex()
+        val keyPair = ManifestKeyGenerator.generate(algorithm)
+        val publicKeyHex = keyPair.publicKeyHex
+        val privateKeyHex = keyPair.privateKeyHex
 
         out.println(
             """

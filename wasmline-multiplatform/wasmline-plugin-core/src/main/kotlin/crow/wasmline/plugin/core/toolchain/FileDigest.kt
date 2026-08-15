@@ -4,7 +4,8 @@ import java.io.File
 import java.security.MessageDigest
 
 /** File digest helpers shared by downloads and Component build results. */
-object FileDigest {
+
+internal object FileDigest {
     /** Calculates a lowercase SHA-256 digest. */
     fun sha256Hex(file: File): String {
         require(file.isFile) { "Cannot hash missing file: " + file.absolutePath }

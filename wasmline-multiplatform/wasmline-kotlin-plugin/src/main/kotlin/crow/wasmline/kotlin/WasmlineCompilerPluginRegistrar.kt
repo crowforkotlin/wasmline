@@ -24,9 +24,9 @@ import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 
 @OptIn(ExperimentalCompilerApi::class)
-class WasmlineCompilerPluginRegistrar : CompilerPluginRegistrar() {
+public class WasmlineCompilerPluginRegistrar : CompilerPluginRegistrar() {
     override val pluginId: String get() = BuildConfig.KOTLIN_PLUGIN_ID
-    override val supportsK2 get() = true
+    override val supportsK2: Boolean get() = true
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
         val messageCollector = configuration.get(
             CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,

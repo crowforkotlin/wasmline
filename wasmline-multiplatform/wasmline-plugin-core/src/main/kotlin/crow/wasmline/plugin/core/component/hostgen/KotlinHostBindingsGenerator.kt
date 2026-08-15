@@ -1,7 +1,9 @@
 package crow.wasmline.plugin.core.component.hostgen
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import java.io.File
 
+@InternalWasmlineToolingApi
 data class KotlinHostBindingsRequest(
     val witPath: File,
     val outputDirectory: File,
@@ -10,8 +12,10 @@ data class KotlinHostBindingsRequest(
     val allowResources: Boolean = false,
 )
 
+@InternalWasmlineToolingApi
 data class KotlinHostBindingsResult(val packageId: String, val world: String, val witSha256: String, val outputFile: File)
 
+@InternalWasmlineToolingApi
 object KotlinHostBindingsGenerator {
     const val VERSION = "1"
 

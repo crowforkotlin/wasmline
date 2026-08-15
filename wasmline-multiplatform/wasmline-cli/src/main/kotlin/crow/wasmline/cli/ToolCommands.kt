@@ -17,7 +17,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /** Downloads one locked Component Model tool into the Wasmline cache. */
-class ToolDownload : CliktCommand(name = "download") {
+internal class ToolDownload : CliktCommand(name = "download") {
     private val toolName by option("--tool").required()
     private val version by option("-v", "--version")
     private val platform by option("-a", "--platform").default(PlatformDetector.detectPlatform())

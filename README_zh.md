@@ -183,6 +183,35 @@ Cranelift Wasmtime 运行时同时支持 `.cwasm` 和 `.pwasm`；原生宿主优
 >
 > ![Kotlin/Wasm 运行时支持矩阵](docs/public/images/kotlin_support.png)
 
+## Gradle Wrapper 任务
+
+在使用方项目中应用已发布的 Wasmline Gradle 插件后，可直接执行：
+
+```bash
+# 构建调试包，用于本地测试
+./gradlew wasmlineAssembleDebug
+
+# 构建用于发布的发行包
+./gradlew wasmlineAssembleRelease
+
+# 构建并启动构件服务
+./gradlew wasmlineServerDeploy
+```
+
+使用类型安全的变体配置选择 `wasmlineServerDeploy` 提供的构件：
+
+```kotlin
+import crow.wasmline.gradle.WasmlineBuildVariant
+
+wasmline {
+    server {
+        deployVariant = WasmlineBuildVariant.RELEASE
+    }
+}
+```
+
+默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。所需工具链与 Component 流水线任务会自动执行。[Gradle 插件任务参考](docs/content/docs/gradle-plugin.zh.mdx)列出全部 15 个面向用户的任务及其注册条件。
+
 ## 架构思维导图
 
 ![Wasmline 架构思维导图](docs/public/images/wasmline_mind_zh.png)

@@ -1,5 +1,6 @@
 package crow.wasmline.plugin.core.util
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import java.io.File
 
 /**
@@ -8,6 +9,8 @@ import java.io.File
  * Date: 2026-07-31
  * Author: crowforkotlin
  */
+
+@InternalWasmlineToolingApi
 object PlatformDetector {
 
     /** Returns the platform name for the current operating system and architecture. */

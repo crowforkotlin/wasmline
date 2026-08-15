@@ -7,14 +7,15 @@ description: IR transformation pipeline, static contract constraints, action ide
 
 ## IR Transformation Pipeline
 
-The `wasmline-kotlin-plugin` operates at the **Kotlin IR compilation phase** — not through annotation processing (KSP) or source-level code generation. The transformation pipeline executes in four sequential steps:
+The `wasmline-kotlin-plugin` runs during the **Kotlin IR compilation phase**. It does not use KSP and does not generate source files. The selected guest transport determines the final export or initialization hook.
 
 | Step | Class | Operation |
 |---|---|---|
 | 1 — Discovery | `WasmlineIrGenerationExtension` | Traverses all `IrDeclarationContainer` nodes; collects `IrClass` declarations with `WasmlineService` in the supertype hierarchy |
-| 2 — Validation | `WasmlineServiceContractValidator` | Validates each contract against the static constraint set; emits typed `WasmlineIrDiagnostics` on violation; aborts IR generation on any error |
+| 2 — Validation | `WasmlineServiceContractValidator` | Validates each contract and reports compiler errors for unsupported declarations |
 | 3 — Bridge synthesis | `WasmlineBridgeGenerator` | Synthesizes one `internal class {Contract}_WasmlineBridge : WasmlineGeneratedBridge` per validated contract; injects the class directly into the parent `IrFile` |
 | 4 — Call-site rewriting | `WasmlineTypedEntryPointRewriter` | Locates all `link<T>()`, `bind(contract, impl)`, and `bind(impl)` call sites; replaces each with a direct bridge instantiation expression |
+| 5 — Guest transport hook | `WasmlineWasiEntryExportGenerator` or `WasmlineComponentServiceInitGenerator` | Generates Core WASI exports or wires the Component Service initialization hook, according to compiler options |
 
 ## Static Contract Constraints
 
@@ -22,26 +23,28 @@ The following constraints are enforced at compile time. Any violation is reporte
 
 | Constraint | Requirement |
 |---|---|
-| Declaration kind | Contract must be an `interface`; abstract classes, sealed types, and objects are rejected |
+| Declaration kind | A contract must be an `interface` that directly or indirectly extends `WasmlineService` |
+| Properties | Service properties are not supported; declare functions instead |
 | Member visibility | All functions must be declared `public` |
 | Suspendability | `suspend` modifier is not permitted on any contract function |
-| Parameter arity | At most one regular value parameter per function |
-| Generic type parameters | Not permitted on the contract interface declaration |
+| Generic type parameters | Not permitted on the contract or its functions |
 | Method name uniqueness | Overloaded method names within a single contract are not supported |
 | `vararg` parameters | Not permitted |
 | Default parameter values | Not permitted |
 | Extension receivers | Extension functions and properties are not supported as contract members |
+| Service-typed values | Service contracts cannot be used as parameter or return types |
 
-## SignatureHash — Action Identifier Derivation
+Functions may have multiple regular parameters. The generated bridge builds a serializer array and parameter descriptor for the full parameter list.
 
-Each service method is assigned a stable action identifier computed as the **SHA-256 hash of its fully-qualified method signature**:
+## Action Identifier
+
+Each service method uses this action string:
 
 ```text
-Input:  com.example.EchoService#echo(kotlin.String)
-Output: <lowercase hex SHA-256 digest>
+com.example.EchoService#echo
 ```
 
-The identifier remains stable across package reorganizations provided the fully-qualified class name and method signature are unchanged. It is embedded in the generated bridge dispatch table and must correspond to the `WasmlineRouter.register(action, handler)` invocation in the plugin binary.
+The generated caller, binder, and dispatcher use the same value. Overloaded method names are prohibited so the contract name and method name remain sufficient. Changing the contract package, contract name, or method name changes the action. Changing parameter types keeps the action but changes the serialized payload contract and must be treated as a compatibility change.
 
 ## IR Box Test Workflow
 
@@ -62,7 +65,7 @@ cd wasmline-multiplatform
 ```
 
 <Callout type="warn" title="Auto-generated build artifacts">
-  The following files are **auto-generated build artifacts** and must never be edited manually: `test-gen/**`, `testData/box/*.fir.txt`, `testData/box/*.fir.ir.txt`, `testData/diagnostics/*.fir.txt`. Manual edits result in test failures on the subsequent generation pass.
+  The following files are **auto-generated build artifacts** and must never be edited manually: `test-gen/**`, `testData/box/*.fir.txt`, and `testData/box/*.fir.ir.txt`. Manual edits are overwritten or rejected by the next generation and test pass.
 </Callout>
 
 ## Related Gradle Tasks
@@ -76,8 +79,6 @@ cd wasmline-multiplatform
 # Box tests
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
-
-# Diagnostic validation tests
-./gradlew :wasmline-kotlin-plugin:test \
-  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
 ```
+
+The repository retains an `AbstractJvmDiagnosticTest` scaffold, but its generator model is disabled. There is no active `testData/diagnostics/` directory or `JvmDiagnosticsTestGenerated` runner.

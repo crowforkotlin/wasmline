@@ -17,7 +17,7 @@ import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 
 /** Downloads and verifies the pinned Component Model build tools. */
-abstract class DownloadComponentToolsTask : DefaultTask() {
+internal abstract class DownloadComponentToolsTask : DefaultTask() {
     @get:Internal
     abstract val toolCacheDirectory: DirectoryProperty
 

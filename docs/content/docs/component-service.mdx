@@ -36,12 +36,16 @@ For the Kotlin/Wasm WASI sample, the build order is:
 3. `wasm-tools component embed` embeds the WIT world.
 4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` creates the raw Component.
 5. `wasm-tools validate` and `wasm-tools component wit` verify the result.
-6. The manifest records `COMPONENT_MODEL`, `WASMLINE_SERVICE`, the fixed export path, codec, protocol version, and artifact digest.
+6. The full Wasmtime CLI compiles the raw Component into the configured `.cwasm` and `.pwasm` targets.
+7. The manifest records `COMPONENT_MODEL`, `WASMLINE_SERVICE`, the fixed export path, codec, protocol version, target compiler version, and artifact digest.
 
 The Gradle entry point is `wasmlineAssembleDebug` or
-`wasmlineAssembleRelease`. The CLI exposes the same shared plugin-core stages
+`wasmlineAssembleRelease`. The CLI exposes individual raw Component stages
 through `wit generate`, `componentize`, `component validate`, and
-`component inspect`. The runtime loader only receives the finished Component.
+`component inspect`; `compile --execution-model COMPONENT_MODEL` also runs the
+Component AOT stage. See the [Gradle Plugin reference](/en/docs/gradle-plugin)
+for the complete task graph. The native loader receives only precompiled
+Component artifacts and does not run generators or compilers while loading.
 
 Rust can target `wasm32-wasip2` and produce a Component directly. The
 `wasmline-samples/rust/sample-component-plugin` fixture pins the forked
@@ -75,13 +79,13 @@ move-only WIT error type. Its fixture applies a fail-closed generated-source
 compatibility step that switches that checked access to `operator*` after
 `has_value()`; it does not modify `wit-bindgen` source or commit generated code.
 
-Validate one finished Rust, C, or C++ fixture at a time against the native
-runtime:
+Compile one finished Rust, C, or C++ Component to `.cwasm` or `.pwasm`, then
+validate that AOT artifact against the native runtime:
 
 ```shell
 cd wasmline-multiplatform
 WASMLINE_LIVE_TESTS=1 \
-WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.component.wasm \
+WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.pwasm \
 ./gradlew :wasmline:jvmTest \
   --tests 'crow.wasmline.test.wasmtime.NativeComponentServiceIntegrationTest' \
   --rerun-tasks --console=plain

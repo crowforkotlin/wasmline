@@ -1,0 +1,71 @@
+---
+title: Gradle Plugin
+description: Build, serve, toolchain, signing, and Component pipeline tasks
+---
+
+# Gradle Plugin
+
+The `crow.wasmline` plugin registers package tasks for Kotlin Multiplatform modules that declare a `wasmWasi` target.
+
+## Build and Serve
+
+```bash
+# Local verification package
+./gradlew wasmlineAssembleDebug
+
+# Distribution package
+./gradlew wasmlineAssembleRelease
+
+# Build and serve the selected package
+./gradlew wasmlineServerDeploy
+```
+
+The package directory is `build/wasmline/output/{pluginId}-{version}/`. The distribution archive is `build/wasmline/dist/{pluginId}-{version}.zip`.
+
+For a multi-module build, add the module path, for example `./gradlew :plugin:wasmlineAssembleRelease`.
+
+## Server Configuration
+
+```kotlin
+import crow.wasmline.gradle.WasmlineBuildVariant
+
+wasmline {
+    server {
+        host = "0.0.0.0"
+        port = 8080
+        deployVariant = WasmlineBuildVariant.RELEASE
+    }
+}
+```
+
+`deployVariant` defaults to `WasmlineBuildVariant.DEBUG`. `wasmlineServerDeploy` builds the selected package and serves its files until the task is stopped.
+
+This page covers all 15 user-facing tasks defined by the plugin.
+
+## Toolchain and Signing Tasks
+
+| Task | Purpose |
+|---|---|
+| `checkWasmlineToolchain` | Check the minimal Wasmtime toolchain used by Core Wasm packaging |
+| `wasmlineDownloadWasmtime` | Download the minimal Wasmtime toolchain |
+| `wasmlineDownloadWasmtimeCompiler` | Download the full Wasmtime CLI used for Component AOT compilation |
+| `wasmlineDownloadComponentTools` | Download `wit-bindgen`, `wasm-tools`, and the WASI Preview 1 adapter |
+| `generateWasmlineManifestKeyPairEd25519` | Generate an Ed25519 manifest signing key pair |
+| `generateWasmlineManifestKeyPairEcdsaP256` | Generate an ECDSA P-256 manifest signing key pair |
+
+## Component Pipeline Tasks
+
+The four componentize and AOT tasks are registered for every `wasmWasi` target and join the assemble graph only for Component builds. `wasmlineGenerateWitBindings` is registered for Component builds without `componentInput`. `wasmlineGenerateHostWitBindings` is registered when `hostBindingsEnabled` is `true`. Direct execution is intended for inspecting one pipeline stage.
+
+| Task | Purpose |
+|---|---|
+| `wasmlineGenerateWitBindings` | Generate Kotlin guest bindings from WIT |
+| `wasmlineGenerateHostWitBindings` | Generate Kotlin host facades from WIT when host bindings are enabled |
+| `wasmlineComponentizeDebug` | Create or validate the Debug Component |
+| `wasmlineComponentizeRelease` | Create or validate the Release Component |
+| `wasmlineComponentAotDebug` | Compile the Debug Component to configured CWASM and PWASM targets |
+| `wasmlineComponentAotRelease` | Compile the Release Component to configured CWASM and PWASM targets |
+
+`wasmlineAssembleDebug` and `wasmlineAssembleRelease` invoke the required compilation, tool download, binding, componentization, AOT, manifest, signing, and packaging steps.
+
+See [Wasmtime Toolchains](/en/docs/wasmtime-download) for cache and download configuration.
