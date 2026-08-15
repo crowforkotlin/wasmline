@@ -63,19 +63,38 @@ class ComponentCompilerTest {
     }
 
     @Test
-    fun rejectsWasmtimeMinBeforeRunningIt() = withCompilerDirectory { root ->
+    fun acceptsWasmtimeMinWhenCompileSubcommandIsAvailable() = withCompilerDirectory { root ->
         val compilerFile = executable(File(root, "wasmtime-min"))
         val input = File(root, "plugin-component.wasm").apply { writeBytes(byteArrayOf(1)) }
-        val runner = RecordingComponentCompilerRunner()
-
-        val error = assertFailsWith<IllegalArgumentException> {
-            ComponentCompiler(runner).compile(
-                request(compilerFile, input, File(root, "plugin.cwasm")),
-            )
+        val output = File(root, "plugin.cwasm")
+        val runner = RecordingComponentCompilerRunner { arguments ->
+            if (arguments.firstOrNull() == "compile" && arguments.getOrNull(1) != "--help") {
+                output.writeBytes(byteArrayOf(2, 3))
+            }
         }
 
-        assertTrue(error.message.orEmpty().contains("full Wasmtime CLI"))
-        assertTrue(runner.arguments.isEmpty())
+        val result = ComponentCompiler(runner).compile(request(compilerFile, input, output))
+
+        assertEquals(output, result.outputs.single().outputFile)
+        assertEquals(listOf("--version"), runner.arguments[0])
+        assertEquals(listOf("compile", "--help"), runner.arguments[1])
+        assertEquals(3, runner.arguments.size)
+    }
+
+    @Test
+    fun rejectsWasmtimeWithoutCompileSubcommand() = withCompilerDirectory { root ->
+        val compilerFile = executable(File(root, "wasmtime-min"))
+        val input = File(root, "plugin-component.wasm").apply { writeBytes(byteArrayOf(1)) }
+        val runner = RecordingComponentCompilerRunner(
+            exitCode = { arguments -> if (arguments == listOf("compile", "--help")) 2 else 0 },
+        )
+
+        val error = assertFailsWith<IllegalStateException> {
+            ComponentCompiler(runner).compile(request(compilerFile, input, File(root, "plugin.cwasm")))
+        }
+
+        assertTrue(error.message.orEmpty().contains("does not provide the compile subcommand"))
+        assertEquals(listOf(listOf("--version"), listOf("compile", "--help")), runner.arguments)
     }
 
     @Test

@@ -33,7 +33,7 @@ internal class Download : CliktCommand(name = "download") {
 
     private val distributionName by option("--distribution")
         .default(DEFAULT_WASMTIME_DISTRIBUTION.name.lowercase())
-        .help("Wasmtime asset kind: minimal (runtime) or full (build compiler)")
+        .help("Wasmtime asset kind: minimal (default Cranelift compiler) or full (Cranelift fallback)")
 
     private val showTokenStatus by option("--show-token-status", hidden = true).flag(default = false)
 

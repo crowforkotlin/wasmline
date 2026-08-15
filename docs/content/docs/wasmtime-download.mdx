@@ -1,16 +1,20 @@
 ---
 title: Wasmtime Toolchains
-description: Configure and download the minimal runtime compiler and full Component compiler
+description: Configure the minimal Cranelift compiler with a full CLI fallback
 ---
 
 # Wasmtime Toolchains
 
-The Gradle plugin uses two Wasmtime distributions:
+The Gradle plugin uses the fork's reduced Cranelift CLI by default for both AOT pipelines:
 
-| Distribution | Purpose | Default cache |
+| Toolchain | Purpose | Default cache |
 |---|---|---|
-| Minimal Wasmtime | Core Wasm AOT packaging | `~/.wasmline/wasmtime` |
-| Full Wasmtime CLI | Component AOT compilation | `~/.wasmline/wasmtime-compiler` |
+| Cranelift minimal CLI | Core Wasm AOT packaging | `~/.wasmline/wasmtime` |
+| Cranelift minimal CLI | Component AOT compilation | `~/.wasmline/wasmtime-compiler` |
+
+The `cranelift-min` CLI includes `compile`, Component Model, and Pulley support, so it can emit both Cranelift `.cwasm` and portable Pulley `.pwasm` artifacts. Full Cranelift and Pulley CLIs also provide `compile`, but they are only fallbacks because the minimal Cranelift archive is smaller and already covers both output formats. Pulley minimal releases contain only C API assets and are never selected as build-time CLI compilers.
+
+Release variants are identified by archive names such as `*-min` and `*-pulley`. The executable inside these CLI archives is named `wasmtime`, so Wasmline verifies the executable's version and `compile` capability instead of inferring capabilities from its filename.
 
 ## Configuration
 
@@ -31,7 +35,7 @@ wasmline {
 
 `directory` can set the minimal Wasmtime cache or executable directory. If it is not set, the plugin checks `WASMTIME_ROOT` and then `~/.wasmline/wasmtime`.
 
-`compilerDirectory`, `compilerVersion`, and `compilerExecutable` configure the full Wasmtime CLI used by Component AOT compilation.
+`compilerDirectory`, `compilerVersion`, and `compilerExecutable` configure the CLI used by Component AOT compilation. Automatic downloads select `cranelift-min`; `compilerExecutable` may explicitly select any compile-capable minimal or full CLI. Wasmline verifies the exact version and the `compile` subcommand before compiling.
 
 ## Manual Tasks
 
@@ -42,7 +46,7 @@ wasmline {
 # Download the minimal Wasmtime distribution
 ./gradlew wasmlineDownloadWasmtime
 
-# Download the full Wasmtime CLI
+# Download the minimal Component AOT compiler
 ./gradlew wasmlineDownloadWasmtimeCompiler
 
 # Download wit-bindgen, wasm-tools, and the WASI adapter
@@ -50,6 +54,8 @@ wasmline {
 ```
 
 The assemble tasks invoke the required checks and downloads when `autoDownload` is enabled. See the [Gradle Plugin reference](/en/docs/gradle-plugin) for the complete task list.
+
+The standalone CLI still supports `wasmline download --distribution full` when the full Cranelift fallback is required. An existing full Pulley CLI can be selected explicitly through `compilerExecutable`.
 
 ## Diagnostics
 

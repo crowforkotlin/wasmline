@@ -42,7 +42,7 @@ internal class ComponentAotCliAdapter(
 ) {
     constructor(logger: (String) -> Unit = {}) : this(
         compilerResolver = ComponentAotCompilerResolver { directory, version ->
-            WasmtimeCompiler.findWasmtimeCompilerInDirectory(directory, version = version)
+            WasmtimeCompiler.findComponentCompilerInDirectory(directory, version = version)
         },
         pipelineRunner = ComponentAotPipelineRunner { rawComponent, componentDirectory, request ->
             ComponentAotPipeline(ComponentCompiler(logger)).compile(
@@ -56,9 +56,9 @@ internal class ComponentAotCliAdapter(
     fun compile(request: ComponentAotCliRequest): ComponentAotCliResult {
         val compiler = compilerResolver.resolve(request.wasmtimeDirectory, request.wasmtimeVersion)
             ?: error(
-                "Component AOT requires the full Wasmtime ${request.wasmtimeVersion} CLI in " +
+                "Component AOT requires a Wasmtime ${request.wasmtimeVersion} CLI in " +
                     request.wasmtimeDirectory.absolutePath +
-                    ". wasmtime-min is runtime-only; use 'wasmline download --distribution full'.",
+                    ". Download the Cranelift minimal distribution or configure another compile-capable CLI.",
             )
         val outputDirectory = request.outputDirectory.apply {
             check(exists() || mkdirs()) { "Unable to create Component AOT output directory: $absolutePath" }

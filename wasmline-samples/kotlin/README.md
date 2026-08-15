@@ -51,9 +51,9 @@ Assemble them independently:
 ./gradlew :sample-component-export-plugin:wasmlineAssembleDebug
 ```
 
-Component AOT requires the full Wasmtime CLI. The Gradle plugin downloads its
-pinned compiler automatically for Component package tasks; no shell export is
-required.
+Component AOT uses the fork's compile-capable `cranelift-min` CLI by default.
+The Gradle plugin downloads the pinned compiler automatically for Component
+package tasks; full CLIs remain explicit fallbacks and no shell export is required.
 
 ```shell
 ./gradlew :sample-component-plugin:wasmlineAssembleDebug

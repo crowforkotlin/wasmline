@@ -1,16 +1,20 @@
 ---
 title: Wasmtime 工具链
-description: 配置并下载精简运行时编译器与完整 Component 编译器
+description: 配置精简 Cranelift 编译器与完整 CLI 后备方案
 ---
 
 # Wasmtime 工具链
 
-Gradle 插件使用两种 Wasmtime 发行包：
+Gradle 插件默认在两条 AOT 流水线中使用 fork 提供的精简 Cranelift CLI：
 
-| 发行包 | 用途 | 默认缓存目录 |
+| 工具链 | 用途 | 默认缓存目录 |
 |---|---|---|
-| 精简 Wasmtime | Core Wasm AOT 打包 | `~/.wasmline/wasmtime` |
-| 完整 Wasmtime CLI | Component AOT 编译 | `~/.wasmline/wasmtime-compiler` |
+| 精简 Cranelift CLI | Core Wasm AOT 打包 | `~/.wasmline/wasmtime` |
+| 精简 Cranelift CLI | Component AOT 编译 | `~/.wasmline/wasmtime-compiler` |
+
+`cranelift-min` CLI 包含 `compile`、Component Model 和 Pulley 支持，因此既能生成 Cranelift `.cwasm`，也能生成可移植的 Pulley `.pwasm`。完整 Cranelift 和 Pulley CLI 同样提供 `compile`，但它们仅作为后备方案，因为精简 Cranelift 压缩包体积更小，并且已经覆盖两种输出格式。Pulley minimal release 只包含 C API 产物，绝不会被选为构建期 CLI 编译器。
+
+release 变体通过 `*-min`、`*-pulley` 等压缩包名称区分。这些 CLI 压缩包内的可执行文件都名为 `wasmtime`，因此 Wasmline 会校验可执行文件的版本和 `compile` 能力，而不会根据文件名推断能力。
 
 ## 配置
 
@@ -31,7 +35,7 @@ wasmline {
 
 `directory` 可用于指定精简 Wasmtime 的缓存目录或可执行文件目录。未设置时，插件依次检查 `WASMTIME_ROOT` 和 `~/.wasmline/wasmtime`。
 
-`compilerDirectory`、`compilerVersion` 和 `compilerExecutable` 用于配置 Component AOT 编译使用的完整 Wasmtime CLI。
+`compilerDirectory`、`compilerVersion` 和 `compilerExecutable` 用于配置 Component AOT 编译使用的 CLI。自动下载选择 `cranelift-min`；`compilerExecutable` 可以显式指定任意具备编译能力的 minimal 或完整 CLI。Wasmline 会在编译前校验精确版本和 `compile` 子命令。
 
 ## 手动任务
 
@@ -42,7 +46,7 @@ wasmline {
 # 下载精简 Wasmtime 发行包
 ./gradlew wasmlineDownloadWasmtime
 
-# 下载完整 Wasmtime CLI
+# 下载精简 Component AOT 编译器
 ./gradlew wasmlineDownloadWasmtimeCompiler
 
 # 下载 wit-bindgen、wasm-tools 和 WASI adapter
@@ -50,6 +54,8 @@ wasmline {
 ```
 
 启用 `autoDownload` 时，assemble 任务会自动执行所需的检查与下载。完整任务清单参见 [Gradle 插件参考](/zh/docs/gradle-plugin)。
+
+确实需要完整 Cranelift 后备 CLI 时，独立 CLI 仍支持 `wasmline download --distribution full`。已有的完整 Pulley CLI 可以通过 `compilerExecutable` 显式指定。
 
 ## 诊断
 

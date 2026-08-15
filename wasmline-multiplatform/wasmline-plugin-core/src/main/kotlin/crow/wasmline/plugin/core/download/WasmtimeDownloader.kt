@@ -22,7 +22,7 @@ import java.nio.file.StandardCopyOption
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
 
-/** Selects either the runtime-only asset or the full build-time Wasmtime CLI. */
+/** Selects either the reduced Cranelift CLI or the full Cranelift fallback CLI. */
 
 @InternalWasmlineToolingApi
 enum class WasmtimeDistribution {

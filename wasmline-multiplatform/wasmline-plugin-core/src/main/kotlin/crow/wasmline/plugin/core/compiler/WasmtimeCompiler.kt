@@ -87,7 +87,48 @@ class WasmtimeCompiler {
                 ?.firstOrNull { matchesVersion(it, version) }
         }
 
-        /** Finds only the full build-time Wasmtime CLI, never wasmtime-min. */
+        /** Finds a minimal cache alias or the reduced Cranelift release used by download tasks. */
+        fun findWasmtimeMinimalInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
+            findDirectWasmtimeMinimalExecutable(baseDir)?.let { executable ->
+                if (matchesVersion(executable, version)) return executable
+            }
+            if (!baseDir.isDirectory) return null
+
+            return baseDir.listFiles()
+                ?.asSequence()
+                ?.filter(File::isDirectory)
+                ?.filter { platform == null || it.name.contains(platform) }
+                ?.filter(::isCraneliftMinimalReleaseDirectory)
+                ?.sortedByDescending(File::getName)
+                ?.mapNotNull(::findWasmtimeExecutable)
+                ?.firstOrNull { matchesVersion(it, version) }
+        }
+
+        /**
+         * Finds a Component AOT compiler candidate from an installed executable or release directory.
+         * Cranelift minimal releases are preferred over full Cranelift and Pulley releases.
+         * ComponentCompiler verifies the compile subcommand before using the executable.
+         */
+        fun findComponentCompilerInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
+            findDirectWasmtimeExecutable(baseDir)?.let { executable ->
+                if (matchesVersion(executable, version)) return executable
+            }
+            if (!baseDir.isDirectory) return null
+
+            return baseDir.listFiles()
+                ?.asSequence()
+                ?.filter(File::isDirectory)
+                ?.filter { platform == null || it.name.contains(platform) }
+                ?.filterNot { it.name.contains("c-api", ignoreCase = true) }
+                ?.sortedWith(
+                    compareBy<File>(::componentCompilerDirectoryPriority)
+                        .thenByDescending(File::getName),
+                )
+                ?.mapNotNull(::findWasmtimeExecutable)
+                ?.firstOrNull { matchesVersion(it, version) }
+        }
+
+        /** Finds a direct Wasmtime override or a full Cranelift release candidate. */
         fun findWasmtimeCompilerInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
             findDirectWasmtimeCompilerExecutable(baseDir)?.let { executable ->
                 if (matchesVersion(executable, version)) return executable
@@ -98,6 +139,7 @@ class WasmtimeCompiler {
                 ?.asSequence()
                 ?.filter(File::isDirectory)
                 ?.filter { platform == null || it.name.contains(platform) }
+                ?.filter(::isFullCraneliftReleaseDirectory)
                 ?.sortedByDescending(File::getName)
                 ?.mapNotNull(::findWasmtimeCompilerExecutable)
                 ?.firstOrNull { matchesVersion(it, version) }
@@ -114,7 +156,7 @@ class WasmtimeCompiler {
                     ?.firstOrNull()
         }
 
-        /** Finds a full Wasmtime CLI below the given directory. */
+        /** Finds the executable layout used by a preselected full Wasmtime CLI archive. */
         fun findWasmtimeCompilerExecutable(directory: File): File? {
             if (!directory.exists()) return null
             return findDirectWasmtimeCompilerExecutable(directory)
@@ -145,6 +187,33 @@ class WasmtimeCompiler {
             return directory.listFiles()
                 ?.firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
                 ?.also { executable -> if (!isWindows) executable.setExecutable(true) }
+        }
+
+        private fun findDirectWasmtimeMinimalExecutable(directory: File): File? {
+            val isWindows = System.getProperty("os.name").lowercase().contains("win")
+            val targetName = if (isWindows) "wasmtime-min.exe" else "wasmtime-min"
+            return directory.listFiles()
+                ?.firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
+                ?.also { executable -> if (!isWindows) executable.setExecutable(true) }
+        }
+
+        private fun componentCompilerDirectoryPriority(directory: File): Int {
+            val name = directory.name.lowercase()
+            return when {
+                "-pulley" in name -> 2
+                "-min" in name -> 0
+                else -> 1
+            }
+        }
+
+        private fun isFullCraneliftReleaseDirectory(directory: File): Boolean {
+            val name = directory.name.lowercase()
+            return "-min" !in name && "-pulley" !in name && "c-api" !in name
+        }
+
+        private fun isCraneliftMinimalReleaseDirectory(directory: File): Boolean {
+            val name = directory.name.lowercase()
+            return "-min" in name && "-pulley" !in name && "c-api" !in name
         }
 
         private fun matchesVersion(executable: File, requestedVersion: String?): Boolean {
