@@ -1,5 +1,6 @@
 @file:Suppress("OPT_IN_USAGE")
 
+import crow.wasmline.gradle.WasmtimeTarget
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -38,21 +39,9 @@ kotlin {
 
 val testPluginId = "crow.wasmline.test.plugin"
 val testPluginVersion = "1.0.0"
-val testPluginCompileTarget = when {
-    System.getProperty("os.name").lowercase().contains("mac") &&
-        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-macos"
-
-    System.getProperty("os.name").lowercase().contains("mac") -> "x86_64-macos"
-
-    System.getProperty("os.name").lowercase().contains("linux") &&
-        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-linux"
-
-    System.getProperty("os.name").lowercase().contains("linux") -> "x86_64-linux"
-
-    else -> error("Unsupported Wasmtime test host: ${System.getProperty("os.name")} ${System.getProperty("os.arch")}")
-}
+val testPluginCompileTarget = WasmtimeTarget.currentHost
 val testPluginArtifactDirectory = layout.buildDirectory.dir("wasmline/output/$testPluginId-$testPluginVersion")
-val testPluginArtifact = testPluginArtifactDirectory.map { it.file("plugin-$testPluginCompileTarget.cwasm") }
+val testPluginArtifact = testPluginArtifactDirectory.map { it.file("plugin-${testPluginCompileTarget.targetName}.cwasm") }
 
 tasks.named<Test>("jvmTest") {
     dependsOn("wasmlineAssembleDebug")
@@ -62,7 +51,7 @@ tasks.named<Test>("jvmTest") {
 // WASMTIME directory uses a path relative to the multiplatform root.
 wasmline {
     val wasmtimeVersion = "47.0.2"
-    val wasmtimePlatformDir = "wasmtime-v$wasmtimeVersion-$testPluginCompileTarget-min"
+    val wasmtimePlatformDir = "wasmtime-v$wasmtimeVersion-${testPluginCompileTarget.targetName}-min"
     manifest {
         pluginId = testPluginId
         version = testPluginVersion

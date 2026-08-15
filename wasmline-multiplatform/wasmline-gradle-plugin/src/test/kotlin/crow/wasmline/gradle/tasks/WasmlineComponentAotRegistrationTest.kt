@@ -2,6 +2,7 @@ package crow.wasmline.gradle.tasks
 
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlinePlugin
+import crow.wasmline.gradle.WasmtimeTarget
 import crow.wasmline.gradle.extensions.WasmlineExtension
 import crow.wasmline.plugin.core.download.WasmtimeDistribution
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
@@ -28,6 +29,7 @@ class WasmlineComponentAotRegistrationTest {
         }
         extension.manifest.pluginId.set("crow.test.plugin")
         extension.wasmtime.compilerExecutable.set(explicitCompiler)
+        extension.wasmtime.targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.AARCH64_LINUX)
         project.extensions.getByType(KotlinMultiplatformExtension::class.java).wasmWasi()
 
         val compilerDownload = project.tasks.named(
@@ -45,6 +47,7 @@ class WasmlineComponentAotRegistrationTest {
         assertEquals(WasmtimeDistribution.MINIMAL, minimalDownload.distribution.get())
         assertEquals(ToolchainCatalog.WASMTIME_VERSION, debugAot.wasmtimeVersion.get())
         assertEquals(explicitCompiler.canonicalFile, debugAot.wasmtimeCompilerExecutable.get().asFile.canonicalFile)
+        assertEquals(listOf("pulley64", "aarch64-linux"), debugAot.targets.get())
         assertTrue(debugAot.outputDirectory.get().asFile.invariantSeparatorsPath.endsWith("wasmline/component-aot/debug"))
         assertTrue(releaseAot.outputDirectory.get().asFile.invariantSeparatorsPath.endsWith("wasmline/component-aot/release"))
         assertTrue(debugAot.taskDependencies.getDependencies(debugAot).any { it.name == "wasmlineComponentizeDebug" })
@@ -95,6 +98,7 @@ class WasmlineComponentAotRegistrationTest {
         project.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
         project.pluginManager.apply(WasmlinePlugin::class.java)
         val extension = project.extensions.getByType(WasmlineExtension::class.java)
+        extension.wasmtime.targets = listOf(WasmtimeTarget.PULLEY_32, WasmtimeTarget.X86_64_WINDOWS)
         project.extensions.getByType(KotlinMultiplatformExtension::class.java).wasmWasi()
         project.tasks.register("compileDevelopmentLibraryKotlinWasmWasiOptimize")
         project.tasks.register("compileProductionLibraryKotlinWasmWasiOptimize")
@@ -104,6 +108,7 @@ class WasmlineComponentAotRegistrationTest {
         val dependencyNames = assemble.taskDependencies.getDependencies(assemble).map { it.name }
 
         assertEquals(WasmlineExecutionModel.CORE_WASM, assemble.executionModel.get())
+        assertEquals(listOf("pulley32", "x86_64-windows"), assemble.compileTargets.get())
         assertTrue("compileDevelopmentLibraryKotlinWasmWasiOptimize" in dependencyNames)
         assertTrue(dependencyNames.none { it.startsWith("wasmlineComponent") })
         assertTrue(assemble.wasmCompileOutputDir.isPresent)
