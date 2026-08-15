@@ -1,6 +1,7 @@
+import crow.wasmline.gradle.WasmtimeTarget
+import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
-import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
@@ -28,7 +29,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(projects.sampleCommon)
     testImplementation(libs.kotlin.test)
-
 }
 
 val componentServiceAotOutput = project(":sample-component-plugin").layout.buildDirectory.dir(
@@ -48,17 +48,6 @@ tasks.test {
     )
 }
 
-val defaultCwasmTarget = when {
-    System.getProperty("os.name").lowercase().contains("mac") &&
-        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-macos"
-    System.getProperty("os.name").lowercase().contains("mac") -> "x86_64-macos"
-    System.getProperty("os.name").lowercase().contains("linux") &&
-        System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64") -> "aarch64-linux"
-    System.getProperty("os.name").lowercase().contains("linux") -> "x86_64-linux"
-    System.getProperty("os.name").lowercase().contains("windows") -> "x86_64-windows"
-    else -> error("Unsupported Wasmtime host: ${System.getProperty("os.name")} ${System.getProperty("os.arch")}")
-}
-
 val requestedArtifactFormat = providers.gradleProperty("wasmline.artifact.format")
     .orElse(providers.environmentVariable("WASMLINE_ARTIFACT_FORMAT"))
     .map { it.lowercase() }
@@ -70,7 +59,7 @@ require(requestedArtifactFormat in setOf("pwasm32", "pwasm64", "cwasm")) {
 }
 
 val requestedCwasmTarget = providers.gradleProperty("wasmline.compile.target")
-    .orElse(defaultCwasmTarget)
+    .orElse(WasmtimeTarget.currentHost.targetName)
     .get()
 val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
     "wasmline/output/crow.wasmline.demo-1.0.0",

@@ -3,6 +3,7 @@
 package crow.wasmline
 
 import crow.wasmline.gradle.BuildConfig
+import crow.wasmline.gradle.WasmtimeTarget
 import crow.wasmline.gradle.extensions.WasmlineExtension
 import crow.wasmline.gradle.tasks.DownloadComponentToolsTask
 import crow.wasmline.gradle.tasks.DownloadWasmtimeTask
@@ -629,7 +630,9 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             ),
         )
         task.wasmtimeVersion.set(ext.wasmtime.compilerVersion)
-        task.targets.set(ext.wasmtime.targets)
+        task.targets.set(
+            ext.wasmtime.targetsProvider.map { targets -> targets.map(WasmtimeTarget::targetName) },
+        )
         task.productName.set(ext.manifest.pluginId.map { id -> id.substringAfterLast('.') })
         task.outputDirectory.set(project.layout.buildDirectory.dir("wasmline/component-aot/$variantName"))
         task.dependsOn(componentTask)
@@ -718,7 +721,9 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
         // Wasmtime configuration
         task.wasmtimeDirectory.set(ext.wasmtime.directory)
-        task.compileTargets.set(ext.wasmtime.targets)
+        task.compileTargets.set(
+            ext.wasmtime.targetsProvider.map { targets -> targets.map(WasmtimeTarget::targetName) },
+        )
         task.wasmtimeVersion.set(ext.wasmtime.version)
 
         // Output directory: build/wasmline/output/

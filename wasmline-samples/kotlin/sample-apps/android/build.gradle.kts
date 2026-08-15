@@ -1,11 +1,11 @@
 @file:Suppress("UnstableApiUsage")
 
-import org.gradle.api.tasks.Exec
+import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputDirectory
@@ -14,9 +14,7 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import javax.inject.Inject
 
-abstract class WasmlineAndroidAssetSyncTask @Inject constructor(
-    private val fileSystemOperations: FileSystemOperations,
-) : DefaultTask() {
+abstract class WasmlineAndroidAssetSyncTask @Inject constructor(private val fileSystemOperations: FileSystemOperations) : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val inputFile: RegularFileProperty
@@ -61,7 +59,7 @@ require(requestedArtifactFormat in setOf("pwasm32", "pwasm64", "cwasm")) {
 }
 
 val requestedCwasmTarget = providers.gradleProperty("wasmline.compile.target")
-    .orElse("aarch64-linux-android")
+    .orElse("aarch64-android")
     .get()
 
 val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
@@ -121,9 +119,7 @@ androidApplication {
     config(
         versionCode = 1,
         versionName = "1.0.0-release",
-    ) {
-
-    }
+    ) {}
 }
 
 dependencies {

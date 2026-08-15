@@ -2,12 +2,14 @@
 
 package crow.wasmline.gradle.extensions
 
+import crow.wasmline.gradle.WasmtimeTarget
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import java.io.File
 import javax.inject.Inject
 
@@ -25,7 +27,11 @@ import javax.inject.Inject
  *         //   - A specific versioned directory containing the wasmtime executable
  *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
  *
- *         targets = listOf("pulley64", "aarch64-android", "x86_64-linux")
+ *         targets = listOf(
+ *             WasmtimeTarget.PULLEY_64,
+ *             WasmtimeTarget.AARCH64_ANDROID,
+ *             WasmtimeTarget.X86_64_LINUX,
+ *         )
  *
  *         // Optional: enable automatic download if wasmtime is not found
  *         autoDownload = true
@@ -56,16 +62,34 @@ abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
     val directory: DirectoryProperty = objects.directoryProperty()
 
     /**
-     * Target architectures for AOT compilation. When empty, all common
-     * targets defined by `wasmline-plugin-core` are used.
+     * Target architectures for AOT compilation.
      *
-     * Supported values include: "pulley64", "x86_64-linux", "aarch64-linux",
-     * "aarch64-android", "aarch64-macos", "x86_64-windows".
-     * iOS always uses the portable `pulley64` PWASM target because its native
-     * runtime is interpreter-only; direct iOS CWASM targets are rejected.
+     * By default, the plugin compiles every target in [WasmtimeTarget.ALL]. An
+     * explicit assignment replaces that convention, similar to an NDK ABI
+     * filter.
+     *
+     * ```kotlin
+     * targets = listOf(
+     *     WasmtimeTarget.PULLEY_64,
+     *     WasmtimeTarget.AARCH64_ANDROID,
+     * )
+     * ```
+     *
+     * Use [WasmtimeTarget.custom] for an additional Wasmtime target triple.
+     * iOS always uses [WasmtimeTarget.PULLEY_64] because its native runtime is
+     * interpreter-only; direct iOS CWASM targets are rejected downstream.
      */
-    val targets: ListProperty<String> = objects.listProperty(String::class.java)
-        .convention(emptyList())
+    private val configuredTargets: ListProperty<WasmtimeTarget> = objects.listProperty(WasmtimeTarget::class.java)
+        .convention(WasmtimeTarget.ALL)
+
+    internal val targetsProvider: Provider<List<WasmtimeTarget>>
+        get() = configuredTargets
+
+    var targets: List<WasmtimeTarget>
+        get() = configuredTargets.get()
+        set(value) {
+            configuredTargets.set(value)
+        }
 
     /**
      * Enable automatic wasmtime download when the toolchain is not found.

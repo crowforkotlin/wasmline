@@ -59,6 +59,31 @@ required.
 ./gradlew :sample-component-plugin:wasmlineAssembleDebug
 ```
 
+### Type-safe target selection
+
+When `targets` is omitted, the plugin compiles every supported Pulley and
+Cranelift target. An explicit assignment replaces that complete target set,
+similar to an NDK ABI filter:
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    wasmtime {
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.AARCH64_ANDROID,
+        )
+    }
+}
+```
+
+`targets` is a DSL property configured only by assignment; function-style
+target selectors are not part of the DSL.
+
+Use `WasmtimeTarget.custom("target-triple")` only for a Wasmtime target that
+does not have a predefined value.
+
 ## Other targets
 
 Desktop defaults to the Pulley engine. Its `run` task assembles and bundles all
@@ -100,14 +125,14 @@ Select a device with `-Pandroid.device=SERIAL`:
   -Pandroid.device=emulator-5554
 ```
 
-Android defaults to Pulley + `pwasm64`. For Android CWASM, select Cranelift
-and compile the plugin for the Android target:
+Android defaults to Pulley + `pwasm64`. The producer package already contains
+all supported targets, so Android CWASM only needs the Cranelift engine and
+CWASM artifact selection:
 
 ```shell
 ./gradlew :sample-apps:android:wasmlineRunDebug \
   -Pwasmline.engine=cranelift \
-  -Pwasmline.artifact.format=cwasm \
-  -Pwasmline.compile.target=aarch64-linux-android
+  -Pwasmline.artifact.format=cwasm
 ```
 
 Web tasks assemble and sync the raw `.wasm` into the browser resources before

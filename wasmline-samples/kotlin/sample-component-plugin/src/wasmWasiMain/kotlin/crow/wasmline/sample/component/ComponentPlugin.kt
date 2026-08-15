@@ -12,7 +12,7 @@ fun main() {
     wasmline.bind(
         object : ComponentPluginService {
             override fun echo(request: ComponentEchoRequest): ComponentEchoResponse =
-                ComponentEchoResponse("plugin:${request.value}")
+                ComponentEchoResponse("sample-component-plugin:${request.value}")
 
             override fun callback(payload: ByteArray): ByteArray =
                 wasmline.link<ComponentHostService>().callback(payload)
