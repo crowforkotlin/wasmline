@@ -21,6 +21,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
+private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
+
 /**
  * Integration tests driving a real Wasmtime engine through Wasmline with native JNI bindings.
  *
@@ -74,14 +76,14 @@ class NativeWasmtimeIntegrationTest {
                 artifactFormat = WasmlineArtifactFormat.CWASM,
                 targetCpu = capabilities.targetCpu,
                 targetOs = capabilities.targetOs,
-                targetCompilerVersion = "wasmtime-46.0.0",
+                targetCompilerVersion = "wasmtime-$INCOMPATIBLE_WASMTIME_VERSION",
                 is64Bit = capabilities.is64Bit,
             ),
             config = WasmlineConfig(),
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("requires Wasmtime 46.0.0"))
+        assertTrue(failure.cause.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
     }
 
     private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): Boolean {

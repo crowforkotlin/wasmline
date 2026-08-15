@@ -158,8 +158,9 @@ cd ../wasmline-samples/kotlin
 文档和重复配置中的版本号统一由 `scripts/versions.json` 管理，并通过脚本同步：
 
 ```bash
-python3 scripts/sync_version.py --check
+python3 scripts/sync_version.py
 python3 scripts/sync_version.py --set wasmtime_version=<new-version>
+python3 scripts/sync_version.py --check
 ```
 
-现有自动化仍可使用复数入口 `sync_versions.py`。
+手动修改 `versions.json` 后执行无参数命令。`--set` 是另一种入口，会先更新 manifest 再执行同步。

@@ -28,7 +28,7 @@ treated as opaque bytes:
 ## Build
 
 The generated API uses `std::expected`, so use WASI SDK 33 (the verified C++23
-baseline), `wit-bindgen 0.57.1`, and `wasm-tools 1.255.0`:
+baseline), `wit-bindgen 0.57.1`, and `wasm-tools 1.256.0`:
 
 ```shell
 export WASI_SDK_PATH=/path/to/wasi-sdk-33.0

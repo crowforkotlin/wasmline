@@ -5,6 +5,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
+private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
+
 /** Verifies local artifact validation before a platform backend is invoked. */
 class WasmlineLocalArtifactBridgeTest {
 
@@ -44,7 +46,7 @@ class WasmlineLocalArtifactBridgeTest {
                 artifactFormat = WasmlineArtifactFormat.CWASM,
                 targetCpu = "x86_64",
                 targetOs = "linux",
-                targetCompilerVersion = "wasmtime-46.0.0",
+                targetCompilerVersion = "wasmtime-$INCOMPATIBLE_WASMTIME_VERSION",
                 is64Bit = true,
             ),
             config = WasmlineConfig(),
@@ -52,7 +54,7 @@ class WasmlineLocalArtifactBridgeTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("requires Wasmtime 46.0.0"))
+        assertTrue(failure.cause.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
         assertEquals(0, platform.resolveCalls)
         assertEquals(0, platform.loadCalls)
     }

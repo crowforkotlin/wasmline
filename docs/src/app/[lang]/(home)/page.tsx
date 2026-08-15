@@ -1,4 +1,4 @@
-// src/app/[lang]/(home)/page.tsx
+import { chineseSiteContent } from '@/lib/site-content';
 import { i18n } from '@/lib/i18n';
 import Link from 'next/link';
 import {
@@ -17,84 +17,79 @@ export function generateStaticParams() {
 
 const GITHUB_URL = 'https://github.com/crowforkotlin/wasmline';
 
-const content = {
+type HomeContent = {
+  badge: string;
+  subtitle: string;
+  description: string;
+  getStarted: string;
+  features: Record<'bridge' | 'platforms' | 'sandbox', string>;
+  cards: Record<
+    'docs' | 'runtime' | 'issues',
+    { title: string; description: string }
+  >;
+  footer: string;
+};
+
+const homeContent = {
   en: {
     badge: 'Kotlin Multiplatform · WASI Plugin Framework',
-    subtitle: 'Load and run WebAssembly plugins in Android, iOS, Desktop, and Web apps',
+    subtitle:
+      'Load and run WebAssembly plugins in Android, iOS, Desktop, and Web apps',
     description:
       'All bridge code is generated at compile time by a Kotlin IR compiler plugin — no reflection, no annotation processing. Native targets are powered by wasmtime; Web targets run inside the browser sandbox.',
     getStarted: 'Get Started',
-    features: [
-      { icon: 'zap', label: 'Compile-time bridge synthesis' },
-      { icon: 'layers', label: 'Android · iOS · Desktop · Web' },
-      { icon: 'shield', label: 'Sandboxed by wasmtime & the browser' },
-    ],
-    cards: [
-      {
-        icon: 'docs',
+    features: {
+      bridge: 'Compile-time bridge synthesis',
+      platforms: 'Android · iOS · Desktop · Web',
+      sandbox: 'Sandboxed by wasmtime and the browser',
+    },
+    cards: {
+      docs: {
         title: 'Documentation',
-        description: 'Installation, usage guides, CLI reference, and architecture details.',
-        href: '/docs',
-        internal: true,
+        description:
+          'Installation, usage guides, CLI reference, and architecture details.',
       },
-      {
-        icon: 'zap',
+      runtime: {
         title: 'Runtime',
-        description: 'Native targets are powered by the wasmtime WebAssembly runtime.',
-        href: 'https://wasmtime.dev',
+        description:
+          'Native targets are powered by the wasmtime WebAssembly runtime.',
       },
-      {
-        icon: 'bug',
+      issues: {
         title: 'Report Issues',
         description: 'Found a bug or have a feature request? Let us know.',
-        href: `${GITHUB_URL}/issues`,
       },
-    ],
+    },
     footer: 'Licensed under Apache-2.0',
   },
-  zh: {
-    badge: 'Kotlin Multiplatform · WASI 插件框架',
-    subtitle: '在 Android、iOS、Desktop 与 Web 应用中加载并运行 WebAssembly 插件',
-    description:
-      '全部桥接代码由 Kotlin IR 编译器插件在编译期生成——无反射、无注解处理；原生端由 wasmtime 驱动，Web 端运行于浏览器沙箱。',
-    getStarted: '快速开始',
-    features: [
-      { icon: 'zap', label: '编译期桥接生成' },
-      { icon: 'layers', label: 'Android · iOS · Desktop · Web' },
-      { icon: 'shield', label: 'wasmtime与浏览器沙箱隔离' },
-    ],
-    cards: [
-      {
-        icon: 'docs',
-        title: '文档',
-        description: '安装、使用指南、CLI 参考与架构细节。',
-        href: '/docs',
-        internal: true,
-      },
-      {
-        icon: 'zap',
-        title: '运行时',
-        description: '原生目标由 wasmtime WebAssembly 运行时驱动。',
-        href: 'https://wasmtime.dev',
-      },
-      {
-        icon: 'bug',
-        title: '问题反馈',
-        description: '发现了 Bug 或有功能建议？告诉我们。',
-        href: `${GITHUB_URL}/issues`,
-      },
-    ],
-    footer: '基于 Apache-2.0 许可证发布',
-  },
-} as const;
+  zh: chineseSiteContent.home,
+} as const satisfies Record<'en' | 'zh', HomeContent>;
 
-const iconMap = {
-  zap: Zap,
-  layers: Layers,
-  shield: ShieldCheck,
-  docs: BookOpen,
-  bug: Bug,
-};
+const homeFeatures = [
+  { key: 'bridge', icon: Zap },
+  { key: 'platforms', icon: Layers },
+  { key: 'sandbox', icon: ShieldCheck },
+] as const;
+
+const homeCards = [
+  {
+    key: 'docs',
+    icon: BookOpen,
+    href: '/docs',
+    internal: true,
+  },
+  {
+    key: 'runtime',
+    icon: Zap,
+    href: 'https://wasmtime.dev',
+    internal: false,
+  },
+  {
+    key: 'issues',
+    icon: Bug,
+    href: `${GITHUB_URL}/issues`,
+    internal: false,
+  },
+] as const;
 
 export default async function HomePage({
   params,
@@ -102,21 +97,19 @@ export default async function HomePage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = lang === 'zh' ? content.zh : content.en;
+  const content = lang === 'zh' ? homeContent.zh : homeContent.en;
 
   return (
     <main className="relative flex flex-1 flex-col overflow-hidden">
-      {/* 背景：紫色光晕 + 网格 */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute left-1/2 top-[-120px] h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-violet-600/25 blur-[120px] dark:bg-violet-500/20" />
         <div className="absolute inset-0 [background-image:linear-gradient(to_right,rgb(128_128_128/0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgb(128_128_128/0.06)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)]" />
       </div>
 
-      {/* Hero */}
       <section className="flex flex-col items-center px-6 pb-16 pt-24 text-center sm:pt-32">
         <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs font-medium text-violet-600 dark:text-violet-300">
           <Zap className="size-3.5" />
-          {t.badge}
+          {content.badge}
         </span>
 
         <h1 className="bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-tight text-transparent sm:text-7xl dark:from-violet-300 dark:via-purple-400 dark:to-indigo-400">
@@ -124,11 +117,11 @@ export default async function HomePage({
         </h1>
 
         <p className="mt-4 text-xl font-medium text-fd-foreground sm:text-2xl">
-          {t.subtitle}
+          {content.subtitle}
         </p>
 
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground sm:text-base">
-          {t.description}
+          {content.description}
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
@@ -136,7 +129,7 @@ export default async function HomePage({
             href={`/${lang}/docs`}
             className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-500"
           >
-            {t.getStarted}
+            {content.getStarted}
             <ArrowRight className="size-4" />
           </Link>
           <a
@@ -151,27 +144,28 @@ export default async function HomePage({
         </div>
 
         <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-          {t.features.map((feature) => {
-            const Icon = iconMap[feature.icon];
+          {homeFeatures.map((feature) => {
+            const Icon = feature.icon;
+            const label = content.features[feature.key];
+
             return (
               <span
-                key={feature.label}
+                key={label}
                 className="inline-flex items-center gap-2 text-sm text-fd-muted-foreground"
               >
                 <Icon className="size-4 text-violet-500" />
-                {feature.label}
+                {label}
               </span>
             );
           })}
         </div>
       </section>
 
-      {/* 链接卡片 */}
       <section className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 px-6 pb-20 sm:grid-cols-2 lg:grid-cols-3">
-        {t.cards.map((card) => {
-          const Icon = iconMap[card.icon];
-          const isInternal = 'internal' in card && card.internal;
-          const href = isInternal ? `/${lang}${card.href}` : card.href;
+        {homeCards.map((card) => {
+          const Icon = card.icon;
+          const copy = content.cards[card.key];
+          const href = card.internal ? `/${lang}${card.href}` : card.href;
           const className =
             'group flex flex-col gap-3 rounded-xl border border-fd-border bg-fd-card p-6 transition hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-600/10';
           const inner = (
@@ -180,21 +174,22 @@ export default async function HomePage({
                 <Icon className="size-5" />
               </span>
               <span className="flex items-center gap-1.5 font-semibold text-fd-foreground">
-                {card.title}
+                {copy.title}
                 <ArrowRight className="size-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
               </span>
               <span className="text-sm leading-relaxed text-fd-muted-foreground">
-                {card.description}
+                {copy.description}
               </span>
             </>
           );
-          return isInternal ? (
-            <Link key={card.title} href={href} className={className}>
+
+          return card.internal ? (
+            <Link key={card.key} href={href} className={className}>
               {inner}
             </Link>
           ) : (
             <a
-              key={card.title}
+              key={card.key}
               href={href}
               target="_blank"
               rel="noreferrer"
@@ -206,9 +201,8 @@ export default async function HomePage({
         })}
       </section>
 
-      {/* 页脚 */}
       <footer className="border-t border-fd-border px-6 py-6 text-center text-xs text-fd-muted-foreground">
-        {t.footer}
+        {content.footer}
       </footer>
     </main>
   );

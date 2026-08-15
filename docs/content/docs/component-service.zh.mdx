@@ -71,7 +71,7 @@ Wasmtime、`wit-bindgen` 或 canonical WIT 源码。
 
 生成源码和 Component type object 都只属于 build 输出。C 与 C++ fixture 会在
 CMake configure 阶段严格检查 `wit-bindgen 0.57.1` 和
-`wasm-tools 1.255.0`，完整的 WASI SDK 命令见各自 README。
+`wasm-tools 1.256.0`，完整的 WASI SDK 命令见各自 README。
 C++ 0.57.1 generator 会对 move-only WIT error 生成一次
 `std::expected::value()` 调用。fixture 使用 fail-closed 的生成源码兼容步骤，在
 `has_value()` 之后将它切换为 `operator*`；该流程不修改 `wit-bindgen` 源码，也不

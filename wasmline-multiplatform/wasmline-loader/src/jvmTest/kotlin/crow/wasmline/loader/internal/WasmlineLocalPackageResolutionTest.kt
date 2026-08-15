@@ -449,7 +449,7 @@ class WasmlineLocalPackageResolutionTest {
             backend = WasmlineNativeBackend.CRANELIFT,
         )
 
-        listOf(null, "47.0.2", "wasmtime-46.0.0").forEach { compilerVersion ->
+        listOf(null, TEST_WASMTIME_VERSION, INCOMPATIBLE_COMPILER_VERSION).forEach { compilerVersion ->
             assertNull(
                 WasmlineLocalPackageResolution.selectArtifact(
                     listOf(matching.copy(targetCompilerVersion = compilerVersion)),
@@ -482,7 +482,7 @@ class WasmlineLocalPackageResolutionTest {
             backend = WasmlineNativeBackend.PULLEY,
         )
 
-        listOf(null, "47.0.2", "wasmtime-46.0.0").forEach { compilerVersion ->
+        listOf(null, TEST_WASMTIME_VERSION, INCOMPATIBLE_COMPILER_VERSION).forEach { compilerVersion ->
             assertNull(
                 WasmlineLocalPackageResolution.selectArtifact(
                     listOf(matching.copy(targetCompilerVersion = compilerVersion)),
@@ -490,7 +490,7 @@ class WasmlineLocalPackageResolutionTest {
                 ),
             )
         }
-        listOf(null, "47.0", "46.0.0").forEach { runtimeVersion ->
+        listOf(null, "47.0", INCOMPATIBLE_WASMTIME_VERSION).forEach { runtimeVersion ->
             assertNull(
                 WasmlineLocalPackageResolution.selectArtifact(
                     listOf(matching),
@@ -505,7 +505,7 @@ class WasmlineLocalPackageResolutionTest {
     fun `incompatible version candidate is skipped before winner selection`() {
         val incompatible = cwasmArtifact().copy(
             url = "plugin-old.cwasm",
-            targetCompilerVersion = "wasmtime-46.0.0",
+            targetCompilerVersion = INCOMPATIBLE_COMPILER_VERSION,
         )
         val compatible = cwasmArtifact()
 
@@ -800,5 +800,7 @@ class WasmlineLocalPackageResolutionTest {
         const val COMPONENT_PRIVATE_KEY_ENV = "WASMLINE_TEST_COMPONENT_PRIVATE_KEY"
         const val TEST_WASMTIME_VERSION = "47.0.2"
         const val TEST_COMPILER_VERSION = "wasmtime-$TEST_WASMTIME_VERSION"
+        const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
+        const val INCOMPATIBLE_COMPILER_VERSION = "wasmtime-$INCOMPATIBLE_WASMTIME_VERSION"
     }
 }

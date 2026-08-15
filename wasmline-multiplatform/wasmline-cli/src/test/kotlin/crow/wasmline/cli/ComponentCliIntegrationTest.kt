@@ -10,6 +10,7 @@ import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.component.ComponentAotBuildRecords
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
+import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
@@ -129,7 +130,11 @@ class ComponentCliIntegrationTest {
             )
             assertEquals(1, mismatch.exitCode, mismatch.output)
             assertTrue(mismatch.output.contains("version mismatch"))
-            assertTrue(mismatch.output.contains("expected 0.0.0, actual 1.255.0"))
+            assertTrue(
+                mismatch.output.contains(
+                    "expected 0.0.0, actual ${ToolchainCatalog.WASM_TOOLS_VERSION}",
+                ),
+            )
 
             val keyDirectory = File(root, "keys")
             runCliIn(

@@ -25,10 +25,8 @@ is_kotlin_source() {
                 *.kt|*.kts) return 0 ;;
             esac
             ;;
-        *)
-            return 1
-            ;;
     esac
+    return 1
 }
 
 collect_all_files() {

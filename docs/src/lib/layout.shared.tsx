@@ -1,4 +1,5 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import { chineseSiteContent } from './site-content';
 
 export function baseOptions(lang: string): BaseLayoutProps {
   return {
@@ -9,7 +10,7 @@ export function baseOptions(lang: string): BaseLayoutProps {
     githubUrl: 'https://github.com/crowforkotlin/wasmline',
     links: [
       {
-        text: lang === 'zh' ? '文档' : 'Docs',
+        text: lang === 'zh' ? chineseSiteContent.docsLink : 'Docs',
         url: `/${lang}/docs`,
         active: 'nested-url',
       },

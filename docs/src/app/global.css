@@ -13,8 +13,6 @@
   }
 }
 
-/* 这个类名稍后会用到 */
 .animate-tab-content {
-  /* 每次显示时执行 0.4s 的动画 */
   animation: tab-content-show 0.3s ease-out forwards;
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wasmline Repository"
+  short_description: "Follow Wasmline repository workflows"
+  default_prompt: "Use $wasmline to work safely in the Wasmline repository."

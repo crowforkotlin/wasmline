@@ -139,7 +139,8 @@ jobs:
           WASMTIME_VERSION: ${{ vars.WASMTIME_VERSION || 'release-v47.0.2' }}
         run: |
           echo "Initializing Wasmtime $WASMTIME_VERSION..."
-          printf "\na\n\n" | bash scripts/init-wasmtime.sh
+          # Select the configured release, all platforms, and default concurrency.
+          printf "%s\na\n\n" "$WASMTIME_VERSION" | bash scripts/init-wasmtime.sh
 
       - name: Build native libraries
         timeout-minutes: 5
@@ -335,7 +336,8 @@ jobs:
           WASMTIME_VERSION: ${{ vars.WASMTIME_VERSION || 'release-v47.0.2' }}
         run: |
           echo "Initializing Wasmtime $WASMTIME_VERSION for iOS Simulator..."
-          bash scripts/init-wasmtime-ci.sh
+          # Select the configured release, iOS simulator target, and default concurrency.
+          printf "%s\n6\n\n" "$WASMTIME_VERSION" | bash scripts/init-wasmtime.sh
 
       - name: Run iOS simulator tests
         working-directory: wasmline-multiplatform

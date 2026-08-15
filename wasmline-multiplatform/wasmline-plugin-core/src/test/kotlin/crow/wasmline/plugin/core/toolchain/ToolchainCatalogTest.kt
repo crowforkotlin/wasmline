@@ -14,6 +14,8 @@ class ToolchainCatalogTest {
         assets.forEach { asset ->
             assertTrue(asset.downloadUrl.startsWith("https://"))
             assertTrue(asset.sha256.matches(Regex("[0-9a-f]{64}")))
+            assertTrue(asset.assetId > 0)
+            assertTrue(asset.size > 0)
             assertTrue(asset.version.isNotBlank())
             assertTrue(asset.entryFileName.isNotBlank())
         }
