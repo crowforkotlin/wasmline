@@ -1,8 +1,11 @@
 package crow.wasmline.plugin.core.component
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import java.io.File
 
 /** Native AOT stage configuration shared by Gradle and the CLI. */
+
+@InternalWasmlineToolingApi
 data class ComponentAotPipelineRequest(
     val wasmtimeCompiler: File,
     val wasmtimeVersion: String,
@@ -17,6 +20,8 @@ data class ComponentAotPipelineRequest(
 }
 
 /** Complete raw-to-AOT result returned to build-system adapters. */
+
+@InternalWasmlineToolingApi
 data class ComponentAotPipelineResult(
     val rawComponent: ComponentBuildRecord,
     val compileResult: ComponentAotCompileResult,
@@ -25,6 +30,8 @@ data class ComponentAotPipelineResult(
 )
 
 /** Chains a finished raw Component into mandatory native CWASM/PWASM outputs. */
+
+@InternalWasmlineToolingApi
 class ComponentAotPipeline internal constructor(private val compileComponent: (ComponentAotCompileRequest) -> ComponentAotCompileResult) {
     constructor(compiler: ComponentCompiler) : this(compiler::compile)
 

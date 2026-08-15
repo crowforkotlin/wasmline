@@ -3,7 +3,6 @@
 package crow.wasmline.gradle.extensions
 
 import org.gradle.api.Project
-import org.gradle.api.provider.Property
 import javax.inject.Inject
 
 /**
@@ -14,7 +13,7 @@ import javax.inject.Inject
  *     manifest {
  *         pluginId = "crow.wasmline.demo"
  *         version = "1.0.0"
- *         signingKey = file("../keys/private.key").readText()
+ *         signingKey = file("../keys/private.key")
  *     }
  *     wasmtime {
  *         // Configure wasmtime location and behavior
@@ -30,57 +29,47 @@ import javax.inject.Inject
  *     }
  *     server {
  *         port = 8080
+ *         deployVariant = WasmlineBuildVariant.RELEASE
  *     }
- *
- *     // Optionally choose which assemble variant the server deploy task depends on.
- *     // "debug" (default) -> dependsOn wasmlineAssembleDebug
- *     // "release"        -> dependsOn wasmlineAssembleRelease
- *     serverDeployVariant = "debug"
  * }
  * ```
  *
  * Date: 2026-06-05
  * Author: crowforkotlin
  */
-open class WasmlineExtension @Inject constructor(project: Project) {
+public open class WasmlineExtension @Inject constructor(project: Project) {
 
     private val objects = project.objects
 
     /** Manifest metadata configuration. */
-    val manifest: ManifestExtension = objects.newInstance(ManifestExtension::class.java)
+    public val manifest: ManifestExtension = objects.newInstance(ManifestExtension::class.java)
 
     /** Wasmtime AOT compiler configuration. */
-    val wasmtime: WasmtimeExtension = objects.newInstance(WasmtimeExtension::class.java)
+    public val wasmtime: WasmtimeExtension = objects.newInstance(WasmtimeExtension::class.java)
 
     /** WIT and Component Model build configuration. */
-    val component: ComponentExtension = objects.newInstance(ComponentExtension::class.java, project)
+    public val component: ComponentExtension = objects.newInstance(ComponentExtension::class.java, project)
 
     /** HTTP server configuration for the deployment task. */
-    val server: ServerExtension = objects.newInstance(ServerExtension::class.java)
-
-    /**
-     * Which assemble variant the `wasmlineServerDeploy` task should depend on.
-     * Accepts "debug" or "release". Default: "debug".
-     */
-    val serverDeployVariant: Property<String> = objects.property(String::class.java).convention("debug")
+    public val server: ServerExtension = objects.newInstance(ServerExtension::class.java)
 
     /** Configure the [manifest] block. */
-    fun manifest(action: ManifestExtension.() -> Unit) {
+    public fun manifest(action: ManifestExtension.() -> Unit) {
         manifest.action()
     }
 
     /** Configure the [wasmtime] block. */
-    fun wasmtime(action: WasmtimeExtension.() -> Unit) {
+    public fun wasmtime(action: WasmtimeExtension.() -> Unit) {
         wasmtime.action()
     }
 
     /** Configure the [component] block. */
-    fun component(action: ComponentExtension.() -> Unit) {
+    public fun component(action: ComponentExtension.() -> Unit) {
         component.action()
     }
 
     /** Configure the [server] block. */
-    fun server(action: ServerExtension.() -> Unit) {
+    public fun server(action: ServerExtension.() -> Unit) {
         server.action()
     }
 }

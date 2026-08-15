@@ -2,7 +2,7 @@ package crow.wasmline.plugin.core.component.hostgen
 
 import java.io.File
 
-object WitParser {
+internal object WitParser {
     fun parse(path: File): WitPackage {
         val sources = WitSources.load(path)
         return Parser(Lexer(sources.source).tokens(), sources.sha256).parsePackage()

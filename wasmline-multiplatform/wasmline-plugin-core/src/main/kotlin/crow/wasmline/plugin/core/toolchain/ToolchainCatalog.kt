@@ -1,10 +1,13 @@
 package crow.wasmline.plugin.core.toolchain
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.util.PlatformDetector
 
 /**
  * Identifies a binary or data file used by the Component Model build pipeline.
  */
+
+@InternalWasmlineToolingApi
 enum class WasmlineTool {
     WIT_BINDGEN,
     WASM_TOOLS,
@@ -12,6 +15,8 @@ enum class WasmlineTool {
 }
 
 /** Describes how a locked tool asset is distributed. */
+
+@InternalWasmlineToolingApi
 enum class ToolDistribution {
     TAR_GZ,
     ZIP,
@@ -23,6 +28,8 @@ enum class ToolDistribution {
  *
  * The SHA-256 is mandatory so callers never trust a mutable latest download.
  */
+
+@InternalWasmlineToolingApi
 data class ToolAssetSpec(
     val tool: WasmlineTool,
     val version: String,
@@ -54,6 +61,8 @@ data class ToolAssetSpec(
  * Asset digests are copied from the GitHub release metadata for each pinned
  * release. Adding a platform requires both a URL and a digest.
  */
+
+@InternalWasmlineToolingApi
 object ToolchainCatalog {
     const val WIT_BINDGEN_VERSION = "0.57.1"
     const val WASM_TOOLS_VERSION = "1.255.0"

@@ -3,9 +3,11 @@
 Synchronize repository version references from a single manifest.
 
 Usage:
-    python3 scripts/sync_versions.py
-    python3 scripts/sync_versions.py --check
-    python3 scripts/sync_versions.py --set wasmtime_version=47.0.2
+    python3 scripts/sync_version.py
+    python3 scripts/sync_version.py --check
+    python3 scripts/sync_version.py --set wasmtime_version=47.0.2
+
+The plural script remains a compatibility entry point for existing automation.
 """
 
 from __future__ import annotations
@@ -125,6 +127,15 @@ def validate_version(key: str, value: str) -> None:
             f"Invalid version value for '{key}': '{value}'. "
             "Expected MAJOR.MINOR.PATCH with an optional prerelease/build suffix."
         )
+    if key == "wasmtime_version":
+        numeric_version = value.split("-", 1)[0].split("+", 1)[0]
+        _, minor, patch = (int(part) for part in numeric_version.split("."))
+        if minor > 9 or patch > 9:
+            raise SystemExit(
+                "Invalid version value for 'wasmtime_version': "
+                f"'{value}'. Minor and patch must remain single digits while "
+                "the release-tag encoding is in use."
+            )
 
 
 def validate_versions(versions: VersionMap) -> None:
@@ -349,6 +360,10 @@ def file_specs() -> tuple[FileSpec, ...]:
     )
     development_guide_rules = (
         Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}", min_count=0),
+        Rule(
+            r"Zig version \(requires \*\*[0-9.]+\*\*\)",
+            lambda v: f"Zig version (requires **{v['zig_version']}**)",
+        ),
         Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}", min_count=0),
     )
     sync_script_rules = (
@@ -367,6 +382,24 @@ def file_specs() -> tuple[FileSpec, ...]:
         Rule(
             r'(?m)(private fun createTestManifest\([^\n]*\): WasmlineManifest = WasmlineManifest\(\n\s+pluginId = "[^"]+",\n\s+version = ")[0-9A-Za-z.\-]+(")',
             lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
+        ),
+    )
+    sample_manifest_rules = (
+        Rule(
+            r'(?m)^        version = "[0-9A-Za-z.\-]+"$',
+            lambda v: f'        version = "{v["sample_plugin_version"]}"',
+        ),
+    )
+    sample_wasmtime_fallback_rules = (
+        Rule(
+            r'(providers\.gradleProperty\("wasmtime\.version"\)\.orElse\(")[0-9A-Za-z.\-]+("\)\.get\(\))',
+            lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+        ),
+    )
+    sample_output_rules = (
+        Rule(
+            r'(wasmline/output/[^"\s]*-)[0-9]+\.[0-9]+\.[0-9]+',
+            lambda v: rf'\g<1>{v["sample_plugin_version"]}',
         ),
     )
 
@@ -413,10 +446,15 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts",
             "wasmline-samples/kotlin/gradle/gradle-daemon-jvm.properties",
             "wasmline-samples/kotlin/sample-apps/application/build.gradle.kts",
+            "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts",
             "wasmline-samples/kotlin/sample-apps/multiplatform/shared/build.gradle.kts",
             "wasmline-samples/kotlin/sample-apps/multiplatform/webApp/build.gradle.kts",
             "wasmline-samples/kotlin/sample-common/build.gradle.kts",
+            "wasmline-samples/kotlin/sample-component-export-plugin/build.gradle.kts",
+            "wasmline-samples/kotlin/sample-component-fixture/build.gradle.kts",
+            "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
             "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
+            "wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts",
         )
     )
 
@@ -492,24 +530,23 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            (
-                Rule(
-                    r'(?m)^val wasmtimeVersion = providers\.gradleProperty\("wasmtime\.version"\)\.orElse\("[0-9.]+"\)\.get\(\)$',
-                    lambda v: (
-                        'val wasmtimeVersion = providers.gradleProperty("wasmtime.version")'
-                        f'.orElse("{v["wasmtime_version"]}").get()'
-                    ),
-                ),
-                Rule(
-                    r'wasmtime-v[0-9]+\.[0-9]+\.[0-9]+-x86_64-linux-min',
-                    lambda v: f"wasmtime-v{v['wasmtime_version']}-x86_64-linux-min",
-                    min_count=0,
-                ),
-                Rule(
-                    r'(?m)^        version = "[0-9A-Za-z.\-]+"$',
-                    lambda v: f'        version = "{v["sample_plugin_version"]}"',
-                ),
-            ),
+            sample_manifest_rules + sample_wasmtime_fallback_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts",
+            sample_manifest_rules + sample_wasmtime_fallback_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
+            sample_manifest_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-component-export-plugin/build.gradle.kts",
+            sample_manifest_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-component-fixture/build.gradle.kts",
+            sample_manifest_rules,
         ),
         FileSpec(
             "wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts",
@@ -526,7 +563,8 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts",
-            (
+            sample_output_rules
+            + (
                 Rule(
                     r'(?m)^            packageVersion = project\.findProperty\("wasmline\.version"\) as\? String \?: "[0-9A-Za-z.\-]+"$',
                     lambda v: (
@@ -535,6 +573,34 @@ def file_specs() -> tuple[FileSpec, ...]:
                     ),
                 ),
             ),
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-apps/android/build.gradle.kts",
+            sample_output_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-apps/application/build.gradle.kts",
+            sample_output_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-apps/multiplatform/androidApp/build.gradle.kts",
+            sample_output_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-apps/multiplatform/webApp/build.gradle.kts",
+            sample_output_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/README.md",
+            sample_output_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-apps/README.md",
+            sample_output_rules,
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-component-fixture/README.md",
+            sample_output_rules,
         ),
         FileSpec(
             "wasmline-samples/kotlin/run-ios.sh",
@@ -587,17 +653,20 @@ def file_specs() -> tuple[FileSpec, ...]:
         FileSpec("docs/content/docs/testing.mdx", version_sync_docs_rules),
         FileSpec("docs/content/docs/testing.zh.mdx", version_sync_docs_rules),
         FileSpec(
-            "docs/content/docs/wasmtime-download.md",
+            "docs/content/docs/wasmtime-download.mdx",
             (
                 Rule(
-                    r"(?<!Wasmline v)[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: v["wasmtime_version"],
-                    min_count=0,
+                    r'(version = "v)[0-9A-Za-z.\-]+(")',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
                 ),
+            ),
+        ),
+        FileSpec(
+            "docs/content/docs/wasmtime-download.zh.mdx",
+            (
                 Rule(
-                    r"Wasmline v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"Wasmline v{v['wasmline_version']}",
-                    min_count=0,
+                    r'(version = "v)[0-9A-Za-z.\-]+(")',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
                 ),
             ),
         ),
@@ -739,15 +808,29 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
+            "wasmline-multiplatform/wasmline-cli/src/test/kotlin/crow/wasmline/cli/ComponentCliIntegrationTest.kt",
+            (
+                Rule(
+                    r'(File\(compileRoot, "cli-compile-)[0-9A-Za-z.\-]+("\))',
+                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
+                ),
+            ),
+        ),
+        FileSpec(
+            "wasmline-multiplatform/wasmline-cli/src/test/kotlin/crow/wasmline/cli/CoreCliRegressionTest.kt",
+            (
+                Rule(
+                    r'(File\(outputRoot, "core-plugin-)[0-9A-Za-z.\-]+(/debug/)',
+                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
+                ),
+            ),
+        ),
+        FileSpec(
             "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/WasmlinePlugin.kt",
             (
                 Rule(
                     r'(?m)^ \*         version = "[0-9A-Za-z.\-]+"$',
                     lambda v: f' *         version = "{v["sample_plugin_version"]}"',
-                ),
-                Rule(
-                    r'getOrElse\("[0-9A-Za-z.\-]+"\)',
-                    lambda v: f'getOrElse("{v["sample_plugin_version"]}")',
                 ),
                 Rule(
                     r'v[0-9]+\.[0-9]+\.[0-9]+',
@@ -772,12 +855,12 @@ def file_specs() -> tuple[FileSpec, ...]:
                     lambda v: f'    /** Semantic version string. Default: "{v["sample_plugin_version"]}". */',
                 ),
                 Rule(
-                    r'(?m)^    val version: Property<String> = objects\.property\(String::class\.java\)\.convention\("[0-9A-Za-z.\-]+"\)$',
-                    lambda v: f'    val version: Property<String> = objects.property(String::class.java).convention("{v["sample_plugin_version"]}")',
+                    r'(?m)^(    (?:public )?val version: Property<String> = objects\.property\(String::class\.java\)\.convention\(")[0-9A-Za-z.\-]+("\))$',
+                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
                 ),
                 Rule(
-                    r'(?m)^    val minSdkVersion: Property<String> = objects\.property\(String::class\.java\)\.convention\("[0-9A-Za-z.\-]+"\)$',
-                    lambda v: f'    val minSdkVersion: Property<String> = objects.property(String::class.java).convention("{v["wasmline_version"]}")',
+                    r'(?m)^(    (?:public )?val minSdkVersion: Property<String> = objects\.property\(String::class\.java\)\.convention\(")[0-9A-Za-z.\-]+("\))$',
+                    lambda v: rf'\g<1>{v["wasmline_version"]}\g<2>',
                 ),
             ),
         ),
@@ -847,6 +930,72 @@ def file_specs() -> tuple[FileSpec, ...]:
         FileSpec(
             "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt",
             manifest_test_rules,
+        ),
+        FileSpec(
+            "wasmline-multiplatform/wasmline-plugin-core/src/main/kotlin/crow/wasmline/plugin/core/toolchain/ToolchainCatalog.kt",
+            (
+                Rule(
+                    r'(?m)^    const val WASMTIME_VERSION = "[0-9A-Za-z.\-]+"$',
+                    lambda v: f'    const val WASMTIME_VERSION = "{v["wasmtime_version"]}"',
+                ),
+            ),
+        ),
+        FileSpec(
+            "wasmline-multiplatform/wasmline-plugin-core/src/test/kotlin/crow/wasmline/plugin/core/component/ComponentToolchainIntegrationTest.kt",
+            (
+                Rule(
+                    r'(?m)^                    adapterVersion = "[0-9A-Za-z.\-]+",$',
+                    lambda v: f'                    adapterVersion = "{v["wasmtime_version"]}",',
+                ),
+            ),
+        ),
+        FileSpec(
+            "wasmline-multiplatform/wasmline-plugin-test/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativePluginTestSupport.kt",
+            (
+                Rule(
+                    r'(?m)^                    targetCompilerVersion = "wasmtime-[0-9A-Za-z.\-]+",$',
+                    lambda v: (
+                        '                    targetCompilerVersion = '
+                        f'"wasmtime-{v["wasmtime_version"]}",'
+                    ),
+                ),
+            ),
+        ),
+        FileSpec(
+            "wasmline-multiplatform/wasmline/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativeWasmtimeIntegrationTest.kt",
+            (
+                Rule(
+                    r'(?m)^        assertEquals\("[0-9A-Za-z.\-]+", capabilities\.wasmtimeVersion\)$',
+                    lambda v: (
+                        f'        assertEquals("{v["wasmtime_version"]}", '
+                        'capabilities.wasmtimeVersion)'
+                    ),
+                ),
+            ),
+        ),
+        FileSpec(
+            "wasmline-samples/kotlin/sample-apps/multiplatform/shared/src/desktopMain/Requirement.md",
+            (
+                Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
+            ),
+        ),
+        FileSpec(
+            "ROADMAP.md",
+            (
+                Rule(
+                    r'(Wasmtime C-API integration \(v)[0-9A-Za-z.\-]+(\))',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+            ),
+        ),
+        FileSpec(
+            "ROADMAP_zh.md",
+            (
+                Rule(
+                    r'(Wasmtime C-API 集成（v)[0-9A-Za-z.\-]+(）)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+            ),
         ),
     )
 

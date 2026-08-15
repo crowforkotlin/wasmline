@@ -52,12 +52,12 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 | `MINGW_PATH` | `build.zig` 交叉编译 `x86_64-windows-gnu` 时定位 MinGW 工具链根目录 |
 
 <Callout type="info" title="MINGW_PATH 仅 Windows 交叉编译需要">
-  如果不需要构建 Windows 产物，可不设置 `MINGW_PATH`。`build-native-assets.sh` 会跳过失败的目标并继续构建其余平台。
+  如果不需要构建 Windows 产物，可不设置 `MINGW_PATH`。交叉编译工具链不可用时，不要下载或选择 Windows 目标。
 </Callout>
 
 ## 环境预检
 
-在确认当前 JVM 环境前，不得调用 Gradle。每次构建会话开始前都必须执行仓库预检：
+每个会话仅执行一次仓库预检，执行时机是修改 Wasmline 文件后首次进行必要验证之前。只读任务、Wasmline 之外的修改以及无需验证的文件修改均不执行预检：
 
 ```bash
 bash ./scripts/doctor.sh
@@ -76,7 +76,7 @@ bash ./scripts/doctor.sh
 在开始原生目标编译前，`build/platforms/` 下必须存在 wasmtime min C-API 头文件与预编译库。执行以下任一等价脚本：
 
 ```bash
-sh ./scripts/init-wasmtime.sh          # Bash — 需要 curl 和 tar/unzip
+bash ./scripts/init-wasmtime.sh        # Bash — 需要 curl 和 tar/unzip
 python3 ./scripts/init-wasmtime.py     # Python 3.9+ — 无第三方依赖
 node ./scripts/init-wasmtime.mjs       # Node.js 18+ — 无第三方依赖
 ```
@@ -133,9 +133,6 @@ cd wasmline-multiplatform
 # wasmline-cli 模块测试
 ./gradlew :wasmline-cli:test
 
-# Kotlin/WasmWasi 插件示例编译
-./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
-
 # IR 编译器插件 — 从 testData 夹具重新生成测试运行器
 ./gradlew :wasmline-kotlin-plugin:generateTests
 
@@ -143,12 +140,17 @@ cd wasmline-multiplatform
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
 
-# IR 编译器插件 — 诊断校验测试
-./gradlew :wasmline-kotlin-plugin:test \
-  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
-
 # 将全部模块安装到本地 Maven 仓库（mavenLocal）
 ./gradlew publishToMavenLocal
+```
+
+当前生成器只注册 `JvmBoxTestGenerated`。诊断测试框架尚未启用，仓库中没有 `testData/diagnostics/` 套件或 `JvmDiagnosticsTestGenerated` runner。
+
+Kotlin 示例使用独立的 Gradle build：
+
+```bash
+cd ../wasmline-samples/kotlin
+./gradlew :sample-plugin:wasmlineAssembleDebug
 ```
 
 ## 版本同步

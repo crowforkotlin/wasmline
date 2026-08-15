@@ -1,0 +1,56 @@
+---
+title: Wasmtime 工具链
+description: 配置并下载精简运行时编译器与完整 Component 编译器
+---
+
+# Wasmtime 工具链
+
+Gradle 插件使用两种 Wasmtime 发行包：
+
+| 发行包 | 用途 | 默认缓存目录 |
+|---|---|---|
+| 精简 Wasmtime | Core Wasm AOT 打包 | `~/.wasmline/wasmtime` |
+| 完整 Wasmtime CLI | Component AOT 编译 | `~/.wasmline/wasmtime-compiler` |
+
+## 配置
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    wasmtime {
+        autoDownload = true
+        version = "v47.0.2"
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+    }
+}
+```
+
+`directory` 可用于指定精简 Wasmtime 的缓存目录或可执行文件目录。未设置时，插件依次检查 `WASMTIME_ROOT` 和 `~/.wasmline/wasmtime`。
+
+`compilerDirectory`、`compilerVersion` 和 `compilerExecutable` 用于配置 Component AOT 编译使用的完整 Wasmtime CLI。
+
+## 手动任务
+
+```bash
+# 检查 Core Wasm 使用的精简工具链
+./gradlew checkWasmlineToolchain
+
+# 下载精简 Wasmtime 发行包
+./gradlew wasmlineDownloadWasmtime
+
+# 下载完整 Wasmtime CLI
+./gradlew wasmlineDownloadWasmtimeCompiler
+
+# 下载 wit-bindgen、wasm-tools 和 WASI adapter
+./gradlew wasmlineDownloadComponentTools
+```
+
+启用 `autoDownload` 时，assemble 任务会自动执行所需的检查与下载。完整任务清单参见 [Gradle 插件参考](/zh/docs/gradle-plugin)。
+
+## 诊断
+
+使用 `./gradlew checkWasmlineToolchain --info` 查看精简工具链的解析过程。需要认证的 GitHub 请求时，配置 `wasmtime.githubToken`。

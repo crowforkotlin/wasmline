@@ -26,7 +26,7 @@ import org.gradle.api.tasks.TaskAction
 import java.io.File
 
 /** Generates Kotlin guest bindings for the configured WIT world. */
-abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
+internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
     @get:InputDirectory
     @get:Optional
     @get:PathSensitive(PathSensitivity.RELATIVE)

@@ -4,13 +4,16 @@ import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 
+@InternalWasmlineToolingApi
 enum class WasmlineArtifactBackend {
     RAW,
     CRANELIFT,
     PULLEY,
 }
 
+@InternalWasmlineToolingApi
 data class WasmlineArtifactDiagnostic(
     val artifact: String,
     val format: WasmlineArtifactFormat,
@@ -30,6 +33,8 @@ data class WasmlineArtifactDiagnostic(
 }
 
 /** Produces consistent native artifact diagnostics for CLI and Gradle adapters. */
+
+@InternalWasmlineToolingApi
 object WasmlineArtifactDiagnostics {
     fun describe(artifact: WasmlineArtifact): WasmlineArtifactDiagnostic {
         val (format, backend) = when (artifact.type) {

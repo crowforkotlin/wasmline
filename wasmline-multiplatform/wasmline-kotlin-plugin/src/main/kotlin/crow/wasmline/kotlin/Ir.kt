@@ -121,14 +121,14 @@ internal val IrSimpleFunction.id: String
     get() = signature.signatureHash()
 
 /** Thrown on invalid or unexpected input code. */
-class WasmlineCompilationException(
+internal class WasmlineCompilationException(
     override val message: String,
     val element: IrElement? = null,
     val severity: CompilerMessageSeverity = CompilerMessageSeverity.ERROR,
 ) : Exception(message)
 
 /** Finds the line and column of [irElement] within this file. */
-fun IrFile.locationOf(irElement: IrElement?): CompilerMessageSourceLocation {
+internal fun IrFile.locationOf(irElement: IrElement?): CompilerMessageSourceLocation {
     val sourceRangeInfo = fileEntry.getSourceRangeInfo(
         beginOffset = irElement?.startOffset ?: SYNTHETIC_OFFSET,
         endOffset = irElement?.endOffset ?: SYNTHETIC_OFFSET,
@@ -157,7 +157,7 @@ internal fun IrBuilderWithScope.irReturn(
 )
 
 /** Set up reasonable defaults for a generated function or constructor. */
-fun IrFunctionBuilder.initDefaults(original: IrElement) {
+internal fun IrFunctionBuilder.initDefaults(original: IrElement) {
     this.startOffset = original.startOffset.toSyntheticIfUnknown()
     this.endOffset = original.endOffset.toSyntheticIfUnknown()
     this.origin = IrDeclarationOrigin.DEFINED
@@ -167,7 +167,7 @@ fun IrFunctionBuilder.initDefaults(original: IrElement) {
 }
 
 /** Set up reasonable defaults for a generated class. */
-fun IrClassBuilder.initDefaults(original: IrElement) {
+internal fun IrClassBuilder.initDefaults(original: IrElement) {
     this.startOffset = original.startOffset.toSyntheticIfUnknown()
     this.endOffset = original.endOffset.toSyntheticIfUnknown()
     this.name = Name.special("<no name provided>")
@@ -175,7 +175,7 @@ fun IrClassBuilder.initDefaults(original: IrElement) {
 }
 
 /** Set up reasonable defaults for a value parameter. */
-fun IrValueParameterBuilder.initDefaults(original: IrElement) {
+internal fun IrValueParameterBuilder.initDefaults(original: IrElement) {
     this.startOffset = original.startOffset.toSyntheticIfUnknown()
     this.endOffset = original.endOffset.toSyntheticIfUnknown()
 }
@@ -190,7 +190,10 @@ private fun Int.toSyntheticIfUnknown(): Int = when (this) {
     else -> this
 }
 
-fun IrConstructor.irConstructorBody(context: IrGeneratorContext, blockBody: DeclarationIrBuilder.(MutableList<IrStatement>) -> Unit) {
+internal fun IrConstructor.irConstructorBody(
+    context: IrGeneratorContext,
+    blockBody: DeclarationIrBuilder.(MutableList<IrStatement>) -> Unit,
+) {
     val constructorIrBuilder = DeclarationIrBuilder(
         generatorContext = context,
         symbol = IrSimpleFunctionSymbolImpl(),
@@ -205,7 +208,7 @@ fun IrConstructor.irConstructorBody(context: IrGeneratorContext, blockBody: Decl
     }
 }
 
-fun DeclarationIrBuilder.irDelegatingConstructorCall(
+internal fun DeclarationIrBuilder.irDelegatingConstructorCall(
     context: IrGeneratorContext,
     symbol: IrConstructorSymbol,
     typeArgumentsCount: Int = 0,
@@ -227,15 +230,21 @@ fun DeclarationIrBuilder.irDelegatingConstructorCall(
     return result
 }
 
-fun DeclarationIrBuilder.irInstanceInitializerCall(context: IrGeneratorContext, classSymbol: IrClassSymbol): IrInstanceInitializerCall =
-    IrInstanceInitializerCallImpl(
-        startOffset = startOffset,
-        endOffset = endOffset,
-        classSymbol = classSymbol,
-        type = context.irBuiltIns.unitType,
-    )
+internal fun DeclarationIrBuilder.irInstanceInitializerCall(
+    context: IrGeneratorContext,
+    classSymbol: IrClassSymbol,
+): IrInstanceInitializerCall = IrInstanceInitializerCallImpl(
+    startOffset = startOffset,
+    endOffset = endOffset,
+    classSymbol = classSymbol,
+    type = context.irBuiltIns.unitType,
+)
 
-fun IrSimpleFunction.irFunctionBody(context: IrGeneratorContext, scopeOwnerSymbol: IrSymbol, blockBody: IrBlockBodyBuilder.() -> Unit) {
+internal fun IrSimpleFunction.irFunctionBody(
+    context: IrGeneratorContext,
+    scopeOwnerSymbol: IrSymbol,
+    blockBody: IrBlockBodyBuilder.() -> Unit,
+) {
     val bodyBuilder = IrBlockBodyBuilder(
         startOffset = startOffset,
         endOffset = endOffset,
@@ -248,7 +257,7 @@ fun IrSimpleFunction.irFunctionBody(context: IrGeneratorContext, scopeOwnerSymbo
 }
 
 /** Create a private val with a backing field and an accessor function. */
-fun irVal(
+internal fun irVal(
     pluginContext: IrPluginContext,
     propertyType: IrType,
     declaringClass: IrClass,
@@ -361,7 +370,7 @@ internal fun IrBuilderWithScope.irImplicitCoercionToUnit(expression: IrExpressio
     argument = expression,
 )
 
-fun irBlockBodyBuilder(irPluginContext: IrGeneratorContext, scopeWithIr: ScopeWithIr, original: IrElement): IrBlockBodyBuilder =
+internal fun irBlockBodyBuilder(irPluginContext: IrGeneratorContext, scopeWithIr: ScopeWithIr, original: IrElement): IrBlockBodyBuilder =
     IrBlockBodyBuilder(
         context = irPluginContext,
         scope = scopeWithIr.scope,
@@ -369,15 +378,16 @@ fun irBlockBodyBuilder(irPluginContext: IrGeneratorContext, scopeWithIr: ScopeWi
         endOffset = original.endOffset.toSyntheticIfUnknown(),
     )
 
-fun irBlockBuilder(irPluginContext: IrGeneratorContext, scopeWithIr: ScopeWithIr, original: IrElement): IrBlockBuilder = IrBlockBuilder(
-    context = irPluginContext,
-    scope = scopeWithIr.scope,
-    startOffset = original.startOffset.toSyntheticIfUnknown(),
-    endOffset = original.endOffset.toSyntheticIfUnknown(),
-)
+internal fun irBlockBuilder(irPluginContext: IrGeneratorContext, scopeWithIr: ScopeWithIr, original: IrElement): IrBlockBuilder =
+    IrBlockBuilder(
+        context = irPluginContext,
+        scope = scopeWithIr.scope,
+        startOffset = original.startOffset.toSyntheticIfUnknown(),
+        endOffset = original.endOffset.toSyntheticIfUnknown(),
+    )
 
 /** This creates `companion object` if it doesn't exist already. */
-fun getOrCreateCompanion(enclosing: IrClass, irPluginContext: IrPluginContext): IrClass {
+internal fun getOrCreateCompanion(enclosing: IrClass, irPluginContext: IrPluginContext): IrClass {
     val existing = enclosing.companionObject()
     if (existing != null) return existing
 
@@ -419,7 +429,7 @@ fun getOrCreateCompanion(enclosing: IrClass, irPluginContext: IrPluginContext): 
 }
 
 /** Mirrors the Kotlin serialization IR builder implementation. */
-fun IrBuilderWithScope.irInvoke(
+internal fun IrBuilderWithScope.irInvoke(
     dispatchReceiver: IrExpression? = null,
     callee: IrFunctionSymbol,
     vararg args: IrExpression,
@@ -458,7 +468,7 @@ fun IrBuilderWithScope.irInvoke(
 }
 
 /** Mirrors the Kotlin serialization IR builder implementation. */
-fun IrBuilderWithScope.irInvoke(
+internal fun IrBuilderWithScope.irInvoke(
     dispatchReceiver: IrExpression? = null,
     callee: IrFunctionSymbol,
     typeArguments: List<IrType?>,

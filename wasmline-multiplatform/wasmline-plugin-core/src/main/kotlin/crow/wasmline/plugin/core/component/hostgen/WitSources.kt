@@ -3,11 +3,11 @@ package crow.wasmline.plugin.core.component.hostgen
 import java.io.File
 import java.security.MessageDigest
 
-data class WitSourceSet(val root: File, val rootFiles: List<File>, val allFiles: List<File>, val sha256: String) {
+internal data class WitSourceSet(val root: File, val rootFiles: List<File>, val allFiles: List<File>, val sha256: String) {
     val source: String = rootFiles.joinToString("\n") { it.readText(Charsets.UTF_8).normalizeWitNewlines() }
 }
 
-object WitSources {
+internal object WitSources {
     fun load(path: File): WitSourceSet {
         require(path.exists()) { "WIT path does not exist: ${path.absolutePath}" }
         if (path.isFile) {

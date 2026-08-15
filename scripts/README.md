@@ -10,7 +10,10 @@ Repository automation is grouped by purpose:
 | `init-wasmtime.*` | Wasmtime platform asset initialization |
 | `build-native-assets.sh` | Native engine asset build and deployment |
 | `doctor.sh` | Local environment preflight |
-| `sync_version.py` | Compatibility entry point for version synchronization |
+| `versions.json` | Source of truth for managed project and toolchain versions |
+| `sync_version.py` | Public version-synchronization entry point |
+| `sync_versions.py` | Synchronizer implementation and compatibility entry point |
+| `test_sync_versions.py` | Regression coverage for managed files and replacement rules |
 
 C and C++ Component fixture commands live with their language samples:
 
@@ -24,6 +27,21 @@ bash wasmline-samples/cpp/build.sh
 They require `WASI_SDK_PATH` for WASI SDK 33, plus pinned `wit-bindgen` and
 `wasm-tools` tools. The result is a Component Wasm file, not a native program,
 so there is intentionally no `run.sh`.
+
+## Version Synchronization
+
+Use the singular entry point for normal work:
+
+```bash
+python3 scripts/sync_version.py --list
+python3 scripts/sync_version.py --check
+python3 scripts/sync_version.py --set wasmtime_version=<new-version>
+python3 scripts/test_sync_versions.py
+```
+
+The plural entry point accepts the same arguments for existing automation. When
+adding a duplicated version reference, add a narrow rule to `sync_versions.py`
+and synthetic coverage to `test_sync_versions.py` in the same change.
 
 ## Linting
 

@@ -12,10 +12,10 @@ The Web target implementation (`webMain` / `jsMain` / `wasmJsMain`) invokes `Web
 
 The runtime layer provides:
 
-- **`wasi_snapshot_preview1` shims**: `fd_write` (stdout/stderr to `console.log`/`console.error`), `random_get` (`crypto.getRandomValues`), `clock_time_get` (`Date.now()` at nanosecond resolution)
+- **`wasi_snapshot_preview1` shims**: `fd_write` (UTF-8 stdout/stderr through `WasmlineLog` or `println`), `random_get` (`Random.nextBytes`), and `clock_time_get` (`Date.now()` converted from milliseconds to nanoseconds)
 - **Wasmline bridge protocol** (`env` namespace): `bridge_inbound_copy_params`, `bridge_inbound_set_response`, `bridge_outbound_call_host`, `bridge_outbound_get_response`
 
-Payload data crosses the Kotlin–JS linear memory boundary as Base64-encoded strings (`BrowserPayloadEncoding`). AOT-compiled artifacts (`.cwasm`, `.pwasm`) are not accepted.
+`WasmlineWeb.prefetch(url)` downloads the raw `.wasm` bytes with Fetch. `WasmlineLoader.load(url)` then resolves those cached bytes synchronously and instantiates the module. AOT-compiled artifacts (`.cwasm`, `.pwasm`) are not accepted by the browser path.
 
 </details>
 
@@ -28,11 +28,11 @@ These artifact types are related through Wasmline's pipeline, but they differ fu
 |---|---|---|---|
 | `.wasm` | Source format; loaded directly by the browser path | Browser WebAssembly runtime | **None** — not coupled to Wasmtime |
 | `.cwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | Directly on native hardware (e.g., arm64 machine code) | Coupled to the wasmtime version that compiled it |
-| `.pwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | wasmtime **Pulley** interpreter | Coupled to the wasmtime version that compiled it |
+| `.pwasm` | Ahead-of-time by `wasmtime compile` targeting Pulley | wasmtime **Pulley** interpreter | Coupled to the wasmtime version that compiled it |
 
 **`.cwasm` (platform-specific AOT)** produces native machine code for a particular target triple (e.g., `aarch64-android`). Maximum throughput; requires one artifact per platform.
 
-**`.pwasm` (Pulley AOT)** is compiled through the same Cranelift pipeline as `.cwasm`, but targets wasmtime's **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter then executes it at runtime. Critically, `.pwasm` is **not** a raw `.wasm` file being fed to an interpreter — it is a fully pre-compiled, Cranelift-produced artifact, identical in compilation path to `.cwasm`, only targeting a different backend. A `pulley64.pwasm` artifact runs across all 64-bit native wasmtime targets; 32-bit targets use a matching `pulley32.pwasm` artifact.
+**`.pwasm` (Pulley AOT)** is produced by `wasmtime compile` for the **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter executes it at runtime. A `.pwasm` file is not raw WebAssembly: it is a precompiled, Wasmtime-version-coupled artifact. A `pulley64.pwasm` artifact runs across supported 64-bit native Wasmtime targets; 32-bit targets use a matching `pulley32.pwasm` artifact.
 
 Raw `.wasm` is accepted directly only by the browser path. Wasmline's native runtime requires a precompiled `.cwasm` or `.pwasm`; both are outputs of a specific wasmtime release, so upgrading wasmtime invalidates them and requires recompilation.
 
@@ -53,7 +53,7 @@ Wasmline's native runtime does not load raw `.wasm` through the Pulley engine. G
 | `wasmline-engine-pulley` | `.pwasm` only | Execute portable bytecode through the Pulley interpreter |
 | iOS runtime | `.pwasm` only | iOS uses the Pulley interpreter because native executable AOT is unavailable |
 
-The engine module and artifact format are related but not interchangeable names: Cranelift is the compiler used to produce both AOT formats, while Pulley is the bytecode ISA and interpreter used by `.pwasm`. The Cranelift Wasmtime build includes both capabilities; the Pulley-only build includes only the Pulley side.
+The engine module and artifact format are related but not interchangeable names. `.cwasm` contains platform-native Cranelift output, while `.pwasm` contains Pulley bytecode. The Cranelift Wasmtime build includes both runtime capabilities; the Pulley-only build includes only the Pulley side.
 
 </details>
 
@@ -62,7 +62,7 @@ The engine module and artifact format are related but not interchangeable names:
 
 Use `WASMLINE_SERVICE` with either execution model for the same action-and-byte service API: Core uses the existing linear-memory bridge, while Component Model uses the fixed `wasmline.wit` envelope. Use `CORE_WASM` with `RAW_EXPORT` for an explicitly declared numeric export ABI. Use `COMPONENT_MODEL` with `COMPONENT_EXPORT` for business-specific typed WIT values.
 
-The runtime path starts with an already compiled component binary. Wasmline does not run `wit-bindgen` or generate adapters while loading it. The optional plugin build pipeline does support WIT binding generation and Component assembly through plugin-core, Gradle, and CLI; `contractMetadata` still describes the export contract and is not a WIT compiler input. See the [Wasmline Service guide](/en/docs/component-service).
+The runtime path starts with a precompiled Component `.cwasm` or `.pwasm` artifact. Wasmline does not run `wit-bindgen`, `wasm-tools`, or `wasmtime compile` while loading it. The optional plugin build pipeline supports WIT binding generation, Component assembly, and Component AOT compilation through plugin-core, Gradle, and CLI; `contractMetadata` still describes the export contract and is not a WIT compiler input. See the [Wasmline Service guide](/en/docs/component-service).
 
 </details>
 

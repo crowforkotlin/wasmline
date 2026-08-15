@@ -3,6 +3,7 @@ package crow.wasmline.plugin.core.component
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.component.hostgen.WitParser
 import crow.wasmline.plugin.core.component.hostgen.WitSources
 import crow.wasmline.plugin.core.toolchain.FileDigest
@@ -13,6 +14,8 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 
 /** Inputs required to turn a compiled Core Wasm guest into a Component. */
+
+@InternalWasmlineToolingApi
 data class ComponentizeRequest(
     val coreWasm: File,
     val witPath: File,
@@ -32,6 +35,8 @@ data class ComponentizeRequest(
 )
 
 /** Inputs required to validate and package an already-finished Component. */
+
+@InternalWasmlineToolingApi
 data class ExistingComponentRequest(
     val componentWasm: File,
     val outputDirectory: File,
@@ -48,6 +53,8 @@ data class ExistingComponentRequest(
 )
 
 /** Immutable description of a finished raw Component Wasm build. */
+
+@InternalWasmlineToolingApi
 data class ComponentizeResult(
     val coreWasm: File,
     val embeddedWasm: File,
@@ -92,6 +99,8 @@ data class ComponentizeResult(
  * Kotlin compilation remains an upstream concern; this pipeline starts from a
  * finished Core Wasm module and owns every wasm-tools step after it.
  */
+
+@InternalWasmlineToolingApi
 class ComponentPipeline(private val wasmTools: WasmTools) {
     /** Embeds WIT, creates a Component, validates it and records its WIT view. */
     fun componentize(request: ComponentizeRequest): ComponentizeResult {

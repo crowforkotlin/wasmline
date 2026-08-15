@@ -31,7 +31,7 @@ import org.gradle.api.tasks.TaskAction
 import java.io.File
 
 /** Converts the Kotlin/Wasm WASI Core Wasm output into a raw Component Wasm. */
-abstract class WasmlineComponentizeTask : DefaultTask() {
+internal abstract class WasmlineComponentizeTask : DefaultTask() {
     @get:InputDirectory
     @get:Optional
     @get:PathSensitive(PathSensitivity.RELATIVE)

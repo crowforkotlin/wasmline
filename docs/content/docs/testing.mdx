@@ -5,7 +5,7 @@ description: Test matrix, generated artifact rules, and local verification for W
 
 # Testing
 
-Wasmline tests are split by the boundary they validate. Run the repository preflight once before any Gradle command:
+Wasmline tests are split by the boundary they validate. Run the repository preflight once per session, immediately before the first validation required after changing Wasmline files. Skip it when no Wasmline file change requires validation:
 
 ```bash
 bash ./scripts/doctor.sh
@@ -23,7 +23,7 @@ bash ./scripts/doctor.sh
 | Kotlin/WasmWasi | `wasmline` | WASI runtime integration | `./gradlew :wasmline:wasmWasiNodeTest` |
 | Loader | `wasmline-loader` | manifests, signatures, local and remote package resolution | `./gradlew :wasmline-loader:jvmTest` |
 | CLI | `wasmline-cli` | platform detection and key generation | `./gradlew :wasmline-cli:test` |
-| IR box/diagnostics | `wasmline-kotlin-plugin` | generated bridge structure and compiler validation | See [Compiler Plugin](/en/docs/compiler-plugin) |
+| IR box | `wasmline-kotlin-plugin` | generated bridge behavior, compiler validation, and FIR/IR snapshots | See [Compiler Plugin](/en/docs/compiler-plugin) |
 
 Run all JVM-facing checks from `wasmline-multiplatform/`:
 
@@ -39,10 +39,9 @@ Native Wasmtime tests require the native library under `wasmline/src/jvmMain/res
 
 ## IR Test Rules
 
-IR fixtures live in `wasmline-kotlin-plugin/testData/`:
+Active IR fixtures live in `wasmline-kotlin-plugin/testData/box/`:
 
 - `box/*.kt` validates generated bridge behavior through `fun box(): String`.
-- `diagnostics/*.kt` validates compiler diagnostics and directives.
 - `test-gen/` and FIR/IR snapshots are generated outputs.
 
 Only edit the source fixture. Regenerate runners and snapshots with:
@@ -51,11 +50,11 @@ Only edit the source fixture. Regenerate runners and snapshots with:
 ./gradlew :wasmline-kotlin-plugin:generateTests
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
-./gradlew :wasmline-kotlin-plugin:test \
-  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
 ```
 
 Do not hand-edit `test-gen/`, `*.fir.txt`, or `*.fir.ir.txt`.
+
+The repository retains an `AbstractJvmDiagnosticTest` scaffold, but its generator model is disabled. There is no active `testData/diagnostics/` directory or `JvmDiagnosticsTestGenerated` runner.
 
 ## Version Verification
 

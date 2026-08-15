@@ -1,5 +1,6 @@
 @file:Suppress("OPT_IN_USAGE")
 
+import crow.wasmline.gradle.WasmlineBuildVariant
 import crow.wasmline.gradle.WasmtimeTarget
 import org.gradle.api.tasks.testing.Test
 
@@ -66,6 +67,6 @@ wasmline {
     }
     server {
         port = 8090
+        deployVariant = WasmlineBuildVariant.DEBUG
     }
-    serverDeployVariant = "debug"
 }

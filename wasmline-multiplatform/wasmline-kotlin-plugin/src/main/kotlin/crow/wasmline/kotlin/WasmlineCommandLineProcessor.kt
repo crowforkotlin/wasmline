@@ -42,9 +42,9 @@ internal val ENABLE_WASI_INIT_EXPORT_OPTION = CompilerConfigurationKey<Boolean>(
 )
 
 @OptIn(ExperimentalCompilerApi::class)
-class WasmlineCommandLineProcessor : CommandLineProcessor {
+public class WasmlineCommandLineProcessor : CommandLineProcessor {
     override val pluginId: String = BuildConfig.KOTLIN_PLUGIN_ID
-    override val pluginOptions = listOf(
+    override val pluginOptions: Collection<CliOption> = listOf(
         CliOption(
             optionName = GUEST_TRANSPORT_OPTION_NAME,
             valueDescription = "CORE|COMPONENT_SERVICE|NONE",

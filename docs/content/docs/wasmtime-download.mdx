@@ -1,0 +1,56 @@
+---
+title: Wasmtime Toolchains
+description: Configure and download the minimal runtime compiler and full Component compiler
+---
+
+# Wasmtime Toolchains
+
+The Gradle plugin uses two Wasmtime distributions:
+
+| Distribution | Purpose | Default cache |
+|---|---|---|
+| Minimal Wasmtime | Core Wasm AOT packaging | `~/.wasmline/wasmtime` |
+| Full Wasmtime CLI | Component AOT compilation | `~/.wasmline/wasmtime-compiler` |
+
+## Configuration
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    wasmtime {
+        autoDownload = true
+        version = "v47.0.2"
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+    }
+}
+```
+
+`directory` can set the minimal Wasmtime cache or executable directory. If it is not set, the plugin checks `WASMTIME_ROOT` and then `~/.wasmline/wasmtime`.
+
+`compilerDirectory`, `compilerVersion`, and `compilerExecutable` configure the full Wasmtime CLI used by Component AOT compilation.
+
+## Manual Tasks
+
+```bash
+# Check the minimal Core Wasm toolchain
+./gradlew checkWasmlineToolchain
+
+# Download the minimal Wasmtime distribution
+./gradlew wasmlineDownloadWasmtime
+
+# Download the full Wasmtime CLI
+./gradlew wasmlineDownloadWasmtimeCompiler
+
+# Download wit-bindgen, wasm-tools, and the WASI adapter
+./gradlew wasmlineDownloadComponentTools
+```
+
+The assemble tasks invoke the required checks and downloads when `autoDownload` is enabled. See the [Gradle Plugin reference](/en/docs/gradle-plugin) for the complete task list.
+
+## Diagnostics
+
+Use `./gradlew checkWasmlineToolchain --info` to inspect minimal toolchain resolution. Configure `wasmtime.githubToken` when authenticated GitHub requests are required.

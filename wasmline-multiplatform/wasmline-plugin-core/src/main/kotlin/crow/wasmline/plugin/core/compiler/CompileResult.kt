@@ -1,6 +1,7 @@
 package crow.wasmline.plugin.core.compiler
 
 import crow.wasmline.loader.model.WasmlineArtifact
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import kotlinx.serialization.Serializable
 
 /**
@@ -12,4 +13,5 @@ import kotlinx.serialization.Serializable
  * Author: crowforkotlin
  */
 @Serializable
+@InternalWasmlineToolingApi
 data class CompileResult(val wasmtimeVersion: String, val inputFile: String, val artifacts: List<WasmlineArtifact>)

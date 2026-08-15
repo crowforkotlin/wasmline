@@ -1,10 +1,13 @@
 package crow.wasmline.plugin.core.component
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
 import java.io.File
 
 /** Operations required by the shared Component build pipeline. */
+
+@InternalWasmlineToolingApi
 interface WasmTools {
     fun version(): String
 
@@ -28,6 +31,8 @@ interface WasmTools {
 }
 
 /** Typed wrapper around the wasm-tools Component Model commands. */
+
+@InternalWasmlineToolingApi
 class WasmToolsTool(private val executable: File, private val runner: ExternalToolRunner = ExternalToolRunner()) : WasmTools {
     private val silentRunner = ExternalToolRunner()
 

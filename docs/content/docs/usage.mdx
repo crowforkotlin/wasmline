@@ -9,7 +9,7 @@ The following example walks through the complete integration flow: define a serv
 
 ## Define the Service Contract
 
-A service contract is a Kotlin `interface` extending `WasmlineService`, declared in shared source (`commonMain`). The contract defines the binary protocol boundary between host and plugin; method signatures are the basis for SHA-256 action identifier derivation.
+A service contract is a Kotlin `interface` extending `WasmlineService`, declared in shared source (`commonMain`). The contract defines the binary protocol boundary between host and plugin. Each method uses an action in the form `<fully-qualified-contract>#<method-name>`; overloaded method names are not supported.
 
 ```kotlin
 // shared/src/commonMain/kotlin/com/example/EchoService.kt
@@ -42,7 +42,7 @@ fun main() {
 
 ## Host-Side Module Loading and Service Invocation
 
-The host loads a plugin through `WasmlineLoader.load()` — both local paths (`.pwasm` / `.cwasm` / `.wasm` / `manifest.wlm`) and remote URLs are accepted, and `http(s)://` addresses are automatically downloaded and verified as remote manifests. The host then registers host-side service implementations accessible to the plugin via `bind(impl)`, and obtains typed proxies for plugin-side services via `link<T>()`:
+The host loads a plugin through `WasmlineLoader.load()`. Native targets use verified manifests or precompiled `.pwasm` / `.cwasm` artifacts; raw `.wasm` is accepted only by the browser Core Wasmline path. An `http(s)://` source is resolved as a remote manifest and verified before its artifact is loaded. The host then registers host-side service implementations accessible to the plugin via `bind(impl)`, and obtains typed proxies for plugin-side services via `link<T>()`:
 
 ```kotlin
 import crow.wasmline.WasmlineConfig
@@ -80,6 +80,7 @@ Use `WasmlineArtifactDescriptor` when the artifact is not a default Core Wasmlin
 
 ```kotlin
 import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentValue
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -87,13 +88,20 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.invokeComponentResult
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.wasmlineNativeRuntimeInfo
 
+val runtime = requireNotNull(wasmlineNativeRuntimeInfo())
+val is64Bit = requireNotNull(runtime.is64Bit)
 val result = WasmlineLoader.load(
     WasmlineArtifactDescriptor(
-        path = "component.wasm",
+        path = "component.pwasm",
+        artifactFormat = WasmlineArtifactFormat.PWASM,
+        targetCpu = if (is64Bit) "pulley64" else "pulley32",
+        targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
+        is64Bit = is64Bit,
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
         invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-        exportName = "add",
+        exportName = "wasmline:sample-component-export/calculator@1.0.0#add",
         contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
     ),
 )
@@ -160,4 +168,4 @@ Reference implementations are located under `wasmline-samples/kotlin/`:
 | `sample-apps/android` | Android host — loads `.pwasm` artifact, registers host callbacks, invokes plugin services |
 | `sample-apps/application` | JVM headless desktop host |
 | `sample-apps/multiplatform` | Compose Multiplatform application — Android and Desktop |
-| `sample-apps/web` | Web host — Kotlin/JS and Kotlin/WasmJS targets |
+| `sample-apps/multiplatform/webApp` | Web host — Kotlin/JS and Kotlin/WasmJS targets |

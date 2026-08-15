@@ -15,7 +15,7 @@ import org.gradle.api.tasks.TaskAction
 
 /** Generates JVM/Native Host facades from WIT without invoking the Kotlin compiler plugin. */
 @CacheableTask
-abstract class WasmlineGenerateHostWitBindingsTask : DefaultTask() {
+internal abstract class WasmlineGenerateHostWitBindingsTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val witDirectory: DirectoryProperty
