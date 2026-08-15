@@ -156,12 +156,12 @@ WIT and guest source
   -> Core Wasm guest
   -> wasm-tools component embed/new
   -> raw Component Wasm
-  -> full Wasmtime CLI compile
+  -> compile-capable Wasmtime CLI
   -> Component CWASM/PWASM targets
   -> signed manifest and package
 ```
 
-The raw Component is an intermediate build result, not a native runtime artifact. Component AOT compilation verifies the exact full Wasmtime CLI version and rejects iOS CWASM targets in favor of `pulley64`.
+The raw Component is an intermediate build result, not a native runtime artifact. Component AOT compilation uses the fork's `cranelift-min` CLI by default, accepts compile-capable full CLIs as fallbacks, verifies the exact Wasmtime version and `compile` capability, and rejects iOS CWASM targets in favor of `pulley64`.
 
 ### Runtime
 

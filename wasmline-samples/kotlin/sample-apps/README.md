@@ -37,7 +37,7 @@ plugin, selects the requested artifact, and runs the host application:
 
 Use `-Pwasmline.artifact.format=pwasm32` only with a 32-bit native runtime;
 the current 64-bit desktop runtime rejects it by design. Component AOT builds
-download the pinned full Wasmtime CLI automatically through the Gradle plugin.
+download the pinned `cranelift-min` Wasmtime CLI automatically through the Gradle plugin.
 
 Desktop uses one signed `manifest.wlm` per mode. The host configures the sample
 public key, and the loader selects the compatible artifact after verifying the

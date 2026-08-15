@@ -78,6 +78,143 @@ class WasmtimeCompilerTest {
         }
     }
 
+    @Test
+    fun fullCompilerDiscoveryRejectsCraneliftMinimalReleaseDirectory() {
+        val root = createTempDirectory("wasmtime-min-release").toFile()
+        try {
+            executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux-min/${executableName(minimal = false)}").apply {
+                    parentFile.mkdirs()
+                },
+            )
+
+            assertNull(WasmtimeCompiler.findWasmtimeCompilerInDirectory(root))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun minimalCompilerDiscoverySelectsOnlyCraneliftMinimalRelease() {
+        val root = createTempDirectory("wasmtime-minimal-release").toFile()
+        try {
+            val executableName = executableName(minimal = false)
+            val minimal = executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux-min/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+            executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+            executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+
+            assertEquals(
+                minimal.canonicalFile,
+                WasmtimeCompiler.findWasmtimeMinimalInDirectory(root)?.canonicalFile,
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun minimalCompilerDiscoveryRejectsFullReleaseDirectory() {
+        val root = createTempDirectory("wasmtime-full-release").toFile()
+        try {
+            executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux/${executableName(minimal = false)}").apply {
+                    parentFile.mkdirs()
+                },
+            )
+
+            assertNull(WasmtimeCompiler.findWasmtimeMinimalInDirectory(root))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun componentCompilerDiscoveryPrefersCraneliftMinimalRelease() {
+        val root = createTempDirectory("wasmtime-component-compiler").toFile()
+        try {
+            val executableName = executableName(minimal = false)
+            val minimal = executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux-min/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+            executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+            executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+
+            assertEquals(
+                minimal.canonicalFile,
+                WasmtimeCompiler.findComponentCompilerInDirectory(root)?.canonicalFile,
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun componentCompilerDiscoveryPrefersCraneliftFullOverPulleyFull() {
+        val root = createTempDirectory("wasmtime-component-compiler-full").toFile()
+        try {
+            val executableName = executableName(minimal = false)
+            val full = executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+            executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+
+            assertEquals(
+                full.canonicalFile,
+                WasmtimeCompiler.findComponentCompilerInDirectory(root)?.canonicalFile,
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun componentCompilerDiscoveryAcceptsPulleyFullAsLastFallback() {
+        val root = createTempDirectory("wasmtime-component-compiler-pulley").toFile()
+        try {
+            val executableName = executableName(minimal = false)
+            val pulley = executable(
+                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                    parentFile.mkdirs()
+                },
+            )
+
+            assertEquals(
+                pulley.canonicalFile,
+                WasmtimeCompiler.findComponentCompilerInDirectory(root)?.canonicalFile,
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun executableName(minimal: Boolean): String {
         val suffix = if (System.getProperty("os.name").lowercase().contains("win")) ".exe" else ""
         return "wasmtime" + (if (minimal) "-min" else "") + suffix
