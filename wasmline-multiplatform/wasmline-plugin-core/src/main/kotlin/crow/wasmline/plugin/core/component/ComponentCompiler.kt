@@ -8,7 +8,7 @@ import crow.wasmline.plugin.core.toolchain.FileDigest
 import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
 import java.io.File
 
-/** Executes the full Wasmtime CLI to create native Component AOT artifacts. */
+/** Executes a compile-capable Wasmtime CLI to create native Component AOT artifacts. */
 
 @InternalWasmlineToolingApi
 class ComponentCompiler internal constructor(private val runner: ComponentCompilerToolRunner) {
@@ -37,9 +37,6 @@ class ComponentCompiler internal constructor(private val runner: ComponentCompil
         }
         require(request.wasmtimeCompiler.canExecute()) {
             "Wasmtime compiler is not executable: " + request.wasmtimeCompiler.absolutePath
-        }
-        require(!request.wasmtimeCompiler.nameWithoutExtension.equals("wasmtime-min", ignoreCase = true)) {
-            "Component AOT compilation requires the full Wasmtime CLI; wasmtime-min is runtime-only."
         }
         require(request.inputComponent.isFile && request.inputComponent.length() > 0) {
             "Component Wasm input does not exist or is empty: " + request.inputComponent.absolutePath
@@ -74,7 +71,13 @@ class ComponentCompiler internal constructor(private val runner: ComponentCompil
     }
 
     private fun verifyComponentCompileSupport(executable: File) {
-        runChecked(executable, listOf("compile", "--help"))
+        val result = runner.run(executable, listOf("compile", "--help"))
+        check(result.exitCode == 0) {
+            "Wasmtime executable does not provide the compile subcommand required for Component AOT " +
+                "(exit code ${result.exitCode}): " +
+                executable.absolutePath +
+                if (result.output.isBlank()) "" else System.lineSeparator() + result.output
+        }
     }
 
     private fun compileTarget(request: ComponentAotCompileRequest, target: ComponentAotTarget): ComponentAotCompileOutput {

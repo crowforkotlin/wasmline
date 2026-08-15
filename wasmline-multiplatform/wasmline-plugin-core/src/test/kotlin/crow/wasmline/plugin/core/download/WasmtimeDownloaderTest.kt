@@ -7,7 +7,7 @@ import kotlin.test.assertNotNull
 
 class WasmtimeDownloaderTest {
     @Test
-    fun minimalDistributionAcceptsRuntimeExecutableWithoutMinSuffix() {
+    fun minimalDistributionAcceptsCliExecutableWithoutMinSuffix() {
         val root = createTempDirectory("wasmtime-downloader").toFile()
         try {
             val extracted = root.resolve("wasmtime-v47.0.2-x86_64-linux-min").apply { mkdirs() }

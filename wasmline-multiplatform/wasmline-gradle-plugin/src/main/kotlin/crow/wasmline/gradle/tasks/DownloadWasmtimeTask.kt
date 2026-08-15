@@ -93,7 +93,7 @@ public abstract class DownloadWasmtimeTask : DefaultTask() {
 
     private fun findExecutable(baseDir: File, platform: String, version: String, distribution: WasmtimeDistribution): File? =
         when (distribution) {
-            WasmtimeDistribution.MINIMAL -> WasmtimeCompiler.findWasmtimeInDirectory(baseDir, platform, version)
+            WasmtimeDistribution.MINIMAL -> WasmtimeCompiler.findWasmtimeMinimalInDirectory(baseDir, platform, version)
             WasmtimeDistribution.FULL -> WasmtimeCompiler.findWasmtimeCompilerInDirectory(baseDir, platform, version)
         }
 

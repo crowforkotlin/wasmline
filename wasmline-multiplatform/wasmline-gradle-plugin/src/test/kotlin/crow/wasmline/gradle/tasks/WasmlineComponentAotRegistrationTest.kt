@@ -18,14 +18,14 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalWasmDsl::class)
 class WasmlineComponentAotRegistrationTest {
     @Test
-    fun registersFullCompilerDownloadAndVariantAotTasks() = withRegistrationDirectory { root ->
+    fun registersMinimalCompilerDownloadAndVariantAotTasks() = withRegistrationDirectory { root ->
         val project = ProjectBuilder.builder().withProjectDir(root).build()
         project.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
         project.pluginManager.apply(WasmlinePlugin::class.java)
         val extension = project.extensions.getByType(WasmlineExtension::class.java)
         val explicitCompiler = File(root, "tools/wasmtime").apply {
             parentFile.mkdirs()
-            writeText("full compiler")
+            writeText("component compiler")
         }
         extension.manifest.pluginId.set("crow.test.plugin")
         extension.wasmtime.compilerExecutable.set(explicitCompiler)
@@ -43,8 +43,14 @@ class WasmlineComponentAotRegistrationTest {
         val debugAot = project.tasks.named("wasmlineComponentAotDebug", WasmlineComponentAotTask::class.java).get()
         val releaseAot = project.tasks.named("wasmlineComponentAotRelease", WasmlineComponentAotTask::class.java).get()
 
-        assertEquals(WasmtimeDistribution.FULL, compilerDownload.distribution.get())
+        assertEquals(WasmtimeDistribution.MINIMAL, compilerDownload.distribution.get())
         assertEquals(WasmtimeDistribution.MINIMAL, minimalDownload.distribution.get())
+        val expectedCompilerName = if (System.getProperty("os.name").lowercase().contains("win")) {
+            "wasmtime-min.exe"
+        } else {
+            "wasmtime-min"
+        }
+        assertEquals(expectedCompilerName, compilerDownload.installedExecutable.get().asFile.name)
         assertEquals(ToolchainCatalog.WASMTIME_VERSION, debugAot.wasmtimeVersion.get())
         assertEquals(explicitCompiler.canonicalFile, debugAot.wasmtimeCompilerExecutable.get().asFile.canonicalFile)
         assertEquals(listOf("pulley64", "aarch64-linux"), debugAot.targets.get())
@@ -55,7 +61,7 @@ class WasmlineComponentAotRegistrationTest {
     }
 
     @Test
-    fun autoDownloadAddsOnlyTheFullCompilerDownloadDependency() = withRegistrationDirectory { root ->
+    fun autoDownloadAddsOnlyTheComponentCompilerDownloadDependency() = withRegistrationDirectory { root ->
         val project = ProjectBuilder.builder().withProjectDir(root).build()
         project.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
         project.pluginManager.apply(WasmlinePlugin::class.java)
@@ -76,7 +82,7 @@ class WasmlineComponentAotRegistrationTest {
         project.pluginManager.apply(WasmlinePlugin::class.java)
         val extension = project.extensions.getByType(WasmlineExtension::class.java)
         extension.manifest.executionModel.set(WasmlineExecutionModel.COMPONENT_MODEL)
-        extension.wasmtime.compilerExecutable.set(File(root, "wasmtime").apply { writeText("full compiler") })
+        extension.wasmtime.compilerExecutable.set(File(root, "wasmtime-min").apply { writeText("component compiler") })
         project.extensions.getByType(KotlinMultiplatformExtension::class.java).wasmWasi()
         WasmlinePlugin().configureAssembleTaskGraph(project, extension)
 

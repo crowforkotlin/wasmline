@@ -117,16 +117,16 @@ public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFacto
     public val version: Property<String> = objects.property(String::class.java)
         .convention("latest")
 
-    /** Exact full Wasmtime CLI version used only for Component AOT compilation. */
+    /** Exact Wasmtime CLI version used for Component AOT compilation. */
     public val compilerVersion: Property<String> = objects.property(String::class.java)
         .convention(ToolchainCatalog.WASMTIME_VERSION)
 
-    /** Separate cache root for the full build-time CLI; runtime-min remains in [directory]. */
+    /** Separate cache root for the Component AOT compiler. */
     public val compilerDirectory: DirectoryProperty = objects.directoryProperty().apply {
         set(File(System.getProperty("user.home"), ".wasmline/wasmtime-compiler"))
     }
 
-    /** Optional explicit full Wasmtime CLI executable. `wasmtime-min` is rejected. */
+    /** Optional Component AOT compiler override. Both compile-capable minimal and full CLIs are accepted. */
     public val compilerExecutable: RegularFileProperty = objects.fileProperty()
 
     /**

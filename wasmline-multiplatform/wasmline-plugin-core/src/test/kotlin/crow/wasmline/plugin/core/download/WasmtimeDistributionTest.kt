@@ -17,11 +17,18 @@ class WasmtimeDistributionTest {
     }
 
     @Test
-    fun excludesCApiPulleyAndOtherPlatformsForBothDistributions() {
+    fun excludesCApiPulleyVariantsAndOtherPlatformsForBothDistributions() {
         listOf(WasmtimeDistribution.MINIMAL, WasmtimeDistribution.FULL).forEach { distribution ->
             assertFalse(
                 matchesWasmtimeDistributionAsset(
                     "wasmtime-v47.0.2-x86_64-linux-c-api.tar.xz",
+                    "x86_64-linux",
+                    distribution,
+                ),
+            )
+            assertFalse(
+                matchesWasmtimeDistributionAsset(
+                    "wasmtime-v47.0.2-x86_64-linux-pulley-min-c-api.tar.xz",
                     "x86_64-linux",
                     distribution,
                 ),
