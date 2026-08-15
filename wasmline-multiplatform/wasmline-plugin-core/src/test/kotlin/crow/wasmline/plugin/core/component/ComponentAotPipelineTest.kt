@@ -11,6 +11,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+private const val FIXTURE_WASM_TOOLS_VERSION = "0.0.0-test"
+
 class ComponentAotPipelineTest {
     @Test
     fun chainsFinishedComponentThroughRawAndAotRecords() = withComponentAotPipelineDirectory { root ->
@@ -33,7 +35,7 @@ class ComponentAotPipelineTest {
             adapterSha256 = "b".repeat(64),
             adapterVersion = "47.0.2",
             witBindgenVersion = "0.57.1",
-            wasmToolsVersion = "1.255.0",
+            wasmToolsVersion = FIXTURE_WASM_TOOLS_VERSION,
         )
         val aotDirectory = File(root, "aot")
         val targets = listOf(
@@ -78,7 +80,7 @@ class ComponentAotPipelineTest {
             embeddedFile = "plugin-embedded.wasm",
             componentSha256 = FileDigest.sha256Hex(component),
             witSha256 = "a".repeat(64),
-            wasmToolsVersion = "1.255.0",
+            wasmToolsVersion = FIXTURE_WASM_TOOLS_VERSION,
         )
         var compileCalls = 0
         val pipeline = ComponentAotPipeline { request ->
@@ -120,7 +122,7 @@ class ComponentAotPipelineTest {
             embeddedFile = component.name,
             componentSha256 = FileDigest.sha256Hex(component),
             witSha256 = "a".repeat(64),
-            wasmToolsVersion = "1.255.0",
+            wasmToolsVersion = FIXTURE_WASM_TOOLS_VERSION,
         )
         var compileCalls = 0
         val pipeline = ComponentAotPipeline { request ->

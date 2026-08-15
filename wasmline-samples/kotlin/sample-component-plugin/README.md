@@ -18,7 +18,7 @@ The complete build is owned by the Wasmline Gradle plugin:
 The task chain materializes Wasmline's canonical WIT, generates Kotlin bindings and the
 Wasmline transport adapter under `build/generated`, compiles the
 Kotlin/Wasm WASI library with JDK 21, embeds WIT, creates and validates the
-Component with the pinned `wit-bindgen` 0.57.1 and `wasm-tools` 1.255.0, then
+Component with the pinned `wit-bindgen` 0.57.1 and `wasm-tools` 1.256.0, then
 uses the full Wasmtime CLI to produce matching `.pwasm` and `.cwasm` Component
 artifacts. Generated bindings and intermediate Wasm files are build outputs and
 are not committed. The Gradle plugin downloads the pinned full Wasmtime CLI

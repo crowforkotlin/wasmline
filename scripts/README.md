@@ -11,9 +11,9 @@ Repository automation is grouped by purpose:
 | `build-native-assets.sh` | Native engine asset build and deployment |
 | `doctor.sh` | Local environment preflight |
 | `versions.json` | Source of truth for managed project and toolchain versions |
-| `sync_version.py` | Public version-synchronization entry point |
-| `sync_versions.py` | Synchronizer implementation and compatibility entry point |
-| `test_sync_versions.py` | Regression coverage for managed files and replacement rules |
+| `sync_version.py` | Version-synchronization entry point and implementation |
+| `toolchain_lock.py` | Internal GitHub release resolution and toolchain-lock validation |
+| `test_sync_version.py` | Regression tests; not part of the update command |
 
 C and C++ Component fixture commands live with their language samples:
 
@@ -30,18 +30,49 @@ so there is intentionally no `run.sh`.
 
 ## Version Synchronization
 
-Use the singular entry point for normal work:
+Inspect or update versions with the singular entry point:
 
 ```bash
 python3 scripts/sync_version.py --list
-python3 scripts/sync_version.py --check
-python3 scripts/sync_version.py --set wasmtime_version=<new-version>
-python3 scripts/test_sync_versions.py
+
+# Synchronize after editing scripts/versions.json.
+python3 scripts/sync_version.py
+
+# Update the manifest and synchronize in one command.
+python3 scripts/sync_version.py \
+  --set wasmtime_version=<new-version> \
+  --set wasm_tools_version=<new-version> \
+  --set wit_bindgen_version=<new-version>
 ```
 
-The plural entry point accepts the same arguments for existing automation. When
-adding a duplicated version reference, add a narrow rule to `sync_versions.py`
-and synthetic coverage to `test_sync_versions.py` in the same change.
+Run validation separately when required:
+
+```bash
+python3 scripts/sync_version.py --check
+python3 scripts/sync_version.py --verify-upstream
+python3 scripts/test_sync_version.py
+```
+
+`sync_version.py` is the only supported update command. With no arguments, it
+reads `versions.json` and synchronizes every managed reference. The `--set`
+option updates the manifest before performing the same synchronization.
+`test_sync_version.py` is an independent regression suite and does not update
+repository versions.
+
+When adding a duplicated version reference, add a narrow rule to
+`sync_version.py` and synthetic coverage to `test_sync_version.py` in the same
+change.
+
+Changing any Component toolchain version causes normal synchronization to
+resolve all required GitHub release assets before derived files are written.
+Kotlin code and live tests read Component tool versions from `ToolchainCatalog`;
+changes to `wasm_tools_version` or `wit_bindgen_version` do not rewrite `.kt`
+files. Version strings used as independent test fixtures remain unmanaged.
+The generated lock is packaged from
+`wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/` and must
+not be edited manually. `--check` validates local consistency without network
+access or lock refresh. `--verify-upstream` compares the checked-in lock with
+current GitHub release metadata.
 
 ## Linting
 

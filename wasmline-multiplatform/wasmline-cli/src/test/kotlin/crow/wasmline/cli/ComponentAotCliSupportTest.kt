@@ -15,6 +15,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+private const val FIXTURE_WASM_TOOLS_VERSION = "0.0.0-test"
+
 class ComponentAotCliSupportTest {
     @Test
     fun `resolves exact full compiler and returns only component aot artifacts`() = withCliAotDirectory { root ->
@@ -123,7 +125,7 @@ class ComponentAotCliSupportTest {
         exportName = "plugin/invoke",
         componentSha256 = sha256Hex(component),
         witSha256 = "a".repeat(64),
-        wasmToolsVersion = "1.255.0",
+        wasmToolsVersion = FIXTURE_WASM_TOOLS_VERSION,
     )
 }
 

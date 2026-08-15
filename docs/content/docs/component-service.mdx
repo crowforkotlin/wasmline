@@ -72,7 +72,7 @@ of these flows patches Wasmtime, `wit-bindgen`, or the canonical WIT source.
 | C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::service::Invoke` | `wasmline::service::Invoke` |
 
 Generated source and Component type objects remain build outputs. The C and
-C++ fixtures enforce `wit-bindgen 0.57.1` and `wasm-tools 1.255.0` at CMake
+C++ fixtures enforce `wit-bindgen 0.57.1` and `wasm-tools 1.256.0` at CMake
 configure time; their READMEs contain the complete WASI SDK commands.
 The pinned C++ generator emits one `std::expected::value()` use with a
 move-only WIT error type. Its fixture applies a fail-closed generated-source

@@ -1,45 +1,95 @@
-# wasmline
+# Wasmline documentation site
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+This folder contains the Wasmline website and documentation. It uses Next.js,
+Fumadocs, MDX, and Tailwind CSS. The build creates a static site under the
+`/wasmline` path, with English and Chinese pages.
 
-Run development server:
+## Run the site locally
+
+Use Node.js 22.13 or newer and pnpm 11. From this folder, install the packages
+and start the development server:
 
 ```bash
-npm run dev
-# or
+pnpm install
 pnpm dev
-# or
-yarn dev
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+Open <http://localhost:3000/wasmline>. The site will pick English or Chinese
+from your browser settings. You can also open a language directly:
 
-## Explore
+- <http://localhost:3000/wasmline/en>
+- <http://localhost:3000/wasmline/zh>
 
-In the project, you can see:
+## Useful commands
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Starts the local development server. |
+| `pnpm types:check` | Generates Fumadocs and Next.js types, then checks TypeScript. |
+| `pnpm build` | Builds the static site in `out/`. |
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+## Where things live
 
-### Fumadocs MDX
+| Path | What it contains |
+| --- | --- |
+| `content/docs/*.mdx` | English documentation pages. |
+| `content/docs/*.zh.mdx` | Chinese documentation pages. |
+| `content/docs/meta.json` | English sidebar order and labels. |
+| `content/docs/meta.zh.json` | Chinese sidebar order and labels. |
+| `content/site.zh.json` | Chinese text used outside the MDX pages. |
+| `src/app/` | Pages, layouts, search data, and image routes. |
+| `src/lib/` | Fumadocs source, language, and layout settings. |
+| `source.config.ts` | MDX collection settings. |
+| `next.config.mjs` | Static export and `/wasmline` base path settings. |
 
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
+## Add or edit a page
 
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
+English is the default language. An English page uses `<name>.mdx`, and its
+Chinese version uses `<name>.zh.mdx`.
 
-## Learn More
+1. Add or edit both files in `content/docs/`.
+2. Keep the same frontmatter fields and page structure in both files.
+3. When adding a page, add its slug to both `meta.json` files.
+4. Run `pnpm types:check` before sending the change.
 
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
+Keep source code, code comments, and this README in English. Put Chinese page
+text only in `*.zh.mdx` or `*.zh.json` files.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+## Update Fumadocs
+
+This project uses pnpm and keeps exact Fumadocs versions in `package.json`.
+Check the available updates first:
+
+```bash
+pnpm outdated fumadocs-core fumadocs-mdx fumadocs-ui
+```
+
+Read the Fumadocs release notes before a major update. Then update all three
+packages in one command:
+
+```bash
+pnpm up --latest fumadocs-core fumadocs-mdx fumadocs-ui
+```
+
+The three packages do not always use the same version number. Let pnpm choose
+each current version, and keep the generated `pnpm-lock.yaml` change. Do not
+edit the lock file by hand.
+
+After the update, run:
+
+```bash
+pnpm types:check
+pnpm build
+```
+
+Fix any changed imports or APIs using the current
+[Fumadocs docs](https://fumadocs.dev/docs). Check the English and Chinese home
+pages, one page in each language, search, and the generated `llms-full.txt`
+file before merging the update.
+
+## Static export notes
+
+`pnpm build` writes the deployable files to `out/`. The site uses
+`basePath: '/wasmline'`, so browser redirects and plain HTML links must include
+that prefix. Next.js middleware does not run in the static export, so the root
+page chooses the language in the browser.

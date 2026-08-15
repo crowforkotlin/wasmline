@@ -65,6 +65,7 @@ class ToolDownloader(private val httpClient: HttpClient = HttpClient(CIO), priva
         try {
             logger("Downloading " + spec.archiveName)
             downloadFile(spec.downloadUrl, download, githubToken)
+            verifySize(download, spec)
             verifyDigest(download, spec)
 
             when (spec.distribution) {
@@ -121,7 +122,16 @@ class ToolDownloader(private val httpClient: HttpClient = HttpClient(CIO), priva
     internal fun verifyDigest(download: File, spec: ToolAssetSpec) {
         val actualDigest = FileDigest.sha256Hex(download)
         require(actualDigest.equals(spec.sha256, ignoreCase = true)) {
-            "SHA-256 mismatch for " + spec.archiveName + ": expected " + spec.sha256 + ", actual " + actualDigest + "."
+            "SHA-256 mismatch for " + spec.archiveName + ": expected " + spec.sha256 + ", actual " + actualDigest +
+                ". Release asset ID: " + spec.assetId + "."
+        }
+    }
+
+    internal fun verifySize(download: File, spec: ToolAssetSpec) {
+        val actualSize = download.length()
+        require(actualSize == spec.size) {
+            "Size mismatch for " + spec.archiveName + ": expected " + spec.size + " bytes, actual " + actualSize +
+                " bytes. Release asset ID: " + spec.assetId + "."
         }
     }
 

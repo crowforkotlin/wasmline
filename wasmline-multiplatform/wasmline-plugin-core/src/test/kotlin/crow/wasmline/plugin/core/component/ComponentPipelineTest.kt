@@ -5,6 +5,7 @@ import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineTypedComponentContract
 import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
+import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -137,7 +138,7 @@ private class RecordingWasmTools(
 
     override fun version(): String {
         operations += "version"
-        return "wasm-tools 1.255.0"
+        return "wasm-tools ${ToolchainCatalog.WASM_TOOLS_VERSION}"
     }
 
     override fun embedWit(witPath: File, inputWasm: File, outputWasm: File, world: String?): ToolExecutionResult {

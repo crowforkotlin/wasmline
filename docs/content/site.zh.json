@@ -1,0 +1,42 @@
+{
+  "languageName": "中文",
+  "docsLink": "文档",
+  "ui": {
+    "search": "搜索文档",
+    "searchNoResult": "未找到结果",
+    "toc": "本页目录",
+    "tocNoHeadings": "本页没有目录",
+    "lastUpdate": "最后更新",
+    "chooseLanguage": "选择语言",
+    "nextPage": "下一页",
+    "previousPage": "上一页",
+    "chooseTheme": "选择主题",
+    "editOnGithub": "在 GitHub 上编辑"
+  },
+  "home": {
+    "badge": "Kotlin Multiplatform · WASI 插件框架",
+    "subtitle": "在 Android、iOS、Desktop 与 Web 应用中加载并运行 WebAssembly 插件",
+    "description": "全部桥接代码由 Kotlin IR 编译器插件在编译期生成——无反射、无注解处理；原生端由 wasmtime 驱动，Web 端运行于浏览器沙箱。",
+    "getStarted": "快速开始",
+    "features": {
+      "bridge": "编译期桥接生成",
+      "platforms": "Android · iOS · Desktop · Web",
+      "sandbox": "wasmtime 与浏览器沙箱隔离"
+    },
+    "cards": {
+      "docs": {
+        "title": "文档",
+        "description": "安装、使用指南、CLI 参考与架构细节。"
+      },
+      "runtime": {
+        "title": "运行时",
+        "description": "原生目标由 wasmtime WebAssembly 运行时驱动。"
+      },
+      "issues": {
+        "title": "问题反馈",
+        "description": "发现了 Bug 或有功能建议？告诉我们。"
+      }
+    },
+    "footer": "基于 Apache-2.0 许可证发布"
+  }
+}
