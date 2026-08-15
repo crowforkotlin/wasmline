@@ -6,6 +6,7 @@ import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineTypedComponentContract
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.toolchain.FileDigest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -15,6 +16,7 @@ import java.io.File
 
 /** Serializable boundary between componentization and package assembly. */
 @Serializable
+@InternalWasmlineToolingApi
 data class ComponentBuildRecord(
     val componentFile: String,
     val embeddedFile: String,
@@ -109,6 +111,8 @@ data class ComponentBuildRecord(
 }
 
 /** Reads and writes Component build stage records. */
+
+@InternalWasmlineToolingApi
 object ComponentBuildRecords {
     const val FILE_NAME = "component-result.json"
 

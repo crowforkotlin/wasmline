@@ -15,7 +15,7 @@ import crow.wasmline.plugin.core.util.PlatformDetector
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
-class Download : CliktCommand(name = "download") {
+internal class Download : CliktCommand(name = "download") {
 
     private val downloadVersions by option("-v", "--versions")
         .multiple()

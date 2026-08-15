@@ -1,12 +1,17 @@
 package crow.wasmline.plugin.core.toolchain
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import java.io.File
 import java.util.Properties
 
 /** A verified tool asset resolved from the local cache. */
+
+@InternalWasmlineToolingApi
 data class ResolvedToolAsset(val spec: ToolAssetSpec, val directory: File, val file: File)
 
 /** Stores immutable, verified Component toolchain assets. */
+
+@InternalWasmlineToolingApi
 class ToolCache(val rootDirectory: File) {
     internal fun directoryFor(spec: ToolAssetSpec): File =
         File(rootDirectory, spec.tool.name.lowercase() + "/" + spec.version + "/" + spec.platform)

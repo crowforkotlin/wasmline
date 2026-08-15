@@ -52,12 +52,12 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 | `MINGW_PATH` | Locates the MinGW toolchain root for `build.zig` Windows cross-compilation |
 
 <Callout type="info" title="MINGW_PATH is only needed for Windows cross-compilation">
-  If Windows artifacts are not required, `MINGW_PATH` can be omitted. `build-native-assets.sh` skips failed targets and continues building the remaining platforms.
+  If Windows artifacts are not required, `MINGW_PATH` can be omitted. Do not download or select the Windows target when its cross-compilation toolchain is unavailable.
 </Callout>
 
 ## Environment Preflight
 
-Gradle must not be invoked prior to confirming the active JVM environment. Execute the repository preflight check before each build session:
+Run the repository preflight once per session, immediately before the first validation required after changing Wasmline files. Skip it for read-only work, changes outside Wasmline, and file changes that require no validation:
 
 ```bash
 bash ./scripts/doctor.sh
@@ -76,7 +76,7 @@ Asset initialization is required only for native target builds (Android, iOS, De
 wasmtime min C-API headers and pre-built libraries must be present under `build/platforms/` before native target compilation proceeds. Execute one of the following equivalent scripts:
 
 ```bash
-sh ./scripts/init-wasmtime.sh          # Bash — requires curl and tar/unzip
+bash ./scripts/init-wasmtime.sh        # Bash — requires curl and tar/unzip
 python3 ./scripts/init-wasmtime.py     # Python 3.9+ — no third-party dependencies
 node ./scripts/init-wasmtime.mjs       # Node.js 18+ — no third-party dependencies
 ```
@@ -133,9 +133,6 @@ cd wasmline-multiplatform
 # wasmline-cli module tests
 ./gradlew :wasmline-cli:test
 
-# Kotlin/WasmWasi plugin sample compilation
-./gradlew :wasmline-sample:plugin:compileProductionLibraryKotlinWasmWasiOptimize
-
 # IR compiler plugin — regenerate test runners from testData fixtures
 ./gradlew :wasmline-kotlin-plugin:generateTests
 
@@ -143,12 +140,17 @@ cd wasmline-multiplatform
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
 
-# IR compiler plugin — diagnostic validation tests
-./gradlew :wasmline-kotlin-plugin:test \
-  --tests 'crow.wasmline.kotlin.runners.JvmDiagnosticsTestGenerated'
-
 # Install all modules to the local Maven repository (mavenLocal)
 ./gradlew publishToMavenLocal
+```
+
+The generator currently registers only `JvmBoxTestGenerated`. The diagnostic test scaffold is disabled, and there is no `testData/diagnostics/` suite or `JvmDiagnosticsTestGenerated` runner.
+
+The Kotlin sample is a separate Gradle build:
+
+```bash
+cd ../wasmline-samples/kotlin
+./gradlew :sample-plugin:wasmlineAssembleDebug
 ```
 
 ## Version Sync

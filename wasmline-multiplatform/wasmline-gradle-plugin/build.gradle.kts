@@ -55,8 +55,10 @@ dependencies {
 }
 
 kotlin {
+    explicitApi()
     compilerOptions {
         freeCompilerArgs.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
+        optIn.add("crow.wasmline.plugin.core.InternalWasmlineToolingApi")
     }
 }
 

@@ -1,5 +1,6 @@
 package crow.wasmline.plugin.core.download
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.util.PlatformDetector
 import io.ktor.client.*
@@ -22,6 +23,8 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
 
 /** Selects either the runtime-only asset or the full build-time Wasmtime CLI. */
+
+@InternalWasmlineToolingApi
 enum class WasmtimeDistribution {
     MINIMAL,
     FULL,
@@ -45,6 +48,8 @@ internal fun matchesWasmtimeDistributionAsset(assetName: String, platform: Strin
  * Date: 2026-07-31
  * Author: crowforkotlin
  */
+
+@InternalWasmlineToolingApi
 class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) : Closeable {
 
     companion object {

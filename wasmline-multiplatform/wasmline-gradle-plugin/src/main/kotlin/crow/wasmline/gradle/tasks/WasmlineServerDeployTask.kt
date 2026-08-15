@@ -29,7 +29,7 @@ import org.gradle.api.tasks.TaskAction
  * Date: 2026-06-05
  * Author: crowforkotlin
  */
-abstract class WasmlineServerDeployTask : DefaultTask() {
+internal abstract class WasmlineServerDeployTask : DefaultTask() {
 
     init {
         group = "wasmline"

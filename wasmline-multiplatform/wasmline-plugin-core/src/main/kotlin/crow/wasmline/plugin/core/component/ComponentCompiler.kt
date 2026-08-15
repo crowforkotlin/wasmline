@@ -1,6 +1,7 @@
 package crow.wasmline.plugin.core.component
 
 import crow.wasmline.loader.model.WasmlineArtifact
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.FileDigest
@@ -8,6 +9,8 @@ import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
 import java.io.File
 
 /** Executes the full Wasmtime CLI to create native Component AOT artifacts. */
+
+@InternalWasmlineToolingApi
 class ComponentCompiler internal constructor(private val runner: ComponentCompilerToolRunner) {
     constructor(logger: (String) -> Unit = {}) : this(ExternalComponentCompilerToolRunner(logger))
 

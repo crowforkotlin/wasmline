@@ -3,6 +3,7 @@
 package crow.wasmline
 
 import crow.wasmline.gradle.BuildConfig
+import crow.wasmline.gradle.WasmlineBuildVariant
 import crow.wasmline.gradle.WasmtimeTarget
 import crow.wasmline.gradle.extensions.WasmlineExtension
 import crow.wasmline.gradle.tasks.DownloadComponentToolsTask
@@ -13,11 +14,12 @@ import crow.wasmline.gradle.tasks.WasmlineComponentizeTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateHostWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineServerDeployTask
-import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.download.WasmtimeDistribution
 import crow.wasmline.plugin.core.download.WasmtimeDownloader
+import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
+import crow.wasmline.plugin.core.manifest.ManifestSigningAlgorithm
 import crow.wasmline.plugin.core.util.PlatformDetector
 import kotlinx.coroutines.runBlocking
 import org.gradle.api.DefaultTask
@@ -43,12 +45,24 @@ import kotlin.jvm.java
  * Wasmline Gradle plugin — bridges the Kotlin IR compiler plugin and
  * registers build / deploy tasks for wasmline plugins.
  *
- * Registered tasks:
+ * Primary tasks:
  * - `wasmlineAssembleDebug` — assemble with Development compilation output
  * - `wasmlineAssembleRelease` — assemble with Production compilation output
  * - `wasmlineServerDeploy` — start an HTTP server serving the assembled artifacts
+ *
+ * Toolchain and signing tasks:
  * - `wasmlineDownloadWasmtime` — download wasmtime binary
+ * - `wasmlineDownloadWasmtimeCompiler` — download the full Wasmtime CLI
+ * - `wasmlineDownloadComponentTools` — download Component Model tools
  * - `checkWasmlineToolchain` — verify wasmtime is available
+ * - `generateWasmlineManifestKeyPairEd25519` — generate an Ed25519 manifest key pair
+ * - `generateWasmlineManifestKeyPairEcdsaP256` — generate an ECDSA P-256 manifest key pair
+ *
+ * Component pipeline tasks:
+ * - `wasmlineGenerateWitBindings`
+ * - `wasmlineGenerateHostWitBindings`
+ * - `wasmlineComponentizeDebug` / `wasmlineComponentizeRelease`
+ * - `wasmlineComponentAotDebug` / `wasmlineComponentAotRelease`
  *
  * DSL usage (in the consuming project's `build.gradle.kts`):
  * ```kotlin
@@ -56,7 +70,7 @@ import kotlin.jvm.java
  *     manifest {
  *         pluginId = "crow.wasmline.demo"
  *         version = "1.0.0"
- *         signingKey = file("../keys/private.key").readText()
+ *         signingKey = file("../keys/private.key")
  *     }
  *     wasmtime {
  *         // Optional: defaults to ~/.wasmline/wasmtime (base directory).
@@ -67,6 +81,7 @@ import kotlin.jvm.java
  *     }
  *     server {
  *         port = 8080
+ *         deployVariant = WasmlineBuildVariant.RELEASE
  *     }
  * }
  * ```
@@ -74,7 +89,7 @@ import kotlin.jvm.java
  * Date: 2026-06-05
  * Author: crowforkotlin
  */
-class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
+public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
     override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
 
@@ -397,15 +412,15 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             variantName = "release",
         )
 
-        project.tasks.register("wasmlineAssembleDebug", WasmlineAssembleTask::class.java) { task ->
+        project.tasks.register(WasmlineBuildVariant.DEBUG.assembleTaskName, WasmlineAssembleTask::class.java) { task ->
             task.description = "Assemble wasmline plugin (debug / Development variant)"
-            task.buildVariant.set("Development")
+            task.buildVariant.set(WasmlineBuildVariant.DEBUG.compilationName)
             configureAssembleTask(task, project, ext)
         }
 
-        project.tasks.register("wasmlineAssembleRelease", WasmlineAssembleTask::class.java) { task ->
+        project.tasks.register(WasmlineBuildVariant.RELEASE.assembleTaskName, WasmlineAssembleTask::class.java) { task ->
             task.description = "Assemble wasmline plugin (release / Production variant)"
-            task.buildVariant.set("Production")
+            task.buildVariant.set(WasmlineBuildVariant.RELEASE.compilationName)
             configureAssembleTask(task, project, ext)
         }
     }
@@ -543,7 +558,10 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             libraryDir = "productionLibrary",
         )
 
-        project.tasks.named("wasmlineAssembleDebug", WasmlineAssembleTask::class.java).configure { task ->
+        project.tasks.named(
+            WasmlineBuildVariant.DEBUG.assembleTaskName,
+            WasmlineAssembleTask::class.java,
+        ).configure { task ->
             if (componentBuild) {
                 task.componentOutputDirectory.set(debugComponentAot.flatMap { it.outputDirectory })
                 task.dependsOn(debugComponentAot)
@@ -556,7 +574,10 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
                 task.dependsOn(debugCompileTask)
             }
         }
-        project.tasks.named("wasmlineAssembleRelease", WasmlineAssembleTask::class.java).configure { task ->
+        project.tasks.named(
+            WasmlineBuildVariant.RELEASE.assembleTaskName,
+            WasmlineAssembleTask::class.java,
+        ).configure { task ->
             if (componentBuild) {
                 task.componentOutputDirectory.set(releaseComponentAot.flatMap { it.outputDirectory })
                 task.dependsOn(releaseComponentAot)
@@ -737,19 +758,12 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.port.set(ext.server.port)
             task.host.set(ext.server.host)
 
-            // Determine which assemble variant to depend on.
-            val variant = ext.serverDeployVariant.get().lowercase()
-            val assembleTaskName = when (variant) {
-                "release" -> "wasmlineAssembleRelease"
-                else -> "wasmlineAssembleDebug"
-            }
-            task.dependsOn(assembleTaskName)
+            task.dependsOn(ext.server.deployVariant.map(WasmlineBuildVariant::assembleTaskName))
 
-            // Serve directory: build/wasmline/output/{pluginId}-{version}/
-            val pluginId = ext.manifest.pluginId.orNull ?: "unknown"
-            val version = ext.manifest.version.getOrElse("1.0.0")
             task.serveDirectory.set(
-                project.layout.buildDirectory.dir("wasmline/output/$pluginId-$version"),
+                ext.manifest.pluginId.zip(ext.manifest.version) { pluginId, version ->
+                    project.layout.buildDirectory.get().dir("wasmline/output/$pluginId-$version")
+                },
             )
         }
     }
@@ -792,14 +806,16 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     private fun createGenerateKeyPairTasks(project: Project) {
         project.tasks.register("generateWasmlineManifestKeyPairEd25519") { task ->
             task.group = "wasmline"
+            task.description = "Generate an Ed25519 manifest signing key pair"
             task.doLast {
-                generateKeyPair(SignatureAlgorithmId.Ed25519)
+                generateKeyPair(ManifestSigningAlgorithm.Ed25519)
             }
         }
         project.tasks.register("generateWasmlineManifestKeyPairEcdsaP256") { task ->
             task.group = "wasmline"
+            task.description = "Generate an ECDSA P-256 manifest signing key pair"
             task.doLast {
-                generateKeyPair(SignatureAlgorithmId.EcdsaP256)
+                generateKeyPair(ManifestSigningAlgorithm.EcdsaP256)
             }
         }
     }
@@ -808,14 +824,13 @@ class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         const val GUEST_TRANSPORT_OPTION = "guestTransport"
     }
 
-    @Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER") // Access :zipline-loader internals.
-    private fun generateKeyPair(algorithm: SignatureAlgorithmId) {
+    private fun generateKeyPair(algorithm: ManifestSigningAlgorithm) {
         val logger = LoggerFactory.getLogger(WasmlinePlugin::class.java)
-        val keyPair = crow.wasmline.loader.internal.crypto.generateKeyPair(algorithm)
+        val keyPair = ManifestKeyGenerator.generate(algorithm)
         logger.warn("---------------- ----------------------------------------------------------------")
         logger.warn("    ALGORITHM: $algorithm")
-        logger.warn("    PUBLIC KEY: ${keyPair.publicKey.hex()}")
-        logger.warn("    PRIVATE KEY: ${keyPair.privateKey.hex()}")
+        logger.warn("    PUBLIC KEY: ${keyPair.publicKeyHex}")
+        logger.warn("    PRIVATE KEY: ${keyPair.privateKeyHex}")
         logger.warn("---------------- ----------------------------------------------------------------")
     }
 }

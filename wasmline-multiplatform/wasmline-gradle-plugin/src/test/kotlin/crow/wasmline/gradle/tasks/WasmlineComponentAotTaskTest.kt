@@ -6,10 +6,10 @@ import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.component.ComponentAotBuildRecords
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.component.ComponentizeResult
-import crow.wasmline.plugin.core.toolchain.FileDigest
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.testfixtures.ProjectBuilder
 import java.io.File
+import java.security.MessageDigest
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,7 +31,7 @@ class WasmlineComponentAotTaskTest {
             exportName = "plugin/invoke",
             codec = "protobuf",
             serviceProtocolVersion = "1",
-            componentSha256 = FileDigest.sha256Hex(component),
+            componentSha256 = sha256Hex(component),
             witSha256 = "a".repeat(64),
             adapterSha256 = null,
             adapterVersion = null,
@@ -102,3 +102,7 @@ private inline fun withTaskDirectory(block: (File) -> Unit) {
         directory.deleteRecursively()
     }
 }
+
+private fun sha256Hex(file: File): String = MessageDigest.getInstance("SHA-256")
+    .digest(file.readBytes())
+    .joinToString("") { byte -> "%02x".format(byte) }

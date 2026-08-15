@@ -24,4 +24,8 @@ dependencies {
 
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        optIn.add("crow.wasmline.loader.tooling.WasmlineLoaderToolingApi")
+        optIn.add("crow.wasmline.plugin.core.InternalWasmlineToolingApi")
+    }
 }

@@ -1,17 +1,23 @@
 package crow.wasmline.plugin.core.toolchain
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /** Result of one external tool invocation. */
+
+@InternalWasmlineToolingApi
 data class ToolExecutionResult(val command: List<String>, val exitCode: Int, val output: String)
 
 /** Indicates that an external tool timed out or returned a non-zero status. */
-class ToolExecutionException(message: String, val result: ToolExecutionResult? = null) : IllegalStateException(message)
+
+internal class ToolExecutionException(message: String, val result: ToolExecutionResult? = null) : IllegalStateException(message)
 
 /** Executes pinned tools without involving a shell. */
+
+@InternalWasmlineToolingApi
 class ExternalToolRunner(private val defaultTimeoutMillis: Long = 120_000, private val logger: (String) -> Unit = {}) {
     fun run(
         executable: File,

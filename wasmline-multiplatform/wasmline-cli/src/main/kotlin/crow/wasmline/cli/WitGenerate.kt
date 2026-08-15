@@ -19,7 +19,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /** Generates Kotlin/Wasm Component bindings from a WIT directory. */
-class WitGenerate : CliktCommand(name = "generate") {
+internal class WitGenerate : CliktCommand(name = "generate") {
     private val witDirectory by option("--wit")
         .file(mustExist = true, canBeFile = false, canBeDir = true)
         .required()

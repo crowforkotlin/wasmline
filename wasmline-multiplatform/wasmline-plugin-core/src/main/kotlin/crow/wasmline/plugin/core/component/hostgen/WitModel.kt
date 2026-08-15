@@ -1,19 +1,24 @@
 package crow.wasmline.plugin.core.component.hostgen
 
-data class WitPackage(
+internal data class WitPackage(
     val packageId: String,
     val interfaces: Map<String, WitInterface>,
     val worlds: Map<String, WitWorld>,
     val sha256: String,
 )
 
-data class WitInterface(val name: String, val types: List<WitTypeDefinition>, val functions: List<WitFunction>, val uses: List<WitUse>)
+internal data class WitInterface(
+    val name: String,
+    val types: List<WitTypeDefinition>,
+    val functions: List<WitFunction>,
+    val uses: List<WitUse>,
+)
 
-data class WitWorld(val name: String, val imports: List<String>, val exports: List<String>)
+internal data class WitWorld(val name: String, val imports: List<String>, val exports: List<String>)
 
-data class WitUse(val interfaceName: String, val names: List<String>)
+internal data class WitUse(val interfaceName: String, val names: List<String>)
 
-sealed interface WitTypeDefinition {
+internal sealed interface WitTypeDefinition {
     val name: String
 
     data class Record(override val name: String, val fields: List<WitField>) : WitTypeDefinition
@@ -24,11 +29,11 @@ sealed interface WitTypeDefinition {
     data class Resource(override val name: String, val constructor: WitFunction?, val methods: List<WitFunction>) : WitTypeDefinition
 }
 
-data class WitField(val name: String, val type: WitType)
+internal data class WitField(val name: String, val type: WitType)
 
-data class WitCase(val name: String, val type: WitType?)
+internal data class WitCase(val name: String, val type: WitType?)
 
-data class WitFunction(val name: String, val parameters: List<WitField>, val result: WitType?, val kind: Kind = Kind.FUNCTION) {
+internal data class WitFunction(val name: String, val parameters: List<WitField>, val result: WitType?, val kind: Kind = Kind.FUNCTION) {
     enum class Kind {
         FUNCTION,
         CONSTRUCTOR,
@@ -36,7 +41,7 @@ data class WitFunction(val name: String, val parameters: List<WitField>, val res
     }
 }
 
-sealed interface WitType {
+internal sealed interface WitType {
     data class Primitive(val name: String) : WitType
     data class Named(val name: String) : WitType
     data class ListType(val element: WitType) : WitType
@@ -48,6 +53,6 @@ sealed interface WitType {
     data object UnitType : WitType
 }
 
-class WitParseException(message: String) : IllegalArgumentException(message)
+internal class WitParseException(message: String) : IllegalArgumentException(message)
 
-class UnsupportedWitFeatureException(message: String) : IllegalArgumentException(message)
+internal class UnsupportedWitFeatureException(message: String) : IllegalArgumentException(message)

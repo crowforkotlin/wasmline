@@ -1,256 +1,213 @@
-# Wasmline — Technical Mind Map
+# Wasmline Technical Mind Map
 
-## Core Concept & Data Boundaries
+## Three Independent Runtime Axes
 
-- Wasmline
-  - Type: Kotlin Multiplatform WebAssembly plugin execution framework
-  - Contract unit: Kotlin `interface` extending `WasmlineService` — defines the binary protocol boundary
-  - Bridge unit: `*_WasmlineBridge` — one generated IR class per contract
-  - Action identifier: SHA-256 of fully-qualified method signature — stable, hex-encoded string
-  - Payload unit: `ByteArray` — serialized via `WasmlineSerializationFactory`
-  - Linear memory boundary: Kotlin process memory vs. Wasm sandbox linear memory
-  - Cross-boundary encoding (Web): Base64 string via `BrowserPayloadEncoding`
-  - Artifact unit: raw `.wasm` (source/browser) / `.cwasm` (Cranelift native AOT, platform-specific) / `.pwasm` (Cranelift-produced Pulley bytecode)
-  - Distribution unit: `{name}-{version}.zip` — contains `.wlm` manifest + compiled artifact set
-  - Execution isolation: per-`Session` linear memory region on native; browser sandbox on Web
+Every artifact is described by three independent properties. Do not infer one property from another.
 
----
+| Axis | Values | Selects |
+| --- | --- | --- |
+| Physical format | `RAW_WASM`, `CWASM`, `PWASM` | How bytes are loaded |
+| Execution model | `CORE_WASM`, `COMPONENT_MODEL` | Wasmtime Core or Component runtime |
+| Invocation protocol | `WASMLINE_SERVICE`, `RAW_EXPORT`, `COMPONENT_EXPORT` | How calls and values cross the boundary |
 
-## Module Dependency Topology
+Valid runtime combinations:
 
-- wasmline-cli
-  - depends-on: wasmline-loader
-    - depends-on: wasmline (core runtime)
-      - depends-on: wasmline-core (C/C++ — JNI / C Interop transport layer)
-- wasmline-kotlin-plugin
-  - compile-time only
-  - no runtime artifact
-  - no dependency on wasmline core at runtime
-- wasmline-gradle-plugin
-  - depends-on: wasmline-kotlin-plugin (applies plugin to consumer builds)
-- wasmline-sample (all sub-apps)
-  - depends-on: sample-common (shared contracts)
-  - depends-on: wasmline (core runtime via Gradle plugin)
+| Execution model | Protocol | Boundary |
+| --- | --- | --- |
+| `CORE_WASM` | `WASMLINE_SERVICE` | Generated service bridge, action string, serialized byte payload, and Core response frame |
+| `CORE_WASM` | `RAW_EXPORT` | Explicit Core numeric export ABI |
+| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | Fixed `wasmline:service@1.0.0` WIT envelope |
+| `COMPONENT_MODEL` | `COMPONENT_EXPORT` | Typed Component values, host imports, instances, and resources |
 
----
+`RAW_EXPORT` is invalid with `COMPONENT_MODEL`, and `COMPONENT_EXPORT` is invalid with `CORE_WASM`.
 
-## Module Functional Mapping
+## Artifact Model
 
-- wasmline-core (C/C++ · Zig 0.16.0)
-  - Engine.cpp: Wasmtime Engine singleton — global init / shutdown
-  - Module.cpp: CWASM and PWASM deserialization — keyed module cache
-  - Session.cpp: per-invocation isolated linear memory region — execution context lifecycle
-  - Api.cpp: JNI / C Interop surface — load, invoke, setOutbound, release
+- Raw `.wasm` is a source/build format.
+  - The browser executes it only as `CORE_WASM + WASMLINE_SERVICE`.
+  - Native loading rejects raw Core and Component artifacts.
+- `.cwasm` is platform-specific Cranelift AOT output.
+- `.pwasm` is Wasmtime Pulley bytecode, normally `pulley32` or `pulley64`.
+- Both `.cwasm` and `.pwasm` can contain a Core module or a Component. The descriptor's execution model selects the native runtime path.
+- Cranelift runtime distributions support matching `.cwasm` and Pulley fallback. Pulley distributions accept `.pwasm` only.
+- iOS is Pulley-only and selects `pulley64` `.pwasm`.
+- Native compatibility includes physical format, CPU, OS, bitness, backend capability, and exact Wasmtime compiler version.
 
-- wasmline (core Kotlin runtime)
-  - commonMain
-    - WasmlineService: contract marker interface
-    - WasmlineGeneratedBridge: generated bridge base class
-    - WasmlineEndpoint: endpoint abstraction for dispatch
-    - HostDispatcher: inbound outbound call dispatch table
-    - Payload: ByteArray wrapper with encoding metadata
-  - hostMain
-    - Wasmline: top-level host API singleton
-    - WasmlineLoadState: sealed result — Success(wasmline) / Failure(cause)
-    - WasmlineLoader: artifact loading entry point
-    - link\<T\>(): IR rewrite target — returns typed outbound proxy
-    - bind(impl): IR rewrite target — registers inbound handler
-  - jniMain
-    - Wasmline.jni.kt: @JvmStatic external JNI declarations delegating to wasmline-core
-  - iosMain
-    - Wasmline.ios.kt: Kotlin/Native C Interop wrappers delegating to wasmline-core
-  - webMain
-    - WebBindings.web.kt: expect/actual contract layer (no platform-specific interop)
-    - WebWasmValue: i32/i64/f32/f64 sealed interface + WebWasmValueCodec
-    - WebWasmRuntime: WebAssembly.compile/instantiate wrapper
-    - WebWasmImportsBuilder: import object construction
-    - WebArtifactFetcher: Fetch API-based artifact loader
-    - WebWasmPlugin: WASI preview1 shims + bridge_inbound_/bridge_outbound_* handlers
-    - WasmlineWeb: async prefetch API (bridges sync load model)
-  - jsMain / wasmJsMain
-    - WebBindings.js.kt / .wasmJs.kt: actual declarations via typed externals or JsAny
-  - wasmWasiMain
-    - WasmlineRouter: action registration and dispatch table
-    - WasmBridge: plugin-side outbound call implementation
-    - WasmlineServices.wasmWasi.kt: plugin-side bind() and link() entry points
+## Repository Modules
 
-- wasmline-loader
-  - WasmlineLoader: public loadWasmline(artifactPath) API
-  - Manifest parsing: .wlm Protobuf decoding
-  - Signature verification: Ed25519 and ECDSA-P256
-  - Artifact selection: Cranelift runtime selects .cwasm first, then .pwasm; Pulley runtime selects .pwasm only; iOS is always .pwasm
+- `wasmline-core`
+  - C/C++ native runtime compiled through Zig 0.16.0
+  - `Api.cpp`: public native facade and artifact dispatch
+  - `Engine.cpp`: Cranelift/Pulley engine lifecycle
+  - `Module.cpp`: deserialize-only Core artifact cache
+  - `Component.cpp`: deserialize-only Component artifact cache
+  - `Session.cpp`: Wasmline Service Core calls
+  - `RawModuleSession.cpp`: raw Core exports
+  - `ComponentSession.cpp`: Component exports, service envelope, host imports, instances, and resources
+- `wasmline`
+  - Public Kotlin runtime types and platform implementations
+  - Generated service bridge contracts and serialization SPI
+  - Host-side raw and Component invocation APIs
+  - Core guest router and Component Service guest initialization
+  - Browser Core Wasmline runtime
+- `wasmline-loader`
+  - Local and remote `.wlm` packages
+  - Signature verification and trusted-key policy
+  - Artifact selection and descriptor construction
+- `wasmline-engine-cranelift`, `wasmline-engine-pulley`
+  - Packaged native runtime distributions and JVM platform variants
+- `wasmline-kotlin-plugin`
+  - Service contract validation, IR bridge generation, `link`/`bind` rewriting, and guest initialization hooks
+- `wasmline-plugin-core`
+  - Shared tool downloads, Core/Component compilation, Component AOT, manifest signing, packaging, and WIT host bindings
+- `wasmline-gradle-plugin`
+  - Consumer DSL and Gradle task graph built on the compiler plugin and plugin core
+- `wasmline-cli`
+  - Command-line adapters for the same build and packaging services
+- `wasmline-network-ktor`, `wasmline-network-okhttp`
+  - Loader network implementations
+- `wasmline-android`
+  - Android CMake/JNI integration
+- `wasmline-plugin-test`
+  - End-to-end plugin build and native invocation verification
 
-- wasmline-kotlin-plugin
-  - WasmlineCompilerPluginRegistrar: Kotlin compiler plugin entry point
-  - WasmlineCommandLineProcessor: plugin option parsing
-  - WasmlineIrGenerationExtension: IR pass orchestrator
-  - WasmlineServiceContractValidator: static constraint enforcement
-  - WasmlineBridgeGenerator: *_WasmlineBridge IR class synthesis
-  - WasmlineTypedEntryPointRewriter: link() and bind() call-site rewriting
-  - WasmlineRuntimeSymbols: IrPluginContext symbol resolution
-  - WasmlineIrDiagnostics: typed compiler diagnostic declarations
-  - SignatureHash: SHA-256 action identifier derivation
+## Native Host Flow
 
-- wasmline-cli
-  - download: Wasmtime release binary download for target platforms
-  - generate-key-pair: Ed25519 key pair generation
-  - compile: .wasm to Cranelift .cwasm per native target triple and matching-bitness .pwasm Pulley images
-  - manifest: Protobuf manifest generation with Ed25519 signature
-  - build: full pipeline orchestration — compile then manifest then zip
+```text
+WasmlineLoader
+  -> verified manifest or caller-trusted descriptor
+  -> select CWASM/PWASM for host runtime
+  -> Wasmline platform actual (JNI or iOS C interop)
+  -> wasmline-core Api
+  -> Module or Component cache
+  -> Session, RawModuleSession, or ComponentSession
+  -> Wasmtime
+  -> WasmlineCallResult
+```
 
-- wasmline-gradle-plugin
-  - Applies wasmline-kotlin-plugin as a Kotlin compiler plugin to consumer build configurations
+Native loading is deserialize-only. `wasmtime_module_new` and `wasmtime_component_new` are intentionally rejected in the runtime path; compilation belongs to plugin-core, the Gradle plugin, or the CLI.
 
----
+The selected physical format controls engine mode:
 
-- Bidirectional Data Flow Pipelines
+- `CWASM` initializes or switches to the Cranelift engine.
+- `PWASM` initializes or switches to the Pulley engine.
+- Switching formats releases cached sessions and artifacts before engine reinitialization.
 
-- Inbound (host invokes plugin service)
-  - Host calls module.link\<EchoService\>().echo("ping")
-    - IR-synthesized proxy method on EchoService_WasmlineBridge
-      - Serializes args via WasmlineSerializationFactory.encode
-        - Produces ByteArray payload
-      - Calls Wasmline.call(action, payload)
-        - Native path
-          - hostMain delegates to jniMain or iosMain actual
-          - JNI/C Interop calls Api.cpp::invoke(action, payload)
-            - Session.cpp: allocates isolated linear memory region
-            - Writes action and payload into Wasm linear memory
-            - Executes Wasmtime call — plugin entry point runs
-              - WasmlineRouter.dispatch(action, payload) in plugin
-                - Deserializes payload
-                - Calls registered handler implementation
-                - Serializes return value
-              - Response ByteArray written to Wasm linear memory output buffer
-            - Session reads response ByteArray across JNI boundary
-        - Web path
-          - BrowserWasmlineRuntime.call(action, payload)
-            - Prefetched artifact cached by WebWasmArtifacts
-            - WebWasmPlugin instantiated with binary
-            - WASI imports: fd_write (stdout/stderr), random_get, clock_time_get
-            - env.bridge_* imports: bridge_inbound_copy_params, bridge_inbound_set_response, bridge_outbound_call_host, bridge_outbound_get_response
-            - __wasmline_wasi_entry export invoked with params pointer + payload pointer
-            - Plugin dispatch runs synchronously
-            - Response read back via bridge_inbound_set_response
-            - No Base64 encoding needed (ByteArray passes directly through Kotlin layer)
-      - Deserializes response via WasmlineSerializationFactory.decode
-    - Returns typed result to host call site
+## Browser Host Flow
 
-- Outbound (plugin invokes host service)
-  - Plugin calls wasmline.link\<HostNotificationService\>().notify("event")
-    - IR-synthesized proxy on HostNotificationService_WasmlineBridge (plugin-side)
-      - WasmBridge serializes args via WasmlineSerializationFactory.encode
-      - Calls bridge_outbound_call_host(action, payload)
-        - Native path
-          - Wasmtime host function callback fires into JNI/C Interop host dispatcher
-          - Api.cpp invokes registered HostDispatcher.dispatch(action, payload)
-            - Host-side *_WasmlineBridge bound implementation handles call
-            - Response serialized and returned to Api.cpp
-          - Response written back into Wasm linear memory
-        - Web path
-          - env.bridge_outbound_call_host JS import fires
-          - Kotlin host dispatch called synchronously from JS
-          - Response written to shared buffer
-          - env.bridge_outbound_get_response copies response to caller
-      - Deserializes response in plugin
-    - Returns typed result to plugin call site
+```text
+WasmlineWeb.prefetch(url)
+  -> Fetch API
+  -> WebWasmArtifacts byte cache
+  -> WasmlineLoader.load(url)
+  -> WebAssembly.Module and WebAssembly.Instance
+  -> __wasmline_wasi_init
+  -> __wasmline_wasi_entry
+  -> Core Wasmline response frame
+```
 
----
+Browser limits:
 
-## Compiler IR Transformation Pipeline
+- raw `.wasm` only
+- `CORE_WASM + WASMLINE_SERVICE` only
+- no native runtime identity
+- no concurrent loading
+- no Raw Export typed carrier
+- no Component instances or resources
 
-- WasmlineIrGenerationExtension.generate(moduleFragment, pluginContext)
-  - Step 1: Discovery
-    - Traverses moduleFragment.files
-    - Collects IrClass where superTypes contains WasmlineService
-  - Step 2: Validation (WasmlineServiceContractValidator)
-    - Constraint: declaration must be interface — not abstract class, sealed type, or object
-    - Constraint: all functions must be public
-    - Constraint: suspend modifier is forbidden
-    - Constraint: at most one regular value parameter per function
-    - Constraint: no generic type parameters on the contract interface
-    - Constraint: no overloaded method names within a single contract
-    - Constraint: no vararg parameters
-    - Constraint: no default parameter values
-    - Constraint: no extension receivers
-    - On violation: WasmlineIrDiagnostics error emitted — IR generation aborted
-  - Step 3: Bridge synthesis (WasmlineBridgeGenerator)
-    - For each validated contract interface
-      - Generates internal class {Contract}_WasmlineBridge : WasmlineGeneratedBridge
-      - Synthesizes val endpoint: WasmlineEndpoint field
-      - Synthesizes var implementation: T? nullable field
-      - For each interface method
-        - Derives action: SignatureHash.hash(fullyQualifiedMethodSignature)
-        - Generates invoke(action, payload): ByteArray dispatch branch
-        - Generates bindAction(impl: T) registration logic
-      - Injects generated IrClass into parent IrFile
-  - Step 4: Call-site rewriting (WasmlineTypedEntryPointRewriter)
-    - Visits all IrCall nodes in the module IR tree
-    - Matches link\<T\>() call: replaces with {Contract}_WasmlineBridge(endpoint).asProxy()
-    - Matches bind(impl) call: replaces with {Contract}_WasmlineBridge(endpoint).bind(impl)
-    - Matches bind(contract, impl) call: resolves contract class argument then same rewrite
+The shared `webMain` layer contains no platform interop. `jsMain` supplies typed JS externals; `wasmJsMain` supplies `JsAny` and constant `js()` helpers.
 
-- SignatureHash
-  - Input: fully-qualified class name + "#" + method name + "(" + parameter type descriptors + ")"
-  - Algorithm: SHA-256
-  - Output: lowercase hex string
-  - Stability guarantee: invariant to package refactoring; coupled to method signature only
+## Core Wasmline Service Flow
 
-- IR test infrastructure
-  - Box tests: `testData/box/*.kt` (6 files) with `fun box(): String` entry point
-  - Diagnostic tests: `testData/diagnostics/*.kt` (2 files) with error markers
-  - Generated: `test-gen/` (auto-generated test runners)
-  - Snapshots: `*.fir.txt`, `*.fir.ir.txt` (auto-generated, never hand-edited)
-  - Full documentation: [`docs/ir/index.md`](index.md)
+Host to plugin:
 
----
+```text
+module.link<Service>().method(...)
+  -> generated Service_WasmlineBridge
+  -> selected serialization factory
+  -> action = fully-qualified-contract + "#" + method-name
+  -> Wasmline.callResult(action, payload)
+  -> Session or WebWasmPlugin
+  -> WasmlineRouter
+  -> bound implementation
+  -> WLMF response frame
+  -> WasmlineCallResult
+  -> typed return value
+```
 
-## Artifact Lifecycle & Serialization Layer
+Plugin to host uses the same generated bridge shape through the outbound host dispatcher. Overloaded service methods are forbidden, so the current action identifier remains unique within a contract.
 
-- Plugin artifact lifecycle
-  - Authoring
-    - Source language: any WASI-targeting toolchain (Kotlin, Rust, C/C++, Go, AssemblyScript)
-    - Output: raw .wasm binary
-  - Compilation (wasmline-cli compile)
-    - Input: raw .wasm
-    - Wasmtime C-API Module::serialize: Cranelift produces platform-specific .cwasm per target triple
-    - Wasmtime Pulley target: Cranelift produces a universal .pwasm bytecode image for the Pulley interpreter
-    - Output per target: {name}-{arch}-{os}.cwasm plus {name}-pulley32.pwasm and {name}-pulley64.pwasm as needed
-  - Manifest generation (wasmline-cli manifest)
-    - Input: compiled artifact set
-    - Protobuf encoding of manifest record
-      - Fields: name, version, min-runtime-version, per-artifact SHA-256 checksums, key fingerprint
-    - Ed25519 or ECDSA-P256 digital signature applied to encoded manifest
-    - Output: manifest.wlm
-  - Packaging (wasmline-cli build orchestration)
-    - compile then manifest then zip into {name}-{version}.zip
-  - Loading (wasmline-loader loadWasmline)
-    - manifest.wlm deserialized
-    - Signature verified against embedded public key — rejection on tamper
-    - Artifact selected: .cwasm for current target triple then .pwasm fallback on Cranelift; .pwasm only on Pulley and iOS
-    - Web: raw .wasm only — no manifest-based AOT loading
-    - Output: WasmlineLoadState.Success(wasmline) or WasmlineLoadState.Failure(cause)
+Normal call failures are values:
 
-- Serialization layer
-  - SPI interface: WasmlineSerializationFactory
-    - id: String — factory identifier exchanged during module load negotiation
-    - encode(value: T, descriptor): ByteArray
-    - decode(bytes: ByteArray, descriptor): T
-  - Built-in factories
-    - WasmlineProtobufSerializationFactory
-      - id: "protobuf"
-      - codec: kotlinx.serialization Protobuf
-    - WasmlineRawBytesSerializationFactory
-      - id: "raw"
-      - codec: identity pass-through for ByteArray parameters
-  - Factory selection protocol
-    - Host and plugin agree on factory id via WasmlineConfig at module load time
-    - Factory id mismatch: runtime decode error on receiving side
-  - Custom factory registration
-    - WasmlineSerializationRegistry.register(factory) at process startup
-    - Factory id is part of the binary protocol — must be stable across versions
+- `ACTION_NOT_BOUND`
+- invalid payload or response
+- trap or transport failure
+- handler failure
 
-- Web payload encoding (deprecated)
-  - BrowserPayloadEncoding: ByteArray ↔ Base64 conversion (removed when direct ByteArray transmission replaced Base64 encoding)
-  - Replaced with direct ByteArray transmission through Kotlin layer
-  - Fetch API-based artifact loading replaces synchronous XHR
+`throwOnFailure()` is an explicit adapter; the result API does not use exceptions for normal call failures.
+
+## Component Model Flow
+
+### Build
+
+```text
+WIT and guest source
+  -> wit-bindgen where required
+  -> Core Wasm guest
+  -> wasm-tools component embed/new
+  -> raw Component Wasm
+  -> full Wasmtime CLI compile
+  -> Component CWASM/PWASM targets
+  -> signed manifest and package
+```
+
+The raw Component is an intermediate build result, not a native runtime artifact. Component AOT compilation verifies the exact full Wasmtime CLI version and rejects iOS CWASM targets in favor of `pulley64`.
+
+### Runtime
+
+- `WASMLINE_SERVICE`
+  - Uses the fixed `wasmline:service@1.0.0` host/plugin interfaces.
+  - Keeps the selected Wasmline serialization bytes inside `list<u8>` payloads.
+  - Supports Component-to-host service callbacks.
+- `COMPONENT_EXPORT`
+  - Uses `WasmlineComponentValue` for typed parameters and results.
+  - Supports generated host bindings, imported host functions, explicit instances, and owned/borrowed resources.
+  - Does not use Core linear-memory bridge imports or the `WLMF` response frame.
+
+## Kotlin IR Pipeline
+
+```text
+WasmlineCompilerPluginRegistrar
+  -> WasmlineCommandLineProcessor options
+  -> WasmlineIrGenerationExtension
+       1. discover WasmlineService interfaces
+       2. validate contracts and functions
+       3. generate *_WasmlineBridge classes
+       4. rewrite link() and bind() calls
+       5a. generate Core WASI exports, or
+       5b. wire the Component Service init hook
+```
+
+Current validation rejects:
+
+- generic service interfaces or generic service methods
+- service properties
+- overloaded method names
+- non-public or suspend methods
+- extension receivers
+- default or vararg parameters
+- service contracts used as parameter or return types
+
+Multiple regular parameters are supported. Generated bridges build the required serializer array and parameter descriptor for those methods.
+
+The plugin is an IR transformer, not a source generator. `link()` and `bind()` deliberately fail at runtime when the compiler plugin did not rewrite them.
+
+## Verification Surfaces
+
+- Native runtime: `wasmline/src/jvmTest/`, `iosTest/`, and `wasmline-core` integration paths
+- Browser runtime: `wasmline/src/webTest/`
+- Loader: common, JVM, Web, and iOS tests under `wasmline-loader/src/`
+- Plugin build pipeline: `wasmline-plugin-core/src/test/` and `wasmline-plugin-test/`
+- IR plugin: `wasmline-kotlin-plugin/testData/box/`, generated `test-gen/`, and FIR/IR snapshots
+
+Generated runners, snapshots, build outputs, and platform assets must not be edited manually.

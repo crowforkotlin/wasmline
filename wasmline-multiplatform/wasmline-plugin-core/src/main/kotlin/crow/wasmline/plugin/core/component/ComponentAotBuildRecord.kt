@@ -4,6 +4,7 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.toolchain.FileDigest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -18,6 +19,7 @@ private val componentAotSha256 = Regex("[0-9a-fA-F]{64}")
 
 /** Self-contained boundary between raw Component creation and native package assembly. */
 @Serializable
+@InternalWasmlineToolingApi
 data class ComponentAotBuildRecord(
     val rawComponent: ComponentBuildRecord,
     val inputComponentSha256: String,
@@ -93,9 +95,13 @@ data class ComponentAotBuildRecord(
 }
 
 /** Associates verified Component metadata with its concrete package file. */
+
+@InternalWasmlineToolingApi
 data class ResolvedComponentAotArtifact(val artifact: WasmlineArtifact, val file: File)
 
 /** Reads and writes native Component AOT build-stage records. */
+
+@InternalWasmlineToolingApi
 object ComponentAotBuildRecords {
     const val FILE_NAME = "component-aot-result.json"
 

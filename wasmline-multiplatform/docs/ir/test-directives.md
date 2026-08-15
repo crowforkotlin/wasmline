@@ -1,6 +1,6 @@
 # Compiler Plugin Test Directives
 
-## Box Tests Format
+## Current Box Format
 
 ```kotlin
 // WITH_STDLIB
@@ -9,137 +9,53 @@ package test.example
 
 import crow.wasmline.WasmlineService
 
-interface MyService : WasmlineService { ... }
+interface MyService : WasmlineService
 
 fun box(): String {
-    // Verification code here
-    return "OK"  // or error message on failure
+    return "OK"
 }
 ```
 
-### Required Elements
+Required elements:
 
-- `// WITH_STDLIB` - Include Kotlin standard library
-- `fun box(): String` - Entry point (required)
-- Return `"OK"` on success, error string on failure
+- `// WITH_STDLIB` enables the Kotlin standard library in the compiler test.
+- `fun box(): String` is the executable entry point.
+- Return `"OK"` on success and a focused error message on failure.
 
----
+## Multi-file and Multi-module Directives
 
-## Diagnostic Tests Format
+The Kotlin compiler test framework supports directives such as `// MODULE:` and `// FILE:`. Introduce them only when the fixture genuinely requires more than one file or module.
 
 ```kotlin
-// RUN_PIPELINE_TILL: FRONTEND
-
 // MODULE: lib
-// FILE: util.kt
-package example.util
+// FILE: helper.kt
+package sample
 
-fun takeInt(x: Int) {}
+fun value(): Int = 42
 
 // MODULE: main(lib)
-// FILE: test.kt
-package example.test
-
-import example.util.takeInt
-
-fun test() {
-    takeInt(<!ARGUMENT_TYPE_MISMATCH!>"Wrong"<!>)
-}
-```
-
-### Required Elements
-
-- `// RUN_PIPELINE_TILL:` - Specifies compilation stage
-- `// MODULE:` - Defines module structure (optional)
-- `// FILE:` - Specifies file within module (optional)
-- Error markers `<!ERROR_CODE!>message<!>` for expected errors
-
----
-
-## Compilation Stages
-
-Use these values with `RUN_PIPELINE_TILL`:
-
-| Stage | Description |
-|-------|-------------|
-| `FRONTEND` | Parse and resolve types |
-| `FIR Generation` | Generate Frontend IR |
-| `FIR Lowering` | Convert FIR to Backend IR |
-| `Backend IR` | Final IR representation |
-| `Codegen` | Generate bytecode |
-
-**Recommended**: Use `FRONTEND` for most IR plugin tests.
-
----
-
-## Error Markers
-
-Mark expected compiler errors using this syntax:
-
-```kotlin
-val x = 123
-takeInt("Wrong")  // Should be: takeInt(<!ARGUMENT_TYPE_MISMATCH!>"Wrong"<!>)
-obj.unknown()     // Should be: obj.<!UNRESOLVED_REFERENCE!>unknown<!>()
-```
-
-### Common Error Codes
-
-| Code | Description | Example |
-|------|-------------|---------|
-| `ARGUMENT_TYPE_MISMATCH` | Wrong argument type | Function call error |
-| `TYPE_MISMATCH` | Type doesn't match | Assignment error |
-| `UNRESOLVED_REFERENCE` | Unknown symbol | Missing import/type |
-| `NOT_INHERITED` | Wrong inheritance | Superclass error |
-| `MISSING_OVERRIDE` | Override issue | Abstract method |
-| `RECEIVER_TYPE_MISMATCH` | Invalid receiver | Extension function |
-
----
-
-## Module Configuration
-
-Define multi-module projects:
-
-```kotlin
-// MODULE: core
-// FILE: helper.kt
-package core
-
-fun getValue(): Int = 42
-
-// MODULE: app(core)
 // FILE: main.kt
-package app
+package sample
 
-import core.getValue
-
-fun useHelper() {
-    val x = getValue()  // OK - imports from core
-}
+fun box(): String = if (value() == 42) "OK" else "Unexpected value"
 ```
 
----
+## Locations
 
-## File Locations
+- Source fixtures: `wasmline-kotlin-plugin/testData/box/*.kt`
+- Generated runner: `wasmline-kotlin-plugin/test-gen/`
+- Generated snapshots: adjacent `*.fir.txt` and `*.fir.ir.txt` files
 
-- **Box tests**: `testData/box/*.kt`
-- **Diagnostic tests**: `testData/diagnostics/*.kt`
+## Add a Fixture
 
-Both automatically generate tests when running:
+1. Add one focused `.kt` file under `testData/box/`.
+2. Include the required directives and `box()` entry point.
+3. Generate the test runner.
+4. Run the generated box suite.
+5. Review the generated runner and snapshots.
 
-```bash
-./gradlew :wasmline-kotlin-plugin:generateTests
-```
+Do not edit generated files manually.
 
----
+## Diagnostic Directives
 
-## Add New Test
-
-1. Create `.kt` file in appropriate directory
-2. Write valid Kotlin code
-3. Add required directives (`WITH_STDLIB` or `RUN_PIPELINE_TILL`)
-4. For diagnostics: mark expected errors with `<!...!>`
-5. Generate tests
-6. Review generated snapshots
-7. Commit all files together
-
-Keep each test minimal. Focus on one behavior per file.
+The repository retains an `AbstractJvmDiagnosticTest` scaffold, but its generator registration is disabled and no diagnostic fixtures are present. Do not add diagnostic directives or document a diagnostic test command until the generator model and fixture directory are enabled together.

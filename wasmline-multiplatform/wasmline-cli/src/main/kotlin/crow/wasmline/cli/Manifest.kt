@@ -32,7 +32,7 @@ import java.io.File
  * Author: crowforkotlin
  * @formatter:on
  */
-class Manifest : CliktCommand(name = "manifest") {
+internal class Manifest : CliktCommand(name = "manifest") {
 
     private val dir by option("-d", "--dir").file(mustExist = true, canBeFile = false, canBeDir = true).required()
     private val pluginId by option("--plugin-id")

@@ -2,11 +2,14 @@ package crow.wasmline.plugin.core.manifest
 
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import java.io.File
 import java.util.Properties
 
 /** Isolated JVM entrypoint used by build-tool integrations that share dependency classloaders. */
+
+@InternalWasmlineToolingApi
 object ManifestSigningMain {
 
     @JvmStatic

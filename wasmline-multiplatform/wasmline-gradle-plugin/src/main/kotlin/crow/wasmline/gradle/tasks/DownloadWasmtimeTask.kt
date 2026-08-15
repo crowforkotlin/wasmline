@@ -24,7 +24,7 @@ import java.nio.file.StandardCopyOption
  * Date: 2026-07-31
  * Author: crowforkotlin
  */
-abstract class DownloadWasmtimeTask : DefaultTask() {
+public abstract class DownloadWasmtimeTask : DefaultTask() {
 
     init {
         group = "wasmline"
@@ -34,27 +34,27 @@ abstract class DownloadWasmtimeTask : DefaultTask() {
     }
 
     @get:Input
-    abstract val version: Property<String>
+    public abstract val version: Property<String>
 
     @get:Input
-    abstract val platform: Property<String>
+    public abstract val platform: Property<String>
 
     @get:Input
-    abstract val distribution: Property<WasmtimeDistribution>
+    public abstract val distribution: Property<WasmtimeDistribution>
 
     @get:Internal
-    abstract val wasmtimeDirectory: DirectoryProperty
+    public abstract val wasmtimeDirectory: DirectoryProperty
 
     @get:Internal
-    abstract val githubToken: Property<String>
+    public abstract val githubToken: Property<String>
 
     // The executable lives in a cache shared by every Wasmline project, so no individual task owns it as an output.
     @get:Internal
-    abstract val installedExecutable: RegularFileProperty
+    public abstract val installedExecutable: RegularFileProperty
 
     /** Downloads Wasmtime when the requested platform or version is unavailable. */
     @TaskAction
-    fun download() {
+    public fun download() {
         val targetVersion = version.get()
         val targetPlatform = platform.get()
         val targetDistribution = distribution.get()

@@ -1,44 +1,52 @@
 # Web Bindings Guide
 
-Reference for the Wasmline Web platform layer (Kotlin/JS and Kotlin/WasmJs). Referenced by `SKILL.md`. Read it before adding or changing code under `webMain`, `jsMain`, or `wasmJsMain` of the `wasmline` module.
+Reference for the Kotlin/JS and Kotlin/WasmJS host runtime. Read it before changing `webMain`, `jsMain`, `wasmJsMain`, or `webTest` under `wasmline-multiplatform/wasmline/`.
 
-All paths below are relative to `wasmline-multiplatform/`.
+Paths below are relative to `wasmline-multiplatform/`.
 
----
+## Supported Boundary
 
-## Layer Model
+The browser host accepts only:
 
-The Web layer splits into three source sets. Platform code never enters `webMain`.
+- physical format: raw `.wasm`
+- execution model: `CORE_WASM`
+- invocation protocol: `WASMLINE_SERVICE`
 
-| Layer | Source set | File | Role |
+Raw Export typed calls and Component Model calls are native-only. Browser validation rejects those descriptors before artifact resolution.
+
+## Source-set Layers
+
+| Layer | Source set | Main file | Responsibility |
 | --- | --- | --- | --- |
-| Contract | `webMain` | `wasmline/src/webMain/kotlin/crow/wasmline/web/WebBindings.web.kt` | `expect` declarations only |
-| JS actual | `jsMain` | `wasmline/src/jsMain/kotlin/crow/wasmline/web/WebBindings.js.kt` | Typed externals (`org.khronos.webgl`) |
-| WasmJs actual | `wasmJsMain` | `wasmline/src/wasmJsMain/kotlin/crow/wasmline/web/WebBindings.wasmJs.kt` | `JsAny` handles, constant `js()` |
+| Shared host | `webMain` | `wasmline/src/webMain/kotlin/crow/wasmline/Wasmline.web.kt` | Loading rules, module registry, and shared browser facade |
+| Binding contract | `webMain` | `wasmline/src/webMain/kotlin/crow/wasmline/web/WebBindings.web.kt` | Pure Kotlin `expect` declarations |
+| JS actual | `jsMain` | `wasmline/src/jsMain/kotlin/crow/wasmline/web/WebBindings.js.kt` | Typed JS externals and isolated constant `js()` helpers |
+| WasmJS actual | `wasmJsMain` | `wasmline/src/wasmJsMain/kotlin/crow/wasmline/web/WebBindings.wasmJs.kt` | `JsAny` handles and compile-time-constant `js()` snippets |
 
---
+Keep platform interop out of `webMain`. Shared code accesses JavaScript only through the binding contract.
 
-## Naming Rules
+## Naming
 
-Prefix everything in this layer with `web` / `Web`. The prefix matches the `webMain` source set name.
+Use the `Web` or `web` prefix for the binding layer:
 
-| Use | Do not use | Reason |
+| Use | Avoid | Reason |
 | --- | --- | --- |
-| `Web*` types | `Browser*` | js/wasmJs also run on Node, not only browsers |
-| `web*` functions | `Script*` | vague |
-| `WebBindings.*.kt` files | `*Interop*` | redundant |
-| `raw*` private js() helpers | — | marks platform-private bridge functions |
+| `Web*` types | `Browser*` for low-level bindings | JS hosts are not necessarily browsers |
+| `web*` contract functions | vague `script*` names | The prefix identifies the owning source set |
+| `WebBindings.*.kt` | generic `*Interop*` names | The expect/actual role is already explicit |
+| `raw*` private helpers | unmarked JavaScript helpers | The prefix identifies platform-private interop |
 
----
+The high-level host facade may use `Browser*` when behavior is specifically limited to browser-style loading.
 
 ## Layer Constraints
 
-### webMain (contract)
+### `webMain`
 
 - Pure Kotlin only.
 - No `dynamic`.
-- No inline `js(...)` block.
-- No platform detail.
+- No `js(...)` calls.
+- No `JsAny`, DOM, Fetch, or typed-array types.
+- Declare opaque handles and operations with `expect`.
 
 ```kotlin
 internal expect class WebJsValue
@@ -46,11 +54,12 @@ internal expect fun webCompileWasm(binary: ByteArray): WebWasmModule
 internal expect fun webCallFunction(function: WebJsValue, args: WebJsArray): WebJsValue?
 ```
 
-### jsMain (Kotlin/JS actual)
+### `jsMain`
 
-- Use typed externals from `org.khronos.webgl` (`ArrayBuffer`, `Int8Array`, `Uint8Array`).
-- Declare external classes with `@file:JsQualifier("WebAssembly")`.
-- No `dynamic`.
+- Use typed externals such as `ArrayBuffer`, `Int8Array`, `Uint8Array`, `Response`, and `Promise` where available.
+- Keep `dynamic` out of the implementation.
+- Isolate unavoidable JavaScript expressions in small private `raw*` helpers.
+- Keep public behavior in the shared `webMain` layer.
 
 ```kotlin
 internal actual class WebWasmModule internal constructor(internal val raw: NativeWasmModule)
@@ -59,143 +68,130 @@ private fun rawApplyFunction(fn: Any, args: Array<Any?>): Any? =
     js("fn.apply(undefined, args)")
 ```
 
-### wasmJsMain (Kotlin/WasmJs actual)
+### `wasmJsMain`
 
-- Add `@file:OptIn(ExperimentalWasmJsInterop::class)`.
-- Each `js(...)` must be a single constant expression. No multi-statement bodies.
-- Parameters must be `JsAny` types.
+- Opt in to `ExperimentalWasmJsInterop` at file level.
+- Carry JavaScript values with `JsAny` handles.
+- The string passed to `js()` must be a compile-time constant. It may contain an expression or a fixed block, but it must not be constructed dynamically.
+- Keep conversion and JavaScript access in private `raw*` helpers.
 
 ```kotlin
-internal actual fun webFromI32(value: Int): WebJsValue = WebJsValue(js("$value"))
-internal actual fun webNowMillis(): Double = js("Date.now()")
+private fun rawNowMillis(): Double = js("Date.now()")
+private fun rawNewWasmModule(bytes: JsAny): JsAny = js("new WebAssembly.Module(bytes)")
 ```
-
----
 
 ## Value Codec
 
-`WebWasmValue` wraps every numeric type into one sealed interface.
+`WebWasmValue` represents WebAssembly numeric values without leaking platform handles.
 
-| Type | Kotlin | JS representation |
+| WebAssembly type | Kotlin type | JavaScript representation |
 | --- | --- | --- |
-| I32 | `Int` | `number` |
-| F32 | `Float` | `number` |
-| F64 | `Double` | `number` |
-| I64 | `Long` | `BigInt` (`number` lacks precision) |
+| `i32` | `Int` | number |
+| `i64` | `Long` | BigInt-compatible value |
+| `f32` | `Float` | number |
+| `f64` | `Double` | number |
 
-File: `wasmline/src/webMain/kotlin/crow/wasmline/web/WebWasmValue.kt`
+Implementation: `wasmline/src/webMain/kotlin/crow/wasmline/web/WebWasmValue.kt`.
 
----
+## Asynchronous Prefetch and Synchronous Load
 
-## Async Prefetch Pattern
-
-`WasmlineLoader.load()` is synchronous, but a browser downloads `.wasm` only through the async Fetch API. The bridge is a prefetch cache.
-
-1. Call `WasmlineWeb.prefetch(url)` (suspend) at startup. It downloads and caches the bytes.
-2. Call `WasmlineLoader.load(url)`. It reads the cache and returns synchronously.
-
-Files:
-
-- `wasmline/src/webMain/kotlin/crow/wasmline/WasmlineWeb.kt` — public prefetch API
-- `wasmline/src/webMain/kotlin/crow/wasmline/web/WebWasmArtifacts.kt` — cache and Fetch loader
+`WasmlineLoader.load()` remains synchronous, while Fetch is asynchronous. Web callers must prefetch an artifact before loading it:
 
 ```kotlin
-WasmlineWeb.prefetch("plugin.wasm")          // suspend: download and cache
-val result = WasmlineLoader.load("plugin.wasm")  // sync: read cache
+WasmlineWeb.prefetch("plugin.wasm")
+val result = WasmlineLoader.load("plugin.wasm")
 ```
 
----
+The sequence is:
 
-## WASI Preview1 Shims
+1. `WasmlineWeb.prefetch(url)` downloads bytes through the Fetch API.
+2. `WebWasmArtifacts` caches the bytes by URL.
+3. `WasmlineLoader.load(url)` resolves the cached bytes synchronously.
+4. `WebWasmPlugin` compiles and instantiates the module.
 
-File: `wasmline/src/webMain/kotlin/crow/wasmline/web/WebWasmPlugin.kt`
+Loading a URL that was not prefetched fails with an explicit instruction. Use `WasmlineWeb.invalidate(url)` to remove one cached artifact; runtime shutdown clears all cached artifacts and live modules.
 
-| Function | Purpose | Implementation |
+## WASI Preview 1 Imports
+
+`WebWasmPlugin.kt` currently supplies:
+
+| Import | Signature | Behavior |
 | --- | --- | --- |
-| `fd_write(fd, iovsPtr, iovsCount, writtenPtr)` | stdout / stderr | Read text from linear memory, route to logger |
-| `random_get(bufPtr, bufLen)` | Random bytes | Fill from `Math.random()` |
-| `clock_time_get(clockId, precisionPtr)` | Current time | `Date.now()` scaled to nanoseconds |
+| `fd_write` | `(fd, iovsPointer, iovsCount, writtenPointer)` | Reads UTF-8 iovecs and routes stdout/stderr to `WasmlineLog` or `println` |
+| `random_get` | `(bufferPointer, bufferLength)` | Writes bytes from Kotlin `Random.nextBytes` |
+| `clock_time_get` | `(clockId, precision, timePointer)` | Writes `Date.now()` converted to nanoseconds |
 
----
+Do not document an import until it is registered in `WebWasmPlugin.buildImports()`.
 
-## Bridge Imports (`env.bridge_*`)
+## `env.bridge_*` Imports
 
-| Name | Direction | Purpose |
-| --- | --- | --- |
-| `bridge_inbound_copy_params(actionPtr, payloadPtr)` | Host → Plugin | Write params into linear memory |
-| `bridge_inbound_set_response(responseBytes)` | Plugin → Host | Write response into shared buffer |
-| `bridge_outbound_call_host(action, payload)` | Plugin → Host | Plugin calls a host service |
-| `bridge_outbound_get_response()` | Host → Plugin | Read host response |
-
-Sync call path:
-
-```
-host call(action, payload)
-  -> write params to linear memory
-  -> invoke __wasmline_wasi_entry export
-  -> plugin dispatch
-  -> plugin writes response via bridge_inbound_set_response
-  -> read response from linear memory
-  -> return TypedResult
-```
-
----
-
-## Tests
-
-Test source set: `wasmline/src/webTest/kotlin/crow/wasmline/web/`
-
-| File | Covers |
+| Import | Current boundary |
 | --- | --- |
-| `WebWasmValueCodecTest.kt` | Codec round-trip |
-| `WebWasmRuntimeTest.kt` | compile → instantiate → invoke |
-| `WebWasmImportsBuilderTest.kt` | Import namespace grouping |
-| `WebTestModule.kt` | Hand-encoded minimal WASM fixture (add, add64, call_host, memory) |
+| `bridge_inbound_copy_params(kind, destination, length)` | Copies the pending action (`kind == 0`) or payload into linear memory |
+| `bridge_inbound_set_response(pointer, length)` | Copies the plugin response out of linear memory |
+| `bridge_outbound_call_host(actionPointer, actionLength, payloadPointer, payloadLength, outputPointer, outputCapacity)` | Dispatches a plugin-to-host call and returns the written size or a negative overflow size |
+| `bridge_outbound_get_response(outputPointer)` | Copies an overflow response into plugin memory |
 
-Run:
+Core call flow:
+
+```text
+prefetched bytes
+  -> compile and instantiate
+  -> __wasmline_wasi_init
+  -> copy action and payload into linear memory
+  -> __wasmline_wasi_entry
+  -> plugin router
+  -> bridge_inbound_set_response
+  -> decode Wasmline result frame
+```
+
+## Tests and CI
+
+Runtime Web tests are under `wasmline/src/webTest/kotlin/crow/wasmline/`:
+
+| File | Coverage |
+| --- | --- |
+| `web/WebWasmValueCodecTest.kt` | Numeric value encoding and result decoding |
+| `web/WebWasmRuntimeTest.kt` | Compilation, instantiation, exports, invocation, and memory |
+| `web/WebWasmImportsBuilderTest.kt` | Import grouping and typed host functions |
+| `web/WebTestModule.kt` | Hand-encoded Core Wasm fixture |
+| `WasmlineComponentBrowserBoundaryTest.kt` | Component and typed-invocation rejection |
+| `WasmlineNativeRuntimeInfoWebTest.kt` | Absence of native runtime identity on Web |
+
+Run only with explicit user instruction:
 
 ```bash
-./gradlew wasmline:jsBrowserTest       # Kotlin/JS browser tests
-./gradlew wasmline:wasmJsBrowserTest   # Kotlin/WasmJs browser tests
+cd wasmline-multiplatform
+./gradlew :wasmline:jsBrowserTest :wasmline:wasmJsBrowserTest
 ```
 
-### CI Coverage
-
-`.github/workflows/ci.yml` includes a dedicated `test-web` job that runs both test suites in parallel after compilation:
-
-- **Job name**: `test-web`
-- **Runner**: `ubuntu-latest` with Chrome headless (`CHROME_BIN=/usr/bin/google-chrome`)
-- **Steps**:
-  1. `kotlinUpgradeYarnLock` — ensures yarn.lock is up-to-date for Karma dependencies
-  2. `:wasmline:jsBrowserTest` and `:wasmline:wasmJsBrowserTest`
-  3. Artifact upload of test results to GitHub Actions
-
-Results are available as artifacts under:
-- `build/reports/tests/*Test/index.html`
-- `build/test-results/*/TEST-*.xml`
-
-**Note**: `webMain` is part of the default KMP hierarchy — its tests run automatically as part of `jsTest`/`wasmJsTest` through source set dependency inheritance. No separate `webTest` task exists; instead, `webTest` code is bundled into the same karma/webpack artifact as `jsTest`/`wasmJsTest`.
-
----
+The CI `test-web` job also runs `:wasmline-loader:jsBrowserTest` and `:wasmline-loader:wasmJsBrowserTest` with Chrome configured through `CHROME_BIN`.
 
 ## File Map
 
-```
-webMain/kotlin/crow/wasmline/
-  ├─ WasmlineWeb.kt              ← public prefetch API
-  └─ web/
-     ├─ WebBindings.web.kt       ← expect declarations
-     ├─ WebWasmValue.kt          ← value model and codec
-     ├─ WebWasmRuntime.kt        ← compile / instantiate
-     ├─ WebWasmImports.kt        ← import builder
-     ├─ WebArtifactFetcher.kt    ← Fetch loader
-     ├─ WebWasmArtifacts.kt      ← prefetch cache
-     └─ WebWasmPlugin.kt         ← WASI shims and bridge
+```text
+wasmline/src/webMain/kotlin/crow/wasmline/
+├── Wasmline.web.kt
+├── WasmlineWeb.kt
+├── extensions/NativeLoaderExt.web.kt
+└── web/
+    ├── WebArtifactFetcher.kt
+    ├── WebBindings.web.kt
+    ├── WebWasmArtifacts.kt
+    ├── WebWasmImportsBuilder.kt
+    ├── WebWasmPlugin.kt
+    ├── WebWasmRuntime.kt
+    └── WebWasmValue.kt
 
-jsMain/kotlin/crow/wasmline/web/
-  ├─ WebBindings.js.kt           ← actual via typed externals
-  └─ WasmNamespace.js.kt         ← WebAssembly namespace externals (Module, Instance, Memory)
+wasmline/src/jsMain/kotlin/crow/wasmline/
+├── Wasmline.js.kt
+├── extensions/NativeLoaderExt.js.kt
+└── web/
+    ├── WasmNamespace.js.kt
+    └── WebBindings.js.kt
 
-wasmJsMain/kotlin/crow/wasmline/web/
-  └─ WebBindings.wasmJs.kt       ← actual via JsAny
+wasmline/src/wasmJsMain/kotlin/crow/wasmline/
+├── Wasmline.wasmJs.kt
+├── extensions/NativeLoaderExt.wasmJs.kt
+└── web/WebBindings.wasmJs.kt
 ```

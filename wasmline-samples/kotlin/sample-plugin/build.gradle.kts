@@ -1,7 +1,7 @@
 @file:Suppress("OPT_IN_USAGE")
 
+import crow.wasmline.gradle.WasmlineBuildVariant
 import crow.wasmline.gradle.WasmtimeTarget
-
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -49,11 +49,10 @@ wasmline {
         autoDownload = true
         version = "v${providers.gradleProperty("wasmtime.version").orElse("47.0.2").get()}"
         githubToken = providers.gradleProperty("github.token").orNull
-        targets = listOf(
-        )
+        targets = emptyList()
     }
     server {
         port = 8080
+        deployVariant = WasmlineBuildVariant.DEBUG
     }
-    serverDeployVariant = "debug"
 }

@@ -4,11 +4,13 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import kotlinx.serialization.Serializable
 import java.io.File
 
 /** Selects the native execution backend without introducing another artifact format. */
 @Serializable
+@InternalWasmlineToolingApi
 enum class ComponentAotBackend(val artifactType: WasmlineArtifactType, val fileExtension: String) {
     CRANELIFT(WasmlineArtifactType.CWASM, "cwasm"),
     PULLEY(WasmlineArtifactType.PWASM, "pwasm"),
@@ -16,6 +18,7 @@ enum class ComponentAotBackend(val artifactType: WasmlineArtifactType, val fileE
 
 /** Wasmtime engine profile matched by Wasmline's native runtime assets. */
 @Serializable
+@InternalWasmlineToolingApi
 data class ComponentAotEngineOptions(
     val componentModel: Boolean = true,
     val collector: String = "drc",
@@ -56,6 +59,7 @@ data class ComponentAotEngineOptions(
 
 /** Contract metadata copied onto every compiled Component artifact. */
 @Serializable
+@InternalWasmlineToolingApi
 data class ComponentAotArtifactMetadata(
     val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
     val exportName: String? = null,
@@ -76,6 +80,8 @@ data class ComponentAotArtifactMetadata(
 }
 
 /** One requested Component AOT target and its concrete CWASM or PWASM output. */
+
+@InternalWasmlineToolingApi
 data class ComponentAotTarget(val target: String, val backend: ComponentAotBackend, val outputFile: File) {
     init {
         require(target.isNotBlank()) { "Component AOT target must not be blank." }
@@ -86,6 +92,8 @@ data class ComponentAotTarget(val target: String, val backend: ComponentAotBacke
 }
 
 /** Inputs for compiling a finished Component Wasm with the full Wasmtime CLI. */
+
+@InternalWasmlineToolingApi
 data class ComponentAotCompileRequest(
     val wasmtimeCompiler: File,
     val inputComponent: File,
@@ -107,6 +115,8 @@ data class ComponentAotCompileRequest(
 }
 
 /** One verified native Component output and the manifest artifact it produces. */
+
+@InternalWasmlineToolingApi
 data class ComponentAotCompileOutput(
     val requestedTarget: String,
     val normalizedTarget: String,
@@ -136,6 +146,8 @@ data class ComponentAotCompileOutput(
 }
 
 /** Verified outputs produced for one raw Component input. */
+
+@InternalWasmlineToolingApi
 data class ComponentAotCompileResult(
     val inputComponent: File,
     val inputComponentSha256: String,

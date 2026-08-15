@@ -7,8 +7,8 @@ import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.component.ComponentAotBuildRecord
 import crow.wasmline.plugin.core.component.ComponentAotEngineOptions
 import crow.wasmline.plugin.core.component.ComponentBuildRecord
-import crow.wasmline.plugin.core.toolchain.FileDigest
 import java.io.File
+import java.security.MessageDigest
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,7 +46,7 @@ class ComponentAotCliSupportTest {
                     WasmlineArtifact(
                         type = target.backend.artifactType,
                         url = target.outputFile.name,
-                        sha256 = FileDigest.sha256Hex(target.outputFile),
+                        sha256 = sha256Hex(target.outputFile),
                         targetCpu = if (pulley) "pulley64" else "x86_64",
                         targetOs = if (pulley) null else "linux",
                         targetCompilerVersion = "wasmtime-${request.wasmtimeVersion}",
@@ -121,7 +121,7 @@ class ComponentAotCliSupportTest {
         componentFile = component.name,
         embeddedFile = "plugin.embedded.wasm",
         exportName = "plugin/invoke",
-        componentSha256 = FileDigest.sha256Hex(component),
+        componentSha256 = sha256Hex(component),
         witSha256 = "a".repeat(64),
         wasmToolsVersion = "1.255.0",
     )
@@ -135,3 +135,7 @@ private inline fun withCliAotDirectory(block: (File) -> Unit) {
         directory.deleteRecursively()
     }
 }
+
+private fun sha256Hex(file: File): String = MessageDigest.getInstance("SHA-256")
+    .digest(file.readBytes())
+    .joinToString("") { byte -> "%02x".format(byte) }

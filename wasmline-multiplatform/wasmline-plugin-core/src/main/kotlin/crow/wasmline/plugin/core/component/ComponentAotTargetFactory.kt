@@ -1,9 +1,12 @@
 package crow.wasmline.plugin.core.component
 
+import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import java.io.File
 
 /** Creates deterministic native Component outputs for Gradle and CLI adapters. */
+
+@InternalWasmlineToolingApi
 object ComponentAotTargetFactory {
     fun create(outputDirectory: File, productName: String, targets: Collection<String>): List<ComponentAotTarget> {
         require(productName.matches(SAFE_NAME)) {

@@ -17,7 +17,7 @@
 
 package crow.wasmline.loader.internal.crypto
 
-enum class SignatureAlgorithmId {
+internal enum class SignatureAlgorithmId {
     /**
      * Edwards-curve Digital Signature Algorithm (EdDSA) using the Ed25519 curve.
      *
