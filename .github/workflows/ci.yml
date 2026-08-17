@@ -394,29 +394,3 @@ jobs:
       - name: Run plugin integration tests
         working-directory: wasmline-multiplatform/wasmline-plugin-test
         run: ./gradlew jvmTest --no-daemon -Pgithub.token="${{ github.token }}"
-
-  # ───────────────────────────────────────────────────────────────
-  # JOB 9: Publish to Maven Central (placeholder, runs after all jobs)
-  # ───────────────────────────────────────────────────────────────
-
-  publish:
-    needs: [lint-kotlin, lint-clang, lint-zig, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
-    runs-on: ubuntu-latest
-    name: publish
-
-    steps:
-      - name: Placeholder
-        run: echo "Publish to Maven Central — not yet implemented."
-
-  # ───────────────────────────────────────────────────────────────
-  # JOB 10: GitHub Release (placeholder, runs after all jobs)
-  # ───────────────────────────────────────────────────────────────
-
-  release:
-    needs: [lint-kotlin, lint-clang, lint-zig, build-assets, test-jvm, test-web, test-node, test-ios, test-plugin]
-    runs-on: ubuntu-latest
-    name: release
-
-    steps:
-      - name: Placeholder
-        run: echo "Create GitHub Release with changelog — not yet implemented."
