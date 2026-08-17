@@ -65,9 +65,9 @@ const homeContent = {
 } as const satisfies Record<'en' | 'zh', HomeContent>;
 
 const homeFeatures = [
-  { key: 'bridge', icon: Zap },
-  { key: 'platforms', icon: Layers },
-  { key: 'sandbox', icon: ShieldCheck },
+  { key: 'bridge', icon: Zap, color: 'text-fd-primary' },
+  { key: 'platforms', icon: Layers, color: 'text-fd-info' },
+  { key: 'sandbox', icon: ShieldCheck, color: 'text-fd-success' },
 ] as const;
 
 const homeCards = [
@@ -100,34 +100,31 @@ export default async function HomePage({
   const content = lang === 'zh' ? homeContent.zh : homeContent.en;
 
   return (
-    <main className="relative flex flex-1 flex-col overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-[-120px] h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-violet-600/25 blur-[120px] dark:bg-violet-500/20" />
-        <div className="absolute inset-0 [background-image:linear-gradient(to_right,rgb(128_128_128/0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgb(128_128_128/0.06)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)]" />
-      </div>
+    <main className="relative flex flex-1 flex-col overflow-hidden bg-fd-background">
+      <div className="h-1 w-full bg-fd-primary" />
 
-      <section className="flex flex-col items-center px-6 pb-16 pt-24 text-center sm:pt-32">
-        <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs font-medium text-violet-600 dark:text-violet-300">
+      <section className="flex flex-col items-center border-b border-fd-border px-6 pb-12 pt-16 text-center sm:pt-20">
+        <span className="mb-5 inline-flex items-center gap-2 border-s-2 border-fd-primary px-3 py-1 text-xs text-fd-muted-foreground">
           <Zap className="size-3.5" />
           {content.badge}
         </span>
 
-        <h1 className="bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-tight text-transparent sm:text-7xl dark:from-violet-300 dark:via-purple-400 dark:to-indigo-400">
+        <h1 className="text-5xl font-bold text-fd-foreground sm:text-6xl">
           wasmline
         </h1>
 
-        <p className="mt-4 text-xl font-medium text-fd-foreground sm:text-2xl">
+        <p className="mt-4 max-w-3xl text-lg text-fd-foreground sm:text-xl">
           {content.subtitle}
         </p>
 
-        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground sm:text-base">
+        <p className="mt-5 max-w-2xl text-sm leading-7 text-fd-muted-foreground">
           {content.description}
         </p>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href={`/${lang}/docs`}
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-500"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-fd-primary px-5 py-2.5 text-sm text-fd-primary-foreground transition-colors hover:opacity-90"
           >
             {content.getStarted}
             <ArrowRight className="size-4" />
@@ -136,14 +133,14 @@ export default async function HomePage({
             href={GITHUB_URL}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-card px-6 py-3 text-sm font-semibold text-fd-foreground transition hover:bg-fd-accent"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-fd-border bg-fd-card px-5 py-2.5 text-sm text-fd-foreground transition-colors hover:bg-fd-accent"
           >
             <Github className="size-4" />
             GitHub
           </a>
         </div>
 
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+        <div className="mt-10 grid w-full max-w-3xl grid-cols-3 gap-2 border-t border-fd-border pt-5">
           {homeFeatures.map((feature) => {
             const Icon = feature.icon;
             const label = content.features[feature.key];
@@ -151,29 +148,29 @@ export default async function HomePage({
             return (
               <span
                 key={label}
-                className="inline-flex items-center gap-2 text-sm text-fd-muted-foreground"
+                className="inline-flex min-w-0 flex-col items-center justify-start gap-2 px-1 text-xs leading-5 text-fd-muted-foreground sm:flex-row sm:justify-center"
               >
-                <Icon className="size-4 text-violet-500" />
-                {label}
+                <Icon className={`size-4 shrink-0 ${feature.color}`} />
+                <span className="break-words">{label}</span>
               </span>
             );
           })}
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 px-6 pb-20 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-3 px-6 pb-16 pt-10 sm:grid-cols-2 lg:grid-cols-3">
         {homeCards.map((card) => {
           const Icon = card.icon;
           const copy = content.cards[card.key];
           const href = card.internal ? `/${lang}${card.href}` : card.href;
           const className =
-            'group flex flex-col gap-3 rounded-xl border border-fd-border bg-fd-card p-6 transition hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-600/10';
+            'group flex min-h-44 flex-col gap-3 rounded-lg border border-fd-border bg-fd-card p-5 transition-colors hover:border-fd-primary/55 hover:bg-fd-accent/35';
           const inner = (
             <>
-              <span className="inline-flex size-10 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300">
+              <span className="inline-flex size-9 items-center justify-center rounded-md border border-fd-border bg-fd-secondary text-fd-primary">
                 <Icon className="size-5" />
               </span>
-              <span className="flex items-center gap-1.5 font-semibold text-fd-foreground">
+              <span className="flex items-center gap-1.5 text-sm text-fd-foreground">
                 {copy.title}
                 <ArrowRight className="size-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
               </span>

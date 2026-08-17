@@ -64,7 +64,8 @@ object WasmlineLoader {
      *
      * @param source Where to load from (local file, local package, or remote URL).
      * @param config Unified configuration for runtime, network, cache, and trusted keys.
-     * @return [WasmlineLoadResult.Success] with a [Wasmline] instance, or [WasmlineLoadResult.Failure].
+     * @return [WasmlineLoadResult.Success] with a [crow.wasmline.Wasmline] instance,
+     * or [WasmlineLoadResult.Failure].
      */
     fun load(source: WasmlineSource, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult {
         val request = WasmlineLoadRequest(source = source, config = config)

@@ -21,11 +21,11 @@ export default function RootPage() {
 
   return (
     <main
-      className="flex min-h-svh items-center justify-center bg-zinc-950 px-6 text-zinc-100"
+      className="flex min-h-svh items-center justify-center bg-[#101513] px-6 text-[#e7eeeb]"
       style={{
         minHeight: '100svh',
-        backgroundColor: '#09090b',
-        color: '#f4f4f5',
+        backgroundColor: '#101513',
+        color: '#e7eeeb',
       }}
     >
       <div className="flex flex-col items-center gap-5 text-center">
@@ -35,16 +35,19 @@ export default function RootPage() {
           width={88}
           height={88}
           priority
-          className="size-[88px] rounded-[22px] shadow-2xl shadow-violet-950/50"
+          className="size-20"
         />
         <div className="space-y-2">
-          <p className="text-xl font-semibold">wasmline</p>
+          <p className="text-xl font-bold">wasmline</p>
           <div
             role="status"
             aria-live="polite"
-            className="flex h-6 items-center justify-center gap-2 text-sm text-zinc-400"
+            className="flex h-6 items-center justify-center gap-2 text-sm text-[#a9b5b0]"
           >
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            <LoaderCircle
+              className="size-4 animate-spin text-[#57c6b4]"
+              aria-hidden="true"
+            />
             <span>Loading documentation...</span>
           </div>
         </div>
