@@ -1,6 +1,6 @@
 package crow.wasmline.loader.internal
 
-import crow.wasmline.WasmlineCache
+import crow.wasmline.loader.WasmlineCache
 
 /**
  * File-system-backed [WasmlineCache] implementation.

@@ -1,11 +1,6 @@
-package crow.wasmline.network
+package crow.wasmline.loader.network
 
-/**
- * HTTP response returned by [WasmlineNetworkClient.fetch].
- *
- * @property statusCode HTTP status code (e.g. 200, 404).
- * @property bytes Response body as raw bytes.
- */
+/** HTTP response returned by [WasmlineNetworkClient.fetch]. */
 data class WasmlineHttpResponse(val statusCode: Int, val bytes: ByteArray) {
     val isSuccess: Boolean get() = statusCode in 200..299
 

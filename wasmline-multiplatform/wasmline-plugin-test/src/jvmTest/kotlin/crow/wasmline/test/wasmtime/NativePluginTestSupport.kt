@@ -8,10 +8,12 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineWarmupMode
+import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.wasmlineBootstrap
 import crow.wasmline.wasmlineShutdown
 import crow.wasmline.wasmlineWarmup
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -28,7 +30,7 @@ internal object NativePluginTestSupport {
     /**
      * Loads the assembled plugin, executes the test block, and releases native resources.
      */
-    fun <T> withLoadedPlugin(supportConcurrent: Boolean = false, block: (Wasmline) -> T): T {
+    fun <T> withLoadedPlugin(supportConcurrent: Boolean = false, block: (Wasmline) -> T): T = runBlocking {
         val artifact = artifactFile()
         wasmlineBootstrap()
         wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
@@ -44,14 +46,16 @@ internal object NativePluginTestSupport {
                     executionModel = WasmlineExecutionModel.CORE_WASM,
                     invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
                 ),
-                config = WasmlineConfig(supportConcurrent = supportConcurrent),
+                options = WasmlineLoadOptions(
+                    runtimeConfig = WasmlineConfig(supportConcurrent = supportConcurrent),
+                ),
             )
             val wasmline = assertIs<WasmlineLoadResult.Success>(
                 value = result,
                 message = (result as? WasmlineLoadResult.Failure)?.cause,
             ).wasmline
             try {
-                return block(wasmline)
+                block(wasmline)
             } finally {
                 wasmline.close()
             }

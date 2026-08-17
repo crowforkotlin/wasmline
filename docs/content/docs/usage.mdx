@@ -2,7 +2,7 @@
 title: Usage Guide
 description: Service contract definition, plugin implementation, and host-side module loading
 createdAt: 2026-07-18
-updatedAt: 2026-08-15
+updatedAt: 2026-08-18
 ---
 
 # Usage Guide
@@ -44,7 +44,7 @@ fun main() {
 
 ## Host-Side Module Loading and Service Invocation
 
-The host loads a plugin through `WasmlineLoader.load()`. Native targets use verified manifests or precompiled `.pwasm` / `.cwasm` artifacts; raw `.wasm` is accepted only by the browser Core Wasmline path. An `http(s)://` source is resolved as a remote manifest and verified before its artifact is loaded. The host then registers host-side service implementations accessible to the plugin via `bind(impl)`, and obtains typed proxies for plugin-side services via `link<T>()`:
+The host loads a plugin through the suspending `WasmlineLoader.load()` API. Native targets use verified manifests or precompiled `.pwasm` / `.cwasm` artifacts; raw `.wasm` is accepted only by the browser Core Wasmline path. An `http(s)://` source is resolved as a remote manifest and verified before its artifact is loaded. The host then registers host-side service implementations accessible to the plugin via `bind(impl)`, and obtains typed proxies for plugin-side services via `link<T>()`:
 
 ```kotlin
 import crow.wasmline.WasmlineConfig
@@ -52,24 +52,66 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
-WasmlineLoader.bootstrap()
+suspend fun main() {
+    WasmlineLoader.bootstrap()
 
-val module = when (val result = WasmlineLoader.load(
-    source = "https://example.com/plugin/manifest.wlm",
-    config = WasmlineConfig(networkClient = KtorNetworkClient()),
-)) {
-    is WasmlineLoadResult.Success -> result.wasmline
-    is WasmlineLoadResult.Failure -> error(result.cause)
+    val module = when (val result = WasmlineLoader.load(
+        source = "https://example.com/plugin/manifest.wlm",
+        options = WasmlineLoadOptions(
+            runtimeConfig = WasmlineConfig(),
+            networkClient = KtorNetworkClient(),
+            trustedKeys = WasmlineTrustedKeySet.Builder()
+                .addHex(
+                    algorithm = "Ed25519",
+                    keyId = "release",
+                    publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+                )
+                .build(),
+        ),
+    )) {
+        is WasmlineLoadResult.Success -> result.wasmline
+        is WasmlineLoadResult.Failure -> error(result.cause)
+    }
+
+    module.bind(object : HostNotificationService {
+        override fun notify(event: String) { /* host-side handler */ }
+    })
+
+    val response = module.link<EchoService>().echo("ping")
+    module.close()
 }
+```
 
-module.bind(object : HostNotificationService {
-    override fun notify(event: String) { /* host-side handler */ }
-})
+Local artifacts and local manifests do not require a network artifact. For remote manifests, add either `wasmline-network-ktor` (JVM, Android, iOS) or `wasmline-network-okhttp` (JVM, Android). The adapter is consulted only on a fresh-manifest or artifact cache miss; a fully cached package can load without a network client. Applications can also implement `WasmlineNetworkClient` or provide a custom remote resolver.
 
-val response = module.link<EchoService>().echo("ping")
-module.close()
+The complete request overload is public when a load needs metadata or custom resolver hooks:
+
+```kotlin
+import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.loader.WasmlineLoadRequest
+import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineRemotePackageResolver
+import crow.wasmline.loader.WasmlineSource
+import crow.wasmline.loader.WasmlineSourceResolvers
+
+suspend fun loadWithCustomResolver(
+    packageUrl: String,
+    loadOptions: WasmlineLoadOptions,
+    appPackageResolver: WasmlineRemotePackageResolver,
+): WasmlineLoadResult =
+    WasmlineLoader.load(
+        WasmlineLoadRequest(
+            source = WasmlineSource.RemoteManifestUrl(packageUrl),
+            options = loadOptions,
+            metadata = mapOf("channel" to "beta"),
+            resolvers = WasmlineSourceResolvers(remotePackage = appPackageResolver),
+        ),
+    )
 ```
 
 <Callout type="info" title="IR plugin rewrite targets">

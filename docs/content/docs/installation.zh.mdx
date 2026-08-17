@@ -2,7 +2,7 @@
 title: 安装
 description: 在使用方项目中通过 Gradle 引入 Wasmline — 插件应用与 Maven 依赖
 createdAt: 2026-07-18
-updatedAt: 2026-08-15
+updatedAt: 2026-08-18
 ---
 
 # 安装
@@ -38,7 +38,7 @@ dependencies {
     // 核心加载器 — 清单解析、签名校验、模块加载
     implementation("crow.wasmline:wasmline-loader:1.0.0")
 
-    // 远程 manifest 加载所需的 HTTP 客户端（Ktor 或 OkHttp 实现）
+    // 可选：远程 manifest 缓存未命中时使用的 HTTP 客户端
     implementation("crow.wasmline:wasmline-network-ktor:1.0.0")
 
     // 引擎后端 — 按平台变体提供原生运行时库
@@ -48,12 +48,16 @@ dependencies {
 
 | 构件 | 说明 |
 |---|---|
-| `crow.wasmline:wasmline` | 核心运行时——加载、分发、序列化 SPI |
-| `crow.wasmline:wasmline-loader` | `WasmlineLoader`、`.wlm` 清单解析、Ed25519/ECDSA-P256 校验 |
-| `crow.wasmline:wasmline-network-ktor` | 基于 Ktor 的 HTTP 网络客户端（远程 manifest 加载） |
+| `crow.wasmline:wasmline` | 核心运行时——执行、分发、序列化 SPI |
+| `crow.wasmline:wasmline-loader` | Load options、cache/network SPI、`.wlm` 解析与签名校验 |
+| `crow.wasmline:wasmline-network-ktor` | 远程加载使用的 Ktor adapter（JVM、Android、iOS） |
 | `crow.wasmline:wasmline-network-okhttp` | 基于 OkHttp 5.x 的 HTTP 网络客户端（JVM/Android） |
 | `crow.wasmline:wasmline-engine-pulley` | 仅 Pulley 解释器——仅支持 `.pwasm`，覆盖所有原生目标 |
 | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley 运行时——优先 `.cwasm`，回退 `.pwasm` |
+
+<Callout type="info" title="Network adapter 是可选依赖">
+  `wasmline-loader` 定义 network、cache 与 trust 抽象，但不指定 HTTP engine。本地产物与本地 manifest 不需要 network 模块。只有远程 manifest 缺失或过期，或所选 artifact 未命中缓存时，应用才需要选择 Ktor 或 OkHttp；fresh manifest 与对应 artifact 均已缓存时，不提供 network client 也能加载。浏览器 raw `.wasm` 使用 `WasmlineWeb.prefetch()`，不经过这两个 adapter。
+</Callout>
 
 <Callout type="info" title="分发状态">
   Wasmline 目前处于开发阶段，构件通过 `mavenLocal()` 分发——在 `wasmline-multiplatform/` 下执行 `./gradlew publishToMavenLocal` 即可安装到本地仓库。Maven Central 发布正在筹备中。

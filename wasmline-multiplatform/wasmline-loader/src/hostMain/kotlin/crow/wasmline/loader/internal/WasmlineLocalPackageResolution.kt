@@ -31,7 +31,7 @@ internal object WasmlineLocalPackageResolution {
         val manifest = when (
             val verification = WasmlinePackageSignatureVerifier.verify(
                 envelope = envelope,
-                trustedKeys = request.config.trustedKeys,
+                trustedKeys = request.options.trustedKeys,
                 packageLocation = source.path,
             )
         ) {

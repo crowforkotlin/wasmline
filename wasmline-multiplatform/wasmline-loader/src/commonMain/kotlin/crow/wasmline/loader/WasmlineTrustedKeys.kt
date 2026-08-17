@@ -1,29 +1,23 @@
-package crow.wasmline
+package crow.wasmline.loader
 
 /**
  * Trusted public key lookup for manifest signature verification.
  *
  * Package sources require this lookup to verify their manifest signature before
- * accepting package metadata. Direct local artifact paths are caller-trusted.
+ * accepting package metadata. Direct local artifact sources are caller-trusted.
  */
 fun interface WasmlineTrustedKeys {
     /**
      * Look up a trusted public key by algorithm and optional key ID.
      *
-     * @param algorithm Algorithm identifier (e.g. `"Ed25519"`, `"EcdsaP256"`).
-     * @param keyId Optional key identifier. `null` matches any key for the given algorithm.
-     * @return The raw public key bytes, or `null` if no trusted key matches.
+     * @param algorithm Algorithm identifier (for example, `Ed25519`).
+     * @param keyId Optional key identifier. `null` matches any key for the algorithm.
+     * @return The raw public key bytes, or `null` when no key matches.
      */
     fun getPublicKey(algorithm: String, keyId: String?): ByteArray?
 }
 
-/**
- * Immutable set of trusted public keys built via [Builder].
- *
- * Lookup order:
- * 1. Exact match on `(algorithm, keyId)`
- * 2. Wildcard match on `(algorithm, null)` — any keyId accepted for this algorithm
- */
+/** Immutable trusted-key set with exact-key and algorithm wildcard lookup. */
 class WasmlineTrustedKeySet private constructor(private val entries: List<TrustedKeyEntry>) : WasmlineTrustedKeys {
 
     private data class TrustedKeyEntry(val algorithm: String, val keyId: String?, val publicKey: ByteArray) {
@@ -43,16 +37,16 @@ class WasmlineTrustedKeySet private constructor(private val entries: List<Truste
 
     override fun getPublicKey(algorithm: String, keyId: String?): ByteArray? {
         if (keyId != null) {
-            entries.firstOrNull { it.algorithm == algorithm && it.keyId == keyId }?.let { return it.publicKey }
+            entries.firstOrNull { it.algorithm == algorithm && it.keyId == keyId }?.let { return it.publicKey.copyOf() }
         }
-        return entries.firstOrNull { it.algorithm == algorithm && it.keyId == null }?.publicKey
+        return entries.firstOrNull { it.algorithm == algorithm && it.keyId == null }?.publicKey?.copyOf()
     }
 
     class Builder {
         private val entries = mutableListOf<TrustedKeyEntry>()
 
         fun add(algorithm: String, keyId: String?, publicKey: ByteArray): Builder {
-            entries.add(TrustedKeyEntry(algorithm, keyId, publicKey))
+            entries.add(TrustedKeyEntry(algorithm, keyId, publicKey.copyOf()))
             return this
         }
 

@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(projects.sampleCommon)
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 val componentServiceAotOutput = project(":sample-component-plugin").layout.buildDirectory.dir(

@@ -2,7 +2,7 @@
 title: 平台架构
 description: 各平台执行栈、模块依赖关系与仓库目录结构
 createdAt: 2026-07-18
-updatedAt: 2026-08-15
+updatedAt: 2026-08-18
 ---
 
 # 平台架构
@@ -108,13 +108,15 @@ wasmline-network-ktor / wasmline-network-okhttp ──────► wasmline-l
 wasmline-core (C/C++) ◄──── JNI / C Interop ────────── wasmline
 ```
 
+network、cache、trusted key 与 load request API 都归 `wasmline-loader` 所有。Ktor 与 OkHttp 构件实现 loader 的 suspend network SPI，并单向依赖 loader；核心 `wasmline` runtime 不依赖任何 HTTP engine。应用只在远程缓存未命中时选择 adapter：Ktor 覆盖 JVM、Android 与 iOS，OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 仍使用独立的 `WasmlineWeb.prefetch()` 流程。
+
 ## 仓库目录结构
 
 ```text
 wasmline/
 ├── wasmline-core/                      # C/C++ wasmtime bridge (Engine, Module, Session, Api)
 ├── wasmline-multiplatform/
-│   ├── wasmline/                       # Core Kotlin runtime — loading, dispatch, serialization SPI
+│   ├── wasmline/                       # Core Kotlin runtime — execution, dispatch, serialization SPI
 │   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
 │   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
 │   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
@@ -123,7 +125,7 @@ wasmline/
 │   │   ├── jsMain/                     # Kotlin/JS binding actual
 │   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actual
 │   │   └── wasmWasiMain/               # Core 与 Component Service guest hook
-│   ├── wasmline-loader/                # WasmlineLoader, .wlm manifest parsing, Ed25519/ECDSA-P256
+│   ├── wasmline-loader/                # Load request/options、cache/network SPI 与 .wlm 校验
 │   ├── wasmline-plugin-core/           # 共享 Core/Component 构建、签名、打包与工具链逻辑
 │   ├── wasmline-cli/                   # plugin-core 与 loader 操作的 CLI adapter
 │   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)

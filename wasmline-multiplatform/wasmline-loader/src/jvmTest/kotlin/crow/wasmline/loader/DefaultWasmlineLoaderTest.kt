@@ -3,6 +3,7 @@ package crow.wasmline.loader
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineLoadState
+import kotlinx.coroutines.test.runTest
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,7 +14,7 @@ import kotlin.test.assertTrue
 class DefaultWasmlineLoaderTest {
 
     @Test
-    fun `top level request entrypoint uses built-in local package resolution`() {
+    fun `top level request entrypoint uses built-in local package resolution`() = runTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.LocalManifestPath(path = "/tmp/plugin.wlm"),
@@ -26,7 +27,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `local package source reports a missing manifest before signature verification`() {
+    fun `local package source reports a missing manifest before signature verification`() = runTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.LocalManifestPath(path = "/tmp/plugin.wlm"),
@@ -39,7 +40,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `remote package source without networkClient or resolver returns failure`() {
+    fun `remote package source without networkClient or resolver returns failure`() = runTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl(url = "https://example.com/plugin.wlm"),
@@ -48,12 +49,34 @@ class DefaultWasmlineLoaderTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("Remote package source 'https://example.com/plugin.wlm'"))
-        assertTrue(failure.cause.contains("request.resolvers.remotePackage or request.config.networkClient"))
+        assertTrue(failure.cause.contains("https://example.com/plugin.wlm"))
+        assertTrue(failure.cause.contains("request.options.networkClient or request.resolvers.remotePackage"))
     }
 
     @Test
-    fun `custom package resolver direct artifact is caller trusted`() {
+    fun `public request overload exposes custom resolvers`() = runTest {
+        val result = WasmlineLoader.load(
+            WasmlineLoadRequest(
+                source = WasmlineSource.RemoteManifestUrl("https://example.com/custom.wlm"),
+                resolvers = WasmlineSourceResolvers(
+                    remotePackage = WasmlineRemotePackageResolver { _, _ ->
+                        WasmlineSourceResolution.Complete(
+                            WasmlineLoadState.Failure(
+                                code = WasmlineLoadState.CODE_FAILURE,
+                                cause = "public request resolver",
+                            ),
+                        )
+                    },
+                ),
+            ),
+        )
+
+        val failure = assertIs<crow.wasmline.WasmlineLoadResult.Failure>(result)
+        assertEquals("public request resolver", failure.cause)
+    }
+
+    @Test
+    fun `custom package resolver direct artifact is caller trusted`() = runTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.LocalManifestPath(path = "/tmp/plugin.wlm"),
@@ -76,7 +99,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `remote package source can chain through custom resolvers`() {
+    fun `remote package source can chain through custom resolvers`() = runTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl(url = "https://example.com/plugin.wlm"),
@@ -102,7 +125,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `resolver can complete with a terminal load state`() {
+    fun `resolver can complete with a terminal load state`() = runTest {
         val terminal = WasmlineLoadState.Failure(
             code = WasmlineLoadState.CODE_FAILURE,
             cause = "Manifest signature mismatch",
@@ -123,7 +146,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `direct artifact path is caller trusted and still requires explicit native format`() {
+    fun `direct artifact path is caller trusted and still requires explicit native format`() = runTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(source = WasmlineSource.LocalArtifactPath("/tmp/missing-plugin.pwasm")),
         )
@@ -135,7 +158,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `verified package artifact rejects a digest mismatch before native loading`() {
+    fun `verified package artifact rejects a digest mismatch before native loading`() = runTest {
         val artifactFile = File.createTempFile("wasmline-verified", ".cwasm")
         try {
             artifactFile.writeBytes("artifact-bytes".encodeToByteArray())
@@ -159,7 +182,7 @@ class DefaultWasmlineLoaderTest {
     }
 
     @Test
-    fun `verified package artifact rejects a missing digest before native loading`() {
+    fun `verified package artifact rejects a missing digest before native loading`() = runTest {
         val artifactFile = File.createTempFile("wasmline-verified", ".cwasm")
         try {
             artifactFile.writeBytes("artifact-bytes".encodeToByteArray())

@@ -1,22 +1,29 @@
 package crow.wasmline.network.okhttp
 
-import crow.wasmline.network.WasmlineHttpResponse
-import crow.wasmline.network.WasmlineNetworkClient
+import crow.wasmline.loader.network.WasmlineHttpResponse
+import crow.wasmline.loader.network.WasmlineNetworkClient
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
+import okio.IOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * [WasmlineNetworkClient] implementation backed by OkHttp 5.x.
  *
- * Uses OkHttp's blocking [okhttp3.Call.execute] API, which is safe to call
- * from any thread (including Android background threads and JVM worker threads).
+ * Uses OkHttp's asynchronous callback API and cancels the HTTP call when the
+ * caller's coroutine is cancelled.
  *
  * Example:
  * ```kotlin
- * val result = loadWasmline(
+ * val result = WasmlineLoader.load(
  *     WasmlineLoadRequest(
  *         source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin"),
- *         networkClient = OkHttpNetworkClient(),
+ *         options = WasmlineLoadOptions(networkClient = OkHttpNetworkClient()),
  *     ),
  * )
  * ```
@@ -26,17 +33,33 @@ import okhttp3.Request
  */
 class OkHttpNetworkClient(private val client: OkHttpClient = OkHttpClient()) : WasmlineNetworkClient {
 
-    override fun fetch(url: String): WasmlineHttpResponse {
+    override suspend fun fetch(url: String): WasmlineHttpResponse = suspendCancellableCoroutine { continuation ->
         val request = Request.Builder()
             .url(url)
             .build()
-        val response = client.newCall(request).execute()
-        return response.use { resp ->
-            WasmlineHttpResponse(
-                statusCode = resp.code,
-                bytes = resp.body.bytes(),
-            )
-        }
+        val call = client.newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(
+            object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (continuation.isActive) continuation.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    try {
+                        val result = response.use { value ->
+                            WasmlineHttpResponse(
+                                statusCode = value.code,
+                                bytes = value.body.bytes(),
+                            )
+                        }
+                        if (continuation.isActive) continuation.resume(result)
+                    } catch (error: Exception) {
+                        if (continuation.isActive) continuation.resumeWithException(error)
+                    }
+                }
+            },
+        )
     }
 }
 

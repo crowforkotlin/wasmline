@@ -11,7 +11,7 @@ Paths below are relative to `wasmline-multiplatform/`.
 - [Naming](#naming)
 - [Layer Constraints](#layer-constraints)
 - [Value Codec](#value-codec)
-- [Asynchronous Prefetch and Synchronous Load](#asynchronous-prefetch-and-synchronous-load)
+- [Raw Wasm Prefetch and Suspended Load](#raw-wasm-prefetch-and-suspended-load)
 - [WASI Preview 1 Imports](#wasi-preview-1-imports)
 - [Environment Bridge Imports](#environment-bridge-imports)
 - [Tests and CI](#tests-and-ci)
@@ -106,9 +106,9 @@ private fun rawNewWasmModule(bytes: JsAny): JsAny = js("new WebAssembly.Module(b
 
 Implementation: `wasmline/src/webMain/kotlin/crow/wasmline/web/WebWasmValue.kt`.
 
-## Asynchronous Prefetch and Synchronous Load
+## Raw Wasm Prefetch and Suspended Load
 
-`WasmlineLoader.load()` remains synchronous, while Fetch is asynchronous. Web callers must prefetch an artifact before loading it:
+`WasmlineLoader.load()` is a suspending API, but browser raw `.wasm` downloads remain an explicit prefetch step. Web callers must prefetch an artifact before loading it:
 
 ```kotlin
 WasmlineWeb.prefetch("plugin.wasm")
@@ -119,10 +119,10 @@ The sequence is:
 
 1. `WasmlineWeb.prefetch(url)` downloads bytes through the Fetch API.
 2. `WebWasmArtifacts` caches the bytes by URL.
-3. `WasmlineLoader.load(url)` resolves the cached bytes synchronously.
+3. `WasmlineLoader.load(url)` resolves the cached bytes and hands them to the browser runtime.
 4. `WebWasmPlugin` compiles and instantiates the module.
 
-Loading a URL that was not prefetched fails with an explicit instruction. Use `WasmlineWeb.invalidate(url)` to remove one cached artifact; runtime shutdown clears all cached artifacts and live modules.
+The loader's remote-manifest network adapters are not part of this raw-Wasm path. Loading a URL that was not prefetched fails with an explicit instruction. Use `WasmlineWeb.invalidate(url)` to remove one cached artifact; runtime shutdown clears all cached artifacts and live modules.
 
 ## WASI Preview 1 Imports
 

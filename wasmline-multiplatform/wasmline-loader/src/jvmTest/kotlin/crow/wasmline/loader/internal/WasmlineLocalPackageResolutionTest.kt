@@ -1,16 +1,16 @@
 package crow.wasmline.loader.internal
 
 import crow.wasmline.WasmlineComponentServiceContract
-import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineNativeBackend
-import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.loader.VerifiedPackageArtifact
+import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
+import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.loader.internal.crypto.newKeyPairFromSeed
 import crow.wasmline.loader.model.SignedManifestEnvelope
@@ -64,7 +64,7 @@ class WasmlineLocalPackageResolutionTest {
             source = source,
             request = WasmlineLoadRequest(
                 source = source,
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     trustedKeys = WasmlineTrustedKeySet.Builder()
                         .add("Ed25519", keyId = null, publicKey = keyPair.publicKey.toByteArray())
                         .build(),

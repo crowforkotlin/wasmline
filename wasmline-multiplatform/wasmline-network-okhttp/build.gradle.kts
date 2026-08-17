@@ -39,7 +39,8 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(projects.wasmlineLoader)
-                implementation(libs.okhttp)
+                api(libs.okhttp)
+                implementation(libs.kotlinx.coroutines)
             }
         }
         val commonTest by getting {

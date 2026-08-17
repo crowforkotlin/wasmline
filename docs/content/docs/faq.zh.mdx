@@ -2,10 +2,19 @@
 title: 常见问题
 description: 浏览器执行路径、产物格式差异、编译器插件必要性与插件隔离模型
 createdAt: 2026-07-18
-updatedAt: 2026-08-16
+updatedAt: 2026-08-18
 ---
 
 # 常见问题
+
+<details>
+<summary><strong>每个应用都必须引入 Wasmline network 模块吗？</strong></summary>
+
+不需要。本地产物和本地 manifest 只使用 `wasmline-loader`，不要求 Ktor 或 OkHttp。远程 manifest 需要联网时，可引入 `wasmline-network-ktor`、`wasmline-network-okhttp`，也可以实现自定义 `WasmlineNetworkClient` 或远程 resolver。内置 resolver 会优先检查缓存，因此 manifest 仍在有效期内且所选 artifact 已缓存时，即使没有 network client 也能加载。
+
+两个 adapter 都单向依赖 `wasmline-loader`，核心 `wasmline` runtime 不会写死任何一个实现。Ktor 发布 JVM、Android 与 iOS 变体；OkHttp 发布 JVM 与 Android 变体。浏览器 raw `.wasm` 则使用 `WasmlineWeb.prefetch()`。
+
+</details>
 
 <details>
 <summary><strong>浏览器执行路径如何在没有 wasmtime 的情况下实例化插件？</strong></summary>
@@ -17,7 +26,7 @@ Web 目标实现（`webMain` / `jsMain` / `wasmJsMain`）通过浏览器原生 W
 - **`wasi_snapshot_preview1` shim**：`fd_write`（UTF-8 stdout/stderr 经 `WasmlineLog` 或 `println` 输出）、`random_get`（`Random.nextBytes`）以及 `clock_time_get`（将 `Date.now()` 的毫秒值转换为纳秒值）
 - **Wasmline bridge 协议**（`env` 命名空间）：`bridge_inbound_copy_params`、`bridge_inbound_set_response`、`bridge_outbound_call_host`、`bridge_outbound_get_response`
 
-`WasmlineWeb.prefetch(url)` 使用 Fetch 下载 raw `.wasm` 字节；随后 `WasmlineLoader.load(url)` 同步解析缓存字节并实例化模块。浏览器路径不接受 AOT 编译产物（`.cwasm`、`.pwasm`）。
+`WasmlineWeb.prefetch(url)` 使用 Fetch 下载 raw `.wasm` 字节；随后 suspend API `WasmlineLoader.load(url)` 解析缓存字节并实例化模块。浏览器路径不接受 AOT 编译产物（`.cwasm`、`.pwasm`）。
 
 </details>
 
