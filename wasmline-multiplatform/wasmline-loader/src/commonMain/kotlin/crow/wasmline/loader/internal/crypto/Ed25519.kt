@@ -755,7 +755,7 @@ internal object Ed25519 : SignatureAlgorithm {
     }
 
     /**
-     * Returns the least significant bit of [`in`].
+     * Returns the least significant bit of [inLongArray].
      */
     private fun getLsb(inLongArray: LongArray): Int = Field25519.contract(inLongArray)[0].toInt() and 1
 
@@ -1685,7 +1685,7 @@ internal object Ed25519 : SignatureAlgorithm {
      * Returns the EdDSA signature for the [message] based on the [hashedPrivateKey].
      *
      * @param message to sign
-     * @param publicKey [Ed25519.scalarMultToBytes] of [hashedPrivateKey]
+     * @param publicKey [Ed25519.scalarMultWithBaseToBytes] of [hashedPrivateKey]
      * @param hashedPrivateKey [Ed25519.getHashedScalar] of the private key
      * @return signature for the [message].
      */
