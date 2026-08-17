@@ -4,6 +4,7 @@ import { i18n } from '@/lib/i18n';
 import { defineI18nUI } from 'fumadocs-ui/i18n';
 import '../global.css';
 import { chineseSiteContent } from '@/lib/site-content';
+import WasmlineSearchDialog from '@/components/search-dialog';
 
 const { provider } = defineI18nUI(i18n, {
   translations: {
@@ -24,7 +25,14 @@ export default async function Layout({
 }) {
   const { lang } = await params;
   return (
-    <RootProvider search={{ options: { type: 'static' } }} i18n={provider(lang)}>
+    <RootProvider
+      search={{
+        SearchDialog: WasmlineSearchDialog,
+        options: { api: '/wasmline/api/search' },
+      }}
+      theme={{ defaultTheme: 'system', enableSystem: true }}
+      i18n={provider(lang)}
+    >
       {children}
     </RootProvider>
   );
