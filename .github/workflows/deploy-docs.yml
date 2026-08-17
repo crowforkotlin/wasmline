@@ -2,10 +2,13 @@
 name: Deploy Docs
 
 on:
-  # Trigger on main branch changes for docs folder
+  # Deploy when the site or generated Kotlin API reference can change.
   push:
     branches: ["main"]
-    paths: ["docs/**", ".github/workflows/deploy-docs.yml"]
+    paths:
+      - "docs/**"
+      - "wasmline-multiplatform/**"
+      - ".github/workflows/deploy-docs.yml"
   # Allow manual run
   workflow_dispatch:
 
@@ -24,22 +27,67 @@ jobs:
   # Build Job
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docs
     steps:
       - uses: actions/checkout@v4
+
+      - name: Read toolchain versions
+        id: versions
+        run: |
+          jbr_version="$(jq -er '.versions.jbr_version' scripts/versions.json)"
+          echo "jbr_version=${jbr_version}.x" >> "$GITHUB_OUTPUT"
+
+      - name: Cache JBR
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-${{ steps.versions.outputs.jbr_version }}-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
+      - name: Setup JBR
+        uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          distribution: jetbrains
+          java-version: ${{ steps.versions.outputs.jbr_version }}
+          token: ${{ github.token }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: docs/package.json
           cache: true
           cache_dependency_path: docs/pnpm-lock.yaml
           run_install: false
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+
+      - name: Generate Dokka API reference
+        working-directory: ./wasmline-multiplatform
+        run: ./gradlew dokkaGenerate --no-daemon
+
+      - name: Install documentation dependencies
+        working-directory: ./docs
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Fumadocs
+        working-directory: ./docs
+        run: pnpm build
+
+      - name: Add Dokka to the Pages artifact
+        working-directory: ./docs
+        run: |
+          mkdir -p out/api-docs
+          cp -a ../wasmline-multiplatform/build/dokka/html/. out/api-docs/
+          test -f out/api-docs/index.html
+          test -f out/api-docs/scripts/pages.json
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./docs/out
