@@ -1,5 +1,8 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage", "SpellCheckingInspection")
 
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinMultiplatform
+import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.konan.target.HostManager
@@ -10,6 +13,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.android.library.kmp)
     alias(libs.plugins.maven.publish)
+    alias(libs.plugins.dokka)
+}
+
+configure<MavenPublishBaseExtension> {
+    configure(
+        platform = KotlinMultiplatform(
+            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
+            androidVariantsToPublish = emptyList(),
+        ),
+    )
 }
 
 java {

@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.maven.publish)
+    alias(libs.plugins.dokka)
     alias(libs.plugins.java.test.fixtures)
     idea
 }
@@ -162,7 +163,7 @@ dependencies {
 configure<MavenPublishBaseExtension> {
     configure(
         platform = KotlinJvm(
-            javadocJar = JavadocJar.Empty(),
+            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
         ),
     )
 }

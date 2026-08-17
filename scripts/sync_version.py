@@ -39,6 +39,7 @@ REQUIRED_KEYS = (
     "wasm_tools_version",
     "wit_bindgen_version",
     "kotlin_version",
+    "dokka_version",
     "kotlin_min_version",
     "agp_version",
     "zig_version",
@@ -626,6 +627,10 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r'(?m)^kotlin = ".*"$',
                     lambda v: f'kotlin = "{v["kotlin_version"]}"',
+                ),
+                Rule(
+                    r'(?m)^dokka = ".*"$',
+                    lambda v: f'dokka = "{v["dokka_version"]}"',
                 ),
                 Rule(
                     r'(?m)^wasmline = ".*"$',

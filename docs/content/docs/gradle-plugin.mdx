@@ -69,3 +69,13 @@ The four componentize and AOT tasks are registered for every `wasmWasi` target a
 `wasmlineAssembleDebug` and `wasmlineAssembleRelease` invoke the required compilation, tool download, binding, componentization, AOT, manifest, signing, and packaging steps.
 
 See [Wasmtime Toolchains](/en/docs/wasmtime-download) for cache and download configuration.
+
+## API Documentation
+
+From the repository root, generate the aggregated Kotlin API reference:
+
+```bash
+./wasmline-multiplatform/gradlew -p wasmline-multiplatform dokkaGenerate
+```
+
+The HTML output is written to `wasmline-multiplatform/build/dokka/html/`. It contains public user-facing declarations and excludes internal packages. Published Kotlin modules also include Dokka HTML in their `javadoc.jar`.

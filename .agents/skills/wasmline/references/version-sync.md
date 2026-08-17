@@ -22,6 +22,7 @@
 | `wasm_tools_version` | Downloaded wasm-tools assets and Component build-tool defaults |
 | `wit_bindgen_version` | Downloaded wit-bindgen CLI assets and Component binding-tool defaults |
 | `kotlin_version` | Kotlin plugin and documentation references |
+| `dokka_version` | Dokka Gradle plugin and API documentation generation |
 | `kotlin_min_version` | Minimum supported Kotlin version in documentation |
 | `agp_version` | Android Gradle Plugin and documentation references |
 | `zig_version` | Native build tooling and documentation references |
