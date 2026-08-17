@@ -30,7 +30,7 @@ Merge temporary branches into `main` and remove them after use. Releases are cut
 - `wasmline_version`: the Maven version used by every published Wasmline module.
 - `wasmtime_version`: the Wasmtime toolchain and native-runtime version.
 - `sample_plugin_version`: the version used by sample plugin packages.
-- Kotlin, AGP, Zig, and JBR toolchain versions.
+- Kotlin, Dokka, AGP, Zig, and JBR toolchain versions.
 
 Use the version synchronizer instead of editing repeated references:
 

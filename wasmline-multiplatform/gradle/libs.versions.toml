@@ -35,6 +35,9 @@ junit = "4.13.2"
 #kotlin = "2.3.0"
 kotlin = "2.4.0"
 
+# https://kotlinlang.org/docs/dokka-gradle.html
+dokka = "2.2.0"
+
 # https://github.com/google/ksp
 ksp = "2.3.4"
 
@@ -325,6 +328,7 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }

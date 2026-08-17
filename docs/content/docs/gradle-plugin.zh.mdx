@@ -69,3 +69,13 @@ wasmline {
 `wasmlineAssembleDebug` 和 `wasmlineAssembleRelease` 会自动执行所需的编译、工具下载、binding 生成、Component 转换、AOT、清单、签名和打包步骤。
 
 缓存与下载配置参见 [Wasmtime 工具链](/zh/docs/wasmtime-download)。
+
+## API 文档
+
+在仓库根目录执行以下命令，生成聚合的 Kotlin API 参考：
+
+```bash
+./wasmline-multiplatform/gradlew -p wasmline-multiplatform dokkaGenerate
+```
+
+HTML 输出位于 `wasmline-multiplatform/build/dokka/html/`，仅包含面向用户的公开声明，不包含内部实现包。已发布的 Kotlin 模块也会在 `javadoc.jar` 中包含 Dokka HTML 文档。

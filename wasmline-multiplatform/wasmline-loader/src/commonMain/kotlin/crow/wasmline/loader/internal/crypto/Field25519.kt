@@ -110,7 +110,7 @@ internal object Field25519 {
      * output must be distinct to both inputs. The inputs are reduced coefficient form,
      * the output is not.
      *
-     * out[x] <= 14 * the largest product of the input limbs.
+     * `out[x] <= 14 * the largest product of the input limbs.`
      */
     fun product(out: LongArray, in2: LongArray, in1: LongArray) {
         out[0] = (in2[0] * in1[0])

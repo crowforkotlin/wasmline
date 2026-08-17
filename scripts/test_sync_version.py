@@ -81,6 +81,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
             "zig_version": "9.9.9",
@@ -128,6 +129,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
             "zig_version": "9.9.9",
@@ -136,6 +138,7 @@ class SyncVersionTest(unittest.TestCase):
 
         expected_fragments = {
             "scripts/sync_version.py": "--set wasmtime_version=99.8.7",
+            "wasmline-multiplatform/gradle/libs.versions.toml": 'dokka = "8.8.8"',
             ".agents/skills/wasmline/references/development-guide.md": "Zig version (requires **9.9.9**)",
             "wasmline-multiplatform/wasmline-engine-cranelift/build.gradle.kts":
                 "wasmline-engine-cranelift-jvm:9.8.7:",
@@ -183,6 +186,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
             "zig_version": "9.9.9",
@@ -226,6 +230,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
             "zig_version": "9.9.9",
@@ -255,6 +260,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
             "zig_version": "9.9.9",

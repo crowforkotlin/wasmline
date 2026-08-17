@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.buildconfig)
+    alias(libs.plugins.dokka)
 }
 
 java {
@@ -87,7 +88,7 @@ gradlePlugin {
 configure<MavenPublishBaseExtension> {
     configure(
         platform = GradlePlugin(
-            javadocJar = JavadocJar.Empty(),
+            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
         ),
     )
 }

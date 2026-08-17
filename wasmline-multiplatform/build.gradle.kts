@@ -1,4 +1,7 @@
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import org.jetbrains.dokka.gradle.DokkaExtension
+import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
+import org.jetbrains.dokka.gradle.engine.plugins.DokkaHtmlPluginParameters
 
 plugins {
     alias(libs.plugins.app.base.multiplatform.library) apply false
@@ -17,12 +20,49 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.buildconfig) apply false
     alias(libs.plugins.maven.publish) apply false
+    alias(libs.plugins.dokka)
     alias(libs.plugins.ktlint)
+}
+
+dependencies {
+    listOf(
+        ":wasmline",
+        ":wasmline-loader",
+        ":wasmline-network-ktor",
+        ":wasmline-network-okhttp",
+        ":wasmline-engine-pulley",
+        ":wasmline-engine-cranelift",
+        ":wasmline-kotlin-plugin",
+        ":wasmline-gradle-plugin",
+        ":wasmline-cli",
+    ).forEach { add("dokka", project(it)) }
 }
 
 allprojects {
     group = "crow.wasmline"
     version = project.property("wasmline.version") as String
+
+    pluginManager.withPlugin("org.jetbrains.dokka") {
+        configure<DokkaExtension> {
+            dokkaSourceSets.configureEach {
+                documentedVisibilities(VisibilityModifier.Public)
+                perPackageOption {
+                    matchingRegex.set(".*\\.internal(\\..*)?")
+                    suppress.set(true)
+                }
+            }
+            pluginsConfiguration.withType(DokkaHtmlPluginParameters::class.java).configureEach {
+                customStyleSheets.from(rootProject.file("dokka/wasmline.css"))
+                customAssets.from(
+                    rootProject.file("../docs/assets/fonts/MapleMono-NF-CN-SemiBold.woff2"),
+                    rootProject.file("../docs/assets/fonts/MapleMono-NF-CN-Bold.woff2"),
+                    rootProject.file("../docs/assets/fonts/OFL.txt"),
+                )
+                footerMessage.set("Wasmline API documentation")
+                homepageLink.set("https://github.com/crowforkotlin/wasmline")
+            }
+        }
+    }
 
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
