@@ -12,7 +12,7 @@ export default async function Layout({
 }) {
   const { lang } = await params;
   return (
-    <HomeLayout {...baseOptions(lang)}>
+    <HomeLayout {...baseOptions(lang)} className="wasmline-home">
       <PageTransition>{children}</PageTransition>
     </HomeLayout>
   );

@@ -81,7 +81,7 @@ Before either action:
 4. Confirm Maven credentials and signing configuration.
 5. Publish the `x.y.z` modules and create the matching `release-x.y.z.v` tag as one release operation.
 
-The GitHub Actions `publish` and `release` jobs are placeholders. They currently neither publish to Maven Central nor create a GitHub release. Do not assume that a successful CI run completes a release.
+The GitHub Actions CI workflow has no publication or release jobs. Maven publication and GitHub release automation remain unimplemented; a successful CI run is not a release.
 
 ## Change Scenarios
 

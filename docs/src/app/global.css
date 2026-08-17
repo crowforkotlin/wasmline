@@ -52,6 +52,45 @@
   --color-fd-ring: #57c6b4;
 }
 
+.wasmline-home {
+  --color-fd-background: #faf8ff;
+  --color-fd-foreground: #211a2d;
+  --color-fd-muted: #f1ecfb;
+  --color-fd-muted-foreground: #665e72;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #211a2d;
+  --color-fd-card: rgba(255, 255, 255, 0.58);
+  --color-fd-card-foreground: #211a2d;
+  --color-fd-border: rgba(109, 76, 154, 0.22);
+  --color-fd-primary: #7c3aed;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: rgba(241, 236, 251, 0.74);
+  --color-fd-secondary-foreground: #30233f;
+  --color-fd-accent: rgba(124, 58, 237, 0.1);
+  --color-fd-accent-foreground: #6d28d9;
+  --color-fd-ring: #8b5cf6;
+  background: var(--color-fd-background);
+}
+
+.dark .wasmline-home {
+  --color-fd-background: #121019;
+  --color-fd-foreground: #f3effa;
+  --color-fd-muted: #1d1927;
+  --color-fd-muted-foreground: #b7aec3;
+  --color-fd-popover: #1b1724;
+  --color-fd-popover-foreground: #f3effa;
+  --color-fd-card: rgba(28, 23, 38, 0.64);
+  --color-fd-card-foreground: #f3effa;
+  --color-fd-border: rgba(196, 181, 253, 0.2);
+  --color-fd-primary: #a78bfa;
+  --color-fd-primary-foreground: #181121;
+  --color-fd-secondary: rgba(38, 31, 51, 0.76);
+  --color-fd-secondary-foreground: #e9e2f2;
+  --color-fd-accent: rgba(167, 139, 250, 0.13);
+  --color-fd-accent-foreground: #c4b5fd;
+  --color-fd-ring: #a78bfa;
+}
+
 .wasmline-docs :where(button, input, select, textarea) {
   font-family: var(--font-sans);
   font-weight: 600;
@@ -82,12 +121,16 @@
 #nd-nav,
 #nd-subnav {
   border-color: var(--color-fd-border);
-  background: color-mix(in srgb, var(--color-fd-background) 92%, transparent);
+  background: color-mix(in srgb, var(--color-fd-background) 82%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  backdrop-filter: blur(16px) saturate(125%);
 }
 
 #nd-sidebar {
   border-color: var(--color-fd-border);
-  background: color-mix(in srgb, var(--color-fd-card) 72%, var(--color-fd-background));
+  background: color-mix(in srgb, var(--color-fd-card) 76%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(18px) saturate(120%);
 }
 
 #nd-sidebar [data-active='true'] {
@@ -132,6 +175,13 @@
 
 .wasmline-docs :where([data-card], table) {
   border-radius: 8px;
+}
+
+#nd-page [data-card] {
+  border-color: var(--color-fd-border);
+  background: color-mix(in srgb, var(--color-fd-card) 78%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(115%);
+  backdrop-filter: blur(12px) saturate(115%);
 }
 
 .wasmline-docs table {
