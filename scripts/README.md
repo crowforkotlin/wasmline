@@ -9,6 +9,7 @@ Repository automation is grouped by purpose:
 | `samples/` | Sample build and run helpers |
 | `init-wasmtime.*` | Wasmtime platform asset initialization |
 | `build-native-assets.sh` | Native engine asset build and deployment |
+| `compile-ios.sh` | iOS native bridge static-library compilation |
 | `doctor.sh` | Local environment preflight |
 | `versions.json` | Source of truth for managed project and toolchain versions |
 | `sync_version.py` | Version-synchronization entry point and implementation |

@@ -106,8 +106,7 @@ class SyncVersionTest(unittest.TestCase):
             "docs/content/docs/wasmtime-download.mdx",
             "docs/content/docs/wasmtime-download.zh.mdx",
             "wasmline-samples/kotlin/run-ios.sh",
-            "wasmline-multiplatform/wasmline-engine-cranelift/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-engine-pulley/build.gradle.kts",
+            "wasmline-multiplatform/gradle/wasmline-engine.gradle.kts",
             "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt",
             "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt",
             "scripts/sync_version.py",
@@ -140,10 +139,8 @@ class SyncVersionTest(unittest.TestCase):
             "scripts/sync_version.py": "--set wasmtime_version=99.8.7",
             "wasmline-multiplatform/gradle/libs.versions.toml": 'dokka = "8.8.8"',
             ".agents/skills/wasmline/references/development-guide.md": "Zig version (requires **9.9.9**)",
-            "wasmline-multiplatform/wasmline-engine-cranelift/build.gradle.kts":
-                "wasmline-engine-cranelift-jvm:9.8.7:",
-            "wasmline-multiplatform/wasmline-engine-pulley/build.gradle.kts":
-                "wasmline-engine-pulley-jvm:9.8.7:",
+            "wasmline-multiplatform/gradle/wasmline-engine.gradle.kts":
+                "JavaLanguageVersion.of(99)",
             "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt":
                 'version = "6.5.4"',
             "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt":

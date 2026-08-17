@@ -67,6 +67,7 @@ Wasmline provides two engine modules. They are mutually exclusive — a project 
 | `wasmline-engine-cranelift` | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime. Supports `.cwasm` and `.pwasm`; prefers matching `.cwasm`, then matching-bitness `.pwasm`. |
 
 Both modules follow the same build and publishing structure. The examples below use `pulley`.
+These modules intentionally do not expose a Kotlin runtime API. The dependency selects the native runtime distribution; the `wasmline` runtime reports the linked backend through `WasmlineNativeBackend`.
 
 ### Source Layout
 
@@ -99,9 +100,9 @@ wasmline-engine-pulley/
 The main JVM JAR excludes native library resources. This keeps the base JAR small and ensures native libraries come only from platform-specific JARs.
 
 ```kotlin
-// In build.gradle.kts
-val jvmMain by getting {
-    resources.excludes.add("jni/**")
+// In the shared engine Gradle configuration
+tasks.named<Jar>("jvmJar") {
+    exclude("jni/**")
 }
 ```
 
