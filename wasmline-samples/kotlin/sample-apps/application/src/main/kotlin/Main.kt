@@ -9,8 +9,6 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.protobuf.ProtoBuf
 
-
-fun main() {
-     runApplicationSample()
+suspend fun main() {
+    runApplicationSample()
 }
-

@@ -1,12 +1,11 @@
 package crow.wasmline.web
 
 /**
- * Byte cache bridging the async Fetch download and the sync Wasmline loader.
+ * Byte cache bridging Fetch downloads and the Wasmline loader.
  *
- * `WasmlineLoader.load()` is synchronous on every platform, while the web can
- * only download artifacts asynchronously. Web callers therefore prefetch each
- * artifact first; the loader then resolves the cached bytes synchronously and
- * instantiates the module in the same call.
+ * Web callers prefetch each raw artifact first; the loader then resolves the
+ * cached bytes and instantiates the module without routing raw `.wasm` through
+ * the signed remote-package pipeline.
  *
  * Date: 2026-07-29
  * Author: crowforkotlin

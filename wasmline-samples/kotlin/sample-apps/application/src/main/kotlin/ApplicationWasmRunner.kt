@@ -9,6 +9,7 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.wasmlineNativeRuntimeInfo
@@ -83,12 +84,12 @@ private fun resolveRemoteWlmUrl(): String? {
         ?: System.getenv(artifactUrlEnvironment)?.ifBlank { null }
 }
 
-private fun loadDirectArtifact(path: String, config: WasmlineConfig): WasmlineLoadResult {
+private suspend fun loadDirectArtifact(path: String, options: WasmlineLoadOptions): WasmlineLoadResult {
     val format = when {
         path.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
         path.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
         path.endsWith(".wasm", ignoreCase = true) -> WasmlineArtifactFormat.RAW_WASM
-        else -> return WasmlineLoader.load(source = path, config = config)
+        else -> return WasmlineLoader.load(source = path, options = options)
     }
     val runtime = wasmlineNativeRuntimeInfo()
     val requestedFormat = requestedBundledArtifactFormat()
@@ -123,11 +124,11 @@ private fun loadDirectArtifact(path: String, config: WasmlineConfig): WasmlineLo
             executionModel = WasmlineExecutionModel.CORE_WASM,
             invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
         ),
-        config = config,
+        options = options,
     )
 }
 
-internal fun runApplicationSample() {
+internal suspend fun runApplicationSample() {
     WasmlineLoader.bootstrap()
 
     val remoteUrl = resolveRemoteWlmUrl()
@@ -142,12 +143,14 @@ internal fun runApplicationSample() {
     }
 
     try {
-        val config = WasmlineConfig(
-            serialization = WasmlineSerializationConfig.protobuf(),
+        val options = WasmlineLoadOptions(
+            runtimeConfig = WasmlineConfig(
+                serialization = WasmlineSerializationConfig.protobuf(),
+            ),
             networkClient = KtorNetworkClient(),
         )
         when (
-            val result = loadDirectArtifact(source, config)
+            val result = loadDirectArtifact(source, options)
         ) {
             is WasmlineLoadResult.Failure -> {
                 error("[Application] Failed to load wasm: ${result.cause}")

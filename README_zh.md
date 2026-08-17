@@ -89,22 +89,38 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
-WasmlineLoader.bootstrap()
+suspend fun main() {
+    WasmlineLoader.bootstrap()
 
-// 本地路径与远程 URL 均可——http(s):// 会自动按远程 manifest 加载
-val module = when (val result = WasmlineLoader.load(
-    source = "https://example.com/plugin/manifest.wlm",
-    config = WasmlineConfig(networkClient = KtorNetworkClient()),
-)) {
-    is WasmlineLoadResult.Success -> result.wasmline
-    is WasmlineLoadResult.Failure -> error(result.cause)
+    // 本地路径与远程 URL 均可——http(s):// 会自动按远程 manifest 加载
+    val module = when (val result = WasmlineLoader.load(
+        source = "https://example.com/plugin/manifest.wlm",
+        options = WasmlineLoadOptions(
+            runtimeConfig = WasmlineConfig(),
+            networkClient = KtorNetworkClient(),
+            trustedKeys = WasmlineTrustedKeySet.Builder()
+                .addHex(
+                    algorithm = "Ed25519",
+                    keyId = "release",
+                    publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+                )
+                .build(),
+        ),
+    )) {
+        is WasmlineLoadResult.Success -> result.wasmline
+        is WasmlineLoadResult.Failure -> error(result.cause)
+    }
+
+    val response = module.link<EchoService>().echo("ping")
+    module.close()
 }
-
-val response = module.link<EchoService>().echo("ping")
-module.close()
 ```
+
+`WasmlineLoader.load` 是 suspend API。本地产物与本地 manifest 不需要 network adapter。远程 manifest 只有在 fresh manifest 或所选 artifact 未命中缓存时，才需要 `wasmline-network-ktor`、`wasmline-network-okhttp` 或自定义 resolver；runtime 不会写死任何 HTTP engine。
 
 > [!NOTE]
 > `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。编译单元未应用 `wasmline-kotlin-plugin` 时，这些调用会在运行时抛出 `UnsupportedOperationException`。

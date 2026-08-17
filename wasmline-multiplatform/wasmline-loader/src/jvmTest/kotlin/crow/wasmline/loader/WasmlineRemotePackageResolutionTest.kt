@@ -2,11 +2,7 @@
 
 package crow.wasmline.loader
 
-import crow.wasmline.WasmlineCache
-import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineNoOpCache
-import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.extensions.Keys
 import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.loader.internal.currentHostArtifactTarget
@@ -14,14 +10,16 @@ import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.loader.model.WasmlineManifest
-import crow.wasmline.network.WasmlineHttpResponse
-import crow.wasmline.network.WasmlineNetworkClient
+import crow.wasmline.loader.network.WasmlineHttpResponse
+import crow.wasmline.loader.network.WasmlineNetworkClient
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Clock
@@ -75,7 +73,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `remote source without networkClient returns failure`() {
+    fun `remote source without networkClient returns failure`() = runTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
@@ -83,11 +81,11 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("request.resolvers.remotePackage or request.config.networkClient"))
+        assertTrue(failure.cause.contains("request.options.networkClient or request.resolvers.remotePackage"))
     }
 
     @Test
-    fun `custom resolver takes priority over networkClient`() {
+    fun `custom resolver takes priority over networkClient`() = runTest {
         val customCalled = booleanArrayOf(false)
         val fakeNetworkClient = WasmlineNetworkClient { _ ->
             throw AssertionError("Network client should not be called when custom resolver is provided")
@@ -96,7 +94,7 @@ class WasmlineRemotePackageResolutionTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                config = WasmlineConfig(networkClient = fakeNetworkClient),
+                options = WasmlineLoadOptions(networkClient = fakeNetworkClient),
                 resolvers = WasmlineSourceResolvers(
                     remotePackage = WasmlineRemotePackageResolver { _, _ ->
                         customCalled[0] = true
@@ -117,7 +115,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `networkClient auto-delegates when no custom resolver`() {
+    fun `networkClient auto-delegates when no custom resolver`() = runTest {
         val manifest = createTestManifest(
             artifacts = listOf(
                 compatibleCraneliftArtifact(
@@ -149,7 +147,7 @@ class WasmlineRemotePackageResolutionTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     networkClient = networkClient,
                     trustedKeys = trustedKeys,
                     cache = WasmlineNoOpCache,
@@ -167,7 +165,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `manifest fetch failure returns descriptive error`() {
+    fun `manifest fetch failure returns descriptive error`() = runTest {
         val networkClient = WasmlineNetworkClient { _ ->
             WasmlineHttpResponse(500, ByteArray(0))
         }
@@ -175,7 +173,7 @@ class WasmlineRemotePackageResolutionTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     networkClient = networkClient,
                     cache = WasmlineNoOpCache,
                 ),
@@ -187,7 +185,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `invalid manifest protobuf returns parse error`() {
+    fun `invalid manifest protobuf returns parse error`() = runTest {
         val networkClient = WasmlineNetworkClient { _ ->
             WasmlineHttpResponse(200, "not valid protobuf".encodeToByteArray())
         }
@@ -195,7 +193,7 @@ class WasmlineRemotePackageResolutionTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     networkClient = networkClient,
                     cache = WasmlineNoOpCache,
                 ),
@@ -207,7 +205,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `signature verification fails with wrong key`() {
+    fun `signature verification fails with wrong key`() = runTest {
         val manifest = createTestManifest(
             artifacts = listOf(
                 WasmlineArtifact(
@@ -232,7 +230,7 @@ class WasmlineRemotePackageResolutionTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     networkClient = networkClient,
                     trustedKeys = trustedKeys,
                     cache = WasmlineNoOpCache,
@@ -245,7 +243,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `remote package rejects a missing trusted key source`() {
+    fun `remote package rejects a missing trusted key source`() = runTest {
         val manifest = createTestManifest(
             artifacts = listOf(
                 WasmlineArtifact(
@@ -267,7 +265,7 @@ class WasmlineRemotePackageResolutionTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     networkClient = networkClient,
                     trustedKeys = null,
                     cache = WasmlineNoOpCache,
@@ -280,12 +278,12 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `artifact SHA256 mismatch returns descriptive error`() {
+    fun `artifact SHA256 mismatch returns descriptive error`() = runTest {
         val manifest = createTestManifest(
             artifacts = listOf(
                 compatibleCraneliftArtifact(
                     url = "lib.cwasm",
-                    sha256 = "wrong_sha256_that_wont_match",
+                    sha256 = "0".repeat(64),
                 ),
             ),
         )
@@ -302,7 +300,7 @@ class WasmlineRemotePackageResolutionTest {
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     networkClient = networkClient,
                     trustedKeys = trustedKeys(),
                     cache = WasmlineNoOpCache,
@@ -315,7 +313,7 @@ class WasmlineRemotePackageResolutionTest {
     }
 
     @Test
-    fun `cache hit avoids network call for manifest`() {
+    fun `cache hit avoids network call for manifest`() = runTest {
         val manifest = createTestManifest(
             artifacts = listOf(
                 compatibleCraneliftArtifact(
@@ -329,9 +327,9 @@ class WasmlineRemotePackageResolutionTest {
 
         val cache = InMemoryCache()
         val manifestUrl = "https://example.com/plugin.wlm"
-        val manifestHash = crow.wasmline.loader.internal.Djb2.hashToHex8(manifestUrl.encodeToByteArray())
-        val manifestCacheKey = "m_$manifestHash"
+        val manifestCacheKey = manifestCacheKey(manifestUrl)
         cache.put(manifestCacheKey, envelopeBytes)
+        cache.put("$manifestCacheKey.timestamp", Clock.System.now().toEpochMilliseconds().toString().encodeToByteArray())
 
         var fetchCount = 0
         val networkClient = WasmlineNetworkClient { url ->
@@ -346,7 +344,7 @@ class WasmlineRemotePackageResolutionTest {
         DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
                 source = WasmlineSource.RemoteManifestUrl(manifestUrl),
-                config = WasmlineConfig(
+                options = WasmlineLoadOptions(
                     networkClient = networkClient,
                     trustedKeys = trustedKeys(),
                     cache = cache,
@@ -356,6 +354,41 @@ class WasmlineRemotePackageResolutionTest {
 
         assertEquals(1, fetchCount, "Only artifact fetch expected, manifest should come from cache")
     }
+
+    @Test
+    fun `fresh manifest and artifact cache load without networkClient`() = runTest {
+        val artifactBytes = fakeArtifactBytes()
+        val artifactSha256 = fakeArtifactSha256()
+        val manifest = createTestManifest(
+            artifacts = listOf(compatibleCraneliftArtifact(url = "lib.cwasm", sha256 = artifactSha256)),
+        )
+        val manifestUrl = "https://example.com/offline-plugin.wlm"
+        val manifestCacheKey = manifestCacheKey(manifestUrl)
+        val cache = InMemoryCache().apply {
+            put(manifestCacheKey, signAndEncodeEnvelope(manifest))
+            put(
+                "$manifestCacheKey.timestamp",
+                Clock.System.now().toEpochMilliseconds().toString().encodeToByteArray(),
+            )
+            put("artifact_$artifactSha256", artifactBytes)
+        }
+
+        val result = DefaultWasmlineLoader.load(
+            WasmlineLoadRequest(
+                source = WasmlineSource.RemoteManifestUrl(manifestUrl),
+                options = WasmlineLoadOptions(
+                    trustedKeys = trustedKeys(),
+                    cache = cache,
+                ),
+            ),
+        )
+
+        val failure = assertIs<WasmlineLoadState.Failure>(result)
+        assertFalse(failure.cause.contains("networkClient"), failure.cause)
+        assertFalse(failure.cause.contains("not available in cache"), failure.cause)
+    }
+
+    private fun manifestCacheKey(url: String): String = "manifest_${url.encodeToByteArray().toByteString().sha256().hex()}"
 }
 
 private class InMemoryCache : WasmlineCache {

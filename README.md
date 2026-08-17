@@ -89,22 +89,38 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
-WasmlineLoader.bootstrap()
+suspend fun main() {
+    WasmlineLoader.bootstrap()
 
-// Local paths and remote URLs are both supported — http(s):// loads the remote manifest
-val module = when (val result = WasmlineLoader.load(
-    source = "https://example.com/plugin/manifest.wlm",
-    config = WasmlineConfig(networkClient = KtorNetworkClient()),
-)) {
-    is WasmlineLoadResult.Success -> result.wasmline
-    is WasmlineLoadResult.Failure -> error(result.cause)
+    // Local paths and remote URLs are both supported — http(s):// loads the remote manifest
+    val module = when (val result = WasmlineLoader.load(
+        source = "https://example.com/plugin/manifest.wlm",
+        options = WasmlineLoadOptions(
+            runtimeConfig = WasmlineConfig(),
+            networkClient = KtorNetworkClient(),
+            trustedKeys = WasmlineTrustedKeySet.Builder()
+                .addHex(
+                    algorithm = "Ed25519",
+                    keyId = "release",
+                    publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+                )
+                .build(),
+        ),
+    )) {
+        is WasmlineLoadResult.Success -> result.wasmline
+        is WasmlineLoadResult.Failure -> error(result.cause)
+    }
+
+    val response = module.link<EchoService>().echo("ping")
+    module.close()
 }
-
-val response = module.link<EchoService>().echo("ping")
-module.close()
 ```
+
+`WasmlineLoader.load` is a suspending API. Local artifacts and local manifests do not require a network adapter. A remote manifest needs `wasmline-network-ktor`, `wasmline-network-okhttp`, or a custom resolver only when its fresh manifest or selected artifact is missing from the configured cache. The runtime never hardcodes an HTTP engine.
 
 > [!NOTE]
 > `link<T>()` and `bind(impl)` are rewrite targets of the Kotlin IR compiler plugin. If `wasmline-kotlin-plugin` is not applied to the compilation unit, these calls throw `UnsupportedOperationException` at runtime.

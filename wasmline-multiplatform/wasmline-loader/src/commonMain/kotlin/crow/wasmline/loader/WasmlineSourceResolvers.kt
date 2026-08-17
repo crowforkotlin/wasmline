@@ -25,7 +25,7 @@ data class WasmlineSourceResolvers(
  * source.
  */
 fun interface WasmlineLocalPackageResolver {
-    fun resolve(source: WasmlineSource.LocalManifestPath, request: WasmlineLoadRequest): WasmlineSourceResolution
+    suspend fun resolve(source: WasmlineSource.LocalManifestPath, request: WasmlineLoadRequest): WasmlineSourceResolution
 }
 
 /**
@@ -35,5 +35,5 @@ fun interface WasmlineLocalPackageResolver {
  * source.
  */
 fun interface WasmlineRemotePackageResolver {
-    fun resolve(source: WasmlineSource.RemoteManifestUrl, request: WasmlineLoadRequest): WasmlineSourceResolution
+    suspend fun resolve(source: WasmlineSource.RemoteManifestUrl, request: WasmlineLoadRequest): WasmlineSourceResolution
 }

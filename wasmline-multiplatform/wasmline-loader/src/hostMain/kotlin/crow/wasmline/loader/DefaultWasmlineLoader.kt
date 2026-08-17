@@ -17,7 +17,7 @@ import crow.wasmline.wasmlineLoadArtifact
 internal object DefaultWasmlineLoader {
     private const val P = "[DefaultWasmlineLoader]"
 
-    fun load(request: WasmlineLoadRequest): WasmlineLoadState {
+    suspend fun load(request: WasmlineLoadRequest): WasmlineLoadState {
         WasmlineLog.logger?.info("$P Loading from source: ${request.source}")
         return loadSource(
             request = request,
@@ -26,7 +26,7 @@ internal object DefaultWasmlineLoader {
         )
     }
 
-    private fun loadSource(request: WasmlineLoadRequest, source: WasmlineSource, resolutionDepth: Int): WasmlineLoadState {
+    private suspend fun loadSource(request: WasmlineLoadRequest, source: WasmlineSource, resolutionDepth: Int): WasmlineLoadState {
         if (resolutionDepth > MAX_SOURCE_RESOLUTION_DEPTH) {
             WasmlineLog.logger?.error("$P Source resolution exceeded max depth ($MAX_SOURCE_RESOLUTION_DEPTH)")
             return WasmlineLoadState.Failure(
@@ -49,8 +49,6 @@ internal object DefaultWasmlineLoader {
                 resolveSource(
                     request = request,
                     resolution = resolution,
-                    description = "Local package source '${source.path}'",
-                    resolverHint = "request.resolvers.localPackage",
                     resolutionDepth = resolutionDepth,
                 )
             }
@@ -62,23 +60,14 @@ internal object DefaultWasmlineLoader {
                     resolveSource(
                         request = request,
                         resolution = customResolution,
-                        description = "Remote package source '${source.url}'",
-                        resolverHint = "request.resolvers.remotePackage",
                         resolutionDepth = resolutionDepth,
                     )
-                } else if (request.config.networkClient != null) {
+                } else {
                     val builtInResolution = WasmlineRemotePackageResolution.resolve(source, request)
                     resolveSource(
                         request = request,
                         resolution = builtInResolution,
-                        description = "Remote package source '${source.url}'",
-                        resolverHint = "request.config.networkClient",
                         resolutionDepth = resolutionDepth,
-                    )
-                } else {
-                    unsupportedSourceFailure(
-                        description = "Remote package source '${source.url}'",
-                        resolverHint = "request.resolvers.remotePackage or request.config.networkClient",
                     )
                 }
             }
@@ -108,36 +97,22 @@ internal object DefaultWasmlineLoader {
             )
         }
 
-        return wasmlineLoadArtifact(descriptor = descriptor, config = request.config)
+        return wasmlineLoadArtifact(descriptor = descriptor, config = request.options.runtimeConfig)
     }
 
-    private fun resolveSource(
+    private suspend fun resolveSource(
         request: WasmlineLoadRequest,
-        resolution: WasmlineSourceResolution?,
-        description: String,
-        resolverHint: String,
+        resolution: WasmlineSourceResolution,
         resolutionDepth: Int,
-    ): WasmlineLoadState {
-        val resolved = resolution ?: return unsupportedSourceFailure(
-            description = description,
-            resolverHint = resolverHint,
+    ): WasmlineLoadState = when (resolution) {
+        is WasmlineSourceResolution.Complete -> resolution.state
+
+        is WasmlineSourceResolution.ContinueWith -> loadSource(
+            request = request,
+            source = resolution.source,
+            resolutionDepth = resolutionDepth + 1,
         )
-        return when (resolved) {
-            is WasmlineSourceResolution.Complete -> resolved.state
-
-            is WasmlineSourceResolution.ContinueWith -> loadSource(
-                request = request,
-                source = resolved.source,
-                resolutionDepth = resolutionDepth + 1,
-            )
-        }
     }
-
-    private fun unsupportedSourceFailure(description: String, resolverHint: String): WasmlineLoadState.Failure = WasmlineLoadState.Failure(
-        code = WasmlineLoadState.CODE_FAILURE,
-        cause = "$description is not supported yet. Provide $resolverHint to " +
-            "resolve it into a local host-compatible artifact for the current runtime.",
-    )
 }
 
 private const val MAX_SOURCE_RESOLUTION_DEPTH = 8

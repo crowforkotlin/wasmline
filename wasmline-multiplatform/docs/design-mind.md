@@ -99,7 +99,7 @@ The selected physical format controls engine mode:
 WasmlineWeb.prefetch(url)
   -> Fetch API
   -> WebWasmArtifacts byte cache
-  -> WasmlineLoader.load(url)
+  -> WasmlineLoader.load(url) [suspend]
   -> WebAssembly.Module and WebAssembly.Instance
   -> __wasmline_wasi_init
   -> __wasmline_wasi_entry

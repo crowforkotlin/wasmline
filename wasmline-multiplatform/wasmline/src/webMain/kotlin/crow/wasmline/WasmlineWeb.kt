@@ -5,13 +5,13 @@ import crow.wasmline.web.WebWasmArtifacts
 /**
  * Web-specific entry points complementing `WasmlineLoader`.
  *
- * Browsers and Node hosts can only download artifacts asynchronously via the
- * Fetch API, while `WasmlineLoader.load()` is synchronous on every platform.
- * Web applications therefore prefetch each artifact once; the subsequent
- * load call instantiates the module from the cached bytes:
+ * Web applications prefetch each raw `.wasm` artifact through the Fetch API;
+ * the subsequent loader call instantiates the module from the cached bytes.
+ * Download and loading are separate suspend operations because the verified
+ * remote-package pipeline is not the browser raw-Wasm path:
  *
  * ```kotlin
- * WasmlineWeb.prefetch("plugin.wasm")           // suspend variant
+ * WasmlineWeb.prefetch("plugin.wasm")
  * val result = WasmlineLoader.load("plugin.wasm")
  * ```
  *

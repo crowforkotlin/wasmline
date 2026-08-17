@@ -12,7 +12,6 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRawValue
-import crow.wasmline.WasmlineTrustedKeySet
 import crow.wasmline.bind
 import crow.wasmline.bindComponentService
 import crow.wasmline.callResult
@@ -22,6 +21,8 @@ import crow.wasmline.link
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.wasmlineNativeRuntimeInfo
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.component.ComponentEchoRequest
 import crow.wasmline.sample.component.ComponentPluginService
@@ -364,21 +365,23 @@ internal class WasmSampleRunner(
         closeRuntime()
     }
 
-    private fun load(mode: WasmSampleMode, path: String): WasmlineLoadResult {
-        val config = WasmlineConfig(
-            serialization = WasmlineSerializationConfig.protobuf(),
+    private suspend fun load(mode: WasmSampleMode, path: String): WasmlineLoadResult {
+        val options = WasmlineLoadOptions(
+            runtimeConfig = WasmlineConfig(
+                serialization = WasmlineSerializationConfig.protobuf(),
+            ),
             trustedKeys = samplePackageTrustedKeys,
         )
         require(mode != WasmSampleMode.COMPONENT_FIXTURE || path.endsWith(".wlm", ignoreCase = true)) {
             "Component Fixture must be a signed manifest.wlm package produced by :sample-component-fixture."
         }
         if (path.endsWith(".wlm", ignoreCase = true)) {
-            return WasmlineLoader.load(source = path, config = config)
+            return WasmlineLoader.load(source = path, options = options)
         }
 
         return WasmlineLoader.load(
             descriptor = descriptorFor(mode, path),
-            config = config,
+            options = options,
         )
     }
 

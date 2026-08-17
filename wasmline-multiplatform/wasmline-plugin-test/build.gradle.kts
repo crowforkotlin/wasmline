@@ -32,6 +32,7 @@ kotlin {
         }
         jvmTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines)
             implementation(libs.crow.wasmline.loader)
             implementation(libs.crow.wasmline.engine.cranelift)
         }

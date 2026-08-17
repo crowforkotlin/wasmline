@@ -2,7 +2,7 @@
 title: Platform Architecture
 description: Per-platform execution stacks, module dependencies, and repository structure
 createdAt: 2026-07-18
-updatedAt: 2026-08-15
+updatedAt: 2026-08-18
 ---
 
 # Platform Architecture
@@ -108,13 +108,15 @@ wasmline-network-ktor / wasmline-network-okhttp ──────► wasmline-l
 wasmline-core (C/C++) ◄──── JNI / C Interop ────────── wasmline
 ```
 
+Network, cache, trusted-key, and load-request APIs belong to `wasmline-loader`. The Ktor and OkHttp artifacts implement the loader's suspend network SPI and depend toward the loader; the core `wasmline` runtime has no HTTP-engine dependency. Applications select an adapter only for remote cache misses. Ktor covers JVM, Android, and iOS; OkHttp covers JVM and Android. Browser raw `.wasm` loading remains a separate `WasmlineWeb.prefetch()` flow.
+
 ## Repository Structure
 
 ```text
 wasmline/
 ├── wasmline-core/                      # C/C++ wasmtime bridge (Engine, Module, Session, Api)
 ├── wasmline-multiplatform/
-│   ├── wasmline/                       # Core Kotlin runtime — loading, dispatch, serialization SPI
+│   ├── wasmline/                       # Core Kotlin runtime — execution, dispatch, serialization SPI
 │   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
 │   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
 │   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
@@ -123,7 +125,7 @@ wasmline/
 │   │   ├── jsMain/                     # Kotlin/JS binding actuals
 │   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actuals
 │   │   └── wasmWasiMain/               # Core and Component Service guest hooks
-│   ├── wasmline-loader/                # WasmlineLoader, .wlm manifest parsing, Ed25519/ECDSA-P256
+│   ├── wasmline-loader/                # Load requests/options, cache/network SPI, .wlm verification
 │   ├── wasmline-plugin-core/           # Shared Core/Component build, signing, packaging, and toolchain logic
 │   ├── wasmline-cli/                   # CLI adapters for plugin-core and loader operations
 │   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)

@@ -2,7 +2,7 @@
 
 package crow.wasmline.loader.internal
 
-import crow.wasmline.WasmlineTrustedKeys
+import crow.wasmline.loader.WasmlineTrustedKeys
 import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineManifest

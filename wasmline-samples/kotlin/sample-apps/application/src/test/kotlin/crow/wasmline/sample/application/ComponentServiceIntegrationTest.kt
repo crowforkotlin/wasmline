@@ -11,12 +11,14 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.sample.component.ComponentEchoRequest
 import crow.wasmline.sample.component.ComponentHostService
 import crow.wasmline.sample.component.ComponentPluginService
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.wasmlineNativeRuntimeInfo
 import java.io.File
+import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -36,7 +38,7 @@ class ComponentServiceIntegrationTest {
     }
 
     @Test
-    fun cwasmUsesGeneratedLinkBindInBothDirections() {
+    fun cwasmUsesGeneratedLinkBindInBothDirections() = runTest {
         verifyGeneratedServiceRoundTrip(
             artifact = File(requireNotNull(System.getProperty(CWASM_PROPERTY))),
             format = WasmlineArtifactFormat.CWASM,
@@ -44,7 +46,7 @@ class ComponentServiceIntegrationTest {
     }
 
     @Test
-    fun pwasmUsesGeneratedLinkBindInBothDirections() {
+    fun pwasmUsesGeneratedLinkBindInBothDirections() = runTest {
         verifyGeneratedServiceRoundTrip(
             artifact = File(requireNotNull(System.getProperty(PWASM_PROPERTY))),
             format = WasmlineArtifactFormat.PWASM,
@@ -52,7 +54,7 @@ class ComponentServiceIntegrationTest {
     }
 
     @Test
-    fun initializationAndRouterStateAreInstanceScoped() {
+    fun initializationAndRouterStateAreInstanceScoped() = runTest {
         val artifact = File(requireNotNull(System.getProperty(CWASM_PROPERTY)))
         val first = loadComponent(artifact, WasmlineArtifactFormat.CWASM)
         val second = loadComponent(artifact, WasmlineArtifactFormat.CWASM)
@@ -69,7 +71,7 @@ class ComponentServiceIntegrationTest {
         }
     }
 
-    private fun verifyGeneratedServiceRoundTrip(artifact: File, format: WasmlineArtifactFormat) {
+    private suspend fun verifyGeneratedServiceRoundTrip(artifact: File, format: WasmlineArtifactFormat) {
         assertTrue(artifact.isFile, "Missing Wasmline Service fixture: ${artifact.absolutePath}")
         val plugin = loadComponent(artifact, format)
         try {
@@ -94,7 +96,7 @@ class ComponentServiceIntegrationTest {
         }
     }
 
-    private fun loadComponent(artifact: File, format: WasmlineArtifactFormat): Wasmline {
+    private suspend fun loadComponent(artifact: File, format: WasmlineArtifactFormat): Wasmline {
         val runtime = requireNotNull(wasmlineNativeRuntimeInfo())
         val descriptor = WasmlineArtifactDescriptor(
             path = artifact.absolutePath,
@@ -115,7 +117,9 @@ class ComponentServiceIntegrationTest {
         )
         val result = WasmlineLoader.load(
             descriptor = descriptor,
-            config = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+            options = WasmlineLoadOptions(
+                runtimeConfig = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+            ),
         )
         return (result as? WasmlineLoadResult.Success)?.wasmline
             ?: error("Unable to load Wasmline Service fixture: $result")

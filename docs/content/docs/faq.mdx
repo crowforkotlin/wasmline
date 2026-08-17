@@ -2,10 +2,19 @@
 title: Frequently Asked Questions
 description: Browser execution path, artifact format differences, compiler plugin necessity, and the plugin isolation model
 createdAt: 2026-07-18
-updatedAt: 2026-08-16
+updatedAt: 2026-08-18
 ---
 
 # Frequently Asked Questions
+
+<details>
+<summary><strong>Must every application add a Wasmline network module?</strong></summary>
+
+No. Local artifacts and local manifests use `wasmline-loader` without Ktor or OkHttp. Online remote-manifest loading needs one of `wasmline-network-ktor`, `wasmline-network-okhttp`, a custom `WasmlineNetworkClient`, or a custom remote resolver. The built-in resolver checks its cache first, so it can also load a remote package without a network client when both the manifest is fresh and the selected artifact is cached.
+
+The adapters depend on `wasmline-loader`; neither adapter is hardcoded into the core `wasmline` runtime. Ktor publishes JVM, Android, and iOS variants. OkHttp publishes JVM and Android variants. The browser uses `WasmlineWeb.prefetch()` for raw `.wasm` instead.
+
+</details>
 
 <details>
 <summary><strong>How does the browser execution path instantiate plugins without wasmtime?</strong></summary>
@@ -17,7 +26,7 @@ The runtime layer provides:
 - **`wasi_snapshot_preview1` shims**: `fd_write` (UTF-8 stdout/stderr through `WasmlineLog` or `println`), `random_get` (`Random.nextBytes`), and `clock_time_get` (`Date.now()` converted from milliseconds to nanoseconds)
 - **Wasmline bridge protocol** (`env` namespace): `bridge_inbound_copy_params`, `bridge_inbound_set_response`, `bridge_outbound_call_host`, `bridge_outbound_get_response`
 
-`WasmlineWeb.prefetch(url)` downloads the raw `.wasm` bytes with Fetch. `WasmlineLoader.load(url)` then resolves those cached bytes synchronously and instantiates the module. AOT-compiled artifacts (`.cwasm`, `.pwasm`) are not accepted by the browser path.
+`WasmlineWeb.prefetch(url)` downloads the raw `.wasm` bytes with Fetch. The suspending `WasmlineLoader.load(url)` call then resolves those cached bytes and instantiates the module. AOT-compiled artifacts (`.cwasm`, `.pwasm`) are not accepted by the browser path.
 
 </details>
 

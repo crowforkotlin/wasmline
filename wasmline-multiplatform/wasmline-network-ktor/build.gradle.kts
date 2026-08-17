@@ -34,14 +34,6 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
-    wasmJs {
-        browser()
-        binaries.library()
-    }
-    js {
-        browser()
-        binaries.library()
-    }
     if (HostManager.hostIsMac) {
         listOf(
             iosArm64(),
@@ -57,26 +49,17 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(projects.wasmlineLoader)
-                implementation(libs.ktor.client.core)
-                implementation(libs.kotlinx.coroutines)
+                api(libs.ktor.client.core)
             }
         }
-        val jniMain by creating { dependsOn(commonMain) }
-        val androidMain by getting { dependsOn(jniMain) }
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.okhttp)
+            }
+        }
         val jvmMain by getting {
-            dependsOn(jniMain)
             dependencies {
                 implementation(libs.ktor.client.cio)
-            }
-        }
-        val jsMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.js)
-            }
-        }
-        val wasmJsMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.js)
             }
         }
         val commonTest by getting {

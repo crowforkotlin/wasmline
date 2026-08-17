@@ -1,7 +1,6 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineWarmupMode
@@ -14,19 +13,20 @@ import crow.wasmline.wasmlineWarmup
  *
  * Lifecycle:
  * ```kotlin
- * WasmlineLoader.bootstrap()  // Initialize the runtime engine
+ * suspend fun main() {
+ *     WasmlineLoader.bootstrap()  // Initialize the runtime engine
  *
- * val result = WasmlineLoader.load(
- *     source = WasmlineSource.LocalArtifactPath("plugin.pwasm"),
- *     config = WasmlineConfig(networkClient = KtorNetworkClient()),
- * )
+ *     val result = WasmlineLoader.load(
+ *         descriptor = artifactDescriptor,
+ *     )
  *
- * when (result) {
- *     is WasmlineLoadResult.Success -> result.wasmline.use { it.bind(...) }
- *     is WasmlineLoadResult.Failure -> println(result.cause)
+ *     when (result) {
+ *         is WasmlineLoadResult.Success -> result.wasmline.use { it.bind(...) }
+ *         is WasmlineLoadResult.Failure -> println(result.cause)
+ *     }
+ *
+ *     WasmlineLoader.shutdown()  // Release the engine
  * }
- *
- * WasmlineLoader.shutdown()  // Release the engine
  * ```
  */
 object WasmlineLoader {
@@ -59,18 +59,24 @@ object WasmlineLoader {
      * Load a Wasmline module from the given source.
      *
      * [WasmlineSource.LocalArtifactPath] is caller-trusted direct input. Package
-     * sources use the built-in verified package pipeline unless a caller supplies
-     * a custom resolver.
+     * sources use the built-in verified package pipeline. Use the request
+     * overload when the caller supplies a custom resolver.
      *
      * @param source Where to load from (local file, local package, or remote URL).
-     * @param config Unified configuration for runtime, network, cache, and trusted keys.
+     * @param options Runtime and loader configuration for this operation.
      * @return [WasmlineLoadResult.Success] with a [crow.wasmline.Wasmline] instance,
      * or [WasmlineLoadResult.Failure].
      */
-    fun load(source: WasmlineSource, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult {
-        val request = WasmlineLoadRequest(source = source, config = config)
-        return loadInternal(request).toResult()
-    }
+    suspend fun load(source: WasmlineSource, options: WasmlineLoadOptions = WasmlineLoadOptions()): WasmlineLoadResult =
+        load(WasmlineLoadRequest(source = source, options = options))
+
+    /**
+     * Load a module using the complete request API.
+     *
+     * This overload exposes metadata and custom resolver hooks in addition to
+     * the standard runtime, network, cache, and trust options.
+     */
+    suspend fun load(request: WasmlineLoadRequest): WasmlineLoadResult = DefaultWasmlineLoader.load(request).toResult()
 
     /**
      * Load a direct caller-trusted artifact with an explicit execution model and
@@ -79,8 +85,11 @@ object WasmlineLoader {
      * This overload does not parse or verify a package manifest. Native AOT
      * format and compatibility validation still applies.
      */
-    fun load(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult =
-        load(WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor), config)
+    suspend fun load(descriptor: WasmlineArtifactDescriptor, options: WasmlineLoadOptions = WasmlineLoadOptions()): WasmlineLoadResult =
+        load(
+            source = WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor),
+            options = options,
+        )
 
     /**
      * Load a Wasmline module by auto-detecting the source type from the input string.
@@ -95,7 +104,7 @@ object WasmlineLoader {
      * only when the caller has already trusted it out of band; use a manifest
      * path or URL for signed package loading.
      */
-    fun load(source: String, config: WasmlineConfig = WasmlineConfig()): WasmlineLoadResult {
+    suspend fun load(source: String, options: WasmlineLoadOptions = WasmlineLoadOptions()): WasmlineLoadResult {
         val input = source.trim()
         val wasmlineSource = when {
             input.startsWith(prefix = "http://") || input.startsWith("https://") ->
@@ -107,10 +116,8 @@ object WasmlineLoader {
             else ->
                 WasmlineSource.LocalManifestPath(path = input)
         }
-        return load(source = wasmlineSource, config = config)
+        return load(source = wasmlineSource, options = options)
     }
-
-    private fun loadInternal(request: WasmlineLoadRequest): WasmlineLoadState = DefaultWasmlineLoader.load(request)
 }
 
 /**

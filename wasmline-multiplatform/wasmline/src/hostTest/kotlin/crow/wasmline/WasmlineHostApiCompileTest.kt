@@ -1,6 +1,8 @@
 package crow.wasmline
 
+import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineSource
 import kotlin.reflect.KClass
 
 /** Compile-only smoke test for the public host API overloads. */
@@ -14,13 +16,16 @@ class WasmlineHostApiCompileTest {
         override fun echo(payload: ByteArray): ByteArray = payload
     }
 
-    @Suppress("UNUSED_VARIABLE", "DEPRECATION")
-    private fun compileAgainstHostApi(
+    @Suppress("UNUSED_VARIABLE")
+    private suspend fun compileAgainstHostApi(
         wasmline: Wasmline,
         implementation: EchoService,
         contract: KClass<EchoService> = EchoService::class,
     ) {
         val result = WasmlineLoader.load(source = "plugin.pwasm")
+        val requestResult = WasmlineLoader.load(
+            WasmlineLoadRequest(source = WasmlineSource.LocalArtifactPath("plugin.pwasm")),
+        )
 
         WasmlineLoader.bootstrap()
         WasmlineLoader.warmup(WasmlineWarmupMode.PULLEY)
@@ -34,7 +39,7 @@ class WasmlineHostApiCompileTest {
         wasmline.close()
     }
 
-    private fun compileAgainstConvenienceOverloads(wasmline: Wasmline) {
+    private suspend fun compileAgainstConvenienceOverloads(wasmline: Wasmline) {
         compileAgainstHostApi(wasmline, EchoServiceImpl())
     }
 }

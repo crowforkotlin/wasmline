@@ -2,7 +2,7 @@
 title: 使用指南
 description: 服务契约定义、插件实现与宿主端模块加载
 createdAt: 2026-07-18
-updatedAt: 2026-08-15
+updatedAt: 2026-08-18
 ---
 
 # 使用指南
@@ -44,7 +44,7 @@ fun main() {
 
 ## 宿主端模块加载与服务调用
 
-宿主通过 `WasmlineLoader.load()` 加载插件。原生目标使用已验证的 manifest 或预编译 `.pwasm` / `.cwasm` 产物；raw `.wasm` 仅适用于浏览器的 Core Wasmline 路径。`http(s)://` source 按远程 manifest 解析并完成校验后再加载产物。加载后通过 `bind(impl)` 注册插件可访问的宿主侧服务实现，并通过 `link<T>()` 获取插件侧服务的类型安全代理：
+宿主通过 suspend API `WasmlineLoader.load()` 加载插件。原生目标使用已验证的 manifest 或预编译 `.pwasm` / `.cwasm` 产物；raw `.wasm` 仅适用于浏览器的 Core Wasmline 路径。`http(s)://` source 按远程 manifest 解析并完成校验后再加载产物。加载后通过 `bind(impl)` 注册插件可访问的宿主侧服务实现，并通过 `link<T>()` 获取插件侧服务的类型安全代理：
 
 ```kotlin
 import crow.wasmline.WasmlineConfig
@@ -52,24 +52,66 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
-WasmlineLoader.bootstrap()
+suspend fun main() {
+    WasmlineLoader.bootstrap()
 
-val module = when (val result = WasmlineLoader.load(
-    source = "https://example.com/plugin/manifest.wlm",
-    config = WasmlineConfig(networkClient = KtorNetworkClient()),
-)) {
-    is WasmlineLoadResult.Success -> result.wasmline
-    is WasmlineLoadResult.Failure -> error(result.cause)
+    val module = when (val result = WasmlineLoader.load(
+        source = "https://example.com/plugin/manifest.wlm",
+        options = WasmlineLoadOptions(
+            runtimeConfig = WasmlineConfig(),
+            networkClient = KtorNetworkClient(),
+            trustedKeys = WasmlineTrustedKeySet.Builder()
+                .addHex(
+                    algorithm = "Ed25519",
+                    keyId = "release",
+                    publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+                )
+                .build(),
+        ),
+    )) {
+        is WasmlineLoadResult.Success -> result.wasmline
+        is WasmlineLoadResult.Failure -> error(result.cause)
+    }
+
+    module.bind(object : HostNotificationService {
+        override fun notify(event: String) { /* host-side handler */ }
+    })
+
+    val response = module.link<EchoService>().echo("ping")
+    module.close()
 }
+```
 
-module.bind(object : HostNotificationService {
-    override fun notify(event: String) { /* host-side handler */ }
-})
+本地产物和本地 manifest 不需要 network 构件。加载远程 manifest 时，可选择 `wasmline-network-ktor`（JVM、Android、iOS）或 `wasmline-network-okhttp`（JVM、Android）。只有 fresh manifest 或 artifact 未命中缓存时才会调用 adapter；manifest 与所选 artifact 均已缓存时，即使没有 network client 也能继续加载。应用也可以自行实现 `WasmlineNetworkClient`，或提供自定义远程 resolver。
 
-val response = module.link<EchoService>().echo("ping")
-module.close()
+需要传递 metadata 或自定义 resolver 时，可直接使用公开的完整 request overload：
+
+```kotlin
+import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.loader.WasmlineLoadRequest
+import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineRemotePackageResolver
+import crow.wasmline.loader.WasmlineSource
+import crow.wasmline.loader.WasmlineSourceResolvers
+
+suspend fun loadWithCustomResolver(
+    packageUrl: String,
+    loadOptions: WasmlineLoadOptions,
+    appPackageResolver: WasmlineRemotePackageResolver,
+): WasmlineLoadResult =
+    WasmlineLoader.load(
+        WasmlineLoadRequest(
+            source = WasmlineSource.RemoteManifestUrl(packageUrl),
+            options = loadOptions,
+            metadata = mapOf("channel" to "beta"),
+            resolvers = WasmlineSourceResolvers(remotePackage = appPackageResolver),
+        ),
+    )
 ```
 
 <Callout type="info" title="IR 插件重写目标">
