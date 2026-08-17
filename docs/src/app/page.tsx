@@ -20,14 +20,7 @@ export default function RootPage() {
   }, []);
 
   return (
-    <main
-      className="flex min-h-svh items-center justify-center bg-[#101513] px-6 text-[#e7eeeb]"
-      style={{
-        minHeight: '100svh',
-        backgroundColor: '#101513',
-        color: '#e7eeeb',
-      }}
-    >
+    <main className="wasmline-root-redirect flex min-h-svh items-center justify-center px-6">
       <div className="flex flex-col items-center gap-5 text-center">
         <Image
           src={wasmlineIcon}
@@ -42,10 +35,10 @@ export default function RootPage() {
           <div
             role="status"
             aria-live="polite"
-            className="flex h-6 items-center justify-center gap-2 text-sm text-[#a9b5b0]"
+            className="flex h-6 items-center justify-center gap-2 text-sm text-[color:var(--color-fd-muted-foreground)]"
           >
             <LoaderCircle
-              className="size-4 animate-spin text-[#57c6b4]"
+              className="size-4 animate-spin text-[color:var(--color-fd-primary)]"
               aria-hidden="true"
             />
             <span>Loading documentation...</span>

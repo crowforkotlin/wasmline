@@ -91,6 +91,20 @@
   --color-fd-ring: #c4b5fd;
 }
 
+.wasmline-root-redirect {
+  background: var(--color-fd-background);
+  color: var(--color-fd-foreground);
+}
+
+@media (prefers-color-scheme: dark) {
+  .wasmline-root-redirect {
+    --color-fd-background: #101513;
+    --color-fd-foreground: #e7eeeb;
+    --color-fd-muted-foreground: #a9b5b0;
+    --color-fd-primary: #57c6b4;
+  }
+}
+
 .wasmline-docs :where(button, input, select, textarea) {
   font-family: var(--font-sans);
   font-weight: 600;
