@@ -25,6 +25,8 @@
   --color-fd-accent: rgba(8, 127, 115, 0.11);
   --color-fd-accent-foreground: #075f57;
   --color-fd-ring: #159486;
+  --wasmline-nav-divider: rgb(17 24 39 / 0.09);
+  --wasmline-nav-shadow: rgb(17 24 39 / 0.22);
   min-height: 100%;
   background: var(--color-fd-background);
   color: var(--color-fd-foreground);
@@ -138,6 +140,13 @@
   background: color-mix(in srgb, var(--color-fd-background) 82%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(125%);
   backdrop-filter: blur(16px) saturate(125%);
+}
+
+#nd-nav > div {
+  width: 100%;
+  margin-inline: 0;
+  border-color: var(--wasmline-nav-divider);
+  box-shadow: 0 6px 18px -16px var(--wasmline-nav-shadow);
 }
 
 #nd-sidebar {

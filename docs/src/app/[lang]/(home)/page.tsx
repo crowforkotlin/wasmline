@@ -103,8 +103,6 @@ export default async function HomePage({
 
   return (
     <main className="relative isolate flex flex-1 flex-col overflow-hidden bg-fd-background">
-      <div className="h-1 w-full bg-violet-500 dark:bg-violet-300" />
-
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
