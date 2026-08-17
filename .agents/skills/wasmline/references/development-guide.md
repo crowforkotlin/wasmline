@@ -198,9 +198,8 @@ Pushes and pull requests targeting `main` ignore `docs/**`, root `*.md`, and `.a
 | `test-node` | Wasm/WASI Node tests | `build-assets` |
 | `test-ios` | Runtime and loader iOS simulator tests | `build-assets` |
 | `test-plugin` | Gradle-plugin integration tests | `build-assets` |
-| `publish`, `release` | Current placeholders | All lint, build, and test jobs |
 
-The CI `publish` and `release` jobs do not publish artifacts or create a GitHub release yet.
+The CI workflow performs validation only. It does not publish artifacts or create a GitHub release.
 
 ## Cross-Environment Work
 
