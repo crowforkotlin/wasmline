@@ -103,18 +103,18 @@ export default async function HomePage({
 
   return (
     <main className="relative isolate flex flex-1 flex-col overflow-hidden bg-fd-background">
-      <div className="h-1 w-full bg-violet-600 dark:bg-violet-400" />
+      <div className="h-1 w-full bg-violet-500 dark:bg-violet-300" />
 
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
       >
-        <div className="absolute left-1/2 top-[-120px] h-[420px] w-[min(720px,94vw)] -translate-x-1/2 rounded-full bg-violet-600/25 blur-[110px] dark:bg-violet-500/20" />
-        <div className="absolute inset-0 [background-image:linear-gradient(to_right,rgb(124_58_237/0.055)_1px,transparent_1px),linear-gradient(to_bottom,rgb(124_58_237/0.055)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)] dark:opacity-70" />
+        <div className="absolute left-1/2 top-[-120px] h-[420px] w-[min(720px,94vw)] -translate-x-1/2 rounded-full bg-violet-400/18 blur-[110px] dark:bg-violet-400/14" />
+        <div className="absolute inset-0 [background-image:linear-gradient(to_right,rgb(139_92_246/0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgb(139_92_246/0.035)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)] dark:opacity-60" />
       </div>
 
       <section className="relative flex flex-col items-center px-6 pb-14 pt-14 text-center sm:pt-16">
-        <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-violet-300/55 bg-white/45 px-4 py-1.5 text-xs text-violet-700 shadow-sm shadow-violet-950/5 backdrop-blur-md dark:border-violet-300/20 dark:bg-violet-950/25 dark:text-violet-200">
+        <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-violet-200/70 bg-white/50 px-4 py-1.5 text-xs text-violet-600 shadow-sm shadow-violet-950/5 backdrop-blur-md dark:border-violet-200/18 dark:bg-violet-950/18 dark:text-violet-200">
           <Zap className="size-3.5" />
           {content.badge}
         </span>
@@ -125,9 +125,9 @@ export default async function HomePage({
             alt="Wasmline app icon"
             priority
             sizes="96px"
-            className="size-24 drop-shadow-[0_14px_24px_rgba(109,40,217,0.24)]"
+            className="size-24 drop-shadow-[0_14px_24px_rgba(139,92,246,0.18)]"
           />
-          <h1 className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-600 bg-clip-text text-5xl font-bold text-transparent dark:from-violet-300 dark:via-purple-300 dark:to-indigo-300">
+          <h1 className="bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500 bg-clip-text text-5xl font-bold text-transparent dark:from-violet-200 dark:via-purple-200 dark:to-indigo-200">
             wasmline
           </h1>
         </div>
@@ -143,7 +143,7 @@ export default async function HomePage({
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href={`/${lang}/docs`}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-violet-600 px-5 py-2.5 text-sm text-white shadow-lg shadow-violet-700/20 transition-colors hover:bg-violet-500 dark:bg-violet-500 dark:hover:bg-violet-400"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-violet-500 px-5 py-2.5 text-sm text-white shadow-lg shadow-violet-500/15 transition-colors hover:bg-violet-600 dark:bg-violet-300 dark:text-violet-950 dark:hover:bg-violet-200"
           >
             {content.getStarted}
             <ArrowRight className="size-4" />
@@ -152,14 +152,14 @@ export default async function HomePage({
             href={GITHUB_URL}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-violet-300/55 bg-white/45 px-5 py-2.5 text-sm text-fd-foreground shadow-sm shadow-violet-950/5 backdrop-blur-md transition-colors hover:bg-white/65 dark:border-violet-300/20 dark:bg-violet-950/25 dark:hover:bg-violet-900/35"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-violet-200/70 bg-white/50 px-5 py-2.5 text-sm text-fd-foreground shadow-sm shadow-violet-950/5 backdrop-blur-md transition-colors hover:bg-white/70 dark:border-violet-200/18 dark:bg-violet-950/18 dark:hover:bg-violet-900/28"
           >
             <Github className="size-4" />
             GitHub
           </a>
         </div>
 
-        <div className="mt-10 grid w-full max-w-4xl grid-cols-1 divide-y divide-violet-300/35 overflow-hidden rounded-lg border border-violet-300/45 bg-white/35 shadow-[0_18px_60px_-42px_rgba(76,29,149,0.55)] backdrop-blur-xl sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-violet-300/15 dark:border-violet-300/20 dark:bg-violet-950/20">
+        <div className="mt-10 grid w-full max-w-4xl grid-cols-1 divide-y divide-violet-200/50 overflow-hidden rounded-lg border border-violet-200/60 bg-white/40 shadow-[0_18px_60px_-42px_rgba(124,58,237,0.4)] backdrop-blur-xl sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-violet-200/12 dark:border-violet-200/16 dark:bg-violet-950/16">
           {homeFeatures.map((feature) => {
             const Icon = feature.icon;
             const label = content.features[feature.key];
@@ -169,7 +169,7 @@ export default async function HomePage({
                 key={label}
                 className="inline-flex min-w-0 items-center justify-center gap-2 px-4 py-4 text-xs leading-5 text-fd-muted-foreground"
               >
-                <Icon className="size-4 shrink-0 text-violet-600 dark:text-violet-300" />
+                <Icon className="size-4 shrink-0 text-violet-500 dark:text-violet-200" />
                 <span className="break-words">{label}</span>
               </span>
             );
@@ -183,10 +183,10 @@ export default async function HomePage({
           const copy = content.cards[card.key];
           const href = card.internal ? `/${lang}${card.href}` : card.href;
           const className =
-            'group flex min-h-44 flex-col gap-3 rounded-lg border border-violet-300/45 bg-white/45 p-5 shadow-[0_20px_60px_-44px_rgba(76,29,149,0.7)] backdrop-blur-xl transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-white/65 hover:shadow-[0_24px_64px_-42px_rgba(76,29,149,0.8)] dark:border-violet-300/20 dark:bg-violet-950/20 dark:hover:border-violet-300/35 dark:hover:bg-violet-900/25';
+            'group flex min-h-44 flex-col gap-3 rounded-lg border border-violet-200/60 bg-white/50 p-5 shadow-[0_20px_60px_-44px_rgba(124,58,237,0.5)] backdrop-blur-xl transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-violet-300/70 hover:bg-white/70 hover:shadow-[0_24px_64px_-42px_rgba(124,58,237,0.58)] dark:border-violet-200/16 dark:bg-violet-950/16 dark:hover:border-violet-200/28 dark:hover:bg-violet-900/20';
           const inner = (
             <>
-              <span className="inline-flex size-9 items-center justify-center rounded-md bg-violet-500/10 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300">
+              <span className="inline-flex size-9 items-center justify-center rounded-md bg-violet-400/10 text-violet-600 dark:bg-violet-200/10 dark:text-violet-200">
                 <Icon className="size-5" />
               </span>
               <span className="flex items-center gap-1.5 text-sm text-fd-foreground">
@@ -217,7 +217,7 @@ export default async function HomePage({
         })}
       </section>
 
-      <footer className="mt-4 border-t border-violet-300/30 bg-white/20 px-6 py-6 text-center text-xs text-fd-muted-foreground backdrop-blur-sm dark:border-violet-300/15 dark:bg-violet-950/10">
+      <footer className="mt-4 border-t border-violet-200/45 bg-white/25 px-6 py-6 text-center text-xs text-fd-muted-foreground backdrop-blur-sm dark:border-violet-200/12 dark:bg-violet-950/8">
         {content.footer}
       </footer>
     </main>
