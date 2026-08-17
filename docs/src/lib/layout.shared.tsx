@@ -25,6 +25,15 @@ export function baseOptions(lang: string): BaseLayoutProps {
         url: `/${lang}/docs`,
         active: 'nested-url',
       },
+      {
+        text:
+          lang === 'zh'
+            ? chineseSiteContent.apiReferenceLink
+            : 'API Reference',
+        url: '/wasmline/api-docs/',
+        active: 'none',
+        external: true,
+      },
     ],
   };
 }

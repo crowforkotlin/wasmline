@@ -1,6 +1,7 @@
 {
   "languageName": "中文",
   "docsLink": "文档",
+  "apiReferenceLink": "API 参考",
   "ui": {
     "search": "搜索文档",
     "searchNoResult": "未找到结果",
