@@ -378,12 +378,6 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: rf"\g<1>{v['wasmtime_version']}",
         ),
     )
-    engine_build_rules = (
-        Rule(
-            r'(wasmline-engine-(?:cranelift|pulley)-jvm:)[0-9A-Za-z.\-]+(:)',
-            lambda v: rf'\g<1>{v["wasmline_version"]}\g<2>',
-        ),
-    )
     manifest_test_rules = (
         Rule(
             r'(?m)(private fun createTestManifest\([^\n]*\): WasmlineManifest = WasmlineManifest\(\n\s+pluginId = "[^"]+",\n\s+version = ")[0-9A-Za-z.\-]+(")',
@@ -441,8 +435,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline/build.gradle.kts",
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.android.gradle.kts",
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.multiplatform.library.gradle.kts",
-            "wasmline-multiplatform/wasmline-engine-cranelift/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-engine-pulley/build.gradle.kts",
+            "wasmline-multiplatform/gradle/wasmline-engine.gradle.kts",
             "wasmline-multiplatform/wasmline-gradle-plugin/build.gradle.kts",
             "wasmline-multiplatform/wasmline-kotlin-plugin/build.gradle.kts",
             "wasmline-multiplatform/wasmline-loader/build.gradle.kts",
@@ -709,7 +702,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/ci/compile-ios.sh",
+            "scripts/compile-ios.sh",
             (
                 Rule(
                     r"release-v[0-9]+\.[0-9]+\.[0-9]+",
@@ -889,32 +882,6 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r'release-v[0-9]+\.[0-9]+\.[0-9]+',
                     lambda v: f"release-v{v['wasmtime_version']}",
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-engine-pulley/src/commonMain/kotlin/crow/wasmline/engine/pulley/PulleyEngine.kt",
-            (
-                Rule(
-                    r'(crow\.wasmline:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+',
-                    lambda v: rf'\g<1>{v["wasmline_version"]}',
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-engine-cranelift/build.gradle.kts",
-            engine_build_rules,
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-engine-pulley/build.gradle.kts",
-            engine_build_rules,
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-engine-cranelift/src/commonMain/kotlin/crow/wasmline/engine/cranelift/CraneliftEngine.kt",
-            (
-                Rule(
-                    r'(crow\.wasmline:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+',
-                    lambda v: rf'\g<1>{v["wasmline_version"]}',
                 ),
             ),
         ),
