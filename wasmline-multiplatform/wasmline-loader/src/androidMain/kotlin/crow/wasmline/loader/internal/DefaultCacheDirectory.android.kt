@@ -3,7 +3,7 @@ package crow.wasmline.loader.internal
 /**
  * Android implementation of [defaultCacheDirectory].
  *
- * Resolves `<applicationContext.cacheDir>/wasmline` via reflection on first call.
- * Returns `null` if not running on Android, disabling cache silently.
+ * [WasmlineLoaderInitProvider] records `<cacheDir>/wasmline` during application
+ * startup without retaining or passing an Android Context through loader APIs.
  */
 internal actual fun defaultCacheDirectory(): String? = AndroidCacheResolver.cacheDirectory()

@@ -1,10 +1,7 @@
 package crow.wasmline.loader
 
-import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineLoadState
 import kotlinx.coroutines.test.runTest
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -155,53 +152,5 @@ class DefaultWasmlineLoaderTest {
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
         assertTrue(failure.cause.contains("explicit artifactFormat"))
         assertTrue(!failure.cause.contains("requires trustedKeys"))
-    }
-
-    @Test
-    fun `verified package artifact rejects a digest mismatch before native loading`() = runTest {
-        val artifactFile = File.createTempFile("wasmline-verified", ".cwasm")
-        try {
-            artifactFile.writeBytes("artifact-bytes".encodeToByteArray())
-            val result = DefaultWasmlineLoader.load(
-                WasmlineLoadRequest(
-                    source = VerifiedPackageArtifact(
-                        descriptor = WasmlineArtifactDescriptor(
-                            path = artifactFile.absolutePath,
-                            artifactFormat = WasmlineArtifactFormat.CWASM,
-                        ),
-                        expectedSha256 = "wrong",
-                    ),
-                ),
-            )
-
-            val failure = assertIs<WasmlineLoadState.Failure>(result)
-            assertTrue(failure.cause.contains("before native loading"))
-        } finally {
-            artifactFile.delete()
-        }
-    }
-
-    @Test
-    fun `verified package artifact rejects a missing digest before native loading`() = runTest {
-        val artifactFile = File.createTempFile("wasmline-verified", ".cwasm")
-        try {
-            artifactFile.writeBytes("artifact-bytes".encodeToByteArray())
-            val result = DefaultWasmlineLoader.load(
-                WasmlineLoadRequest(
-                    source = VerifiedPackageArtifact(
-                        descriptor = WasmlineArtifactDescriptor(
-                            path = artifactFile.absolutePath,
-                            artifactFormat = WasmlineArtifactFormat.CWASM,
-                        ),
-                        expectedSha256 = " ",
-                    ),
-                ),
-            )
-
-            val failure = assertIs<WasmlineLoadState.Failure>(result)
-            assertTrue(failure.cause.contains("missing sha256 metadata"))
-        } finally {
-            artifactFile.delete()
-        }
     }
 }

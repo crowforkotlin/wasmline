@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 class WasmlineComponentBrowserBoundaryTest {
     @Test
     fun rejectsComponentArtifactsBeforeBrowserArtifactResolution() {
-        val state = wasmlineLoadArtifact(
+        val state = platformWasmlineLoadArtifact(
             WasmlineArtifactDescriptor(
                 path = "/not-prefetched/component.wasm",
                 artifactFormat = WasmlineArtifactFormat.RAW_WASM,

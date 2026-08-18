@@ -1,5 +1,6 @@
 package crow.wasmline
 
+import crow.wasmline.internal.WasmlineComponentBindings
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.invocation.WasmlineCallResult
 
@@ -11,6 +12,11 @@ actual class Wasmline internal actual constructor(
     internal actual val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
     internal actual val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
     private val delegate = BrowserWasmline(moduleKey)
+
+    actual fun bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmline = WasmlineComponentBindings.bindHost(this, registry)
+
+    actual fun bindComponentService(handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>): Wasmline =
+        WasmlineComponentBindings.bindService(this, handler)
 
     internal actual fun setOutbound(dispatcher: WasmlineHostDispatcher) {
         delegate.setOutbound(dispatcher)
@@ -58,13 +64,14 @@ actual class Wasmline internal actual constructor(
     }
 }
 
-actual fun wasmlineBootstrap() = browserWasmlineBootstrap()
-actual fun wasmlineShutdown() = browserWasmlineShutdown()
-actual fun wasmlineWarmup(mode: WasmlineWarmupMode) = browserWasmlineWarmup(mode)
-actual fun wasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? = null
-internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities = browserRuntimeCapabilities()
-actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState = browserWasmlineLoadArtifact(filepath, config)
-actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState =
+internal actual fun platformWasmlinePreload() = browserWasmlinePreload()
+internal actual fun platformWasmlineShutdown() = browserWasmlineShutdown()
+internal actual fun platformWasmlineWarmUp(engine: WasmlineEngineKind): Unit = browserWasmlineWarmUp(engine)
+internal actual fun platformWasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? = null
+internal actual fun platformWasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities = browserRuntimeCapabilities()
+internal actual fun platformWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
+    browserWasmlineLoadArtifact(filepath, config)
+internal actual fun platformWasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState =
     browserWasmlineLoadArtifact(descriptor, config)
 
 private fun browserRuntimeCapabilities(): WasmlineRuntimeCapabilities = WasmlineRuntimeCapabilities(

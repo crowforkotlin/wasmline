@@ -17,6 +17,7 @@
 #include "wasmline/runtime/Session.h"
 #include "logging/NativeLogger.h"
 
+#include <mutex>
 #include <optional>
 
 namespace wasmline {
@@ -74,30 +75,28 @@ namespace wasmline {
     std::unordered_map<std::string, std::unique_ptr<RawModuleSession>> Api::rawSessionCache;
     std::unordered_map<std::string, std::shared_ptr<ComponentSession>> Api::componentSessionCache;
     std::shared_mutex Api::sessionMutex;
+    std::shared_mutex Api::lifecycleMutex;
 
-    void Api::initEngine() {
-        Engine::getInstance().init(true);
-    }
+    bool Api::warmupEngine(bool usePulley) {
+        std::unique_lock<std::shared_mutex> lock(lifecycleMutex);
+        if ((usePulley && !supportsPulley()) || (!usePulley && !supportsCranelift())) {
+            LOGE("[Wasmtime] Api --> Requested engine is not supported: %s", usePulley ? "pulley" : "cranelift");
+            return false;
+        }
 
-    void Api::warmupEngine(bool usePulley) {
         auto& engine = Engine::getInstance();
         if (engine.isInitialized() && engine.isPulley() == usePulley) {
-            return;
+            return true;
         }
 
-        if (engine.isInitialized()) {
-            releaseEngine();
+        if (engine.isInitialized() && hasLoadedArtifacts()) {
+            LOGE("[Wasmtime] Api --> Cannot switch to %s while artifacts are loaded.", usePulley ? "pulley" : "cranelift");
+            return false;
         }
 
+        engine.release();
         engine.init(usePulley);
-    }
-
-    bool Api::supportsAot() {
-#ifdef WASMTIME_FEATURE_COMPILER
-        return true;
-#else
-        return false;
-#endif
+        return engine.isInitialized() && engine.isPulley() == usePulley;
     }
 
     const char* Api::wasmtimeVersion() {
@@ -121,6 +120,7 @@ namespace wasmline {
     }
 
     void Api::releaseEngine() {
+        std::unique_lock<std::shared_mutex> lifecycleLock(lifecycleMutex);
         std::unordered_map<std::string, std::shared_ptr<ComponentSession>> componentSessions;
         {
             std::unique_lock<std::shared_mutex> lock(sessionMutex);
@@ -153,55 +153,67 @@ namespace wasmline {
         }
     }
 
-    bool Api::loadModule(const std::string&, const std::string& path) {
-        LOGE("[Wasmtime] Api --> Core artifact format is required: %s", path.c_str());
-        return false;
-    }
-
     bool Api::loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         if (rejectsRawNativeArtifact(artifactFormat, "Core", path)) return false;
-        ensureEngineForArtifact(artifactFormat, path);
+        {
+            std::shared_lock<std::shared_mutex> lock(lifecycleMutex);
+            if (isEngineReadyForArtifact(artifactFormat)) {
+                return Module::getInstance().load(key, path, artifactFormat) != nullptr;
+            }
+        }
+
+        std::unique_lock<std::shared_mutex> lock(lifecycleMutex);
+        if (!ensureEngineForArtifact(artifactFormat, path)) return false;
         auto* mod = Module::getInstance().load(key, path, artifactFormat);
         return (mod != nullptr);
     }
 
-    bool Api::loadModuleUnsafe(const std::string&, const std::string& path) {
-        LOGE("[Wasmtime] Api --> Core artifact format is required: %s", path.c_str());
-        return false;
-    }
-
     bool Api::loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         if (rejectsRawNativeArtifact(artifactFormat, "Core", path)) return false;
-        ensureEngineForArtifact(artifactFormat, path);
+        {
+            std::shared_lock<std::shared_mutex> lock(lifecycleMutex);
+            if (isEngineReadyForArtifact(artifactFormat)) {
+                return Module::getInstance().loadUnsafe(key, path, artifactFormat) != nullptr;
+            }
+        }
+
+        std::unique_lock<std::shared_mutex> lock(lifecycleMutex);
+        if (!ensureEngineForArtifact(artifactFormat, path)) return false;
         auto* mod = Module::getInstance().loadUnsafe(key, path, artifactFormat);
         return (mod != nullptr);
     }
 
-    bool Api::loadComponent(const std::string&, const std::string& path) {
-        LOGE("[Wasmtime] Api --> Component artifact format is required: %s", path.c_str());
-        return false;
-    }
-
     bool Api::loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         if (rejectsRawNativeArtifact(artifactFormat, "Component", path)) return false;
-        ensureEngineForArtifact(artifactFormat, path);
+        {
+            std::shared_lock<std::shared_mutex> lock(lifecycleMutex);
+            if (isEngineReadyForArtifact(artifactFormat)) {
+                return Component::getInstance().load(key, path, artifactFormat) != nullptr;
+            }
+        }
+
+        std::unique_lock<std::shared_mutex> lock(lifecycleMutex);
+        if (!ensureEngineForArtifact(artifactFormat, path)) return false;
         auto* component = Component::getInstance().load(key, path, artifactFormat);
         return component != nullptr;
     }
 
-    bool Api::loadComponentUnsafe(const std::string&, const std::string& path) {
-        LOGE("[Wasmtime] Api --> Component artifact format is required: %s", path.c_str());
-        return false;
-    }
-
     bool Api::loadComponentUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         if (rejectsRawNativeArtifact(artifactFormat, "Component", path)) return false;
-        ensureEngineForArtifact(artifactFormat, path);
+        {
+            std::shared_lock<std::shared_mutex> lock(lifecycleMutex);
+            if (isEngineReadyForArtifact(artifactFormat)) {
+                return Component::getInstance().loadUnsafe(key, path, artifactFormat) != nullptr;
+            }
+        }
+
+        std::unique_lock<std::shared_mutex> lock(lifecycleMutex);
+        if (!ensureEngineForArtifact(artifactFormat, path)) return false;
         auto* component = Component::getInstance().loadUnsafe(key, path, artifactFormat);
         return component != nullptr;
     }
 
-    void Api::ensureEngineForArtifact(WasmlineArtifactFormat artifactFormat, const std::string& path) {
+    bool Api::ensureEngineForArtifact(WasmlineArtifactFormat artifactFormat, const std::string& path) {
         auto desiredPulleyMode = pulleyModeForArtifact(artifactFormat);
         auto& engine = Engine::getInstance();
 
@@ -209,24 +221,49 @@ namespace wasmline {
             if (!engine.isInitialized()) {
                 engine.init(true);
             }
-            return;
+            return engine.isInitialized();
+        }
+
+        if ((*desiredPulleyMode && !supportsPulley()) || (!*desiredPulleyMode && !supportsCranelift())) {
+            LOGE("[Wasmtime] Api --> Runtime does not support the engine required by artifact: %s", path.c_str());
+            return false;
         }
 
         if (!engine.isInitialized()) {
             engine.init(*desiredPulleyMode);
-            return;
+            return engine.isInitialized() && engine.isPulley() == *desiredPulleyMode;
         }
 
         if (engine.isPulley() == *desiredPulleyMode) {
-            return;
+            return true;
         }
 
-        LOGI("[Wasmtime] Api --> Reinitializing engine for %s artifact: %s", *desiredPulleyMode ? "pwasm" : "cwasm", path.c_str());
-        releaseEngine();
+        if (hasLoadedArtifacts()) {
+            LOGE("[Wasmtime] Api --> Cannot load %s artifact while artifacts for another engine remain loaded: %s",
+                 *desiredPulleyMode ? "pwasm" : "cwasm", path.c_str());
+            return false;
+        }
+
+        LOGI("[Wasmtime] Api --> Selecting engine for %s artifact: %s", *desiredPulleyMode ? "pwasm" : "cwasm", path.c_str());
+        engine.release();
         engine.init(*desiredPulleyMode);
+        return engine.isInitialized() && engine.isPulley() == *desiredPulleyMode;
+    }
+
+    bool Api::isEngineReadyForArtifact(WasmlineArtifactFormat artifactFormat) {
+        const auto desiredPulleyMode = pulleyModeForArtifact(artifactFormat);
+        auto& engine = Engine::getInstance();
+        if (!desiredPulleyMode.has_value()) return engine.isInitialized();
+        if ((*desiredPulleyMode && !supportsPulley()) || (!*desiredPulleyMode && !supportsCranelift())) return false;
+        return engine.isInitialized() && engine.isPulley() == *desiredPulleyMode;
+    }
+
+    bool Api::hasLoadedArtifacts() {
+        return !Module::getInstance().empty() || !Component::getInstance().empty();
     }
 
     void Api::releaseModule(const std::string& key) {
+        std::unique_lock<std::shared_mutex> lifecycleLock(lifecycleMutex);
         std::shared_ptr<ComponentSession> componentSession;
         {
             std::unique_lock<std::shared_mutex> lock(sessionMutex);

@@ -109,6 +109,11 @@ namespace wasmline::cache {
             return false;
         }
 
+        bool empty() const {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return cache_.empty() && loading_.empty();
+        }
+
         void clear() {
             std::lock_guard<std::mutex> lock(mutex_);
             for (const auto& item : cache_) {

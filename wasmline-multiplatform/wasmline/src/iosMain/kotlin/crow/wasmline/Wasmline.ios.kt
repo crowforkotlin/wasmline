@@ -2,7 +2,8 @@
 
 package crow.wasmline
 
-import crow.wasmline.extensions.loadNativeLibrary
+import crow.wasmline.extensions.ensureNativeRuntimeLoaded
+import crow.wasmline.internal.WasmlineComponentBindings
 import crow.wasmline.native.c.*
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
@@ -20,6 +21,13 @@ actual class Wasmline actual internal constructor(
 ) {
     actual internal val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
     actual internal val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
+
+    actual fun bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmline =
+        WasmlineComponentBindings.bindHost(this, registry)
+
+    actual fun bindComponentService(
+        handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>,
+    ): Wasmline = WasmlineComponentBindings.bindService(this, handler)
 
     actual internal fun setOutbound(dispatcher: WasmlineHostDispatcher) {
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
@@ -196,29 +204,31 @@ internal actual class WasmlineHostServiceLock {
     }
 }
 
-private fun iosBootstrap() {
-    loadNativeLibrary()
+private fun ensureIosRuntimeLoaded() {
+    ensureNativeRuntimeLoaded()
 }
 
-actual fun wasmlineBootstrap() {
-    iosBootstrap()
+internal actual fun platformWasmlinePreload() {
+    ensureIosRuntimeLoaded()
 }
 
-actual fun wasmlineShutdown() {
-    iosBootstrap()
+internal actual fun platformWasmlineShutdown() {
+    ensureIosRuntimeLoaded()
     wasmline_release_engine()
 }
 
-actual fun wasmlineWarmup(mode: WasmlineWarmupMode) {
-    iosBootstrap()
-    if (mode == WasmlineWarmupMode.CRANELIFT) {
-        WasmlineLog.logger?.warn("[Wasmline] CRANELIFT warmup is not supported on iOS (JIT restricted). Forcing PULLEY.")
+internal actual fun platformWasmlineWarmUp(engine: WasmlineEngineKind) {
+    ensureIosRuntimeLoaded()
+    require(engine == WasmlineEngineKind.PULLEY) {
+        "The iOS Wasmline runtime supports only the PULLEY engine."
     }
-    wasmline_warmup_engine(true)
+    check(wasmline_warmup_engine(true)) {
+        "Cannot select the PULLEY engine while artifacts for another engine are still loaded."
+    }
 }
 
-internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
-    iosBootstrap()
+internal actual fun platformWasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
+    ensureIosRuntimeLoaded()
     return WasmlineRuntimeCapabilities(
         wasmtimeVersion = requireNotNull(wasmline_wasmtime_version()).toKString(),
         supportsCranelift = wasmline_supports_cranelift(),
@@ -229,12 +239,16 @@ internal actual fun wasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
     )
 }
 
-actual fun wasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? = wasmlineRuntimeCapabilities().nativeRuntimeInfo
+internal actual fun platformWasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? =
+    platformWasmlineRuntimeCapabilities().nativeRuntimeInfo
 
-actual fun wasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
-    wasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
+internal actual fun platformWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
+    platformWasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
 
-actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState {
+internal actual fun platformWasmlineLoadArtifact(
+    descriptor: WasmlineArtifactDescriptor,
+    config: WasmlineConfig,
+): WasmlineLoadState {
     val fileManager = NSFileManager.defaultManager
     val isUnsafe = !config.supportConcurrent
     return WasmlineLocalArtifactBridge.load(
@@ -253,12 +267,12 @@ actual fun wasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor, config: 
             }
 
             override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =
-                descriptor.runtimeCompatibilityError(wasmlineRuntimeCapabilities())
+                descriptor.runtimeCompatibilityError(platformWasmlineRuntimeCapabilities())
 
             override fun requiresExplicitArtifactFormat(): Boolean = true
 
             override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
-                iosBootstrap()
+                ensureIosRuntimeLoaded()
                 val formatCode = descriptor.artifactFormat?.nativeBridgeCode() ?: return false
                 return when (descriptor.executionModel) {
                     WasmlineExecutionModel.CORE_WASM ->

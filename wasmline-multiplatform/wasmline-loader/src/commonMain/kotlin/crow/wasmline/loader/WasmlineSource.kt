@@ -32,4 +32,4 @@ sealed interface WasmlineSource {
 }
 
 /** Internal handoff emitted only after built-in package manifest and artifact verification. */
-internal data class VerifiedPackageArtifact(val descriptor: WasmlineArtifactDescriptor, val expectedSha256: String) : WasmlineSource
+internal data class VerifiedPackageArtifact(val descriptor: WasmlineArtifactDescriptor) : WasmlineSource

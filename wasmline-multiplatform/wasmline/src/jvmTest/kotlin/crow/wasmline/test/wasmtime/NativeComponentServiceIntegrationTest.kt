@@ -8,14 +8,14 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.callResult
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
-import crow.wasmline.wasmlineLoadArtifact
-import crow.wasmline.wasmlineRuntimeCapabilities
-import crow.wasmline.wasmlineShutdown
+import crow.wasmline.platformWasmlineLoadArtifact
+import crow.wasmline.platformWasmlineRuntimeCapabilities
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -70,7 +70,7 @@ class NativeComponentServiceIntegrationTest {
             assertContentEquals(response, result.value)
         } finally {
             handle.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
@@ -89,7 +89,7 @@ class NativeComponentServiceIntegrationTest {
             assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, result.error.code)
         } finally {
             handle.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
@@ -118,7 +118,7 @@ class NativeComponentServiceIntegrationTest {
             assertEquals("Recursive invocation of the same Component session is not supported.", result.error.message)
         } finally {
             handle.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
@@ -150,7 +150,7 @@ class NativeComponentServiceIntegrationTest {
         } finally {
             outer.close()
             nested.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             outerArtifact.delete()
             nestedArtifact.delete()
         }
@@ -176,15 +176,15 @@ class NativeComponentServiceIntegrationTest {
             assertEquals("plugin:hello", response.value)
         } finally {
             handle.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
 
     private fun loadComponent(artifact: File): Wasmline {
         val artifactFormat = componentAotFormat(artifact.name)
-        val runtime = wasmlineRuntimeCapabilities()
-        val state = wasmlineLoadArtifact(
+        val runtime = platformWasmlineRuntimeCapabilities()
+        val state = platformWasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = artifact.absolutePath,
                 artifactFormat = artifactFormat,

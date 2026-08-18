@@ -121,9 +121,7 @@ requireIosPulleyArtifactFormat(WasmlineArtifactFormat artifactFormat) {
 
 extern "C" {
 
-void wasmline_init_engine() { Api::initEngine(); }
-
-void wasmline_warmup_engine(bool usePulley) { Api::warmupEngine(usePulley); }
+bool wasmline_warmup_engine(bool usePulley) { return Api::warmupEngine(usePulley); }
 
 void wasmline_release_engine() { Api::releaseEngine(); }
 
@@ -132,12 +130,6 @@ const char *wasmline_wasmtime_version() { return Api::wasmtimeVersion(); }
 bool wasmline_supports_cranelift() { return Api::supportsCranelift(); }
 
 bool wasmline_supports_pulley() { return Api::supportsPulley(); }
-
-bool wasmline_load_module(const char *, const char *, bool) {
-  LOGE("[Wasmline] iOS --> Native artifact loading requires an explicit "
-       "format.");
-  return false;
-}
 
 bool wasmline_load_module_with_format(const char *key, const char *path,
                                       int32_t formatCode, bool isUnsafe) {
@@ -156,12 +148,6 @@ bool wasmline_load_module_with_format(const char *key, const char *path,
                                  artifactFormat);
   }
   return Api::loadModule(std::string(key), std::string(path), artifactFormat);
-}
-
-bool wasmline_load_component(const char *, const char *, bool) {
-  LOGE("[Wasmline] iOS --> Native artifact loading requires an explicit "
-       "format.");
-  return false;
 }
 
 bool wasmline_load_component_with_format(const char *key, const char *path,

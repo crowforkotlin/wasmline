@@ -105,7 +105,7 @@ internal object BrowserWasmlineRuntime {
         )
     }
 
-    fun bootstrap() = Unit
+    fun preload() = Unit
 
     fun shutdown() {
         WasmlineWebModuleRegistry.clear()
@@ -113,9 +113,10 @@ internal object BrowserWasmlineRuntime {
     }
 }
 
-internal fun browserWasmlineBootstrap() = BrowserWasmlineRuntime.bootstrap()
+internal fun browserWasmlinePreload() = BrowserWasmlineRuntime.preload()
 internal fun browserWasmlineShutdown() = BrowserWasmlineRuntime.shutdown()
-internal fun browserWasmlineWarmup(@Suppress("UNUSED_PARAMETER") mode: WasmlineWarmupMode) = Unit
+internal fun browserWasmlineWarmUp(engine: WasmlineEngineKind): Nothing =
+    throw UnsupportedOperationException("Browser runtimes do not provide the $engine native engine.")
 internal fun browserWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     browserWasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)
 
