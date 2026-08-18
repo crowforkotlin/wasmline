@@ -7,6 +7,7 @@ import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven
 import org.gradle.api.publish.tasks.GenerateModuleMetadata
@@ -18,14 +19,21 @@ import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
-val engineName = extra["wasmline.engine"] as? String
-    ?: error("wasmline.engine must be set to pulley or cranelift before applying this script")
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.kotlin.multiplatform.library")
+    id("com.vanniktech.maven.publish.base")
+    id("org.jetbrains.dokka")
+}
+
+val engineName = project.name.removePrefix("wasmline-engine-")
 require(engineName == "pulley" || engineName == "cranelift") {
-    "Unsupported wasmline.engine '$engineName'; expected pulley or cranelift"
+    "Unsupported engine project '" + project.name +
+        "'; expected wasmline-engine-pulley or wasmline-engine-cranelift"
 }
 
 val engineNameCapitalized = engineName.replaceFirstChar { it.uppercase() }
-val engineNamespace = "crow.wasmline.engine.$engineName"
+val engineNamespace = "crow.wasmline.engine." + engineName
 val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 val androidCompileSdk = versionCatalog.findVersion("android-compileSdk").get().requiredVersion.toInt()
 val androidMinSdk = versionCatalog.findVersion("android-minSdk").get().requiredVersion.toInt()
@@ -64,9 +72,19 @@ tasks.named<Jar>("jvmJar") {
 
 // Both backends expose the same native capability. Depending on both modules is
 // therefore a real Gradle conflict instead of an accidental duplicate libwasmline.
-val nativeEngineCapability = "${project.group}:wasmline-native-engine:${project.version}"
+val defaultProjectCapability = listOf(
+    project.group.toString(),
+    project.name,
+    project.version.toString(),
+).joinToString(":")
+val nativeEngineCapability = listOf(
+    project.group.toString(),
+    "wasmline-native-engine",
+    project.version.toString(),
+).joinToString(":")
 configurations.configureEach {
     if (isCanBeConsumed) {
+        outgoing.capability(defaultProjectCapability)
         outgoing.capability(nativeEngineCapability)
     }
 }
@@ -93,7 +111,7 @@ platformMap.forEach { (platform, archs) ->
     archs.forEach { (archDir, gradleArch) ->
         val capitalPlatform = platform.replaceFirstChar { it.uppercase() }
         val capitalArch = archDir.replaceFirstChar { it.uppercase() }
-        val taskName = "${engineName}Native$capitalPlatform$capitalArch"
+        val taskName = engineName + "Native" + capitalPlatform + capitalArch
         val jniDir = layout.projectDirectory.dir("src/jvmMain/resources/jni/$platform/$archDir")
         val jarTask = tasks.register<Jar>(taskName) {
             archiveClassifier.set("$platform-$archDir")
@@ -126,15 +144,15 @@ val requiredAssets = buildList {
     }
 }
 
-val verifyEngineAssets = tasks.register("verify${engineNameCapitalized}Assets") {
+val verifyEngineAssets = tasks.register("verify" + engineNameCapitalized + "Assets") {
     inputs.files(requiredAssets)
     doLast {
         val missing = requiredAssets.filterNot { it.isFile }
         check(missing.isEmpty()) {
             buildString {
-                appendLine("Missing native assets for the $engineName engine:")
-                missing.forEach { appendLine("  - ${it.relativeTo(project.projectDir)}") }
-                append("Run 'bash scripts/build-native-assets.sh $engineName' before publishing.")
+                appendLine("Missing native assets for the " + engineName + " engine:")
+                missing.forEach { file -> appendLine("  - " + file.relativeTo(project.projectDir)) }
+                append("Run 'bash scripts/build-native-assets.sh " + engineName + "' before publishing.")
             }
         }
     }
@@ -144,7 +162,7 @@ tasks.withType<AbstractPublishToMaven>().configureEach {
 }
 
 afterEvaluate {
-    publishing.publications.named<MavenPublication>("jvm") {
+    extensions.getByType<PublishingExtension>().publications.named<MavenPublication>("jvm") {
         nativeVariants.forEach { variant ->
             artifact(variant.jarTask)
         }
@@ -161,12 +179,18 @@ tasks.named<GenerateModuleMetadata>("generateMetadataFileForJvmPublication") {
         @Suppress("UNCHECKED_CAST")
         val variants = json["variants"] as? MutableList<Any> ?: return@doLast
         val existingNames = variants.filterIsInstance<Map<*, *>>().map { it["name"] }
-        val nativePrefix = "${engineName}Native"
+        val nativePrefix = engineName + "Native"
         if (existingNames.any { (it as? String)?.startsWith(nativePrefix) == true }) return@doLast
 
-        val jvmModuleName = "${project.name}-jvm"
+        val jvmModuleName = project.name + "-jvm"
         val version = project.version.toString()
         nativeVariants.forEach { variant ->
+            val nativeJarName = listOf(
+                jvmModuleName,
+                version,
+                variant.platform,
+                variant.archDir + ".jar",
+            ).joinToString("-")
             variants.add(
                 mapOf(
                     "name" to variant.taskName,
@@ -181,14 +205,16 @@ tasks.named<GenerateModuleMetadata>("generateMetadataFileForJvmPublication") {
                     ),
                     "files" to listOf(
                         mapOf(
-                            "name" to "${jvmModuleName}-$version-${variant.platform}-${variant.archDir}.jar",
-                            "url" to "${jvmModuleName}-$version-${variant.platform}-${variant.archDir}.jar",
+                            "name" to nativeJarName,
+                            "url" to nativeJarName,
                         ),
                     ),
                 ),
             )
         }
         moduleFile.writeText(JsonOutput.toJson(json))
-        logger.lifecycle("Injected ${nativeVariants.size} native variants into ${moduleFile.name}")
+        logger.lifecycle(
+            "Injected " + nativeVariants.size + " native variants into " + moduleFile.name,
+        )
     }
 }
