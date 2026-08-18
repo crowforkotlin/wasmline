@@ -1,50 +1,45 @@
 package crow.wasmline.loader.internal
 
-import android.annotation.SuppressLint
+import android.util.Log
+import crow.wasmline.WasmlineLog
 import java.io.File
 
-private const val UNINITIALIZED = "\u0000__uninitialized__"
-
-/**
- * Resolves the Android cache directory via reflection, storing only the path string.
- *
- * On Android, `ActivityThread.currentApplication` is used to obtain the application
- * context once, extract `cacheDir`, and discard the reference immediately.
- * Only the resolved path [String] is retained — no context is held.
- *
- * If reflection fails (e.g. non-Android JVM, or an unsupported runtime),
- * [cacheDirectory] returns `null`.
- */
+/** Stores only the cache path initialized by [WasmlineLoaderInitProvider]. */
 internal object AndroidCacheResolver {
+    @Volatile
+    private var cachePath: String? = null
 
     @Volatile
-    private var cachePath: String? = UNINITIALIZED
+    private var missingInitializationReported: Boolean = false
 
-    fun cacheDirectory(): String? {
-        val cached = cachePath
-        if (cached != UNINITIALIZED) return cached
-        return resolveOnce()
+    fun initialize(applicationCacheDirectory: File) {
+        cachePath = File(applicationCacheDirectory, CACHE_DIRECTORY_NAME).absolutePath
     }
 
-    @Synchronized
-    private fun resolveOnce(): String? {
-        // Double-check after acquiring lock
-        val cached = cachePath
-        if (cached != UNINITIALIZED) return cached
-
-        val path = resolveAndroidCacheDir()
-        cachePath = path
+    fun cacheDirectory(): String? {
+        val path = cachePath
+        if (path == null) reportMissingInitializationOnce()
         return path
     }
 
-    @SuppressLint("PrivateApi")
-    private fun resolveAndroidCacheDir(): String? {
-        return runCatching {
-            val currentApp = Class.forName("android.app.ActivityThread")
-                .getMethod("currentApplication")
-                .invoke(null) as? android.app.Application
-                ?: return null
-            File(currentApp.cacheDir, "wasmline").absolutePath
-        }.getOrNull()
+    private fun reportMissingInitializationOnce() {
+        if (missingInitializationReported) return
+        synchronized(this) {
+            if (missingInitializationReported) return
+            missingInitializationReported = true
+            val message =
+                "Wasmline Android cache initialization is unavailable. " +
+                    "Ensure WasmlineLoaderInitProvider is present in the merged manifest."
+            val logger = WasmlineLog.logger
+            if (logger != null) {
+                logger.warn("$P $message")
+            } else {
+                Log.w(LOG_TAG, message)
+            }
+        }
     }
+
+    private const val P: String = "[AndroidCacheResolver]"
+    private const val LOG_TAG: String = "WasmlineLoader"
+    private const val CACHE_DIRECTORY_NAME: String = "wasmline"
 }

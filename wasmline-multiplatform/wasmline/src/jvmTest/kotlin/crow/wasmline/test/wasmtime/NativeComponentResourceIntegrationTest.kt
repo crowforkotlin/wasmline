@@ -18,12 +18,12 @@ import crow.wasmline.WasmlineGuestComponentResource
 import crow.wasmline.WasmlineHostComponentResource
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.component
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
-import crow.wasmline.wasmlineLoadArtifact
-import crow.wasmline.wasmlineRuntimeCapabilities
-import crow.wasmline.wasmlineShutdown
+import crow.wasmline.platformWasmlineLoadArtifact
+import crow.wasmline.platformWasmlineRuntimeCapabilities
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -161,7 +161,7 @@ class NativeComponentResourceIntegrationTest {
             block(handle)
         } finally {
             handle.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
@@ -231,8 +231,8 @@ class NativeComponentResourceIntegrationTest {
     }
 
     private fun loadComponent(artifact: File): Wasmline {
-        val runtime = wasmlineRuntimeCapabilities()
-        val state = wasmlineLoadArtifact(
+        val runtime = platformWasmlineRuntimeCapabilities()
+        val state = platformWasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = artifact.absolutePath,
                 artifactFormat = WasmlineArtifactFormat.CWASM,

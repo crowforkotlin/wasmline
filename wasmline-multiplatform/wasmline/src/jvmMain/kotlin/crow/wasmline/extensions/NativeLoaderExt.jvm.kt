@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Locale.US
 
-actual fun loadNativeLibrary() {
+internal actual fun ensureNativeRuntimeLoaded() {
     val overridePath = System.getProperty(NATIVE_LIBRARY_PROPERTY)
         ?.takeIf(String::isNotBlank)
         ?: System.getenv(NATIVE_LIBRARY_ENV)?.takeIf(String::isNotBlank)

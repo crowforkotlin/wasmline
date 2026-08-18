@@ -11,7 +11,9 @@ import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.loader.model.WasmlineManifest
 import crow.wasmline.loader.network.WasmlineHttpResponse
+import crow.wasmline.loader.network.WasmlineHttpStatus
 import crow.wasmline.loader.network.WasmlineNetworkClient
+import crow.wasmline.loader.network.WasmlineNetworkSink
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -162,6 +164,54 @@ class WasmlineRemotePackageResolutionTest {
                 failure.cause.contains("artifact path"),
             "Expected runtime load error, got: ${failure.cause}",
         )
+    }
+
+    @Test
+    fun `built-in artifact download uses streaming network path`() = runTest {
+        val artifactBytes = "streamed artifact content".encodeToByteArray()
+        val manifest = createTestManifest(
+            artifacts = listOf(
+                compatibleCraneliftArtifact(
+                    url = "streamed.cwasm",
+                    sha256 = artifactBytes.toByteString().sha256().hex(),
+                ),
+            ),
+        )
+        val envelopeBytes = signAndEncodeEnvelope(manifest)
+        var wholeArtifactFetchCalled = false
+        var streamingArtifactFetchCalled = false
+        val networkClient = object : WasmlineNetworkClient {
+            override suspend fun fetch(url: String): WasmlineHttpResponse = when {
+                url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
+
+                url.endsWith("streamed.cwasm") -> {
+                    wholeArtifactFetchCalled = true
+                    error("Artifact must use fetchTo")
+                }
+
+                else -> WasmlineHttpResponse(404, ByteArray(0))
+            }
+
+            override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+                streamingArtifactFetchCalled = true
+                sink.write(artifactBytes, offset = 0, byteCount = artifactBytes.size)
+                return WasmlineHttpStatus(200)
+            }
+        }
+
+        DefaultWasmlineLoader.load(
+            WasmlineLoadRequest(
+                source = WasmlineSource.RemoteManifestUrl("https://example.com/streamed.wlm"),
+                options = WasmlineLoadOptions(
+                    networkClient = networkClient,
+                    trustedKeys = trustedKeys(),
+                    cache = WasmlineNoOpCache,
+                ),
+            ),
+        )
+
+        assertFalse(wholeArtifactFetchCalled)
+        assertTrue(streamingArtifactFetchCalled)
     }
 
     @Test

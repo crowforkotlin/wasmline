@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -47,7 +46,6 @@ private const val componentExportPackageRoot = "wasmline-packages/component-expo
 
 @OptIn(ExperimentalResourceApi::class)
 fun main() {
-    WasmlineLoader.bootstrap()
     if (System.getProperty("wasmline.sample.smoke").toBoolean()) {
         runDesktopSmokeTest()
         return

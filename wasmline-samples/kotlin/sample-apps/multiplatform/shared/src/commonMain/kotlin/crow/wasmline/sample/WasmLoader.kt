@@ -12,14 +12,13 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRawValue
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
-import crow.wasmline.bindComponentService
 import crow.wasmline.callResult
 import crow.wasmline.invokeComponentResult
 import crow.wasmline.invokeRawResult
 import crow.wasmline.link
 import crow.wasmline.invocation.WasmlineCallResult
-import crow.wasmline.wasmlineNativeRuntimeInfo
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineTrustedKeySet
@@ -483,7 +482,7 @@ internal class WasmSampleRunner(
         val format = artifactFormat ?: return this
         if (format == WasmlineArtifactFormat.RAW_WASM) return this
 
-        val runtime = wasmlineNativeRuntimeInfo()
+        val runtime = WasmlineRuntime.nativeInfo()
             ?: error("Native runtime metadata is unavailable for AOT artifact '$path'. Use a raw .wasm artifact on browser runtimes.")
         val runtimeBitness = runtime.is64Bit
             ?: error("Native runtime did not report bitness for AOT artifact '$path'.")

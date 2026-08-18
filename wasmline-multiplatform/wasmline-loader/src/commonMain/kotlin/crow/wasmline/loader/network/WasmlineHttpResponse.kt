@@ -16,3 +16,8 @@ data class WasmlineHttpResponse(val statusCode: Int, val bytes: ByteArray) {
         return result
     }
 }
+
+/** Status metadata returned when a response body is streamed directly to a sink. */
+data class WasmlineHttpStatus(val statusCode: Int) {
+    val isSuccess: Boolean get() = statusCode in 200..299
+}

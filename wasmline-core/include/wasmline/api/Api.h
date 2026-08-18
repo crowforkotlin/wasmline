@@ -29,14 +29,8 @@ namespace wasmline {
     /** Provides the native Wasmline API facade. */
     class Api {
     public:
-        /** Initializes the global Wasmtime engine. */
-        static void initEngine();
-
-        /** Initializes the global engine for the selected backend. */
-        static void warmupEngine(bool usePulley);
-
-        /** Returns whether this build includes the Wasmtime compiler. */
-        static bool supportsAot();
+        /** Initializes the selected engine without invalidating loaded artifacts. */
+        static bool warmupEngine(bool usePulley);
 
         /** Returns the exact linked Wasmtime version. */
         static const char* wasmtimeVersion();
@@ -53,36 +47,14 @@ namespace wasmline {
         /** Converts a stable native bridge code to a physical artifact format. */
         static bool tryArtifactFormatFromCode(int32_t formatCode, WasmlineArtifactFormat* format);
 
-        /** Legacy Core artifact load entrypoint. It fails because native loading requires an explicit format.
-         *
-         * @param key Artifact identifier.
-         * @param path Artifact file path.
-         * @return true when the artifact is loaded.
-         */
-        static bool loadModule(const std::string& key, const std::string& path);
-
         /** Loads a Core Wasm artifact with an explicit physical format. */
         static bool loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
-
-        /** Legacy Core artifact load entrypoint without cache synchronization. It fails without an explicit format. */
-        static bool loadModuleUnsafe(const std::string& key, const std::string& path);
 
         /** Loads a Core Wasm artifact with an explicit format without cache synchronization. */
         static bool loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
 
-        /** Legacy Component artifact load entrypoint. It fails because native loading requires an explicit format.
-         *
-         * @param key Artifact identifier.
-         * @param path Component file path.
-         * @return true when the artifact is loaded.
-         */
-        static bool loadComponent(const std::string& key, const std::string& path);
-
         /** Loads a Component Model artifact with an explicit physical format. */
         static bool loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
-
-        /** Legacy Component artifact load entrypoint without cache synchronization. It fails without an explicit format. */
-        static bool loadComponentUnsafe(const std::string& key, const std::string& path);
 
         /** Loads a Component Model artifact with an explicit format without cache synchronization. */
         static bool loadComponentUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
@@ -134,7 +106,11 @@ namespace wasmline {
         static bool setComponentHostHandler(const std::string& key, std::unique_ptr<ComponentHostHandler> handler);
 
     private:
-        static void ensureEngineForArtifact(WasmlineArtifactFormat artifactFormat, const std::string& path);
+        static bool ensureEngineForArtifact(WasmlineArtifactFormat artifactFormat, const std::string& path);
+
+        static bool isEngineReadyForArtifact(WasmlineArtifactFormat artifactFormat);
+
+        static bool hasLoadedArtifacts();
 
         /** Returns the cached Core Wasm session or creates it. */
         static Session* getOrCreateSession(const std::string& key);
@@ -150,5 +126,7 @@ namespace wasmline {
         static std::unordered_map<std::string, std::shared_ptr<ComponentSession>> componentSessionCache;
 
         static std::shared_mutex sessionMutex;
+
+        static std::shared_mutex lifecycleMutex;
     };
 } // namespace wasmline

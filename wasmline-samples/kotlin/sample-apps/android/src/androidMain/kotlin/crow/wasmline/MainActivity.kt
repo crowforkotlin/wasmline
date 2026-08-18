@@ -8,14 +8,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import crow.wasmline.extensions.info
-import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.sample.AndroidApp
 import kotlin.system.measureTimeMillis
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        "[Android] Bootstrap wasmline spend ${measureTimeMillis { WasmlineLoader.bootstrap() }} ms".info()
+        "[Android] Preload Wasmline took ${measureTimeMillis { WasmlineRuntime.preload() }} ms".info()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

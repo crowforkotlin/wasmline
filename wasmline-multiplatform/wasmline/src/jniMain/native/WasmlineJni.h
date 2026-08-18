@@ -16,10 +16,10 @@
 using wasmline::NativeLogE;
 #endif
 
-static jboolean loadPrecompiledModuleCommon(JNIEnv *env, jstring keyStr, jstring pathStr, bool unsafe,
-                                            const wasmline::WasmlineArtifactFormat* artifactFormat = nullptr) {
-    if (!artifactFormat) {
-        LOGE("[Wasmline] JNI --> Native artifact loading requires an explicit format.");
+static jboolean loadPrecompiledModuleWithFormatCommon(JNIEnv *env, jstring keyStr, jstring pathStr, jint formatCode, bool unsafe) {
+    wasmline::WasmlineArtifactFormat artifactFormat;
+    if (!wasmline::Api::tryArtifactFormatFromCode(static_cast<int32_t>(formatCode), &artifactFormat)) {
+        LOGE("[Wasmline] JNI --> Invalid native artifact format code: %d", static_cast<int>(formatCode));
         return JNI_FALSE;
     }
     if (!env || !keyStr || !pathStr) return JNI_FALSE;
@@ -30,18 +30,9 @@ static jboolean loadPrecompiledModuleCommon(JNIEnv *env, jstring keyStr, jstring
         if (key) env->ReleaseStringUTFChars(keyStr, key);
         return JNI_FALSE;
     }
-    bool success = unsafe ? wasmline::Api::loadModuleUnsafe(key, path, *artifactFormat)
-                          : wasmline::Api::loadModule(key, path, *artifactFormat);
+    bool success = unsafe ? wasmline::Api::loadModuleUnsafe(key, path, artifactFormat)
+                          : wasmline::Api::loadModule(key, path, artifactFormat);
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
     return success;
-}
-
-static jboolean loadPrecompiledModuleWithFormatCommon(JNIEnv *env, jstring keyStr, jstring pathStr, jint formatCode, bool unsafe) {
-    wasmline::WasmlineArtifactFormat artifactFormat;
-    if (!wasmline::Api::tryArtifactFormatFromCode(static_cast<int32_t>(formatCode), &artifactFormat)) {
-        LOGE("[Wasmline] JNI --> Invalid native artifact format code: %d", static_cast<int>(formatCode));
-        return JNI_FALSE;
-    }
-    return loadPrecompiledModuleCommon(env, keyStr, pathStr, unsafe, &artifactFormat);
 }

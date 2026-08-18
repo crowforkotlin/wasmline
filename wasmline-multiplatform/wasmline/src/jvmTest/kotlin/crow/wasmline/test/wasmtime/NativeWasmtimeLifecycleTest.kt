@@ -2,11 +2,8 @@
 
 package crow.wasmline.test.wasmtime
 
-import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineWarmupMode
-import crow.wasmline.wasmlineBootstrap
-import crow.wasmline.wasmlineShutdown
-import crow.wasmline.wasmlineWarmup
+import crow.wasmline.WasmlineEngineKind
+import crow.wasmline.WasmlineRuntime
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -25,69 +22,70 @@ class NativeWasmtimeLifecycleTest {
 
     @Test
     fun enginePulleyWarmsUpWithoutErrors() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
 
-            val supportsAot = Wasmline.supportsAot()
-
-            assertTrue(supportsAot, "Engine failed to initialize properly")
+            assertTrue(
+                WasmlineEngineKind.PULLEY in requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines,
+                "The linked runtime should support Pulley",
+            )
         } catch (e: Exception) {
             fail("PULLEY warmup threw exception: ${e.message}", e)
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
     @Test
     fun engineCraneliftWarmsUpGracefully() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.CRANELIFT)
 
-            val supportsAot = Wasmline.supportsAot()
-            assertTrue(supportsAot, "Engine warmup should configure some backend")
+            assertTrue(
+                WasmlineEngineKind.CRANELIFT in requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines,
+                "The linked runtime should support Cranelift",
+            )
         } catch (e: Exception) {
             fail("Cranelift warmup threw unexpected exception: ${e.message}", e)
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
     @Test
     fun shutdownResetsStateSuccessfully() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            assertTrue(Wasmline.supportsAot(), "Engine should be running after warmup")
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
 
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
 
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         } finally {
             try {
-                wasmlineShutdown()
+                WasmlineRuntime.shutdown()
             } catch (_: Exception) {}
         }
     }
 
     @Test
     fun multipleEngineModesAreCompatible() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            val firstResult = Wasmline.supportsAot()
+            val supportedEngines = requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines
+            assertTrue(WasmlineEngineKind.PULLEY in supportedEngines)
+            assertTrue(WasmlineEngineKind.CRANELIFT in supportedEngines)
 
-            wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-            val secondResult = Wasmline.supportsAot()
-
-            assertTrue(firstResult || secondResult, "PULLEY engine not available")
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.CRANELIFT)
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 }

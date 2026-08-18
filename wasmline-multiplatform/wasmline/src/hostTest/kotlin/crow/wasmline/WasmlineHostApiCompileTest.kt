@@ -1,5 +1,6 @@
 package crow.wasmline
 
+import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineSource
@@ -27,12 +28,15 @@ class WasmlineHostApiCompileTest {
             WasmlineLoadRequest(source = WasmlineSource.LocalArtifactPath("plugin.pwasm")),
         )
 
-        WasmlineLoader.bootstrap()
-        WasmlineLoader.warmup(WasmlineWarmupMode.PULLEY)
-        WasmlineLoader.shutdown()
+        WasmlineRuntime.preload()
+        WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
+        WasmlineRuntime.nativeInfo()
+        WasmlineRuntime.shutdown()
 
         wasmline.bind(implementation)
         wasmline.bind(contract, implementation)
+        wasmline.bindComponentHost(WasmlineComponentHostRegistry.builder().build())
+        wasmline.bindComponentService { _, payload -> WasmlineCallResult.Success(payload) }
 
         val linked = wasmline.link<EchoService>()
 

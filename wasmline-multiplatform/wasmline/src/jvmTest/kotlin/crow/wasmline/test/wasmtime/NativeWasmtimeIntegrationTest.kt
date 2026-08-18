@@ -2,19 +2,16 @@
 
 package crow.wasmline.test.wasmtime
 
-import crow.wasmline.Wasmline
+import crow.wasmline.JniWasmlineBindings
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineConfig
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineNativeBackend
-import crow.wasmline.WasmlineWarmupMode
-import crow.wasmline.wasmlineBootstrap
-import crow.wasmline.wasmlineLoadArtifact
-import crow.wasmline.wasmlineNativeRuntimeInfo
-import crow.wasmline.wasmlineRuntimeCapabilities
-import crow.wasmline.wasmlineShutdown
-import crow.wasmline.wasmlineWarmup
+import crow.wasmline.WasmlineRuntime
+import crow.wasmline.platformWasmlineLoadArtifact
+import crow.wasmline.platformWasmlineRuntimeCapabilities
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,7 +25,7 @@ private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
  *
  * These tests mirror [crow.wasmline.web.WebWasmRuntimeTest] but run against native Wasmtime
  * instead of browser's WebAssembly API. They validate core WASM functionality:
- * - Engine lifecycle management (bootstrap/warmup/shutdown)
+ * - Engine lifecycle management (preload/warm-up/shutdown)
  * - Multiple engine backend support (PULLEY/Cranelift)
  * - Resource cleanup and error handling
  *
@@ -41,12 +38,16 @@ class NativeWasmtimeIntegrationTest {
 
     @Test
     fun reportsLinkedRuntimeCapabilities() {
-        val capabilities = wasmlineRuntimeCapabilities()
-        val runtimeInfo = requireNotNull(wasmlineNativeRuntimeInfo())
+        val capabilities = platformWasmlineRuntimeCapabilities()
+        val runtimeInfo = requireNotNull(WasmlineRuntime.nativeInfo())
 
         assertEquals("47.0.2", capabilities.wasmtimeVersion)
         assertEquals(capabilities.wasmtimeVersion, runtimeInfo.wasmtimeVersion)
         assertEquals(WasmlineNativeBackend.CRANELIFT, runtimeInfo.backend)
+        assertEquals(
+            setOf(WasmlineEngineKind.PULLEY, WasmlineEngineKind.CRANELIFT),
+            runtimeInfo.supportedEngines,
+        )
         assertTrue(capabilities.supportsCranelift)
         assertTrue(capabilities.supportsPulley)
         assertTrue(capabilities.targetOs.isNotBlank())
@@ -55,22 +56,22 @@ class NativeWasmtimeIntegrationTest {
 
     @Test
     fun rejectsInvalidArtifactFormatCodesAtTheJniBoundary() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
             listOf(0, -1, 4).forEach { formatCode ->
                 assertFalse(invokeNativeLoadAotWithFormatCode(formatCode))
             }
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
     @Test
     fun rejectsIncompatibleAotMetadataBeforeResolvingTheFile() {
-        val capabilities = wasmlineRuntimeCapabilities()
+        val capabilities = platformWasmlineRuntimeCapabilities()
 
-        val result = wasmlineLoadArtifact(
+        val result = platformWasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = "/does/not/exist/plugin.cwasm",
                 artifactFormat = WasmlineArtifactFormat.CWASM,
@@ -86,35 +87,29 @@ class NativeWasmtimeIntegrationTest {
         assertTrue(failure.cause.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
     }
 
-    private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): Boolean {
-        val intType = requireNotNull(Int::class.javaPrimitiveType)
-        val method = Wasmline::class.java.getDeclaredMethod(
-            "nativeLoadAotWithFormat",
-            String::class.java,
-            String::class.java,
-            intType,
-        )
-        method.isAccessible = true
-        return method.invoke(null, "invalid-format", "/does/not/exist/plugin.bin", formatCode) as Boolean
-    }
+    private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): Boolean = JniWasmlineBindings.loadModuleWithFormatCode(
+        key = "invalid-format",
+        path = "/does/not/exist/plugin.bin",
+        formatCode = formatCode,
+    )
 
     /**
-     * Tests that we can successfully create and bootstrap the Wasmtime engine.
+     * Tests that we can successfully preload the runtime and create the Wasmtime engine.
      * This is a positive test - validating successful initialization.
      */
     @Test
     fun createsAndInitializesEngineSuccessfully() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
 
             assertTrue(
-                Wasmline.supportsAot(),
-                "Engine should report AOT support after warmup",
+                WasmlineEngineKind.PULLEY in requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines,
+                "The linked runtime should report Pulley support",
             )
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
@@ -124,17 +119,17 @@ class NativeWasmtimeIntegrationTest {
      */
     @Test
     fun initializesCraneliftBackendSuccessfully() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.CRANELIFT)
 
             assertTrue(
-                Wasmline.supportsAot(),
-                "At least one backend should be active",
+                WasmlineEngineKind.CRANELIFT in requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines,
+                "The linked runtime should report Cranelift support",
             )
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
@@ -144,21 +139,17 @@ class NativeWasmtimeIntegrationTest {
      */
     @Test
     fun executesFullEngineLifecycle() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            val pulleyWorked = Wasmline.supportsAot()
+            val supportedEngines = requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines
+            assertTrue(WasmlineEngineKind.PULLEY in supportedEngines)
+            assertTrue(WasmlineEngineKind.CRANELIFT in supportedEngines)
 
-            wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-            val craneliftWorked = Wasmline.supportsAot()
-
-            assertTrue(
-                pulleyWorked || craneliftWorked,
-                "At least one engine backend must initialize successfully",
-            )
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.CRANELIFT)
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
@@ -168,21 +159,21 @@ class NativeWasmtimeIntegrationTest {
      */
     @Test
     fun managesEngineResourcesCorrectly() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            assertTrue(Wasmline.supportsAot(), "Engine should start in first cycle")
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
+            assertTrue(WasmlineEngineKind.PULLEY in requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines)
 
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
 
-            wasmlineBootstrap()
-            wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
+            WasmlineRuntime.preload()
+            WasmlineRuntime.warmUp(WasmlineEngineKind.CRANELIFT)
 
-            assertTrue(Wasmline.supportsAot(), "Engine should restart successfully")
+            assertTrue(WasmlineEngineKind.CRANELIFT in requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines)
         } finally {
             try {
-                wasmlineShutdown()
+                WasmlineRuntime.shutdown()
             } catch (_: Exception) {}
         }
     }
@@ -192,10 +183,10 @@ class NativeWasmtimeIntegrationTest {
      */
     @Test
     fun rejectsNativeDirectPathWithoutAnExplicitFormat() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            val result = wasmlineLoadArtifact(
+            val result = platformWasmlineLoadArtifact(
                 filepath = "/nonexistent/path/to/missing.cwasm",
                 config = WasmlineConfig(supportConcurrent = false),
             )
@@ -211,20 +202,20 @@ class NativeWasmtimeIntegrationTest {
                 "Error message should identify the missing native format",
             )
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
     @Test
     fun rejectsRawCoreArtifactsForBothLoadingModes() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
         val rawArtifact = java.io.File.createTempFile("wasmline-raw-", ".wasm").apply {
             writeBytes(byteArrayOf(0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00))
             deleteOnExit()
         }
 
         try {
-            val result1 = wasmlineLoadArtifact(
+            val result1 = platformWasmlineLoadArtifact(
                 descriptor = WasmlineArtifactDescriptor(
                     path = rawArtifact.absolutePath,
                     artifactFormat = WasmlineArtifactFormat.RAW_WASM,
@@ -233,7 +224,7 @@ class NativeWasmtimeIntegrationTest {
             )
             val failure1 = assertIs<WasmlineLoadState.Failure>(result1)
 
-            val result2 = wasmlineLoadArtifact(
+            val result2 = platformWasmlineLoadArtifact(
                 descriptor = WasmlineArtifactDescriptor(
                     path = rawArtifact.absolutePath,
                     artifactFormat = WasmlineArtifactFormat.RAW_WASM,
@@ -251,7 +242,7 @@ class NativeWasmtimeIntegrationTest {
                 failure2.code,
             )
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             rawArtifact.delete()
         }
     }
@@ -261,24 +252,19 @@ class NativeWasmtimeIntegrationTest {
      */
     @Test
     fun warmsUpMultipleBackendsSequentially() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            val firstResult = Wasmline.supportsAot()
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.CRANELIFT)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
 
-            wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
-            val secondResult = Wasmline.supportsAot()
-
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            val thirdResult = Wasmline.supportsAot()
-
-            assertTrue(
-                firstResult || secondResult || thirdResult,
-                "Multiple sequential warmups should succeed at least once",
+            assertEquals(
+                setOf(WasmlineEngineKind.PULLEY, WasmlineEngineKind.CRANELIFT),
+                requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines,
             )
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
@@ -286,21 +272,17 @@ class NativeWasmtimeIntegrationTest {
      * Tests engine identification capabilities.
      */
     @Test
-    fun reportsEngineCapabilitiesCorrectly() {
-        wasmlineBootstrap()
+    fun keepsRuntimeIdentityStableAcrossWarmUp() {
+        WasmlineRuntime.preload()
 
         try {
-            val initialSupportsAot = Wasmline.supportsAot()
+            val initialInfo = requireNotNull(WasmlineRuntime.nativeInfo())
 
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
-            val postWarmupSupportsAot = Wasmline.supportsAot()
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
 
-            assertTrue(
-                postWarmupSupportsAot || initialSupportsAot,
-                "Engine should report capabilities",
-            )
+            assertEquals(initialInfo, WasmlineRuntime.nativeInfo())
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
@@ -310,19 +292,19 @@ class NativeWasmtimeIntegrationTest {
      */
     @Test
     fun performsSafeIdempotentShutdown() {
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
 
         try {
-            wasmlineWarmup(WasmlineWarmupMode.PULLEY)
+            WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
 
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
 
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
 
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         } finally {
             try {
-                wasmlineShutdown()
+                WasmlineRuntime.shutdown()
             } catch (_: Exception) {}
         }
     }
@@ -334,15 +316,15 @@ class NativeWasmtimeIntegrationTest {
     @Test
     fun handlesRapidEngineCycles() {
         repeat(3) { iteration ->
-            wasmlineBootstrap()
+            WasmlineRuntime.preload()
             try {
-                wasmlineWarmup(WasmlineWarmupMode.PULLEY)
+                WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY)
                 assertTrue(
-                    Wasmline.supportsAot(),
+                    WasmlineEngineKind.PULLEY in requireNotNull(WasmlineRuntime.nativeInfo()).supportedEngines,
                     "Cycle ${iteration + 1} should succeed",
                 )
             } finally {
-                wasmlineShutdown()
+                WasmlineRuntime.shutdown()
             }
         }
     }

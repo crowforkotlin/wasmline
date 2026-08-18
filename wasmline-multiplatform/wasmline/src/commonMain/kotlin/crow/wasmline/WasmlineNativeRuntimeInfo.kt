@@ -7,4 +7,11 @@ data class WasmlineNativeRuntimeInfo(
     val targetOs: String? = null,
     val targetCpu: String? = null,
     val is64Bit: Boolean? = null,
-)
+) {
+    /** Engines this linked native runtime can create. */
+    val supportedEngines: Set<WasmlineEngineKind>
+        get() = when (backend) {
+            WasmlineNativeBackend.CRANELIFT -> setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY)
+            WasmlineNativeBackend.PULLEY -> setOf(WasmlineEngineKind.PULLEY)
+        }
+}

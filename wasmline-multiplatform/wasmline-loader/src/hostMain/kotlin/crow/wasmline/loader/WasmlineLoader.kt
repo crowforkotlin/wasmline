@@ -3,19 +3,13 @@ package crow.wasmline.loader
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineWarmupMode
-import crow.wasmline.wasmlineBootstrap
-import crow.wasmline.wasmlineShutdown
-import crow.wasmline.wasmlineWarmup
 
 /**
- * Primary entry point for loading and managing Wasmline modules on the host side.
+ * Primary entry point for resolving and loading Wasmline modules on the host side.
  *
  * Lifecycle:
  * ```kotlin
  * suspend fun main() {
- *     WasmlineLoader.bootstrap()  // Initialize the runtime engine
- *
  *     val result = WasmlineLoader.load(
  *         descriptor = artifactDescriptor,
  *     )
@@ -24,36 +18,10 @@ import crow.wasmline.wasmlineWarmup
  *         is WasmlineLoadResult.Success -> result.wasmline.use { it.bind(...) }
  *         is WasmlineLoadResult.Failure -> println(result.cause)
  *     }
- *
- *     WasmlineLoader.shutdown()  // Release the engine
  * }
  * ```
  */
 object WasmlineLoader {
-
-    /**
-     * Initialize the Wasmline runtime engine.
-     *
-     * On JVM/Android this ensures the native library is loaded.
-     * Safe to call multiple times — subsequent calls are no-ops.
-     */
-    fun bootstrap() {
-        wasmlineBootstrap()
-    }
-
-    /**
-     * Release the global engine and clear cached modules.
-     */
-    fun shutdown() {
-        wasmlineShutdown()
-    }
-
-    /**
-     * Eagerly warm up the runtime engine for a specific backend.
-     */
-    fun warmup(mode: WasmlineWarmupMode) {
-        wasmlineWarmup(mode)
-    }
 
     /**
      * Load a Wasmline module from the given source.

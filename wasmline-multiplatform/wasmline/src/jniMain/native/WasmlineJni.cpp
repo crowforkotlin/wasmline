@@ -45,10 +45,10 @@ static jbyteArray transportFailure(JNIEnv *env, const char *message) {
                                wasmline::WasmlineErrorCode::TRANSPORT_FAILURE, message));
 }
 
-static jboolean loadComponentCommon(JNIEnv *env, jstring keyStr, jstring pathStr, bool unsafe,
-                                    const wasmline::WasmlineArtifactFormat* artifactFormat = nullptr) {
-    if (!artifactFormat) {
-        LOGE("[Wasmline] JNI --> Native artifact loading requires an explicit format.");
+static jboolean loadComponentWithFormatCommon(JNIEnv *env, jstring keyStr, jstring pathStr, jint formatCode, bool unsafe) {
+    wasmline::WasmlineArtifactFormat artifactFormat;
+    if (!wasmline::Api::tryArtifactFormatFromCode(static_cast<int32_t>(formatCode), &artifactFormat)) {
+        LOGE("[Wasmline] JNI --> Invalid native artifact format code: %d", static_cast<int>(formatCode));
         return JNI_FALSE;
     }
     if (!env || !keyStr || !pathStr) return JNI_FALSE;
@@ -59,109 +59,75 @@ static jboolean loadComponentCommon(JNIEnv *env, jstring keyStr, jstring pathStr
         if (key) env->ReleaseStringUTFChars(keyStr, key);
         return JNI_FALSE;
     }
-    bool success = unsafe ? wasmline::Api::loadComponentUnsafe(key, path, *artifactFormat)
-                          : wasmline::Api::loadComponent(key, path, *artifactFormat);
+    bool success = unsafe ? wasmline::Api::loadComponentUnsafe(key, path, artifactFormat)
+                          : wasmline::Api::loadComponent(key, path, artifactFormat);
     env->ReleaseStringUTFChars(keyStr, key);
     env->ReleaseStringUTFChars(pathStr, path);
     return success ? JNI_TRUE : JNI_FALSE;
 }
 
-static jboolean loadComponentWithFormatCommon(JNIEnv *env, jstring keyStr, jstring pathStr, jint formatCode, bool unsafe) {
-    wasmline::WasmlineArtifactFormat artifactFormat;
-    if (!wasmline::Api::tryArtifactFormatFromCode(static_cast<int32_t>(formatCode), &artifactFormat)) {
-        LOGE("[Wasmline] JNI --> Invalid native artifact format code: %d", static_cast<int>(formatCode));
-        return JNI_FALSE;
-    }
-    return loadComponentCommon(env, keyStr, pathStr, unsafe, &artifactFormat);
-}
-
 extern "C" {
 
-JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeWarmup(JNIEnv *env, jclass thiz, jboolean usePulley) {
-    wasmline::Api::warmupEngine(usePulley == JNI_TRUE);
-}
-
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeSupportsAot(JNIEnv *env, jclass thiz) {
-    return wasmline::Api::supportsAot() ? JNI_TRUE : JNI_FALSE;
+Java_crow_wasmline_JniWasmlineBindings_nativeWarmUp(JNIEnv *env, jclass thiz, jboolean usePulley) {
+    return wasmline::Api::warmupEngine(usePulley == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jstring JNICALL
-Java_crow_wasmline_Wasmline_nativeWasmtimeVersion(JNIEnv *env, jclass thiz) {
+Java_crow_wasmline_JniWasmlineBindings_nativeWasmtimeVersion(JNIEnv *env, jclass thiz) {
     return env ? env->NewStringUTF(wasmline::Api::wasmtimeVersion()) : nullptr;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeSupportsCranelift(JNIEnv *env, jclass thiz) {
+Java_crow_wasmline_JniWasmlineBindings_nativeSupportsCranelift(JNIEnv *env, jclass thiz) {
     return wasmline::Api::supportsCranelift() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeSupportsPulley(JNIEnv *env, jclass thiz) {
+Java_crow_wasmline_JniWasmlineBindings_nativeSupportsPulley(JNIEnv *env, jclass thiz) {
     return wasmline::Api::supportsPulley() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
+Java_crow_wasmline_JniWasmlineBindings_nativeReleaseEngine(JNIEnv *env, jclass thiz) {
     wasmline::Api::releaseEngine();
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeResetAotLoadPathDiagnostics(JNIEnv *env, jclass thiz) {
+Java_crow_wasmline_JniWasmlineBindings_nativeResetAotLoadPathDiagnostics(JNIEnv *env, jclass thiz) {
     wasmline::AotLoadPathDiagnostics::reset();
 }
 
 JNIEXPORT jlong JNICALL
-Java_crow_wasmline_Wasmline_nativeAotLoadPathDiagnostics(JNIEnv *env, jclass thiz) {
+Java_crow_wasmline_JniWasmlineBindings_nativeAotLoadPathDiagnostics(JNIEnv *env, jclass thiz) {
     return static_cast<jlong>(wasmline::AotLoadPathDiagnostics::snapshot());
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadAot(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadPrecompiledModuleCommon(env, keyStr, pathStr, false);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadAotUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadPrecompiledModuleCommon(env, keyStr, pathStr, true);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadAotWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr, jint formatCode) {
+Java_crow_wasmline_JniWasmlineBindings_nativeLoadAotWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr, jint formatCode) {
     return loadPrecompiledModuleWithFormatCommon(env, keyStr, pathStr, formatCode, false);
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadAotUnsafeWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeLoadAotUnsafeWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
                                                           jint formatCode) {
     return loadPrecompiledModuleWithFormatCommon(env, keyStr, pathStr, formatCode, true);
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadComponent(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadComponentCommon(env, keyStr, pathStr, false);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadComponentUnsafe(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr) {
-    return loadComponentCommon(env, keyStr, pathStr, true);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadComponentWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeLoadComponentWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
                                                           jint formatCode) {
     return loadComponentWithFormatCommon(env, keyStr, pathStr, formatCode, false);
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeLoadComponentUnsafeWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeLoadComponentUnsafeWithFormat(JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
                                                                 jint formatCode) {
     return loadComponentWithFormatCommon(env, keyStr, pathStr, formatCode, true);
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeReleaseModule(JNIEnv *env, jclass thiz, jstring keyStr) {
+Java_crow_wasmline_JniWasmlineBindings_nativeReleaseModule(JNIEnv *env, jclass thiz, jstring keyStr) {
     if (!env || !keyStr) return;
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     if (!key) return;
@@ -170,7 +136,7 @@ Java_crow_wasmline_Wasmline_nativeReleaseModule(JNIEnv *env, jclass thiz, jstrin
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmline_Wasmline_nativeInvokeInbound(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
+Java_crow_wasmline_JniWasmlineBindings_nativeInvokeInbound(JNIEnv *env, jclass thiz, jstring keyStr, jstring actionStr, jbyteArray inputBytes) {
     if (!keyStr || !actionStr || !inputBytes) {
         return transportFailure(env, "JNI inbound invocation received a null input.");
     }
@@ -264,24 +230,24 @@ static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr, jstring exportS
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmline_Wasmline_nativeInvokeRaw(JNIEnv *env, jclass thiz, jstring keyStr, jstring exportStr, jbyteArray inputBytes) {
+Java_crow_wasmline_JniWasmlineBindings_nativeInvokeRaw(JNIEnv *env, jclass thiz, jstring keyStr, jstring exportStr, jbyteArray inputBytes) {
     return invokeTypedCommon(env, keyStr, exportStr, inputBytes, wasmline::TypedInvocationKind::RAW);
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmline_Wasmline_nativeInvokeComponent(JNIEnv *env, jclass thiz, jstring keyStr, jstring exportStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeInvokeComponent(JNIEnv *env, jclass thiz, jstring keyStr, jstring exportStr,
                                                    jbyteArray inputBytes) {
     return invokeTypedCommon(env, keyStr, exportStr, inputBytes, wasmline::TypedInvocationKind::COMPONENT);
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmline_Wasmline_nativeInvokeComponentInstance(JNIEnv *env, jclass thiz, jstring instanceKeyStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeInvokeComponentInstance(JNIEnv *env, jclass thiz, jstring instanceKeyStr,
                                                            jstring exportStr, jbyteArray inputBytes) {
     return invokeTypedCommon(env, instanceKeyStr, exportStr, inputBytes, wasmline::TypedInvocationKind::COMPONENT, true);
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeInstantiateComponent(JNIEnv* env, jclass thiz, jstring artifactKeyStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeInstantiateComponent(JNIEnv* env, jclass thiz, jstring artifactKeyStr,
                                                         jstring instanceKeyStr, jobject jDispatcher) {
     if (!env || !artifactKeyStr || !instanceKeyStr || !jDispatcher) return JNI_FALSE;
     const char* artifactKey = env->GetStringUTFChars(artifactKeyStr, nullptr);
@@ -301,7 +267,7 @@ Java_crow_wasmline_Wasmline_nativeInstantiateComponent(JNIEnv* env, jclass thiz,
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeReleaseComponentInstance(JNIEnv* env, jclass thiz, jstring instanceKeyStr) {
+Java_crow_wasmline_JniWasmlineBindings_nativeReleaseComponentInstance(JNIEnv* env, jclass thiz, jstring instanceKeyStr) {
     if (!env || !instanceKeyStr) return;
     const char* instanceKey = env->GetStringUTFChars(instanceKeyStr, nullptr);
     if (!instanceKey) return;
@@ -310,7 +276,7 @@ Java_crow_wasmline_Wasmline_nativeReleaseComponentInstance(JNIEnv* env, jclass t
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeDropComponentResource(JNIEnv* env, jclass thiz, jstring instanceKeyStr, jbyteArray resourceBytes) {
+Java_crow_wasmline_JniWasmlineBindings_nativeDropComponentResource(JNIEnv* env, jclass thiz, jstring instanceKeyStr, jbyteArray resourceBytes) {
     if (!env || !instanceKeyStr || !resourceBytes) return JNI_FALSE;
     const char* instanceKey = env->GetStringUTFChars(instanceKeyStr, nullptr);
     if (!instanceKey) return JNI_FALSE;
@@ -333,7 +299,7 @@ Java_crow_wasmline_Wasmline_nativeDropComponentResource(JNIEnv* env, jclass thiz
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_crow_wasmline_Wasmline_nativeCreateComponentHostResource(JNIEnv* env, jclass thiz, jstring instanceKeyStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeCreateComponentHostResource(JNIEnv* env, jclass thiz, jstring instanceKeyStr,
                                                                jstring interfaceIdStr, jstring resourceNameStr,
                                                                jint representation) {
     if (!env || !instanceKeyStr || !interfaceIdStr || !resourceNameStr || representation == 0) return nullptr;
@@ -358,7 +324,7 @@ Java_crow_wasmline_Wasmline_nativeCreateComponentHostResource(JNIEnv* env, jclas
 }
 
 JNIEXPORT void JNICALL
-Java_crow_wasmline_Wasmline_nativeSetOutboundHandler(JNIEnv *env, jclass thiz, jstring keyStr, jstring codecStr,
+Java_crow_wasmline_JniWasmlineBindings_nativeSetOutboundHandler(JNIEnv *env, jclass thiz, jstring keyStr, jstring codecStr,
                                                       jobject jDispatcher) {
     if (!keyStr || !codecStr || !jDispatcher) return;
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
@@ -380,7 +346,7 @@ Java_crow_wasmline_Wasmline_nativeSetOutboundHandler(JNIEnv *env, jclass thiz, j
 }
 
 JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_Wasmline_nativeSetComponentHostHandler(JNIEnv* env, jclass thiz, jstring keyStr, jobject jDispatcher) {
+Java_crow_wasmline_JniWasmlineBindings_nativeSetComponentHostHandler(JNIEnv* env, jclass thiz, jstring keyStr, jobject jDispatcher) {
     if (!env || !keyStr || !jDispatcher) return JNI_FALSE;
     const char* key = env->GetStringUTFChars(keyStr, nullptr);
     if (!key) return JNI_FALSE;

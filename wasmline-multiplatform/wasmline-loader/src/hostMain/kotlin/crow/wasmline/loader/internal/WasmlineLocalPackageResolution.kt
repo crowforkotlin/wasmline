@@ -66,7 +66,6 @@ internal object WasmlineLocalPackageResolution {
         return WasmlineSourceResolution.ContinueWith(
             VerifiedPackageArtifact(
                 descriptor = descriptor,
-                expectedSha256 = artifact.sha256,
             ),
         )
     }

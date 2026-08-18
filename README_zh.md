@@ -94,8 +94,6 @@ import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
 suspend fun main() {
-    WasmlineLoader.bootstrap()
-
     // 本地路径与远程 URL 均可——http(s):// 会自动按远程 manifest 加载
     val module = when (val result = WasmlineLoader.load(
         source = "https://example.com/plugin/manifest.wlm",
@@ -120,7 +118,11 @@ suspend fun main() {
 }
 ```
 
+远程 artifact 使用流式写入、原子发布的内容寻址文件缓存。可通过 `WasmlineLoadOptions.maxCacheBytes` 调整默认的 512 MiB 容量上限。
+
 `WasmlineLoader.load` 是 suspend API。本地产物与本地 manifest 不需要 network adapter。远程 manifest 只有在 fresh manifest 或所选 artifact 未命中缓存时，才需要 `wasmline-network-ktor`、`wasmline-network-okhttp` 或自定义 resolver；runtime 不会写死任何 HTTP engine。
+
+API 职责是明确分开的：`WasmlineLoader` 负责解析、校验、选择并加载产物；`WasmlineRuntime` 负责进程级的预加载、引擎预热、运行时信息和全局关闭；每个已加载的 `Wasmline` 都是可独立关闭的产物句柄。加载采用惰性初始化，因此调用 `WasmlineLoader.load()` 前不需要显式初始化运行时。
 
 > [!NOTE]
 > `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。编译单元未应用 `wasmline-kotlin-plugin` 时，这些调用会在运行时抛出 `UnsupportedOperationException`。
