@@ -10,4 +10,6 @@ dependencies {
     implementation(libs.gradle.compose.compiler.plugin)
     implementation(libs.gradle.ksp.plugin)
     implementation(libs.gradle.kotlinx.serialization.plugin)
+    implementation(libs.gradle.maven.publish.plugin)
+    implementation(libs.gradle.dokka.plugin)
 }
