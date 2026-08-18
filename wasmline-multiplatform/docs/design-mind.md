@@ -77,7 +77,8 @@ Valid runtime combinations:
 WasmlineLoader
   -> verified manifest or caller-trusted descriptor
   -> select CWASM/PWASM for host runtime
-  -> Wasmline platform actual (JNI or iOS C interop)
+  -> internal runtime bridge
+  -> Wasmline platform implementation (JNI or iOS C interop)
   -> wasmline-core Api
   -> Module or Component cache
   -> Session, RawModuleSession, or ComponentSession
@@ -89,9 +90,10 @@ Native loading is deserialize-only. `wasmtime_module_new` and `wasmtime_componen
 
 The selected physical format controls engine mode:
 
-- `CWASM` initializes or switches to the Cranelift engine.
-- `PWASM` initializes or switches to the Pulley engine.
-- Switching formats releases cached sessions and artifacts before engine reinitialization.
+- `CWASM` initializes or selects the Cranelift engine.
+- `PWASM` initializes or selects the Pulley engine.
+- Selecting the current engine is idempotent.
+- Switching engines is allowed only when no artifacts remain loaded. A conflicting warm-up or artifact load fails without releasing existing artifacts; only explicit runtime shutdown invalidates all live handles.
 
 ## Browser Host Flow
 

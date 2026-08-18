@@ -369,7 +369,9 @@ Resolution time:
   {artifactId}-jvm-{version}-linux-x86_64.jar added to classpath
 
 Runtime:
-  NativeLoaderExt.loadNativeLibrary()
+  WasmlineRuntime.preload() or the first native runtime access
+       ↓
+  ensureNativeRuntimeLoaded()
        ↓
   Detect: platform=linux, arch=x86_64
        ↓

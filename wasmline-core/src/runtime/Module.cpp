@@ -71,11 +71,6 @@ namespace wasmline {
         return module;
     }
 
-    wasmtime_module_t* Module::load(const std::string&, const std::string& filePath) {
-        LOGE("[Wasmtime] Module --> Explicit artifact format is required: %s", filePath.c_str());
-        return nullptr;
-    }
-
     wasmtime_module_t* Module::load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat) {
         wasmtime_module_t* module =
             impl_->cache.load(key, filePath, [this, artifactFormat](const std::string& loadKey, const std::string& path) {
@@ -83,11 +78,6 @@ namespace wasmline {
             });
         if (module) LOGI("[Wasmtime] Module --> Loaded and cached: %s", key.c_str());
         return module;
-    }
-
-    wasmtime_module_t* Module::loadUnsafe(const std::string&, const std::string& filePath) {
-        LOGE("[Wasmtime] Module --> Explicit artifact format is required: %s", filePath.c_str());
-        return nullptr;
     }
 
     wasmtime_module_t* Module::loadUnsafe(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat) {
@@ -107,6 +97,10 @@ namespace wasmline {
         const bool released = impl_->cache.release(key);
         if (released) LOGI("[Wasmtime] Module --> Released module key: %s", key.c_str());
         return released;
+    }
+
+    bool Module::empty() const {
+        return impl_->cache.empty();
     }
 
     void Module::clear() {

@@ -13,14 +13,13 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.bindComponentHost
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.component
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invokeComponentResult
-import crow.wasmline.wasmlineLoadArtifact
-import crow.wasmline.wasmlineRuntimeCapabilities
-import crow.wasmline.wasmlineShutdown
+import crow.wasmline.platformWasmlineLoadArtifact
+import crow.wasmline.platformWasmlineRuntimeCapabilities
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -76,7 +75,7 @@ class NativeTypedComponentHostImportIntegrationTest {
                 handle.close()
             }
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
@@ -101,7 +100,7 @@ class NativeTypedComponentHostImportIntegrationTest {
                 handle.close()
             }
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
@@ -131,7 +130,7 @@ class NativeTypedComponentHostImportIntegrationTest {
                 handle.close()
             }
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
             artifact.delete()
         }
     }
@@ -156,8 +155,8 @@ class NativeTypedComponentHostImportIntegrationTest {
 
     private fun loadComponent(artifact: File): crow.wasmline.Wasmline {
         val artifactFormat = componentAotFormat(artifact.name)
-        val runtime = wasmlineRuntimeCapabilities()
-        val state = wasmlineLoadArtifact(
+        val runtime = platformWasmlineRuntimeCapabilities()
+        val state = platformWasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = artifact.absolutePath,
                 artifactFormat = artifactFormat,

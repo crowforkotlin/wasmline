@@ -57,8 +57,6 @@ import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
 suspend fun main() {
-    WasmlineLoader.bootstrap()
-
     val module = when (val result = WasmlineLoader.load(
         source = "https://example.com/plugin/manifest.wlm",
         options = WasmlineLoadOptions(
@@ -86,7 +84,31 @@ suspend fun main() {
 }
 ```
 
-Local artifacts and local manifests do not require a network artifact. For remote manifests, add either `wasmline-network-ktor` (JVM, Android, iOS) or `wasmline-network-okhttp` (JVM, Android). The adapter is consulted only on a fresh-manifest or artifact cache miss; a fully cached package can load without a network client. Applications can also implement `WasmlineNetworkClient` or provide a custom remote resolver.
+Local artifacts and local manifests do not require a network artifact. For remote manifests, add either `wasmline-network-ktor` (JVM, Android, iOS) or `wasmline-network-okhttp` (JVM, Android). The adapter is consulted only on a fresh-manifest or artifact cache miss; a fully cached package can load without a network client. The built-in file cache streams artifact bodies into atomically published content-addressed files and evicts older entries above `WasmlineLoadOptions.maxCacheBytes` (512 MiB by default). Applications can also implement `WasmlineNetworkClient`, provide a custom cache, or provide a custom remote resolver.
+
+## Runtime Lifecycle and API Ownership
+
+`WasmlineLoader`, `WasmlineRuntime`, and a loaded `Wasmline` have separate responsibilities:
+
+| API | Responsibility |
+|---|---|
+| `WasmlineLoader` | Resolve sources, verify packages, select a compatible artifact, and load it |
+| `WasmlineRuntime` | Manage process-wide platform linking, engine warm-up, runtime information, and shutdown |
+| `Wasmline` | Represent one loaded artifact and release that handle with `close()` |
+
+Most applications should call `WasmlineLoader.load()` directly. Native linking and engine creation happen lazily. Startup optimization is optional:
+
+```kotlin
+import crow.wasmline.WasmlineEngineKind
+import crow.wasmline.WasmlineRuntime
+
+WasmlineRuntime.preload() // Link the platform runtime without creating an engine.
+WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY) // Create the selected engine early.
+```
+
+`WasmlineRuntime.nativeInfo()` returns the linked native runtime identity and its `supportedEngines`; it returns `null` in a browser. Browser runtimes do not provide native engine warm-up. Repeating `warmUp()` for the selected engine is safe. Switching engines is allowed only after all loaded artifact handles have been closed; otherwise warm-up or a conflicting artifact load fails without invalidating the live handles.
+
+Use `Wasmline.close()` for normal artifact ownership. Reserve `WasmlineRuntime.shutdown()` for process or application teardown because it releases all engines, artifacts, and sessions and invalidates every live `Wasmline` handle.
 
 The complete request overload is public when a load needs metadata or custom resolver hooks:
 
@@ -129,12 +151,12 @@ import crow.wasmline.WasmlineComponentValue
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.invokeComponentResult
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.wasmlineNativeRuntimeInfo
 
-val runtime = requireNotNull(wasmlineNativeRuntimeInfo())
+val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
 val is64Bit = requireNotNull(runtime.is64Bit)
 val result = WasmlineLoader.load(
     WasmlineArtifactDescriptor(

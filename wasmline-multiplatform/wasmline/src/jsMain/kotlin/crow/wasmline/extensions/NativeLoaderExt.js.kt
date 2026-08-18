@@ -1,3 +1,3 @@
 package crow.wasmline.extensions
 
-actual fun loadNativeLibrary() = browserLoadNativeLibrary()
+internal actual fun ensureNativeRuntimeLoaded() = browserEnsureNativeRuntimeLoaded()

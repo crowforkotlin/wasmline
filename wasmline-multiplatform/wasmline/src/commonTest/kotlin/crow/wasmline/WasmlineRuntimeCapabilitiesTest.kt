@@ -31,19 +31,26 @@ class WasmlineRuntimeCapabilitiesTest {
     @Test
     fun derivesImmutableEngineVariantPolicy() {
         assertEquals(WasmlineNativeBackend.CRANELIFT, host.nativeBackendPolicy)
-        assertEquals(
+        val craneliftRuntime =
             WasmlineNativeRuntimeInfo(
                 backend = WasmlineNativeBackend.CRANELIFT,
                 wasmtimeVersion = "47.0.2",
                 targetOs = "linux",
                 targetCpu = "x86_64",
                 is64Bit = true,
-            ),
-            host.nativeRuntimeInfo,
+            )
+        assertEquals(craneliftRuntime, host.nativeRuntimeInfo)
+        assertEquals(
+            setOf(WasmlineEngineKind.PULLEY, WasmlineEngineKind.CRANELIFT),
+            craneliftRuntime.supportedEngines,
         )
         assertEquals(
             WasmlineNativeBackend.PULLEY,
             host.copy(supportsCranelift = false).nativeBackendPolicy,
+        )
+        assertEquals(
+            setOf(WasmlineEngineKind.PULLEY),
+            requireNotNull(host.copy(supportsCranelift = false).nativeRuntimeInfo).supportedEngines,
         )
         assertNull(
             host.copy(

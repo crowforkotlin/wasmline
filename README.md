@@ -94,8 +94,6 @@ import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
 suspend fun main() {
-    WasmlineLoader.bootstrap()
-
     // Local paths and remote URLs are both supported — http(s):// loads the remote manifest
     val module = when (val result = WasmlineLoader.load(
         source = "https://example.com/plugin/manifest.wlm",
@@ -120,7 +118,11 @@ suspend fun main() {
 }
 ```
 
+Remote artifacts use a streaming, atomically published content-addressed file cache. Set `WasmlineLoadOptions.maxCacheBytes` to change its 512 MiB default capacity.
+
 `WasmlineLoader.load` is a suspending API. Local artifacts and local manifests do not require a network adapter. A remote manifest needs `wasmline-network-ktor`, `wasmline-network-okhttp`, or a custom resolver only when its fresh manifest or selected artifact is missing from the configured cache. The runtime never hardcodes an HTTP engine.
+
+API ownership is explicit: `WasmlineLoader` resolves, verifies, selects, and loads artifacts; `WasmlineRuntime` owns process-wide preload, engine warm-up, runtime information, and shutdown; each loaded `Wasmline` is an independently closeable artifact handle. Loading is lazy, so applications do not need an explicit runtime initialization call before `WasmlineLoader.load()`.
 
 > [!NOTE]
 > `link<T>()` and `bind(impl)` are rewrite targets of the Kotlin IR compiler plugin. If `wasmline-kotlin-plugin` is not applied to the compilation unit, these calls throw `UnsupportedOperationException` at runtime.

@@ -8,6 +8,7 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
@@ -16,7 +17,6 @@ import crow.wasmline.sample.component.ComponentEchoRequest
 import crow.wasmline.sample.component.ComponentHostService
 import crow.wasmline.sample.component.ComponentPluginService
 import crow.wasmline.serialization.WasmlineSerializationConfig
-import crow.wasmline.wasmlineNativeRuntimeInfo
 import java.io.File
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -28,13 +28,13 @@ import kotlin.test.assertTrue
 
 class ComponentServiceIntegrationTest {
     @BeforeTest
-    fun bootstrap() {
-        WasmlineLoader.bootstrap()
+    fun preloadRuntime() {
+        WasmlineRuntime.preload()
     }
 
     @AfterTest
     fun shutdown() {
-        WasmlineLoader.shutdown()
+        WasmlineRuntime.shutdown()
     }
 
     @Test
@@ -97,7 +97,7 @@ class ComponentServiceIntegrationTest {
     }
 
     private suspend fun loadComponent(artifact: File, format: WasmlineArtifactFormat): Wasmline {
-        val runtime = requireNotNull(wasmlineNativeRuntimeInfo())
+        val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
         val descriptor = WasmlineArtifactDescriptor(
             path = artifact.absolutePath,
             artifactFormat = format,
