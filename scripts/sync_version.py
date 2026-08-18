@@ -6,19 +6,23 @@ Usage:
     python3 scripts/sync_version.py --check
     python3 scripts/sync_version.py --set wasmtime_version=47.0.2
     python3 scripts/sync_version.py --verify-upstream
+    python3 scripts/sync_version.py --check-ktlint-latest
+    python3 scripts/sync_version.py --update-ktlint
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import stat
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
+from urllib.request import Request, urlopen
 
 if __package__:
     from . import toolchain_lock
@@ -28,6 +32,7 @@ else:
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 MANIFEST_PATH = SCRIPT_DIR / "versions.json"
+KTLINT_LATEST_RELEASE_URL = "https://api.github.com/repos/ktlint/ktlint/releases/latest"
 
 VersionMap = dict[str, str]
 Replacement = str | Callable[[VersionMap], str]
@@ -39,6 +44,7 @@ REQUIRED_KEYS = (
     "wasm_tools_version",
     "wit_bindgen_version",
     "kotlin_version",
+    "ktlint_version",
     "dokka_version",
     "kotlin_min_version",
     "agp_version",
@@ -62,6 +68,10 @@ class Rule:
 class FileSpec:
     path: str
     rules: tuple[Rule, ...]
+
+
+class KtlintReleaseError(RuntimeError):
+    """Raised when the latest stable KtLint release cannot be resolved."""
 
 
 def badge_value(value: str) -> str:
@@ -133,6 +143,11 @@ def validate_version(key: str, value: str) -> None:
             f"Invalid version value for '{key}': '{value}'. "
             "Expected MAJOR.MINOR.PATCH with an optional prerelease/build suffix."
         )
+    if key == "ktlint_version" and not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", value):
+        raise SystemExit(
+            f"Invalid version value for '{key}': '{value}'. "
+            "KtLint must use a stable release without prerelease or build metadata."
+        )
     if key == "wasmtime_version":
         numeric_version = value.split("-", 1)[0].split("+", 1)[0]
         _, minor, patch = (int(part) for part in numeric_version.split("."))
@@ -147,6 +162,63 @@ def validate_version(key: str, value: str) -> None:
 def validate_versions(versions: VersionMap) -> None:
     for key in REQUIRED_KEYS:
         validate_version(key, versions[key])
+
+
+def parse_latest_ktlint_release(payload: Mapping[str, Any]) -> str:
+    """Extract one stable semantic version from GitHub's latest-release payload."""
+
+    if payload.get("draft") is not False or payload.get("prerelease") is not False:
+        raise KtlintReleaseError("GitHub did not return a stable KtLint release.")
+    tag = payload.get("tag_name")
+    if not isinstance(tag, str) or not tag:
+        raise KtlintReleaseError("GitHub's KtLint release payload has no tag_name.")
+    version = tag.removeprefix("v")
+    if not SEMANTIC_VERSION_PATTERN.fullmatch(version) or "-" in version or "+" in version:
+        raise KtlintReleaseError(f"GitHub returned an invalid stable KtLint version: {tag!r}.")
+    return version
+
+
+def stable_version_key(value: str) -> tuple[int, int, int]:
+    major, minor, patch = (int(part) for part in value.split("."))
+    return major, minor, patch
+
+
+def latest_ktlint_version() -> str:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "wasmline-version-sync",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if token := os.environ.get("GITHUB_TOKEN"):
+        headers["Authorization"] = f"Bearer {token}"
+    request = Request(
+        KTLINT_LATEST_RELEASE_URL,
+        headers=headers,
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            payload = json.load(response)
+    except (OSError, ValueError) as error:
+        raise KtlintReleaseError(f"Failed to resolve the latest KtLint release: {error}") from error
+    if not isinstance(payload, Mapping):
+        raise KtlintReleaseError("GitHub returned an invalid KtLint release payload.")
+    return parse_latest_ktlint_release(payload)
+
+
+def check_ktlint_latest(versions: VersionMap) -> int:
+    current = versions["ktlint_version"]
+    latest = latest_ktlint_version()
+    current_key = stable_version_key(current)
+    latest_key = stable_version_key(latest)
+    if current_key == latest_key:
+        print(f"KtLint is up to date: {current}.")
+        return 0
+    if current_key > latest_key:
+        print(f"KtLint pin is newer than the latest upstream release: {current} > {latest}.")
+        return 0
+    print(f"KtLint update available: {current} -> {latest}.")
+    print("Run: python3 scripts/sync_version.py --update-ktlint")
+    return 1
 
 
 def apply_rules(text: str, spec: FileSpec, versions: VersionMap) -> str:
@@ -435,7 +507,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline/build.gradle.kts",
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.android.gradle.kts",
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.multiplatform.library.gradle.kts",
-            "wasmline-multiplatform/gradle/wasmline-engine.gradle.kts",
+            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
             "wasmline-multiplatform/wasmline-gradle-plugin/build.gradle.kts",
             "wasmline-multiplatform/wasmline-kotlin-plugin/build.gradle.kts",
             "wasmline-multiplatform/wasmline-loader/build.gradle.kts",
@@ -1181,13 +1253,29 @@ def main() -> int:
         action="store_true",
         help="Fail if GitHub release metadata differs from the checked-in toolchain lock.",
     )
+    parser.add_argument(
+        "--check-ktlint-latest",
+        action="store_true",
+        help="Fail when a newer stable KtLint release is available.",
+    )
+    parser.add_argument(
+        "--update-ktlint",
+        action="store_true",
+        help="Update ktlint_version to the latest stable GitHub release and synchronize files.",
+    )
     args = parser.parse_args()
 
     if args.check and args.set:
         raise SystemExit("--check cannot be used together with --set.")
     if args.verify_upstream and args.set:
         raise SystemExit("--verify-upstream cannot be used together with --set.")
-    if args.list and (args.check or args.set or args.verify_upstream):
+    if args.check_ktlint_latest and (
+        args.check or args.set or args.list or args.verify_upstream or args.update_ktlint
+    ):
+        raise SystemExit("--check-ktlint-latest cannot be combined with other operations.")
+    if args.update_ktlint and (args.check or args.set or args.list or args.verify_upstream):
+        raise SystemExit("--update-ktlint cannot be combined with other operations.")
+    if args.list and (args.check or args.set or args.verify_upstream or args.update_ktlint):
         raise SystemExit("--list cannot be combined with other operations.")
 
     data = load_manifest()
@@ -1197,9 +1285,33 @@ def main() -> int:
         list_versions(versions)
         return 0
 
+    if args.check_ktlint_latest:
+        try:
+            return check_ktlint_latest(versions)
+        except KtlintReleaseError as error:
+            raise SystemExit(str(error)) from error
+
     updates: dict[str, str] = {}
-    if args.set:
+    if args.update_ktlint:
+        try:
+            latest = latest_ktlint_version()
+        except KtlintReleaseError as error:
+            raise SystemExit(str(error)) from error
+        current = versions["ktlint_version"]
+        current_key = stable_version_key(current)
+        latest_key = stable_version_key(latest)
+        if current_key == latest_key:
+            print(f"KtLint is already up to date: {current}.")
+            return 0
+        if current_key > latest_key:
+            print(f"KtLint pin is newer than the latest upstream release: {current} > {latest}.")
+            return 0
+        updates = {"ktlint_version": latest}
+        print(f"Updating ktlint_version: {current} -> {latest}.")
+    elif args.set:
         updates = parse_updates(args.set)
+
+    if updates:
         versions.update(updates)
         data["versions"] = versions
 

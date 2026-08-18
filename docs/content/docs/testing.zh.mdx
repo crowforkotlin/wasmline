@@ -60,16 +60,20 @@ Native Wasmtime 测试要求 `wasmline/src/jvmMain/resources/jni/` 下存在 nat
 
 ## 版本校验
 
-`scripts/versions.json` 是项目、sample-plugin、Wasmtime、Kotlin、Dokka、AGP、Zig 与 JBR 版本的唯一源。同步器会一次更新所有受管理的构建文件、脚本、文档与 CI fallback：
+`scripts/versions.json` 是项目、sample-plugin、Wasmtime、Kotlin、ktlint、Dokka、AGP、Zig 与 JBR 版本的唯一源。同步器会一次更新所有受管理的构建文件、脚本、文档与 CI fallback：
 
 ```bash
 python3 scripts/sync_version.py
 python3 scripts/sync_version.py --set wasmtime_version=47.0.2
 python3 scripts/sync_version.py --check
 python3 scripts/test_sync_version.py
+
+# 查询或更新固定的独立 Kotlin 格式化器版本。
+python3 scripts/sync_version.py --check-ktlint-latest
+python3 scripts/sync_version.py --update-ktlint
 ```
 
-手动修改 `versions.json` 后直接执行无参数命令，或者使用 `--set` 在一次命令中更新 manifest 并完成同步。测试命令仅运行独立的回归测试，不会修改版本。
+手动修改 `versions.json` 后直接执行无参数命令，或者使用 `--set` 在一次命令中更新 manifest 并完成同步。本地 Kotlin lint 与 CI 都解析固定的 `ktlint_version`，不会自动漂移到未经审阅的 release。每周运行的 `Update ktlint` workflow 在发现新的稳定版时会创建或更新一个 PR。测试命令仅运行独立的回归测试，不会修改版本。
 
 ## Kotlin 注释规范
 
