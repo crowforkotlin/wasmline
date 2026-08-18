@@ -57,8 +57,6 @@ import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
 suspend fun main() {
-    WasmlineLoader.bootstrap()
-
     val module = when (val result = WasmlineLoader.load(
         source = "https://example.com/plugin/manifest.wlm",
         options = WasmlineLoadOptions(
@@ -86,7 +84,31 @@ suspend fun main() {
 }
 ```
 
-本地产物和本地 manifest 不需要 network 构件。加载远程 manifest 时，可选择 `wasmline-network-ktor`（JVM、Android、iOS）或 `wasmline-network-okhttp`（JVM、Android）。只有 fresh manifest 或 artifact 未命中缓存时才会调用 adapter；manifest 与所选 artifact 均已缓存时，即使没有 network client 也能继续加载。应用也可以自行实现 `WasmlineNetworkClient`，或提供自定义远程 resolver。
+本地产物和本地 manifest 不需要 network 构件。加载远程 manifest 时，可选择 `wasmline-network-ktor`（JVM、Android、iOS）或 `wasmline-network-okhttp`（JVM、Android）。只有 fresh manifest 或 artifact 未命中缓存时才会调用 adapter；manifest 与所选 artifact 均已缓存时，即使没有 network client 也能继续加载。内置文件缓存会把 artifact body 流式写入原子发布的内容寻址文件，并在超过 `WasmlineLoadOptions.maxCacheBytes` 时淘汰旧条目；默认上限为 512 MiB。应用也可以自行实现 `WasmlineNetworkClient`、提供自定义缓存，或提供自定义远程 resolver。
+
+## 运行时生命周期与 API 职责
+
+`WasmlineLoader`、`WasmlineRuntime` 与已加载的 `Wasmline` 各自承担不同职责：
+
+| API | 职责 |
+|---|---|
+| `WasmlineLoader` | 解析来源、校验 package、选择兼容产物并加载 |
+| `WasmlineRuntime` | 管理进程级的平台链接、引擎预热、运行时信息与全局关闭 |
+| `Wasmline` | 表示一个已加载产物，并通过 `close()` 释放该句柄 |
+
+大多数应用应直接调用 `WasmlineLoader.load()`；原生链接与引擎创建会惰性完成。启动优化是可选操作：
+
+```kotlin
+import crow.wasmline.WasmlineEngineKind
+import crow.wasmline.WasmlineRuntime
+
+WasmlineRuntime.preload() // 只链接平台运行时，不创建引擎。
+WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY) // 提前创建指定引擎。
+```
+
+`WasmlineRuntime.nativeInfo()` 返回已链接原生运行时的身份信息及其 `supportedEngines`；浏览器中返回 `null`，也不提供原生引擎预热。对当前引擎重复调用 `warmUp()` 是安全的。只有所有已加载产物句柄都关闭后才能切换引擎；否则预热或冲突产物加载会失败，但不会使现有句柄失效。
+
+正常的产物所有权应使用 `Wasmline.close()`。`WasmlineRuntime.shutdown()` 会释放全部引擎、产物与 session，并使所有存活的 `Wasmline` 句柄失效，因此只应在进程或应用退出时使用。
 
 需要传递 metadata 或自定义 resolver 时，可直接使用公开的完整 request overload：
 
@@ -129,12 +151,12 @@ import crow.wasmline.WasmlineComponentValue
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.invokeComponentResult
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.wasmlineNativeRuntimeInfo
 
-val runtime = requireNotNull(wasmlineNativeRuntimeInfo())
+val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
 val is64Bit = requireNotNull(runtime.is64Bit)
 val result = WasmlineLoader.load(
     WasmlineArtifactDescriptor(

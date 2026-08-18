@@ -6,13 +6,13 @@ import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import crow.wasmline.network.ktor.KtorNetworkClient
-import crow.wasmline.wasmlineNativeRuntimeInfo
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
@@ -91,7 +91,7 @@ private suspend fun loadDirectArtifact(path: String, options: WasmlineLoadOption
         path.endsWith(".wasm", ignoreCase = true) -> WasmlineArtifactFormat.RAW_WASM
         else -> return WasmlineLoader.load(source = path, options = options)
     }
-    val runtime = wasmlineNativeRuntimeInfo()
+    val runtime = WasmlineRuntime.nativeInfo()
     val requestedFormat = requestedBundledArtifactFormat()
     val targetCpu = when (format) {
         WasmlineArtifactFormat.CWASM -> runtime?.targetCpu
@@ -129,8 +129,6 @@ private suspend fun loadDirectArtifact(path: String, options: WasmlineLoadOption
 }
 
 internal suspend fun runApplicationSample() {
-    WasmlineLoader.bootstrap()
-
     val remoteUrl = resolveRemoteWlmUrl()
     val source: String
     if (remoteUrl != null) {
@@ -179,7 +177,7 @@ internal suspend fun runApplicationSample() {
             }
         }
     } finally {
-        WasmlineLoader.shutdown()
+        WasmlineRuntime.shutdown()
     }
 }
 

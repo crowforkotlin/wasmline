@@ -1,10 +1,10 @@
 package crow.wasmline.loader.internal
 
-import crow.wasmline.wasmlineNativeRuntimeInfo
+import crow.wasmline.WasmlineRuntime
 
 internal actual val currentHostArtifactTarget: WasmlineHostArtifactTarget
     get() {
-        val runtimeInfo = wasmlineNativeRuntimeInfo()
+        val runtimeInfo = WasmlineRuntime.nativeInfo()
         return WasmlineHostArtifactTarget(
             os = "ios",
             cpu = "aarch64",

@@ -76,8 +76,8 @@ class WasmlineIosComponentHostCallbackTest {
             ?: error("$IOS_FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1.")
         assertTrue(fixturePath.endsWith(".pwasm", ignoreCase = true))
 
-        val runtime = wasmlineRuntimeCapabilities()
-        val state = wasmlineLoadArtifact(
+        val runtime = platformWasmlineRuntimeCapabilities()
+        val state = platformWasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = fixturePath,
                 artifactFormat = WasmlineArtifactFormat.PWASM,
@@ -103,7 +103,7 @@ class WasmlineIosComponentHostCallbackTest {
             assertEquals(listOf(WasmlineComponentValue.S32(42)), result.value.values)
         } finally {
             handle.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 

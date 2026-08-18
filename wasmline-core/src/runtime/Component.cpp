@@ -63,20 +63,10 @@ namespace wasmline {
         return component;
     }
 
-    wasmtime_component_t* Component::load(const std::string&, const std::string& filePath) {
-        LOGE("[Wasmtime] Component -> Explicit artifact format is required: %s", filePath.c_str());
-        return nullptr;
-    }
-
     wasmtime_component_t* Component::load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat) {
         return impl_->cache.load(key, filePath, [this, artifactFormat](const std::string& loadKey, const std::string& path) {
             return compileInternal(loadKey, path, artifactFormat);
         });
-    }
-
-    wasmtime_component_t* Component::loadUnsafe(const std::string&, const std::string& filePath) {
-        LOGE("[Wasmtime] Component -> Explicit artifact format is required: %s", filePath.c_str());
-        return nullptr;
     }
 
     wasmtime_component_t* Component::loadUnsafe(const std::string& key, const std::string& filePath,
@@ -92,6 +82,10 @@ namespace wasmline {
 
     bool Component::release(const std::string& key) {
         return impl_->cache.release(key);
+    }
+
+    bool Component::empty() const {
+        return impl_->cache.empty();
     }
 
     void Component::clear() {

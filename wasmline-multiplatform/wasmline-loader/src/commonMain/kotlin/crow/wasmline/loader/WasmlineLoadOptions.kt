@@ -12,7 +12,8 @@ import crow.wasmline.loader.network.WasmlineNetworkClient
  *
  * A remote package can load without [networkClient] when its fresh manifest and
  * selected artifact are already in [cache]. A cache miss requires a client or a
- * custom resolver.
+ * custom resolver. [maxCacheBytes] bounds the loader's built-in file cache; a
+ * custom [cache] remains responsible for its own capacity policy.
  */
 data class WasmlineLoadOptions(
     val runtimeConfig: WasmlineConfig = WasmlineConfig(),
@@ -20,12 +21,15 @@ data class WasmlineLoadOptions(
     val trustedKeys: WasmlineTrustedKeys? = null,
     val cache: WasmlineCache? = null,
     val manifestTtlMs: Long = DEFAULT_MANIFEST_TTL_MS,
+    val maxCacheBytes: Long = DEFAULT_MAX_CACHE_BYTES,
 ) {
     init {
         require(manifestTtlMs >= 0) { "manifestTtlMs must be non-negative" }
+        require(maxCacheBytes > 0) { "maxCacheBytes must be positive" }
     }
 
     public companion object {
         const val DEFAULT_MANIFEST_TTL_MS: Long = 3_600_000L
+        const val DEFAULT_MAX_CACHE_BYTES: Long = 512L * 1024L * 1024L
     }
 }

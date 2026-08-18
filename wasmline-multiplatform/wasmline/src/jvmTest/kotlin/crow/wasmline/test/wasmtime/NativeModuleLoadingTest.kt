@@ -20,7 +20,7 @@ class NativeModuleLoadingTest {
         tempFile.delete()
 
         try {
-            val result = crow.wasmline.wasmlineLoadArtifact(
+            val result = crow.wasmline.platformWasmlineLoadArtifact(
                 filepath = tempFile.absolutePath,
                 config = crow.wasmline.WasmlineConfig(supportConcurrent = false),
             )
@@ -43,7 +43,7 @@ class NativeModuleLoadingTest {
         tempFile.writeBytes(byteArrayOf(0x00, 0x61, 0x73, 0x6D))
         tempFile.deleteOnExit()
 
-        val result = crow.wasmline.wasmlineLoadArtifact(
+        val result = crow.wasmline.platformWasmlineLoadArtifact(
             filepath = tempFile.absolutePath,
             config = crow.wasmline.WasmlineConfig(supportConcurrent = false),
         )

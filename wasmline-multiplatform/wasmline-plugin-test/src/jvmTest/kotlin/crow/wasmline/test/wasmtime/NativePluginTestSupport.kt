@@ -4,15 +4,13 @@ import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineConfig
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineWarmupMode
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.wasmlineBootstrap
-import crow.wasmline.wasmlineShutdown
-import crow.wasmline.wasmlineWarmup
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.test.assertIs
@@ -32,8 +30,8 @@ internal object NativePluginTestSupport {
      */
     fun <T> withLoadedPlugin(supportConcurrent: Boolean = false, block: (Wasmline) -> T): T = runBlocking {
         val artifact = artifactFile()
-        wasmlineBootstrap()
-        wasmlineWarmup(WasmlineWarmupMode.CRANELIFT)
+        WasmlineRuntime.preload()
+        WasmlineRuntime.warmUp(WasmlineEngineKind.CRANELIFT)
         try {
             val result = WasmlineLoader.load(
                 descriptor = WasmlineArtifactDescriptor(
@@ -60,7 +58,7 @@ internal object NativePluginTestSupport {
                 wasmline.close()
             }
         } finally {
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 

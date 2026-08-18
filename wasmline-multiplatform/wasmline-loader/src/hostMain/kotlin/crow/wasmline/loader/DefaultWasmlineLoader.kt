@@ -1,12 +1,13 @@
+@file:OptIn(crow.wasmline.InternalWasmlineRuntimeApi::class)
+
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineLog
+import crow.wasmline.internal.runtime.WasmlineRuntimeBridge
 import crow.wasmline.loader.internal.WasmlineLocalPackageResolution
-import crow.wasmline.loader.internal.WasmlinePackageArtifactVerifier
 import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
-import crow.wasmline.wasmlineLoadArtifact
 
 /**
  * Internal loader implementation that resolves sources through the resolver chain.
@@ -41,7 +42,7 @@ internal object DefaultWasmlineLoader {
                 loadLocalArtifact(descriptor, request)
             }
 
-            is VerifiedPackageArtifact -> loadLocalArtifact(source.descriptor, request, source.expectedSha256)
+            is VerifiedPackageArtifact -> loadLocalArtifact(source.descriptor, request)
 
             is WasmlineSource.LocalManifestPath -> {
                 val resolution = request.resolvers.localPackage?.resolve(source, request)
@@ -74,11 +75,7 @@ internal object DefaultWasmlineLoader {
         }
     }
 
-    private fun loadLocalArtifact(
-        descriptor: WasmlineArtifactDescriptor,
-        request: WasmlineLoadRequest,
-        expectedSha256: String? = null,
-    ): WasmlineLoadState {
+    private fun loadLocalArtifact(descriptor: WasmlineArtifactDescriptor, request: WasmlineLoadRequest): WasmlineLoadState {
         val validationError = descriptor.validationError()
         if (validationError != null) {
             return WasmlineLoadState.Failure(
@@ -87,17 +84,7 @@ internal object DefaultWasmlineLoader {
             )
         }
 
-        val integrityError = expectedSha256?.let { expected ->
-            WasmlinePackageArtifactVerifier.verify(descriptor.path, expected)
-        }
-        if (integrityError != null) {
-            return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = integrityError,
-            )
-        }
-
-        return wasmlineLoadArtifact(descriptor = descriptor, config = request.options.runtimeConfig)
+        return WasmlineRuntimeBridge.loadResolvedArtifact(descriptor = descriptor, config = request.options.runtimeConfig)
     }
 
     private suspend fun resolveSource(

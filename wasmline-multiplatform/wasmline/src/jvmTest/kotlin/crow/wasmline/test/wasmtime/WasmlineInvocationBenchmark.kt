@@ -9,17 +9,16 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineRawValue
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.callResult
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invokeComponentResult
 import crow.wasmline.invokeRawResult
+import crow.wasmline.platformWasmlineLoadArtifact
+import crow.wasmline.platformWasmlineRuntimeCapabilities
 import crow.wasmline.wasmlineAotLoadPathDiagnostics
-import crow.wasmline.wasmlineBootstrap
-import crow.wasmline.wasmlineLoadArtifact
 import crow.wasmline.wasmlineResetAotLoadPathDiagnostics
-import crow.wasmline.wasmlineRuntimeCapabilities
-import crow.wasmline.wasmlineShutdown
 import java.io.File
 import java.security.MessageDigest
 import kotlin.math.roundToLong
@@ -99,7 +98,7 @@ object WasmlineInvocationBenchmark {
         var wasmlineCoreHandle: Wasmline? = null
         var rawExportHandle: Wasmline? = null
         var componentHandle: Wasmline? = null
-        wasmlineBootstrap()
+        WasmlineRuntime.preload()
         try {
             wasmlineCoreHandle = wasmlineCore?.let(::load)
             val rawExport = load(rawExportArtifact)
@@ -161,7 +160,7 @@ object WasmlineInvocationBenchmark {
             componentHandle?.close()
             rawExportHandle?.close()
             wasmlineCoreHandle?.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
@@ -235,7 +234,7 @@ object WasmlineInvocationBenchmark {
         val start = System.nanoTime()
         var handle: Wasmline? = null
         try {
-            wasmlineBootstrap()
+            WasmlineRuntime.preload()
             wasmlineResetAotLoadPathDiagnostics()
             handle = load(artifact)
             val nativeLoadElapsedNs = System.nanoTime() - start
@@ -253,7 +252,7 @@ object WasmlineInvocationBenchmark {
             )
         } finally {
             handle?.close()
-            wasmlineShutdown()
+            WasmlineRuntime.shutdown()
         }
     }
 
@@ -362,8 +361,8 @@ object WasmlineInvocationBenchmark {
     }
 
     private fun load(artifact: AotArtifact): Wasmline {
-        val runtime = wasmlineRuntimeCapabilities()
-        val state = wasmlineLoadArtifact(
+        val runtime = platformWasmlineRuntimeCapabilities()
+        val state = platformWasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = artifact.file.absolutePath,
                 artifactFormat = artifact.format,

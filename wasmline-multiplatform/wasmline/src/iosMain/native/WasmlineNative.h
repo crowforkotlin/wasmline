@@ -15,11 +15,8 @@
 extern "C" {
 #endif
 
-/** Initializes the global engine with the default backend. */
-void wasmline_init_engine();
-
-/** Initializes the global engine for the selected backend. */
-void wasmline_warmup_engine(bool usePulley);
+/** Initializes the selected engine without invalidating loaded artifacts. */
+bool wasmline_warmup_engine(bool usePulley);
 
 /** Releases the global engine and cached runtime state. */
 void wasmline_release_engine();
@@ -33,14 +30,8 @@ bool wasmline_supports_cranelift();
 /** Returns whether the linked runtime supports Pulley artifacts. */
 bool wasmline_supports_pulley();
 
-/** Loads a Core Wasm artifact. */
-bool wasmline_load_module(const char* key, const char* path, bool isUnsafe);
-
 /** Loads a Core Wasm artifact with an explicit physical artifact format. */
 bool wasmline_load_module_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe);
-
-/** Loads a Component Model artifact. */
-bool wasmline_load_component(const char* key, const char* path, bool isUnsafe);
 
 /** Loads a Component Model artifact with an explicit physical artifact format. */
 bool wasmline_load_component_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe);

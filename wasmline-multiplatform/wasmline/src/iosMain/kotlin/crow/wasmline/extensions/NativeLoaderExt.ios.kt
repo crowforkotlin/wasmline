@@ -1,5 +1,3 @@
 package crow.wasmline.extensions
 
-actual fun loadNativeLibrary() {
-
-}
+internal actual fun ensureNativeRuntimeLoaded() = Unit

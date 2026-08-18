@@ -5,7 +5,8 @@ package crow.wasmline.loader
  *
  * The loader owns the cache policy and key format. Implementations only need to
  * provide byte storage and may back it with memory, files, a database, or a
- * platform-specific store.
+ * platform-specific store. Persistent implementations must publish each [put]
+ * atomically so concurrent readers never observe a partial value.
  */
 interface WasmlineCache {
     fun get(key: String): ByteArray?
