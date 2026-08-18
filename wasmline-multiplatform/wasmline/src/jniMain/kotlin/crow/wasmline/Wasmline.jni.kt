@@ -227,7 +227,7 @@ internal actual fun platformWasmlineLoadArtifact(descriptor: WasmlineArtifactDes
     )
 }
 
-private fun jniTargetOs(): String {
+internal fun jniTargetOs(): String {
     val runtimeName = System.getProperty("java.runtime.name").orEmpty()
     val vmName = System.getProperty("java.vm.name").orEmpty()
     if (runtimeName.contains("android", ignoreCase = true) || vmName.contains("dalvik", ignoreCase = true)) {
@@ -242,13 +242,13 @@ private fun jniTargetOs(): String {
     }
 }
 
-private fun jniTargetCpu(): String = when (val arch = System.getProperty("os.arch").orEmpty().lowercase()) {
+internal fun jniTargetCpu(): String = when (val arch = System.getProperty("os.arch").orEmpty().lowercase()) {
     "amd64", "x86_64" -> "x86_64"
     "arm64", "aarch64" -> "aarch64"
     else -> arch.ifBlank { "unknown" }
 }
 
-private fun jniIs64Bit(): Boolean {
+internal fun jniIs64Bit(): Boolean {
     val arch = System.getProperty("os.arch").orEmpty().lowercase()
     return "64" in arch || arch == "aarch64" || arch == "arm64"
 }

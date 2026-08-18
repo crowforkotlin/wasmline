@@ -44,6 +44,10 @@ python3 scripts/sync_version.py \
   --set wasmtime_version=<new-version> \
   --set wasm_tools_version=<new-version> \
   --set wit_bindgen_version=<new-version>
+
+# Check the latest stable ktlint release, or update the pinned release.
+python3 scripts/sync_version.py --check-ktlint-latest
+python3 scripts/sync_version.py --update-ktlint
 ```
 
 Run validation separately when required:
@@ -59,6 +63,11 @@ reads `versions.json` and synchronizes every managed reference. The `--set`
 option updates the manifest before performing the same synchronization.
 `test_sync_version.py` is an independent regression suite and does not update
 repository versions.
+
+`ktlint_version` pins the standalone formatter used by both local lint commands
+and CI. The scheduled `Update ktlint` workflow checks the latest stable release
+weekly and opens or updates a pull request when the pin changes. This keeps
+formatting reproducible while making each upgrade visible for review.
 
 When adding a duplicated version reference, add a narrow rule to
 `sync_version.py` and synthetic coverage to `test_sync_version.py` in the same
@@ -102,7 +111,9 @@ Language-specific commands are available under `scripts/lint/`:
 bash scripts/lint.sh [--changed|--all] [check|format] [kotlin|cpp|zig ...]
 ```
 
-Kotlin uses `ktlint` and `wasmline-multiplatform/.editorconfig` across the
+Kotlin lint resolves the exact `ktlint_version` from `scripts/versions.json`,
+reusing a matching `ktlint` on `PATH` or downloading the pinned release into
+`build/tools/ktlint/`. It uses `wasmline-multiplatform/.editorconfig` across the
 existing `wasmline-multiplatform/` lint domain. C/C++ uses `clang-format` with
 `wasmline-core/.clang-format` across the existing `wasmline-core/` lint domain.
 Zig and ZON use Zig's built-in `zig fmt` formatter. The language-specific

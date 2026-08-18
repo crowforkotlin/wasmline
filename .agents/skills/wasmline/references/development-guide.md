@@ -145,6 +145,8 @@ bash ./scripts/doctor.sh
 python3 scripts/sync_version.py
 python3 scripts/sync_version.py --check
 python3 scripts/sync_version.py --verify-upstream
+python3 scripts/sync_version.py --check-ktlint-latest
+python3 scripts/sync_version.py --update-ktlint
 python3 scripts/test_sync_version.py
 
 # Changed/untracked source formatting checks
@@ -186,6 +188,9 @@ Use `bash scripts/lint.sh`; language-specific scripts under `scripts/lint/` are 
 ## CI Pipeline
 
 Workflow: `.github/workflows/ci.yml`
+
+The separate `.github/workflows/check-ktlint-update.yml` workflow checks the
+latest stable ktlint release weekly and opens or updates a reviewable PR.
 
 Pushes and pull requests targeting `main` ignore `docs/**`, root `*.md`, and `.agents/**`. Manual `workflow_dispatch` runs the same jobs.
 

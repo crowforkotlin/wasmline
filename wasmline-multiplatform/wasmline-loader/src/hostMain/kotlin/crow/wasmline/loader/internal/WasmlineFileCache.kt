@@ -12,6 +12,7 @@ import okio.HashingSource
 import okio.Path
 import okio.Path.Companion.toPath
 import okio.buffer
+import okio.use
 import kotlin.random.Random
 
 /** File-system-backed cache with atomic publication and bounded storage. */

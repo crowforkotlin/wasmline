@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import io
 import stat
 import subprocess
 import sys
@@ -81,6 +82,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "ktlint_version": "7.6.5",
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
@@ -106,7 +108,7 @@ class SyncVersionTest(unittest.TestCase):
             "docs/content/docs/wasmtime-download.mdx",
             "docs/content/docs/wasmtime-download.zh.mdx",
             "wasmline-samples/kotlin/run-ios.sh",
-            "wasmline-multiplatform/gradle/wasmline-engine.gradle.kts",
+            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
             "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt",
             "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt",
             "scripts/sync_version.py",
@@ -128,6 +130,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "ktlint_version": "7.6.5",
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
@@ -139,7 +142,7 @@ class SyncVersionTest(unittest.TestCase):
             "scripts/sync_version.py": "--set wasmtime_version=99.8.7",
             "wasmline-multiplatform/gradle/libs.versions.toml": 'dokka = "8.8.8"',
             ".agents/skills/wasmline/references/development-guide.md": "Zig version (requires **9.9.9**)",
-            "wasmline-multiplatform/gradle/wasmline-engine.gradle.kts":
+            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts":
                 "JavaLanguageVersion.of(99)",
             "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt":
                 'version = "6.5.4"',
@@ -183,6 +186,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "ktlint_version": "7.6.5",
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
@@ -227,6 +231,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "ktlint_version": "7.6.5",
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
@@ -257,6 +262,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
+            "ktlint_version": "7.6.5",
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
@@ -384,11 +390,60 @@ class SyncVersionTest(unittest.TestCase):
             sync_version.parse_updates(["wasmtime_version=47.10.2"])
         with self.assertRaises(SystemExit):
             sync_version.parse_updates(["wasmtime_version=47.0.12"])
+        with self.assertRaises(SystemExit):
+            sync_version.parse_updates(["ktlint_version=1.8.0-RC1"])
 
     def test_parse_updates_accepts_prerelease_versions(self) -> None:
         """Kotlin prerelease versions used by the repository remain valid."""
         updates = sync_version.parse_updates(["kotlin_min_version=2.3.0-RC2"])
         self.assertEqual("2.3.0-RC2", updates["kotlin_min_version"])
+
+    def test_parse_latest_ktlint_release_accepts_only_stable_tags(self) -> None:
+        """Only stable semantic release tags may become the formatter pin."""
+        self.assertEqual(
+            "1.8.0",
+            sync_version.parse_latest_ktlint_release(
+                {"tag_name": "1.8.0", "draft": False, "prerelease": False}
+            ),
+        )
+        for payload in (
+            {"tag_name": "1.8.1-RC1", "draft": False, "prerelease": True},
+            {"tag_name": "release-1.8.1", "draft": False, "prerelease": False},
+            {"tag_name": "1.8.1"},
+            {"draft": False, "prerelease": False},
+        ):
+            with self.assertRaises(sync_version.KtlintReleaseError):
+                sync_version.parse_latest_ktlint_release(payload)
+
+    def test_check_ktlint_latest_reports_an_available_upgrade(self) -> None:
+        """The check command reports a newer release and returns failure for CI."""
+        with (
+            mock.patch.object(sync_version, "latest_ktlint_version", return_value="1.8.1"),
+            mock.patch.object(sys, "stdout", new_callable=io.StringIO) as stdout,
+        ):
+            result = sync_version.check_ktlint_latest({"ktlint_version": "1.8.0"})
+
+        self.assertEqual(1, result)
+        self.assertIn("1.8.0 -> 1.8.1", stdout.getvalue())
+        self.assertIn("--update-ktlint", stdout.getvalue())
+
+    def test_update_ktlint_synchronizes_the_manifest(self) -> None:
+        """The update command passes the discovered release through synchronization."""
+        with (
+            mock.patch.object(sys, "argv", ["sync_version.py", "--update-ktlint"]),
+            mock.patch.object(sync_version, "latest_ktlint_version", return_value="1.8.1"),
+            mock.patch.object(sync_version, "sync_files", return_value=0) as sync_files,
+        ):
+            result = sync_version.main()
+
+        self.assertEqual(0, result)
+        versions = sync_files.call_args.args[0]
+        self.assertEqual("1.8.1", versions["ktlint_version"])
+        additional_files = sync_files.call_args.kwargs["additional_files"]
+        manifest = next(
+            content for path, _, content in additional_files if path == "scripts/versions.json"
+        )
+        self.assertIn('"ktlint_version": "1.8.1"', manifest)
 
     def test_atomic_write_preserves_file_mode(self) -> None:
         """Atomic replacement must retain executable permissions."""

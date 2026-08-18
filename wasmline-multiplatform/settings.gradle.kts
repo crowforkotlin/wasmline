@@ -71,7 +71,7 @@ include(":wasmline-kotlin-plugin")
 include(":wasmline-cli")
 include(":wasmline-android")
 include(":wasmline-loader")
-include(":wasmline-plugin-core") // New core module
+include(":wasmline-plugin-core")
 include(":wasmline-network-okhttp")
 include(":wasmline-network-ktor")
 include(":wasmline-engine-pulley")

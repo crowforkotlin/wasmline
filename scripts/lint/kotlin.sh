@@ -29,6 +29,61 @@ is_kotlin_source() {
     return 1
 }
 
+ktlint_version() {
+    "$1" --version 2>/dev/null | sed -nE 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -n 1 || true
+}
+
+resolve_ktlint() {
+    local expected_version="$1"
+
+    local path_ktlint actual_version
+    path_ktlint="$(command -v ktlint || true)"
+    if [[ -n "$path_ktlint" ]]; then
+        actual_version="$(ktlint_version "$path_ktlint")"
+        if [[ "$actual_version" == "$expected_version" ]]; then
+            printf '%s\n' "$path_ktlint"
+            return
+        fi
+        log_warn "Ignoring ktlint ${actual_version:-unknown} from PATH; repository requires ${expected_version}." >&2
+    fi
+
+    local cache_dir cached_ktlint temporary_ktlint
+    cache_dir="${BUILD_ROOT}/tools/ktlint/${expected_version}"
+    cached_ktlint="${cache_dir}/ktlint"
+    if [[ -x "$cached_ktlint" ]]; then
+        actual_version="$(ktlint_version "$cached_ktlint")"
+        if [[ "$actual_version" == "$expected_version" ]]; then
+            printf '%s\n' "$cached_ktlint"
+            return
+        fi
+    fi
+
+    if ! command -v curl >/dev/null 2>&1; then
+        log_error "curl is required to download ktlint ${expected_version}."
+        return 1
+    fi
+
+    mkdir -p "$cache_dir"
+    temporary_ktlint="$(mktemp "${cache_dir}/.ktlint.XXXXXX")"
+    log_info "Downloading ktlint ${expected_version}." >&2
+    if ! curl --fail --location --silent --show-error --retry 3 \
+        "https://github.com/ktlint/ktlint/releases/download/${expected_version}/ktlint" \
+        --output "$temporary_ktlint"; then
+        rm -f "$temporary_ktlint"
+        log_error "Failed to download ktlint ${expected_version}."
+        return 1
+    fi
+    chmod +x "$temporary_ktlint"
+    actual_version="$(ktlint_version "$temporary_ktlint")"
+    if [[ "$actual_version" != "$expected_version" ]]; then
+        rm -f "$temporary_ktlint"
+        log_error "Downloaded ktlint reports ${actual_version:-unknown}; expected ${expected_version}."
+        return 1
+    fi
+    mv "$temporary_ktlint" "$cached_ktlint"
+    printf '%s\n' "$cached_ktlint"
+}
+
 collect_all_files() {
     LINT_FILES=()
     local roots=("${PROJECT_ROOT}/wasmline-multiplatform")
@@ -62,12 +117,11 @@ if ((${#LINT_FILES[@]} == 0)); then
     exit 0
 fi
 
-if ! command -v ktlint >/dev/null 2>&1; then
-    log_error "ktlint is required. Install the CI version before running Kotlin lint."
-    exit 1
-fi
+KTLINT_VERSION="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["versions"]["ktlint_version"])' "${SCRIPTS_ROOT}/versions.json")"
+KTLINT_BINARY="$(resolve_ktlint "$KTLINT_VERSION")"
 
 log_header "Kotlin ${LINT_MODE} (${LINT_SCOPE})"
+log_info "Using ktlint ${KTLINT_VERSION} from ${KTLINT_BINARY}."
 log_info "Checking ${#LINT_FILES[@]} Kotlin file(s)."
 
 cd "$PROJECT_ROOT"
@@ -75,6 +129,6 @@ KTLINT_ARGS=(--relative --editorconfig "wasmline-multiplatform/.editorconfig")
 if [[ "$LINT_MODE" == format ]]; then
     KTLINT_ARGS+=(--format)
 fi
-ktlint "${KTLINT_ARGS[@]}" "${LINT_FILES[@]}"
+"$KTLINT_BINARY" "${KTLINT_ARGS[@]}" "${LINT_FILES[@]}"
 
 log_success "Kotlin ${LINT_MODE} passed."

@@ -30,8 +30,6 @@ dependencies {
         ":wasmline-loader",
         ":wasmline-network-ktor",
         ":wasmline-network-okhttp",
-        ":wasmline-engine-pulley",
-        ":wasmline-engine-cranelift",
         ":wasmline-kotlin-plugin",
         ":wasmline-gradle-plugin",
         ":wasmline-cli",

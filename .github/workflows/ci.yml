@@ -26,11 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install ktlint
-        run: |
-          curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.5.0/ktlint
-          chmod +x ktlint
-          sudo mv ktlint /usr/local/bin/
+      - name: Restore ktlint cache
+        uses: actions/cache@v5
+        with:
+          path: build/tools/ktlint
+          key: ktlint-${{ runner.os }}-${{ hashFiles('scripts/versions.json') }}
 
       - name: Kotlin format check
         run: bash scripts/lint.sh --all kotlin
