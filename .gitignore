@@ -29,6 +29,7 @@
 **/.kotlin/
 **/.zig-out/
 **/.zig-cache/
+**/zig-pkg/
 **/zig-out/
 **/.gradle/
 **/.idea/
