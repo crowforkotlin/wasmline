@@ -9,12 +9,51 @@ Repository automation is grouped by purpose:
 | `samples/` | Sample build and run helpers |
 | `init-wasmtime.*` | Wasmtime platform asset initialization |
 | `build-native-assets.sh` | Native engine asset build and deployment |
-| `compile-ios.sh` | iOS native bridge static-library compilation |
+| `compile-native-bridge.sh` | Kotlin/Native bridge and Wasmtime static-library compilation |
 | `doctor.sh` | Local environment preflight |
 | `versions.json` | Source of truth for managed project and toolchain versions |
 | `sync_version.py` | Version-synchronization entry point and implementation |
 | `toolchain_lock.py` | Internal GitHub release resolution and toolchain-lock validation |
 | `test_sync_version.py` | Regression tests; not part of the update command |
+
+## Kotlin/Native Bridge
+
+Compile the static bridge and embed the selected Wasmtime engine for one
+Kotlin/Native target. The engine defaults to `pulley`; use `cranelift` when the
+host must execute matching `.cwasm` artifacts. Bridge sources always use the
+release configuration (`-O2 -DNDEBUG`).
+
+```bash
+bash scripts/compile-native-bridge.sh <target> [pulley|cranelift]
+
+# Linux x64 Pulley (default engine can be omitted).
+bash scripts/compile-native-bridge.sh linuxX64
+
+# iOS Simulator Pulley.
+bash scripts/compile-native-bridge.sh iosSimulatorArm64 pulley
+
+# Show all targets and options.
+bash scripts/compile-native-bridge.sh --help
+```
+
+Supported targets are `iosArm64`, `iosSimulatorArm64`, `macosArm64`,
+`macosX64`, `linuxArm64`, `linuxX64`, and `mingwX64`. The required Wasmtime
+headers and platform archive must already exist under `build/platforms/`.
+Build progress is written to standard error; standard output contains only the
+resulting archive path so Gradle and shell callers can consume it reliably.
+
+The engine module's Native cinterop tasks invoke this script automatically.
+Their generated definition declares the result through `staticLibraries` and
+`libraryPaths`, causing Kotlin/Native to embed `libwasmline_native.a` in the
+target-specific engine KLIB. Downstream applications depend on exactly one of
+`wasmline-engine-pulley` or `wasmline-engine-cranelift`; they do not reference
+the local archive path directly.
+
+The uncompressed `.a` is a linker input, not the final application or Maven
+download size. Kotlin/Native publishes it inside a compressed cinterop KLIB and
+links its object code into the final executable or framework. JVM and Android
+use a separate distribution path: their engine artifacts contain a shared
+`libwasmline.so`, `.dylib`, or `.dll` and load it through JNI.
 
 C and C++ Component fixture commands live with their language samples:
 

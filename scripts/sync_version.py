@@ -774,16 +774,6 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "scripts/compile-ios.sh",
-            (
-                Rule(
-                    r"release-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"release-v{v['wasmtime_version']}",
-                    min_count=0,
-                ),
-            ),
-        ),
-        FileSpec(
             "wasmline-samples/kotlin/sample-apps/android/build.gradle.kts",
             (
                 Rule(

@@ -89,6 +89,14 @@ All three scripts support interactive platform/architecture selection, configura
 
 Native library compilation is handled by `build-native-assets.sh`. This script builds all target platform artifacts for Android (CMake + NDK) and JVM Desktop (Zig), then deploys them to the corresponding engine module's `jniLibs` / `resources` directory.
 
+Kotlin/Native uses a separate static bridge. The engine Gradle tasks invoke `scripts/compile-native-bridge.sh` for each available Native target and embed the selected `libwasmtime.a` into the published engine KLIB. To build one bridge directly, run `bash scripts/compile-native-bridge.sh linuxX64 pulley` (or replace the target and engine with `linuxArm64`, `mingwX64`, `macosArm64`, `macosX64`, `iosArm64`, `iosSimulatorArm64`, or `cranelift` as appropriate). Native consumers do not load JNI libraries.
+
+Apple targets are registered only when Gradle runs on macOS because their
+cinterop tasks require the Xcode SDK. Linux and Windows development builds omit
+iOS/macOS compilation, metadata, and publication tasks; `publishToMavenLocal`
+therefore publishes only the targets available on that host. Run the publication
+on macOS when Apple KLIBs are required.
+
 ```bash
 # Builds both pulley and cranelift variants by default
 bash scripts/build-native-assets.sh

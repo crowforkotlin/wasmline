@@ -17,11 +17,16 @@ import io.ktor.utils.io.readAvailable
  * Ktor selects the appropriate engine per platform:
  * - JVM: CIO engine
  * - Android: OkHttp engine
- * - iOS: Darwin engine
+ * - Apple Native: Darwin engine
+ * - Linux Native: Curl engine
+ * - Windows Native: WinHTTP engine
  * Browser targets use the raw `.wasm` prefetch flow and are intentionally not
  * published by this adapter.
  *
  * @param client Optional pre-configured [HttpClient] for custom configuration.
+ *
+ * Author: crowforkotlin
+ * Date: 2026-08-19
  */
 class KtorNetworkClient(private val client: HttpClient = HttpClient()) : WasmlineNetworkClient {
 
@@ -57,6 +62,9 @@ class KtorNetworkClient(private val client: HttpClient = HttpClient()) : Wasmlin
 }
 
 /**
- * Factory function for creating a [KtorNetworkClient].
+ * Creates a [KtorNetworkClient] as a [WasmlineNetworkClient].
+ *
+ * Author: crowforkotlin
+ * Date: 2026-08-19
  */
 fun ktorNetworkClient(client: HttpClient = HttpClient()): WasmlineNetworkClient = KtorNetworkClient(client)
