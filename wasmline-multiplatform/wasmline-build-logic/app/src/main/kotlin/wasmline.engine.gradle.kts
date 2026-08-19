@@ -18,6 +18,8 @@ import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
@@ -59,6 +61,109 @@ extensions.configure<KotlinMultiplatformExtension> {
         namespace = engineNamespace
         compileSdk = androidCompileSdk
         minSdk = androidMinSdk
+    }
+    val nativeTargets: List<KotlinNativeTarget> = buildList {
+        if (HostManager.hostIsMac) {
+            add(iosArm64())
+            add(iosSimulatorArm64())
+            add(macosArm64())
+        }
+        add(linuxArm64())
+        add(linuxX64())
+        add(mingwX64())
+    }
+    val nativeHeader = rootProject.file("wasmline/src/nativeMain/native")
+    val nativeBridgeSources = rootProject.files(
+        rootProject.file("../scripts/compile-native-bridge.sh"),
+        rootProject.file("../scripts/versions.json"),
+        rootProject.fileTree("../wasmline-core/include") {
+            include("**/*.h", "**/*.hpp")
+        },
+        rootProject.fileTree("../wasmline-core/src") {
+            include("**/*.cpp", "**/*.h", "**/*.hpp")
+        },
+        rootProject.fileTree(nativeHeader) {
+            include("**/*.cpp", "**/*.h", "**/*.hpp")
+        },
+    )
+    val wasmtimeVersion = rootProject.property("wasmtime.version") as String
+    val wasmtimeTag = "release-v$wasmtimeVersion"
+    fun assetRoot(targetName: String): File = when (targetName) {
+        "iosArm64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/ios/arm64")
+        "iosSimulatorArm64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/ios/simulator-arm64")
+        "macosArm64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/mac/aarch64")
+        "linuxArm64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/linux/aarch64")
+        "linuxX64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/linux/x64")
+        "mingwX64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/windows/x64")
+        else -> error("Unsupported Native target '$targetName'.")
+    }
+    nativeTargets.forEach { target ->
+        val asset = assetRoot(target.name)
+        val bridgeArchive = rootProject.file("wasmline/build/native/${target.name}/$engineName/libwasmline_native.a")
+        val bridgeTask = tasks.register<org.gradle.api.tasks.Exec>(
+            "build${engineNameCapitalized}${target.name.replaceFirstChar { it.uppercaseChar() }}NativeBridge",
+        ) {
+            workingDir = rootProject.projectDir
+            commandLine("bash", "../scripts/compile-native-bridge.sh", target.name, engineName)
+            inputs.files(nativeBridgeSources).withPropertyName("nativeBridgeSources")
+            inputs.dir(asset.resolve("include")).withPropertyName("wasmtimeHeaders").optional()
+            inputs.file(asset.resolve("lib/libwasmtime.a")).withPropertyName("wasmtimeArchive").optional()
+            inputs.property("nativeTarget", target.name)
+            inputs.property("nativeEngine", engineName)
+            inputs.property("wasmtimeVersion", wasmtimeVersion)
+            outputs.file(bridgeArchive)
+        }
+        val systemLinkerOptions = when (target.name) {
+            "linuxX64", "linuxArm64" -> listOf("-ldl", "-lpthread", "-lm", "-lstdc++", "-lstdc++fs")
+            "mingwX64" -> listOf("-lbcrypt", "-luserenv", "-lole32", "-luuid", "-lstdc++")
+            else -> listOf("-lc++")
+        }
+        val generatedDefinition = project.layout.buildDirectory.file(
+            "generated/wasmline-native/${target.name}/wasmlineEngine.def",
+        )
+        val generateDefinitionTask = tasks.register(
+            "generate${engineNameCapitalized}${target.name.replaceFirstChar { it.uppercaseChar() }}NativeCInteropDefinition",
+        ) {
+            inputs.property("bridgeArchivePath", bridgeArchive.absolutePath)
+            inputs.property("systemLinkerOptions", systemLinkerOptions)
+            outputs.file(generatedDefinition)
+            doLast {
+                val definitionFile = generatedDefinition.get().asFile
+                definitionFile.parentFile.mkdirs()
+                val linkerOptions = buildList {
+                    addAll(systemLinkerOptions)
+                }
+                definitionFile.writeText(
+                    buildString {
+                        appendLine("package = crow.wasmline.engine.native")
+                        appendLine("headers = WasmlineEngineLink.h")
+                        appendLine("staticLibraries = ${bridgeArchive.name}")
+                        appendLine("libraryPaths = ${bridgeArchive.parentFile.absolutePath.replace('\\', '/')}")
+                        appendLine("linkerOpts = ${linkerOptions.joinToString(" ")}")
+                    },
+                )
+            }
+        }
+        target.compilations.getByName("main") {
+            val wasmline by cinterops.creating {
+                definitionFile.set(generatedDefinition)
+                includeDirs(nativeHeader, asset.resolve("include"))
+                compilerOpts("-I${nativeHeader.absolutePath}", "-I${asset.resolve("include").absolutePath}")
+            }
+        }
+        tasks.configureEach {
+            if (name != generateDefinitionTask.name &&
+                name.contains("cinterop", ignoreCase = true) &&
+                name.contains(target.name, ignoreCase = true)
+            ) {
+                dependsOn(bridgeTask, generateDefinitionTask)
+                inputs.file(bridgeArchive).withPropertyName("wasmlineNativeBridge")
+            }
+        }
+        target.binaries.all {
+            linkerOpts(*systemLinkerOptions.toTypedArray())
+            linkTaskProvider.configure { dependsOn(bridgeTask) }
+        }
     }
     applyDefaultHierarchyTemplate()
 }
@@ -216,5 +321,66 @@ tasks.named<GenerateModuleMetadata>("generateMetadataFileForJvmPublication") {
         logger.lifecycle(
             "Injected " + nativeVariants.size + " native variants into " + moduleFile.name,
         )
+    }
+}
+
+// Custom capabilities replace Gradle's implicit module capability. Restore the
+// component's own capability so target publications remain directly resolvable.
+tasks.withType<GenerateModuleMetadata>().configureEach {
+    val publicationName = name
+        .removePrefix("generateMetadataFileFor")
+        .removeSuffix("Publication")
+    val publicationSuffix = publicationName
+        .takeUnless { it == "KotlinMultiplatform" }
+        ?.lowercase()
+        ?.let { "-$it" }
+        .orEmpty()
+    doLast {
+        val moduleFile = outputFile.get().asFile
+        if (!moduleFile.exists()) return@doLast
+
+        @Suppress("UNCHECKED_CAST")
+        val json = JsonSlurper().parse(moduleFile) as MutableMap<String, Any>
+        @Suppress("UNCHECKED_CAST")
+        val component = json["component"] as? Map<String, Any> ?: return@doLast
+        val group = component["group"] as? String ?: return@doLast
+        val module = component["module"] as? String ?: return@doLast
+        val version = component["version"] as? String ?: return@doLast
+        val publicationModule = "$module$publicationSuffix"
+        @Suppress("UNCHECKED_CAST")
+        val variants = json["variants"] as? MutableList<Any> ?: return@doLast
+        val componentCapability = mapOf(
+            "group" to group,
+            "name" to module,
+            "version" to version,
+        )
+        val publicationCapability = mapOf(
+            "group" to group,
+            "name" to publicationModule,
+            "version" to version,
+        )
+        var changed = false
+        variants.filterIsInstance<MutableMap<String, Any>>().forEach { variant ->
+            @Suppress("UNCHECKED_CAST")
+            val capabilities = variant["capabilities"] as? MutableList<Any> ?: return@forEach
+            if (publicationSuffix.isNotEmpty()) {
+                if (capabilities != mutableListOf(publicationCapability)) {
+                    variant["capabilities"] = mutableListOf<Any>(publicationCapability)
+                    changed = true
+                }
+            } else {
+                if (capabilities.none { it == componentCapability }) {
+                    capabilities.add(componentCapability)
+                    changed = true
+                }
+                if (capabilities.none { it == publicationCapability }) {
+                    capabilities.add(publicationCapability)
+                    changed = true
+                }
+            }
+        }
+        if (changed) {
+            moduleFile.writeText(JsonOutput.toJson(json))
+        }
     }
 }

@@ -194,7 +194,7 @@ Cranelift Wasmtime 运行时同时支持 `.cwasm` 和 `.pwasm`；原生宿主优
 ## 安装
 
 > [!NOTE]
-> Wasmline 目前处于开发阶段。详细的安装与集成文档将发布于 [wuya.click/wasmline](https://wuya.click/wasmline)。
+> Wasmline 目前处于开发中，尚未正式上线。详细的安装与集成文档将发布于 [wuya.click/wasmline](https://wuya.click/wasmline)。
 
 > [!WARNING]
 > 最低需要 **Kotlin 2.3.0-RC2** 版本。

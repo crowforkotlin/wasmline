@@ -2,7 +2,7 @@
 title: Installation
 description: Add Wasmline to your project with Gradle — plugin application and Maven dependencies
 createdAt: 2026-07-18
-updatedAt: 2026-08-18
+updatedAt: 2026-08-19
 ---
 
 # Installation
@@ -50,7 +50,7 @@ dependencies {
 |---|---|
 | `crow.wasmline:wasmline` | Core runtime — execution, dispatch, serialization SPI |
 | `crow.wasmline:wasmline-loader` | Load options, cache/network SPI, `.wlm` parsing and signature verification |
-| `crow.wasmline:wasmline-network-ktor` | Ktor adapter for remote loading (JVM, Android, iOS) |
+| `crow.wasmline:wasmline-network-ktor` | Ktor adapter for remote loading (JVM, Android, Apple, Linux, Windows Native) |
 | `crow.wasmline:wasmline-network-okhttp` | HTTP network client backed by OkHttp 5.x (JVM/Android) |
 | `crow.wasmline:wasmline-engine-pulley` | Pulley-only interpreter — `.pwasm` only, all native targets |
 | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime — `.cwasm` first, `.pwasm` fallback |
@@ -59,8 +59,32 @@ dependencies {
   `wasmline-loader` defines the network, cache, and trust abstractions but does not select an HTTP engine. Local artifacts and local manifests need no network module. For a remote manifest, choose Ktor or OkHttp only when the application must fetch a missing or expired manifest or a missing artifact. A fresh manifest and its selected artifact can be loaded from cache without a network client. Browser raw `.wasm` loading uses `WasmlineWeb.prefetch()` instead of either adapter.
 </Callout>
 
+## Kotlin/Native Host
+
+Kotlin/Native applications use the same `WasmlineLoader` API as JVM and Android hosts. Add one engine dependency to the Native source set; the published KMP metadata selects the matching static Wasmtime bridge for iOS, macOS, Linux, or Windows.
+
+```kotlin
+// build.gradle.kts
+kotlin {
+    sourceSets {
+        val nativeMain by getting {
+            dependencies {
+                implementation("crow.wasmline:wasmline:1.0.0")
+                implementation("crow.wasmline:wasmline-loader:1.0.0")
+                implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+                // Use wasmline-engine-cranelift when .cwasm is required.
+            }
+        }
+    }
+}
+```
+
+Pulley accepts portable `.pwasm` artifacts on every Native target. Cranelift accepts matching `.cwasm` artifacts and can fall back to `.pwasm`; iOS remains Pulley-only. Native applications do not load JNI libraries or call a source-checkout path. Remote loading can use `wasmline-network-ktor`, which selects Darwin, Curl, or WinHTTP according to the Native target.
+
+For signed Native packages, use Ed25519 for one cross-platform manifest format. Apple Native verifies ECDSA P-256 through Security; Linux and Windows Native currently reject ECDSA P-256 manifests because those targets do not ship a platform crypto provider in the Wasmline distribution.
+
 <Callout type="info" title="Distribution status">
-  Wasmline is under active development. Artifacts are currently distributed through `mavenLocal()` — run `./gradlew publishToMavenLocal` in `wasmline-multiplatform/` to install them locally. Maven Central publishing is in progress.
+  Wasmline is under active development and is not released yet. Artifacts are currently distributed through `mavenLocal()` — run `./gradlew publishToMavenLocal` in `wasmline-multiplatform/` to install them locally. Maven Central publishing is in progress.
 </Callout>
 
 ## Next Steps

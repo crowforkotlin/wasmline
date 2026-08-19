@@ -2,7 +2,7 @@
 title: Platform Architecture
 description: Per-platform execution stacks, module dependencies, and repository structure
 createdAt: 2026-07-18
-updatedAt: 2026-08-18
+updatedAt: 2026-08-19
 ---
 
 # Platform Architecture
@@ -24,9 +24,9 @@ Host Application  (commonMain / hostMain)
         │  module.bind(impl)     — IR-synthesized inbound dispatch registration
         │
         ▼
-Platform actual  (jniMain / iosMain)
-        │  JNI external declarations          — Android, macOS, Linux, Windows
-        │  Kotlin/Native C Interop (.def)     — iOS
+Platform actual  (jniMain / nativeMain)
+        │  JNI external declarations          — JVM / Android
+        │  Kotlin/Native C Interop (.def)     — iOS, macOS, Linux, Windows
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
         │  Engine.cpp              — Wasmtime engine lifecycle and backend selection
@@ -89,7 +89,7 @@ The runtime selects the backend from `WasmlineArtifactDescriptor`. File extensio
 
 Raw Export calls use an explicitly declared numeric ABI. The current public raw value set is `i32`, `i64`, `f32`, and `f64`. They do not allocate or parse a Core response frame.
 
-Component Model calls deserialize a precompiled Component `.cwasm` or `.pwasm` artifact through the Wasmtime Component Model API. They use Component Model typed values and do not require Core linear memory, `__wasmline_wasi_entry`, or the Core response frame. The runtime loader does not run `wit-bindgen`, `wasm-tools`, or `wasmtime compile`; the optional build pipeline in `wasmline-plugin-core`, the Gradle plugin, and the CLI completes those stages before loading. Optional `contractMetadata` records a call contract for validation and documentation; it is not compiler input.
+Component Model calls deserialize a precompiled Component `.cwasm` or `.pwasm` artifact through the Wasmtime Component Model API. They use Component Model typed values and do not require Core linear memory, `__wasmline_wasi_entry`, or the Core response frame. The runtime loader does not run `wit-bindgen`, `wasm-tools`, or `wasmtime compile`; the optional build pipeline in `wasmline-plugin-core`, the Gradle plugin, and the CLI completes that build work before loading. Optional `contractMetadata` records a call contract for validation and documentation; it is not compiler input.
 
 All three paths expose the same result semantics. A missing action binding returns `ACTION_NOT_BOUND` as a failure result. It is not encoded as an empty successful payload and does not require an exception. The Core path reports this through its response frame; Raw Export and Component Model report it through their typed result carrier. Exceptions remain for invalid programming contracts, unrecoverable runtime state, and failures that prevent construction of a result.
 
@@ -105,10 +105,10 @@ wasmline-gradle-plugin ─► wasmline-plugin-core
 
 wasmline ◄──── native runtime assets ──── wasmline-engine-cranelift / wasmline-engine-pulley
 wasmline-network-ktor / wasmline-network-okhttp ──────► wasmline-loader
-wasmline-core (C/C++) ◄──── JNI / C Interop ────────── wasmline
+wasmline-core (C/C++) ◄──── JNI / Native C Interop ─── wasmline
 ```
 
-Network, cache, trusted-key, and load-request APIs belong to `wasmline-loader`. The Ktor and OkHttp artifacts implement the loader's suspend network SPI and depend toward the loader; the core `wasmline` runtime has no HTTP-engine dependency. Applications select an adapter only for remote cache misses. Ktor covers JVM, Android, and iOS; OkHttp covers JVM and Android. Browser raw `.wasm` loading remains a separate `WasmlineWeb.prefetch()` flow.
+Network, cache, trusted-key, and load-request APIs belong to `wasmline-loader`. The Ktor and OkHttp artifacts implement the loader's suspend network SPI and depend toward the loader; the core `wasmline` runtime has no HTTP-engine dependency. Applications select an adapter only for remote cache misses. Ktor covers JVM, Android, Apple, Linux, and Windows Native through CIO, OkHttp, Darwin, Curl, and WinHTTP engines; OkHttp covers JVM and Android. Browser raw `.wasm` loading remains a separate `WasmlineWeb.prefetch()` flow.
 
 ## Repository Structure
 
@@ -120,7 +120,7 @@ wasmline/
 │   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
 │   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
 │   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
-│   │   ├── iosMain/                    # iOS actual — Kotlin/Native C Interop
+│   │   ├── nativeMain/                 # Kotlin/Native actuals and C Interop
 │   │   ├── webMain/                    # Shared Web host runtime and expect binding contract
 │   │   ├── jsMain/                     # Kotlin/JS binding actuals
 │   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actuals

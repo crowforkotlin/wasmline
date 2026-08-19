@@ -5,6 +5,7 @@ import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.konan.target.HostManager
 
 
@@ -50,68 +51,32 @@ kotlin {
         nodejs()
         binaries.library()
     }
-    apply {
-        val nativeHeaderDir = project.file("src/iosMain/native")
-        val wasmtimeVersion = project.property("wasmtime.version") as String
-        val wasmtimeReleaseTag = "release-v$wasmtimeVersion"
-
-        // iOS only supports pulley engine variant
-        fun iosPlatformRoot(targetName: String) = when (targetName) {
-            "iosSimulatorArm64" -> project.file("../../build/platforms/$wasmtimeReleaseTag/pulley/ios/simulator-arm64")
-            else -> project.file("../../build/platforms/$wasmtimeReleaseTag/pulley/ios/arm64")
-        }
-        fun iosBuildDir(targetName: String) = when (targetName) {
-            "iosSimulatorArm64" -> project.file("build/ios/simulator-arm64")
-            else -> project.file("build/ios/arm64")
-        }
-        fun buildNativeBridgeTask(target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget) = tasks.register(
-            "build${target.name.replaceFirstChar { it.uppercaseChar() }}NativeBridge",
-            Exec::class.java,
-        ) {
-            workingDir = project.projectDir
-            commandLine(
-                "bash",
-                "../../scripts/compile-ios.sh",
-                if (target.name == "iosSimulatorArm64") "simulator-arm64" else "arm64",
-            )
-        }
-        val configureCInterop = { target: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget ->
-            val platformRoot = iosPlatformRoot(target.name)
-            val wasmtimeHeaderDir = platformRoot.resolve("include")
-            target.compilations.getByName("main") {
-                val wasmline by cinterops.creating {
-                    defFile(project.file("src/iosMain/native/cinterop/wasmline.def"))
-                    includeDirs(nativeHeaderDir)
-                    includeDirs(wasmtimeHeaderDir)
-                    compilerOpts("-I${nativeHeaderDir.absolutePath}", "-I${wasmtimeHeaderDir.absolutePath}")
-                }
-            }
-        }
+    val nativeHeaderDir = project.file("src/nativeMain/native")
+    val nativeTargets: List<KotlinNativeTarget> = buildList {
         if (HostManager.hostIsMac) {
-            listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
-                val nativeBridgeTask = buildNativeBridgeTask(target)
-                val coreLibAbsPath = iosBuildDir(target.name).resolve("libwasmline_core_ios.a").absolutePath
-                val wasmtimeLibAbsPath = iosPlatformRoot(target.name).resolve("lib/libwasmtime.a").absolutePath
-                configureCInterop(target)
-                target.binaries.all {
-                    linkerOpts(
-                        "-Wl,-force_load,$coreLibAbsPath",
-                        "-Wl,-force_load,$wasmtimeLibAbsPath",
-                        "-lc++",
-                        "-framework",
-                        "CoreFoundation",
-                        "-framework",
-                        "Security",
-                    )
-                    linkTaskProvider.configure {
-                        dependsOn(nativeBridgeTask)
-                    }
-                }
-                target.binaries.framework {
-                    isStatic = false
-                    freeCompilerArgs += listOf("-Xbinary=bundleId=crow.wasmline")
-                }
+            add(iosArm64())
+            add(iosSimulatorArm64())
+            add(macosArm64())
+        }
+        add(linuxArm64())
+        add(linuxX64())
+        add(mingwX64())
+    }
+    nativeTargets.forEach { target ->
+        target.compilations.getByName("main") {
+            val wasmline by cinterops.creating {
+                definitionFile.set(project.file("src/nativeMain/native/cinterop/wasmline.def"))
+                includeDirs(nativeHeaderDir)
+                compilerOpts("-I${nativeHeaderDir.absolutePath}")
             }
+        }
+        val nativeLinkerOptions = when (target.name) {
+            "linuxX64", "linuxArm64" -> listOf("-ldl", "-lpthread", "-lm", "-lstdc++", "-lstdc++fs")
+            "mingwX64" -> listOf("-lbcrypt", "-luserenv", "-lole32", "-luuid", "-lstdc++")
+            else -> listOf("-lc++")
+        }
+        target.binaries.all {
+            linkerOpts(*nativeLinkerOptions.toTypedArray())
         }
     }
 
@@ -133,9 +98,7 @@ kotlin {
         val jvmMain by getting { dependsOn(other = jniMain) }
         // jsMain/wasmJsMain already depend on webMain via the default hierarchy template.
         val webMain by getting { dependsOn(other = hostMain) }
-//        val macosArm64Main by getting { dependsOn(hostMain) }
-//        val linuxX64Main by getting { dependsOn(jvmMain) }
-//        val mingwX64Main by getting { dependsOn(jvmMain) }
+        val nativeMain by getting { dependsOn(other = hostMain) }
         val androidMain by getting {
             dependsOn(other = jniMain)
             dependencies {
@@ -171,11 +134,28 @@ kotlin {
             }
         }
 
+        val nativeTest by getting { dependsOn(other = hostTest) }
         if (HostManager.hostIsMac) {
-            val iosMain by getting { dependsOn(other = hostMain) }
-            val iosArm64Main by getting { dependsOn(other = iosMain) }
-            val iosSimulatorArm64Main by getting { dependsOn(other = iosMain) }
-            val iosTest by getting { dependsOn(other = hostTest) }
+            val iosTest by getting {
+                dependencies {
+                    implementation(projects.wasmlineEnginePulley)
+                }
+            }
+            val macosTest by getting {
+                dependencies {
+                    implementation(projects.wasmlineEngineCranelift)
+                }
+            }
+        }
+        val linuxTest by getting {
+            dependencies {
+                implementation(projects.wasmlineEngineCranelift)
+            }
+        }
+        val mingwTest by getting {
+            dependencies {
+                implementation(projects.wasmlineEngineCranelift)
+            }
         }
 //        val androidInstrumentedTest by getting { dependsOn(other = hostTest) }
     }

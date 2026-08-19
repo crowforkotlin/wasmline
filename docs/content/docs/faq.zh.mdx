@@ -12,7 +12,7 @@ updatedAt: 2026-08-18
 
 不需要。本地产物和本地 manifest 只使用 `wasmline-loader`，不要求 Ktor 或 OkHttp。远程 manifest 需要联网时，可引入 `wasmline-network-ktor`、`wasmline-network-okhttp`，也可以实现自定义 `WasmlineNetworkClient` 或远程 resolver。内置 resolver 会优先检查缓存，因此 manifest 仍在有效期内且所选 artifact 已缓存时，即使没有 network client 也能加载。
 
-两个 adapter 都单向依赖 `wasmline-loader`，核心 `wasmline` runtime 不会写死任何一个实现。Ktor 发布 JVM、Android 与 iOS 变体；OkHttp 发布 JVM 与 Android 变体。浏览器 raw `.wasm` 则使用 `WasmlineWeb.prefetch()`。
+两个 adapter 都单向依赖 `wasmline-loader`，核心 `wasmline` runtime 不会写死任何一个实现。Ktor 发布 JVM、Android、Apple、Linux 与 Windows Native 变体；OkHttp 发布 JVM 与 Android 变体。浏览器 raw `.wasm` 则使用 `WasmlineWeb.prefetch()`。
 
 </details>
 

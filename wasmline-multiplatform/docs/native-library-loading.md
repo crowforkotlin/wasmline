@@ -1,10 +1,36 @@
 # Native Library Loading and Engine Selection
 
-This document explains how Wasmline loads platform-specific native libraries (`libwasmline.so`, `libwasmline.dylib`, `libwasmline.dll`) at runtime, how Gradle resolves the correct native JAR from Maven dependencies, and how engine module exclusion works.
+This document explains how Wasmline distributes platform-specific native libraries (`libwasmline.so`, `libwasmline.dylib`, `libwasmline.dll`) for JVM hosts and static Native bridges for Kotlin/Native consumers. It also covers Gradle resolution and engine module exclusion.
+
+## Kotlin/Native Distribution
+
+Kotlin/Native consumers do not use the JVM JNI JARs described below. The `wasmline-engine-pulley` and `wasmline-engine-cranelift` modules publish Native variants containing the Kotlin/Native cinterop metadata and a target-specific static archive. The archive embeds the selected `libwasmtime.a`, so a consumer executable or framework has no source-checkout path and does not load `libwasmtime.so` at runtime.
+
+```kotlin
+kotlin {
+    sourceSets {
+        val nativeMain by getting {
+            dependencies {
+                implementation("crow.wasmline:wasmline:1.0.0")
+                implementation("crow.wasmline:wasmline-loader:1.0.0")
+                implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+            }
+        }
+    }
+}
+```
+
+Use Pulley for portable `.pwasm` artifacts on iOS, macOS, Linux, or Windows. Use Cranelift when the host needs matching `.cwasm` artifacts; it also supports `.pwasm` fallback. Select exactly one engine module because both expose the same Wasmline native bridge symbols. The runtime API remains `WasmlineLoader.load()` and `WasmlineRuntime`; no JNI loader call is required.
+
+For signed Native packages, use Ed25519 on every target. Apple Native also verifies ECDSA P-256 through Security; Linux and Windows Native reject ECDSA P-256 manifests until a platform provider is distributed for those targets.
 
 ---
 
-## Architecture Overview
+## JVM and Android Distribution
+
+The remaining sections describe JVM and Android library loading. They do not apply to Kotlin/Native consumers.
+
+### Architecture Overview
 
 The native library loading system has three layers:
 

@@ -12,7 +12,7 @@ updatedAt: 2026-08-18
 
 No. Local artifacts and local manifests use `wasmline-loader` without Ktor or OkHttp. Online remote-manifest loading needs one of `wasmline-network-ktor`, `wasmline-network-okhttp`, a custom `WasmlineNetworkClient`, or a custom remote resolver. The built-in resolver checks its cache first, so it can also load a remote package without a network client when both the manifest is fresh and the selected artifact is cached.
 
-The adapters depend on `wasmline-loader`; neither adapter is hardcoded into the core `wasmline` runtime. Ktor publishes JVM, Android, and iOS variants. OkHttp publishes JVM and Android variants. The browser uses `WasmlineWeb.prefetch()` for raw `.wasm` instead.
+The adapters depend on `wasmline-loader`; neither adapter is hardcoded into the core `wasmline` runtime. Ktor publishes JVM, Android, Apple, Linux, and Windows Native variants. OkHttp publishes JVM and Android variants. The browser uses `WasmlineWeb.prefetch()` for raw `.wasm` instead.
 
 </details>
 

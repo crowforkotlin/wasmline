@@ -13,7 +13,12 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Covers the iOS callback frame and per-handle registry without loading an artifact. */
+/**
+ * Covers the Native callback frame and per-handle registry without loading an artifact.
+ *
+ * Author: crowforkotlin
+ * Date: 2026-08-19
+ */
 class WasmlineIosComponentHostCallbackTest {
 
     @Test
@@ -131,7 +136,7 @@ class WasmlineIosComponentHostCallbackTest {
             interfaceBytes.usePinned { interfacePinned ->
                 functionBytes.usePinned { functionPinned ->
                     arguments.usePinned { argumentsPinned ->
-                        val response = iosStaticComponentHostCallback(
+                        val response = nativeStaticComponentHostCallback(
                             keyPinned.addressOf(0),
                             keyBytes.size.toULong(),
                             interfacePinned.addressOf(0),

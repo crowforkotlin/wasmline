@@ -17,7 +17,7 @@ EOF
 is_kotlin_source() {
     local file="$1"
     case "$file" in
-        wasmline-multiplatform/wasmline-build-logic/*|*/iosMain/*|*/build/*|*/test-gen/*)
+        wasmline-multiplatform/wasmline-build-logic/*|*/build/*|*/test-gen/*)
             return 1
             ;;
         wasmline-multiplatform/*)
@@ -94,7 +94,7 @@ collect_all_files() {
             LINT_FILES+=("${file#"${PROJECT_ROOT}/"}")
         done < <(
             find "$root" \
-                -type d \( -name build -o -name .gradle -o -name .kotlin -o -name test-gen -o -name wasmline-build-logic -o -name iosMain \) -prune -o \
+                -type d \( -name build -o -name .gradle -o -name .kotlin -o -name test-gen -o -name wasmline-build-logic \) -prune -o \
                 -type f \( -name '*.kt' -o -name '*.kts' \) -print0
         )
     done

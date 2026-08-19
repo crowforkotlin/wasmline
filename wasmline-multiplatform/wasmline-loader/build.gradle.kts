@@ -5,7 +5,6 @@ import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.jetbrains.kotlin.konan.target.HostManager
 
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
@@ -31,7 +30,7 @@ java {
 
 kotlin {
     jvm()
-    androidLibrary {
+    android {
         namespace = "crow.wasmline.loader"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -45,16 +44,13 @@ kotlin {
         binaries.library()
     }
     if (HostManager.hostIsMac) {
-        listOf(
-            iosArm64(),
-            iosSimulatorArm64(),
-        ).forEach { target ->
-            target.binaries.framework {
-                isStatic = false
-                freeCompilerArgs
-            }
-        }
+        iosArm64()
+        iosSimulatorArm64()
+        macosArm64()
     }
+    linuxArm64()
+    linuxX64()
+    mingwX64()
 
     applyDefaultHierarchyTemplate()
 
@@ -75,6 +71,7 @@ kotlin {
 
         // webMain includes both js and wasmJs targets
         val webMain by getting { dependsOn(other = hostMain) }
+        val nativeMain by getting { dependsOn(other = hostMain) }
 
         val commonTest by getting {
             dependencies {
@@ -88,10 +85,6 @@ kotlin {
             dependencies {
                 implementation(projects.wasmlineEngineCranelift)
             }
-        }
-
-        if (HostManager.hostIsMac) {
-            val iosMain by getting { dependsOn(other = hostMain) }
         }
     }
 }

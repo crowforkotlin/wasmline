@@ -2,7 +2,7 @@
 title: 平台架构
 description: 各平台执行栈、模块依赖关系与仓库目录结构
 createdAt: 2026-07-18
-updatedAt: 2026-08-18
+updatedAt: 2026-08-19
 ---
 
 # 平台架构
@@ -24,9 +24,9 @@ Host Application  (commonMain / hostMain)
         │  module.bind(impl)     — IR-synthesized inbound dispatch registration
         │
         ▼
-Platform actual  (jniMain / iosMain)
-        │  JNI external declarations          — Android, macOS, Linux, Windows
-        │  Kotlin/Native C Interop (.def)     — iOS
+Platform actual  (jniMain / nativeMain)
+        │  JNI external declarations          — JVM / Android
+        │  Kotlin/Native C Interop (.def)     — iOS、macOS、Linux、Windows
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
         │  Engine.cpp               — Wasmtime engine 生命周期与 backend 选择
@@ -89,7 +89,7 @@ Plugin binary  (raw .wasm — 先通过 Fetch 异步预取，再从字节缓存�
 
 Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。该路径不分配或解析 Core 响应帧。
 
-Component Model 调用通过 Wasmtime Component Model API 反序列化预编译的 Component `.cwasm` 或 `.pwasm` 产物。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen`、`wasm-tools` 或 `wasmtime compile`；可选的 `wasmline-plugin-core`、Gradle 插件与 CLI 构建流水线会在加载前完成这些步骤。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
+Component Model 调用通过 Wasmtime Component Model API 反序列化预编译的 Component `.cwasm` 或 `.pwasm` 产物。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen`、`wasm-tools` 或 `wasmtime compile`；可选的 `wasmline-plugin-core`、Gradle 插件与 CLI 构建流水线会在加载前完成构建工作。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
 
 三种路径共享相同的结果语义。未绑定 action 返回失败结果 `ACTION_NOT_BOUND`，不表示为空的成功 payload，也不要求抛出异常。Core 路径通过响应帧传递该结果；Raw Export 和 Component Model 通过 typed result carrier 传递该结果。违反编程契约、运行时状态不可恢复，或无法构造可靠结果时，才使用异常。
 
@@ -105,10 +105,10 @@ wasmline-gradle-plugin ─► wasmline-plugin-core
 
 wasmline ◄──── native runtime assets ──── wasmline-engine-cranelift / wasmline-engine-pulley
 wasmline-network-ktor / wasmline-network-okhttp ──────► wasmline-loader
-wasmline-core (C/C++) ◄──── JNI / C Interop ────────── wasmline
+wasmline-core (C/C++) ◄──── JNI / Native C Interop ─── wasmline
 ```
 
-network、cache、trusted key 与 load request API 都归 `wasmline-loader` 所有。Ktor 与 OkHttp 构件实现 loader 的 suspend network SPI，并单向依赖 loader；核心 `wasmline` runtime 不依赖任何 HTTP engine。应用只在远程缓存未命中时选择 adapter：Ktor 覆盖 JVM、Android 与 iOS，OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 仍使用独立的 `WasmlineWeb.prefetch()` 流程。
+network、cache、trusted key 与 load request API 都归 `wasmline-loader` 所有。Ktor 与 OkHttp 构件实现 loader 的 suspend network SPI，并单向依赖 loader；核心 `wasmline` runtime 不依赖任何 HTTP engine。应用只在远程缓存未命中时选择 adapter：Ktor 通过 CIO、OkHttp、Darwin、Curl 与 WinHTTP 覆盖 JVM、Android、Apple、Linux 与 Windows Native，OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 仍使用独立的 `WasmlineWeb.prefetch()` 流程。
 
 ## 仓库目录结构
 
@@ -120,7 +120,7 @@ wasmline/
 │   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
 │   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
 │   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
-│   │   ├── iosMain/                    # iOS actual — Kotlin/Native C Interop
+│   │   ├── nativeMain/                 # Kotlin/Native actual 与 C Interop
 │   │   ├── webMain/                    # 共享 Web host runtime 与 expect binding contract
 │   │   ├── jsMain/                     # Kotlin/JS binding actual
 │   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actual

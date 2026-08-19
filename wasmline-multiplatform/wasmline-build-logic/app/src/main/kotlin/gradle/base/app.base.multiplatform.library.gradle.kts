@@ -21,7 +21,7 @@ kotlin {
         vendor.set(JvmVendorSpec.JETBRAINS)
     }
 
-    androidLibrary {
+    android {
         namespace = Config.getNamespace(project)
         compileSdk = libsEx.versions.`android-compileSdk`.requiredVersion.toInt()
         minSdk = libsEx.versions.`android-minSdk`.requiredVersion.toInt()
