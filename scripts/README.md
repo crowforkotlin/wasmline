@@ -19,18 +19,26 @@ Repository automation is grouped by purpose:
 ## Kotlin/Native Bridge
 
 Compile the static bridge and embed the selected Wasmtime engine for one
-Kotlin/Native target. The engine defaults to `pulley`; use `cranelift` when the
-host must execute matching `.cwasm` artifacts. Bridge sources always use the
-release configuration (`-O2 -DNDEBUG`).
+Kotlin/Native target. A single target defaults to `pulley`; use `cranelift`
+when the host must execute matching `.cwasm` artifacts. `all` without an engine
+builds both engines. Bridge sources always use the release configuration
+(`-O2 -DNDEBUG`).
 
 ```bash
-bash scripts/compile-native-bridge.sh <target> [pulley|cranelift]
+bash scripts/compile-native-bridge.sh <target|all> [pulley|cranelift]
 
 # Linux x64 Pulley (default engine can be omitted).
 bash scripts/compile-native-bridge.sh linuxX64
 
 # iOS Simulator Pulley.
 bash scripts/compile-native-bridge.sh iosSimulatorArm64 pulley
+
+# Build all targets supported by the current host.
+bash scripts/compile-native-bridge.sh all
+
+# Build all targets for one engine only.
+bash scripts/compile-native-bridge.sh all pulley
+bash scripts/compile-native-bridge.sh all cranelift
 
 # Show all targets and options.
 bash scripts/compile-native-bridge.sh --help
@@ -39,8 +47,15 @@ bash scripts/compile-native-bridge.sh --help
 Supported targets are `iosArm64`, `iosSimulatorArm64`, `macosArm64`,
 `macosX64`, `linuxArm64`, `linuxX64`, and `mingwX64`. The required Wasmtime
 headers and platform archive must already exist under `build/platforms/`.
+`all` includes Apple targets only on macOS. It includes iOS targets only for
+Pulley because Wasmtime does not provide Cranelift iOS archives. Android ABIs
+are built by `build-native-assets.sh`, not by this script. With `all` and no
+engine argument, both Pulley and Cranelift are built; specifying an engine
+limits the batch to that engine. A single target without an engine still uses
+Pulley.
 Build progress is written to standard error; standard output contains only the
-resulting archive path so Gradle and shell callers can consume it reliably.
+resulting archive paths (one path per engine-target pair in `all` mode), so
+Gradle and shell callers can consume it reliably.
 
 The engine module's Native cinterop tasks invoke this script automatically.
 Their generated definition declares the result through `staticLibraries` and

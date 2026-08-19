@@ -64,8 +64,11 @@ extensions.configure<KotlinMultiplatformExtension> {
     }
     val nativeTargets: List<KotlinNativeTarget> = buildList {
         if (HostManager.hostIsMac) {
-            add(iosArm64())
-            add(iosSimulatorArm64())
+            // Only Pulley has Wasmtime iOS archives; Cranelift has no iOS archive.
+            if (engineName == "pulley") {
+                add(iosArm64())
+                add(iosSimulatorArm64())
+            }
             add(macosArm64())
         }
         add(linuxArm64())
@@ -187,10 +190,14 @@ val nativeEngineCapability = listOf(
     "wasmline-native-engine",
     project.version.toString(),
 ).joinToString(":")
+val swiftPmMetadataConfigurationPrefix = "swiftPMDependenciesMetadataElementsFor"
 configurations.configureEach {
     if (isCanBeConsumed) {
         outgoing.capability(defaultProjectCapability)
-        outgoing.capability(nativeEngineCapability)
+        // SwiftPM lockfile metadata describes dependencies but does not link an engine.
+        if (!name.startsWith(swiftPmMetadataConfigurationPrefix)) {
+            outgoing.capability(nativeEngineCapability)
+        }
     }
 }
 

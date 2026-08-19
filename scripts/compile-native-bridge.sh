@@ -11,7 +11,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/compile-native-bridge.sh <target> [engine]
+  bash scripts/compile-native-bridge.sh <target|all> [engine]
 
 Targets:
   iosArm64
@@ -23,12 +23,19 @@ Targets:
   mingwX64
 
 Engines:
-  pulley       Build the Pulley interpreter bridge (default)
+  pulley       Build the Pulley interpreter bridge
   cranelift    Build the Cranelift bridge
+
+Special target:
+  all          Build both engines for every target supported by the current host
+               Specify an engine to build that engine only
 
 Examples:
   bash scripts/compile-native-bridge.sh linuxX64 pulley
   bash scripts/compile-native-bridge.sh iosSimulatorArm64 pulley
+  bash scripts/compile-native-bridge.sh all
+  bash scripts/compile-native-bridge.sh all pulley
+  bash scripts/compile-native-bridge.sh all cranelift
 EOF
 }
 
@@ -60,15 +67,28 @@ if [[ "$#" -gt 2 ]]; then
   usage_error "expected a target and an optional engine, got $# arguments"
 fi
 
-TARGET="$1"
+case "$1" in
+  all|--all)
+    TARGET="all"
+    ;;
+  *)
+    TARGET="$1"
+    ;;
+esac
 if [[ "${TARGET}" == -* ]]; then
   usage_error "unsupported option: ${TARGET}"
 fi
-ENGINE="${2:-pulley}"
-case "${ENGINE}" in
-  pulley|cranelift) ;;
-  *) usage_error "unsupported engine: ${ENGINE}" ;;
-esac
+ENGINE="${2:-}"
+if [[ "${TARGET}" == "all" && -z "${ENGINE}" ]]; then
+  ENGINES=(pulley cranelift)
+else
+  ENGINE="${ENGINE:-pulley}"
+  case "${ENGINE}" in
+    pulley|cranelift) ;;
+    *) usage_error "unsupported engine: ${ENGINE}" ;;
+  esac
+  ENGINES=("${ENGINE}")
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -79,10 +99,101 @@ WASMTIME_TAG="release-v${VERSION}"
 # Using the host compiler here leaks the host libstdc++ and glibc ABI into the
 # archive, which cannot be linked by Kotlin/Native's target linker.
 KONAN_DATA_DIR="${KONAN_DATA_DIR:-${HOME}/.konan}"
+HOST_OS="$(uname -s)"
+HOST_ARCH="$(uname -m)"
 TARGET_TRIPLE=""
 TARGET_SYSROOT=""
 AR="${AR:-}"
 RANLIB="${RANLIB:-}"
+
+if [[ "${TARGET}" == "all" ]]; then
+  # Apple targets need the Apple SDK. Do not build them on Linux or Windows.
+  # Cranelift has no Wasmtime iOS archive, so only Pulley builds iOS targets.
+  for engine in "${ENGINES[@]}"; do
+    ALL_TARGETS=(linuxArm64 linuxX64 mingwX64)
+    if [[ "${HOST_OS}" == "Darwin" ]]; then
+      ALL_TARGETS+=(macosArm64 macosX64)
+      if [[ "${engine}" == "pulley" ]]; then
+        ALL_TARGETS+=(iosArm64 iosSimulatorArm64)
+      fi
+    fi
+
+    log_info "Building all ${engine} targets for ${HOST_OS}"
+    for target in "${ALL_TARGETS[@]}"; do
+      log_info "Building target: ${target} (${engine})"
+      bash "${SCRIPT_DIR}/compile-native-bridge.sh" "${target}" "${engine}"
+    done
+  done
+  exit 0
+fi
+
+# The Linux and Windows GCC files downloaded by Kotlin/Native are not macOS
+# executables. Use Kotlin/Native's macOS LLVM tools with the target sysroot.
+find_macos_llvm_root() {
+  local llvm_architecture
+  case "${HOST_ARCH}" in
+    arm64|aarch64)
+      llvm_architecture="aarch64"
+      ;;
+    x86_64|amd64)
+      llvm_architecture="x86_64"
+      ;;
+    *)
+      echo "Unsupported macOS host architecture: ${HOST_ARCH}" >&2
+      exit 4
+      ;;
+  esac
+
+  local selected=""
+  local selected_version=-1
+  local selected_build=-1
+  local candidate
+  for candidate in "${KONAN_DATA_DIR}"/dependencies/llvm-*-${llvm_architecture}-macos-essentials-*; do
+    if [[ -x "${candidate}/bin/clang++" && -x "${candidate}/bin/llvm-ar" ]]; then
+      local name="${candidate##*/}"
+      if [[ "${name}" =~ ^llvm-([0-9]+)-.*-macos-essentials-([0-9]+)$ ]]; then
+        local version="${BASH_REMATCH[1]}"
+        local build="${BASH_REMATCH[2]}"
+        if (( version > selected_version || (version == selected_version && build > selected_build) )); then
+          selected="${candidate}"
+          selected_version="${version}"
+          selected_build="${build}"
+        fi
+      fi
+    fi
+  done
+  if [[ -z "${selected}" ]]; then
+    echo "Kotlin/Native macOS LLVM was not found under ${KONAN_DATA_DIR}/dependencies" >&2
+    exit 4
+  fi
+  printf '%s\n' "${selected}"
+}
+
+configure_macos_llvm() {
+  local llvm_root
+  llvm_root="$(find_macos_llvm_root)"
+  CXX="${CXX:-${llvm_root}/bin/clang++}"
+  AR="${AR:-${llvm_root}/bin/llvm-ar}"
+  # llvm-ar creates the archive index with the rcs flags. macOS ranlib cannot
+  # process an archive that contains Linux or Windows object files.
+  RANLIB="${RANLIB:-}"
+}
+
+configure_linux_toolchain() {
+  if [[ "${HOST_OS}" == "Darwin" ]]; then
+    configure_macos_llvm
+    SYSROOT_ARGS=(
+      "--target=${TARGET_TRIPLE}"
+      "--sysroot=${TARGET_SYSROOT}"
+      "--gcc-toolchain=${TOOLCHAIN_ROOT}"
+    )
+  else
+    CXX="${CXX:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-g++}"
+    AR="${AR:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-ar}"
+    RANLIB="${RANLIB:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-ranlib}"
+    SYSROOT_ARGS=("--sysroot=${TARGET_SYSROOT}")
+  fi
+}
 
 case "${TARGET}" in
   linuxX64)
@@ -90,22 +201,16 @@ case "${TARGET}" in
     ARCH="x86_64"
     TARGET_TRIPLE="x86_64-unknown-linux-gnu"
     TOOLCHAIN_ROOT="${KONAN_DATA_DIR}/dependencies/x86_64-unknown-linux-gnu-gcc-8.3.0-glibc-2.19-kernel-4.9-2"
-    CXX="${CXX:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-g++}"
-    AR="${AR:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-ar}"
-    RANLIB="${RANLIB:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-ranlib}"
     TARGET_SYSROOT="${TOOLCHAIN_ROOT}/${TARGET_TRIPLE}/sysroot"
-    SYSROOT_ARGS=("--sysroot=${TARGET_SYSROOT}")
+    configure_linux_toolchain
     ;;
   linuxArm64)
     PLATFORM="linux/aarch64"
     ARCH="aarch64"
     TARGET_TRIPLE="aarch64-unknown-linux-gnu"
     TOOLCHAIN_ROOT="${KONAN_DATA_DIR}/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2"
-    CXX="${CXX:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-g++}"
-    AR="${AR:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-ar}"
-    RANLIB="${RANLIB:-${TOOLCHAIN_ROOT}/bin/${TARGET_TRIPLE}-ranlib}"
     TARGET_SYSROOT="${TOOLCHAIN_ROOT}/${TARGET_TRIPLE}/sysroot"
-    SYSROOT_ARGS=("--sysroot=${TARGET_SYSROOT}")
+    configure_linux_toolchain
     ;;
   macosArm64)
     PLATFORM="mac/aarch64"
@@ -145,32 +250,38 @@ case "${TARGET}" in
     TARGET_TRIPLE="x86_64-w64-windows-gnu"
     TOOLCHAIN_ROOT="${KONAN_DATA_DIR}/dependencies/msys2-mingw-w64-x86_64-2"
     TARGET_SYSROOT="${TOOLCHAIN_ROOT}/x86_64-w64-mingw32"
-    if [[ -z "${CXX:-}" ]]; then
-      if command -v x86_64-w64-mingw32-g++ >/dev/null 2>&1; then
-        CXX="$(command -v x86_64-w64-mingw32-g++)"
-      else
-        CXX="clang++"
-      fi
-    fi
-    if "${CXX}" --version 2>/dev/null | head -1 | grep -qi clang; then
+    if [[ "${HOST_OS}" == "Darwin" ]]; then
+      configure_macos_llvm
       SYSROOT_ARGS=("--target=${TARGET_TRIPLE}" "--sysroot=${TARGET_SYSROOT}")
       USE_MINGW_GCC_HEADERS="1"
     else
-      SYSROOT_ARGS=()
-      USE_MINGW_GCC_HEADERS="0"
-    fi
-    if [[ -z "${AR}" ]]; then
-      if command -v x86_64-w64-mingw32-ar >/dev/null 2>&1; then
-        AR="$(command -v x86_64-w64-mingw32-ar)"
-      else
-        AR="${TOOLCHAIN_ROOT}/x86_64-w64-mingw32/bin/ar.exe"
+      if [[ -z "${CXX:-}" ]]; then
+        if command -v x86_64-w64-mingw32-g++ >/dev/null 2>&1; then
+          CXX="$(command -v x86_64-w64-mingw32-g++)"
+        else
+          CXX="clang++"
+        fi
       fi
-    fi
-    if [[ -z "${RANLIB}" ]]; then
-      if command -v x86_64-w64-mingw32-ranlib >/dev/null 2>&1; then
-        RANLIB="$(command -v x86_64-w64-mingw32-ranlib)"
+      if "${CXX}" --version 2>/dev/null | head -1 | grep -qi clang; then
+        SYSROOT_ARGS=("--target=${TARGET_TRIPLE}" "--sysroot=${TARGET_SYSROOT}")
+        USE_MINGW_GCC_HEADERS="1"
       else
-        RANLIB="${TOOLCHAIN_ROOT}/x86_64-w64-mingw32/bin/ranlib.exe"
+        SYSROOT_ARGS=()
+        USE_MINGW_GCC_HEADERS="0"
+      fi
+      if [[ -z "${AR}" ]]; then
+        if command -v x86_64-w64-mingw32-ar >/dev/null 2>&1; then
+          AR="$(command -v x86_64-w64-mingw32-ar)"
+        else
+          AR="${TOOLCHAIN_ROOT}/x86_64-w64-mingw32/bin/ar.exe"
+        fi
+      fi
+      if [[ -z "${RANLIB}" ]]; then
+        if command -v x86_64-w64-mingw32-ranlib >/dev/null 2>&1; then
+          RANLIB="$(command -v x86_64-w64-mingw32-ranlib)"
+        else
+          RANLIB="${TOOLCHAIN_ROOT}/x86_64-w64-mingw32/bin/ranlib.exe"
+        fi
       fi
     fi
     ;;
@@ -207,9 +318,11 @@ if ! command -v "${AR}" >/dev/null 2>&1 && [[ ! -x "${AR}" ]]; then
   echo "Archiver is not available: ${AR}" >&2
   exit 4
 fi
-if ! command -v "${RANLIB}" >/dev/null 2>&1 && [[ ! -x "${RANLIB}" ]]; then
-  echo "Archive indexer is not available: ${RANLIB}" >&2
-  exit 4
+if [[ -n "${RANLIB}" ]]; then
+  if ! command -v "${RANLIB}" >/dev/null 2>&1 && [[ ! -x "${RANLIB}" ]]; then
+    echo "Archive indexer is not available: ${RANLIB}" >&2
+    exit 4
+  fi
 fi
 
 log_info "Compiler: ${CXX}"
@@ -274,6 +387,8 @@ trap 'rm -rf "${WASMTIME_OBJECT_DIR}"' EXIT
 )
 WASMTIME_OBJECTS=("${WASMTIME_OBJECT_DIR}"/*.o)
 "${AR}" rcs "${ARCHIVE_PATH}" "${OBJECTS[@]}" "${WASMTIME_OBJECTS[@]}"
-"${RANLIB}" "${ARCHIVE_PATH}"
+if [[ -n "${RANLIB}" ]]; then
+  "${RANLIB}" "${ARCHIVE_PATH}"
+fi
 log_info "Build complete"
 printf '%s\n' "${ARCHIVE_PATH}"
