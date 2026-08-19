@@ -10,4 +10,10 @@ internal data class WasmlineHostArtifactTarget(
     val wasmtimeVersion: String? = null,
 )
 
+/**
+ * Reports the host target used for artifact compatibility selection.
+ *
+ * Author: crowforkotlin
+ * Date: 2026-08-19
+ */
 internal expect val currentHostArtifactTarget: WasmlineHostArtifactTarget

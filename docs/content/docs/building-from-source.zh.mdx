@@ -89,6 +89,13 @@ node ./scripts/init-wasmtime.mjs       # Node.js 18+ — 无第三方依赖
 
 原生库构建通过 `build-native-assets.sh` 统一完成，该脚本会编译 Android（CMake + NDK）和 JVM Desktop（Zig）的全部目标平台产物，并部署到对应引擎模块的 `jniLibs` / `resources` 目录。
 
+Kotlin/Native 使用独立的静态 bridge。引擎 Gradle 任务会为可用的 Native 目标调用 `scripts/compile-native-bridge.sh`，并把所选的 `libwasmtime.a` 嵌入发布的 engine KLIB。需要直接构建单个 bridge 时，可执行 `bash scripts/compile-native-bridge.sh linuxX64 pulley`；也可以按目标与引擎替换为 `linuxArm64`、`mingwX64`、`macosArm64`、`macosX64`、`iosArm64`、`iosSimulatorArm64` 或 `cranelift`。Native 使用方不加载 JNI 库。
+
+Apple target 仅在 Gradle 运行于 macOS 时注册，因为对应 cinterop 任务依赖
+Xcode SDK。Linux 与 Windows 开发环境会省略 iOS/macOS 的编译、元数据和发布
+任务，因此这些主机上的 `publishToMavenLocal` 只发布当前可用目标。需要 Apple
+KLIB 时，应在 macOS 上执行发布。
+
 ```bash
 # 默认同时构建 pulley 和 cranelift 两个变体
 bash scripts/build-native-assets.sh

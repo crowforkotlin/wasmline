@@ -78,7 +78,7 @@ WasmlineLoader
   -> verified manifest or caller-trusted descriptor
   -> select CWASM/PWASM for host runtime
   -> internal runtime bridge
-  -> Wasmline platform implementation (JNI or iOS C interop)
+  -> Wasmline platform implementation (JNI or Kotlin/Native C interop)
   -> wasmline-core Api
   -> Module or Component cache
   -> Session, RawModuleSession, or ComponentSession
@@ -208,7 +208,7 @@ The plugin is an IR transformer, not a source generator. `link()` and `bind()` d
 
 - Native runtime: `wasmline/src/jvmTest/`, `iosTest/`, and `wasmline-core` integration paths
 - Browser runtime: `wasmline/src/webTest/`
-- Loader: common, JVM, Web, and iOS tests under `wasmline-loader/src/`
+- Loader: common, JVM, Web, and Kotlin/Native tests under `wasmline-loader/src/`
 - Plugin build pipeline: `wasmline-plugin-core/src/test/` and `wasmline-plugin-test/`
 - IR plugin: `wasmline-kotlin-plugin/testData/box/`, generated `test-gen/`, and FIR/IR snapshots
 

@@ -29,7 +29,7 @@ java {
 
 kotlin {
     jvm()
-    androidLibrary {
+    android {
         namespace = "crow.wasmline.network.okhttp"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()

@@ -29,21 +29,19 @@ java {
 
 kotlin {
     jvm()
-    androidLibrary {
+    android {
         namespace = "crow.wasmline.network.ktor"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }
     if (HostManager.hostIsMac) {
-        listOf(
-            iosArm64(),
-            iosSimulatorArm64(),
-        ).forEach { target ->
+        listOf(iosArm64(), iosSimulatorArm64(), macosArm64()).forEach { target ->
             target.binaries.framework {
                 isStatic = false
             }
         }
     }
+    listOf(linuxArm64(), linuxX64(), mingwX64())
     applyDefaultHierarchyTemplate()
     sourceSets {
         val commonMain by getting {
@@ -69,10 +67,20 @@ kotlin {
         }
 
         if (HostManager.hostIsMac) {
-            val iosMain by getting {
+            val appleMain by getting {
                 dependencies {
                     implementation(libs.ktor.client.darwin)
                 }
+            }
+        }
+        val linuxMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.curl)
+            }
+        }
+        val mingwMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.winhttp)
             }
         }
     }
