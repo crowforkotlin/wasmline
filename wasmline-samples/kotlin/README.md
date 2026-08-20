@@ -27,6 +27,25 @@ Assemble the Core Wasm plugin package without running the host:
 ./gradlew :sample-plugin:wasmlineAssembleDebug
 ```
 
+## Kotlin/Native host
+
+Build and run the host-native smoke sample on Linux x64/ARM64, macOS ARM64,
+or Windows x64:
+
+```shell
+./gradlew :sample-apps:native:verifyKotlinNativeSample
+```
+
+The task assembles the signed Raw Export package, links the Wasmline runtime
+and Pulley engine into a Kotlin/Native executable, verifies the package, and
+checks that `add_i32(19, 23)` returns `42`. Select the Cranelift engine and its
+matching native artifact explicitly with:
+
+```shell
+./gradlew :sample-apps:native:verifyKotlinNativeSample \
+  -Pwasmline.engine=cranelift
+```
+
 ## Four execution contracts
 
 Each valid execution-model/protocol pair has a standalone signed sample package:

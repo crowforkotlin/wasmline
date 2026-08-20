@@ -93,3 +93,26 @@ fixture. It checks opaque-byte echo, host callback, and empty payload behavior;
 it is not a substitute for the Kotlin business-service sample.
 
 The fixture is signed with the sample key already trusted by the Desktop host.
+
+## Kotlin/Native sample
+
+The `native` module is a host-native command-line smoke test for the loader and
+engine integration. It builds the signed `sample-raw-export-plugin` package,
+loads its `manifest.wlm`, verifies the Ed25519 signature, selects the compatible
+Native artifact, and invokes `add_i32` through the Raw Export API:
+
+```shell
+./gradlew :sample-apps:native:verifyKotlinNativeSample
+```
+
+Pulley is linked by default. Use Cranelift when validating the platform-specific
+CWASM path:
+
+```shell
+./gradlew :sample-apps:native:verifyKotlinNativeSample \
+  -Pwasmline.engine=cranelift
+```
+
+Supported hosts are Linux x64/ARM64, macOS ARM64, and Windows x64. The sample
+fails if the linked backend does not match the selected engine or if the call
+does not return `42`.
