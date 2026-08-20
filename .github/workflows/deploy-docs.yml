@@ -70,7 +70,7 @@ jobs:
 
       - name: Generate Dokka API reference
         working-directory: ./wasmline-multiplatform
-        run: ./gradlew dokkaGenerate --no-daemon
+        run: ./gradlew :dokkaGenerate --no-daemon
 
       - name: Install documentation dependencies
         working-directory: ./docs

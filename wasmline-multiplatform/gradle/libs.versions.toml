@@ -347,3 +347,4 @@ wasmline-kotlin = { id = "crow.wasmline.kotlin" }
 app-base-multiplatform-library = { id = "app.base.multiplatform.library" }
 app-base-library = { id = "app.base.library" }
 app-base-android = { id = "app.base.android" }
+wasmline-engine = { id = "wasmline.engine" }

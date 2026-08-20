@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.app.base.multiplatform.library) apply false
     alias(libs.plugins.app.base.library) apply false
     alias(libs.plugins.app.base.android) apply false
+    alias(libs.plugins.wasmline.engine) apply false
 
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false

@@ -1,3 +1,3 @@
 plugins {
-    id("wasmline.engine")
+    alias(libs.plugins.wasmline.engine)
 }
