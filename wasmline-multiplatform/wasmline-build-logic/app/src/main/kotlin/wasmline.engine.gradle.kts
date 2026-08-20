@@ -108,6 +108,10 @@ extensions.configure<KotlinMultiplatformExtension> {
         ) {
             workingDir = rootProject.projectDir
             commandLine("bash", "../scripts/compile-native-bridge.sh", target.name, engineName)
+            // The bridge compiler uses Kotlin/Native's target toolchain directly.
+            // Keep it behind the download task because native link/cinterop tasks
+            // may otherwise schedule both tasks concurrently on a clean runner.
+            dependsOn(tasks.named("downloadKotlinNativeDistribution"))
             inputs.files(nativeBridgeSources).withPropertyName("nativeBridgeSources")
             inputs.dir(asset.resolve("include")).withPropertyName("wasmtimeHeaders").optional()
             inputs.file(asset.resolve("lib/libwasmtime.a")).withPropertyName("wasmtimeArchive").optional()
