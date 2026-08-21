@@ -1,174 +1,135 @@
-# Scripts
+# Repository Commands
 
-Repository automation is grouped by purpose:
+Use `./scripts/wasmline` for repository checks, formatting, Wasmtime downloads,
+native library builds, and version synchronization.
 
-| Path | Purpose |
-| --- | --- |
-| `lint/` | Language format checks and formatting commands |
-| `lib/` | Shared Bash context, paths, and terminal output helpers |
-| `samples/` | Sample build and run helpers |
-| `init-wasmtime.*` | Wasmtime platform asset initialization |
-| `build-native-assets.sh` | Native engine asset build and deployment |
-| `compile-native-bridge.sh` | Kotlin/Native bridge and Wasmtime static-library compilation |
-| `doctor.sh` | Local environment preflight |
-| `versions.json` | Source of truth for managed project and toolchain versions |
-| `sync_version.py` | Version-synchronization entry point and implementation |
-| `toolchain_lock.py` | Internal GitHub release resolution and toolchain-lock validation |
-| `test_sync_version.py` | Regression tests; not part of the update command |
-
-## Kotlin/Native Bridge
-
-Compile the static bridge and embed the selected Wasmtime engine for one
-Kotlin/Native target. A single target defaults to `pulley`; use `cranelift`
-when the host must execute matching `.cwasm` artifacts. `all` without an engine
-builds both engines. Bridge sources always use the release configuration
-(`-O2 -DNDEBUG`).
-
-```bash
-bash scripts/compile-native-bridge.sh <target|all> [pulley|cranelift]
-
-# Linux x64 Pulley (default engine can be omitted).
-bash scripts/compile-native-bridge.sh linuxX64
-
-# iOS Simulator Pulley.
-bash scripts/compile-native-bridge.sh iosSimulatorArm64 pulley
-
-# Build all targets supported by the current host.
-bash scripts/compile-native-bridge.sh all
-
-# Build all targets for one engine only.
-bash scripts/compile-native-bridge.sh all pulley
-bash scripts/compile-native-bridge.sh all cranelift
-
-# Show all targets and options.
-bash scripts/compile-native-bridge.sh --help
+```text
+scripts/
+|-- wasmline                     Public command
+|-- versions.json                Managed version source
+|-- config/                      Platform and artifact configuration
+|-- lib/
+|   |-- python/wasmline_tools/   Command implementation
+|   `-- shell/                   Shared Shell paths, output, and helpers
+|-- internal/
+|   |-- lint/                    Language-specific format commands
+|   `-- native/                  JNI and Kotlin/Native build backends
+`-- tests/                       Repository tooling tests
 ```
 
-Supported targets are `iosArm64`, `iosSimulatorArm64`, `macosArm64`,
-`macosX64`, `linuxArm64`, `linuxX64`, and `mingwX64`. The required Wasmtime
-headers and platform archive must already exist under `build/platforms/`.
-`all` includes Apple targets only on macOS. It includes iOS targets only for
-Pulley because Wasmtime does not provide Cranelift iOS archives. Android ABIs
-are built by `build-native-assets.sh`, not by this script. With `all` and no
-engine argument, both Pulley and Cranelift are built; specifying an engine
-limits the batch to that engine. A single target without an engine still uses
-Pulley.
-Build progress is written to standard error; standard output contains only the
-resulting archive paths (one path per engine-target pair in `all` mode), so
-Gradle and shell callers can consume it reliably.
+Files under `lib/` and `internal/` are implementation details. CI,
+documentation, and normal development commands use the public entry point.
+Gradle calls the Kotlin/Native build backend directly as part of its task graph.
 
-The engine module's Native cinterop tasks invoke this script automatically.
-Their generated definition declares the result through `staticLibraries` and
-`libraryPaths`, causing Kotlin/Native to embed `libwasmline_native.a` in the
-target-specific engine KLIB. Downstream applications depend on exactly one of
-`wasmline-engine-pulley` or `wasmline-engine-cranelift`; they do not reference
-the local archive path directly.
-
-The uncompressed `.a` is a linker input, not the final application or Maven
-download size. Kotlin/Native publishes it inside a compressed cinterop KLIB and
-links its object code into the final executable or framework. JVM and Android
-use a separate distribution path: their engine artifacts contain a shared
-`libwasmline.so`, `.dylib`, or `.dll` and load it through JNI.
-
-C and C++ Component fixture commands live with their language samples:
+## Environment Checks
 
 ```bash
-bash wasmline-samples/c/configure.sh
-bash wasmline-samples/c/build.sh
-bash wasmline-samples/cpp/configure.sh
-bash wasmline-samples/cpp/build.sh
+./scripts/wasmline doctor
 ```
 
-They require `WASI_SDK_PATH` for WASI SDK 33, plus pinned `wit-bindgen` and
-`wasm-tools` tools. The result is a Component Wasm file, not a native program,
-so there is intentionally no `run.sh`.
+Doctor checks JBR 21, Zig 0.16.0, the downloaded Wasmtime files, the JVM and
+Android JNI libraries, and the current host's Kotlin/Native libraries. The
+required JBR, Zig, and Wasmtime versions come from `versions.json`.
 
-## Version Synchronization
+## Wasmtime Files
 
-Inspect or update versions with the singular entry point:
+The download command uses `wasmtime_version` from `versions.json`. It requests
+that exact GitHub release and matches each required archive by its complete
+asset name. It does not select the latest release.
 
 ```bash
-python3 scripts/sync_version.py --list
+# Show target ids and supported engines.
+./scripts/wasmline wasmtime targets
 
-# Synchronize after editing scripts/versions.json.
-python3 scripts/sync_version.py
+# Download every configured target and engine (the default).
+./scripts/wasmline wasmtime download
 
-# Update the manifest and synchronize in one command.
-python3 scripts/sync_version.py \
-  --set wasmtime_version=<new-version> \
-  --set wasm_tools_version=<new-version> \
-  --set wit_bindgen_version=<new-version>
+# Download one target and engine instead.
+./scripts/wasmline wasmtime download \
+  --target linux-x64 \
+  --engine pulley
 
-# Check the latest stable ktlint release, or update the pinned release.
-python3 scripts/sync_version.py --check-ktlint-latest
-python3 scripts/sync_version.py --update-ktlint
+# Use an HTTP proxy.
+./scripts/wasmline wasmtime download \
+  --target linux-x64 \
+  --engine cranelift \
+  --proxy 127.0.0.1:7890
 ```
 
-Run validation separately when required:
+Downloads are installed under
+`build/platforms/release-v<version>/<engine>/<platform>/`. Both the target and
+engine default to `all`; existing complete targets are reused unless `--force`
+is supplied. Downloads run concurrently without a default limit; use `--jobs`
+to impose one.
+
+## Engine Libraries
+
+Wasmtime files must be present before building engine libraries.
 
 ```bash
-python3 scripts/sync_version.py --check
-python3 scripts/sync_version.py --verify-upstream
-python3 scripts/test_sync_version.py
+# Build and deploy JVM and Android JNI libraries.
+./scripts/wasmline jni build --engine all
+./scripts/wasmline jni build --engine pulley
+./scripts/wasmline jni build --engine cranelift
+
+# Build one Kotlin/Native library.
+./scripts/wasmline kotlin-native build \
+  --target linuxX64 \
+  --engine pulley
+
+# Build every target supported by the current host.
+./scripts/wasmline kotlin-native build --target all
 ```
 
-`sync_version.py` is the only supported update command. With no arguments, it
-reads `versions.json` and synchronizes every managed reference. The `--set`
-option updates the manifest before performing the same synchronization.
-`test_sync_version.py` is an independent regression suite and does not update
-repository versions.
+JNI builds use Android CMake and the NDK for Android libraries, and Zig for JVM
+desktop libraries. Kotlin/Native builds use the target toolchains downloaded by
+Kotlin/Native and write `libwasmline_native.a` under
+`wasmline-multiplatform/wasmline/build/native/`.
 
-`ktlint_version` pins the standalone formatter used by both local lint commands
-and CI. The scheduled `Update ktlint` workflow checks the latest stable release
-weekly and opens or updates a pull request when the pin changes. This keeps
-formatting reproducible while making each upgrade visible for review.
+## Formatting
 
-When adding a duplicated version reference, add a narrow rule to
-`sync_version.py` and synthetic coverage to `test_sync_version.py` in the same
-change.
-
-Changing any Component toolchain version causes normal synchronization to
-resolve all required GitHub release assets before derived files are written.
-Kotlin code and live tests read Component tool versions from `ToolchainCatalog`;
-changes to `wasm_tools_version` or `wit_bindgen_version` do not rewrite `.kt`
-files. Version strings used as independent test fixtures remain unmanaged.
-The generated lock is packaged from
-`wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/` and must
-not be edited manually. `--check` validates local consistency without network
-access or lock refresh. `--verify-upstream` compares the checked-in lock with
-current GitHub release metadata.
-
-## Linting
-
-`bash scripts/lint.sh` is the main lint entry point. It defaults to changed
-and untracked source files, so normal local work does not scan the entire
-repository.
+The default scope contains changed and untracked files. Use `--all` for the CI
+scope and `--format` to modify files.
 
 ```bash
-# Check changed Kotlin, C/C++, and Zig sources.
-bash scripts/lint.sh
-
-# Check only selected languages.
-bash scripts/lint.sh kotlin zig
-
-# Check every supported source file, as used by CI.
-bash scripts/lint.sh --all
-
-# Format changed sources, or format every supported source file.
-bash scripts/lint.sh format
-bash scripts/lint.sh --all format
+./scripts/wasmline lint
+./scripts/wasmline lint kotlin zig
+./scripts/wasmline lint --all
+./scripts/wasmline lint --format
+./scripts/wasmline lint --all --format kotlin
 ```
 
-Language-specific commands are available under `scripts/lint/`:
+Kotlin uses the exact `ktlint_version` in `versions.json`, reusing a matching
+binary on `PATH` or downloading it under `build/tools/ktlint/`. C and C++ use
+clang-format. Zig and ZON files use `zig fmt`.
+
+## Versions
+
+`versions.json` is the only source for duplicated project and tool versions.
 
 ```bash
-bash scripts/lint.sh [--changed|--all] [check|format] [kotlin|cpp|zig ...]
+./scripts/wasmline versions list
+./scripts/wasmline versions sync
+./scripts/wasmline versions sync --set wasmtime_version=<version>
+./scripts/wasmline versions check
+./scripts/wasmline versions verify-upstream
+./scripts/wasmline versions check-ktlint
+./scripts/wasmline versions update-ktlint
 ```
 
-Kotlin lint resolves the exact `ktlint_version` from `scripts/versions.json`,
-reusing a matching `ktlint` on `PATH` or downloading the pinned release into
-`build/tools/ktlint/`. It uses `wasmline-multiplatform/.editorconfig` across the
-existing `wasmline-multiplatform/` lint domain. C/C++ uses `clang-format` with
-`wasmline-core/.clang-format` across the existing `wasmline-core/` lint domain.
-Zig and ZON use Zig's built-in `zig fmt` formatter. The language-specific
-implementations are internal to `scripts/lint/`; use `scripts/lint.sh`.
+The implementation is under `lib/python/wasmline_tools/`. Version and Wasmtime
+tooling tests are under `tests/`; they are not part of normal commands.
+
+## Output
+
+Human-readable output uses the same status words in every command:
+
+```text
+INFO    Selected input or current operation
+OK      Completed operation
+ERR     Failed requirement or operation
+SKIP    Nothing matched the requested scope
+```
+
+Colors are enabled only for a terminal and can be disabled with `NO_COLOR`.
+Native build logs are written to stderr.

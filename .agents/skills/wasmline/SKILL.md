@@ -23,11 +23,11 @@ Read only the documents required by the current task.
 
 ## Hard Constraints
 
-1. **Conditional pre-check, once per session.** Run `bash ./scripts/doctor.sh` immediately before the first validation of changes to files in this repository. Do not run it for read-only work, tasks unrelated to Wasmline, or changes that require no validation. If a later turn first introduces a change that must be validated, run the command then. Never rerun it in the same session.
+1. **Conditional pre-check, once per session.** Run `./scripts/wasmline doctor` immediately before the first validation of changes to files in this repository. Do not run it for read-only work, tasks unrelated to Wasmline, or changes that require no validation. If a later turn first introduces a change that must be validated, run the command then. Never rerun it in the same session.
 2. **Compilation and tests require explicit instruction.** Do not run Gradle, Zig, CMake, native builds, or test suites unless the user explicitly requests the relevant build, test, or verification.
 3. **Generated files are not edited manually.** This includes `test-gen/`, `*.fir.txt`, `*.fir.ir.txt`, `**/build/`, `build/platforms/`, `.zig-cache/`, and `zig-out/`.
 4. **Select the owning module first.** Confirm the module and source set before changing code.
-5. **Versions come from one manifest.** `scripts/versions.json` is authoritative. Edit the manifest and run `python3 scripts/sync_version.py`, or use `--set key=value` for the same operation. Extend the synchronizer and its tests when adding a duplicated version reference.
+5. **Versions come from one manifest.** `scripts/versions.json` is authoritative. Edit the manifest and run `./scripts/wasmline versions sync`, or use `versions sync --set key=value` for the same operation. Extend the synchronizer and its tests when adding a duplicated version reference.
 6. **Tags and Maven releases remain paired.** The release tag format is `release-x.y.z.v`. Do not create a release tag without its Maven release, and do not publish a Maven release without its tag.
 7. **Maven modules use one project version.** All published modules, including engine modules, use `wasmline.version` in `x.y.z` form. Do not introduce four-segment engine Maven versions.
 8. **Use `main` and temporary sub-branches.** Do not create long-lived release or Wasmtime-version branches.

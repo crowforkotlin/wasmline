@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Synchronize repository version references from a single manifest.
 
-Usage:
-    python3 scripts/sync_version.py
-    python3 scripts/sync_version.py --check
-    python3 scripts/sync_version.py --set wasmtime_version=47.0.2
-    python3 scripts/sync_version.py --verify-upstream
-    python3 scripts/sync_version.py --check-ktlint-latest
-    python3 scripts/sync_version.py --update-ktlint
+Public commands:
+    ./scripts/wasmline versions sync
+    ./scripts/wasmline versions check
+    ./scripts/wasmline versions sync --set wasmtime_version=<version>
+    ./scripts/wasmline versions verify-upstream
+    ./scripts/wasmline versions check-ktlint
+    ./scripts/wasmline versions update-ktlint
 """
 
 from __future__ import annotations
@@ -21,17 +21,12 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 from urllib.request import Request, urlopen
 
-if __package__:
-    from . import toolchain_lock
-else:
-    import toolchain_lock
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
-MANIFEST_PATH = SCRIPT_DIR / "versions.json"
+from . import toolchain_lock
+from .output import Console
+from .paths import MANIFEST_PATH, PROJECT_ROOT
 KTLINT_LATEST_RELEASE_URL = "https://api.github.com/repos/ktlint/ktlint/releases/latest"
 
 VersionMap = dict[str, str]
@@ -210,14 +205,15 @@ def check_ktlint_latest(versions: VersionMap) -> int:
     latest = latest_ktlint_version()
     current_key = stable_version_key(current)
     latest_key = stable_version_key(latest)
+    console = Console(sys.stdout)
     if current_key == latest_key:
-        print(f"KtLint is up to date: {current}.")
+        console.ok("ktlint version", current)
         return 0
     if current_key > latest_key:
-        print(f"KtLint pin is newer than the latest upstream release: {current} > {latest}.")
+        console.info("ktlint version", f"Configured {current}; upstream {latest}.")
         return 0
-    print(f"KtLint update available: {current} -> {latest}.")
-    print("Run: python3 scripts/sync_version.py --update-ktlint")
+    console.error("ktlint version", f"Update available: {current} -> {latest}.")
+    console.info("Command", "./scripts/wasmline versions update-ktlint")
     return 1
 
 
@@ -439,16 +435,10 @@ def file_specs() -> tuple[FileSpec, ...]:
     development_guide_rules = (
         Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}", min_count=0),
         Rule(
-            r"Zig version \(requires \*\*[0-9.]+\*\*\)",
-            lambda v: f"Zig version (requires **{v['zig_version']}**)",
+            r"The pre-check also reports Zig [0-9]+\.[0-9]+\.[0-9]+",
+            lambda v: f"The pre-check also reports Zig {v['zig_version']}",
         ),
         Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}", min_count=0),
-    )
-    sync_script_rules = (
-        Rule(
-            r"(--set wasmtime_version=)[0-9]+\.[0-9]+\.[0-9]+",
-            lambda v: rf"\g<1>{v['wasmtime_version']}",
-        ),
     )
     manifest_test_rules = (
         Rule(
@@ -530,19 +520,6 @@ def file_specs() -> tuple[FileSpec, ...]:
     )
 
     return jbr_toolchain_files + (
-        FileSpec("scripts/sync_version.py", sync_script_rules),
-        FileSpec(
-            "scripts/doctor.sh",
-            (
-                Rule(
-                    r'(?m)^REQUIRED_JBR_VERSION="[0-9]+"\nREQUIRED_ZIG_VERSION="[0-9.]+"$',
-                    lambda v: (
-                        f'REQUIRED_JBR_VERSION="{v["jbr_version"]}"\n'
-                        f'REQUIRED_ZIG_VERSION="{v["zig_version"]}"'
-                    ),
-                ),
-            ),
-        ),
         FileSpec(
             ".agents/skills/wasmline/SKILL.md",
             (
@@ -797,24 +774,6 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r"Zig [0-9]+\.[0-9]+\.[0-9]+",
                     lambda v: f"Zig {v['zig_version']}",
-                ),
-            ),
-        ),
-        FileSpec(
-            "scripts/build-native-assets.sh",
-            (
-                Rule(
-                    r'(?m)^    echo "[0-9]+\.[0-9]+\.[0-9]+"$',
-                    lambda v: f'    echo "{v["wasmtime_version"]}"',
-                ),
-            ),
-        ),
-        FileSpec(
-            "scripts/lib/context.sh",
-            (
-                Rule(
-                    r"release-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"release-v{v['wasmtime_version']}",
                 ),
             ),
         ),
@@ -1155,19 +1114,19 @@ def sync_files(
 
     if check:
         if changed_files:
-            print("Version drift detected:")
+            console = Console(sys.stdout)
             for item in changed_files:
-                print(f"  - {item}")
+                console.error("Version file", item)
             return 1
-        print("All managed files are synchronized.")
+        Console(sys.stdout).ok("Version check", "All managed files are synchronized.")
         return 0
 
     if changed_files:
-        print("Updated files:")
+        console = Console(sys.stdout)
         for item in changed_files:
-            print(f"  - {item}")
+            console.ok("Version file", item)
     else:
-        print("No version changes were necessary.")
+        Console(sys.stdout).ok("Version sync", "No changes were necessary.")
     return 0
 
 
@@ -1215,11 +1174,11 @@ def load_or_refresh_toolchain_lock(
         else:
             return lock
 
-    print("Resolving toolchain release metadata...")
+    Console(sys.stdout).info("Toolchain lock", "Resolving GitHub release metadata.")
     return toolchain_lock.generate_lock(versions)
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Synchronize managed version references.")
     parser.add_argument(
         "--check",
@@ -1253,7 +1212,7 @@ def main() -> int:
         action="store_true",
         help="Update ktlint_version to the latest stable GitHub release and synchronize files.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.check and args.set:
         raise SystemExit("--check cannot be used together with --set.")
@@ -1290,14 +1249,15 @@ def main() -> int:
         current = versions["ktlint_version"]
         current_key = stable_version_key(current)
         latest_key = stable_version_key(latest)
+        console = Console(sys.stdout)
         if current_key == latest_key:
-            print(f"KtLint is already up to date: {current}.")
+            console.ok("ktlint version", current)
             return 0
         if current_key > latest_key:
-            print(f"KtLint pin is newer than the latest upstream release: {current} > {latest}.")
+            console.info("ktlint version", f"Configured {current}; upstream {latest}.")
             return 0
         updates = {"ktlint_version": latest}
-        print(f"Updating ktlint_version: {current} -> {latest}.")
+        console.info("ktlint version", f"Updating {current} -> {latest}.")
     elif args.set:
         updates = parse_updates(args.set)
 
@@ -1314,7 +1274,7 @@ def main() -> int:
 
         if args.verify_upstream:
             toolchain_lock.verify_upstream(lock, versions)
-            print("Upstream toolchain metadata matches the checked-in lock.")
+            Console(sys.stdout).ok("Toolchain lock", "GitHub metadata matches.")
             if not args.check:
                 return 0
     except toolchain_lock.ToolchainLockError as error:

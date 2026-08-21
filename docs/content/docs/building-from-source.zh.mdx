@@ -2,7 +2,7 @@
 title: 从源码编译
 description: 面向贡献者的工具链要求与构建工作流 — 适用于 fork 仓库并修改 Wasmline 本身的开发者
 createdAt: 2026-07-18
-updatedAt: 2026-08-16
+updatedAt: 2026-08-21
 ---
 
 # 从源码编译
@@ -17,7 +17,8 @@ updatedAt: 2026-08-16
 | Kotlin | 最低 **2.3.0-RC2** | Wasm GC、函数引用、异常处理提案 |
 | Android Studio | **LTS** | AGP 9.3.0 兼容性 |
 | Zig | **0.16.0** | `wasmline-core` JNI 共享库编译 |
-| Bash / Python 3.9+ / Node.js 18+ | 任意一种 | 平台运行时资产初始化 |
+| Python | **3.10+** | `./scripts/wasmline` 仓库命令 |
+| Bash | **3.2+** | 内部 JNI 与 Kotlin/Native 构建实现 |
 
 Kotlin/WasmWasi 编译器后端必须完整实现以下 WebAssembly 提案：
 
@@ -50,7 +51,7 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 | 变量 | 用途 |
 |---|---|
 | `ANDROID_HOME` | Gradle 构建 Android 目标时定位 SDK |
-| `ANDROID_NDK_HOME` | `build-native-assets.sh` 构建 Android ABI 时定位 NDK 工具链 |
+| `ANDROID_NDK_HOME` | `./scripts/wasmline jni build` 构建 Android ABI 时定位 NDK 工具链 |
 | `MINGW_PATH` | `build.zig` 交叉编译 `x86_64-windows-gnu` 时定位 MinGW 工具链根目录 |
 
 <Callout type="info" title="MINGW_PATH 仅 Windows 交叉编译需要">
@@ -62,10 +63,10 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 每个会话仅执行一次仓库预检，执行时机是修改 Wasmline 文件后首次进行必要验证之前。只读任务、Wasmline 之外的修改以及无需验证的文件修改均不执行预检：
 
 ```bash
-bash ./scripts/doctor.sh
+./scripts/wasmline doctor
 ```
 
-该脚本会验证 JBR 21 是否可用，报告桌面 Zig/JNI-native 状态，并报告 `build/platforms/` 下缺失的 wasmtime 平台/架构资产。
+该命令检查 JBR 21、Zig 0.16.0、已下载的 Wasmtime 文件、JNI 库以及 Kotlin/Native 库。
 
 <Callout type="info" title="local.properties">
   手动执行项目构建或运行相关命令时，项目根目录下需要 `local.properties` 文件。在 Android Studio 中打开项目后会自动创建该文件。请确认此文件存在后再在 IDE 外执行 Gradle 命令。
@@ -75,56 +76,44 @@ bash ./scripts/doctor.sh
 
 资产初始化仅对原生目标构建（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 wasmtime min C-API 资产。
 
-在开始原生目标编译前，`build/platforms/` 下必须存在 wasmtime min C-API 头文件与预编译库。执行以下任一等价脚本：
+在开始原生目标编译前，`build/platforms/` 下必须存在 wasmtime min C-API 头文件与预编译库。先查看目标编号，再下载构建所需的平台文件和引擎文件：
 
 ```bash
-bash ./scripts/init-wasmtime.sh        # Bash — 需要 curl 和 tar/unzip
-python3 ./scripts/init-wasmtime.py     # Python 3.9+ — 无第三方依赖
-node ./scripts/init-wasmtime.mjs       # Node.js 18+ — 无第三方依赖
+./scripts/wasmline wasmtime targets
+./scripts/wasmline wasmtime download --target linux-x64 --engine pulley
+./scripts/wasmline wasmtime download
 ```
 
-三个脚本都支持交互式平台/架构选择、可配置的下载并发数，以及作为第一个位置参数传入的可选 HTTP 代理（例如 `127.0.0.1:7890`）。
+该命令读取 `scripts/versions.json` 中固定的版本，并请求对应 release。下载默认全部并发；使用 `--jobs` 限制并发数，需要 HTTP 代理时使用 `--proxy 127.0.0.1:7890`。
 
 ## 原生库构建
 
-原生库构建通过 `build-native-assets.sh` 统一完成，该脚本会编译 Android（CMake + NDK）和 JVM Desktop（Zig）的全部目标平台产物，并部署到对应引擎模块的 `jniLibs` / `resources` 目录。
+`./scripts/wasmline jni build` 使用 CMake 和 NDK 构建 Android 库，使用 Zig 构建 JVM Desktop 库，并把结果部署到所选引擎模块的 `jniLibs` 和 `resources` 目录。
 
-Kotlin/Native 使用独立的静态 bridge。引擎 Gradle 任务会为可用的 Native 目标调用 `scripts/compile-native-bridge.sh`，并把所选的 `libwasmtime.a` 嵌入发布的 engine KLIB。需要直接构建单个 bridge 时，可执行 `bash scripts/compile-native-bridge.sh linuxX64 pulley`；也可以按目标与引擎替换为 `linuxArm64`、`mingwX64`、`macosArm64`、`macosX64`、`iosArm64`、`iosSimulatorArm64` 或 `cranelift`。Native 使用方不加载 JNI 库。
+Kotlin/Native 使用单独的静态桥接库。引擎模块的 Gradle 任务会为每个可用目标调用内部构建脚本，并把所选的 `libwasmtime.a` 写入发布的引擎 KLIB。构建单个静态库时，执行 `./scripts/wasmline kotlin-native build --target linuxX64 --engine pulley`。支持 `linuxArm64`、`linuxX64`、`mingwX64`、`macosArm64`、`macosX64`、`iosArm64` 和 `iosSimulatorArm64`。Kotlin/Native 使用方不加载 JNI 库。
 
-Apple target 仅在 Gradle 运行于 macOS 时注册，因为对应 cinterop 任务依赖
+Apple 目标仅在 Gradle 运行于 macOS 时注册，因为对应 cinterop 任务依赖
 Xcode SDK。Linux 与 Windows 开发环境会省略 iOS/macOS 的编译、元数据和发布
 任务，因此这些主机上的 `publishToMavenLocal` 只发布当前可用目标。需要 Apple
 KLIB 时，应在 macOS 上执行发布。
 
 ```bash
-# 默认同时构建 pulley 和 cranelift 两个变体
-bash scripts/build-native-assets.sh
+# 构建两个引擎。
+./scripts/wasmline jni build --engine all
 
-# 仅构建指定变体
-bash scripts/build-native-assets.sh pulley
-bash scripts/build-native-assets.sh cranelift
+# 构建一个引擎。
+./scripts/wasmline jni build --engine pulley
+./scripts/wasmline jni build --engine cranelift
+
+# 构建当前主机支持的 Kotlin/Native 库。
+./scripts/wasmline kotlin-native build --target all
 ```
 
 前置条件：
-- 已执行 `init-wasmtime.sh` 下载平台运行时资产
+- 已下载构建所需的 Wasmtime 平台文件和引擎文件
 - 已设置 `ANDROID_NDK_HOME`（Android 目标）
 - 已安装 Zig 0.16.0（JVM Desktop 目标）
 - 已设置 `MINGW_PATH`（Windows 交叉编译，可选）
-
-### 手动 Zig 构建（仅 Desktop）
-
-如需单独构建 JVM Desktop 的 JNI 共享库，可直接调用 Zig：
-
-```bash
-cd wasmline-multiplatform/wasmline
-
-zig build --release=small -p src/jvmMain/resources   # Release（体积优化）
-zig build -p src/jvmMain/resources                    # Debug
-```
-
-<Callout type="warn" title="不要提交 Zig 中间产物">
-  `zig-out/` 下的文件属于 Zig 构建的中间产物，绝不能提交。必须使用 `-p src/jvmMain/resources` 参数，才能将 JNI 库安装到正确的 classpath 资源目录。
-</Callout>
 
 ## Gradle 构建参考
 
@@ -167,9 +156,9 @@ cd ../wasmline-samples/kotlin
 文档和重复配置中的版本号统一由 `scripts/versions.json` 管理，并通过脚本同步：
 
 ```bash
-python3 scripts/sync_version.py
-python3 scripts/sync_version.py --set wasmtime_version=<new-version>
-python3 scripts/sync_version.py --check
+./scripts/wasmline versions sync
+./scripts/wasmline versions sync --set wasmtime_version=<new-version>
+./scripts/wasmline versions check
 ```
 
-手动修改 `versions.json` 后执行无参数命令。`--set` 是另一种入口，会先更新 manifest 再执行同步。
+手动修改 `versions.json` 后执行 `versions sync`。`--set` 是另一种入口，会先更新 manifest 再执行同步。

@@ -19,7 +19,7 @@ Operational reference for the Wasmline repository. All paths are relative to the
 Gradle work requires **JBR 21**. Run the pre-check once per session, immediately before the first validation of changes to files in this repository:
 
 ```bash
-bash ./scripts/doctor.sh
+./scripts/wasmline doctor
 ```
 
 Rules:
@@ -28,23 +28,21 @@ Rules:
 - Creating a goal or requesting edits does not trigger it by itself. Validation of the resulting repository changes is the trigger.
 - If a later turn first introduces a change that must be validated, run it then.
 - Never run it again in the same session.
-- A failed JBR 21 gate blocks Gradle commands. Asset and desktop sections are advisory unless the requested command needs those assets.
-- The script reads `~/.zshrc`, `~/.bashrc`, and `~/.bash_profile` without modifying them. Do not edit these files.
+- A failed JBR 21 check blocks Gradle commands. Other failed checks matter only when the requested command uses the reported tool or files.
 - Do not write local JBR paths into repository files.
 
-The pre-check also reports the configured Wasmtime platform assets, Zig version (requires **0.16.0**), and desktop native-library status.
+The pre-check also reports Zig 0.16.0, configured Wasmtime files, JNI libraries, and Kotlin/Native libraries.
 
 ## Platform Runtime Assets
 
-Use one initializer when the required target is absent from `build/platforms/`:
+Download only the targets required by the requested build:
 
 ```bash
-bash ./scripts/init-wasmtime.sh
-python3 ./scripts/init-wasmtime.py
-node ./scripts/init-wasmtime.mjs
+./scripts/wasmline wasmtime targets
+./scripts/wasmline wasmtime download --target <target> --engine <pulley|cranelift|all>
 ```
 
-The three entry points provide the same target and runtime-variant selection workflow. They support concurrent downloads, an optional proxy argument such as `127.0.0.1:7890`, and extraction under `build/platforms/release-v<wasmtime-version>/`.
+The command reads the exact release from `scripts/versions.json`, matches complete release asset names, supports bounded concurrent downloads and an optional `--proxy`, and extracts files under `build/platforms/release-v<wasmtime-version>/`.
 
 Do not initialize assets merely because the directory exists or is absent. Confirm that the requested build needs them and that the user authorized the download or build.
 
@@ -139,28 +137,30 @@ Compilation and test commands below require explicit user instruction.
 
 ```bash
 # Conditional environment pre-check; see the rules above
-bash ./scripts/doctor.sh
+./scripts/wasmline doctor
 
 # Version synchronization checks
-python3 scripts/sync_version.py
-python3 scripts/sync_version.py --check
-python3 scripts/sync_version.py --verify-upstream
-python3 scripts/sync_version.py --check-ktlint-latest
-python3 scripts/sync_version.py --update-ktlint
-python3 scripts/test_sync_version.py
+./scripts/wasmline versions sync
+./scripts/wasmline versions check
+./scripts/wasmline versions verify-upstream
+./scripts/wasmline versions check-ktlint
+./scripts/wasmline versions update-ktlint
+python3 scripts/tests/test_versions.py
+python3 scripts/tests/test_wasmtime.py
 
 # Changed/untracked source formatting checks
-bash scripts/lint.sh
+./scripts/wasmline lint
 
 # Full source formatting checks used by CI
-bash scripts/lint.sh --all
+./scripts/wasmline lint --all
 
 # Format changed sources, or all supported sources
-bash scripts/lint.sh format
-bash scripts/lint.sh --all format
+./scripts/wasmline lint --format
+./scripts/wasmline lint --all --format
 
 # Build native engine assets after platform initialization
-bash scripts/build-native-assets.sh [pulley|cranelift|all]
+./scripts/wasmline jni build --engine <pulley|cranelift|all>
+./scripts/wasmline kotlin-native build --target <target|all> [--engine <pulley|cranelift>]
 
 # IR runner generation and box tests
 cd wasmline-multiplatform
@@ -183,7 +183,7 @@ cd wasmline-multiplatform
 | C/C++ | clang-format | Supported sources under `wasmline-core/` |
 | Zig/ZON | `zig fmt` | Zig build files under `wasmline-multiplatform/wasmline/` |
 
-Use `bash scripts/lint.sh`; language-specific scripts under `scripts/lint/` are implementation details.
+Use `./scripts/wasmline lint`; language-specific scripts under `scripts/internal/lint/` are implementation details.
 
 ## CI Pipeline
 

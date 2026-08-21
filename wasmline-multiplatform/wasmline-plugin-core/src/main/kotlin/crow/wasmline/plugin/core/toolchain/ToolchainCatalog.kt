@@ -65,7 +65,7 @@ data class ToolAssetSpec(
 
 /**
  * Locked Component Model toolchain versions and release assets loaded from the
- * generated resource managed by scripts/sync_version.py.
+ * generated resource managed by scripts/wasmline versions sync.
  */
 
 @InternalWasmlineToolingApi
@@ -149,7 +149,7 @@ private data class LockedToolchain(
 ) {
     fun validate() {
         require(schemaVersion == 1) { "Unsupported toolchain lock schema: $schemaVersion." }
-        require(generatedBy == "scripts/sync_version.py") { "Invalid toolchain lock generator: $generatedBy." }
+        require(generatedBy == "scripts/wasmline versions sync") { "Invalid toolchain lock generator: $generatedBy." }
         require(sourceManifest == "scripts/versions.json") { "Invalid toolchain lock source: $sourceManifest." }
 
         val lockedByTool = tools.associateBy { locked -> locked.tool }

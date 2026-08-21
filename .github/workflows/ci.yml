@@ -33,7 +33,7 @@ jobs:
           key: ktlint-${{ runner.os }}-${{ hashFiles('scripts/versions.json') }}
 
       - name: Kotlin format check
-        run: bash scripts/lint.sh --all kotlin
+        run: ./scripts/wasmline lint --all kotlin
 
   lint-clang:
     runs-on: ubuntu-latest
@@ -46,7 +46,7 @@ jobs:
         run: sudo apt-get install -y clang-format
 
       - name: C/C++ format check
-        run: bash scripts/lint.sh --all cpp
+        run: ./scripts/wasmline lint --all cpp
 
   lint-zig:
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
           version: ${{ env.ZIG_VERSION }}
 
       - name: Zig format and AST check
-        run: bash scripts/lint.sh --all zig
+        run: ./scripts/wasmline lint --all zig
 
   # ───────────────────────────────────────────────────────────────
   # JOB 3: Build native assets (Wasmtime platform libraries)
@@ -130,33 +130,23 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-${{ hashFiles('scripts/versions.json') }}
+          key: wasmtime-platforms-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
 
       - name: Initialize Wasmtime platform assets
         if: steps.cache-wasmtime.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WASMTIME_VERSION: ${{ vars.WASMTIME_VERSION || 'release-v47.0.2' }}
-        run: |
-          echo "Initializing Wasmtime $WASMTIME_VERSION..."
-          # Select the configured release, all platforms, and default concurrency.
-          printf "%s\na\n\n" "$WASMTIME_VERSION" | bash scripts/init-wasmtime.sh
+        run: ./scripts/wasmline wasmtime download
 
       - name: Build native libraries
         timeout-minutes: 5
-        run: bash scripts/build-native-assets.sh
+        run: ./scripts/wasmline jni build --engine all
 
-      - name: Deploy JVM native library for tests
-        run: |
-          mkdir -p wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/linux/x86_64
-          cp wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so \
-             wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
-
-      - name: Cache native assets for test job
+      - name: Cache Cranelift JNI library for test jobs
         uses: actions/cache/save@v5
         with:
-          path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
-          key: native-assets-${{ github.run_id }}
+          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/
+          key: jni-cranelift-linux-x64-${{ github.run_id }}
 
   # ───────────────────────────────────────────────────────────────
   # JOB 4: JVM / Desktop Tests
@@ -191,11 +181,12 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Restore native assets from cache
-        uses: actions/cache/restore@v4
+      - name: Restore Cranelift JNI library
+        uses: actions/cache/restore@v5
         with:
-          path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
-          key: native-assets-${{ github.run_id }}
+          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/
+          key: jni-cranelift-linux-x64-${{ github.run_id }}
+          fail-on-cache-miss: true
 
       - name: Run JVM tests
         working-directory: wasmline-multiplatform
@@ -242,7 +233,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-${{ hashFiles('scripts/versions.json') }}
+          key: wasmtime-platforms-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
           fail-on-cache-miss: true
 
       - name: Run Kotlin/Native sample
@@ -369,17 +360,16 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-ios-${{ hashFiles('scripts/versions.json') }}
+          key: wasmtime-platforms-ios-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
 
       - name: Initialize Wasmtime iOS simulator assets
         if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WASMTIME_VERSION: ${{ vars.WASMTIME_VERSION || 'release-v47.0.2' }}
-        run: |
-          echo "Initializing Wasmtime $WASMTIME_VERSION for iOS Simulator..."
-          # Select the configured release, iOS simulator target, and default concurrency.
-          printf "%s\n6\n\n" "$WASMTIME_VERSION" | bash scripts/init-wasmtime.sh
+        run: >-
+          ./scripts/wasmline wasmtime download
+          --target ios-simulator-arm64
+          --engine pulley
 
       - name: Run iOS simulator tests
         working-directory: wasmline-multiplatform
@@ -421,17 +411,18 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Restore native assets from cache
+      - name: Restore Cranelift JNI library
         uses: actions/cache/restore@v5
         with:
-          path: wasmline-multiplatform/wasmline/src/jvmMain/resources/jni/
-          key: native-assets-${{ github.run_id }}
+          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/
+          key: jni-cranelift-linux-x64-${{ github.run_id }}
+          fail-on-cache-miss: true
 
       - name: Cache plugin Wasmtime binary
         uses: actions/cache@v5
         with:
           path: wasmline-multiplatform/wasmline-plugin-test/build/wasmline/wasmtime/
-          key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('scripts/versions.json', 'wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts') }}
+          key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json', 'wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts') }}
 
       - name: Run plugin integration tests
         working-directory: wasmline-multiplatform/wasmline-plugin-test

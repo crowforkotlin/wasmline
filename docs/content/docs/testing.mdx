@@ -2,7 +2,7 @@
 title: Testing
 description: Test matrix, generated artifact rules, and local verification for Wasmline
 createdAt: 2026-08-03
-updatedAt: 2026-08-17
+updatedAt: 2026-08-21
 ---
 
 # Testing
@@ -10,7 +10,7 @@ updatedAt: 2026-08-17
 Wasmline tests are split by the boundary they validate. Run the repository preflight once per session, immediately before the first validation required after changing Wasmline files. Skip it when no Wasmline file change requires validation:
 
 ```bash
-bash ./scripts/doctor.sh
+./scripts/wasmline doctor
 ```
 
 ## Test Matrix
@@ -37,7 +37,7 @@ Run all JVM-facing checks from `wasmline-multiplatform/`:
   :wasmline-kotlin-plugin:test
 ```
 
-Native Wasmtime tests require the native library under `wasmline/src/jvmMain/resources/jni/`. The CI pipeline builds that library before running `:wasmline:jvmTest`. Web tests do not require native Wasmtime assets, but browser tests require a Chrome-compatible runner.
+Native Wasmtime tests load the Cranelift JNI library from `wasmline-engine-cranelift/src/jvmMain/resources/jni/`. The CI pipeline builds that engine library before running `:wasmline:jvmTest`. Web tests do not require native Wasmtime files, but browser tests require a Chrome-compatible runner.
 
 ## IR Test Rules
 
@@ -63,17 +63,17 @@ The repository retains an `AbstractJvmDiagnosticTest` scaffold, but its generato
 `scripts/versions.json` is the source of truth for project, sample-plugin, Wasmtime, Kotlin, ktlint, Dokka, AGP, Zig, and JBR versions. The synchronizer updates all managed build files, scripts, documentation, and CI fallbacks in one operation:
 
 ```bash
-python3 scripts/sync_version.py
-python3 scripts/sync_version.py --set wasmtime_version=47.0.2
-python3 scripts/sync_version.py --check
-python3 scripts/test_sync_version.py
+./scripts/wasmline versions sync
+./scripts/wasmline versions sync --set wasmtime_version=47.0.2
+./scripts/wasmline versions check
+python3 scripts/tests/test_versions.py
 
 # Inspect or update the pinned standalone Kotlin formatter.
-python3 scripts/sync_version.py --check-ktlint-latest
-python3 scripts/sync_version.py --update-ktlint
+./scripts/wasmline versions check-ktlint
+./scripts/wasmline versions update-ktlint
 ```
 
-Run the command without arguments after editing `versions.json`, or use `--set` to update the manifest and synchronize in one command. Local Kotlin lint and CI both resolve the pinned `ktlint_version`; they do not float to an unreviewed release. The weekly `Update ktlint` workflow opens or updates a pull request when a newer stable release is available. The test command runs an independent regression suite and does not update versions.
+Run `versions sync` after editing `versions.json`, or use `--set` to update the manifest and synchronize in one command. Local Kotlin lint and CI both resolve the pinned `ktlint_version`; they do not float to an unreviewed release. The weekly `Update ktlint` workflow opens or updates a pull request when a newer stable release is available. The test command runs an independent regression suite and does not update versions.
 
 ## Kotlin Documentation Style
 

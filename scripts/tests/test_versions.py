@@ -14,8 +14,11 @@ from pathlib import Path
 from typing import Any, Mapping
 from unittest import mock
 
-import sync_version
-import toolchain_lock
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "lib" / "python"))
+
+from wasmline_tools import toolchain_lock
+from wasmline_tools import versions as sync_version
 
 
 class LockedReleaseClient:
@@ -66,7 +69,7 @@ class SyncVersionTest(unittest.TestCase):
     def test_all_managed_files_exist(self) -> None:
         """Every rule must point to a source or documentation file."""
         self.assertTrue(sync_version.MANIFEST_PATH.is_file())
-        self.assertTrue((sync_version.PROJECT_ROOT / "scripts/sync_version.py").is_file())
+        self.assertTrue((sync_version.PROJECT_ROOT / "scripts/wasmline").is_file())
         for spec in sync_version.file_specs():
             self.assertTrue(
                 (sync_version.PROJECT_ROOT / spec.path).is_file(),
@@ -111,7 +114,6 @@ class SyncVersionTest(unittest.TestCase):
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
             "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt",
             "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt",
-            "scripts/sync_version.py",
         }
         self.assertTrue(expected_paths.issubset(rendered_paths))
 
@@ -139,9 +141,8 @@ class SyncVersionTest(unittest.TestCase):
         }
 
         expected_fragments = {
-            "scripts/sync_version.py": "--set wasmtime_version=99.8.7",
             "wasmline-multiplatform/gradle/libs.versions.toml": 'dokka = "8.8.8"',
-            ".agents/skills/wasmline/references/development-guide.md": "Zig version (requires **9.9.9**)",
+            ".agents/skills/wasmline/references/development-guide.md": "The pre-check also reports Zig 9.9.9",
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts":
                 "JavaLanguageVersion.of(99)",
             "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt":
@@ -425,16 +426,15 @@ class SyncVersionTest(unittest.TestCase):
 
         self.assertEqual(1, result)
         self.assertIn("1.8.0 -> 1.8.1", stdout.getvalue())
-        self.assertIn("--update-ktlint", stdout.getvalue())
+        self.assertIn("versions update-ktlint", stdout.getvalue())
 
     def test_update_ktlint_synchronizes_the_manifest(self) -> None:
         """The update command passes the discovered release through synchronization."""
         with (
-            mock.patch.object(sys, "argv", ["sync_version.py", "--update-ktlint"]),
             mock.patch.object(sync_version, "latest_ktlint_version", return_value="1.8.1"),
             mock.patch.object(sync_version, "sync_files", return_value=0) as sync_files,
         ):
-            result = sync_version.main()
+            result = sync_version.main(["--update-ktlint"])
 
         self.assertEqual(0, result)
         versions = sync_files.call_args.args[0]
@@ -457,10 +457,10 @@ class SyncVersionTest(unittest.TestCase):
             self.assertEqual("after\n", path.read_text(encoding="utf-8"))
             self.assertEqual(0o755, stat.S_IMODE(path.stat().st_mode))
 
-    def test_public_entry_point_supports_module_execution(self) -> None:
-        """The public entry point must resolve its implementation as a module."""
+    def test_public_entry_point_lists_versions(self) -> None:
+        """The public command must resolve the internal version implementation."""
         result = subprocess.run(
-            [sys.executable, "-m", "scripts.sync_version", "--list"],
+            [str(sync_version.PROJECT_ROOT / "scripts" / "wasmline"), "versions", "list"],
             cwd=sync_version.PROJECT_ROOT,
             check=False,
             capture_output=True,

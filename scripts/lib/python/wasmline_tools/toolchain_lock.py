@@ -13,8 +13,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+from .paths import PROJECT_ROOT
+
+
+GENERATOR = "scripts/wasmline versions sync"
 LOCK_PATH = (
     PROJECT_ROOT
     / "wasmline-multiplatform/wasmline-plugin-core/src/main/resources"
@@ -208,7 +210,7 @@ def generate_lock(
 
     lock = {
         "schemaVersion": LOCK_SCHEMA_VERSION,
-        "generatedBy": "scripts/sync_version.py",
+        "generatedBy": GENERATOR,
         "sourceManifest": "scripts/versions.json",
         "versions": {key: versions[key] for key in _LOCK_VERSION_KEYS},
         "tools": tools,
@@ -234,7 +236,9 @@ def load_lock(path: Path = LOCK_PATH) -> dict[str, Any]:
 def render_lock(lock: Mapping[str, Any]) -> str:
     """Render lock data in a deterministic format."""
 
-    return json.dumps(lock, ensure_ascii=True, indent=2) + "\n"
+    rendered = dict(lock)
+    rendered["generatedBy"] = GENERATOR
+    return json.dumps(rendered, ensure_ascii=True, indent=2) + "\n"
 
 
 def validate_lock(lock: Mapping[str, Any], versions: Mapping[str, str]) -> None:
@@ -253,7 +257,7 @@ def validate_lock(lock: Mapping[str, Any], versions: Mapping[str, str]) -> None:
         raise ToolchainLockError(
             f"Unsupported toolchain lock schema: {lock.get('schemaVersion')}."
         )
-    if lock.get("generatedBy") != "scripts/sync_version.py":
+    if lock.get("generatedBy") != GENERATOR:
         raise ToolchainLockError("Toolchain lock has an invalid generator identifier.")
     if lock.get("sourceManifest") != "scripts/versions.json":
         raise ToolchainLockError("Toolchain lock has an invalid source manifest.")
@@ -274,7 +278,7 @@ def validate_lock(lock: Mapping[str, Any], versions: Mapping[str, str]) -> None:
     if locked_versions != expected_versions:
         raise ToolchainLockVersionMismatchError(
             "Toolchain lock versions do not match scripts/versions.json. "
-            "Run scripts/sync_version.py to regenerate the lock."
+            "Run ./scripts/wasmline versions sync to regenerate the lock."
         )
 
 

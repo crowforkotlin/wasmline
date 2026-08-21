@@ -77,7 +77,11 @@ extensions.configure<KotlinMultiplatformExtension> {
     }
     val nativeHeader = rootProject.file("wasmline/src/nativeMain/native")
     val nativeBridgeSources = rootProject.files(
-        rootProject.file("../scripts/compile-native-bridge.sh"),
+        rootProject.file("../scripts/internal/native/build-kotlin-native.sh"),
+        rootProject.file("../scripts/config/wasmtime-targets.json"),
+        rootProject.fileTree("../scripts/lib/shell") {
+            include("*.sh")
+        },
         rootProject.file("../scripts/versions.json"),
         rootProject.fileTree("../wasmline-core/include") {
             include("**/*.h", "**/*.hpp")
@@ -107,7 +111,7 @@ extensions.configure<KotlinMultiplatformExtension> {
             "build${engineNameCapitalized}${target.name.replaceFirstChar { it.uppercaseChar() }}NativeBridge",
         ) {
             workingDir = rootProject.projectDir
-            commandLine("bash", "../scripts/compile-native-bridge.sh", target.name, engineName)
+            commandLine("bash", "../scripts/internal/native/build-kotlin-native.sh", target.name, engineName)
             // The bridge compiler uses Kotlin/Native's target toolchain directly.
             // Keep it behind the download task because native link/cinterop tasks
             // may otherwise schedule both tasks concurrently on a clean runner.
@@ -268,7 +272,7 @@ val verifyEngineAssets = tasks.register("verify" + engineNameCapitalized + "Asse
             buildString {
                 appendLine("Missing native assets for the " + engineName + " engine:")
                 missing.forEach { file -> appendLine("  - " + file.relativeTo(project.projectDir)) }
-                append("Run 'bash scripts/build-native-assets.sh " + engineName + "' before publishing.")
+                append("Run './scripts/wasmline jni build --engine " + engineName + "' before publishing.")
             }
         }
     }

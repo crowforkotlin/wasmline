@@ -1,0 +1,135 @@
+{
+  "targets": [
+    {
+      "id": "android-arm64",
+      "asset": "aarch64-android",
+      "installPath": "android/arm64-v8a",
+      "engines": ["pulley", "cranelift"],
+      "jni": {
+        "kind": "android",
+        "abi": "arm64-v8a"
+      }
+    },
+    {
+      "id": "android-armv7",
+      "asset": "armv7-android",
+      "installPath": "android/armeabi-v7a",
+      "engines": ["pulley"],
+      "jni": {
+        "kind": "android",
+        "abi": "armeabi-v7a"
+      }
+    },
+    {
+      "id": "android-x86",
+      "asset": "x86-android",
+      "installPath": "android/x86",
+      "engines": ["pulley"],
+      "jni": {
+        "kind": "android",
+        "abi": "x86"
+      }
+    },
+    {
+      "id": "android-x64",
+      "asset": "x86_64-android",
+      "installPath": "android/x86_64",
+      "engines": ["pulley", "cranelift"],
+      "jni": {
+        "kind": "android",
+        "abi": "x86_64"
+      }
+    },
+    {
+      "id": "ios-arm64",
+      "asset": "aarch64-ios",
+      "installPath": "ios/arm64",
+      "engines": ["pulley"],
+      "kotlinNativeTarget": "iosArm64",
+      "publishedKotlinNative": true
+    },
+    {
+      "id": "ios-simulator-arm64",
+      "asset": "aarch64-ios-sim",
+      "installPath": "ios/simulator-arm64",
+      "engines": ["pulley"],
+      "kotlinNativeTarget": "iosSimulatorArm64",
+      "publishedKotlinNative": true
+    },
+    {
+      "id": "linux-arm64",
+      "asset": "aarch64-linux",
+      "installPath": "linux/aarch64",
+      "engines": ["pulley", "cranelift"],
+      "jni": {
+        "kind": "jvm",
+        "platform": "linux",
+        "arch": "aarch64",
+        "extension": "so",
+        "zigTarget": "aarch64-linux-gnu"
+      },
+      "kotlinNativeTarget": "linuxArm64",
+      "publishedKotlinNative": true
+    },
+    {
+      "id": "linux-x64",
+      "asset": "x86_64-linux",
+      "installPath": "linux/x64",
+      "engines": ["pulley", "cranelift"],
+      "jni": {
+        "kind": "jvm",
+        "platform": "linux",
+        "arch": "x86_64",
+        "extension": "so",
+        "zigTarget": "x86_64-linux-gnu"
+      },
+      "kotlinNativeTarget": "linuxX64",
+      "publishedKotlinNative": true
+    },
+    {
+      "id": "macos-arm64",
+      "asset": "aarch64-macos",
+      "installPath": "mac/aarch64",
+      "engines": ["pulley", "cranelift"],
+      "jni": {
+        "kind": "jvm",
+        "platform": "darwin",
+        "arch": "aarch64",
+        "extension": "dylib",
+        "zigTarget": "aarch64-macos"
+      },
+      "kotlinNativeTarget": "macosArm64",
+      "publishedKotlinNative": true
+    },
+    {
+      "id": "macos-x64",
+      "asset": "x86_64-macos",
+      "installPath": "mac/x64",
+      "engines": ["pulley", "cranelift"],
+      "jni": {
+        "kind": "jvm",
+        "platform": "darwin",
+        "arch": "x86_64",
+        "extension": "dylib",
+        "zigTarget": "x86_64-macos"
+      },
+      "kotlinNativeTarget": "macosX64",
+      "publishedKotlinNative": false
+    },
+    {
+      "id": "windows-x64",
+      "asset": "x86_64-windows",
+      "installPath": "windows/x64",
+      "engines": ["pulley", "cranelift"],
+      "jni": {
+        "kind": "jvm",
+        "platform": "windows",
+        "arch": "x86_64",
+        "extension": "dll",
+        "zigTarget": "x86_64-windows-gnu"
+      },
+      "kotlinNativeTarget": "mingwX64",
+      "publishedKotlinNative": true
+    }
+  ]
+}

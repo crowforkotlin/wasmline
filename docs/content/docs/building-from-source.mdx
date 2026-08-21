@@ -2,7 +2,7 @@
 title: Building from Source
 description: Toolchain requirements and build workflows for contributors working on the Wasmline repository itself
 createdAt: 2026-07-18
-updatedAt: 2026-08-16
+updatedAt: 2026-08-21
 ---
 
 # Building from Source
@@ -17,7 +17,8 @@ This page is for developers who want to build the Wasmline framework itself — 
 | Kotlin | **2.3.0-RC2** minimum | Wasm GC, function references, exception-handling proposals |
 | Android Studio | **LTS** | AGP 9.3.0 compatibility |
 | Zig | **0.16.0** | `wasmline-core` JNI shared library compilation |
-| Bash / Python 3.9+ / Node.js 18+ | Any one | Platform runtime asset initialization |
+| Python | **3.10+** | `./scripts/wasmline` repository commands |
+| Bash | **3.2+** | Internal JNI and Kotlin/Native build backends |
 
 The Kotlin/WasmWasi compiler backend must provide complete implementations of the following WebAssembly proposals:
 
@@ -50,7 +51,7 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 | Variable | Purpose |
 |---|---|
 | `ANDROID_HOME` | Locates the Android SDK for Gradle builds |
-| `ANDROID_NDK_HOME` | Locates the NDK toolchain for `build-native-assets.sh` Android ABI builds |
+| `ANDROID_NDK_HOME` | Locates the NDK toolchain for `./scripts/wasmline jni build` Android ABI builds |
 | `MINGW_PATH` | Locates the MinGW toolchain root for `build.zig` Windows cross-compilation |
 
 <Callout type="info" title="MINGW_PATH is only needed for Windows cross-compilation">
@@ -62,10 +63,10 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 Run the repository preflight once per session, immediately before the first validation required after changing Wasmline files. Skip it for read-only work, changes outside Wasmline, and file changes that require no validation:
 
 ```bash
-bash ./scripts/doctor.sh
+./scripts/wasmline doctor
 ```
 
-The script verifies JBR 21 availability, reports desktop Zig/JNI-native status, and reports WARNINGs for missing wasmtime platform/architecture assets under `build/platforms/`.
+The command checks JBR 21, Zig 0.16.0, downloaded Wasmtime files, JNI libraries, and Kotlin/Native libraries.
 
 <Callout type="info" title="local.properties">
   When building or running project commands manually, a `local.properties` file is required in the project root. Open the project in Android Studio and it will generate the file automatically. Ensure this file exists before invoking any Gradle commands outside the IDE.
@@ -75,21 +76,21 @@ The script verifies JBR 21 availability, reports desktop Zig/JNI-native status, 
 
 Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only builds do not require wasmtime min C-API assets.
 
-wasmtime min C-API headers and pre-built libraries must be present under `build/platforms/` before native target compilation proceeds. Execute one of the following equivalent scripts:
+wasmtime min C-API headers and pre-built libraries must be present under `build/platforms/` before native target compilation proceeds. List the configured target ids, then download the exact targets and engines required by the build:
 
 ```bash
-bash ./scripts/init-wasmtime.sh        # Bash — requires curl and tar/unzip
-python3 ./scripts/init-wasmtime.py     # Python 3.9+ — no third-party dependencies
-node ./scripts/init-wasmtime.mjs       # Node.js 18+ — no third-party dependencies
+./scripts/wasmline wasmtime targets
+./scripts/wasmline wasmtime download --target linux-x64 --engine pulley
+./scripts/wasmline wasmtime download
 ```
 
-All three scripts support interactive platform/architecture selection, configurable download concurrency, and an optional HTTP proxy as the first positional argument (e.g., `127.0.0.1:7890`).
+The command reads the pinned version from `scripts/versions.json` and requests that exact release. Downloads run concurrently; use `--jobs` to limit concurrency and `--proxy 127.0.0.1:7890` when an HTTP proxy is required.
 
 ## Native Library Build
 
-Native library compilation is handled by `build-native-assets.sh`. This script builds all target platform artifacts for Android (CMake + NDK) and JVM Desktop (Zig), then deploys them to the corresponding engine module's `jniLibs` / `resources` directory.
+`./scripts/wasmline jni build` builds Android libraries with CMake and the NDK, builds JVM Desktop libraries with Zig, and deploys them to the selected engine modules' `jniLibs` and `resources` directories.
 
-Kotlin/Native uses a separate static bridge. The engine Gradle tasks invoke `scripts/compile-native-bridge.sh` for each available Native target and embed the selected `libwasmtime.a` into the published engine KLIB. To build one bridge directly, run `bash scripts/compile-native-bridge.sh linuxX64 pulley` (or replace the target and engine with `linuxArm64`, `mingwX64`, `macosArm64`, `macosX64`, `iosArm64`, `iosSimulatorArm64`, or `cranelift` as appropriate). Native consumers do not load JNI libraries.
+Kotlin/Native uses a separate static bridge. Engine Gradle tasks call the internal backend for each available Native target and embed the selected `libwasmtime.a` into the published engine KLIB. To build one archive directly, run `./scripts/wasmline kotlin-native build --target linuxX64 --engine pulley`. Supported targets are `linuxArm64`, `linuxX64`, `mingwX64`, `macosArm64`, `macosX64`, `iosArm64`, and `iosSimulatorArm64`. Native consumers do not load JNI libraries.
 
 Apple targets are registered only when Gradle runs on macOS because their
 cinterop tasks require the Xcode SDK. Linux and Windows development builds omit
@@ -98,34 +99,22 @@ therefore publishes only the targets available on that host. Run the publication
 on macOS when Apple KLIBs are required.
 
 ```bash
-# Builds both pulley and cranelift variants by default
-bash scripts/build-native-assets.sh
+# Build both engines.
+./scripts/wasmline jni build --engine all
 
-# Build a specific variant only
-bash scripts/build-native-assets.sh pulley
-bash scripts/build-native-assets.sh cranelift
+# Build one engine.
+./scripts/wasmline jni build --engine pulley
+./scripts/wasmline jni build --engine cranelift
+
+# Build Kotlin/Native libraries supported by the current host.
+./scripts/wasmline kotlin-native build --target all
 ```
 
 Prerequisites:
-- `init-wasmtime.sh` has been executed to download platform runtime assets
+- The required Wasmtime targets and engines have been downloaded
 - `ANDROID_NDK_HOME` is set (Android targets)
 - Zig 0.16.0 is installed (JVM Desktop targets)
 - `MINGW_PATH` is set (Windows cross-compilation, optional)
-
-### Manual Zig Build (Desktop Only)
-
-To build the JVM Desktop JNI shared library in isolation, invoke Zig directly:
-
-```bash
-cd wasmline-multiplatform/wasmline
-
-zig build --release=small -p src/jvmMain/resources   # Release (size-optimized)
-zig build -p src/jvmMain/resources                    # Debug
-```
-
-<Callout type="warn" title="Do not commit Zig intermediates">
-  Files under `zig-out/` are intermediate Zig build artifacts and must not be committed. The `-p src/jvmMain/resources` flag is required to redirect JNI library installation to the correct classpath resource directory.
-</Callout>
 
 ## Gradle Build Reference
 
@@ -168,9 +157,9 @@ cd ../wasmline-samples/kotlin
 Shared documentation and duplicated config version strings are synchronized from `scripts/versions.json`:
 
 ```bash
-python3 scripts/sync_version.py
-python3 scripts/sync_version.py --set wasmtime_version=<new-version>
-python3 scripts/sync_version.py --check
+./scripts/wasmline versions sync
+./scripts/wasmline versions sync --set wasmtime_version=<new-version>
+./scripts/wasmline versions check
 ```
 
-Run the command without arguments after editing `versions.json`. The `--set` form is an alternative that updates the manifest before synchronizing.
+Run `versions sync` after editing `versions.json`. The `--set` form is an alternative that updates the manifest before synchronizing.

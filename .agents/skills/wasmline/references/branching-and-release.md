@@ -35,9 +35,9 @@ Merge temporary branches into `main` and remove them after use. Releases are cut
 Use the version synchronizer instead of editing repeated references:
 
 ```bash
-python3 scripts/sync_version.py --set wasmline_version=<x.y.z>
-python3 scripts/sync_version.py --set wasmtime_version=<major.minor.patch>
-python3 scripts/sync_version.py --check
+./scripts/wasmline versions sync --set wasmline_version=<x.y.z>
+./scripts/wasmline versions sync --set wasmtime_version=<major.minor.patch>
+./scripts/wasmline versions check
 ```
 
 See [`version-sync.md`](./version-sync.md) for the complete procedure.

@@ -35,38 +35,38 @@ Do not add a second authoritative version file.
 Use the singular command in documentation and normal work:
 
 ```bash
-python3 scripts/sync_version.py --list
-python3 scripts/sync_version.py
-python3 scripts/sync_version.py --check
-python3 scripts/sync_version.py --set key=value
-python3 scripts/sync_version.py --verify-upstream
+./scripts/wasmline versions list
+./scripts/wasmline versions sync
+./scripts/wasmline versions check
+./scripts/wasmline versions sync --set key=value
+./scripts/wasmline versions verify-upstream
 ```
 
-`scripts/sync_version.py` is the only version-synchronization entry point. It contains the synchronization rules and uses `toolchain_lock.py` internally when release metadata is required.
+`./scripts/wasmline` is the only public entry point. Synchronization rules and toolchain-lock handling are internal Python modules under `scripts/lib/python/wasmline_tools/`.
 
 ## Change Procedure
 
-1. Edit `scripts/versions.json` and run `python3 scripts/sync_version.py`, or supply every intended change through `--set`.
+1. Edit `scripts/versions.json` and run `./scripts/wasmline versions sync`, or supply every intended change through `versions sync --set`.
 2. For a Component toolchain key, allow the synchronizer to resolve every required GitHub release asset.
 3. Inspect every file listed by the synchronizer, including the generated toolchain lock.
 4. Run `--check`.
 5. Run `--verify-upstream` when network verification is required.
-6. Run `python3 scripts/test_sync_version.py`.
+6. Run `python3 scripts/tests/test_versions.py`.
 7. Inspect the final diff for unrelated replacements.
 
 Example:
 
 ```bash
 # Synchronize values edited directly in scripts/versions.json.
-python3 scripts/sync_version.py
+./scripts/wasmline versions sync
 
 # Alternatively, update the manifest and synchronize in one command.
-python3 scripts/sync_version.py \
+./scripts/wasmline versions sync \
   --set wasmtime_version=<major.minor.patch> \
   --set wasm_tools_version=<major.minor.patch> \
   --set wit_bindgen_version=<major.minor.patch>
-python3 scripts/sync_version.py --check
-python3 scripts/test_sync_version.py
+./scripts/wasmline versions check
+python3 scripts/tests/test_versions.py
 ```
 
 Direct manifest edits are supported. Normal synchronization refreshes the toolchain lock when its versions trail the manifest, then renders all managed files in memory before writing derived files. If release resolution or a synchronization rule fails, the edited manifest remains unchanged and derived files are not written.
@@ -75,10 +75,10 @@ Direct manifest edits are supported. Normal synchronization refreshes the toolch
 
 When code or documentation duplicates a manifest value:
 
-1. Add or extend a `FileSpec` in `scripts/sync_version.py`.
+1. Add or extend a `FileSpec` in `scripts/lib/python/wasmline_tools/versions.py`.
 2. Use a narrow pattern anchored to stable surrounding text.
 3. Keep `min_count=1` for required references. Use `min_count=0` only when the reference is genuinely optional.
-4. Add the path to the synthetic coverage in `scripts/test_sync_version.py`.
+4. Add the path to the synthetic coverage in `scripts/tests/test_versions.py`.
 5. Assert a rendered fragment that proves the correct manifest key was used.
 6. Run both synchronization checks.
 
@@ -102,15 +102,15 @@ Kotlin code obtains Component CLI tool versions from `ToolchainCatalog`. Do not 
 
 The packaged lock at `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` is derived from `scripts/versions.json`. It records the GitHub release, asset ID, size, URL, and SHA-256 for every supported Component tool platform.
 
-Do not edit the lock or `ToolchainCatalog.kt` to perform a version upgrade. Changing `wasmtime_version`, `wasm_tools_version`, or `wit_bindgen_version` in the manifest and running `sync_version.py` resolves and validates all three locked releases before writing derived files. The same behavior applies when versions are supplied through `--set`. The WASI Preview 1 adapter version remains derived from `wasmtime_version` and has no independent manifest key.
+Do not edit the lock or `ToolchainCatalog.kt` to perform a version upgrade. Changing `wasmtime_version`, `wasm_tools_version`, or `wit_bindgen_version` in the manifest and running `./scripts/wasmline versions sync` resolves and validates all three locked releases before writing derived files. The same behavior applies when versions are supplied through `--set`. The WASI Preview 1 adapter version remains derived from `wasmtime_version` and has no independent manifest key.
 
 `--check` validates the checked-in manifest, managed references, and lock without network access or lock refresh. `--verify-upstream` performs the separate network check and fails if current GitHub release metadata differs from the checked-in lock.
 
 ## Required Verification
 
 ```bash
-python3 scripts/sync_version.py --check
-python3 scripts/test_sync_version.py
+./scripts/wasmline versions check
+python3 scripts/tests/test_versions.py
 ```
 
 `--check` validates the repository's current values. The regression suite also renders synthetic values, which detects stale patterns that happen to match the current manifest but would fail during the next upgrade.

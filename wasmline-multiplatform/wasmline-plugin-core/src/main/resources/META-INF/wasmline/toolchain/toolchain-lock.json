@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedBy": "scripts/sync_version.py",
+  "generatedBy": "scripts/wasmline versions sync",
   "sourceManifest": "scripts/versions.json",
   "versions": {
     "wit_bindgen_version": "0.57.1",
