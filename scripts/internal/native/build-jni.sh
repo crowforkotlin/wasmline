@@ -16,8 +16,8 @@ case "${ENGINE}" in
 esac
 
 MULTIPLATFORM_ROOT="${WASMLINE_PROJECT_ROOT}/wasmline-multiplatform"
-WASMTIME_VERSION="$(wasmline_version wasmtime_version)"
-WASMTIME_TAG="release-v${WASMTIME_VERSION}"
+WASMTIME_RELEASE_VERSION="$(wasmline_version wasmtime_release_version)"
+WASMTIME_TAG="v${WASMTIME_RELEASE_VERSION}"
 
 detect_ndk() {
   if [[ -n "${ANDROID_NDK_HOME:-}" && -d "${ANDROID_NDK_HOME}" ]]; then

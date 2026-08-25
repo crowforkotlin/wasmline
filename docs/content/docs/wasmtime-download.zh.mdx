@@ -26,7 +26,8 @@ import crow.wasmline.gradle.WasmtimeTarget
 wasmline {
     wasmtime {
         autoDownload = true
-        version = "v48.0.1"
+        version = "48.0.1"
+        releaseVersion = "v48.0.1.1"
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
             WasmtimeTarget.X86_64_LINUX,
@@ -35,7 +36,7 @@ wasmline {
 }
 ```
 
-`directory` 可用于指定精简 Wasmtime 的缓存目录或可执行文件目录。未设置时，插件依次检查 `WASMTIME_ROOT` 和 `~/.wasmline/wasmtime`。
+`version` 是可执行文件报告并用于 AOT 兼容性校验的三段版本；`releaseVersion` 是提供二进制资产的四段下游 GitHub Release 版本。`directory` 可用于指定精简 Wasmtime 的缓存目录或可执行文件目录。未设置时，插件依次检查 `WASMTIME_ROOT` 和 `~/.wasmline/wasmtime`。
 
 `compilerDirectory`、`compilerVersion` 和 `compilerExecutable` 用于配置 Component AOT 编译使用的 CLI。自动下载选择 `cranelift-min`；`compilerExecutable` 可以显式指定任意具备编译能力的 minimal 或完整 CLI。Wasmline 会在编译前校验精确版本和 `compile` 子命令。
 

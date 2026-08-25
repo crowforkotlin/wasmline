@@ -30,6 +30,7 @@ buildConfig {
     buildConfigField("String", "KOTLIN_PLUGIN_GROUP", "\"${compilerPlugin.group}\"")
     buildConfigField("String", "KOTLIN_PLUGIN_NAME", "\"${compilerPlugin.name}\"")
     buildConfigField("String", "KOTLIN_PLUGIN_VERSION", "\"${compilerPlugin.version}\"")
+    buildConfigField("String", "WASMTIME_RELEASE_VERSION", "\"${extra["wasmtime.release.version"]}\"")
 }
 
 dependencies {

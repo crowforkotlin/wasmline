@@ -116,8 +116,8 @@ def _wasmtime_pairs(targets: tuple[Target, ...]) -> list[tuple[Target, str]]:
     return [(target, engine) for target in targets for engine in target.engines]
 
 
-def _check_wasmtime(version: str, targets: tuple[Target, ...]) -> CheckResult:
-    tag = f"release-v{version}"
+def _check_wasmtime(release_version: str, targets: tuple[Target, ...]) -> CheckResult:
+    tag = f"v{release_version}"
     pairs = _wasmtime_pairs(targets)
     found = 0
     for target, engine in pairs:
@@ -193,7 +193,7 @@ def run() -> int:
     console = Console(sys.stdout)
     jbr = _check_jbr(versions["jbr_version"])
     zig = _check_zig(versions["zig_version"])
-    wasmtime = _check_wasmtime(versions["wasmtime_version"], targets)
+    wasmtime = _check_wasmtime(versions["wasmtime_release_version"], targets)
     jni = _check_jni(targets)
     kotlin_native = _check_kotlin_native(targets)
     results = (jbr, zig, wasmtime, jni, kotlin_native)

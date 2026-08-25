@@ -94,7 +94,8 @@ extensions.configure<KotlinMultiplatformExtension> {
         },
     )
     val wasmtimeVersion = rootProject.property("wasmtime.version") as String
-    val wasmtimeTag = "release-v$wasmtimeVersion"
+    val wasmtimeReleaseVersion = rootProject.property("wasmtime.release.version") as String
+    val wasmtimeTag = "v$wasmtimeReleaseVersion"
     fun assetRoot(targetName: String): File = when (targetName) {
         "iosArm64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/ios/arm64")
         "iosSimulatorArm64" -> rootProject.file("../build/platforms/$wasmtimeTag/$engineName/ios/simulator-arm64")
@@ -122,6 +123,7 @@ extensions.configure<KotlinMultiplatformExtension> {
             inputs.property("nativeTarget", target.name)
             inputs.property("nativeEngine", engineName)
             inputs.property("wasmtimeVersion", wasmtimeVersion)
+            inputs.property("wasmtimeReleaseVersion", wasmtimeReleaseVersion)
             outputs.file(bridgeArchive)
         }
         val systemLinkerOptions = when (target.name) {

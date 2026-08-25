@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -34,6 +35,7 @@ class Job:
     asset_name: str
     url: str
     size: int
+    sha256: str
 
 
 def _format_bytes(value: int) -> str:
@@ -105,10 +107,34 @@ def normalize_version(value: str) -> str:
     return normalized
 
 
+def release_tag(value: str) -> str:
+    """Return the downstream GitHub tag for a normalized release version."""
+
+    return f"v{normalize_version(value)}"
+
+
 def expected_asset_name(target: Target, engine: str, version: str) -> str:
     engine_part = "-pulley" if engine == "pulley" else ""
     extension = "zip" if target.install_path.startswith("windows/") else "tar.gz"
     return f"wasmtime-v{version}-{target.asset}{engine_part}-min-c-api.{extension}"
+
+
+def _parse_sha256sums(value: str) -> dict[str, str]:
+    checksums: dict[str, str] = {}
+    for line in value.splitlines():
+        fields = line.split(maxsplit=1)
+        if len(fields) != 2:
+            raise RuntimeError("SHA256SUMS contains an invalid line.")
+        digest, name = fields
+        name = name.lstrip("*")
+        if len(digest) != 64 or any(character not in "0123456789abcdefABCDEF" for character in digest):
+            raise RuntimeError(f"SHA256SUMS contains an invalid digest for {name}.")
+        if not name or name in checksums:
+            raise RuntimeError(f"SHA256SUMS contains an invalid or duplicate asset name: {name!r}.")
+        checksums[name] = digest.lower()
+    if not checksums:
+        raise RuntimeError("SHA256SUMS is empty.")
+    return checksums
 
 
 def _opener(proxy: str | None):
@@ -138,6 +164,19 @@ def _request_json(url: str, proxy: str | None) -> dict:
     return value
 
 
+def _request_text(url: str, proxy: str | None) -> str:
+    headers = {"User-Agent": "wasmline-repository-tool"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = Request(url, headers=headers)
+    try:
+        with _opener(proxy).open(request, timeout=30) as response:
+            return response.read().decode("utf-8")
+    except (HTTPError, URLError, OSError, UnicodeDecodeError) as error:
+        raise RuntimeError(f"Cannot download SHA256SUMS: {error}") from error
+
+
 def _download(
     job: Job,
     proxy: str | None,
@@ -146,15 +185,23 @@ def _download(
     temporary_dir = Path(tempfile.mkdtemp(prefix=".wasmtime-download-", dir=PLATFORMS_ROOT))
     archive = temporary_dir / job.asset_name
     request = Request(job.url, headers={"User-Agent": "wasmline-repository-tool"})
+    digest = hashlib.sha256()
     try:
         with _opener(proxy).open(request, timeout=60) as response, archive.open("wb") as output:
             while chunk := response.read(1024 * 1024):
                 output.write(chunk)
+                digest.update(chunk)
                 if on_progress is not None:
                     on_progress(len(chunk))
     except Exception:
         shutil.rmtree(temporary_dir, ignore_errors=True)
         raise
+    actual_sha256 = digest.hexdigest()
+    if actual_sha256 != job.sha256:
+        shutil.rmtree(temporary_dir, ignore_errors=True)
+        raise RuntimeError(
+            f"SHA-256 mismatch: expected {job.sha256}, downloaded {actual_sha256}."
+        )
     return job, archive, archive.stat().st_size
 
 
@@ -276,8 +323,8 @@ def download(
     if jobs is not None and jobs < 1:
         raise RuntimeError("--jobs must be greater than zero.")
 
-    selected_version = normalize_version(manifest_version("wasmtime_version"))
-    tag = f"release-v{selected_version}"
+    selected_version = normalize_version(manifest_version("wasmtime_release_version"))
+    tag = release_tag(selected_version)
     pairs = _selected_pairs(target_id, engine)
     PLATFORMS_ROOT.mkdir(parents=True, exist_ok=True)
     console = Console()
@@ -310,6 +357,13 @@ def download(
             size = raw_size if isinstance(raw_size, int) and raw_size >= 0 else 0
             by_name.setdefault(name, []).append((url, size))
 
+    checksum_matches = by_name.get("SHA256SUMS", [])
+    if len(checksum_matches) != 1:
+        raise RuntimeError(
+            f"Expected one release asset named SHA256SUMS; found {len(checksum_matches)}."
+        )
+    checksums = _parse_sha256sums(_request_text(checksum_matches[0][0], proxy))
+
     download_jobs: list[Job] = []
     for target, selected_engine in pending_pairs:
         asset_name = expected_asset_name(target, selected_engine, selected_version)
@@ -319,7 +373,10 @@ def download(
                 f"Expected one release asset named {asset_name}; found {len(matches)}."
             )
         url, size = matches[0]
-        download_jobs.append(Job(target, selected_engine, asset_name, url, size))
+        checksum = checksums.get(asset_name)
+        if checksum is None:
+            raise RuntimeError(f"SHA256SUMS does not contain {asset_name}.")
+        download_jobs.append(Job(target, selected_engine, asset_name, url, size, checksum))
 
     if not console.interactive:
         console.info("Download", f"{len(download_jobs)} files.")

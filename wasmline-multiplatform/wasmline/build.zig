@@ -51,8 +51,8 @@ pub fn build(b: *std.Build) !void {
 
     // 2. Locate dependencies (Inputs)
     const platform_subdir = try getPlatformSubdir(b, target);
-    const wasmtime_version = b.option([]const u8, "wasmtime-version", "Wasmtime release tag (e.g. release-v48.0.1)") orelse
-        try readWasmtimeVersion(b, repo_root);
+    const wasmtime_version = b.option([]const u8, "wasmtime-version", "Downstream Wasmtime release tag (e.g. v48.0.1.1)") orelse
+        try readWasmtimeReleaseVersion(b, repo_root);
     const wasmtime_variant = b.option([]const u8, "wasmtime-variant", "Engine variant (pulley or cranelift)") orelse "pulley";
     const wasmtime_dir = b.pathJoin(&.{ repo_root, "build", "platforms", wasmtime_version, wasmtime_variant, platform_subdir });
     const core_dir = b.pathJoin(&.{ repo_root, "wasmline-core" });
@@ -310,16 +310,16 @@ fn printMingwRequirements() void {
     , .{});
 }
 
-/// Read wasmtime version from scripts/versions.json.
-fn readWasmtimeVersion(b: *std.Build, repo_root: []const u8) ![]const u8 {
+/// Read the downstream Wasmtime release version from scripts/versions.json.
+fn readWasmtimeReleaseVersion(b: *std.Build, repo_root: []const u8) ![]const u8 {
     const versions_path = b.pathJoin(&.{ repo_root, "scripts", "versions.json" });
     const content = std.Io.Dir.cwd().readFileAlloc(b.graph.io, versions_path, b.allocator, .limited(1024 * 1024)) catch {
         std.debug.print("[Warn] Could not open {s}, using default version\n", .{versions_path});
-        return "release-v48.0.1";
+        return "v48.0.1.1";
     };
     defer b.allocator.free(content);
-    // Simple JSON parsing: find "wasmtime_version": "X.Y.Z"
-    const needle = "\"wasmtime_version\"";
+    // Simple JSON parsing: find "wasmtime_release_version": "X.Y.Z.REVISION"
+    const needle = "\"wasmtime_release_version\"";
     if (std.mem.indexOf(u8, content, needle)) |idx| {
         const after_key = content[idx + needle.len ..];
         // Skip to the value string
@@ -327,11 +327,11 @@ fn readWasmtimeVersion(b: *std.Build, repo_root: []const u8) ![]const u8 {
             const value_start = after_key[v1 + 1 ..];
             if (std.mem.indexOf(u8, value_start, "\"")) |v2| {
                 const version = value_start[0..v2];
-                return b.fmt("release-v{s}", .{version});
+                return b.fmt("v{s}", .{version});
             }
         }
     }
-    return "release-v48.0.1";
+    return "v48.0.1.1";
 }
 
 fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) !void {

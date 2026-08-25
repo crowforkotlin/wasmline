@@ -91,8 +91,8 @@ else
 fi
 
 REPO_ROOT="${WASMLINE_PROJECT_ROOT}"
-VERSION="$(wasmline_version wasmtime_version)"
-WASMTIME_TAG="release-v${VERSION}"
+WASMTIME_RELEASE_VERSION="$(wasmline_version wasmtime_release_version)"
+WASMTIME_TAG="v${WASMTIME_RELEASE_VERSION}"
 
 # Kotlin/Native ships a target-specific C/C++ toolchain under KONAN_DATA_DIR.
 # Using the host compiler here leaks the host libstdc++ and glibc ABI into the

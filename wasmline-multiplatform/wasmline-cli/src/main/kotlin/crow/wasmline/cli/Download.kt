@@ -20,7 +20,7 @@ internal class Download : CliktCommand(name = "download") {
     private val downloadVersions by option("-v", "--versions")
         .multiple()
         .unique()
-        .help("Versions to download, for example v${BuildConfig.WASMTIME_VERSION} or latest")
+        .help("Downstream releases to download, for example v${BuildConfig.WASMTIME_RELEASE_VERSION}")
 
     private val archOption by option("-a", "--arch").help("Target platform; defaults to the current platform")
 
@@ -47,7 +47,7 @@ internal class Download : CliktCommand(name = "download") {
         val versions = downloadVersions.flatMap { it.split(',') }
             .map(String::trim)
             .filter(String::isNotEmpty)
-            .ifEmpty { listOf("latest") }
+            .ifEmpty { listOf("v${BuildConfig.WASMTIME_RELEASE_VERSION}") }
         val platform = archOption ?: PlatformDetector.detectPlatform()
         val distribution = parseWasmtimeDistribution(distributionName)
         outputDir.mkdirs()

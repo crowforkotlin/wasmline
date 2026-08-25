@@ -2,6 +2,7 @@ package crow.wasmline.plugin.core.download
 
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
+import crow.wasmline.plugin.core.toolchain.FileDigest
 import crow.wasmline.plugin.core.util.PlatformDetector
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -33,13 +34,46 @@ enum class WasmtimeDistribution {
 internal fun matchesWasmtimeDistributionAsset(assetName: String, platform: String, distribution: WasmtimeDistribution): Boolean {
     val name = assetName.lowercase()
     val isMinimal = name.contains("-min")
-    return !name.contains("c-api") &&
+    val isArchive = name.endsWith(".tar.gz") || name.endsWith(".tar.xz") || name.endsWith(".zip")
+    return name.startsWith("wasmtime-v") &&
+        isArchive &&
+        !name.contains("c-api") &&
         !name.contains("-pulley") &&
         (platform == "all" || name.contains(platform.lowercase())) &&
         when (distribution) {
             WasmtimeDistribution.MINIMAL -> isMinimal
             WasmtimeDistribution.FULL -> !isMinimal
         }
+}
+
+internal fun parseWasmtimeSha256Sums(value: String): Map<String, String> {
+    val checksums = linkedMapOf<String, String>()
+    value.lineSequence().filter(String::isNotBlank).forEach { line ->
+        val fields = line.trim().split(Regex("\\s+"), limit = 2)
+        require(fields.size == 2) { "SHA256SUMS contains an invalid line." }
+        val digest = fields[0].lowercase()
+        val assetName = fields[1].removePrefix("*")
+        require(digest.matches(Regex("[0-9a-f]{64}"))) {
+            "SHA256SUMS contains an invalid digest for '$assetName'."
+        }
+        require(assetName.isNotBlank() && checksums.put(assetName, digest) == null) {
+            "SHA256SUMS contains an invalid or duplicate asset name: '$assetName'."
+        }
+    }
+    require(checksums.isNotEmpty()) { "SHA256SUMS is empty." }
+    return checksums
+}
+
+internal fun wasmtimeReleaseTagCandidates(version: String): List<String> {
+    val raw = version.trim()
+    val base = raw.removePrefix("release-").removePrefix("v")
+    val explicit = raw.takeIf { it.startsWith("v") || it.startsWith("release-") }
+    val canonical = if (base.count { it == '.' } >= 3) {
+        listOf("v$base", "release-v$base")
+    } else {
+        listOf("release-v$base", "v$base")
+    }
+    return listOfNotNull(explicit).plus(canonical).distinct()
 }
 
 /**
@@ -66,13 +100,14 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         outputDir: File = File("build/wasmline/wasmtime"),
         force: Boolean = false,
     ): File = withContext(Dispatchers.IO) {
-        println("Downloading ${distribution.name.lowercase()} wasmtime v$version for $platform...")
+        println("Downloading ${distribution.name.lowercase()} wasmtime $version for $platform...")
 
         // Resolve release information
         val releaseJson = resolveRelease(version, githubToken)
         val assets = releaseJson["assets"]?.jsonArray ?: throw IllegalStateException(
             "Release for '$version' did not contain any assets",
         )
+        val checksums = resolveChecksums(assets, githubToken)
 
         // Filter assets for the correct platform
         val filteredAssets = assets.map { it.jsonObject }.filter { asset ->
@@ -89,7 +124,10 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         val downloadedFolders = mutableListOf<File>()
         var hasFailure = false
         filteredAssets.forEach { asset ->
-            downloadAndExtract(asset, outputDir, force, githubToken, version, platform, distribution)
+            val assetName = asset["name"]?.jsonPrimitive?.content.orEmpty()
+            val expectedSha256 = checksums[assetName]
+                ?: throw IllegalStateException("SHA256SUMS does not contain '$assetName'")
+            downloadAndExtract(asset, expectedSha256, outputDir, force, githubToken, version, platform, distribution)
                 .onSuccess(downloadedFolders::add)
                 .onFailure { error ->
                     hasFailure = true
@@ -112,6 +150,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
     /** Downloads and extracts a release asset. */
     private suspend fun downloadAndExtract(
         asset: JsonObject,
+        expectedSha256: String,
         outputDir: File,
         force: Boolean,
         githubToken: String? = null,
@@ -130,9 +169,10 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
             .removeSuffix(".zip")
         val targetFolder = File(outputDir, folderName)
         val successFile = File(targetFolder, ".success")
+        val successMarker = "version=$version\nplatform=$platform\nurl=$downloadUrl\nsha256=$expectedSha256\n"
 
         // Keep an existing verified download unless the caller requests a replacement.
-        if (successFile.exists() && !force) {
+        if (successFile.isFile && successFile.readText() == successMarker && !force) {
             println("Skipping: $fileName (Already exists)")
             return@runCatching targetFolder
         }
@@ -148,6 +188,10 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
 
         println("Downloading: $fileName")
         downloadFile(downloadUrl, tempFile, githubToken)
+        val actualSha256 = FileDigest.sha256Hex(tempFile)
+        check(actualSha256 == expectedSha256) {
+            "SHA-256 mismatch for '$fileName': expected $expectedSha256, downloaded $actualSha256"
+        }
 
         // Select the extractor from the archive suffix.
         when {
@@ -178,7 +222,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
             )
 
         // Record the verified download details.
-        successFile.writeText("version=$version\nplatform=$platform\nurl=$downloadUrl")
+        successFile.writeText(successMarker)
 
         println("Successfully downloaded and extracted: $fileName")
         tempFile.delete()
@@ -311,7 +355,7 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         val urls = if (version == "latest") {
             listOf(REPOSITORY)
         } else {
-            candidateTags(version).map { "$BASE_URL/tags/$it" }
+            wasmtimeReleaseTagCandidates(version).map { "$BASE_URL/tags/$it" }
         }
 
         val failures = mutableListOf<String>()
@@ -363,16 +407,32 @@ class WasmtimeDownloader(private val httpClient: HttpClient = HttpClient(CIO)) :
         )
     }
 
-    /** Returns supported release tag forms for a version. */
-    private fun candidateTags(version: String): List<String> {
-        val raw = version.trim()
-        val base = raw.removePrefix("release-").removePrefix("v")
-        return listOf(
-            "release-v$base",
-            "v$base",
-            raw,
-            "release-$raw",
-        ).distinct()
+    private suspend fun resolveChecksums(assets: JsonArray, githubToken: String?): Map<String, String> {
+        val checksumAssets = assets.map(JsonElement::jsonObject).filter { asset ->
+            asset["name"]?.jsonPrimitive?.content == "SHA256SUMS"
+        }
+        check(checksumAssets.size == 1) {
+            "Expected one release asset named SHA256SUMS; found ${checksumAssets.size}"
+        }
+        val downloadUrl = checksumAssets.single()["browser_download_url"]?.jsonPrimitive?.content
+            ?: error("SHA256SUMS release asset has no download URL")
+        val response = httpClient.get(downloadUrl) {
+            if (!githubToken.isNullOrBlank()) {
+                header("Authorization", "Bearer $githubToken")
+            }
+        }
+        check(response.status.isSuccess()) {
+            "SHA256SUMS download failed with HTTP ${response.status.value}"
+        }
+        val channel = response.bodyAsChannel()
+        val content = StringBuilder()
+        val buffer = ByteArray(8192)
+        while (!channel.isClosedForRead) {
+            val count = channel.readAvailable(buffer)
+            if (count < 0) break
+            if (count > 0) content.append(String(buffer, 0, count))
+        }
+        return parseWasmtimeSha256Sums(content.toString())
     }
 }
 

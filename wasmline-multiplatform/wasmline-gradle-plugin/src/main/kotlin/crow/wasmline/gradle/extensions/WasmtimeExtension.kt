@@ -2,6 +2,7 @@
 
 package crow.wasmline.gradle.extensions
 
+import crow.wasmline.gradle.BuildConfig
 import crow.wasmline.gradle.WasmtimeTarget
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import org.gradle.api.file.DirectoryProperty
@@ -23,7 +24,7 @@ import javax.inject.Inject
  *         // Optional: defaults to ~/.wasmline/wasmtime (base directory).
  *         // Can point to:
  *         //   - A base directory containing versioned subdirectories
- *         //     (e.g. ~/.wasmline/wasmtime/wasmtime-v48.0.1-x86_64-linux-min/)
+ *         //     (e.g. ~/.wasmline/wasmtime/wasmtime-v48.0.1.1-x86_64-linux-min/)
  *         //   - A specific versioned directory containing the wasmtime executable
  *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
  *
@@ -35,7 +36,8 @@ import javax.inject.Inject
  *
  *         // Optional: enable automatic download if wasmtime is not found
  *         autoDownload = true
- *         version = "latest" // or specific version like "v48.0.1"
+ *         version = "48.0.1"
+ *         releaseVersion = "v48.0.1.1"
  *     }
  * }
  * ```
@@ -51,7 +53,7 @@ public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFacto
      * Resolution strategy (in order):
      * 1. If the directory directly contains the executable, use it.
      * 2. If the directory contains versioned subdirectories
-     *    (e.g. `wasmtime-v48.0.1-x86_64-linux-min/`), search them.
+     *    (e.g. `wasmtime-v48.0.1.1-x86_64-linux-min/`), search them.
      * 3. Fall back to `WASMTIME_ROOT` environment variable.
      * 4. Fall back to `~/.wasmline/wasmtime`.
      *
@@ -105,17 +107,19 @@ public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFacto
         .convention(false)
 
     /**
-     * Wasmtime version to download when autoDownload is enabled.
+     * Wasmtime runtime version used for executable and AOT compatibility checks.
      *
-     * Examples:
-     * - `"latest"` — Download the latest release
-     * - `"v48.0.1"` — Specific version tag
-     * - `"release-v48.0.1"` — GitHub release tag format
+     * This is the three-segment version reported by the Wasmtime executable and
+     * used for AOT compatibility checks.
      *
-     * Default: `"latest"`
+     * Default: the Wasmtime runtime version packaged with Wasmline.
      */
     public val version: Property<String> = objects.property(String::class.java)
-        .convention("latest")
+        .convention(ToolchainCatalog.WASMTIME_VERSION)
+
+    /** Four-segment downstream GitHub release tag used to download Wasmtime assets. */
+    public val releaseVersion: Property<String> = objects.property(String::class.java)
+        .convention(BuildConfig.WASMTIME_RELEASE_VERSION)
 
     /** Exact Wasmtime CLI version used for Component AOT compilation. */
     public val compilerVersion: Property<String> = objects.property(String::class.java)

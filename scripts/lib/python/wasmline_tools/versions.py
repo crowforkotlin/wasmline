@@ -4,7 +4,8 @@
 Public commands:
     ./scripts/wasmline versions sync
     ./scripts/wasmline versions check
-    ./scripts/wasmline versions sync --set wasmtime_version=<version>
+    ./scripts/wasmline versions sync --set wasmtime_version=<version> \
+        --set wasmtime_release_version=<release-version>
     ./scripts/wasmline versions verify-upstream
     ./scripts/wasmline versions check-ktlint
     ./scripts/wasmline versions update-ktlint
@@ -36,6 +37,7 @@ REQUIRED_KEYS = (
     "wasmline_version",
     "sample_plugin_version",
     "wasmtime_version",
+    "wasmtime_release_version",
     "wasm_tools_version",
     "wit_bindgen_version",
     "kotlin_version",
@@ -49,6 +51,7 @@ REQUIRED_KEYS = (
 
 SEMANTIC_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
 SEMANTIC_VERSION_TOKEN_PATTERN = r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?"
+WASMTIME_RELEASE_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+\.[1-9][0-9]*$")
 
 
 @dataclass(frozen=True)
@@ -133,6 +136,13 @@ def validate_version(key: str, value: str) -> None:
         if not re.fullmatch(r"[0-9]+", value):
             raise SystemExit(f"Invalid version value for '{key}': '{value}'. Expected an integer.")
         return
+    if key == "wasmtime_release_version":
+        if not WASMTIME_RELEASE_VERSION_PATTERN.fullmatch(value):
+            raise SystemExit(
+                f"Invalid version value for '{key}': '{value}'. "
+                "Expected UPSTREAM_MAJOR.UPSTREAM_MINOR.UPSTREAM_PATCH.REVISION."
+            )
+        return
     if not SEMANTIC_VERSION_PATTERN.fullmatch(value):
         raise SystemExit(
             f"Invalid version value for '{key}': '{value}'. "
@@ -157,6 +167,12 @@ def validate_version(key: str, value: str) -> None:
 def validate_versions(versions: VersionMap) -> None:
     for key in REQUIRED_KEYS:
         validate_version(key, versions[key])
+    release_upstream = versions["wasmtime_release_version"].rsplit(".", 1)[0]
+    if release_upstream != versions["wasmtime_version"]:
+        raise SystemExit(
+            "wasmtime_release_version must use wasmtime_version as its first three segments: "
+            f"{versions['wasmtime_release_version']} != {versions['wasmtime_version']}.<revision>"
+        )
 
 
 def parse_latest_ktlint_release(payload: Mapping[str, Any]) -> str:
@@ -361,13 +377,13 @@ def file_specs() -> tuple[FileSpec, ...]:
 
     cli_docs_rules = (
         Rule(
-            r"download -v v[0-9]+\.[0-9]+\.[0-9]+",
-            lambda v: f"download -v v{v['wasmtime_version']}",
+            r"download -v v[0-9]+(?:\.[0-9]+){2,3}",
+            lambda v: f"download -v v{v['wasmtime_release_version']}",
             min_count=0,
         ),
         Rule(
-            r"wasmtime-v[0-9]+\.[0-9]+\.[0-9]+-aarch64-macos",
-            lambda v: f"wasmtime-v{v['wasmtime_version']}-aarch64-macos",
+            r"wasmtime-v[0-9]+(?:\.[0-9]+){2,3}-aarch64-macos",
+            lambda v: f"wasmtime-v{v['wasmtime_release_version']}-aarch64-macos",
             min_count=0,
         ),
     )
@@ -375,6 +391,11 @@ def file_specs() -> tuple[FileSpec, ...]:
         Rule(
             r"(--set wasmtime_version=)[0-9]+\.[0-9]+\.[0-9]+",
             lambda v: rf"\g<1>{v['wasmtime_version']}",
+            min_count=0,
+        ),
+        Rule(
+            r"(--set wasmtime_release_version=)[0-9]+(?:\.[0-9]+){3}",
+            lambda v: rf"\g<1>{v['wasmtime_release_version']}",
             min_count=0,
         ),
         Rule(
@@ -399,11 +420,11 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         Rule(
             r'(?m)^WASMTIME_VERSION="v[0-9.]+"$',
-            lambda v: f'WASMTIME_VERSION="v{v["wasmtime_version"]}"',
+            lambda v: f'WASMTIME_VERSION="v{v["wasmtime_release_version"]}"',
         ),
         Rule(
-            r'wasmtime-v[0-9]+\.[0-9]+\.[0-9]+',
-            lambda v: f'wasmtime-v{v["wasmtime_version"]}',
+            r'wasmtime-v[0-9]+(?:\.[0-9]+){2,3}',
+            lambda v: f'wasmtime-v{v["wasmtime_release_version"]}',
             min_count=0,
         ),
         Rule(
@@ -427,8 +448,8 @@ def file_specs() -> tuple[FileSpec, ...]:
             min_count=0,
         ),
         Rule(
-            r'(?m)(download -v )v[0-9]+\.[0-9]+\.[0-9]+',
-            lambda v: rf'\g<1>v{v["wasmtime_version"]}',
+            r'(?m)(download -v )v[0-9]+(?:\.[0-9]+){2,3}',
+            lambda v: rf'\g<1>v{v["wasmtime_release_version"]}',
             min_count=0,
         ),
     )
@@ -456,6 +477,12 @@ def file_specs() -> tuple[FileSpec, ...]:
         Rule(
             r'(providers\.gradleProperty\("wasmtime\.version"\)\.orElse\(")[0-9A-Za-z.\-]+("\)\.get\(\))',
             lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+        ),
+    )
+    sample_wasmtime_release_fallback_rules = (
+        Rule(
+            r'(providers\.gradleProperty\("wasmtime\.release\.version"\)\.orElse\(")[0-9.]+("\)\.get\(\))',
+            lambda v: rf'\g<1>{v["wasmtime_release_version"]}\g<2>',
         ),
     )
     sample_output_rules = (
@@ -561,6 +588,10 @@ def file_specs() -> tuple[FileSpec, ...]:
                     r"(?m)^wasmtime\.version\s*=.*$",
                     lambda v: f"wasmtime.version={v['wasmtime_version']}",
                 ),
+                Rule(
+                    r"(?m)^wasmtime\.release\.version\s*=.*$",
+                    lambda v: f"wasmtime.release.version={v['wasmtime_release_version']}",
+                ),
             ),
         ),
         FileSpec(
@@ -574,15 +605,23 @@ def file_specs() -> tuple[FileSpec, ...]:
                     r"(?m)^wasmtime\.version\s*=.*$",
                     lambda v: f"wasmtime.version={v['wasmtime_version']}",
                 ),
+                Rule(
+                    r"(?m)^wasmtime\.release\.version\s*=.*$",
+                    lambda v: f"wasmtime.release.version={v['wasmtime_release_version']}",
+                ),
             ),
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            sample_manifest_rules + sample_wasmtime_fallback_rules,
+            sample_manifest_rules
+            + sample_wasmtime_fallback_rules
+            + sample_wasmtime_release_fallback_rules,
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts",
-            sample_manifest_rules + sample_wasmtime_fallback_rules,
+            sample_manifest_rules
+            + sample_wasmtime_fallback_rules
+            + sample_wasmtime_release_fallback_rules,
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
@@ -606,6 +645,12 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r'(?m)^    val wasmtimeVersion = "[0-9.]+"$',
                     lambda v: f'    val wasmtimeVersion = "{v["wasmtime_version"]}"',
+                ),
+                Rule(
+                    r'(?m)^    val wasmtimeReleaseVersion = "[0-9.]+"$',
+                    lambda v: (
+                        f'    val wasmtimeReleaseVersion = "{v["wasmtime_release_version"]}"'
+                    ),
                 ),
             ),
         ),
@@ -654,8 +699,8 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-samples/kotlin/run-ios.sh",
             (
                 Rule(
-                    r"release-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"release-v{v['wasmtime_version']}",
+                    r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
+                    lambda v: f"v{v['wasmtime_release_version']}",
                 ),
             ),
         ),
@@ -708,8 +753,12 @@ def file_specs() -> tuple[FileSpec, ...]:
             "docs/content/docs/wasmtime-download.mdx",
             (
                 Rule(
-                    r'(version = "v)[0-9A-Za-z.\-]+(")',
+                    r'(?m)^(\s*version = ")[0-9A-Za-z.\-]+(")$',
                     lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+                Rule(
+                    r'(?m)^(\s*releaseVersion = "v)[0-9.]+(")$',
+                    lambda v: rf'\g<1>{v["wasmtime_release_version"]}\g<2>',
                 ),
             ),
         ),
@@ -717,8 +766,12 @@ def file_specs() -> tuple[FileSpec, ...]:
             "docs/content/docs/wasmtime-download.zh.mdx",
             (
                 Rule(
-                    r'(version = "v)[0-9A-Za-z.\-]+(")',
+                    r'(?m)^(\s*version = ")[0-9A-Za-z.\-]+(")$',
                     lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+                Rule(
+                    r'(?m)^(\s*releaseVersion = "v)[0-9.]+(")$',
+                    lambda v: rf'\g<1>{v["wasmtime_release_version"]}\g<2>',
                 ),
             ),
         ),
@@ -739,8 +792,8 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(r"jbr-[0-9]+-", lambda v: f"jbr-{v['jbr_version']}-"),
                 Rule(r"java-version: [0-9]+\.x", lambda v: f"java-version: {v['jbr_version']}.x"),
                 Rule(
-                    r"release-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"release-v{v['wasmtime_version']}",
+                    r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
+                    lambda v: f"v{v['wasmtime_release_version']}",
                     min_count=0,
                 ),
                 Rule(
@@ -781,8 +834,8 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline-android/src/androidMain/CMakeLists.txt",
             (
                 Rule(
-                    r"release-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"release-v{v['wasmtime_version']}",
+                    r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
+                    lambda v: f"v{v['wasmtime_release_version']}",
                 ),
             ),
         ),
@@ -790,8 +843,8 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline/build.zig",
             (
                 Rule(
-                    r"release-v[0-9]+\.[0-9]+\.[0-9]+",
-                    lambda v: f"release-v{v['wasmtime_version']}",
+                    r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
+                    lambda v: f"v{v['wasmtime_release_version']}",
                 ),
             ),
         ),
@@ -844,13 +897,18 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/WasmlinePlugin.kt",
             (
                 Rule(
-                    r'(?m)^ \*         version = "[0-9A-Za-z.\-]+"$',
-                    lambda v: f' *         version = "{v["sample_plugin_version"]}"',
+                    r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
+                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
                 ),
                 Rule(
-                    r'v[0-9]+\.[0-9]+\.[0-9]+',
-                    lambda v: f"v{v['wasmtime_version']}",
-                    min_count=0,
+                    r'(?m)(^ \*         directory = .*\n^ \*         version = ")[0-9.]+("$)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+                Rule(
+                    r'(?m)^ \*         releaseVersion = "v[0-9.]+"$',
+                    lambda v: (
+                        f' *         releaseVersion = "v{v["wasmtime_release_version"]}"'
+                    ),
                 ),
             ),
         ),
@@ -858,8 +916,8 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/ManifestExtension.kt",
             (
                 Rule(
-                    r'(?m)^ \*         version = "[0-9A-Za-z.\-]+"$',
-                    lambda v: f' *         version = "{v["sample_plugin_version"]}"',
+                    r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
+                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
                 ),
                 Rule(
                     r'(?m)^ \*         minSdkVersion = "[0-9A-Za-z.\-]+"$',
@@ -883,13 +941,18 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/WasmlineExtension.kt",
             (
                 Rule(
-                    r'(?m)^ \*         version = "[0-9A-Za-z.\-]+"$',
-                    lambda v: f' *         version = "{v["sample_plugin_version"]}"',
+                    r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
+                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
                 ),
                 Rule(
-                    r'v[0-9]+\.[0-9]+\.[0-9]+',
-                    lambda v: f"v{v['wasmtime_version']}",
-                    min_count=0,
+                    r'(?m)(^ \*         autoDownload = true\n^ \*         version = ")[0-9.]+("$)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+                Rule(
+                    r'(?m)^ \*         releaseVersion = "v[0-9.]+"$',
+                    lambda v: (
+                        f' *         releaseVersion = "v{v["wasmtime_release_version"]}"'
+                    ),
                 ),
             ),
         ),
@@ -897,12 +960,20 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/WasmtimeExtension.kt",
             (
                 Rule(
-                    r'v[0-9]+\.[0-9]+\.[0-9]+',
-                    lambda v: f"v{v['wasmtime_version']}",
+                    r'wasmtime-v[0-9]+(?:\.[0-9]+){2,3}-x86_64-linux-min',
+                    lambda v: (
+                        f'wasmtime-v{v["wasmtime_release_version"]}-x86_64-linux-min'
+                    ),
                 ),
                 Rule(
-                    r'release-v[0-9]+\.[0-9]+\.[0-9]+',
-                    lambda v: f"release-v{v['wasmtime_version']}",
+                    r'(?m)(^ \*         autoDownload = true\n^ \*         version = ")[0-9.]+("$)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+                Rule(
+                    r'(?m)^ \*         releaseVersion = "v[0-9.]+"$',
+                    lambda v: (
+                        f' *         releaseVersion = "v{v["wasmtime_release_version"]}"'
+                    ),
                 ),
             ),
         ),
@@ -1263,6 +1334,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if updates:
         versions.update(updates)
+        validate_versions(versions)
         data["versions"] = versions
 
     try:

@@ -3,6 +3,7 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinJvm
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.jvm.tasks.Jar
 
@@ -36,6 +37,7 @@ buildConfig {
     packageName("crow.wasmline.cli")
     buildConfigField("String", "VERSION", "\"${version}\"")
     buildConfigField("String", "WASMTIME_VERSION", "\"${extra["wasmtime.version"]}\"")
+    buildConfigField("String", "WASMTIME_RELEASE_VERSION", "\"${extra["wasmtime.release.version"]}\"")
 }
 
 dependencies {
@@ -64,6 +66,10 @@ val pluginCoreOutput = project(":wasmline-plugin-core")
 
 tasks.named<Jar>("jar") {
     from(pluginCoreOutput)
+}
+
+tasks.named<JavaExec>("run") {
+    classpath += pluginCoreOutput
 }
 
 application { mainClass = "crow.wasmline.cli.MainKt" }

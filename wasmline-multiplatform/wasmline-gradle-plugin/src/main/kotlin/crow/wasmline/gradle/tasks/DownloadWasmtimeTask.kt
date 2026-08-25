@@ -34,7 +34,10 @@ public abstract class DownloadWasmtimeTask : DefaultTask() {
     }
 
     @get:Input
-    public abstract val version: Property<String>
+    public abstract val runtimeVersion: Property<String>
+
+    @get:Input
+    public abstract val releaseVersion: Property<String>
 
     @get:Input
     public abstract val platform: Property<String>
@@ -55,20 +58,21 @@ public abstract class DownloadWasmtimeTask : DefaultTask() {
     /** Downloads Wasmtime when the requested platform or version is unavailable. */
     @TaskAction
     public fun download() {
-        val targetVersion = version.get()
+        val targetRuntimeVersion = runtimeVersion.get()
+        val targetReleaseVersion = releaseVersion.get()
         val targetPlatform = platform.get()
         val targetDistribution = distribution.get()
         val baseDir = wasmtimeDirectory.orNull?.asFile
             ?: File(System.getProperty("user.home"), ".wasmline/wasmtime")
 
-        findExecutable(baseDir, targetPlatform, targetVersion, targetDistribution)?.let { executable ->
+        findExecutable(baseDir, targetPlatform, targetRuntimeVersion, targetDistribution)?.let { executable ->
             val installed = installExecutable(executable)
             logger.lifecycle("wasmtime already exists at: ${installed.absolutePath}")
             return
         }
 
         logger.lifecycle(
-            "Downloading ${targetDistribution.name.lowercase()} wasmtime $targetVersion " +
+            "Downloading ${targetDistribution.name.lowercase()} Wasmtime release $targetReleaseVersion " +
                 "for $targetPlatform into ${baseDir.absolutePath}",
         )
         runBlocking {
@@ -76,7 +80,7 @@ public abstract class DownloadWasmtimeTask : DefaultTask() {
             try {
                 downloader.download(
                     githubToken = githubToken.orNull,
-                    version = targetVersion,
+                    version = targetReleaseVersion,
                     platform = targetPlatform,
                     distribution = targetDistribution,
                     outputDir = baseDir,
@@ -85,7 +89,7 @@ public abstract class DownloadWasmtimeTask : DefaultTask() {
                 downloader.close()
             }
         }
-        val executable = checkNotNull(findExecutable(baseDir, targetPlatform, targetVersion, targetDistribution)) {
+        val executable = checkNotNull(findExecutable(baseDir, targetPlatform, targetRuntimeVersion, targetDistribution)) {
             "wasmtime download completed but no executable was found in ${baseDir.absolutePath}"
         }
         installExecutable(executable)

@@ -30,7 +30,7 @@ cd wasmline-multiplatform
 cd wasmline-multiplatform
 
 # Download wasmtime min toolchain binaries
-./gradlew :wasmline-cli:run --args="download -v v48.0.1"
+./gradlew :wasmline-cli:run --args="download -v v48.0.1.1"
 
 # Generate Ed25519 signing key pair
 ./gradlew :wasmline-cli:run --args="generate-key-pair --save"
@@ -38,7 +38,7 @@ cd wasmline-multiplatform
 # Execute the full build pipeline
 ./gradlew :wasmline-cli:run --args="build \
   -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v48.0.1-aarch64-macos \
+  -wt build/wasmline/wasmtime/wasmtime-v48.0.1.1-aarch64-macos-min \
   --key build/wasmline/keys/ed25519_private.key"
 ```
 

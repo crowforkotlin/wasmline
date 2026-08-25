@@ -33,9 +33,11 @@ required JBR, Zig, and Wasmtime versions come from `versions.json`.
 
 ## Wasmtime Files
 
-The download command uses `wasmtime_version` from `versions.json`. It requests
-that exact GitHub release and matches each required archive by its complete
-asset name. It does not select the latest release.
+The runtime-compatible `wasmtime_version` and the exact downstream
+`wasmtime_release_version` come from `versions.json`. The download command uses
+the four-segment release version for the GitHub tag and complete archive names;
+it never selects the latest release. Every archive is verified against the
+release's `SHA256SUMS` before extraction.
 
 ```bash
 # Show target ids and supported engines.
@@ -57,7 +59,7 @@ asset name. It does not select the latest release.
 ```
 
 Downloads are installed under
-`build/platforms/release-v<version>/<engine>/<platform>/`. Both the target and
+`build/platforms/v<release-version>/<engine>/<platform>/`. Both the target and
 engine default to `all`; existing complete targets are reused unless `--force`
 is supplied. Downloads run concurrently without a default limit; use `--jobs`
 to impose one.
@@ -110,7 +112,9 @@ clang-format. Zig and ZON files use `zig fmt`.
 ```bash
 ./scripts/wasmline versions list
 ./scripts/wasmline versions sync
-./scripts/wasmline versions sync --set wasmtime_version=<version>
+./scripts/wasmline versions sync \
+  --set wasmtime_version=<upstream-version> \
+  --set wasmtime_release_version=<downstream-release-version>
 ./scripts/wasmline versions check
 ./scripts/wasmline versions verify-upstream
 ./scripts/wasmline versions check-ktlint

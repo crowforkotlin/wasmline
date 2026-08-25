@@ -14,13 +14,13 @@ OUTPUT_NAME="wasmline-sample-sample-plugin"
 VERSION="1.0.0"
 VERSION_ALT="1.0.0"
 VERSION_CODE_ALT="1"
-WASMTIME_VERSION="v48.0.1"
+WASMTIME_VERSION="v48.0.1.1"
 # WASMTIME_TARGET="-min" suffix is added automatically for consistency with Gradle plugin
 #WASMTIME_TARGET="aarch64-macos"
 WASMTIME_TARGET="x86_64-linux-min"
 WASMTIME_DIR=""
 DOWNLOAD_EXTRA_VERSION="latest"
-# DOWNLOAD_ARCH can be plain "x86_64-linux" or full asset name like "wasmtime-v48.0.1-x86_64-linux-min.tar.xz"
+# DOWNLOAD_ARCH can be plain "x86_64-linux" or full asset name like "wasmtime-v48.0.1.1-x86_64-linux-min.tar.xz"
 #DOWNLOAD_ARCH="aarch64-macos"
 DOWNLOAD_ARCH="x86_64-linux"
 SELECTED_ARCHES="pulley64,aarch64-linux-android"
@@ -127,7 +127,7 @@ extract_release_arch() {
 
   case "$value" in
   wasmtime-v*-*)
-    # Extract platform from filename like wasmtime-v48.0.1-x86_64-linux-min
+    # Extract platform from filename like wasmtime-v48.0.1.1-x86_64-linux-min
     printf '%s' "${value#wasmtime-v*-}"
     ;;
   *)

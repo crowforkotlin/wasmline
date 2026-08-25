@@ -26,7 +26,8 @@ import crow.wasmline.gradle.WasmtimeTarget
 wasmline {
     wasmtime {
         autoDownload = true
-        version = "v48.0.1"
+        version = "48.0.1"
+        releaseVersion = "v48.0.1.1"
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
             WasmtimeTarget.X86_64_LINUX,
@@ -35,7 +36,7 @@ wasmline {
 }
 ```
 
-`directory` can set the minimal Wasmtime cache or executable directory. If it is not set, the plugin checks `WASMTIME_ROOT` and then `~/.wasmline/wasmtime`.
+`version` is the three-segment version reported by the executable and used for AOT compatibility. `releaseVersion` is the four-segment downstream GitHub release that supplies the binaries. `directory` can set the minimal Wasmtime cache or executable directory. If it is not set, the plugin checks `WASMTIME_ROOT` and then `~/.wasmline/wasmtime`.
 
 `compilerDirectory`, `compilerVersion`, and `compilerExecutable` configure the CLI used by Component AOT compilation. Automatic downloads select `cranelift-min`; `compilerExecutable` may explicitly select any compile-capable minimal or full CLI. Wasmline verifies the exact version and the `compile` subcommand before compiling.
 

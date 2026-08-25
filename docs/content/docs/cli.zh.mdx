@@ -30,7 +30,7 @@ cd wasmline-multiplatform
 cd wasmline-multiplatform
 
 # 下载 wasmtime min 工具链二进制
-./gradlew :wasmline-cli:run --args="download -v v48.0.1"
+./gradlew :wasmline-cli:run --args="download -v v48.0.1.1"
 
 # 生成 Ed25519 签名密钥对
 ./gradlew :wasmline-cli:run --args="generate-key-pair --save"
@@ -38,7 +38,7 @@ cd wasmline-multiplatform
 # 执行完整构建流水线
 ./gradlew :wasmline-cli:run --args="build \
   -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v48.0.1-aarch64-macos \
+  -wt build/wasmline/wasmtime/wasmtime-v48.0.1.1-aarch64-macos-min \
   --key build/wasmline/keys/ed25519_private.key"
 ```
 

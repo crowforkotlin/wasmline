@@ -45,6 +45,7 @@ wasmline {
             System.getenv("WASMTIME_ROOT") ?: "${rootDir.parentFile.parentFile}/build/wasmline/wasmtime",
         )
         autoDownload = true
-        version = "v${providers.gradleProperty("wasmtime.version").orElse("48.0.1").get()}"
+        version = providers.gradleProperty("wasmtime.version").orElse("48.0.1").get()
+        releaseVersion = "v${providers.gradleProperty("wasmtime.release.version").orElse("48.0.1.1").get()}"
     }
 }

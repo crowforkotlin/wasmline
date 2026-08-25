@@ -37,16 +37,29 @@ class WasmtimeConfigurationTest(unittest.TestCase):
         linux = target_by_id("linux-x64")
         windows = target_by_id("windows-x64")
         self.assertEqual(
-            "wasmtime-v12.3.4-x86_64-linux-min-c-api.tar.gz",
-            wasmtime.expected_asset_name(linux, "cranelift", "12.3.4"),
+            "wasmtime-v12.3.4.5-x86_64-linux-min-c-api.tar.gz",
+            wasmtime.expected_asset_name(linux, "cranelift", "12.3.4.5"),
         )
         self.assertEqual(
-            "wasmtime-v12.3.4-x86_64-linux-pulley-min-c-api.tar.gz",
-            wasmtime.expected_asset_name(linux, "pulley", "12.3.4"),
+            "wasmtime-v12.3.4.5-x86_64-linux-pulley-min-c-api.tar.gz",
+            wasmtime.expected_asset_name(linux, "pulley", "12.3.4.5"),
         )
         self.assertEqual(
-            "wasmtime-v12.3.4-x86_64-windows-pulley-min-c-api.zip",
-            wasmtime.expected_asset_name(windows, "pulley", "12.3.4"),
+            "wasmtime-v12.3.4.5-x86_64-windows-pulley-min-c-api.zip",
+            wasmtime.expected_asset_name(windows, "pulley", "12.3.4.5"),
+        )
+
+    def test_downstream_release_tag_uses_v_prefix(self) -> None:
+        self.assertEqual("v12.3.4.5", wasmtime.release_tag("12.3.4.5"))
+        self.assertEqual("v12.3.4.5", wasmtime.release_tag("v12.3.4.5"))
+
+    def test_release_checksums_are_parsed_by_asset_name(self) -> None:
+        digest = "a" * 64
+        self.assertEqual(
+            {"wasmtime-v12.3.4.5-x86_64-linux-min-c-api.tar.gz": digest},
+            wasmtime._parse_sha256sums(
+                f"{digest}  wasmtime-v12.3.4.5-x86_64-linux-min-c-api.tar.gz\n"
+            ),
         )
 
     def test_pulley_only_target_rejects_cranelift(self) -> None:
@@ -61,8 +74,22 @@ class WasmtimeConfigurationTest(unittest.TestCase):
         stream = InteractiveStream()
         target = target_by_id("linux-x64")
         jobs = [
-            wasmtime.Job(target, "pulley", "first.tar.gz", "https://example/first", 100),
-            wasmtime.Job(target, "cranelift", "second.tar.gz", "https://example/second", 300),
+            wasmtime.Job(
+                target,
+                "pulley",
+                "first.tar.gz",
+                "https://example/first",
+                100,
+                "a" * 64,
+            ),
+            wasmtime.Job(
+                target,
+                "cranelift",
+                "second.tar.gz",
+                "https://example/second",
+                300,
+                "b" * 64,
+            ),
         ]
         progress = wasmtime._DownloadProgress(wasmtime.Console(stream), jobs)
 

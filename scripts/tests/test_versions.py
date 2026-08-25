@@ -76,8 +76,8 @@ class SyncVersionTest(unittest.TestCase):
                 msg=f"Missing managed file: {spec.path}",
             )
 
-    def test_active_wasmtime_version_appears_only_in_managed_files(self) -> None:
-        """The active Wasmtime version must not leak into independent fixtures."""
+    def test_active_wasmtime_versions_appear_only_in_managed_files(self) -> None:
+        """The active runtime and release versions must not leak into independent fixtures."""
         versions = dict(sync_version.load_manifest()["versions"])
         active_version = versions["wasmtime_version"]
         result = subprocess.run(
@@ -90,6 +90,7 @@ class SyncVersionTest(unittest.TestCase):
         self.assertIn(result.returncode, (0, 1), msg=result.stderr)
 
         versions["wasmtime_version"] = "99.8.7"
+        versions["wasmtime_release_version"] = "99.8.7.6"
         rendered = self.render_managed_files(versions)
         managed_paths = {
             path
@@ -116,6 +117,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasmline_version": "9.8.7",
             "sample_plugin_version": "6.5.4",
             "wasmtime_version": "99.8.7",
+            "wasmtime_release_version": "99.8.7.6",
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
@@ -163,6 +165,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasmline_version": "9.8.7",
             "sample_plugin_version": "6.5.4",
             "wasmtime_version": "99.8.7",
+            "wasmtime_release_version": "99.8.7.6",
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
@@ -183,7 +186,7 @@ class SyncVersionTest(unittest.TestCase):
                 'version = "6.5.4"',
             "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt":
                 'version = "6.5.4"',
-            "wasmline-samples/kotlin/run-ios.sh": "release-v99.8.7",
+            "wasmline-samples/kotlin/run-ios.sh": "v99.8.7.6",
             "wasmline-multiplatform/gradle/gradle-daemon-jvm.properties": "toolchainVersion=99",
             "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts":
                 "JavaLanguageVersion.of(99)",
@@ -218,6 +221,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasmline_version": "9.8.7",
             "sample_plugin_version": "6.5.4",
             "wasmtime_version": "99.8.7",
+            "wasmtime_release_version": "99.8.7.6",
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
@@ -263,6 +267,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasmline_version": "9.8.7",
             "sample_plugin_version": "6.5.4",
             "wasmtime_version": "99.8.7",
+            "wasmtime_release_version": "99.8.7.6",
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
@@ -294,6 +299,7 @@ class SyncVersionTest(unittest.TestCase):
             "wasmline_version": "9.8.7",
             "sample_plugin_version": "6.5.4",
             "wasmtime_version": "99.8.7",
+            "wasmtime_release_version": "99.8.7.6",
             "wasm_tools_version": "8.7.6",
             "wit_bindgen_version": "7.6.5",
             "kotlin_version": "9.9.9",
@@ -426,7 +432,17 @@ class SyncVersionTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             sync_version.parse_updates(["wasmtime_version=47.0.12"])
         with self.assertRaises(SystemExit):
+            sync_version.parse_updates(["wasmtime_release_version=47.0.2"])
+        with self.assertRaises(SystemExit):
+            sync_version.parse_updates(["wasmtime_release_version=47.0.2.0"])
+        with self.assertRaises(SystemExit):
             sync_version.parse_updates(["ktlint_version=1.8.0-RC1"])
+
+    def test_wasmtime_release_must_match_runtime_version(self) -> None:
+        versions = dict(sync_version.load_manifest()["versions"])
+        versions["wasmtime_release_version"] = "47.0.2.1"
+        with self.assertRaisesRegex(SystemExit, "must use wasmtime_version"):
+            sync_version.validate_versions(versions)
 
     def test_parse_updates_accepts_prerelease_versions(self) -> None:
         """Kotlin prerelease versions used by the repository remain valid."""

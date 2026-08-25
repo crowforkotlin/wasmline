@@ -76,7 +76,8 @@ import kotlin.jvm.java
  *         // Optional: defaults to ~/.wasmline/wasmtime (base directory).
  *         // The plugin searches for the executable in versioned subdirectories.
  *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
- *         version = "latest" // or "v48.0.1"
+ *         version = "48.0.1"
+ *         releaseVersion = "v48.0.1.1"
  *         autoDownload = true
  *     }
  *     server {
@@ -166,7 +167,8 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
             // Pass DSL configuration to the task
             task.wasmtimeDirectory.set(ext.wasmtime.directory)
-            task.version.set(ext.wasmtime.version)
+            task.runtimeVersion.set(ext.wasmtime.version)
+            task.releaseVersion.set(ext.wasmtime.releaseVersion)
             task.platform.convention(detectCurrentPlatform())
             task.distribution.set(WasmtimeDistribution.MINIMAL)
             task.githubToken.set(ext.wasmtime.githubToken)
@@ -175,7 +177,8 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.group = "wasmline"
             task.description = "Download the minimal Cranelift CLI used for Component AOT compilation"
             task.wasmtimeDirectory.set(ext.wasmtime.compilerDirectory)
-            task.version.set(ext.wasmtime.compilerVersion)
+            task.runtimeVersion.set(ext.wasmtime.compilerVersion)
+            task.releaseVersion.set(ext.wasmtime.releaseVersion)
             task.platform.convention(detectCurrentPlatform())
             task.distribution.set(WasmtimeDistribution.MINIMAL)
             task.githubToken.set(ext.wasmtime.githubToken)
@@ -287,14 +290,14 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         // Attempt automatic download
         if (ext.wasmtime.autoDownload.get()) {
             project.logger.lifecycle("Attempting automatic Wasmtime download")
-            val version = ext.wasmtime.version.get()
-            val success = attemptAutoDownload(project, ext, baseDir, platform, version)
+            val runtimeVersion = ext.wasmtime.version.get()
+            val success = attemptAutoDownload(project, ext, baseDir, platform, runtimeVersion)
             if (success) {
                 // Re-verify after download
                 val executable = WasmtimeCompiler.findWasmtimeInDirectory(
                     baseDir = baseDir,
                     platform = platform,
-                    version = version,
+                    version = runtimeVersion,
                 )
                 if (executable != null) {
                     project.logger.lifecycle("Wasmtime download completed: ${executable.absolutePath}")
@@ -322,33 +325,39 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         )
     }
 
-    private fun attemptAutoDownload(project: Project, ext: WasmlineExtension, baseDir: File, platform: String, version: String): Boolean =
-        try {
-            project.logger.info("Wasmtime platform: $platform")
-            project.logger.info("Wasmtime version: $version")
-            project.logger.info("Wasmtime output: ${baseDir.absolutePath}")
-            runBlocking {
-                val downloader = WasmtimeDownloader()
-                try {
-                    downloader.download(
-                        githubToken = ext.wasmtime.githubToken.orNull,
-                        version = version,
-                        platform = platform,
-                        outputDir = baseDir,
-                    )
-                } finally {
-                    downloader.close()
-                }
+    private fun attemptAutoDownload(
+        project: Project,
+        ext: WasmlineExtension,
+        baseDir: File,
+        platform: String,
+        runtimeVersion: String,
+    ): Boolean = try {
+        project.logger.info("Wasmtime platform: $platform")
+        project.logger.info("Wasmtime runtime version: $runtimeVersion")
+        project.logger.info("Wasmtime release version: ${ext.wasmtime.releaseVersion.get()}")
+        project.logger.info("Wasmtime output: ${baseDir.absolutePath}")
+        runBlocking {
+            val downloader = WasmtimeDownloader()
+            try {
+                downloader.download(
+                    githubToken = ext.wasmtime.githubToken.orNull,
+                    version = ext.wasmtime.releaseVersion.get(),
+                    platform = platform,
+                    outputDir = baseDir,
+                )
+            } finally {
+                downloader.close()
             }
-            WasmtimeCompiler.findWasmtimeInDirectory(
-                baseDir = baseDir,
-                platform = platform,
-                version = version,
-            ) != null
-        } catch (e: Exception) {
-            project.logger.warn("Failed to download wasmtime: ${e.message}")
-            false
         }
+        WasmtimeCompiler.findWasmtimeInDirectory(
+            baseDir = baseDir,
+            platform = platform,
+            version = runtimeVersion,
+        ) != null
+    } catch (e: Exception) {
+        project.logger.warn("Failed to download wasmtime: ${e.message}")
+        false
+    }
 
     /**
      * Provides comprehensive, user-friendly download instructions.

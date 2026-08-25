@@ -14,9 +14,9 @@ add_link_options(
     -Wl,--exclude-libs,ALL
 )
 
-# Wasmtime version & variant (passed from Gradle or use defaults)
+# Downstream Wasmtime release tag and engine variant (passed from Gradle or use defaults)
 if(NOT DEFINED WASMTIME_VERSION)
-    set(WASMTIME_VERSION "release-v48.0.1")
+    set(WASMTIME_VERSION "v48.0.1.1")
 endif()
 if(NOT DEFINED WASMTIME_VARIANT)
     set(WASMTIME_VARIANT "pulley")

@@ -53,7 +53,8 @@ tasks.named<Test>("jvmTest") {
 // WASMTIME directory uses a path relative to the multiplatform root.
 wasmline {
     val wasmtimeVersion = "48.0.1"
-    val wasmtimePlatformDir = "wasmtime-v$wasmtimeVersion-${testPluginCompileTarget.targetName}-min"
+    val wasmtimeReleaseVersion = "48.0.1.1"
+    val wasmtimePlatformDir = "wasmtime-v$wasmtimeReleaseVersion-${testPluginCompileTarget.targetName}-min"
     manifest {
         pluginId = testPluginId
         version = testPluginVersion
@@ -62,7 +63,8 @@ wasmline {
     wasmtime {
         directory = file("${file("build/wasmline/wasmtime")}/$wasmtimePlatformDir")
         autoDownload = true
-        version = "v$wasmtimeVersion"
+        version = wasmtimeVersion
+        releaseVersion = "v$wasmtimeReleaseVersion"
         targets = listOf(testPluginCompileTarget)
         githubToken = providers.gradleProperty("github.token").orNull
     }
