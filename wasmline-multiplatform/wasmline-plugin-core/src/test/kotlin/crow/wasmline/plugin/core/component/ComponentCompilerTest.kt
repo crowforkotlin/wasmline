@@ -43,7 +43,7 @@ class ComponentCompilerTest {
                         outputFile = output,
                     ),
                 ),
-                wasmtimeVersion = "47.0.2",
+                wasmtimeVersion = "12.3.4",
                 artifactMetadata = metadata,
             ),
         )
@@ -56,7 +56,7 @@ class ComponentCompilerTest {
         assertEquals(WasmlineArtifactType.CWASM, compiled.artifact.type)
         assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, compiled.artifact.executionModel)
         assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, compiled.artifact.invocationProtocol)
-        assertEquals("wasmtime-47.0.2", compiled.artifact.targetCompilerVersion)
+        assertEquals("wasmtime-12.3.4", compiled.artifact.targetCompilerVersion)
         assertEquals(FileDigest.sha256Hex(output), compiled.artifact.sha256)
         assertEquals(FileDigest.sha256Hex(input), result.inputComponentSha256)
         assertEquals(metadata.contractMetadata, compiled.artifact.contractMetadata)
@@ -119,7 +119,7 @@ class ComponentCompilerTest {
                     ComponentAotTarget("pulley32-unknown-unknown-elf", ComponentAotBackend.PULLEY, outputs[0]),
                     ComponentAotTarget("pulley64", ComponentAotBackend.PULLEY, outputs[1]),
                 ),
-                wasmtimeVersion = "47.0.2",
+                wasmtimeVersion = "12.3.4",
             ),
         )
 
@@ -146,7 +146,7 @@ class ComponentCompilerTest {
                     wasmtimeCompiler = compilerFile,
                     inputComponent = input,
                     targets = listOf(ComponentAotTarget("x86_64-linux", ComponentAotBackend.PULLEY, File(root, "bad.pwasm"))),
-                    wasmtimeVersion = "47.0.2",
+                    wasmtimeVersion = "12.3.4",
                 ),
             )
         }
@@ -189,7 +189,7 @@ class ComponentCompilerTest {
             )
         }
 
-        assertTrue(error.message.orEmpty().contains("expected 47.0.2, actual $INCOMPATIBLE_WASMTIME_VERSION"))
+        assertTrue(error.message.orEmpty().contains("expected 12.3.4, actual $INCOMPATIBLE_WASMTIME_VERSION"))
         assertEquals(listOf(listOf("--version")), runner.arguments)
     }
 
@@ -226,7 +226,7 @@ class ComponentCompilerTest {
                         ComponentAotTarget("x86_64-linux", ComponentAotBackend.CRANELIFT, File(root, "alias.cwasm")),
                         ComponentAotTarget("x86_64-unknown-linux-gnu", ComponentAotBackend.CRANELIFT, File(root, "triple.cwasm")),
                     ),
-                    wasmtimeVersion = "47.0.2",
+                    wasmtimeVersion = "12.3.4",
                 ),
             )
         }
@@ -240,7 +240,7 @@ class ComponentCompilerTest {
             wasmtimeCompiler = compiler,
             inputComponent = input,
             targets = listOf(ComponentAotTarget(target, ComponentAotBackend.CRANELIFT, output)),
-            wasmtimeVersion = "47.0.2",
+            wasmtimeVersion = "12.3.4",
         )
 
     private fun expectedCompileArguments(input: File, output: File): List<String> = listOf(
@@ -286,7 +286,7 @@ class ComponentCompilerTest {
 }
 
 private class RecordingComponentCompilerRunner(
-    private val versionOutput: String = "wasmtime 47.0.2",
+    private val versionOutput: String = "wasmtime 12.3.4",
     private val exitCode: (List<String>) -> Int = { 0 },
     private val onRun: (List<String>) -> Unit = {},
 ) : ComponentCompilerToolRunner {

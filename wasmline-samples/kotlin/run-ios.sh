@@ -186,7 +186,7 @@ ensure_ios_prerequisites() {
     require_directory "$IOS_PROJECT_FILE" "ios sample Xcode project"
     # Resolve wasmtime version for pulley iOS assets
     local _wasmtime_ver
-    _wasmtime_ver=$(python3 -c "import json;print('release-v'+json.load(open('${REPO_ROOT}/scripts/versions.json'))['versions']['wasmtime_version'])" 2>/dev/null || echo "release-v47.0.2")
+    _wasmtime_ver=$(python3 -c "import json;print('release-v'+json.load(open('${REPO_ROOT}/scripts/versions.json'))['versions']['wasmtime_version'])" 2>/dev/null || echo "release-v48.0.1")
     require_directory "${REPO_ROOT}/build/platforms/${_wasmtime_ver}/pulley/ios/simulator-arm64/include" "iOS simulator headers"
     require_directory "${REPO_ROOT}/build/platforms/${_wasmtime_ver}/pulley/ios/simulator-arm64/lib" "iOS simulator libraries"
 }

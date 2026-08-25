@@ -76,7 +76,7 @@ import kotlin.jvm.java
  *         // Optional: defaults to ~/.wasmline/wasmtime (base directory).
  *         // The plugin searches for the executable in versioned subdirectories.
  *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
- *         version = "latest" // or "v47.0.2"
+ *         version = "latest" // or "v48.0.1"
  *         autoDownload = true
  *     }
  *     server {

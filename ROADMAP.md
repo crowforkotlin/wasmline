@@ -3,7 +3,7 @@
 ## Completed Features
 
 ### Core Runtime
-- [x] Wasmtime C-API integration (v47.0.2)
+- [x] Wasmtime C-API integration (v48.0.1)
 - [x] Dual-path execution: Native and Web
 - [x] Session-based memory isolation
 - [x] Engine singleton lifecycle

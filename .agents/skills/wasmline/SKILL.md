@@ -31,7 +31,7 @@ Read only the documents required by the current task.
 6. **Tags and Maven releases remain paired.** The release tag format is `release-x.y.z.v`. Do not create a release tag without its Maven release, and do not publish a Maven release without its tag.
 7. **Maven modules use one project version.** All published modules, including engine modules, use `wasmline.version` in `x.y.z` form. Do not introduce four-segment engine Maven versions.
 8. **Use `main` and temporary sub-branches.** Do not create long-lived release or Wasmtime-version branches.
-9. **Wasmtime tag encoding is fixed.** `v = major×100 + minor×10 + patch` (47.0.2 → `4702`). Minor and patch must remain single digits while this format is in use.
+9. **Wasmtime tag encoding is fixed.** `v = major×100 + minor×10 + patch` (48.0.1 → `4801`). Minor and patch must remain single digits while this format is in use.
 10. **Shell profiles are read-only.** Never modify `~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`.
 
 ## Artifact and Execution Model

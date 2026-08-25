@@ -57,7 +57,7 @@ class ComponentCompilerModelsTest {
             wasmtimeCompiler = File("tools/wasmtime"),
             inputComponent = File("build/plugin-component.wasm"),
             targets = listOf(target),
-            wasmtimeVersion = "47.0.2",
+            wasmtimeVersion = "12.3.4",
             artifactMetadata = metadata,
         )
 
@@ -85,7 +85,7 @@ class ComponentCompilerModelsTest {
         val result = ComponentAotCompileResult(
             inputComponent = File("build/plugin-component.wasm"),
             inputComponentSha256 = "a".repeat(64),
-            wasmtimeVersion = "47.0.2",
+            wasmtimeVersion = "12.3.4",
             engineOptions = ComponentAotEngineOptions(),
             artifactMetadata = metadata,
             outputs = listOf(output),
@@ -119,7 +119,7 @@ class ComponentCompilerModelsTest {
         url = "plugin-pulley64.pwasm",
         sha256 = "b".repeat(64),
         targetCpu = "pulley64",
-        targetCompilerVersion = "wasmtime-47.0.2",
+        targetCompilerVersion = "wasmtime-12.3.4",
         is64Bit = true,
         executionModel = metadata.executionModel,
         invocationProtocol = metadata.invocationProtocol,

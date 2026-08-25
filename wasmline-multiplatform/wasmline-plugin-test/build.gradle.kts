@@ -52,7 +52,7 @@ tasks.named<Test>("jvmTest") {
 
 // WASMTIME directory uses a path relative to the multiplatform root.
 wasmline {
-    val wasmtimeVersion = "47.0.2"
+    val wasmtimeVersion = "48.0.1"
     val wasmtimePlatformDir = "wasmtime-v$wasmtimeVersion-${testPluginCompileTarget.targetName}-min"
     manifest {
         pluginId = testPluginId

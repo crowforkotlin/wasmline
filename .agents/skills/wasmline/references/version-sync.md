@@ -96,6 +96,13 @@ Not every semantic-looking value belongs in `versions.json`. Keep these independ
 
 Classify a value by meaning, not by its numeric shape.
 
+Tests that exercise version parsing, comparison, paths, or diagnostics must use
+an obviously synthetic value such as `12.3.4`; they must not copy the active
+toolchain version. The regression suite rejects active `wasmtime_version`
+literals outside synchronizer-managed files, the manifest, and the generated
+toolchain lock. Ignored build output is outside text synchronization and must be
+rebuilt when its binaries or generated pages embed an older toolchain version.
+
 Kotlin code obtains Component CLI tool versions from `ToolchainCatalog`. Do not add synchronization rules that rewrite `.kt` files for `wasm_tools_version` or `wit_bindgen_version`. Tests that exercise catalog defaults must read the catalog; unrelated fixture versions remain independent.
 
 ## Generated Toolchain Lock

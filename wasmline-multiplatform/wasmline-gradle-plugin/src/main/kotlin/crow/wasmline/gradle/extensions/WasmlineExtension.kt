@@ -21,7 +21,7 @@ import javax.inject.Inject
  *
  *         // Enable auto-download if wasmtime is missing
  *         autoDownload = true
- *         version = "latest" // or specific version like "v47.0.2"
+ *         version = "latest" // or specific version like "v48.0.1"
  *
  *         // Optional: Set GitHub token for higher API rate limits
  *         // Use environment variable from CI or local config

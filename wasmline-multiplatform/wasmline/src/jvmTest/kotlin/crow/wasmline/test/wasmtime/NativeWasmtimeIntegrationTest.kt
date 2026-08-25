@@ -41,7 +41,7 @@ class NativeWasmtimeIntegrationTest {
         val capabilities = platformWasmlineRuntimeCapabilities()
         val runtimeInfo = requireNotNull(WasmlineRuntime.nativeInfo())
 
-        assertEquals("47.0.2", capabilities.wasmtimeVersion)
+        assertEquals("48.0.1", capabilities.wasmtimeVersion)
         assertEquals(capabilities.wasmtimeVersion, runtimeInfo.wasmtimeVersion)
         assertEquals(WasmlineNativeBackend.CRANELIFT, runtimeInfo.backend)
         assertEquals(

@@ -77,11 +77,11 @@ class ComponentAotCliSupportTest {
                 productName = "plugin",
                 wasmtimeDirectory = componentCompiler.parentFile,
                 targets = listOf("x86_64-linux", "pulley64"),
-                wasmtimeVersion = "47.0.2",
+                wasmtimeVersion = "12.3.4",
             ),
         )
 
-        assertEquals("47.0.2", resolvedVersion)
+        assertEquals("12.3.4", resolvedVersion)
         assertEquals(1, pipelineCalls)
         assertEquals(listOf(WasmlineArtifactType.CWASM, WasmlineArtifactType.PWASM), result.artifacts.map { it.type })
         assertTrue(result.artifacts.all { it.executionModel == WasmlineExecutionModel.COMPONENT_MODEL })
@@ -109,12 +109,12 @@ class ComponentAotCliSupportTest {
                     productName = "plugin",
                     wasmtimeDirectory = File(root, "wasmtime-min"),
                     targets = listOf("pulley64"),
-                    wasmtimeVersion = "47.0.2",
+                    wasmtimeVersion = "12.3.4",
                 ),
             )
         }
 
-        assertTrue(error.message.orEmpty().contains("Wasmtime 47.0.2 CLI"))
+        assertTrue(error.message.orEmpty().contains("Wasmtime 12.3.4 CLI"))
         assertTrue(error.message.orEmpty().contains("minimal distribution"))
         assertEquals(0, pipelineCalls)
     }

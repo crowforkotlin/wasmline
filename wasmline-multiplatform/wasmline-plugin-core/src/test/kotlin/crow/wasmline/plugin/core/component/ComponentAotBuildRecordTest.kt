@@ -125,7 +125,7 @@ class ComponentAotBuildRecordTest {
     ): ComponentAotCompileResult = ComponentAotCompileResult(
         inputComponent = rawFile,
         inputComponentSha256 = FileDigest.sha256Hex(rawFile),
-        wasmtimeVersion = "47.0.2",
+        wasmtimeVersion = "12.3.4",
         engineOptions = ComponentAotEngineOptions(),
         artifactMetadata = metadata,
         outputs = listOf(
@@ -159,7 +159,7 @@ class ComponentAotBuildRecordTest {
         sha256 = FileDigest.sha256Hex(bytesFile),
         targetCpu = if (type == WasmlineArtifactType.PWASM) "pulley64" else "x86_64",
         targetOs = if (type == WasmlineArtifactType.PWASM) null else "linux",
-        targetCompilerVersion = "wasmtime-47.0.2",
+        targetCompilerVersion = "wasmtime-12.3.4",
         executionModel = metadata.executionModel,
         invocationProtocol = metadata.invocationProtocol,
         exportName = metadata.exportName,
@@ -179,7 +179,7 @@ class ComponentAotBuildRecordTest {
     private fun buildRecord(rawRecord: ComponentBuildRecord, artifact: WasmlineArtifact): ComponentAotBuildRecord = ComponentAotBuildRecord(
         rawComponent = rawRecord,
         inputComponentSha256 = rawRecord.componentSha256,
-        wasmtimeVersion = "47.0.2",
+        wasmtimeVersion = "12.3.4",
         engineOptions = ComponentAotEngineOptions(),
         artifacts = listOf(artifact),
     )

@@ -70,7 +70,7 @@ class WasmlineRemotePackageResolutionTest {
             cpu = "x86_64",
             is64Bit = true,
             nativeBackend = WasmlineNativeBackend.CRANELIFT,
-            wasmtimeVersion = "47.0.2",
+            wasmtimeVersion = "12.3.4",
         )
         return WasmlineArtifact(
             type = WasmlineArtifactType.CWASM,

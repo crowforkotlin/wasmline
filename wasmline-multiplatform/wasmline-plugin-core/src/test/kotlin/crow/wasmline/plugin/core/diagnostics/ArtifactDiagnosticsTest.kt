@@ -19,7 +19,7 @@ class ArtifactDiagnosticsTest {
                 type = WasmlineArtifactType.CWASM,
                 targetCpu = "x86_64",
                 targetOs = "linux",
-                compiler = "wasmtime-47.0.2",
+                compiler = "wasmtime-12.3.4",
             ),
         )
 
@@ -27,7 +27,7 @@ class ArtifactDiagnosticsTest {
         assertEquals(WasmlineExecutionModel.CORE_WASM, diagnostic.executionModel)
         assertEquals(WasmlineArtifactBackend.CRANELIFT, diagnostic.backend)
         assertEquals("x86_64-linux", diagnostic.target)
-        assertEquals("47.0.2", diagnostic.wasmtimeVersion)
+        assertEquals("12.3.4", diagnostic.wasmtimeVersion)
     }
 
     @Test
@@ -36,14 +36,14 @@ class ArtifactDiagnosticsTest {
             artifact(
                 type = WasmlineArtifactType.PWASM,
                 targetCpu = "pulley64",
-                compiler = "wasmtime-47.0.2",
+                compiler = "wasmtime-12.3.4",
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
             ),
         )
 
         assertEquals(
             "artifact=plugin.pwasm format=PWASM executionModel=COMPONENT_MODEL " +
-                "backend=PULLEY target=pulley64 wasmtime=47.0.2",
+                "backend=PULLEY target=pulley64 wasmtime=12.3.4",
             line,
         )
     }
@@ -68,7 +68,7 @@ class ArtifactDiagnosticsTest {
     @Test
     fun `extracts only an exact wasmtime semantic version`() {
         val diagnostic = WasmlineArtifactDiagnostics.describe(
-            artifact(type = WasmlineArtifactType.CWASM, compiler = "wasmtime-47.0.2-dev"),
+            artifact(type = WasmlineArtifactType.CWASM, compiler = "wasmtime-12.3.4-dev"),
         )
 
         assertNull(diagnostic.wasmtimeVersion)

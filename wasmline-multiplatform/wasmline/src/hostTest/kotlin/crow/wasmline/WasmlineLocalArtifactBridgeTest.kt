@@ -29,7 +29,7 @@ class WasmlineLocalArtifactBridgeTest {
     @Test
     fun rejectsIncompatibleAotMetadataBeforeResolution() {
         val runtime = WasmlineRuntimeCapabilities(
-            wasmtimeVersion = "47.0.2",
+            wasmtimeVersion = "12.3.4",
             supportsCranelift = true,
             supportsPulley = true,
             targetOs = "linux",

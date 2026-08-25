@@ -39,7 +39,7 @@ internal object NativePluginTestSupport {
                     artifactFormat = WasmlineArtifactFormat.CWASM,
                     targetCpu = nativeTargetCpu(),
                     targetOs = nativeTargetOs(),
-                    targetCompilerVersion = "wasmtime-47.0.2",
+                    targetCompilerVersion = "wasmtime-48.0.1",
                     is64Bit = true,
                     executionModel = WasmlineExecutionModel.CORE_WASM,
                     invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,

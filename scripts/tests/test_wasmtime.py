@@ -37,16 +37,16 @@ class WasmtimeConfigurationTest(unittest.TestCase):
         linux = target_by_id("linux-x64")
         windows = target_by_id("windows-x64")
         self.assertEqual(
-            "wasmtime-v47.0.2-x86_64-linux-min-c-api.tar.gz",
-            wasmtime.expected_asset_name(linux, "cranelift", "47.0.2"),
+            "wasmtime-v12.3.4-x86_64-linux-min-c-api.tar.gz",
+            wasmtime.expected_asset_name(linux, "cranelift", "12.3.4"),
         )
         self.assertEqual(
-            "wasmtime-v47.0.2-x86_64-linux-pulley-min-c-api.tar.gz",
-            wasmtime.expected_asset_name(linux, "pulley", "47.0.2"),
+            "wasmtime-v12.3.4-x86_64-linux-pulley-min-c-api.tar.gz",
+            wasmtime.expected_asset_name(linux, "pulley", "12.3.4"),
         )
         self.assertEqual(
-            "wasmtime-v47.0.2-x86_64-windows-pulley-min-c-api.zip",
-            wasmtime.expected_asset_name(windows, "pulley", "47.0.2"),
+            "wasmtime-v12.3.4-x86_64-windows-pulley-min-c-api.zip",
+            wasmtime.expected_asset_name(windows, "pulley", "12.3.4"),
         )
 
     def test_pulley_only_target_rejects_cranelift(self) -> None:

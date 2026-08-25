@@ -23,7 +23,7 @@ import javax.inject.Inject
  *         // Optional: defaults to ~/.wasmline/wasmtime (base directory).
  *         // Can point to:
  *         //   - A base directory containing versioned subdirectories
- *         //     (e.g. ~/.wasmline/wasmtime/wasmtime-v47.0.2-x86_64-linux-min/)
+ *         //     (e.g. ~/.wasmline/wasmtime/wasmtime-v48.0.1-x86_64-linux-min/)
  *         //   - A specific versioned directory containing the wasmtime executable
  *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
  *
@@ -35,7 +35,7 @@ import javax.inject.Inject
  *
  *         // Optional: enable automatic download if wasmtime is not found
  *         autoDownload = true
- *         version = "latest" // or specific version like "v47.0.2"
+ *         version = "latest" // or specific version like "v48.0.1"
  *     }
  * }
  * ```
@@ -51,7 +51,7 @@ public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFacto
      * Resolution strategy (in order):
      * 1. If the directory directly contains the executable, use it.
      * 2. If the directory contains versioned subdirectories
-     *    (e.g. `wasmtime-v47.0.2-x86_64-linux-min/`), search them.
+     *    (e.g. `wasmtime-v48.0.1-x86_64-linux-min/`), search them.
      * 3. Fall back to `WASMTIME_ROOT` environment variable.
      * 4. Fall back to `~/.wasmline/wasmtime`.
      *
@@ -109,8 +109,8 @@ public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFacto
      *
      * Examples:
      * - `"latest"` — Download the latest release
-     * - `"v47.0.2"` — Specific version tag
-     * - `"release-v47.0.2"` — GitHub release tag format
+     * - `"v48.0.1"` — Specific version tag
+     * - `"release-v48.0.1"` — GitHub release tag format
      *
      * Default: `"latest"`
      */

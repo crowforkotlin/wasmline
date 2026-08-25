@@ -10,7 +10,7 @@ class WasmtimeDownloaderTest {
     fun minimalDistributionAcceptsCliExecutableWithoutMinSuffix() {
         val root = createTempDirectory("wasmtime-downloader").toFile()
         try {
-            val extracted = root.resolve("wasmtime-v47.0.2-x86_64-linux-min").apply { mkdirs() }
+            val extracted = root.resolve("wasmtime-v12.3.4-x86_64-linux-min").apply { mkdirs() }
             val executable = extracted.resolve(executableName(minimal = false)).apply {
                 writeText("test")
                 setExecutable(true)

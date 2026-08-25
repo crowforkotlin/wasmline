@@ -49,7 +49,7 @@ class WasmlineComponentAotTaskTest {
             this.componentDirectory.set(componentDirectory)
             componentRecordFile.set(componentRecord)
             wasmtimeCompilerExecutable.set(compiler)
-            wasmtimeVersion.set("v47.0.2")
+            wasmtimeVersion.set("v12.3.4")
             targets.set(listOf("x86_64-linux", "pulley64"))
             productName.set("plugin")
             outputDirectory.set(output)
@@ -73,7 +73,7 @@ class WasmlineComponentAotTaskTest {
             """
             |#!/bin/sh
             |if [ "${'$'}1" = "--version" ]; then
-            |  echo "wasmtime 47.0.2"
+            |  echo "wasmtime 12.3.4"
             |  exit 0
             |fi
             |if [ "${'$'}1" = "compile" ] && [ "${'$'}2" = "--help" ]; then

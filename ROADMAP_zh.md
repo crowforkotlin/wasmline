@@ -3,7 +3,7 @@
 ## 已完成功能
 
 ### 核心运行时
-- [x] Wasmtime C-API 集成（v47.0.2）
+- [x] Wasmtime C-API 集成（v48.0.1）
 - [x] 双路径执行：原生和 Web
 - [x] Session 内存隔离
 - [x] Engine 单例生命周期管理

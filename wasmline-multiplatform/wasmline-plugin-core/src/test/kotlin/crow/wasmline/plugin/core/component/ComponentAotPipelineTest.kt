@@ -33,7 +33,7 @@ class ComponentAotPipelineTest {
             componentSha256 = FileDigest.sha256Hex(component),
             witSha256 = "a".repeat(64),
             adapterSha256 = "b".repeat(64),
-            adapterVersion = "47.0.2",
+            adapterVersion = "12.3.4",
             witBindgenVersion = "0.57.1",
             wasmToolsVersion = FIXTURE_WASM_TOOLS_VERSION,
         )
@@ -55,7 +55,7 @@ class ComponentAotPipelineTest {
             componentRecordFile,
             ComponentAotPipelineRequest(
                 wasmtimeCompiler = File(root, "wasmtime"),
-                wasmtimeVersion = "47.0.2",
+                wasmtimeVersion = "12.3.4",
                 targets = targets,
                 outputRecord = aotRecordFile,
             ),
@@ -94,7 +94,7 @@ class ComponentAotPipelineTest {
             root,
             ComponentAotPipelineRequest(
                 wasmtimeCompiler = File(root, "wasmtime"),
-                wasmtimeVersion = "47.0.2",
+                wasmtimeVersion = "12.3.4",
                 targets = listOf(
                     ComponentAotTarget("pulley64", ComponentAotBackend.PULLEY, File(aotDirectory, "plugin.pwasm")),
                 ),
@@ -110,7 +110,7 @@ class ComponentAotPipelineTest {
         assertFailsWith<IllegalArgumentException> {
             ComponentAotPipelineRequest(
                 wasmtimeCompiler = File(root, "wasmtime"),
-                wasmtimeVersion = "47.0.2",
+                wasmtimeVersion = "12.3.4",
                 targets = emptyList(),
                 outputRecord = File(root, "aot/${ComponentAotBuildRecords.FILE_NAME}"),
             )
@@ -136,7 +136,7 @@ class ComponentAotPipelineTest {
                 root,
                 ComponentAotPipelineRequest(
                     wasmtimeCompiler = File(root, "wasmtime"),
-                    wasmtimeVersion = "47.0.2",
+                    wasmtimeVersion = "12.3.4",
                     targets = listOf(
                         ComponentAotTarget("pulley64", ComponentAotBackend.PULLEY, File(root, "outside.pwasm")),
                     ),

@@ -8,7 +8,7 @@ private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
 
 class WasmlineRuntimeCapabilitiesTest {
     private val host = WasmlineRuntimeCapabilities(
-        wasmtimeVersion = "47.0.2",
+        wasmtimeVersion = "12.3.4",
         supportsCranelift = true,
         supportsPulley = true,
         targetOs = "linux",
@@ -34,7 +34,7 @@ class WasmlineRuntimeCapabilitiesTest {
         val craneliftRuntime =
             WasmlineNativeRuntimeInfo(
                 backend = WasmlineNativeBackend.CRANELIFT,
-                wasmtimeVersion = "47.0.2",
+                wasmtimeVersion = "12.3.4",
                 targetOs = "linux",
                 targetCpu = "x86_64",
                 is64Bit = true,
@@ -74,11 +74,11 @@ class WasmlineRuntimeCapabilitiesTest {
         )
         assertEquals(
             "AOT artifact targetCompilerVersion must use 'wasmtime-x.y.z'.",
-            cwasmDescriptor().copy(targetCompilerVersion = "47.0.2").runtimeCompatibilityError(host),
+            cwasmDescriptor().copy(targetCompilerVersion = "12.3.4").runtimeCompatibilityError(host),
         )
         assertEquals(
             "AOT artifact requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION, " +
-                "but the native runtime is 47.0.2.",
+                "but the native runtime is 12.3.4.",
             cwasmDescriptor()
                 .copy(targetCompilerVersion = "wasmtime-$INCOMPATIBLE_WASMTIME_VERSION")
                 .runtimeCompatibilityError(host),
@@ -139,7 +139,7 @@ class WasmlineRuntimeCapabilitiesTest {
         return WasmlineArtifactDescriptor(
             path = if (format == WasmlineArtifactFormat.CWASM) "plugin.cwasm" else "plugin.pwasm",
             artifactFormat = format,
-            targetCompilerVersion = "wasmtime-47.0.2",
+            targetCompilerVersion = "wasmtime-12.3.4",
             executionModel = executionModel,
             invocationProtocol = if (component) {
                 WasmlineInvocationProtocol.COMPONENT_EXPORT

@@ -76,6 +76,40 @@ class SyncVersionTest(unittest.TestCase):
                 msg=f"Missing managed file: {spec.path}",
             )
 
+    def test_active_wasmtime_version_appears_only_in_managed_files(self) -> None:
+        """The active Wasmtime version must not leak into independent fixtures."""
+        versions = dict(sync_version.load_manifest()["versions"])
+        active_version = versions["wasmtime_version"]
+        result = subprocess.run(
+            ["git", "grep", "-l", "-F", active_version, "--", "."],
+            cwd=sync_version.PROJECT_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertIn(result.returncode, (0, 1), msg=result.stderr)
+
+        versions["wasmtime_version"] = "99.8.7"
+        rendered = self.render_managed_files(versions)
+        managed_paths = {
+            path
+            for path, content in rendered.items()
+            if content != (sync_version.PROJECT_ROOT / path).read_text(encoding="utf-8")
+        }
+        manifest_path = sync_version.MANIFEST_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
+        lock_path = toolchain_lock.LOCK_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
+        allowed_paths = managed_paths | {manifest_path, lock_path}
+        unexpected_paths = sorted(set(result.stdout.splitlines()) - allowed_paths)
+
+        self.assertEqual(
+            [],
+            unexpected_paths,
+            msg=(
+                "The active Wasmtime version is duplicated outside version-managed files: "
+                + ", ".join(unexpected_paths)
+            ),
+        )
+
     def test_rules_render_all_project_versions(self) -> None:
         """Synthetic values must reach project, sample, CLI, and docs targets."""
         versions = {
@@ -471,8 +505,8 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_wasmtime_code_ignores_semver_metadata(self) -> None:
         """Wasmtime tag encoding uses the numeric core of a valid semantic version."""
-        self.assertEqual(4702, sync_version.wasmtime_code("47.0.2-rc1"))
-        self.assertEqual(4702, sync_version.wasmtime_code("47.0.2+build1"))
+        self.assertEqual(1234, sync_version.wasmtime_code("12.3.4-rc1"))
+        self.assertEqual(1234, sync_version.wasmtime_code("12.3.4+build1"))
 
 
 if __name__ == "__main__":

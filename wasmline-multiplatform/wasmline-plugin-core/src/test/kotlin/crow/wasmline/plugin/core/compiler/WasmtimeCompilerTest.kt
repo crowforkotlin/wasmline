@@ -44,17 +44,17 @@ class WasmtimeCompilerTest {
 
     @Test
     fun parsesExactVersionFromWasmtimeOutput() {
-        assertEquals("47.0.2", WasmtimeCompiler.parseWasmtimeVersion("wasmtime 47.0.2 (abc123 2026-01-01)"))
-        assertEquals("47.0.2", WasmtimeCompiler.parseWasmtimeVersion("Wasmtime 47.0.2\n"))
-        assertNull(WasmtimeCompiler.parseWasmtimeVersion("wasmtime v47.0.2"))
-        assertNull(WasmtimeCompiler.parseWasmtimeVersion("unrelated 47.0.2"))
+        assertEquals("12.3.4", WasmtimeCompiler.parseWasmtimeVersion("wasmtime 12.3.4 (abc123 2026-01-01)"))
+        assertEquals("12.3.4", WasmtimeCompiler.parseWasmtimeVersion("Wasmtime 12.3.4\n"))
+        assertNull(WasmtimeCompiler.parseWasmtimeVersion("wasmtime v12.3.4"))
+        assertNull(WasmtimeCompiler.parseWasmtimeVersion("unrelated 12.3.4"))
     }
 
     @Test
     fun fullCompilerDiscoveryNeverReturnsWasmtimeMin() {
         val root = createTempDirectory("wasmtime-compiler-discovery").toFile()
         try {
-            val directory = File(root, "wasmtime-v47.0.2-x86_64-linux").apply { mkdirs() }
+            val directory = File(root, "wasmtime-v12.3.4-x86_64-linux").apply { mkdirs() }
             val minimal = executable(File(directory, executableName(minimal = true)))
             val full = executable(File(directory, executableName(minimal = false)))
 
@@ -83,7 +83,7 @@ class WasmtimeCompilerTest {
         val root = createTempDirectory("wasmtime-min-release").toFile()
         try {
             executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux-min/${executableName(minimal = false)}").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux-min/${executableName(minimal = false)}").apply {
                     parentFile.mkdirs()
                 },
             )
@@ -100,17 +100,17 @@ class WasmtimeCompilerTest {
         try {
             val executableName = executableName(minimal = false)
             val minimal = executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux-min/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux-min/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
             executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
             executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux-pulley/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
@@ -129,7 +129,7 @@ class WasmtimeCompilerTest {
         val root = createTempDirectory("wasmtime-full-release").toFile()
         try {
             executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux/${executableName(minimal = false)}").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux/${executableName(minimal = false)}").apply {
                     parentFile.mkdirs()
                 },
             )
@@ -146,17 +146,17 @@ class WasmtimeCompilerTest {
         try {
             val executableName = executableName(minimal = false)
             val minimal = executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux-min/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux-min/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
             executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
             executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux-pulley/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
@@ -176,12 +176,12 @@ class WasmtimeCompilerTest {
         try {
             val executableName = executableName(minimal = false)
             val full = executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
             executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux-pulley/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
@@ -201,7 +201,7 @@ class WasmtimeCompilerTest {
         try {
             val executableName = executableName(minimal = false)
             val pulley = executable(
-                File(root, "wasmtime-v47.0.2-x86_64-linux-pulley/$executableName").apply {
+                File(root, "wasmtime-v12.3.4-x86_64-linux-pulley/$executableName").apply {
                     parentFile.mkdirs()
                 },
             )
