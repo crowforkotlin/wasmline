@@ -7,18 +7,19 @@
 
 #include "wasmline/runtime/Session.h"
 
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
-#include "runtime/RuntimeConstants.h"
-#include "wasi/WasiConfig.h"
-#include "wasmtime/WasmtimeMessage.h"
+#include "wasmline/internal/runtime/RuntimeConstants.h"
+#include "wasmline/internal/wasi/WasiConfig.h"
+#include "wasmline/internal/wasmtime/WasmtimeMessage.h"
 #include <cstring>
 #include <exception>
 #include <vector>
 
 namespace wasmline {
     /** Creates a Core Wasm session and its Wasmtime store. */
-    Session::Session(wasm_engine_t* eng, wasmtime_module_t* mod, std::string k) : engine(eng), module(mod), key(std::move(k)) {
+    Session::Session(wasm_engine_t* eng, wasmtime_module_t* mod, std::string k)
+        : engine(eng ? wasmtime_engine_clone(eng) : nullptr), module(mod ? wasmtime_module_clone(mod) : nullptr), key(std::move(k)) {
         if (!engine) {
             LOGE("[Wasmtime] Session --> Cannot create store because engine is null: %s", key.c_str());
             return;
@@ -46,6 +47,8 @@ namespace wasmline {
     Session::~Session() {
         if (linker) wasmtime_linker_delete(linker);
         if (store) wasmtime_store_delete(store);
+        if (module) wasmtime_module_delete(module);
+        if (engine) wasm_engine_delete(engine);
         LOGI("[Wasmtime] Session Destroyed: %s", key.c_str());
     }
 

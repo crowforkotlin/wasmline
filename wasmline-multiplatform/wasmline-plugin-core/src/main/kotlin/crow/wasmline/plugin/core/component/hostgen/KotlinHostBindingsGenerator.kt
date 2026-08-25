@@ -98,7 +98,7 @@ private class KotlinEmitter(
         appendLine("import crow.wasmline.WasmlineComponentHostResourceBinding")
         appendLine("import crow.wasmline.WasmlineComponentResourceId")
         appendLine("import crow.wasmline.WasmlineWitResult")
-        appendLine("import crow.wasmline.invocation.WasmlineCallError")
+        appendLine("import crow.wasmline.invocation.WasmlineFailure")
         appendLine("import crow.wasmline.invocation.WasmlineCallResult")
         appendLine("import crow.wasmline.invocation.WasmlineErrorCode")
         appendLine()
@@ -511,12 +511,12 @@ private class KotlinEmitter(
         out.appendLine("        bindingFailure(error.message ?: \"Host import arguments do not match their generated WIT binding.\")")
         out.appendLine("    } catch (error: Throwable) {")
         out.appendLine(
-            "        WasmlineCallResult.Failure(WasmlineCallError(WasmlineErrorCode.HANDLER_FAILED, error.message ?: \"Host import implementation failed.\"))",
+            "        WasmlineCallResult.Failure(WasmlineFailure(WasmlineErrorCode.HANDLER_FAILED, error.message ?: \"Host import implementation failed.\"))",
         )
         out.appendLine("    }")
         out.appendLine()
         out.appendLine("    private fun bindingFailure(message: String): WasmlineCallResult.Failure =")
-        out.appendLine("        WasmlineCallResult.Failure(WasmlineCallError(WasmlineErrorCode.INVALID_PAYLOAD, message))")
+        out.appendLine("        WasmlineCallResult.Failure(WasmlineFailure(WasmlineErrorCode.INVALID_PAYLOAD, message))")
         out.appendLine()
         out.appendLine("    private fun WasmlineComponentValue.recordFields(type: String): Map<String, WasmlineComponentValue> {")
         out.appendLine(

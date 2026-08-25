@@ -26,9 +26,9 @@ class NativePluginInvocationResultTest {
             val result = wasmline.callResult("crow.wasmline.test.plugin.MissingService#missing")
             val failure = assertIs<WasmlineCallResult.Failure>(result)
 
-            assertEquals(WasmlineErrorCode.UNKNOWN_ACTION, failure.error.code)
+            assertEquals(WasmlineErrorCode.UNKNOWN_ACTION, failure.failure.code)
             assertNull(result.getOrNull())
-            assertNotNull(result.errorOrNull())
+            assertNotNull(result.failureOrNull())
         }
     }
 
@@ -41,9 +41,9 @@ class NativePluginInvocationResultTest {
             val result = wasmline.callResult("crow.wasmline.test.plugin.CalculatorService#calculate")
             val failure = assertIs<WasmlineCallResult.Failure>(result)
 
-            assertEquals(WasmlineErrorCode.HANDLER_FAILED, failure.error.code)
+            assertEquals(WasmlineErrorCode.HANDLER_FAILED, failure.failure.code)
             assertNull(result.getOrNull())
-            assertNotNull(result.errorOrNull())
+            assertNotNull(result.failureOrNull())
         }
     }
 }

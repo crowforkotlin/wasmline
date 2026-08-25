@@ -2,6 +2,7 @@ package crow.wasmline
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 /**
@@ -21,15 +22,15 @@ class WasmlineArtifactDescriptorTest {
         assertEquals("Artifact path must not be blank.", descriptor.validationError())
     }
 
-    /** Requires an export name for raw direct invocation. */
+    /** Allows a raw module to expose an arbitrary set of exports. */
     @Test
-    fun rawInvocationRequiresAnExportName() {
+    fun rawInvocationMayOmitAnExportName() {
         val descriptor = WasmlineArtifactDescriptor(
             path = "plugin.wasm",
             invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
         )
 
-        assertEquals("An exportName is required for direct export invocation.", descriptor.validationError())
+        assertNull(descriptor.validationError())
     }
 
     @Test
@@ -43,14 +44,14 @@ class WasmlineArtifactDescriptorTest {
     }
 
     @Test
-    fun rawExportRequiresCoreModelAndExportName() {
+    fun rawExportRequiresCoreModelButNotExportName() {
         val descriptor = WasmlineArtifactDescriptor(
             path = "plugin.pwasm",
             executionModel = WasmlineExecutionModel.CORE_WASM,
             invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
         )
 
-        assertEquals("An exportName is required for direct export invocation.", descriptor.validationError())
+        assertNull(descriptor.validationError())
     }
 
     @Test
@@ -167,5 +168,61 @@ class WasmlineArtifactDescriptorTest {
         )
 
         assertNull(descriptor.validationError())
+    }
+
+    /** Rejects raw ABI metadata attached to a non-raw invocation protocol. */
+    @Test
+    fun rawAbiMetadataRequiresRawExportProtocol() {
+        val descriptor = WasmlineArtifactDescriptor(
+            path = "plugin.wasm",
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+            rawAbi = RawAbiMetadata(),
+        )
+
+        assertEquals(
+            "rawAbi metadata requires the RAW_EXPORT invocation protocol.",
+            descriptor.validationError(),
+        )
+    }
+
+    /** Rejects metadata versions newer than the runtime understands. */
+    @Test
+    fun rawAbiMetadataRejectsUnknownVersion() {
+        val descriptor = WasmlineArtifactDescriptor(
+            path = "plugin.wasm",
+            invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+            rawAbi = RawAbiMetadata(version = RawAbiMetadata.CURRENT_VERSION + 1),
+        )
+
+        assertEquals(
+            "Unsupported rawAbi metadata version ${RawAbiMetadata.CURRENT_VERSION + 1}.",
+            descriptor.validationError(),
+        )
+    }
+
+    /** Rejects duplicate export declarations in raw ABI metadata. */
+    @Test
+    fun rawAbiMetadataRejectsDuplicateExports() {
+        assertFailsWith<IllegalArgumentException> {
+            RawAbiMetadata(
+                exports = listOf(
+                    RawExport("add", RawExportKind.FUNCTION),
+                    RawExport("add", RawExportKind.FUNCTION),
+                ),
+            )
+        }
+    }
+
+    /** Rejects duplicate import declarations in raw ABI metadata. */
+    @Test
+    fun rawAbiMetadataRejectsDuplicateImports() {
+        assertFailsWith<IllegalArgumentException> {
+            RawAbiMetadata(
+                imports = listOf(
+                    RawImportDeclaration("env", "host_add", RawFunctionSignature()),
+                    RawImportDeclaration("env", "host_add", RawFunctionSignature()),
+                ),
+            )
+        }
     }
 }

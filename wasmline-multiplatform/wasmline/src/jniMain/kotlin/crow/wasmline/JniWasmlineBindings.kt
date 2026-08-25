@@ -32,6 +32,36 @@ internal object JniWasmlineBindings {
     private external fun nativeInvokeRaw(key: String, exportName: String, arguments: ByteArray): ByteArray?
 
     @JvmStatic
+    private external fun nativeCoreModuleExports(key: String): ByteArray?
+
+    @JvmStatic
+    private external fun nativeCoreCreateSession(
+        artifactKey: String,
+        sessionKey: String,
+        imports: ByteArray,
+        dispatcher: Any,
+        memoryExportName: String?,
+    ): ByteArray?
+
+    @JvmStatic
+    private external fun nativeCoreInvoke(sessionKey: String, exportName: String, arguments: ByteArray): ByteArray?
+
+    @JvmStatic
+    private external fun nativeCoreReleaseSession(sessionKey: String)
+
+    @JvmStatic
+    private external fun nativeCoreMemorySize(sessionKey: String, pages: Boolean): ByteArray?
+
+    @JvmStatic
+    private external fun nativeCoreMemoryRead(sessionKey: String, offset: Long, length: Int): ByteArray?
+
+    @JvmStatic
+    private external fun nativeCoreMemoryWrite(sessionKey: String, offset: Long, bytes: ByteArray): ByteArray?
+
+    @JvmStatic
+    private external fun nativeCoreMemoryGrow(sessionKey: String, deltaPages: Long): ByteArray?
+
+    @JvmStatic
     private external fun nativeInvokeComponent(key: String, exportName: String, arguments: ByteArray): ByteArray?
 
     @JvmStatic
@@ -102,6 +132,29 @@ internal object JniWasmlineBindings {
     fun invokeInbound(key: String, action: String, input: ByteArray): ByteArray = nativeInvokeInbound(key, action, input)
 
     fun invokeRaw(key: String, exportName: String, arguments: ByteArray): ByteArray? = nativeInvokeRaw(key, exportName, arguments)
+
+    fun coreModuleExports(key: String): ByteArray? = nativeCoreModuleExports(key)
+
+    fun coreCreateSession(
+        artifactKey: String,
+        sessionKey: String,
+        imports: ByteArray,
+        dispatcher: Any,
+        memoryExportName: String?,
+    ): ByteArray? = nativeCoreCreateSession(artifactKey, sessionKey, imports, dispatcher, memoryExportName)
+
+    fun coreInvoke(sessionKey: String, exportName: String, arguments: ByteArray): ByteArray? =
+        nativeCoreInvoke(sessionKey, exportName, arguments)
+
+    fun coreReleaseSession(sessionKey: String) = nativeCoreReleaseSession(sessionKey)
+
+    fun coreMemorySize(sessionKey: String, pages: Boolean): ByteArray? = nativeCoreMemorySize(sessionKey, pages)
+
+    fun coreMemoryRead(sessionKey: String, offset: Long, length: Int): ByteArray? = nativeCoreMemoryRead(sessionKey, offset, length)
+
+    fun coreMemoryWrite(sessionKey: String, offset: Long, bytes: ByteArray): ByteArray? = nativeCoreMemoryWrite(sessionKey, offset, bytes)
+
+    fun coreMemoryGrow(sessionKey: String, deltaPages: Long): ByteArray? = nativeCoreMemoryGrow(sessionKey, deltaPages)
 
     fun invokeComponent(key: String, exportName: String, arguments: ByteArray): ByteArray? =
         nativeInvokeComponent(key, exportName, arguments)

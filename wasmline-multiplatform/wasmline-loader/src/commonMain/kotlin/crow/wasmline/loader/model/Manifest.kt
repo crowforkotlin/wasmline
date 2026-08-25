@@ -3,6 +3,7 @@
 
 package crow.wasmline.loader.model
 
+import crow.wasmline.RawAbiMetadata
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -16,8 +17,13 @@ import kotlinx.serialization.protobuf.ProtoNumber
  * signature information so the loader layer can verify integrity before it
  * resolves a concrete runtime artifact.
  *
- * Date: 2026-04-08
+ * Date: 2026-08-25
  * Author: crowforkotlin
+ *
+ * @property signature Detached signature bytes for [manifest].
+ * @property algorithm Signature algorithm identifier.
+ * @property publicKeyId Optional trusted-key identifier.
+ * @property manifest Signed package manifest payload.
  */
 @Serializable
 data class SignedManifestEnvelope(
@@ -49,8 +55,21 @@ data class SignedManifestEnvelope(
 /**
  * Package manifest model owned by the loader layer.
  *
- * Date: 2026-04-08
+ * Date: 2026-08-25
  * Author: crowforkotlin
+ *
+ * @property pluginId Stable package identifier.
+ * @property version Human-readable package version.
+ * @property versionCode Monotonic package version code.
+ * @property minSdkVersion Minimum host SDK version accepted by the package.
+ * @property displayName Optional display name.
+ * @property author Optional package author.
+ * @property description Optional package description.
+ * @property iconUrl Optional package icon URL.
+ * @property homePageUrl Optional package home-page URL.
+ * @property buildTimestamp Build timestamp in milliseconds.
+ * @property metadata Additional package metadata.
+ * @property artifacts Published runtime artifacts.
  */
 @Serializable
 data class WasmlineManifest(
@@ -71,8 +90,21 @@ data class WasmlineManifest(
 /**
  * Describes one compiled runtime artifact published by a Wasmline package.
  *
- * Date: 2026-04-08
+ * Date: 2026-08-25
  * Author: crowforkotlin
+ *
+ * @property type Physical artifact kind.
+ * @property url Artifact URL or package-relative path.
+ * @property sha256 Expected SHA-256 digest.
+ * @property targetCpu Native CPU target, when applicable.
+ * @property targetOs Native operating-system target, when applicable.
+ * @property targetCompilerVersion Compiler/runtime compatibility marker.
+ * @property is64Bit Native artifact bitness marker.
+ * @property executionModel Runtime execution model.
+ * @property invocationProtocol Host invocation protocol.
+ * @property exportName Optional selected export name.
+ * @property contractMetadata Additional invocation-contract metadata.
+ * @property rawAbi Versioned scalar Core Wasm ABI metadata for RAW_EXPORT.
  */
 @Serializable
 data class WasmlineArtifact(
@@ -87,12 +119,13 @@ data class WasmlineArtifact(
     @property:ProtoNumber(9) val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
     @property:ProtoNumber(10) val exportName: String? = null,
     @property:ProtoNumber(11) val contractMetadata: Map<String, String> = emptyMap(),
+    @property:ProtoNumber(12) val rawAbi: RawAbiMetadata? = null,
 )
 
 /**
  * Supported runtime artifact kinds for the current package pipeline.
  *
- * Date: 2026-04-08
+ * Date: 2026-08-25
  * Author: crowforkotlin
  */
 @Serializable

@@ -22,4 +22,6 @@ internal external class NativeWasmInstance(module: NativeWasmModule, imports: An
 @JsName("Memory")
 internal external class NativeWasmMemory {
     val buffer: ArrayBuffer
+
+    fun grow(delta: Int): Int
 }

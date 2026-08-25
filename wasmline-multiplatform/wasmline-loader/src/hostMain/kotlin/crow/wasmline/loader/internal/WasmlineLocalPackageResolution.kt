@@ -4,8 +4,9 @@ package crow.wasmline.loader.internal
 
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineNativeBackend
+import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
@@ -22,11 +23,17 @@ internal object WasmlineLocalPackageResolution {
     fun resolve(source: WasmlineSource.LocalManifestPath, request: WasmlineLoadRequest): WasmlineSourceResolution {
         val manifestPath = source.path
         if (!hostPathExists(manifestPath)) {
-            return failure("Local package manifest not found: ${source.path}")
+            return failure(
+                "Local package manifest not found: ${source.path}",
+                WasmlineLoadStage.SOURCE_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_NOT_FOUND,
+            )
         }
 
         val envelope = readEnvelope(manifestPath) ?: return failure(
             "Failed to parse local package manifest '${source.path}'.",
+            WasmlineLoadStage.MANIFEST_DECODING,
+            WasmlineErrorCode.MANIFEST_INVALID,
         )
         val manifest = when (
             val verification = WasmlinePackageSignatureVerifier.verify(
@@ -36,30 +43,53 @@ internal object WasmlineLocalPackageResolution {
             )
         ) {
             is WasmlineManifestVerification.Verified -> verification.manifest
-            is WasmlineManifestVerification.Rejected -> return failure(verification.cause)
+
+            is WasmlineManifestVerification.Rejected -> return failure(
+                verification.cause,
+                WasmlineLoadStage.SIGNATURE_VERIFICATION,
+                WasmlineErrorCode.SIGNATURE_VERIFICATION_FAILED,
+            )
         }
         val artifact = selectArtifact(manifest.artifacts) ?: return failure(
             "No compatible artifact found in local package '${source.path}' for host ${describe(currentHostArtifactTarget)}.",
+            WasmlineLoadStage.ARTIFACT_SELECTION,
+            WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE,
         )
         val artifactPath = resolveArtifactPath(manifestPath, artifact.url)
         val descriptor = artifact.toDescriptor(artifactPath)
-        descriptor.validationError()?.let { return failure("Invalid artifact descriptor for '${artifact.url}': $it") }
+        descriptor.validationError()?.let {
+            return failure(
+                "Invalid artifact descriptor for '${artifact.url}': $it",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+            )
+        }
         if (artifact.sha256.isBlank()) {
-            return failure("Artifact '${artifact.url}' referenced by local package '${source.path}' is missing sha256 metadata.")
+            return failure(
+                "Artifact '${artifact.url}' referenced by local package '${source.path}' is missing sha256 metadata.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+            )
         }
         if (!hostPathExists(artifactPath)) {
             return failure(
                 "Artifact '${artifact.url}' referenced by local package '${source.path}' was not found at '$artifactPath'.",
+                WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_NOT_FOUND,
             )
         }
 
         val actualSha256 = sha256HexOrNull(artifactPath) ?: return failure(
             "Failed to read artifact '${artifact.url}' referenced by local package '${source.path}'.",
+            WasmlineLoadStage.ARTIFACT_RESOLUTION,
+            WasmlineErrorCode.ARTIFACT_IO_FAILED,
         )
         if (!actualSha256.equals(artifact.sha256, ignoreCase = true)) {
             return failure(
                 "Artifact '${artifact.url}' referenced by local package '${source.path}' failed sha256 verification. " +
                     "Expected ${artifact.sha256}, actual $actualSha256.",
+                WasmlineLoadStage.SIGNATURE_VERIFICATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
             )
         }
 
@@ -108,7 +138,10 @@ internal object WasmlineLocalPackageResolution {
         return when (type) {
             WasmlineArtifactType.WASM ->
                 executionModel == WasmlineExecutionModel.CORE_WASM &&
-                    invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE
+                    invocationProtocol in setOf(
+                        WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                        WasmlineInvocationProtocol.RAW_EXPORT,
+                    )
 
             WasmlineArtifactType.CWASM,
             WasmlineArtifactType.PWASM,
@@ -217,10 +250,9 @@ internal object WasmlineLocalPackageResolution {
 
     private val wasmtimeVersionPattern = Regex("^\\d+\\.\\d+\\.\\d+$")
 
-    private fun failure(cause: String): WasmlineSourceResolution.Complete = WasmlineSourceResolution.Complete(
-        WasmlineLoadState.Failure(
-            code = WasmlineLoadState.CODE_FAILURE,
-            cause = cause,
-        ),
-    )
+    private fun failure(
+        cause: String,
+        stage: WasmlineLoadStage = WasmlineLoadStage.SOURCE_RESOLUTION,
+        code: WasmlineErrorCode = WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
+    ): WasmlineSourceResolution.Complete = structuredResolutionFailure(stage, code, cause)
 }

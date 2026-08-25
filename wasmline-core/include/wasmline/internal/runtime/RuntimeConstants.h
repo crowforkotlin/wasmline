@@ -1,5 +1,5 @@
 /**
- * Defines Wasmline core constants.
+ * Defines internal Wasmline core constants.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin

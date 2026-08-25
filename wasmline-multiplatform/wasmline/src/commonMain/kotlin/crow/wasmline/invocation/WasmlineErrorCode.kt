@@ -3,8 +3,10 @@ package crow.wasmline.invocation
 /**
  * Defines stable Wasmline invocation error codes.
  *
- * Date: 2026-08-02
+ * Date: 2026-08-25
  * Author: crowforkotlin
+ *
+ * @property value Numeric code carried across platform bridges.
  */
 enum class WasmlineErrorCode(val value: Int) {
     UNKNOWN(-1),
@@ -21,12 +23,40 @@ enum class WasmlineErrorCode(val value: Int) {
     COMPONENT_EXPORT_NOT_FOUND(2102),
     COMPONENT_CALL_FAILED(2103),
     COMPONENT_RESOURCE_INVALID(2104),
+    MODULE_FORMAT_INVALID(2201),
+    WASM_FEATURE_UNSUPPORTED(2202),
+    IMPORT_MISSING(2203),
+    IMPORT_SIGNATURE_MISMATCH(2204),
+    INSTANTIATION_FAILED(2205),
+    EXPORT_KIND_MISMATCH(2206),
+    ARGUMENT_COUNT_MISMATCH(2207),
+    ARGUMENT_TYPE_MISMATCH(2208),
+    RESULT_TYPE_UNSUPPORTED(2209),
+    MEMORY_OUT_OF_BOUNDS(2210),
+    IMPORT_HANDLER_FAILED(2211),
+    SESSION_CLOSED(2212),
+    CONCURRENT_ACCESS(2213),
+    REENTRANT_CALL(2214),
+    UNSUPPORTED_EXPORT_KIND(2215),
+    WASM_TRAP(2216),
+    EXPORT_SIGNATURE_MISSING(2217),
+    EXPORT_NOT_FOUND(2218),
+    SOURCE_RESOLUTION_FAILED(2301),
+    MANIFEST_INVALID(2302),
+    SIGNATURE_VERIFICATION_FAILED(2303),
+    ARTIFACT_NOT_COMPATIBLE(2304),
+    ARTIFACT_NOT_FOUND(2305),
+    ARTIFACT_INTEGRITY_FAILED(2306),
+    ARTIFACT_IO_FAILED(2307),
+    ARTIFACT_DESCRIPTOR_INVALID(2308),
+    ARTIFACT_DOWNLOAD_FAILED(2309),
     RESPONSE_MALFORMED(3001),
     RESPONSE_MISSING(3002),
     TRANSPORT_FAILURE(3003),
     RESPONSE_UNSUPPORTED_VERSION(3004), ;
 
     companion object {
+        /** Maps a wire value to a known code while preserving unknown values at the failure layer. */
         fun fromValue(value: Int): WasmlineErrorCode = entries.firstOrNull { it.value == value } ?: UNKNOWN
     }
 }

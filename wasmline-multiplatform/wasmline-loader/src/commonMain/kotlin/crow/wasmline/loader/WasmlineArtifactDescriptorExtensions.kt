@@ -5,12 +5,7 @@ import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
 
-/**
- * Converts manifest artifact metadata to a runtime descriptor.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
+/** Converts manifest artifact metadata to a runtime descriptor. */
 fun WasmlineArtifact.toDescriptor(path: String): WasmlineArtifactDescriptor = WasmlineArtifactDescriptor(
     path = path,
     artifactFormat = when (type) {
@@ -30,4 +25,5 @@ fun WasmlineArtifact.toDescriptor(path: String): WasmlineArtifactDescriptor = Wa
     invocationProtocol = invocationProtocol,
     exportName = exportName,
     contractMetadata = contractMetadata,
+    rawAbi = rawAbi,
 )

@@ -1,6 +1,9 @@
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineLoadFailure
+import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.invocation.WasmlineErrorCode
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +23,7 @@ class DefaultWasmlineLoaderTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("Local package manifest not found"))
+        assertTrue(failure.failure.message.contains("Local package manifest not found"))
     }
 
     @Test
@@ -33,7 +36,7 @@ class DefaultWasmlineLoaderTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("Local package manifest not found"))
+        assertTrue(failure.failure.message.contains("Local package manifest not found"))
     }
 
     @Test
@@ -46,8 +49,8 @@ class DefaultWasmlineLoaderTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("https://example.com/plugin.wlm"))
-        assertTrue(failure.cause.contains("request.options.networkClient or request.resolvers.remotePackage"))
+        assertTrue(failure.failure.message.contains("https://example.com/plugin.wlm"))
+        assertTrue(failure.failure.message.contains("request.options.networkClient or request.resolvers.remotePackage"))
     }
 
     @Test
@@ -60,7 +63,7 @@ class DefaultWasmlineLoaderTest {
                         WasmlineSourceResolution.Complete(
                             WasmlineLoadState.Failure(
                                 code = WasmlineLoadState.CODE_FAILURE,
-                                cause = "public request resolver",
+                                failure = testLoadFailure("public request resolver"),
                             ),
                         )
                     },
@@ -69,7 +72,7 @@ class DefaultWasmlineLoaderTest {
         )
 
         val failure = assertIs<crow.wasmline.WasmlineLoadResult.Failure>(result)
-        assertEquals("public request resolver", failure.cause)
+        assertEquals("public request resolver", failure.failure.message)
     }
 
     @Test
@@ -91,8 +94,8 @@ class DefaultWasmlineLoaderTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("explicit artifactFormat"))
-        assertTrue(!failure.cause.contains("requires trustedKeys"))
+        assertTrue(failure.failure.message.contains("explicit artifactFormat"))
+        assertTrue(!failure.failure.message.contains("requires trustedKeys"))
     }
 
     @Test
@@ -118,14 +121,14 @@ class DefaultWasmlineLoaderTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("explicit artifactFormat"))
+        assertTrue(failure.failure.message.contains("explicit artifactFormat"))
     }
 
     @Test
     fun `resolver can complete with a terminal load state`() = runTest {
         val terminal = WasmlineLoadState.Failure(
             code = WasmlineLoadState.CODE_FAILURE,
-            cause = "Manifest signature mismatch",
+            failure = testLoadFailure("Manifest signature mismatch"),
         )
         val result = DefaultWasmlineLoader.load(
             WasmlineLoadRequest(
@@ -139,7 +142,7 @@ class DefaultWasmlineLoaderTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertEquals("Manifest signature mismatch", failure.cause)
+        assertEquals("Manifest signature mismatch", failure.failure.message)
     }
 
     @Test
@@ -150,7 +153,13 @@ class DefaultWasmlineLoaderTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
-        assertTrue(failure.cause.contains("explicit artifactFormat"))
-        assertTrue(!failure.cause.contains("requires trustedKeys"))
+        assertTrue(failure.failure.message.contains("explicit artifactFormat"))
+        assertTrue(!failure.failure.message.contains("requires trustedKeys"))
     }
+
+    private fun testLoadFailure(message: String): WasmlineLoadFailure = WasmlineLoadFailure(
+        stage = WasmlineLoadStage.SOURCE_RESOLUTION,
+        code = WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
+        message = message,
+    )
 }

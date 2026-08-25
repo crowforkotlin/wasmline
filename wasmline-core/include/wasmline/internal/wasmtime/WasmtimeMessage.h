@@ -1,5 +1,5 @@
 /**
- * Provides Wasmtime error and trap messages.
+ * Declares internal Wasmtime error and trap message helpers.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin

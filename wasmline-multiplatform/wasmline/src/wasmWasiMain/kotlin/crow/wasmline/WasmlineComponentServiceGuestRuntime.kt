@@ -1,9 +1,9 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineEndpoint
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 /** Marks the narrow runtime surface used by Wasmline-owned guest transports. */
 @RequiresOptIn(
@@ -35,7 +35,7 @@ fun interface WasmlineComponentServiceOutboundTransport {
 object WasmlineGuestServiceRuntime {
     private var outboundTransport: WasmlineComponentServiceOutboundTransport? = null
     private var initializationState = InitializationState.UNINITIALIZED
-    private var initializationFailure: WasmlineCallError? = null
+    private var initializationFailure: WasmlineFailure? = null
 
     val codecId: String
         get() = Wasmline.get().serializationFactory.id
@@ -79,23 +79,23 @@ object WasmlineGuestServiceRuntime {
         return transport.invoke(action, codecId, payload)
     }
 
-    private fun validateRequest(action: String, codec: String, payload: ByteArray): WasmlineCallError? = when {
-        action.encodeToByteArray().size > MAX_ACTION_BYTES -> WasmlineCallError(
+    private fun validateRequest(action: String, codec: String, payload: ByteArray): WasmlineFailure? = when {
+        action.encodeToByteArray().size > MAX_ACTION_BYTES -> WasmlineFailure(
             code = WasmlineErrorCode.INVALID_PAYLOAD,
             message = "Wasmline Service action exceeds the $MAX_ACTION_BYTES-byte limit.",
         )
 
-        codec.encodeToByteArray().size > MAX_CODEC_BYTES -> WasmlineCallError(
+        codec.encodeToByteArray().size > MAX_CODEC_BYTES -> WasmlineFailure(
             code = WasmlineErrorCode.INVALID_PAYLOAD,
             message = "Wasmline Service codec id exceeds the $MAX_CODEC_BYTES-byte limit.",
         )
 
-        payload.size > MAX_PAYLOAD_BYTES -> WasmlineCallError(
+        payload.size > MAX_PAYLOAD_BYTES -> WasmlineFailure(
             code = WasmlineErrorCode.INVALID_PAYLOAD,
             message = "Wasmline Service payload exceeds the $MAX_PAYLOAD_BYTES-byte limit.",
         )
 
-        codec != codecId -> WasmlineCallError(
+        codec != codecId -> WasmlineFailure(
             code = WasmlineErrorCode.SERIALIZATION_FAILED,
             message = "Unsupported Wasmline Service codec '$codec'. Expected '$codecId'.",
         )
@@ -103,7 +103,7 @@ object WasmlineGuestServiceRuntime {
         else -> null
     }
 
-    private fun installTransport(transport: WasmlineComponentServiceOutboundTransport): WasmlineCallError? {
+    private fun installTransport(transport: WasmlineComponentServiceOutboundTransport): WasmlineFailure? {
         val installed = outboundTransport
         if (installed == null) {
             outboundTransport = transport
@@ -112,19 +112,19 @@ object WasmlineGuestServiceRuntime {
         return if (installed === transport) {
             null
         } else {
-            WasmlineCallError(
+            WasmlineFailure(
                 code = WasmlineErrorCode.TRANSPORT_FAILURE,
                 message = "A different Wasmline Service outbound transport is already installed.",
             )
         }
     }
 
-    private fun ensureInitialized(initialize: () -> Unit): WasmlineCallError? = when (initializationState) {
+    private fun ensureInitialized(initialize: () -> Unit): WasmlineFailure? = when (initializationState) {
         InitializationState.INITIALIZED -> null
 
         InitializationState.FAILED -> initializationFailure
 
-        InitializationState.INITIALIZING -> WasmlineCallError(
+        InitializationState.INITIALIZING -> WasmlineFailure(
             code = WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH,
             message = "Recursive Wasmline Service guest initialization is not supported.",
         )
@@ -136,7 +136,7 @@ object WasmlineGuestServiceRuntime {
                 initializationState = InitializationState.INITIALIZED
                 null
             } catch (error: Throwable) {
-                val failure = WasmlineCallError(
+                val failure = WasmlineFailure(
                     code = WasmlineErrorCode.HANDLER_FAILED,
                     message = error.message?.let { "Wasmline Service guest initialization failed: $it" }
                         ?: "Wasmline Service guest initialization failed.",
@@ -149,7 +149,7 @@ object WasmlineGuestServiceRuntime {
     }
 
     private fun failure(code: WasmlineErrorCode, message: String): WasmlineCallResult.Failure =
-        WasmlineCallResult.Failure(WasmlineCallError(code = code, message = message))
+        WasmlineCallResult.Failure(WasmlineFailure(code = code, message = message))
 
     private enum class InitializationState {
         UNINITIALIZED,

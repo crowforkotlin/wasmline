@@ -3,9 +3,9 @@
 package crow.wasmline
 
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 @PublishedApi
 internal fun wasmlineHandleInbound(actionLen: Int, inputLen: Int) {
@@ -15,7 +15,7 @@ internal fun wasmlineHandleInbound(actionLen: Int, inputLen: Int) {
         WasmlineRouter.dispatch(action, args)
     } catch (error: Throwable) {
         WasmlineCallResult.Failure(
-            WasmlineCallError(
+            WasmlineFailure(
                 code = WasmlineErrorCode.HANDLER_FAILED,
                 message = error.message ?: "Wasmline action handler failed.",
             ),
@@ -23,7 +23,7 @@ internal fun wasmlineHandleInbound(actionLen: Int, inputLen: Int) {
     }
     val response = when (result) {
         is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(result.value)
-        is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.error)
+        is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.failure)
     }
     WasmlineWasmBridge.sendResult(response)
 }

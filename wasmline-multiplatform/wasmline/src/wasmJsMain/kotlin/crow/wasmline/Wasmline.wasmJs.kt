@@ -57,6 +57,10 @@ actual class Wasmline internal actual constructor(
         "Browser host does not support Component Model resources.",
     )
 
+    internal actual fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> = delegate.createCoreWasmBackend()
+
+    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = createCoreWasmModule(this)
+
     actual fun close() {
         componentModuleState.close()
         hostServiceRegistry.clear()

@@ -5,13 +5,14 @@
  * Author: crowforkotlin
  */
 #include "WasmlineNative.h"
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 #include "wasmline/api/Api.h"
+#include "wasmline/invocation/CoreWasmBridgeCodec.h"
 #include "wasmline/invocation/TypedInvocationCodec.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/ComponentHostHandler.h"
 #include "wasmline/runtime/OutboundHandler.h"
-#include "io/FileIO.h"
+#include "wasmline/internal/io/FileIO.h"
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -214,6 +215,168 @@ void wasmline_release_module(const char *key) {
   if (!key)
     return;
   Api::releaseModule(std::string(key));
+}
+
+static char *copyNativeBytes(const std::vector<uint8_t> &bytes, size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  if (bytes.empty())
+    return nullptr;
+  char *output = wasmline_allocate_memory(bytes.size());
+  if (!output)
+    return nullptr;
+  std::memcpy(output, bytes.data(), bytes.size());
+  if (outLen)
+    *outLen = bytes.size();
+  return output;
+}
+
+char *wasmline_core_module_exports(const char *key, size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  if (!key)
+    return nullptr;
+  return copyNativeBytes(CoreWasmBridgeCodec::encodeExports(Api::describeRawModule(key)), outLen);
+}
+
+char *wasmline_core_create_session(const char *artifactKey, const char *sessionKey,
+                                  const void *imports, size_t importsLen,
+                                  WasmlineRawImportCallback callback,
+                                  WasmlineRawImportBufferFree bufferFree,
+                                  void *callbackUser,
+                                  WasmlineRawImportUserFinalizer userFinalizer,
+                                  const char *memoryExportName, size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  InvocationResult result = InvocationResult::failure(
+      WasmlineErrorCode::TRANSPORT_FAILURE,
+      "Native Core Wasm session received invalid input.");
+  if (!artifactKey || !sessionKey || (importsLen > 0 && !imports)) {
+    if (userFinalizer && callbackUser)
+      userFinalizer(callbackUser);
+  } else {
+    std::vector<RawImportDefinition> definitions;
+    std::string error;
+    const std::string_view encodedImports(
+        static_cast<const char *>(imports), importsLen);
+    if (!CoreWasmBridgeCodec::decodeImports(encodedImports, &definitions,
+                                             &error)) {
+      if (userFinalizer && callbackUser)
+        userFinalizer(callbackUser);
+      result = InvocationResult::failure(
+          WasmlineErrorCode::INVALID_PAYLOAD,
+          error.empty() ? "Raw import metadata is invalid." : error);
+    } else {
+      result = Api::instantiateRawModule(
+          artifactKey, sessionKey, definitions,
+          reinterpret_cast<RawImportCallback>(callback),
+          reinterpret_cast<RawImportBufferFree>(bufferFree), callbackUser,
+          reinterpret_cast<RawImportUserFinalizer>(userFinalizer),
+          memoryExportName ? std::string(memoryExportName)
+                           : std::string("memory"));
+    }
+  }
+  return copyNativeBytes(
+      TypedInvocationCodec::encodeResult(result, TypedInvocationKind::RAW),
+      outLen);
+}
+
+char *wasmline_core_invoke(const char *sessionKey, const char *exportName,
+                           size_t exportNameLen, const void *arguments,
+                           size_t argumentsLen, size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  InvocationResult result = InvocationResult::failure(
+      WasmlineErrorCode::TRANSPORT_FAILURE,
+      "Native Core Wasm invocation received invalid input.");
+  if (sessionKey && (exportNameLen == 0 || exportName) &&
+      (argumentsLen == 0 || arguments)) {
+    std::vector<RawValue> values;
+    std::string error;
+    const std::string_view encodedArguments(
+        static_cast<const char *>(arguments), argumentsLen);
+    if (!TypedInvocationCodec::decodeRawArguments(encodedArguments, &values,
+                                                   &error)) {
+      result = InvocationResult::failure(
+          WasmlineErrorCode::INVALID_PAYLOAD,
+          error.empty() ? "Raw Core Wasm arguments are invalid." : error);
+    } else {
+      result = Api::invokeRawInstance(
+          sessionKey,
+          exportNameLen == 0 ? std::string_view()
+                             : std::string_view(exportName, exportNameLen),
+          values);
+    }
+  }
+  return copyNativeBytes(
+      TypedInvocationCodec::encodeResult(result, TypedInvocationKind::RAW),
+      outLen);
+}
+
+void wasmline_core_release_session(const char *sessionKey) {
+  if (sessionKey)
+    Api::releaseRawInstance(sessionKey);
+}
+
+char *wasmline_core_memory_size(const char *sessionKey, bool pages,
+                                size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  InvocationResult result = sessionKey
+                                ? Api::rawMemorySize(sessionKey, pages)
+                                : InvocationResult::failure(
+                                      WasmlineErrorCode::TRANSPORT_FAILURE,
+                                      "Raw memory session key is null.");
+  return copyNativeBytes(
+      TypedInvocationCodec::encodeResult(result, TypedInvocationKind::RAW),
+      outLen);
+}
+
+char *wasmline_core_memory_read(const char *sessionKey, uint64_t offset,
+                                uint64_t length, size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  std::vector<uint8_t> bytes;
+  InvocationResult result = sessionKey
+                                ? Api::readRawMemory(sessionKey, offset, length,
+                                                     &bytes)
+                                : InvocationResult::failure(
+                                      WasmlineErrorCode::TRANSPORT_FAILURE,
+                                      "Raw memory session key is null.");
+  return copyNativeBytes(CoreWasmBridgeCodec::encodeMemoryResult(result, bytes),
+                         outLen);
+}
+
+char *wasmline_core_memory_write(const char *sessionKey, uint64_t offset,
+                                 const void *bytes, uint64_t length,
+                                 size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  InvocationResult result = sessionKey
+                                ? Api::writeRawMemory(
+                                      sessionKey, offset,
+                                      static_cast<const uint8_t *>(bytes),
+                                      length)
+                                : InvocationResult::failure(
+                                      WasmlineErrorCode::TRANSPORT_FAILURE,
+                                      "Raw memory session key is null.");
+  return copyNativeBytes(
+      TypedInvocationCodec::encodeResult(result, TypedInvocationKind::RAW),
+      outLen);
+}
+
+char *wasmline_core_memory_grow(const char *sessionKey, uint64_t deltaPages,
+                                size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  InvocationResult result = sessionKey
+                                ? Api::growRawMemory(sessionKey, deltaPages)
+                                : InvocationResult::failure(
+                                      WasmlineErrorCode::TRANSPORT_FAILURE,
+                                      "Raw memory session key is null.");
+  return copyNativeBytes(
+      TypedInvocationCodec::encodeResult(result, TypedInvocationKind::RAW),
+      outLen);
 }
 
 void wasmline_release_component_instance(const char *instanceKey) {

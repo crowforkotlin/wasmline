@@ -29,8 +29,8 @@ class NativeModuleLoadingTest {
             val failure = result as crow.wasmline.WasmlineLoadState.Failure
             assertEquals(crow.wasmline.WasmlineLoadState.CODE_FAILURE, failure.code)
             assertTrue(
-                failure.cause.contains("not found") || failure.cause.contains("artifact"),
-                "Error should mention missing artifact: ${failure.cause}",
+                failure.failure.message.contains("not found") || failure.failure.message.contains("artifact"),
+                "Error should mention missing artifact: ${failure.failure.message}",
             )
         } finally {
             tempFile.delete()

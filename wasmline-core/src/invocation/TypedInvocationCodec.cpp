@@ -575,6 +575,15 @@ namespace wasmline {
         }
     } // namespace
 
+    std::vector<uint8_t> TypedInvocationCodec::encodeRawArguments(const std::vector<RawValue>& values) {
+        Writer writer;
+        writer.count(values.size());
+        for (const auto& value : values)
+            writeRawValue(writer, value);
+        if (!writer.valid()) return {};
+        return writer.take();
+    }
+
     bool TypedInvocationCodec::decodeRawArguments(std::string_view input, std::vector<RawValue>* values, std::string* error) {
         if (!values) return false;
         Reader reader(input);
@@ -648,6 +657,81 @@ namespace wasmline {
             writeComponentValue(writer, value);
         if (!writer.valid()) return {};
         return writer.take();
+    }
+
+    bool TypedInvocationCodec::decodeRawResult(std::string_view input, InvocationResult* result, std::string* error) {
+        if (!result) return false;
+
+        Reader reader(input);
+        uint8_t status = 0;
+        uint8_t kind = 0;
+        uint32_t rawCode = 0;
+        std::string message;
+        std::vector<uint8_t> details;
+        uint32_t valueCount = 0;
+        if (!reader.readByte(&status) || !reader.readByte(&kind) || !reader.readU32(&rawCode) || !readString(reader, &message, error) ||
+            !readResultDetails(reader, &details, error) || !decodeHeader(reader, &valueCount, error)) {
+            if (error && error->empty()) *error = "Typed raw invocation response is truncated.";
+            return false;
+        }
+        if (kind != static_cast<uint8_t>(TypedInvocationKind::RAW) || (status != 0 && status != 1)) {
+            if (error) *error = "Typed raw invocation response header is invalid.";
+            return false;
+        }
+        if (status == 0 && (rawCode != 0 || !message.empty())) {
+            if (error) *error = "Successful typed raw invocation response contains error fields.";
+            return false;
+        }
+        if (status == 1) {
+            if (rawCode == 0 || valueCount != 0 || !reader.empty()) {
+                if (error) *error = "Failed typed raw invocation response contains values or trailing bytes.";
+                return false;
+            }
+            *result = InvocationResult::failure(static_cast<WasmlineErrorCode>(rawCode), std::move(message), std::move(details));
+            return true;
+        }
+
+        std::vector<RawValue> values;
+        values.reserve(valueCount);
+        for (uint32_t index = 0; index < valueCount; ++index) {
+            uint8_t tag = 0;
+            uint32_t u32 = 0;
+            uint64_t u64 = 0;
+            if (!reader.readByte(&tag)) return false;
+            switch (tag) {
+            case 0:
+                if (!reader.readU32(&u32)) return false;
+                values.push_back(RawValue::fromI32(static_cast<int32_t>(u32)));
+                break;
+            case 1:
+                if (!reader.readU64(&u64)) return false;
+                values.push_back(RawValue::fromI64(static_cast<int64_t>(u64)));
+                break;
+            case 2: {
+                if (!reader.readU32(&u32)) return false;
+                float value = 0;
+                std::memcpy(&value, &u32, sizeof(value));
+                values.push_back(RawValue::fromF32(value));
+                break;
+            }
+            case 3: {
+                if (!reader.readU64(&u64)) return false;
+                double value = 0;
+                std::memcpy(&value, &u64, sizeof(value));
+                values.push_back(RawValue::fromF64(value));
+                break;
+            }
+            default:
+                if (error) *error = "Typed raw invocation result value tag is unknown.";
+                return false;
+            }
+        }
+        if (!reader.empty()) {
+            if (error) *error = "Typed raw invocation response has trailing bytes.";
+            return false;
+        }
+        *result = InvocationResult::success(std::move(values));
+        return true;
     }
 
     bool TypedInvocationCodec::decodeComponentResult(std::string_view input, InvocationResult* result, std::string* error) {

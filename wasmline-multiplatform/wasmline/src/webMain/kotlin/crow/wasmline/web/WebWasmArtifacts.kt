@@ -14,6 +14,13 @@ internal object WebWasmArtifacts {
 
     private val cache = mutableMapOf<String, ByteArray>()
 
+    /** Registers a defensive copy of caller-trusted raw Wasm bytes. */
+    fun register(key: String, bytes: ByteArray) {
+        require(key.isNotBlank()) { "Web Wasm artifact key must not be blank." }
+        require(bytes.isNotEmpty()) { "Web Wasm artifact bytes must not be empty." }
+        cache[key] = bytes.copyOf()
+    }
+
     /** Downloads and caches the artifact, reporting completion via callbacks. */
     fun prefetch(url: String, onReady: () -> Unit, onFailure: (String) -> Unit) {
         if (cache.containsKey(url)) {
@@ -37,7 +44,7 @@ internal object WebWasmArtifacts {
     }
 
     /** Returns cached bytes, or null when the artifact was never prefetched. */
-    fun bytesOrNull(url: String): ByteArray? = cache[url]
+    fun bytesOrNull(url: String): ByteArray? = cache[url]?.copyOf()
 
     fun invalidate(url: String) {
         cache.remove(url)

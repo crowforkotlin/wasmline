@@ -1,8 +1,8 @@
 package crow.wasmline
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 /**
  * Encodes typed invocation values for native host bridges.
@@ -22,6 +22,54 @@ internal object WasmlineTypedInvocationCodec {
     fun encodeRawArguments(values: List<WasmlineRawValue>): WasmlineCallResult<ByteArray> = encodeArguments { writer ->
         writer.count(values.size)
         values.forEach { writeRawValue(writer, it) }
+    }
+
+    /** Encodes canonical Core Wasm values for a native raw-session call. */
+    fun encodeRawValues(values: List<RawValue>): WasmlineCallResult<ByteArray> =
+        encodeRawArguments(values.map(RawValue::toWasmlineRawValue))
+
+    /** Decodes canonical Core Wasm values passed to a native host import. */
+    fun decodeRawArguments(bytes: ByteArray): WasmlineCallResult<List<RawValue>> {
+        val reader = Reader(bytes)
+        val count = reader.count() ?: return reader.failure()
+        val values = ArrayList<RawValue>(count.toInt())
+        repeat(count.toInt()) {
+            values += (readRawValue(reader) ?: return reader.failure()).toRawValue()
+        }
+        if (!reader.isAtEnd()) return malformed("Raw invocation payload has trailing bytes.")
+        return WasmlineCallResult.Success(values)
+    }
+
+    /** Encodes a canonical Core Wasm result returned by a native host import. */
+    fun encodeRawResult(result: WasmlineCallResult<List<RawValue>>): WasmlineCallResult<ByteArray> {
+        val writer = Writer()
+        when (result) {
+            is WasmlineCallResult.Success -> {
+                writer.byte(STATUS_SUCCESS)
+                writer.byte(RAW_KIND)
+                writer.u32(0)
+                writer.string("")
+                writer.bytes(ByteArray(0))
+                writer.count(result.value.size)
+                result.value.forEach { writeRawValue(writer, it.toWasmlineRawValue()) }
+            }
+
+            is WasmlineCallResult.Failure -> {
+                writer.byte(STATUS_FAILURE)
+                writer.byte(RAW_KIND)
+                writer.u32(result.failure.rawCode.toLong() and 0xFFFF_FFFFL)
+                writer.string(result.failure.message)
+                writer.bytes(result.failure.details ?: ByteArray(0))
+                writer.count(0)
+            }
+        }
+        return writer.error?.let(::malformed) ?: WasmlineCallResult.Success(writer.toByteArray())
+    }
+
+    /** Decodes a native raw-session response into canonical Core Wasm values. */
+    fun decodeRawValues(bytes: ByteArray): WasmlineCallResult<List<RawValue>> = when (val result = decodeRawResult(bytes)) {
+        is WasmlineCallResult.Failure -> result
+        is WasmlineCallResult.Success -> WasmlineCallResult.Success(result.value.values.map(WasmlineRawValue::toRawValue))
     }
 
     fun encodeComponentArguments(values: List<WasmlineComponentValue>): WasmlineCallResult<ByteArray> = encodeArguments { writer ->
@@ -56,9 +104,9 @@ internal object WasmlineTypedInvocationCodec {
             is WasmlineCallResult.Failure -> {
                 writer.byte(STATUS_FAILURE)
                 writer.byte(COMPONENT_KIND)
-                writer.u32(result.error.rawCode.toLong() and 0xFFFF_FFFFL)
-                writer.string(result.error.message)
-                writer.bytes(result.error.details ?: ByteArray(0))
+                writer.u32(result.failure.rawCode.toLong() and 0xFFFF_FFFFL)
+                writer.string(result.failure.message)
+                writer.bytes(result.failure.details ?: ByteArray(0))
                 writer.count(0)
             }
         }
@@ -306,7 +354,7 @@ internal object WasmlineTypedInvocationCodec {
         return Header(
             status = status,
             valueCount = valueCount,
-            error = WasmlineCallError(
+            error = WasmlineFailure(
                 code = WasmlineErrorCode.fromValue(code),
                 message = message,
                 details = details,
@@ -437,7 +485,7 @@ internal object WasmlineTypedInvocationCodec {
         }
     }
 
-    private data class Header(val status: Int, val valueCount: Long, val error: WasmlineCallError)
+    private data class Header(val status: Int, val valueCount: Long, val error: WasmlineFailure)
 
     private class Writer {
         private var data = ByteArray(128)
@@ -598,5 +646,5 @@ internal object WasmlineTypedInvocationCodec {
     }
 
     private fun malformed(message: String): WasmlineCallResult.Failure =
-        WasmlineCallResult.Failure(WasmlineCallError(WasmlineErrorCode.INVALID_PAYLOAD, message))
+        WasmlineCallResult.Failure(WasmlineFailure(WasmlineErrorCode.INVALID_PAYLOAD, message))
 }

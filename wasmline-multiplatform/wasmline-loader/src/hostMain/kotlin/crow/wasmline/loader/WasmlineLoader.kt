@@ -1,8 +1,12 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineCoreLoadResult
+import crow.wasmline.WasmlineLoadFailure
 import crow.wasmline.WasmlineLoadResult
+import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.invocation.WasmlineErrorCode
 
 /**
  * Primary entry point for resolving and loading Wasmline modules on the host side.
@@ -16,12 +20,67 @@ import crow.wasmline.WasmlineLoadState
  *
  *     when (result) {
  *         is WasmlineLoadResult.Success -> result.wasmline.use { it.bind(...) }
- *         is WasmlineLoadResult.Failure -> println(result.cause)
+ *         is WasmlineLoadResult.Failure -> println(result.failure.message)
  *     }
  * }
  * ```
+ *
+ * Date: 2026-08-25
+ * Author: crowforkotlin
  */
 object WasmlineLoader {
+
+    /**
+     * Loads a `CORE_WASM + RAW_EXPORT` module without instantiating it.
+     *
+     * Imports must be registered by the caller through `CoreWasmModule`
+     * before [crow.wasmline.CoreWasmModule.instantiate] is called.
+     */
+    suspend fun loadCoreModule(source: WasmlineSource, options: WasmlineLoadOptions = WasmlineLoadOptions()): WasmlineCoreLoadResult {
+        val loaded = load(source, options)
+        return when (loaded) {
+            is WasmlineLoadResult.Failure -> WasmlineCoreLoadResult.Failure(loaded.failure)
+
+            is WasmlineLoadResult.Success -> {
+                val handle = loaded.wasmline
+                when (val module = handle.asCoreWasmModule()) {
+                    is crow.wasmline.invocation.WasmlineCallResult.Failure -> {
+                        handle.close()
+                        WasmlineCoreLoadResult.Failure(
+                            WasmlineLoadFailure(
+                                stage = WasmlineLoadStage.MODULE_CREATION,
+                                code = module.failure.code,
+                                message = module.failure.message,
+                                details = module.failure.details,
+                                rawCode = module.failure.rawCode,
+                            ),
+                        )
+                    }
+
+                    is crow.wasmline.invocation.WasmlineCallResult.Success -> WasmlineCoreLoadResult.Success(module.value)
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads a caller-trusted Core Wasm raw-export descriptor without instantiation.
+     * @param descriptor Descriptor identifying the raw Core Wasm artifact.
+     * @param options Runtime and loader configuration for this operation.
+     */
+    suspend fun loadCoreModule(
+        descriptor: WasmlineArtifactDescriptor,
+        options: WasmlineLoadOptions = WasmlineLoadOptions(),
+    ): WasmlineCoreLoadResult = loadCoreModule(
+        source = WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor),
+        options = options,
+    )
+
+    /** Loads a caller-trusted raw Core Wasm artifact path without instantiating it. */
+    suspend fun loadCoreModule(path: String, options: WasmlineLoadOptions = WasmlineLoadOptions()): WasmlineCoreLoadResult = loadCoreModule(
+        source = WasmlineSource.LocalArtifactPath(path = path),
+        options = options,
+    )
 
     /**
      * Load a Wasmline module from the given source.
@@ -88,10 +147,8 @@ object WasmlineLoader {
     }
 }
 
-/**
- * Convert internal [WasmlineLoadState] to public [WasmlineLoadResult].
- */
+/** Converts internal [WasmlineLoadState] to public [WasmlineLoadResult]. */
 private fun WasmlineLoadState.toResult(): WasmlineLoadResult = when (this) {
     is WasmlineLoadState.Success -> WasmlineLoadResult.Success(wasmline = this.wasmline)
-    is WasmlineLoadState.Failure -> WasmlineLoadResult.Failure(cause = this.cause)
+    is WasmlineLoadState.Failure -> WasmlineLoadResult.Failure(failure = this.failure)
 }

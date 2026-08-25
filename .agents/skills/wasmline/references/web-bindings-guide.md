@@ -19,13 +19,16 @@ Paths below are relative to `wasmline-multiplatform/`.
 
 ## Supported Boundary
 
-The browser host accepts only:
+The Web host accepts these Core Wasm combinations:
 
 - physical format: raw `.wasm`
 - execution model: `CORE_WASM`
-- invocation protocol: `WASMLINE_SERVICE`
+- invocation protocol: `WASMLINE_SERVICE` or `RAW_EXPORT`
 
-Raw Export typed calls and Component Model calls are native-only. Browser validation rejects those descriptors before artifact resolution.
+Component Model calls remain outside the browser boundary. Browser validation
+rejects Component descriptors before artifact resolution. `RAW_EXPORT` is a
+direct numeric export/import/memory contract; it is not encoded as a Service
+action or payload frame.
 
 ## Source-set Layers
 
@@ -108,11 +111,27 @@ Implementation: `wasmline/src/webMain/kotlin/crow/wasmline/web/WebWasmValue.kt`.
 
 ## Raw Wasm Prefetch and Suspended Load
 
-`WasmlineLoader.load()` is a suspending API, but browser raw `.wasm` downloads remain an explicit prefetch step. Web callers must prefetch an artifact before loading it:
+`WasmlineLoader.load()` is a suspending API, while browser raw `.wasm` downloads
+remain an explicit prefetch step. Web callers can either prefetch a URL or
+register already available bytes before loading a descriptor:
 
 ```kotlin
 WasmlineWeb.prefetch("plugin.wasm")
 val result = WasmlineLoader.load("plugin.wasm")
+```
+
+For embedded or otherwise preloaded resources:
+
+```kotlin
+WasmlineWeb.registerBytes("plugin.wasm", bytes)
+val result = WasmlineLoader.load(
+    WasmlineArtifactDescriptor(
+        path = "plugin.wasm",
+        artifactFormat = WasmlineArtifactFormat.RAW_WASM,
+        executionModel = WasmlineExecutionModel.CORE_WASM,
+        invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+    ),
+)
 ```
 
 The sequence is:
@@ -120,9 +139,32 @@ The sequence is:
 1. `WasmlineWeb.prefetch(url)` downloads bytes through the Fetch API.
 2. `WebWasmArtifacts` caches the bytes by URL.
 3. `WasmlineLoader.load(url)` resolves the cached bytes and hands them to the browser runtime.
-4. `WebWasmPlugin` compiles and instantiates the module.
+4. The Web backend compiles the module. Service modules use
+   `WebWasmPlugin`; raw modules use a separate `CoreWasmModule`/session path.
 
 The loader's remote-manifest network adapters are not part of this raw-Wasm path. Loading a URL that was not prefetched fails with an explicit instruction. Use `WasmlineWeb.invalidate(url)` to remove one cached artifact; runtime shutdown clears all cached artifacts and live modules.
+
+## RAW_EXPORT sessions and imports
+
+`CoreWasmModule` exposes export inventory and capabilities. Callers provide
+`RawImport` values in `CoreWasmSessionOptions` before `instantiate()`. Import
+handlers are synchronous and receive `RawImportContext`, including the current
+session memory when an exported memory is configured. A handler must not wait
+for Fetch, IndexedDB, user interaction, or any other Promise-producing API;
+prepare those resources before entering Wasm.
+
+The browser WebAssembly API does not provide general function-signature
+reflection. Raw function signatures therefore come from `rawAbi` metadata or
+`CoreWasmSessionOptions.exportSignatures`. Calls support `i32`, `i64`, `f32`,
+and `f64`, including void and multi-value results. Web `i64` crosses the JS
+boundary as `BigInt`; the public API continues to expose Kotlin `Long`.
+
+`RawMemory` checks every range and refreshes typed-array views after
+`memory.grow`. Use `readInto`/`writeFrom` for batch transfers. Component
+browser boundaries still reject Component typed calls, and Web does not claim
+threads/shared memory. SIMD, bulk memory, and reference types are reported by
+`CoreWasmCapabilities` and must be checked before loading a module that
+requires them.
 
 ## WASI Preview 1 Imports
 
@@ -138,7 +180,7 @@ Do not document an import until it is registered in `WebWasmPlugin.buildImports(
 
 ## Environment Bridge Imports
 
-The following imports use the `env.bridge_*` namespace:
+The following imports use the `env.bridge_*` namespace for the Service path:
 
 | Import | Current boundary |
 | --- | --- |
@@ -159,6 +201,11 @@ prefetched bytes
   -> bridge_inbound_set_response
   -> decode Wasmline result frame
 ```
+
+This Service/WASI flow is independent from the raw session flow. Raw sessions
+do not assume `__wasmline_wasi_init`, `__wasmline_wasi_entry`, or
+`env.bridge_*`; they call ordinary exports and register only the imports their
+module declares.
 
 ## Tests and CI
 

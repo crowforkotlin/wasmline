@@ -1,5 +1,8 @@
 package crow.wasmline
 
+import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
+
 internal data class ResolvedPrecompiledArtifact(val artifactPath: String, val moduleKey: String)
 
 /**
@@ -23,55 +26,78 @@ internal object WasmlineLocalArtifactBridge {
         } else {
             null
         }
-        val validationError = descriptor.validationError()
-            ?: requiredFormatError
-            ?: platform.validationError(descriptor)
-        if (validationError != null) {
-            return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = "[Wasmline] Invalid artifact descriptor: $validationError",
+        val validationFailure = when {
+            descriptor.validationError() != null -> WasmlineFailure(
+                code = WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+                message = "[Wasmline] Invalid artifact descriptor: ${descriptor.validationError()}",
             )
+
+            requiredFormatError != null -> WasmlineFailure(
+                code = WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+                message = "[Wasmline] Invalid artifact descriptor: $requiredFormatError",
+            )
+
+            else -> platform.validationFailure(descriptor)
+        }
+        if (validationFailure != null) {
+            return loadFailure(
+                stage = WasmlineLoadStage.ARTIFACT_VALIDATION,
+                code = validationFailure.code,
+                message = validationFailure.message,
+                details = validationFailure.details,
+                rawCode = validationFailure.rawCode,
+            ).toLoadState()
         }
 
         val resolvedArtifact = platform.resolveArtifact(descriptor.path)
             ?: run {
                 log?.warn("[WasmlineLocalArtifactBridge] Artifact file not found: ${descriptor.path}")
-                return WasmlineLoadState.Failure(
-                    code = WasmlineLoadState.CODE_FAILURE,
-                    cause = "[Wasmline] Load failure, artifact file not found: ${descriptor.path}",
-                )
+                return loadFailure(
+                    stage = WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                    code = WasmlineErrorCode.ARTIFACT_NOT_FOUND,
+                    message = "[Wasmline] Load failure, artifact file not found: ${descriptor.path}",
+                ).toLoadState()
             }
 
         val resolvedArtifactPath = resolvedArtifact.artifactPath
         val resolvedDescriptor = descriptor.copy(path = resolvedArtifactPath)
         val code = platform.backendCodeOrNull(resolvedArtifactPath, resolvedDescriptor)
             ?: run {
-                val msg = platform.unsupportedArtifactMessage(resolvedDescriptor)
-                log?.warn("[WasmlineLocalArtifactBridge] $msg")
-                return WasmlineLoadState.Failure(
-                    code = WasmlineLoadState.CODE_FAILURE,
-                    cause = msg,
-                )
+                val failure = platform.unsupportedArtifactFailure(resolvedDescriptor)
+                log?.warn("[WasmlineLocalArtifactBridge] ${failure.message}")
+                return loadFailure(
+                    stage = WasmlineLoadStage.ARTIFACT_SELECTION,
+                    code = failure.code,
+                    message = failure.message,
+                    details = failure.details,
+                    rawCode = failure.rawCode,
+                ).toLoadState()
             }
 
         val loadFailure = try {
             if (platform.loadPrecompiled(resolvedArtifact.moduleKey, resolvedArtifactPath, resolvedDescriptor)) {
                 null
             } else {
-                platform.loadFailureMessage(resolvedDescriptor)
+                platform.loadFailureValue(resolvedDescriptor)
             }
         } catch (error: Exception) {
             val baseMessage = platform.loadFailureMessage(resolvedDescriptor)
             val detail = error.message?.takeIf { it.isNotBlank() } ?: error::class.simpleName.orEmpty()
-            "$baseMessage: $detail"
+            WasmlineFailure(
+                code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
+                message = "$baseMessage: $detail",
+                details = detail.encodeToByteArray(),
+            )
         }
         if (loadFailure != null) {
-            val msg = loadFailure
-            log?.error("[WasmlineLocalArtifactBridge] $msg")
-            return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = msg,
-            )
+            log?.error("[WasmlineLocalArtifactBridge] ${loadFailure.message}")
+            return loadFailure(
+                stage = WasmlineLoadStage.MODULE_CREATION,
+                code = loadFailure.code,
+                message = loadFailure.message,
+                details = loadFailure.details,
+                rawCode = loadFailure.rawCode,
+            ).toLoadState()
         }
 
         log?.info("[WasmlineLocalArtifactBridge] Module loaded: ${resolvedArtifact.moduleKey}")
@@ -97,6 +123,23 @@ internal interface WasmlinePlatformArtifactBridge {
     fun loadFailureMessage(descriptor: WasmlineArtifactDescriptor): String =
         "[Wasmline] Load failure, native artifact load returned false: " +
             descriptor.path
+
+    /** Provides a structured platform validation failure. */
+    fun validationFailure(descriptor: WasmlineArtifactDescriptor): WasmlineFailure? = validationError(descriptor)?.let { message ->
+        WasmlineFailure(WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE, message)
+    }
+
+    /** Provides a structured failure when the platform cannot select the artifact. */
+    fun unsupportedArtifactFailure(descriptor: WasmlineArtifactDescriptor): WasmlineFailure = WasmlineFailure(
+        code = WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE,
+        message = unsupportedArtifactMessage(descriptor),
+    )
+
+    /** Provides a structured failure when native module creation returns false. */
+    fun loadFailureValue(descriptor: WasmlineArtifactDescriptor): WasmlineFailure = WasmlineFailure(
+        code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
+        message = loadFailureMessage(descriptor),
+    )
 }
 
 internal fun WasmlineArtifactDescriptor.backendCodeOrNull(): Byte? {

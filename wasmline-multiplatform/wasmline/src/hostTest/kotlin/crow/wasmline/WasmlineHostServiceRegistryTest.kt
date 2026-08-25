@@ -39,7 +39,7 @@ class WasmlineHostServiceRegistryTest {
 
         assertTrue(error.message.orEmpty().contains("example.ServiceA#one"))
         val unknown = decode(registry.dispatcher.dispatch("example.ServiceB#new", byteArrayOf()))
-        assertEquals(WasmlineErrorCode.UNKNOWN_ACTION, assertIs<WasmlineCallResult.Failure>(unknown).error.code)
+        assertEquals(WasmlineErrorCode.UNKNOWN_ACTION, assertIs<WasmlineCallResult.Failure>(unknown).failure.code)
     }
 
     @Test
@@ -55,7 +55,7 @@ class WasmlineHostServiceRegistryTest {
             WasmlineErrorCode.UNKNOWN_ACTION,
             assertIs<WasmlineCallResult.Failure>(
                 decode(first.dispatcher.dispatch("example.Second#call", byteArrayOf())),
-            ).error.code,
+            ).failure.code,
         )
         assertContentEquals(byteArrayOf(2), success(second.dispatcher.dispatch("example.Second#call", byteArrayOf())))
     }
@@ -92,7 +92,7 @@ class WasmlineHostServiceRegistryTest {
         val closed = assertIs<WasmlineCallResult.Failure>(
             decode(registry.dispatcher.dispatch("example.Service#call", byteArrayOf())),
         )
-        assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, closed.error.code)
+        assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, closed.failure.code)
     }
 
     @Test
@@ -100,7 +100,7 @@ class WasmlineHostServiceRegistryTest {
         val empty = WasmlineHostServiceRegistry()
         assertEquals(
             WasmlineErrorCode.ACTION_NOT_BOUND,
-            assertIs<WasmlineCallResult.Failure>(decode(empty.dispatcher.dispatch("missing", byteArrayOf()))).error.code,
+            assertIs<WasmlineCallResult.Failure>(decode(empty.dispatcher.dispatch("missing", byteArrayOf()))).failure.code,
         )
 
         val registry = WasmlineHostServiceRegistry().apply {
@@ -109,8 +109,8 @@ class WasmlineHostServiceRegistryTest {
         val handlerFailure = assertIs<WasmlineCallResult.Failure>(
             decode(registry.dispatcher.dispatch("example.Service#fail", byteArrayOf())),
         )
-        assertEquals(WasmlineErrorCode.HANDLER_FAILED, handlerFailure.error.code)
-        assertEquals("handler boom", handlerFailure.error.message)
+        assertEquals(WasmlineErrorCode.HANDLER_FAILED, handlerFailure.failure.code)
+        assertEquals("handler boom", handlerFailure.failure.message)
     }
 
     private fun bridge(action: String, handler: (ByteArray) -> ByteArray): WasmlineGeneratedBridge = bridge(action to handler)

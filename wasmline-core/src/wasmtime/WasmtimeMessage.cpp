@@ -5,7 +5,7 @@
  * Author: crowforkotlin
  */
 
-#include "wasmtime/WasmtimeMessage.h"
+#include "wasmline/internal/wasmtime/WasmtimeMessage.h"
 
 namespace wasmline::wasmtime {
     std::string errorMessage(const wasmtime_error_t* error) {

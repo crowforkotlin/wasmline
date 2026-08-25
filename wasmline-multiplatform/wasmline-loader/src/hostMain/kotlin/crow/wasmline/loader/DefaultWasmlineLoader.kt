@@ -3,11 +3,14 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineLog
 import crow.wasmline.internal.runtime.WasmlineRuntimeBridge
+import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.loader.internal.WasmlineLocalPackageResolution
 import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
+import crow.wasmline.loader.internal.structuredLoadFailure
 
 /**
  * Internal loader implementation that resolves sources through the resolver chain.
@@ -30,9 +33,10 @@ internal object DefaultWasmlineLoader {
     private suspend fun loadSource(request: WasmlineLoadRequest, source: WasmlineSource, resolutionDepth: Int): WasmlineLoadState {
         if (resolutionDepth > MAX_SOURCE_RESOLUTION_DEPTH) {
             WasmlineLog.logger?.error("$P Source resolution exceeded max depth ($MAX_SOURCE_RESOLUTION_DEPTH)")
-            return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = "Wasmline load source resolution exceeded $MAX_SOURCE_RESOLUTION_DEPTH steps. Check resolver chaining for loops.",
+            return structuredLoadFailure(
+                stage = WasmlineLoadStage.SOURCE_RESOLUTION,
+                code = WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
+                message = "Wasmline load source resolution exceeded $MAX_SOURCE_RESOLUTION_DEPTH steps. Check resolver chaining for loops.",
             )
         }
 
@@ -78,9 +82,10 @@ internal object DefaultWasmlineLoader {
     private fun loadLocalArtifact(descriptor: WasmlineArtifactDescriptor, request: WasmlineLoadRequest): WasmlineLoadState {
         val validationError = descriptor.validationError()
         if (validationError != null) {
-            return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = "Invalid artifact descriptor: $validationError",
+            return structuredLoadFailure(
+                stage = WasmlineLoadStage.ARTIFACT_VALIDATION,
+                code = WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+                message = "Invalid artifact descriptor: $validationError",
             )
         }
 

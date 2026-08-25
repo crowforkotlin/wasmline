@@ -5,7 +5,7 @@
  * Author: crowforkotlin
  */
 
-#include "io/FileIO.h"
+#include "wasmline/internal/io/FileIO.h"
 
 #include <fstream>
 #include <sys/stat.h>

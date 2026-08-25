@@ -100,6 +100,29 @@ internal actual fun webCompileWasm(binary: ByteArray): WebWasmModule {
 internal actual fun webInstantiateWasm(module: WebWasmModule, imports: WebJsObject): WebWasmInstance =
     WebWasmInstance(rawNewWasmInstance(module.raw, imports.raw))
 
+internal actual fun webWasmModuleExports(module: WebWasmModule): List<WebWasmModuleExport> {
+    val descriptors = rawWasmModuleExports(module.raw)
+    return List(rawArrayLength(descriptors)) { index ->
+        val descriptor = checkNotNull(rawArrayAt(descriptors, index))
+        WebWasmModuleExport(
+            name = rawStringProperty(descriptor, "name"),
+            kind = rawStringProperty(descriptor, "kind"),
+        )
+    }
+}
+
+internal actual fun webWasmModuleImports(module: WebWasmModule): List<WebWasmModuleImport> {
+    val descriptors = rawWasmModuleImports(module.raw)
+    return List(rawArrayLength(descriptors)) { index ->
+        val descriptor = checkNotNull(rawArrayAt(descriptors, index))
+        WebWasmModuleImport(
+            module = rawStringProperty(descriptor, "module"),
+            name = rawStringProperty(descriptor, "name"),
+            kind = rawStringProperty(descriptor, "kind"),
+        )
+    }
+}
+
 internal actual fun webExportsOf(instance: WebWasmInstance): WebJsObject = WebJsObject(rawWasmExports(instance.raw))
 
 internal actual fun webIsFunction(value: WebJsValue): Boolean = rawIsFunction(value.raw)
@@ -110,6 +133,17 @@ internal actual fun webCallFunction(function: WebJsValue, args: WebJsArray): Web
     val callee = checkNotNull(function.raw) { "Cannot invoke a null JS function reference." }
     val result = rawApplyFunction(callee, args.raw)
     return if (rawIsNullish(result)) null else WebJsValue(result)
+}
+
+internal actual fun webCallFunctionSafely(function: WebJsValue, args: WebJsArray): WebWasmCallOutcome {
+    val callee = checkNotNull(function.raw) { "Cannot invoke a null JS function reference." }
+    val outcome = rawTryApplyFunction(callee, args.raw)
+    return if (rawOutcomeSucceeded(outcome)) {
+        val value = rawReadProperty(outcome, "value")
+        WebWasmCallOutcome.Success(if (rawIsNullish(value)) null else WebJsValue(value))
+    } else {
+        WebWasmCallOutcome.Failure(rawReadProperty(outcome, "message").toString())
+    }
 }
 
 internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?): WebJsValue = WebJsValue(
@@ -123,6 +157,16 @@ internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?):
 internal actual fun webMemoryBytes(memory: WebJsValue, pointer: Int, length: Int): WebBytes {
     val raw = checkNotNull(memory.raw) { "Cannot view a null WebAssembly.Memory reference." }
     return WebBytes(rawMemoryBytes(raw, pointer, length))
+}
+
+internal actual fun webMemoryByteSize(memory: WebJsValue): Long {
+    val raw = checkNotNull(memory.raw) { "Cannot inspect a null WebAssembly.Memory reference." }
+    return rawMemoryByteSize(raw).toLong()
+}
+
+internal actual fun webMemoryGrow(memory: WebJsValue, deltaPages: Int): Long {
+    val raw = checkNotNull(memory.raw) { "Cannot grow a null WebAssembly.Memory reference." }
+    return rawMemoryGrow(raw, deltaPages).toLong()
 }
 
 internal actual fun webBytesCopyOut(bytes: WebBytes): ByteArray {
@@ -170,7 +214,7 @@ private fun rawIsArray(value: JsAny?): Boolean = js("Array.isArray(value)")
 
 private fun rawFromI32(value: Int): JsAny = js("value")
 
-private fun rawFromI64(value: Long): JsAny = js("value")
+private fun rawFromI64(value: Long): JsAny = js("BigInt.asIntN(64, value)")
 
 private fun rawFromF32(value: Float): JsAny = js("value")
 
@@ -178,7 +222,7 @@ private fun rawFromF64(value: Double): JsAny = js("value")
 
 private fun rawToI32(value: JsAny?): Int = js("value")
 
-private fun rawToI64(value: JsAny?): Long = js("value")
+private fun rawToI64(value: JsAny?): Long = js("BigInt.asIntN(64, value)")
 
 private fun rawToF32(value: JsAny?): Float = js("value")
 
@@ -198,13 +242,35 @@ private fun rawNewWasmInstance(module: JsAny, imports: JsAny): JsAny = js("new W
 
 private fun rawWasmExports(instance: JsAny): JsAny = js("instance.exports")
 
+private fun rawWasmModuleExports(module: JsAny): JsAny = js("WebAssembly.Module.exports(module)")
+
+private fun rawWasmModuleImports(module: JsAny): JsAny = js("WebAssembly.Module.imports(module)")
+
+private fun rawStringProperty(target: JsAny, name: String): String = js("String(target[name])")
+
 private fun rawIsFunction(value: JsAny?): Boolean = js("typeof value === 'function'")
 
 private fun rawIsWasmMemory(value: JsAny?): Boolean = js("value instanceof WebAssembly.Memory")
 
 private fun rawApplyFunction(fn: JsAny, args: JsAny): JsAny? = js("fn.apply(undefined, args)")
 
+private fun rawTryApplyFunction(fn: JsAny, args: JsAny): JsAny = js(
+    """(() => {
+        try {
+            return { ok: true, value: fn.apply(undefined, args) };
+        } catch (error) {
+            return { ok: false, message: error && error.message ? error.message : String(error) };
+        }
+    })()""",
+)
+
+private fun rawOutcomeSucceeded(outcome: JsAny): Boolean = js("outcome.ok === true")
+
 private fun rawMemoryBytes(memory: JsAny, pointer: Int, length: Int): JsAny = js("new Uint8Array(memory.buffer, pointer, length)")
+
+private fun rawMemoryByteSize(memory: JsAny): Double = js("memory.buffer.byteLength")
+
+private fun rawMemoryGrow(memory: JsAny, deltaPages: Int): Double = js("memory.grow(deltaPages)")
 
 private fun rawNowMillis(): Double = js("Date.now()")
 

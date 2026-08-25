@@ -1,8 +1,8 @@
 package crow.wasmline.internal.protocol
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -31,16 +31,16 @@ class WasmlineResponseCodecTest {
 
     @Test
     fun encodesAndDecodesFailure() {
-        val error = WasmlineCallError(
+        val failure = WasmlineFailure(
             code = WasmlineErrorCode.ACTION_NOT_BOUND,
             message = "No Wasmline action is bound.",
         )
-        val frame = WasmlineResponseCodec.encodeFailure(error)
+        val frame = WasmlineResponseCodec.encodeFailure(failure)
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, result.error.code)
-        assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND.value, result.error.rawCode)
-        assertEquals(error.message, result.error.message)
+        assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, result.failure.code)
+        assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND.value, result.failure.rawCode)
+        assertEquals(failure.message, result.failure.message)
     }
 
     @Test
@@ -49,7 +49,7 @@ class WasmlineResponseCodecTest {
         frame[4] = 2
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_UNSUPPORTED_VERSION, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_UNSUPPORTED_VERSION, result.failure.code)
     }
 
     @Test
@@ -59,7 +59,7 @@ class WasmlineResponseCodecTest {
             frame[4] = version.toByte()
 
             val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-            assertEquals(WasmlineErrorCode.RESPONSE_UNSUPPORTED_VERSION, result.error.code)
+            assertEquals(WasmlineErrorCode.RESPONSE_UNSUPPORTED_VERSION, result.failure.code)
         }
     }
 
@@ -69,7 +69,7 @@ class WasmlineResponseCodecTest {
         frame[0] = 0
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
@@ -78,7 +78,7 @@ class WasmlineResponseCodecTest {
         frame[5] = 2
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
@@ -87,13 +87,13 @@ class WasmlineResponseCodecTest {
         frame[6] = 1
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
     fun rejectsFailureWithoutErrorCode() {
         val frame = WasmlineResponseCodec.encodeFailure(
-            WasmlineCallError(WasmlineErrorCode.ACTION_NOT_BOUND, "missing"),
+            WasmlineFailure(WasmlineErrorCode.ACTION_NOT_BOUND, "missing"),
         )
         frame[6] = 0
         frame[7] = 0
@@ -101,29 +101,29 @@ class WasmlineResponseCodecTest {
         frame[9] = 0
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
     fun rejectsTruncatedHeader() {
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(ByteArray(17)))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
     fun rejectsTruncatedMessage() {
         val frame = WasmlineResponseCodec.encodeFailure(
-            WasmlineCallError(WasmlineErrorCode.ACTION_NOT_BOUND, "message"),
+            WasmlineFailure(WasmlineErrorCode.ACTION_NOT_BOUND, "message"),
         ).copyOf(18 + 3)
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
     fun rejectsTruncatedPayload() {
         val frame = WasmlineResponseCodec.encodeFailure(
-            WasmlineCallError(
+            WasmlineFailure(
                 code = WasmlineErrorCode.ACTION_NOT_BOUND,
                 message = "message",
                 details = byteArrayOf(1, 2, 3),
@@ -131,7 +131,7 @@ class WasmlineResponseCodecTest {
         ).copyOf(18 + 7 + 2)
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
@@ -139,18 +139,18 @@ class WasmlineResponseCodecTest {
         val frame = WasmlineResponseCodec.encodeSuccess(byteArrayOf(1, 2)) + byteArrayOf(3)
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
     fun rejectsInvalidUtf8Message() {
         val frame = WasmlineResponseCodec.encodeFailure(
-            WasmlineCallError(WasmlineErrorCode.ACTION_NOT_BOUND, "x"),
+            WasmlineFailure(WasmlineErrorCode.ACTION_NOT_BOUND, "x"),
         )
         frame[18] = 0xC3.toByte()
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
     }
 
     @Test
@@ -167,18 +167,18 @@ class WasmlineResponseCodecTest {
         val result = assertIs<WasmlineCallResult.Failure>(
             WasmlineResponseCodec.decode(
                 WasmlineResponseCodec.encodeFailure(
-                    WasmlineCallError(WasmlineErrorCode.ACTION_NOT_BOUND, "missing", details),
+                    WasmlineFailure(WasmlineErrorCode.ACTION_NOT_BOUND, "missing", details),
                 ),
             ),
         )
 
-        assertContentEquals(details, result.error.details)
+        assertContentEquals(details, result.failure.details)
     }
 
     @Test
     fun rejectsMissingResponse() {
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(ByteArray(0)))
-        assertEquals(WasmlineErrorCode.RESPONSE_MISSING, result.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MISSING, result.failure.code)
     }
 
     @Test

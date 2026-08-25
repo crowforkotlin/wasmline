@@ -151,7 +151,7 @@ internal suspend fun runApplicationSample() {
             val result = loadDirectArtifact(source, options)
         ) {
             is WasmlineLoadResult.Failure -> {
-                error("[Application] Failed to load wasm: ${result.cause}")
+                error("[Application] Failed to load wasm: ${result.failure.message}")
             }
 
             is WasmlineLoadResult.Success -> {

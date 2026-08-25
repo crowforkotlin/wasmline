@@ -8,7 +8,7 @@
 #include <jni.h>
 #include <string>
 #include "wasmline/api/Api.h"
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 #include "JniComponentHostHandler.h"
 #include "JniHostHandler.h"
 

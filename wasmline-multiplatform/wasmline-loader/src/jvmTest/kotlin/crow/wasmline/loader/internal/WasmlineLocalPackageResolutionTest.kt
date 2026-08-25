@@ -110,7 +110,7 @@ class WasmlineLocalPackageResolutionTest {
 
             val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
             val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
-            assertTrue(failure.cause.contains("requires trustedKeys"))
+            assertTrue(failure.failure.message.contains("requires trustedKeys"))
         } finally {
             manifestFile.delete()
         }
@@ -351,6 +351,7 @@ class WasmlineLocalPackageResolutionTest {
     fun `selection enforces the complete physical type model and protocol matrix`() {
         val eligibleContracts = setOf(
             Triple(WasmlineArtifactType.WASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_SERVICE),
+            Triple(WasmlineArtifactType.WASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.RAW_EXPORT),
             Triple(WasmlineArtifactType.CWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.WASMLINE_SERVICE),
             Triple(WasmlineArtifactType.CWASM, WasmlineExecutionModel.CORE_WASM, WasmlineInvocationProtocol.RAW_EXPORT),
             Triple(
@@ -572,27 +573,10 @@ class WasmlineLocalPackageResolutionTest {
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = "plugin/invoke",
             ) to browserTarget,
-            WasmlineArtifact(
-                type = WasmlineArtifactType.WASM,
-                url = "browser-raw-export.wasm",
-                sha256 = "browser-raw-export",
-                targetCpu = "wasmjs",
-                targetOs = "browser",
-                invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
-                exportName = "add",
-            ) to browserTarget,
             cwasmArtifact().copy(
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = "plugin/invoke",
             ) to craneliftTarget,
-            cwasmArtifact().copy(
-                invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
-                exportName = null,
-            ) to craneliftTarget,
-            pulleyArtifact(cpu = "pulley64", is64Bit = true).copy(
-                invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
-                exportName = null,
-            ) to pulleyTarget,
         )
 
         invalidCandidates.forEach { (artifact, target) ->
@@ -601,6 +585,21 @@ class WasmlineLocalPackageResolutionTest {
                 "${artifact.type}/${artifact.executionModel}/${artifact.invocationProtocol} must be ineligible.",
             )
         }
+
+        val browserRaw = WasmlineArtifact(
+            type = WasmlineArtifactType.WASM,
+            url = "browser-raw-export.wasm",
+            sha256 = "browser-raw-export",
+            targetCpu = "wasmjs",
+            targetOs = "browser",
+            executionModel = WasmlineExecutionModel.CORE_WASM,
+            invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+            exportName = "add",
+        )
+        assertEquals(
+            browserRaw,
+            WasmlineLocalPackageResolution.selectArtifact(listOf(browserRaw), browserTarget),
+        )
     }
 
     @Test

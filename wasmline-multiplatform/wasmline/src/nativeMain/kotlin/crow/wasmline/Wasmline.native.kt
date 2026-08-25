@@ -6,9 +6,9 @@ package crow.wasmline
 import crow.wasmline.internal.WasmlineComponentBindings
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 import crow.wasmline.native.c.*
 import kotlinx.cinterop.*
 import crow.wasmline.extensions.ensureNativeRuntimeLoaded as ensureLinkedNativeRuntimeLoaded
@@ -88,6 +88,11 @@ actual class Wasmline internal actual constructor(
             wasmline_invoke_raw(moduleKey, exportName, exportName.length.toULong(), dataPtr, dataSize, outLen)
         }
 
+    internal actual fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> =
+        createNativeCoreWasmBackend(moduleKey, descriptor)
+
+    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = createCoreWasmModule(this)
+
     internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         invokeTypedCarrier(arguments) { dataPtr, dataSize, outLen ->
             wasmline_invoke_component(moduleKey, exportName, exportName.length.toULong(), dataPtr, dataSize, outLen)
@@ -141,12 +146,12 @@ actual class Wasmline internal actual constructor(
         val outLen = alloc<ULongVar>()
         val pointer = wasmline_create_component_host_resource(instanceKey, interfaceId, resourceName, representation, outLen.ptr)
             ?: return@memScoped WasmlineCallResult.Failure(
-                WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource creation failed."),
+                WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource creation failed."),
             )
         if (outLen.value > Int.MAX_VALUE.toULong()) {
             wasmline_free_memory(pointer)
             return@memScoped WasmlineCallResult.Failure(
-                WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is too large."),
+                WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is too large."),
             )
         }
         val encoded = pointer.readBytes(outLen.value.toInt())
@@ -160,7 +165,7 @@ actual class Wasmline internal actual constructor(
                     WasmlineCallResult.Success(resource)
                 } else {
                     WasmlineCallResult.Failure(
-                        WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is invalid."),
+                        WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is invalid."),
                     )
                 }
             }
@@ -187,13 +192,13 @@ private fun invokeTypedCarrier(
     }
     if (resultPtr == null) {
         return@memScoped WasmlineCallResult.Failure(
-            WasmlineCallError(WasmlineErrorCode.TRANSPORT_FAILURE, "Native typed invocation returned no response."),
+            WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native typed invocation returned no response."),
         )
     }
     if (outLen.value > Int.MAX_VALUE.toULong()) {
         wasmline_free_memory(resultPtr)
         return@memScoped WasmlineCallResult.Failure(
-            WasmlineCallError(WasmlineErrorCode.TRANSPORT_FAILURE, "Native typed invocation response is too large."),
+            WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native typed invocation response is too large."),
         )
     }
     val result = resultPtr.readBytes(outLen.value.toInt())
@@ -218,7 +223,7 @@ internal actual class WasmlineHostServiceLock {
     }
 }
 
-private fun ensureNativeRuntimeLoaded() {
+internal fun ensureNativeRuntimeLoaded() {
     ensureLinkedNativeRuntimeLoaded()
     wasmline_native_engine_link_anchor()
 }
@@ -348,12 +353,7 @@ internal object WasmlineComponentHostCallbackRegistry {
 
 private fun callbackLength(value: ULong): Int? = if (value > Int.MAX_VALUE.toULong()) null else value.toInt()
 
-/**
- * Dispatches an outbound Native callback without allowing exceptions across C.
- *
- * Author: crowforkotlin
- * Date: 2026-08-19
- */
+/** Dispatches an outbound Native callback without allowing exceptions across C. */
 internal fun nativeStaticOutboundCallback(
     key: CPointer<ByteVar>?,
     keyLen: ULong,
@@ -368,14 +368,14 @@ internal fun nativeStaticOutboundCallback(
     val payloadSize = callbackLength(payloadLen)
     val response = if (keySize == null || actionSize == null || payloadSize == null) {
         WasmlineResponseCodec.encodeFailure(
-            WasmlineCallError(
+            WasmlineFailure(
                 code = WasmlineErrorCode.TRANSPORT_FAILURE,
                 message = "Native outbound callback received an oversized buffer.",
             ),
         )
     } else if ((keySize > 0 && key == null) || (actionSize > 0 && action == null) || (payloadSize > 0 && payload == null)) {
         WasmlineResponseCodec.encodeFailure(
-            WasmlineCallError(
+            WasmlineFailure(
                 code = WasmlineErrorCode.TRANSPORT_FAILURE,
                 message = "Native outbound callback received a null buffer.",
             ),
@@ -388,7 +388,7 @@ internal fun nativeStaticOutboundCallback(
         try {
             if (dispatcher == null) {
                 WasmlineResponseCodec.encodeFailure(
-                    WasmlineCallError(
+                    WasmlineFailure(
                         code = WasmlineErrorCode.ACTION_NOT_BOUND,
                         message = "No Wasmline outbound action is bound.",
                     ),
@@ -398,7 +398,7 @@ internal fun nativeStaticOutboundCallback(
             }
         } catch (error: Throwable) {
             WasmlineResponseCodec.encodeFailure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.HANDLER_FAILED,
                     message = error.message ?: "Wasmline outbound action handler failed.",
                 ),
@@ -416,19 +416,14 @@ internal fun nativeStaticOutboundCallback(
 
 private fun encodeComponentHostFailure(code: WasmlineErrorCode, message: String): ByteArray = when (
     val encoded = WasmlineTypedInvocationCodec.encodeComponentResult(
-        WasmlineCallResult.Failure(WasmlineCallError(code, message)),
+        WasmlineCallResult.Failure(WasmlineFailure(code, message)),
     )
 ) {
     is WasmlineCallResult.Success -> encoded.value
     is WasmlineCallResult.Failure -> byteArrayOf()
 }
 
-/**
- * Dispatches a typed Component host import without allowing exceptions across C.
- *
- * Author: crowforkotlin
- * Date: 2026-08-19
- */
+/** Dispatches a typed Component host import without allowing exceptions across C. */
 internal fun nativeStaticComponentHostCallback(
     key: CPointer<ByteVar>?,
     keyLen: ULong,

@@ -48,7 +48,7 @@ fun main(args: Array<String>) = runBlocking {
             options = WasmlineLoadOptions(trustedKeys = sampleTrustedKeys),
         )
         val wasmline = when (loaded) {
-            is WasmlineLoadResult.Failure -> error("Failed to load the sample package: ${loaded.cause}")
+            is WasmlineLoadResult.Failure -> error("Failed to load the sample package: ${loaded.failure.message}")
             is WasmlineLoadResult.Success -> loaded.wasmline
         }
 
@@ -62,7 +62,7 @@ fun main(args: Array<String>) = runBlocking {
             )
             val actual = when (invocation) {
                 is WasmlineCallResult.Failure -> error(
-                    "Raw Export invocation failed: ${invocation.error.code}: ${invocation.error.message}",
+                    "Raw Export invocation failed: ${invocation.failure.code}: ${invocation.failure.message}",
                 )
 
                 is WasmlineCallResult.Success ->

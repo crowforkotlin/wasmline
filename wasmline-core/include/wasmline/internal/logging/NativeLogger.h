@@ -1,5 +1,5 @@
 /**
- * Defines the native logging interface.
+ * Defines the internal native logging interface.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin

@@ -3,11 +3,13 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
+import crow.wasmline.web.WebCoreWasmModule
 import crow.wasmline.web.WebWasmArtifacts
 import crow.wasmline.web.WebWasmPlugin
+import crow.wasmline.web.WebWasmRuntime
 
 /**
  * Web-facing Wasmline facade shared by the js and wasmJs targets.
@@ -28,6 +30,8 @@ internal class BrowserWasmline(private val moduleKey: String) {
 
     fun call(action: String, inputBytes: ByteArray): ByteArray = WasmlineWebModuleRegistry.require(moduleKey).call(action, inputBytes)
 
+    fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> = WasmlineWebModuleRegistry.coreModule(moduleKey)
+
     fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> = unsupportedTypedInvocation(exportName)
 
     fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
@@ -39,7 +43,7 @@ internal class BrowserWasmline(private val moduleKey: String) {
 }
 
 private fun unsupportedTypedInvocation(exportName: String): WasmlineCallResult<ByteArray> = WasmlineCallResult.Failure(
-    WasmlineCallError(
+    WasmlineFailure(
         code = WasmlineErrorCode.TRANSPORT_FAILURE,
         message = "Browser host does not support typed export invocation: $exportName.",
     ),
@@ -57,10 +61,11 @@ internal object BrowserWasmlineRuntime {
         createWasmline: (String, WasmlineConfig, WasmlineArtifactDescriptor) -> Wasmline,
     ): WasmlineLoadState {
         if (config.supportConcurrent) {
-            return WasmlineLoadState.Failure(
-                code = WasmlineLoadState.CODE_FAILURE,
-                cause = "[Wasmline] Browser web host does not support concurrent loading yet.",
-            )
+            return loadFailure(
+                stage = WasmlineLoadStage.ARTIFACT_VALIDATION,
+                code = WasmlineErrorCode.CONCURRENT_ACCESS,
+                message = "[Wasmline] Browser web host does not support concurrent loading yet.",
+            ).toLoadState()
         }
 
         return WasmlineLocalArtifactBridge.load(
@@ -77,18 +82,25 @@ internal object BrowserWasmlineRuntime {
 
                 override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =
                     if (descriptor.executionModel != WasmlineExecutionModel.CORE_WASM ||
-                        descriptor.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_SERVICE
+                        descriptor.invocationProtocol !in setOf(
+                            WasmlineInvocationProtocol.WASMLINE_SERVICE,
+                            WasmlineInvocationProtocol.RAW_EXPORT,
+                        )
                     ) {
-                        "Browser host supports only CORE_WASM with WASMLINE_SERVICE."
+                        "Browser host supports CORE_WASM with WASMLINE_SERVICE or RAW_EXPORT."
                     } else {
                         null
                     }
 
                 override fun backendCodeOrNull(path: String, descriptor: WasmlineArtifactDescriptor): Byte? =
-                    if (path.substringAfterLast('.', "").lowercase() ==
-                        "wasm"
+                    if (descriptor.artifactFormat == WasmlineArtifactFormat.RAW_WASM ||
+                        path.substringAfterLast('.', "").lowercase() == "wasm"
                     ) {
-                        WasmlineLoadState.CODE_SUCCESS_WASM
+                        if (descriptor.invocationProtocol == WasmlineInvocationProtocol.RAW_EXPORT) {
+                            WasmlineLoadState.CODE_SUCCESS_RAW_EXPORT
+                        } else {
+                            WasmlineLoadState.CODE_SUCCESS_WASM
+                        }
                     } else {
                         null
                     }
@@ -97,7 +109,7 @@ internal object BrowserWasmlineRuntime {
                     "[Wasmline] Browser web host only supports raw .wasm artifacts: ${descriptor.path}"
 
                 override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean =
-                    WasmlineWebModuleRegistry.load(moduleKey, path)
+                    WasmlineWebModuleRegistry.load(moduleKey, path, descriptor)
 
                 override fun loadFailureMessage(descriptor: WasmlineArtifactDescriptor): String =
                     WasmlineWebModuleRegistry.failureMessage(descriptor.path)
@@ -131,11 +143,12 @@ internal fun browserWasmlineLoadArtifact(descriptor: WasmlineArtifactDescriptor,
  * fails with an explicit hint instead of blocking the main thread.
  */
 private object WasmlineWebModuleRegistry {
-    private val modules = linkedMapOf<String, WebWasmPlugin>()
+    private val serviceModules = linkedMapOf<String, WebWasmPlugin>()
+    private val coreModules = linkedMapOf<String, WebCoreWasmModule>()
     private val failures = linkedMapOf<String, String>()
 
-    fun load(moduleKey: String, path: String): Boolean {
-        if (modules.containsKey(moduleKey)) return true
+    fun load(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
+        if (moduleKey in serviceModules || moduleKey in coreModules) return true
 
         val bytes = WebWasmArtifacts.bytesOrNull(path)
         if (bytes == null) {
@@ -144,10 +157,19 @@ private object WasmlineWebModuleRegistry {
             return false
         }
 
-        return runCatching { WebWasmPlugin(bytes) }.fold(
-            onSuccess = { plugin ->
+        return runCatching {
+            when (descriptor.invocationProtocol) {
+                WasmlineInvocationProtocol.WASMLINE_SERVICE -> WebWasmPlugin(bytes)
+                WasmlineInvocationProtocol.RAW_EXPORT -> WebCoreWasmModule(WebWasmRuntime.compile(bytes), descriptor)
+                WasmlineInvocationProtocol.COMPONENT_EXPORT -> error("Component exports are not supported by the Web host.")
+            }
+        }.fold(
+            onSuccess = { module ->
                 failures.remove(path)
-                modules[moduleKey] = plugin
+                when (module) {
+                    is WebWasmPlugin -> serviceModules[moduleKey] = module
+                    is WebCoreWasmModule -> coreModules[moduleKey] = module
+                }
                 true
             },
             onFailure = { throwable ->
@@ -157,17 +179,24 @@ private object WasmlineWebModuleRegistry {
         )
     }
 
-    fun require(moduleKey: String): WebWasmPlugin = checkNotNull(modules[moduleKey]) {
-        "Wasmline web module '$moduleKey' is not loaded."
+    fun require(moduleKey: String): WebWasmPlugin = checkNotNull(serviceModules[moduleKey]) {
+        "Wasmline Service web module '$moduleKey' is not loaded."
     }
 
+    fun coreModule(moduleKey: String): WasmlineCallResult<CoreWasmBackendModule> = coreModules[moduleKey]?.let {
+        WasmlineCallResult.Success(it)
+    } ?: coreFailure(WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH, "Raw Core Wasm module '$moduleKey' is not loaded.")
+
     fun remove(moduleKey: String) {
-        modules.remove(moduleKey)?.close()
+        serviceModules.remove(moduleKey)?.close()
+        coreModules.remove(moduleKey)?.close()
     }
 
     fun clear() {
-        modules.values.forEach { it.close() }
-        modules.clear()
+        serviceModules.values.forEach { it.close() }
+        coreModules.values.forEach { it.close() }
+        serviceModules.clear()
+        coreModules.clear()
         failures.clear()
     }
 

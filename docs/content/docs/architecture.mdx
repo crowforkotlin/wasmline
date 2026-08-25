@@ -81,7 +81,7 @@ The runtime selects the backend from `WasmlineArtifactDescriptor`. File extensio
 | Execution model | Invocation protocol | Runtime boundary | Core response frame |
 |---|---|---|---|
 | `CORE_WASM` | `WASMLINE_SERVICE` | `Session`, action router, and linear memory | Yes |
-| `CORE_WASM` | `RAW_EXPORT` | `RawModuleSession` and declared Core numeric ABI | No |
+| `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession`, exports, synchronous imports, and linear memory | No |
 | `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` and the fixed `wasmline.wit` envelope | No |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` and Component Model values | No |
 
@@ -93,7 +93,14 @@ Component Model calls deserialize a precompiled Component `.cwasm` or `.pwasm` a
 
 All three paths expose the same result semantics. A missing action binding returns `ACTION_NOT_BOUND` as a failure result. It is not encoded as an empty successful payload and does not require an exception. The Core path reports this through its response frame; Raw Export and Component Model report it through their typed result carrier. Exceptions remain for invalid programming contracts, unrecoverable runtime state, and failures that prevent construction of a result.
 
-The current browser implementation supports the Core Wasmline bridge only. Raw Export and Component Model typed calls are routed through the native backend because they require the Wasmtime C API. This is a target capability boundary, not a change to the artifact model.
+The Web implementation supports both `CORE_WASM + WASMLINE_SERVICE` and
+`CORE_WASM + RAW_EXPORT` through the browser `WebAssembly.Module` and
+`WebAssembly.Instance` APIs. Raw sessions use direct numeric exports, imports
+registered before instantiation, and checked linear-memory access; they do not
+use the Service response frame. Component Model typed calls remain native-only.
+Web and native share the Core ABI contract while retaining different backends:
+Web uses JS/WasmJS bindings and raw `.wasm`, while native uses the Wasmtime
+bridge and `.cwasm`/`.pwasm` AOT artifacts.
 
 ## Module Dependency Graph
 

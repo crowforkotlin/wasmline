@@ -1,8 +1,8 @@
 package crow.wasmline
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 internal fun interface Callback {
     fun callback(params: ByteArray?): ByteArray
 }
@@ -27,7 +27,7 @@ internal object WasmlineRouter {
     internal fun dispatch(action: String?, args: ByteArray?): WasmlineCallResult<ByteArray> {
         if (handlers.isEmpty()) {
             return WasmlineCallResult.Failure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.ACTION_NOT_BOUND,
                     message = "No Wasmline action is bound.",
                 ),
@@ -36,7 +36,7 @@ internal object WasmlineRouter {
 
         val handler = handlers[action]
             ?: return WasmlineCallResult.Failure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.UNKNOWN_ACTION,
                     message = "Wasmline action is not registered: ${action.orEmpty()}.",
                 ),
@@ -46,7 +46,7 @@ internal object WasmlineRouter {
             WasmlineCallResult.Success(handler.callback(args))
         } catch (error: Throwable) {
             WasmlineCallResult.Failure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.HANDLER_FAILED,
                     message = error.message ?: "Wasmline action handler failed.",
                 ),

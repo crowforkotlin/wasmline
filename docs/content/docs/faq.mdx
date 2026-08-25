@@ -82,7 +82,7 @@ The runtime path starts with a precompiled Component `.cwasm` or `.pwasm` artifa
 
 The call returns `WasmlineCallResult.Failure` with `WasmlineErrorCode.ACTION_NOT_BOUND`. It does not return an empty successful payload and does not crash the host. Unknown actions, invalid payloads, handler failures, traps, and malformed response frames follow the same result-first rule when the runtime can construct a reliable result.
 
-Use `callResult`, `invokeRawResult`, or `invokeComponentResult` and inspect `Failure.error.code`. `getOrNull()` and `errorOrNull()` are non-throwing helpers. `throwOnFailure()` is an explicit adapter for callers that choose exception-style handling; it is not the default transport behavior.
+Use `callResult`, `invokeRawResult`, or `invokeComponentResult` and inspect `Failure.failure.code`. `getOrNull()` and `failureOrNull()` are non-throwing helpers. `throwOnFailure()` is an explicit adapter for callers that choose exception-style handling; it is not the default transport behavior.
 
 </details>
 

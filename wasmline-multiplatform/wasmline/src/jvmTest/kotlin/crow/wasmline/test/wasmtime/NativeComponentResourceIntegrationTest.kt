@@ -101,18 +101,18 @@ class NativeComponentResourceIntegrationTest {
             val crossInstance = assertIs<WasmlineCallResult.Failure>(
                 second.invoke(INSPECT, listOf(counter.toComponentValue())),
             )
-            assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, crossInstance.error.code)
-            assertTrue(crossInstance.error.message.isNotBlank())
+            assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, crossInstance.failure.code)
+            assertTrue(crossInstance.failure.message.isNotBlank())
 
             val reference = counter.toComponentValue()
             val stale = assertIs<WasmlineCallResult.Failure>(
                 first.invoke(INSPECT, listOf(reference.withGeneration(reference.generation + 1u))),
             )
-            assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, stale.error.code)
+            assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, stale.failure.code)
             val wrongType = assertIs<WasmlineCallResult.Failure>(
                 first.invoke(INSPECT, listOf(reference.withType(reference.typeId + 1u))),
             )
-            assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, wrongType.error.code)
+            assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, wrongType.failure.code)
 
             val borrowed = BorrowedCounter(first, reference.withOwnership(WasmlineComponentResourceOwnership.BORROW))
             assertFailsWith<IllegalStateException> { borrowed.close() }
@@ -122,14 +122,14 @@ class NativeComponentResourceIntegrationTest {
             val trap = assertIs<WasmlineCallResult.Failure>(
                 first.invoke(TRAP_WITH_BORROW, listOf(counter.toComponentValue())),
             )
-            assertEquals(WasmlineErrorCode.COMPONENT_TRAP, trap.error.code)
-            assertTrue(trap.error.message.isNotBlank())
+            assertEquals(WasmlineErrorCode.COMPONENT_TRAP, trap.failure.code)
+            assertTrue(trap.failure.message.isNotBlank())
             assertTrue(!counter.isClosed, "Passing borrow<counter> must not consume the owner wrapper.")
 
             val statelessAfterTrap = first.invoke(COUNTER_DROP_COUNT)
             val poisoned = assertIs<WasmlineCallResult.Failure>(statelessAfterTrap)
             assertTrue(
-                poisoned.error.message.contains("cannot enter component instance"),
+                poisoned.failure.message.contains("cannot enter component instance"),
                 "Wasmtime rejects all subsequent calls after this guest trap.",
             )
         } finally {
@@ -226,7 +226,7 @@ class NativeComponentResourceIntegrationTest {
         is WasmlineCallResult.Success -> result.value
 
         is WasmlineCallResult.Failure -> error(
-            "Component call failed [${result.error.code}]: ${result.error.message}",
+            "Component call failed [${result.failure.code}]: ${result.failure.message}",
         )
     }
 
@@ -273,7 +273,7 @@ class NativeComponentResourceIntegrationTest {
                     is WasmlineCallResult.Success -> result.value
 
                     is WasmlineCallResult.Failure -> error(
-                        "Component resource call failed [${result.error.code}]: ${result.error.message}",
+                        "Component resource call failed [${result.failure.code}]: ${result.failure.message}",
                     )
                 }.values.single(),
             ).value

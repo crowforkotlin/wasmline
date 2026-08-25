@@ -1,8 +1,8 @@
 package crow.wasmline.internal.protocol
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 /**
  * Encodes and decodes the Core Wasmline response frame.
@@ -25,11 +25,11 @@ internal object WasmlineResponseCodec {
         payload = payload,
     )
 
-    fun encodeFailure(error: WasmlineCallError): ByteArray = encode(
+    fun encodeFailure(failure: WasmlineFailure): ByteArray = encode(
         status = STATUS_FAILURE,
-        errorCode = error.rawCode,
-        message = error.message.encodeToByteArray(),
-        payload = error.details ?: ByteArray(0),
+        errorCode = failure.rawCode,
+        message = failure.message.encodeToByteArray(),
+        payload = failure.details ?: ByteArray(0),
     )
 
     fun decode(bytes: ByteArray): WasmlineCallResult<ByteArray> {
@@ -86,7 +86,7 @@ internal object WasmlineResponseCodec {
                     failure(WasmlineErrorCode.RESPONSE_MALFORMED, "Failed response has no error code.")
                 } else {
                     WasmlineCallResult.Failure(
-                        WasmlineCallError(
+                        WasmlineFailure(
                             code = WasmlineErrorCode.fromValue(errorCode),
                             message = message,
                             details = payload,
@@ -135,7 +135,7 @@ internal object WasmlineResponseCodec {
     }
 
     private fun failure(code: WasmlineErrorCode, message: String): WasmlineCallResult.Failure =
-        WasmlineCallResult.Failure(WasmlineCallError(code, message))
+        WasmlineCallResult.Failure(WasmlineFailure(code, message))
 }
 
 private fun ByteArray.isValidUtf8(): Boolean {

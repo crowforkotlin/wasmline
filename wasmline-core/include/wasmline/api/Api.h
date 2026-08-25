@@ -1,7 +1,7 @@
 /**
  * Defines the native Wasmline API facade.
  *
- * Date: 2026-08-02
+ * Date: 2026-08-25
  * Author: crowforkotlin
  */
 
@@ -10,23 +10,24 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <shared_mutex>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 #include "wasmline/invocation/InvocationResult.h"
+#include "wasmline/invocation/RawWasmTypes.h"
 #include "wasmline/runtime/WasmlineArtifactFormat.h"
 
 namespace wasmline {
-    class ComponentSession;
     class ComponentHostHandler;
     class OutboundHandler;
-    class RawModuleSession;
-    class Session;
 
-    /** Provides the native Wasmline API facade. */
+    /**
+     * Provides the native Wasmline API facade.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     */
     class Api {
     public:
         /** Initializes the selected engine without invalidating loaded artifacts. */
@@ -62,19 +63,40 @@ namespace wasmline {
         /** Releases an artifact and its associated sessions. */
         static void releaseModule(const std::string& key);
 
-        /** Invokes the Core Wasmline entry point.
-         *
-         * @param key Artifact identifier.
-         * @param action Action name.
-         * @param actionLen Action name length.
-         * @param data Input data.
-         * @param dataLen Input data length.
-         * @return Encoded invocation result.
-         */
+        /** Invokes the Core Wasmline entry point and returns its encoded result. */
         static std::string invokeInbound(const std::string& key, const char* action, size_t actionLen, const char* data, size_t dataLen);
 
         /** Invokes a Core Wasm export with raw values. */
         static InvocationResult invokeRaw(const std::string& key, std::string_view exportName, const std::vector<RawValue>& arguments);
+
+        /** Returns the reflected exports of a cached Core Wasm artifact. */
+        static std::vector<RawExportDefinition> describeRawModule(const std::string& artifactKey);
+
+        /** Creates one isolated raw Core Wasm session from a cached artifact. */
+        static InvocationResult instantiateRawModule(const std::string& artifactKey, const std::string& sessionKey,
+                                                     const std::vector<RawImportDefinition>& imports, RawImportCallback callback,
+                                                     RawImportBufferFree bufferFree, void* callbackUser,
+                                                     RawImportUserFinalizer userFinalizer, std::string memoryExportName);
+
+        /** Invokes an export on one explicitly instantiated raw session. */
+        static InvocationResult invokeRawInstance(const std::string& sessionKey, std::string_view exportName,
+                                                  const std::vector<RawValue>& arguments);
+
+        /** Reads bytes from an explicitly instantiated raw session. */
+        static InvocationResult readRawMemory(const std::string& sessionKey, uint64_t offset, uint64_t length,
+                                              std::vector<uint8_t>* output);
+
+        /** Writes bytes into an explicitly instantiated raw session. */
+        static InvocationResult writeRawMemory(const std::string& sessionKey, uint64_t offset, const uint8_t* bytes, uint64_t length);
+
+        /** Returns raw session memory size in bytes or pages. */
+        static InvocationResult rawMemorySize(const std::string& sessionKey, bool pages);
+
+        /** Grows raw session memory and returns the previous page count. */
+        static InvocationResult growRawMemory(const std::string& sessionKey, uint64_t deltaPages);
+
+        /** Releases one explicitly instantiated raw session. */
+        static void releaseRawInstance(const std::string& sessionKey);
 
         /** Invokes a Component Model export with component values. */
         static InvocationResult invokeComponent(const std::string& key, std::string_view exportName,
@@ -104,29 +126,5 @@ namespace wasmline {
 
         /** Installs a typed host handler before a new Component session is initialized. */
         static bool setComponentHostHandler(const std::string& key, std::unique_ptr<ComponentHostHandler> handler);
-
-    private:
-        static bool ensureEngineForArtifact(WasmlineArtifactFormat artifactFormat, const std::string& path);
-
-        static bool isEngineReadyForArtifact(WasmlineArtifactFormat artifactFormat);
-
-        static bool hasLoadedArtifacts();
-
-        /** Returns the cached Core Wasm session or creates it. */
-        static Session* getOrCreateSession(const std::string& key);
-
-        static RawModuleSession* getOrCreateRawSession(const std::string& key);
-
-        static std::shared_ptr<ComponentSession> getOrCreateComponentSession(const std::string& key);
-
-        static std::unordered_map<std::string, std::unique_ptr<Session>> sessionCache;
-
-        static std::unordered_map<std::string, std::unique_ptr<RawModuleSession>> rawSessionCache;
-
-        static std::unordered_map<std::string, std::shared_ptr<ComponentSession>> componentSessionCache;
-
-        static std::shared_mutex sessionMutex;
-
-        static std::shared_mutex lifecycleMutex;
     };
 } // namespace wasmline

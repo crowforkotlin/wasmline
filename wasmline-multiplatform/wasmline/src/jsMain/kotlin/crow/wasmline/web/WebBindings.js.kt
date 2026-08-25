@@ -89,6 +89,23 @@ internal actual fun webCompileWasm(binary: ByteArray): WebWasmModule {
 internal actual fun webInstantiateWasm(module: WebWasmModule, imports: WebJsObject): WebWasmInstance =
     WebWasmInstance(NativeWasmInstance(module.raw, imports.raw))
 
+internal actual fun webWasmModuleExports(module: WebWasmModule): List<WebWasmModuleExport> =
+    rawModuleExports(module.raw).map { descriptor ->
+        WebWasmModuleExport(
+            name = rawReadProperty(descriptor, "name").toString(),
+            kind = rawReadProperty(descriptor, "kind").toString(),
+        )
+    }
+
+internal actual fun webWasmModuleImports(module: WebWasmModule): List<WebWasmModuleImport> =
+    rawModuleImports(module.raw).map { descriptor ->
+        WebWasmModuleImport(
+            module = rawReadProperty(descriptor, "module").toString(),
+            name = rawReadProperty(descriptor, "name").toString(),
+            kind = rawReadProperty(descriptor, "kind").toString(),
+        )
+    }
+
 internal actual fun webExportsOf(instance: WebWasmInstance): WebJsObject = WebJsObject(instance.raw.exports)
 
 internal actual fun webIsFunction(value: WebJsValue): Boolean = rawIsFunction(value.raw)
@@ -101,6 +118,17 @@ internal actual fun webCallFunction(function: WebJsValue, args: WebJsArray): Web
     return if (rawIsNullish(result)) null else WebJsValue(result)
 }
 
+internal actual fun webCallFunctionSafely(function: WebJsValue, args: WebJsArray): WebWasmCallOutcome {
+    val callee = checkNotNull(function.raw) { "Cannot invoke a null JS function reference." }
+    val outcome = rawTryApplyFunction(callee, args.raw)
+    return if (rawOutcomeSucceeded(outcome)) {
+        val value = rawReadProperty(outcome, "value")
+        WebWasmCallOutcome.Success(if (rawIsNullish(value)) null else WebJsValue(value))
+    } else {
+        WebWasmCallOutcome.Failure(rawReadProperty(outcome, "message").toString())
+    }
+}
+
 internal actual fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?): WebJsValue = WebJsValue(
     rawVariadicFunction { rawArgs ->
         handler(rawArgs.map(::WebJsValue))?.raw
@@ -111,6 +139,11 @@ internal actual fun webMemoryBytes(memory: WebJsValue, pointer: Int, length: Int
     val raw = memory.raw.unsafeCast<NativeWasmMemory>()
     return WebBytes(Uint8Array(raw.buffer, pointer, length))
 }
+
+internal actual fun webMemoryByteSize(memory: WebJsValue): Long = memory.raw.unsafeCast<NativeWasmMemory>().buffer.byteLength.toLong()
+
+internal actual fun webMemoryGrow(memory: WebJsValue, deltaPages: Int): Long =
+    memory.raw.unsafeCast<NativeWasmMemory>().grow(deltaPages).toLong()
 
 internal actual fun webBytesCopyOut(bytes: WebBytes): ByteArray {
     val copy = Int8Array(bytes.raw.length)
@@ -161,7 +194,23 @@ private fun rawIsWasmMemory(value: Any?): Boolean = js("value instanceof WebAsse
 
 private fun rawApplyFunction(fn: Any, args: Array<Any?>): Any? = js("fn.apply(undefined, args)")
 
+private fun rawTryApplyFunction(fn: Any, args: Array<Any?>): Any = js(
+    """(() => {
+        try {
+            return { ok: true, value: fn.apply(undefined, args) };
+        } catch (error) {
+            return { ok: false, message: error && error.message ? error.message : String(error) };
+        }
+    })()""",
+)
+
+private fun rawOutcomeSucceeded(outcome: Any): Boolean = js("outcome.ok === true")
+
 private fun rawNowMillis(): Double = js("Date.now()")
 
 private fun rawVariadicFunction(handler: (Array<Any?>) -> Any?): Any =
     js("(function () { return handler(Array.prototype.slice.call(arguments)); })")
+
+private fun rawModuleExports(module: NativeWasmModule): Array<Any> = js("WebAssembly.Module.exports(module)")
+
+private fun rawModuleImports(module: NativeWasmModule): Array<Any> = js("WebAssembly.Module.imports(module)")

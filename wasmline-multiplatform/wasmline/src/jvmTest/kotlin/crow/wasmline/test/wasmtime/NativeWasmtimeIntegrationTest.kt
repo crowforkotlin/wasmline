@@ -84,7 +84,7 @@ class NativeWasmtimeIntegrationTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
+        assertTrue(failure.failure.message.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
     }
 
     private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): Boolean = JniWasmlineBindings.loadModuleWithFormatCode(
@@ -198,7 +198,7 @@ class NativeWasmtimeIntegrationTest {
             )
 
             assertTrue(
-                failure.cause.contains("requires an explicit artifactFormat"),
+                failure.failure.message.contains("requires an explicit artifactFormat"),
                 "Error message should identify the missing native format",
             )
         } finally {

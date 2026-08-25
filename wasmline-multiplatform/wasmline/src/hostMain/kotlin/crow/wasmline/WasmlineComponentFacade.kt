@@ -1,8 +1,9 @@
 package crow.wasmline
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineException
+import crow.wasmline.invocation.WasmlineFailure
 
 /** Identifies the exact WIT package/world consumed by a generated Host binding. */
 data class WasmlineComponentContract(val packageId: String, val world: String, val witSha256: String) {
@@ -193,7 +194,7 @@ class WasmlineComponentInstance internal constructor(
 
                 is WasmlineCallResult.Failure -> {
                     dispatcher.discardResource(representation)
-                    throw crow.wasmline.invocation.WasmlineInvocationException(created.error)
+                    throw WasmlineException(created.failure)
                 }
             }
         }
@@ -383,4 +384,4 @@ private fun requireIdentifier(value: String, label: String): String {
 }
 
 private fun componentFailure(code: WasmlineErrorCode, message: String): WasmlineCallResult.Failure =
-    WasmlineCallResult.Failure(WasmlineCallError(code = code, message = message))
+    WasmlineCallResult.Failure(WasmlineFailure(code = code, message = message))

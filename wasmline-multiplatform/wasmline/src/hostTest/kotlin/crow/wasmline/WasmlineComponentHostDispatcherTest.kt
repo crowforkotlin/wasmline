@@ -54,7 +54,7 @@ class WasmlineComponentHostDispatcherTest {
         )
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeComponentResult(response))
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
     }
 
     @Test
@@ -67,8 +67,8 @@ class WasmlineComponentHostDispatcherTest {
         val response = requireNotNull(dispatcher.dispatch("example:host/api", "increment", arguments.value))
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeComponentResult(response))
 
-        assertEquals(WasmlineErrorCode.HANDLER_FAILED, result.error.code)
-        assertEquals("adapter failed", result.error.message)
+        assertEquals(WasmlineErrorCode.HANDLER_FAILED, result.failure.code)
+        assertEquals("adapter failed", result.failure.message)
     }
 
     @Test
@@ -122,7 +122,7 @@ class WasmlineComponentHostDispatcherTest {
             ),
         )
         val stale = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeComponentResult(staleResponse))
-        assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, stale.error.code)
+        assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, stale.failure.code)
 
         val dropResponse = requireNotNull(
             dispatcher.dispatch(
@@ -145,7 +145,7 @@ class WasmlineComponentHostDispatcherTest {
             ),
         )
         val duplicateFailure = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeComponentResult(duplicate))
-        assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, duplicateFailure.error.code)
+        assertEquals(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, duplicateFailure.failure.code)
         assertEquals(1, dropCount)
     }
 

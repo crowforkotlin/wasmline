@@ -1,7 +1,7 @@
 /**
  * Defines stable Wasmline error codes.
  *
- * Date: 2026-08-02
+ * Date: 2026-08-25
  * Author: crowforkotlin
  */
 
@@ -10,7 +10,12 @@
 #include <cstdint>
 
 namespace wasmline {
-    /** Defines stable error codes returned by the native API. */
+    /**
+     * Defines stable error codes returned by the native API.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     */
     enum class WasmlineErrorCode : int32_t {
         ACTION_NOT_BOUND = 1001,
         UNKNOWN_ACTION = 1002,
@@ -21,6 +26,33 @@ namespace wasmline {
         CORE_TRAP = 2002,
         CORE_EXPORT_NOT_FOUND = 2003,
         INVOCATION_PROTOCOL_MISMATCH = 2004,
+        MODULE_FORMAT_INVALID = 2201,
+        WASM_FEATURE_UNSUPPORTED = 2202,
+        IMPORT_MISSING = 2203,
+        IMPORT_SIGNATURE_MISMATCH = 2204,
+        INSTANTIATION_FAILED = 2205,
+        EXPORT_KIND_MISMATCH = 2206,
+        ARGUMENT_COUNT_MISMATCH = 2207,
+        ARGUMENT_TYPE_MISMATCH = 2208,
+        RESULT_TYPE_UNSUPPORTED = 2209,
+        MEMORY_OUT_OF_BOUNDS = 2210,
+        IMPORT_HANDLER_FAILED = 2211,
+        SESSION_CLOSED = 2212,
+        CONCURRENT_ACCESS = 2213,
+        REENTRANT_CALL = 2214,
+        UNSUPPORTED_EXPORT_KIND = 2215,
+        WASM_TRAP = 2216,
+        EXPORT_SIGNATURE_MISSING = 2217,
+        EXPORT_NOT_FOUND = 2218,
+        SOURCE_RESOLUTION_FAILED = 2301,
+        MANIFEST_INVALID = 2302,
+        SIGNATURE_VERIFICATION_FAILED = 2303,
+        ARTIFACT_NOT_COMPATIBLE = 2304,
+        ARTIFACT_NOT_FOUND = 2305,
+        ARTIFACT_INTEGRITY_FAILED = 2306,
+        ARTIFACT_IO_FAILED = 2307,
+        ARTIFACT_DESCRIPTOR_INVALID = 2308,
+        ARTIFACT_DOWNLOAD_FAILED = 2309,
         COMPONENT_TRAP = 2101,
         COMPONENT_EXPORT_NOT_FOUND = 2102,
         COMPONENT_CALL_FAILED = 2103,

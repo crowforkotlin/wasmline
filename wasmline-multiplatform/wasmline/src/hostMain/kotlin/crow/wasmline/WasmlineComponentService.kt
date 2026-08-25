@@ -1,8 +1,8 @@
 package crow.wasmline
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 /**
  * Adapts the Wasmline byte protocol to the fixed wasmline:service Component interface.
@@ -41,7 +41,7 @@ internal object WasmlineComponentService {
         val version = metadata[WasmlineComponentServiceContract.METADATA_VERSION]
         if (version != null && version != WasmlineComponentServiceContract.VERSION) {
             return WasmlineCallResult.Failure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.RESPONSE_UNSUPPORTED_VERSION,
                     message = "Unsupported Wasmline Service version '$version'.",
                 ),
@@ -50,7 +50,7 @@ internal object WasmlineComponentService {
         val profile = metadata[WasmlineComponentServiceContract.METADATA_PROFILE]
         if (profile != null && profile != WasmlineComponentServiceContract.PROFILE) {
             return WasmlineCallResult.Failure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH,
                     message = "Unsupported Wasmline Service profile '$profile'.",
                 ),
@@ -59,7 +59,7 @@ internal object WasmlineComponentService {
         val codec = metadata[WasmlineComponentServiceContract.METADATA_CODEC]
         if (codec != null && codec != wasmline.config.serialization.factoryId) {
             return WasmlineCallResult.Failure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.SERIALIZATION_FAILED,
                     message = "Wasmline Service codec mismatch. Expected '$codec' but host uses '" +
                         wasmline.config.serialization.factoryId + "'.",
@@ -94,7 +94,7 @@ internal object WasmlineComponentService {
         val rawCode = code.value.toIntOrNull()
         val errorCode = rawCode?.let(WasmlineErrorCode::fromValue) ?: code.value.toErrorCode()
         return WasmlineCallResult.Failure(
-            WasmlineCallError(
+            WasmlineFailure(
                 code = errorCode,
                 message = message.value,
                 details = details,
@@ -104,7 +104,7 @@ internal object WasmlineComponentService {
     }
 
     private fun malformed(message: String): WasmlineCallResult.Failure = WasmlineCallResult.Failure(
-        WasmlineCallError(WasmlineErrorCode.RESPONSE_MALFORMED, message),
+        WasmlineFailure(WasmlineErrorCode.RESPONSE_MALFORMED, message),
     )
 }
 

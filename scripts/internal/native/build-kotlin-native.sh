@@ -330,12 +330,17 @@ SOURCES=(
   "${CORE_ROOT}/src/api/Api.cpp"
   "${CORE_ROOT}/src/runtime/Component.cpp"
   "${CORE_ROOT}/src/runtime/ComponentSession.cpp"
+  "${CORE_ROOT}/src/runtime/ComponentSessionRegistry.cpp"
   "${CORE_ROOT}/src/runtime/Engine.cpp"
   "${CORE_ROOT}/src/runtime/Module.cpp"
+  "${CORE_ROOT}/src/runtime/NativeRuntime.cpp"
   "${CORE_ROOT}/src/runtime/RawModuleSession.cpp"
+  "${CORE_ROOT}/src/runtime/RawSessionRegistry.cpp"
   "${CORE_ROOT}/src/runtime/Session.cpp"
+  "${CORE_ROOT}/src/runtime/ServiceSessionRegistry.cpp"
   "${CORE_ROOT}/src/value/ComponentValue.cpp"
   "${CORE_ROOT}/src/invocation/InvocationResult.cpp"
+  "${CORE_ROOT}/src/invocation/CoreWasmBridgeCodec.cpp"
   "${CORE_ROOT}/src/invocation/TypedInvocationCodec.cpp"
   "${CORE_ROOT}/src/protocol/WasmlineProtocol.cpp"
   "${CORE_ROOT}/src/io/FileIO.cpp"
@@ -356,7 +361,6 @@ if [[ "${TARGET}" == "mingwX64" && "${USE_MINGW_GCC_HEADERS:-0}" == "1" ]]; then
 fi
 INCLUDE_ARGS=(
   "-I${CORE_ROOT}/include"
-  "-I${CORE_ROOT}/src"
   "-I${BRIDGE_ROOT}"
   "-I${HEADER_DIR}"
 )

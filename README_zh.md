@@ -110,7 +110,7 @@ suspend fun main() {
         ),
     )) {
         is WasmlineLoadResult.Success -> result.wasmline
-        is WasmlineLoadResult.Failure -> error(result.cause)
+        is WasmlineLoadResult.Failure -> error(result.failure.message)
     }
 
     val response = module.link<EchoService>().echo("ping")
@@ -134,13 +134,20 @@ Wasmline 支持四种显式的宿主调用路径：
 | 执行模型 | 调用协议 | 输入 | 结果 |
 |---|---|---|---|
 | `CORE_WASM` | `WASMLINE_SERVICE` | action 名称与字节 payload | `WasmlineCallResult<ByteArray>` |
-| `CORE_WASM` | `RAW_EXPORT` | 已声明的 Core Wasm 数值 | `WasmlineCallResult<WasmlineRawCallResult>` |
+| `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession` 数值、同步 imports 与线性内存 | `WasmlineCallResult<List<RawValue>>` |
 | `COMPONENT_MODEL` | `WASMLINE_SERVICE` | 通过 `wasmline.wit` 传递 action 名称与字节 payload | `WasmlineCallResult<ByteArray>` |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | 已声明的 Component Model 值 | `WasmlineCallResult<WasmlineComponentCallResult>` |
 
 Component Model 路径直接加载已经编译完成的 component binary。Wasmline 不编译 WIT、WIT-Kotlin，也不生成 component adapter。需要时，`contractMetadata` 用于描述调用契约；它不是 WIT 编译输入。
 
-当前浏览器运行时支持 Core Wasmline bridge。Raw Export 和 Component Model typed 调用由可以使用 Wasmtime C API 的 native 宿主后端提供。
+浏览器运行时同时支持 Core Service 与 Core Raw Export 路径。Web 使用 raw
+`.wasm`、`WebAssembly.Module`/`WebAssembly.Instance`、同步 imports 和有边界检查的线性内存；
+native 使用 Wasmtime bridge 与 `.cwasm`/`.pwasm` AOT 产物。Component Model typed 调用仍仅由 native 提供。
+
+对于 `RAW_EXPORT`，先加载 `CoreWasmModule`，在 `instantiate()` 前注册同步
+`RawImport` handler，再调用 `RawValue` export；高频数据通过 `RawMemory`
+批量访问。浏览器内嵌 `.wasm` 使用 `WasmlineWeb.registerBytes()`，native
+仍只选择 AOT 产物。
 
 Core Wasmline 调用通过结果返回普通调用错误，不使用异常作为普通控制流：
 
@@ -152,15 +159,19 @@ import crow.wasmline.invocation.WasmlineErrorCode
 when (val result = module.callResult("echo", payload)) {
     is WasmlineCallResult.Success -> usePayload(result.value)
     is WasmlineCallResult.Failure -> {
-        if (result.error.code == WasmlineErrorCode.ACTION_NOT_BOUND) {
+        if (result.failure.code == WasmlineErrorCode.ACTION_NOT_BOUND) {
             log("插件未绑定该 action")
         }
-        log(result.error.message)
+        log(result.failure.message)
     }
 }
 ```
 
 未绑定 action 返回 `ACTION_NOT_BOUND`，不返回空 payload，也不会使宿主崩溃。未知 action、无效 payload、执行 trap 和 handler 失败也遵循结果优先规则。`throwOnFailure()` 只为明确选择异常风格的调用方提供适配，不是结果 API 的默认行为。
+
+`WasmlineFailure` 是规范的非抛出失败值，`WasmlineException` 只用于显式
+抛出适配器，`WasmlineLoadFailure` 描述模块创建前的失败。所有结果 API
+都以 `failure` 属性作为唯一权威失败载荷。
 
 `WASMLINE_SERVICE` 响应帧以四字节 `WLMF` magic 标记开始，并使用一个字节的 `frameVersion`，当前值为 `1`。magic 只用于识别帧格式，不提供安全校验。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
 

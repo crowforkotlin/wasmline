@@ -81,7 +81,7 @@ Plugin binary  (raw .wasm — 先通过 Fetch 异步预取，再从字节缓存�
 | 执行模型 | 调用协议 | 运行时边界 | Core 响应帧 |
 |---|---|---|---|
 | `CORE_WASM` | `WASMLINE_SERVICE` | `Session`、action 路由和线性内存 | 使用 |
-| `CORE_WASM` | `RAW_EXPORT` | `RawModuleSession` 和已声明的 Core 数值 ABI | 不使用 |
+| `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession`、exports、同步 imports 与线性内存 | 不使用 |
 | `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` 和固定 `wasmline.wit` envelope | 不使用 |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` 和 Component Model 值 | 不使用 |
 
@@ -93,7 +93,13 @@ Component Model 调用通过 Wasmtime Component Model API 反序列化预编译�
 
 三种路径共享相同的结果语义。未绑定 action 返回失败结果 `ACTION_NOT_BOUND`，不表示为空的成功 payload，也不要求抛出异常。Core 路径通过响应帧传递该结果；Raw Export 和 Component Model 通过 typed result carrier 传递该结果。违反编程契约、运行时状态不可恢复，或无法构造可靠结果时，才使用异常。
 
-当前浏览器实现仅支持 Core Wasmline bridge。Raw Export 和 Component Model typed 调用通过 native 后端执行，因为它们需要 Wasmtime C API。这是目标平台的能力边界，不改变产物模型。
+Web 实现同时支持 `CORE_WASM + WASMLINE_SERVICE` 与
+`CORE_WASM + RAW_EXPORT`，通过浏览器的 `WebAssembly.Module` 和
+`WebAssembly.Instance` API 执行。Raw session 直接调用数值 export，在实例化前注册同步
+import，并提供有边界检查的线性内存访问；它不使用 Service 响应帧。Component Model
+typed 调用仍仅由 native 提供。Web 与 native 共用 Core ABI 契约，但保留不同后端：Web
+使用 JS/WasmJS binding 和 raw `.wasm`，native 使用 Wasmtime bridge 与
+`.cwasm`/`.pwasm` AOT 产物。
 
 ## 模块依赖关系图
 

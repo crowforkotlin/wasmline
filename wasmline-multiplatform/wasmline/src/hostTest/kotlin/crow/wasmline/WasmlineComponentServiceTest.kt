@@ -20,7 +20,7 @@ class WasmlineComponentServiceTest {
 
         val result = assertIs<WasmlineCallResult.Failure>(wasmline.callResult("service.action"))
 
-        assertEquals(WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH, result.error.code)
+        assertEquals(WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH, result.failure.code)
     }
 
     @Test
@@ -49,10 +49,10 @@ class WasmlineComponentServiceTest {
         )
 
         val failure = assertIs<WasmlineCallResult.Failure>(result)
-        assertEquals(WasmlineErrorCode.UNKNOWN_ACTION, failure.error.code)
-        assertEquals(1002, failure.error.rawCode)
-        assertEquals("missing", failure.error.message)
-        assertContentEquals(byteArrayOf(7, 8), failure.error.details)
+        assertEquals(WasmlineErrorCode.UNKNOWN_ACTION, failure.failure.code)
+        assertEquals(1002, failure.failure.rawCode)
+        assertEquals("missing", failure.failure.message)
+        assertContentEquals(byteArrayOf(7, 8), failure.failure.details)
     }
 
     @Test
@@ -69,8 +69,8 @@ class WasmlineComponentServiceTest {
         )
 
         val failure = assertIs<WasmlineCallResult.Failure>(result)
-        assertEquals(WasmlineErrorCode.HANDLER_FAILED, failure.error.code)
-        assertEquals(WasmlineErrorCode.HANDLER_FAILED.value, failure.error.rawCode)
+        assertEquals(WasmlineErrorCode.HANDLER_FAILED, failure.failure.code)
+        assertEquals(WasmlineErrorCode.HANDLER_FAILED.value, failure.failure.rawCode)
     }
 
     @Test
@@ -78,7 +78,7 @@ class WasmlineComponentServiceTest {
         val result = WasmlineComponentService.decode(WasmlineComponentCallResult(emptyList()))
 
         val failure = assertIs<WasmlineCallResult.Failure>(result)
-        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, failure.error.code)
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, failure.failure.code)
     }
 
     private fun serviceError(code: String, message: String, details: ByteArray): WasmlineComponentValue.RecordValue =

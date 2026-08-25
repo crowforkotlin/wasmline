@@ -1,5 +1,5 @@
 /**
- * Provides file input and output operations.
+ * Declares internal file input and output operations.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin

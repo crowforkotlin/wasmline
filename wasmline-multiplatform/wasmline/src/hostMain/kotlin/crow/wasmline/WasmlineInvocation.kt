@@ -1,20 +1,15 @@
 package crow.wasmline
 
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
-/**
- * Provides result-based Wasmline invocation.
- *
- * Date: 2026-08-02
- * Author: crowforkotlin
- */
+/** Provides result-based Wasmline invocation. */
 fun Wasmline.callResult(action: String, payload: ByteArray = ByteArray(0)): WasmlineCallResult<ByteArray> =
     if (descriptor.invocationProtocol != WasmlineInvocationProtocol.WASMLINE_SERVICE) {
         WasmlineCallResult.Failure(
-            WasmlineCallError(
+            WasmlineFailure(
                 code = WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH,
                 message = "Artifact protocol ${descriptor.invocationProtocol} does not expose WasmlineService actions.",
             ),

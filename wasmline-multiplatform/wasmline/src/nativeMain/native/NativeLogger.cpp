@@ -5,7 +5,7 @@
  * Author: crowforkotlin
  */
 
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 #include <cstdarg>
 #include <cstdio>
 

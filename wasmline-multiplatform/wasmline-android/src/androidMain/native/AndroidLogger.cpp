@@ -5,7 +5,7 @@
  * Author: crowforkotlin
  */
 
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 
 #if WASM_LOGS_ENABLED
 

@@ -72,7 +72,7 @@ suspend fun main() {
         ),
     )) {
         is WasmlineLoadResult.Success -> result.wasmline
-        is WasmlineLoadResult.Failure -> error(result.cause)
+        is WasmlineLoadResult.Failure -> error(result.failure.message)
     }
 
     module.bind(object : HostNotificationService {
@@ -180,22 +180,92 @@ when (result) {
         ),
     ) {
         is WasmlineCallResult.Success -> useValues(call.value.values)
-        is WasmlineCallResult.Failure -> log(call.error.message)
+        is WasmlineCallResult.Failure -> log(call.failure.message)
     }
 
-    is WasmlineLoadResult.Failure -> log(result.cause)
+        is WasmlineLoadResult.Failure -> log(result.failure.message)
 }
 ```
 
-`WASMLINE_SERVICE` 是统一的服务协议：`CORE_WASM` 使用既有 Core bridge，`COMPONENT_MODEL` 使用固定 `wasmline.wit` envelope。`CORE_WASM + RAW_EXPORT` 用于明确的数值 ABI，`COMPONENT_MODEL + COMPONENT_EXPORT` 用于业务专用 typed WIT value。运行时不会在加载过程中执行 WIT-to-Wasm 或 binding 工具；可选的 Gradle/CLI Component 流水线会提前完成这些构建步骤。Envelope 与回调流程参见 [Wasmline Service 指南](/zh/docs/component-service)。
+`WASMLINE_SERVICE` 是服务协议。`CORE_WASM` 可以使用 Service bridge，也可以使用
+`RAW_EXPORT`。Raw Export 通过 `CoreWasmModule` 和 `CoreWasmSession` 使用 `RawValue`
+（`i32`、`i64`、`f32`、`f64`）、多返回值、同步 `RawImport` 回调与有边界检查的
+`RawMemory`，不使用 action/payload 帧。Web 端在加载前通过 `WasmlineWeb.registerBytes()`
+注册字节，或先完成 prefetch，并在 `instantiate()` 前注册所有 imports；JavaScript 边界的
+`i64` 使用 `BigInt`，import 不能等待异步 API。native Raw Export 通过 Wasmtime 加载匹配的
+`.cwasm` 或 `.pwasm`。Component Model 仍是独立的 typed WIT 边界。运行时不会在加载过程中执行
+WIT-to-Wasm 或 binding 工具；可选的 Gradle/CLI Component 流水线会提前完成这些构建步骤。
+Service envelope 与回调流程参见 [Wasmline Service 指南](/zh/docs/component-service)。
+
+对于直接 Core Wasm 模块，应把加载和实例化分开，以便在创建
+WebAssembly instance 前注册全部宿主 import：
+
+```kotlin
+import crow.wasmline.CoreWasmSessionOptions
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawImport
+import crow.wasmline.RawValue
+import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineCoreLoadResult
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineWeb
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.loader.WasmlineLoader
+
+WasmlineWeb.registerBytes("math.wasm", wasmBytes)
+val module = when (val loaded = WasmlineLoader.loadCoreModule(
+    WasmlineArtifactDescriptor(
+        path = "math.wasm",
+        artifactFormat = WasmlineArtifactFormat.RAW_WASM,
+        executionModel = WasmlineExecutionModel.CORE_WASM,
+        invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+    ),
+)) {
+    is WasmlineCoreLoadResult.Success -> loaded.module
+    is WasmlineCoreLoadResult.Failure -> error("${loaded.failure.code}: ${loaded.failure.message}")
+}
+
+val session = module.instantiate(
+    CoreWasmSessionOptions(
+        imports = listOf(
+            RawImport(
+                module = "env",
+                name = "host_add",
+                signature = RawFunctionSignature(
+                    parameters = listOf(RawValueType.I32, RawValueType.I32),
+                    results = listOf(RawValueType.I32),
+                ),
+            ) { _, values ->
+                WasmlineCallResult.Success(
+                    listOf(RawValue.I32((values[0] as RawValue.I32).value + (values[1] as RawValue.I32).value)),
+                )
+            },
+        ),
+    ),
+).getOrThrow()
+
+val values = session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow()
+session.memory?.write(0, byteArrayOf(1, 2, 3))?.getOrThrow()
+session.close()
+module.close()
+```
+
+规范错误类型分为：结果值中的 `WasmlineFailure`、显式抛出适配器使用的
+`WasmlineException`，以及模块尚未创建时的 `WasmlineLoadFailure`。
+结果 API 只通过 `failure`、`failure.code` 和 `failure.message` 表达失败。
 
 ## 结果与异常边界
 
-当普通调用错误需要作为数据处理时，使用 `callResult`、`invokeRawResult` 和 `invokeComponentResult`。结果只有 `Success(value)` 或 `Failure(error)` 两种状态；分支判断应使用 `error.code`，不应解析错误消息。
+当普通调用错误需要作为数据处理时，使用 `callResult`、`invokeRawResult` 和 Core session API。
+结果只有 `Success(value)` 或 `Failure(failure)` 两种状态；分支判断应使用 `failure.code`，不应解析错误消息。
 
 没有绑定 handler 的 action 返回 `ACTION_NOT_BOUND`。它不表示为空 payload，也不会导致宿主崩溃。未知 action、无效 payload、handler 失败、trap、传输失败和响应帧格式错误，在运行时能够构造结果时都返回失败结果。
 
-`getOrNull()` 与 `errorOrNull()` 用于无异常读取。`throwOnFailure()` 是为需要旧式异常调用方式的调用方提供的显式适配，不属于默认结果路径。违反编程契约、运行时对象状态无效，或无法可靠构造结果对象时，才适合使用异常。
+`getOrNull()` 与 `failureOrNull()` 用于无异常读取。`throwOnFailure()` 只在明确需要时将
+`WasmlineFailure` 适配为 `WasmlineException`，不属于默认结果路径。
 
 Core 响应帧使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别帧格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不会增加该 Core 响应帧。
 
@@ -214,6 +284,24 @@ Core 响应帧使用固定的 `WLMF` magic 标记和一个字节的 `frameVersio
 | `CORE_TRAP` | `2002` | Core Wasm 执行发生 trap。 |
 | `CORE_EXPORT_NOT_FOUND` | `2003` | Core export 不存在。 |
 | `INVOCATION_PROTOCOL_MISMATCH` | `2004` | 描述对象与调用 API 不匹配。 |
+| `MODULE_FORMAT_INVALID` | `2201` | raw 或 AOT 模块格式无效。 |
+| `WASM_FEATURE_UNSUPPORTED` | `2202` | 所需 WebAssembly feature 不可用。 |
+| `IMPORT_MISSING` | `2203` | 声明的宿主 import 未注册。 |
+| `IMPORT_SIGNATURE_MISMATCH` | `2204` | import 签名与模块不匹配。 |
+| `INSTANTIATION_FAILED` | `2205` | 模块实例化失败。 |
+| `EXPORT_KIND_MISMATCH` | `2206` | export 存在但种类不正确。 |
+| `ARGUMENT_COUNT_MISMATCH` | `2207` | 参数数量不正确。 |
+| `ARGUMENT_TYPE_MISMATCH` | `2208` | 参数类型不正确。 |
+| `RESULT_TYPE_UNSUPPORTED` | `2209` | 返回类型不在标量 ABI 范围内。 |
+| `MEMORY_OUT_OF_BOUNDS` | `2210` | 线性内存范围无效。 |
+| `IMPORT_HANDLER_FAILED` | `2211` | 同步宿主 import 失败。 |
+| `SESSION_CLOSED` | `2212` | 使用了已关闭的 module 或 session。 |
+| `CONCURRENT_ACCESS` | `2213` | session 已有进行中的操作。 |
+| `REENTRANT_CALL` | `2214` | import 回调重新进入同一 session。 |
+| `UNSUPPORTED_EXPORT_KIND` | `2215` | backend 不支持请求的 export 类型。 |
+| `WASM_TRAP` | `2216` | Core Wasm 执行发生 trap。 |
+| `EXPORT_SIGNATURE_MISSING` | `2217` | Web 调用缺少签名 metadata。 |
+| `EXPORT_NOT_FOUND` | `2218` | 请求的 raw export 不存在。 |
 | `COMPONENT_TRAP` | `2101` | Component Model 执行发生 trap。 |
 | `COMPONENT_EXPORT_NOT_FOUND` | `2102` | Component export 不存在。 |
 | `COMPONENT_CALL_FAILED` | `2103` | Component 调用未成功返回。 |

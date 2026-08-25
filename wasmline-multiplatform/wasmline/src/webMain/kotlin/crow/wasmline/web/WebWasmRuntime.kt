@@ -80,10 +80,12 @@ internal class WebWasmInstanceHandle internal constructor(private val instance: 
 internal class WebWasmFunction internal constructor(private val name: String, private val function: WebJsValue) {
     fun invoke(args: List<WebWasmValue> = emptyList(), resultTypes: List<WebWasmType> = emptyList()): List<WebWasmValue> {
         val encodedArgs = webArrayOf(args.map(WebWasmValueCodec::encode))
-        val result = try {
-            webCallFunction(function, encodedArgs)
-        } catch (failure: Throwable) {
-            throw WebWasmException("Invocation of wasm export '$name' failed: ${failure.message ?: failure}", failure)
+        val result = when (val outcome = webCallFunctionSafely(function, encodedArgs)) {
+            is WebWasmCallOutcome.Success -> outcome.value
+
+            is WebWasmCallOutcome.Failure -> throw WebWasmException(
+                "Invocation of wasm export '$name' failed: ${outcome.message}",
+            )
         }
         return WebWasmValueCodec.decodeResults(result, resultTypes)
     }
@@ -99,15 +101,44 @@ internal class WebWasmFunction internal constructor(private val name: String, pr
  * Author: crowforkotlin
  */
 internal class WebWasmMemory internal constructor(private val memory: WebJsValue) {
+    val byteSize: Long get() = webMemoryByteSize(memory)
+
+    val pageCount: Long get() = byteSize / WASM_PAGE_SIZE
+
     fun read(pointer: Int, length: Int): ByteArray {
+        requireValidRange(pointer, length)
         if (length == 0) return ByteArray(0)
         return webBytesCopyOut(webMemoryBytes(memory, pointer, length))
     }
 
     fun write(pointer: Int, bytes: ByteArray) {
+        requireValidRange(pointer, bytes.size)
         if (bytes.isEmpty()) return
         webBytesCopyIn(webMemoryBytes(memory, pointer, bytes.size), bytes)
     }
 
     fun readText(pointer: Int, length: Int): String = read(pointer, length).decodeToString()
+
+    fun grow(deltaPages: Int): Long {
+        require(deltaPages >= 0) { "WebAssembly memory growth must not be negative." }
+        return webMemoryGrow(memory, deltaPages)
+    }
+
+    private fun requireValidRange(pointer: Int, length: Int) {
+        val size = byteSize
+        require(pointer >= 0 && length >= 0 && pointer.toLong() <= size && length.toLong() <= size - pointer.toLong()) {
+            "WebAssembly memory range pointer=$pointer length=$length exceeds size=$size."
+        }
+    }
+
+    /**
+     * Defines the Core WebAssembly linear-memory page size.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     */
+    private companion object {
+        /** Number of bytes in one Core WebAssembly memory page. */
+        const val WASM_PAGE_SIZE = 65_536L
+    }
 }

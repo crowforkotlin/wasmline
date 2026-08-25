@@ -26,7 +26,7 @@ internal class WebWasmImportsBuilder {
         resultTypes: List<WebWasmType>,
         handler: (List<WebWasmValue>) -> List<WebWasmValue>,
     ): WebWasmImportsBuilder = rawFunction(module, name) { rawArgs ->
-        if (rawArgs.size < paramTypes.size) {
+        if (rawArgs.size != paramTypes.size) {
             throw WebWasmException(
                 "Host import '$module.$name' expected ${paramTypes.size} argument(s) but received ${rawArgs.size}.",
             )

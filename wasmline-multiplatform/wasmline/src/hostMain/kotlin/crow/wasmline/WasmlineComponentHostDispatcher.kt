@@ -1,9 +1,9 @@
 package crow.wasmline
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
-import crow.wasmline.invocation.WasmlineInvocationException
+import crow.wasmline.invocation.WasmlineException
+import crow.wasmline.invocation.WasmlineFailure
 
 /**
  * Dispatches typed Component Model host imports to an immutable registry.
@@ -60,7 +60,7 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
                 ?.let { it as? WasmlineComponentValue.U32 }?.value
                 ?: return encode(
                     WasmlineCallResult.Failure(
-                        WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Host resource drop representation is invalid."),
+                        WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Host resource drop representation is invalid."),
                     ),
                 )
             val removed = lock.withLock { hostResources.remove(representation) }
@@ -68,7 +68,7 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
                 if (removed != null) lock.withLock { hostResources[representation] = removed }
                 return encode(
                     WasmlineCallResult.Failure(
-                        WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Host resource is stale or has the wrong type."),
+                        WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Host resource is stale or has the wrong type."),
                     ),
                 )
             }
@@ -79,7 +79,7 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
         } catch (error: IllegalArgumentException) {
             return encode(
                 WasmlineCallResult.Failure(
-                    WasmlineCallError(
+                    WasmlineFailure(
                         code = WasmlineErrorCode.HANDLER_FAILED,
                         message = error.message ?: "Component host identifiers are invalid.",
                     ),
@@ -117,7 +117,7 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
                     it.reference?.sameIdentity(reference) == true
             }
         } ?: return WasmlineCallResult.Failure(
-            WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Host resource is stale or has the wrong type."),
+            WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Host resource is stale or has the wrong type."),
         )
         val binding = registry.resources.getValue(entry.id)
         val method = binding.methods[methodName] ?: return null
@@ -125,7 +125,7 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
             method(entry.implementation, arguments.drop(1))
         } catch (error: Exception) {
             WasmlineCallResult.Failure(
-                WasmlineCallError(WasmlineErrorCode.HANDLER_FAILED, error.message ?: "Host resource method failed."),
+                WasmlineFailure(WasmlineErrorCode.HANDLER_FAILED, error.message ?: "Host resource method failed."),
             )
         }
     }
@@ -148,7 +148,7 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
         WasmlineCallResult.Success(emptyList())
     } catch (error: Exception) {
         WasmlineCallResult.Failure(
-            WasmlineCallError(WasmlineErrorCode.HANDLER_FAILED, error.message ?: "Host resource drop failed."),
+            WasmlineFailure(WasmlineErrorCode.HANDLER_FAILED, error.message ?: "Host resource drop failed."),
         )
     }
 
@@ -167,7 +167,7 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
         adapter.invoke(arguments)
     } catch (error: Exception) {
         WasmlineCallResult.Failure(
-            WasmlineCallError(
+            WasmlineFailure(
                 code = WasmlineErrorCode.HANDLER_FAILED,
                 message = error.message ?: "Typed Component host adapter failed.",
             ),
@@ -177,6 +177,6 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
     private fun encode(result: WasmlineCallResult<List<WasmlineComponentValue>>): ByteArray =
         when (val encoded = WasmlineTypedInvocationCodec.encodeComponentResult(result)) {
             is WasmlineCallResult.Success -> encoded.value
-            is WasmlineCallResult.Failure -> throw WasmlineInvocationException(encoded.error)
+            is WasmlineCallResult.Failure -> throw WasmlineException(encoded.failure)
         }
 }

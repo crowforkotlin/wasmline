@@ -64,11 +64,11 @@ class NativeTypedComponentHostImportIntegrationTest {
                 )
 
                 assertTrue(
-                    failure.error.code.isComponentCallFailure(),
-                    "Expected the native Component callback failure, got ${failure.error.code}.",
+                    failure.failure.code.isComponentCallFailure(),
+                    "Expected the native Component callback failure, got ${failure.failure.code}.",
                 )
                 assertContains(
-                    failure.error.message,
+                    failure.failure.message,
                     "No typed Component host adapter is registered for 'example:host/api/increment'.",
                 )
             } finally {

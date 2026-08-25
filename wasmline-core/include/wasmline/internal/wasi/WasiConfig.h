@@ -1,5 +1,5 @@
 /**
- * Provides shared WASI configuration.
+ * Declares internal shared WASI configuration.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin

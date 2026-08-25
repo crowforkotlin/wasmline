@@ -1,8 +1,8 @@
 package crow.wasmline
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 /**
  * Provides direct typed export calls for host runtimes.
@@ -73,4 +73,4 @@ private fun Wasmline.validateProtocol(expected: WasmlineInvocationProtocol, expo
 }
 
 private fun failure(code: WasmlineErrorCode, message: String): WasmlineCallResult.Failure =
-    WasmlineCallResult.Failure(WasmlineCallError(code = code, message = message))
+    WasmlineCallResult.Failure(WasmlineFailure(code = code, message = message))

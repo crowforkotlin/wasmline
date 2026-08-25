@@ -7,9 +7,9 @@
 
 #include "wasmline/runtime/Component.h"
 
-#include "cache/ArtifactCache.h"
-#include "logging/NativeLogger.h"
-#include "wasmtime/WasmtimeMessage.h"
+#include "wasmline/internal/cache/ArtifactCache.h"
+#include "wasmline/internal/logging/NativeLogger.h"
+#include "wasmline/internal/wasmtime/WasmtimeMessage.h"
 #include "wasmline/runtime/AotLoadPathDiagnostics.h"
 #include "wasmline/runtime/Engine.h"
 

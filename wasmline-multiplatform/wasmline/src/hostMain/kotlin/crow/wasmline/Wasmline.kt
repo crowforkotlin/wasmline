@@ -13,10 +13,16 @@ import crow.wasmline.invocation.WasmlineCallResult
  *
  * Artifact loading is owned by `WasmlineLoader`; process-wide lifecycle is
  * owned by [WasmlineRuntime].
+ *
+ * Date: 2026-08-25
+ * Author: crowforkotlin
  */
 expect class Wasmline internal constructor(moduleKey: String, config: WasmlineConfig, descriptor: WasmlineArtifactDescriptor) {
 
+    /** Runtime configuration captured when this handle was loaded. */
     val config: WasmlineConfig
+
+    /** Artifact descriptor captured when this handle was loaded. */
     val descriptor: WasmlineArtifactDescriptor
     internal val hostServiceRegistry: WasmlineHostServiceRegistry
     internal val componentModuleState: WasmlineComponentModuleState
@@ -24,10 +30,7 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
     /** Binds an immutable typed host registry to this loaded Component handle. */
     fun bindComponentHost(registry: WasmlineComponentHostRegistry): Wasmline
 
-    /**
-     * Binds the Wasmline Service envelope used by Components that import
-     * `wasmline:service/host` to this loaded Component handle.
-     */
+    /** Binds the `wasmline:service/host` envelope to this loaded Component handle. */
     fun bindComponentService(handler: (action: String, payload: ByteArray) -> WasmlineCallResult<ByteArray>): Wasmline
 
     internal fun setOutbound(dispatcher: WasmlineHostDispatcher)
@@ -49,5 +52,11 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
         resourceName: String,
         representation: UInt,
     ): WasmlineCallResult<WasmlineComponentValue.ResourceValue>
+    internal fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule>
+
+    /** Adapts this loaded handle to an uninstantiated Core Wasm module. */
+    fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule>
+
+    /** Closes this handle and releases its platform session. */
     fun close()
 }

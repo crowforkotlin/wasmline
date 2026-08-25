@@ -22,7 +22,7 @@ class WasmlineLocalArtifactBridgeTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("Artifact path must not be blank."))
+        assertTrue(failure.failure.message.contains("Artifact path must not be blank."))
         assertEquals(0, platform.resolveCalls)
     }
 
@@ -54,7 +54,7 @@ class WasmlineLocalArtifactBridgeTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
+        assertTrue(failure.failure.message.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
         assertEquals(0, platform.resolveCalls)
         assertEquals(0, platform.loadCalls)
     }
@@ -70,7 +70,7 @@ class WasmlineLocalArtifactBridgeTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("requires an explicit artifactFormat"))
+        assertTrue(failure.failure.message.contains("requires an explicit artifactFormat"))
         assertEquals(0, platform.resolveCalls)
         assertEquals(0, platform.loadCalls)
     }
@@ -109,7 +109,7 @@ class WasmlineLocalArtifactBridgeTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("artifact file not found"))
+        assertTrue(failure.failure.message.contains("artifact file not found"))
         assertEquals(1, platform.resolveCalls)
         assertEquals(0, platform.loadCalls)
     }
@@ -128,7 +128,7 @@ class WasmlineLocalArtifactBridgeTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("Load failure"))
+        assertTrue(failure.failure.message.contains("Load failure"))
         assertEquals(0, platform.loadCalls)
     }
 

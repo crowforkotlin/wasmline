@@ -2,8 +2,8 @@ package crow.wasmline.web
 
 import crow.wasmline.WasmlineLog
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 import kotlin.random.Random
 
 /**
@@ -203,7 +203,7 @@ internal class WebWasmPlugin(binary: ByteArray) {
             val currentDispatcher = dispatcher
             if (currentDispatcher == null) {
                 WasmlineResponseCodec.encodeFailure(
-                    WasmlineCallError(
+                    WasmlineFailure(
                         code = WasmlineErrorCode.ACTION_NOT_BOUND,
                         message = "No Wasmline outbound action is bound.",
                     ),
@@ -213,7 +213,7 @@ internal class WebWasmPlugin(binary: ByteArray) {
             }
         } catch (error: Throwable) {
             WasmlineResponseCodec.encodeFailure(
-                WasmlineCallError(
+                WasmlineFailure(
                     code = WasmlineErrorCode.HANDLER_FAILED,
                     message = error.message ?: "Wasmline outbound action handler failed.",
                 ),

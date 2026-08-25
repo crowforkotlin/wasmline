@@ -143,9 +143,9 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
         import crow.wasmline.WasmlineComponentServiceInit
         import crow.wasmline.WasmlineComponentServiceOutboundTransport
         import crow.wasmline.WasmlineGuestServiceRuntime
-        import crow.wasmline.invocation.WasmlineCallError
         import crow.wasmline.invocation.WasmlineCallResult
         import crow.wasmline.invocation.WasmlineErrorCode
+        import crow.wasmline.invocation.WasmlineFailure
         import $SERVICE_BINDING_PACKAGE.Host
         import $SERVICE_BINDING_PACKAGE.Plugin
         import $SERVICE_BINDING_PACKAGE.runtime.ComponentException
@@ -163,7 +163,7 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
                 ) {
                     is WasmlineCallResult.Success -> Result.success(result.value.toUByteList())
                     is WasmlineCallResult.Failure -> Result.failure(
-                        ComponentException(result.error.toPluginServiceError()),
+                        ComponentException(result.failure.toPluginServiceError()),
                     )
                 }
         }
@@ -181,21 +181,21 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
                 ),
             ).fold(
                 onSuccess = { WasmlineCallResult.Success(it.toByteArray()) },
-                onFailure = { WasmlineCallResult.Failure(it.toHostCallError()) },
+                onFailure = { WasmlineCallResult.Failure(it.toHostCallFailure()) },
             )
         }
 
         @WasmlineComponentServiceInit
         fun wasmlineComponentServiceInitialize() = Unit
 
-        private fun Throwable.toHostCallError(): WasmlineCallError {
+        private fun Throwable.toHostCallFailure(): WasmlineFailure {
             val serviceError = (this as? ComponentException)?.value as? Host.ServiceError
-                ?: return WasmlineCallError(
+                ?: return WasmlineFailure(
                     code = WasmlineErrorCode.HANDLER_FAILED,
                     message = message ?: "Wasmline Service Host binding failed.",
                 )
             val rawCode = serviceError.code.toIntOrNull() ?: WasmlineErrorCode.UNKNOWN.value
-            return WasmlineCallError(
+            return WasmlineFailure(
                 code = WasmlineErrorCode.fromValue(rawCode),
                 rawCode = rawCode,
                 message = serviceError.message,
@@ -203,7 +203,7 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
             )
         }
 
-        private fun WasmlineCallError.toPluginServiceError(): Plugin.ServiceError = Plugin.ServiceError(
+        private fun WasmlineFailure.toPluginServiceError(): Plugin.ServiceError = Plugin.ServiceError(
             code = rawCode.toString(),
             message = message,
             details = details?.toUByteList() ?: emptyList(),

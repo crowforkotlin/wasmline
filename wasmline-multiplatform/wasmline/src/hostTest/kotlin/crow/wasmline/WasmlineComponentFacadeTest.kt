@@ -27,7 +27,7 @@ class WasmlineComponentFacadeTest {
             protocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
         )
         val serviceCall = assertIs<WasmlineCallResult.Failure>(typed.callResult("service/action"))
-        assertEquals(WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH, serviceCall.error.code)
+        assertEquals(WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH, serviceCall.failure.code)
         assertFailsWith<IllegalArgumentException> {
             typed.bindComponentService { _, _ -> WasmlineCallResult.Success(ByteArray(0)) }
         }

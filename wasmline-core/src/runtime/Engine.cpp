@@ -6,8 +6,8 @@
  */
 
 #include "wasmline/runtime/Engine.h"
-#include "logging/NativeLogger.h"
-#include "wasmtime/WasmtimeMessage.h"
+#include "wasmline/internal/logging/NativeLogger.h"
+#include "wasmline/internal/wasmtime/WasmtimeMessage.h"
 #include <array>
 
 namespace wasmline {
@@ -119,4 +119,5 @@ namespace wasmline {
         std::lock_guard<std::mutex> lock(engineMutex);
         return engine;
     }
+
 } // namespace wasmline

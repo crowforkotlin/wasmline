@@ -5,11 +5,11 @@
  * Author: crowforkotlin
  */
 
-#include "wasi/WasiConfig.h"
+#include "wasmline/internal/wasi/WasiConfig.h"
 
 #include <algorithm>
 
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 
 namespace wasmline::wasi {
     namespace {

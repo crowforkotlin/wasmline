@@ -1,7 +1,7 @@
 /**
  * Represents the result of a native Wasm invocation.
  *
- * Date: 2026-08-02
+ * Date: 2026-08-25
  * Author: crowforkotlin
  */
 
@@ -15,9 +15,19 @@
 #include "wasmline/value/ComponentValue.h"
 
 namespace wasmline {
-    /** Stores a scalar value for a Core Wasm export call. */
+    /**
+     * Stores a scalar value for a Core Wasm export call.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     */
     struct RawValue {
-        /** Defines the supported scalar types. */
+        /**
+         * Defines the supported scalar types.
+         *
+         * Date: 2026-08-25
+         * Author: crowforkotlin
+         */
         enum class Type : uint8_t {
             I32,
             I64,
@@ -25,14 +35,26 @@ namespace wasmline {
             F64,
         };
 
+        /** Scalar type tag for the data field. */
         Type type = Type::I32;
 
+        /**
+         * Stores one scalar payload selected by the type tag.
+         *
+         * Date: 2026-08-25
+         * Author: crowforkotlin
+         */
         union Data {
+            /** Signed i32 payload. */
             int32_t i32;
+            /** Signed i64 payload. */
             int64_t i64;
+            /** IEEE-754 binary32 payload. */
             float f32;
+            /** IEEE-754 binary64 payload. */
             double f64;
 
+            /** Initializes the union with a zero i32 payload. */
             Data() : i32(0) {}
         } data;
 
@@ -49,7 +71,12 @@ namespace wasmline {
         static RawValue fromF64(double value);
     };
 
-    /** Stores a successful or failed native invocation result. */
+    /**
+     * Stores a successful or failed native invocation result.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     */
     class InvocationResult {
     public:
         /** Creates a successful Core Wasm result. */

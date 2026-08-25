@@ -86,7 +86,7 @@ class NativeComponentServiceIntegrationTest {
                 handle.callResult(ACTION_CALLBACK, byteArrayOf(1)),
             )
 
-            assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, result.error.code)
+            assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, result.failure.code)
         } finally {
             handle.close()
             WasmlineRuntime.shutdown()
@@ -105,7 +105,7 @@ class NativeComponentServiceIntegrationTest {
                 WasmlineHostDispatcher { _, payload ->
                     when (val nested = handle.callResult(ACTION_ECHO, payload)) {
                         is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(nested.value)
-                        is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(nested.error)
+                        is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(nested.failure)
                     }
                 },
             )
@@ -114,8 +114,8 @@ class NativeComponentServiceIntegrationTest {
                 handle.callResult(ACTION_CALLBACK, byteArrayOf(4, 5, 6)),
             )
 
-            assertEquals(WasmlineErrorCode.COMPONENT_CALL_FAILED, result.error.code)
-            assertEquals("Recursive invocation of the same Component session is not supported.", result.error.message)
+            assertEquals(WasmlineErrorCode.COMPONENT_CALL_FAILED, result.failure.code)
+            assertEquals("Recursive invocation of the same Component session is not supported.", result.failure.message)
         } finally {
             handle.close()
             WasmlineRuntime.shutdown()
@@ -136,7 +136,7 @@ class NativeComponentServiceIntegrationTest {
                 WasmlineHostDispatcher { _, payload ->
                     when (val result = nested.callResult(ACTION_ECHO, payload)) {
                         is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(result.value)
-                        is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.error)
+                        is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.failure)
                     }
                 },
             )

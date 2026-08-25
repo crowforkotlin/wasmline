@@ -260,10 +260,10 @@ internal class WasmSampleRunner(
                             artifactName = artifactName,
                             inputPayload = inputPayload,
                             inputJson = inputJson,
-                            logs = logs + "[Sample] load failure: ${result.cause}",
+                            logs = logs + "[Sample] load failure: ${result.failure.message}",
                             loadDurationMs = loadDurationMs,
                             totalDurationMs = totalMark.elapsedNow().inWholeMilliseconds,
-                            message = result.cause,
+                            message = result.failure.message,
                         )
                     }
 
@@ -540,7 +540,7 @@ internal class WasmSampleRunner(
         )
         return when (result) {
             is crow.wasmline.invocation.WasmlineCallResult.Failure ->
-                SampleInvocation.Failure(result.error.message)
+                SampleInvocation.Failure(result.failure.message)
 
             is crow.wasmline.invocation.WasmlineCallResult.Success -> {
                 log("[Raw Export] invoked add_i32($value, 1)")
@@ -583,7 +583,7 @@ internal class WasmSampleRunner(
             val echoed = when (val result = runtime.callResult(COMPONENT_FIXTURE_ECHO_ACTION, payload)) {
                 is WasmlineCallResult.Success -> result.value
                 is WasmlineCallResult.Failure -> return SampleInvocation.Failure(
-                    "$COMPONENT_FIXTURE_ECHO_ACTION failed: ${result.error.message}",
+                    "$COMPONENT_FIXTURE_ECHO_ACTION failed: ${result.failure.message}",
                 )
             }
             if (!echoed.contentEquals(payload)) {
@@ -594,7 +594,7 @@ internal class WasmSampleRunner(
             val callback = when (val result = runtime.callResult(COMPONENT_FIXTURE_CALLBACK_ACTION, payload)) {
                 is WasmlineCallResult.Success -> result.value
                 is WasmlineCallResult.Failure -> return SampleInvocation.Failure(
-                    "$COMPONENT_FIXTURE_CALLBACK_ACTION failed: ${result.error.message}",
+                    "$COMPONENT_FIXTURE_CALLBACK_ACTION failed: ${result.failure.message}",
                 )
             }
             val expectedCallback = payload + COMPONENT_FIXTURE_CALLBACK_SUFFIX
@@ -606,7 +606,7 @@ internal class WasmSampleRunner(
             val empty = when (val result = runtime.callResult(COMPONENT_FIXTURE_EMPTY_ACTION)) {
                 is WasmlineCallResult.Success -> result.value
                 is WasmlineCallResult.Failure -> return SampleInvocation.Failure(
-                    "$COMPONENT_FIXTURE_EMPTY_ACTION failed: ${result.error.message}",
+                    "$COMPONENT_FIXTURE_EMPTY_ACTION failed: ${result.failure.message}",
                 )
             }
             if (empty.isNotEmpty()) {
@@ -639,7 +639,7 @@ internal class WasmSampleRunner(
         )
         return when (result) {
             is crow.wasmline.invocation.WasmlineCallResult.Failure ->
-                SampleInvocation.Failure(result.error.message)
+                SampleInvocation.Failure(result.failure.message)
 
             is crow.wasmline.invocation.WasmlineCallResult.Success -> {
                 val output = result.value.values.singleOrNull() as? WasmlineComponentValue.S32

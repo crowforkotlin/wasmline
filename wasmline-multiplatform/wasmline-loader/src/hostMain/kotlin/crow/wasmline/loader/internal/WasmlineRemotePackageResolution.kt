@@ -2,8 +2,9 @@
 
 package crow.wasmline.loader.internal
 
-import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineLog
+import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineCache
 import crow.wasmline.loader.WasmlineLoadRequest
@@ -52,15 +53,25 @@ internal object WasmlineRemotePackageResolution {
             failure(
                 "Manifest '$manifestUrl' is not available in a fresh cache entry. " +
                     "Provide request.options.networkClient or request.resolvers.remotePackage.",
+                WasmlineLoadStage.SOURCE_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_NOT_FOUND,
             )
         } else {
-            failure("Failed to fetch manifest from '$manifestUrl'.")
+            failure(
+                "Failed to fetch manifest from '$manifestUrl'.",
+                WasmlineLoadStage.SOURCE_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_DOWNLOAD_FAILED,
+            )
         }
 
         val envelope = try {
             ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
         } catch (_: Exception) {
-            return failure("Failed to parse manifest envelope from '$manifestUrl'.")
+            return failure(
+                "Failed to parse manifest envelope from '$manifestUrl'.",
+                WasmlineLoadStage.MANIFEST_DECODING,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
         }
 
         val manifest = when (
@@ -71,23 +82,42 @@ internal object WasmlineRemotePackageResolution {
             )
         ) {
             is WasmlineManifestVerification.Verified -> verification.manifest
-            is WasmlineManifestVerification.Rejected -> return failure(verification.cause)
+
+            is WasmlineManifestVerification.Rejected -> return failure(
+                verification.cause,
+                WasmlineLoadStage.SIGNATURE_VERIFICATION,
+                WasmlineErrorCode.SIGNATURE_VERIFICATION_FAILED,
+            )
         }
 
         val artifact = WasmlineLocalPackageResolution.selectArtifact(manifest.artifacts)
             ?: return failure(
                 "No compatible artifact found in remote package '$manifestUrl' " +
                     "for host ${describe(currentHostArtifactTarget)}.",
+                WasmlineLoadStage.ARTIFACT_SELECTION,
+                WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE,
             )
         val pendingDescriptor = artifact.toDescriptor(path = "pending")
         pendingDescriptor.validationError()?.let {
-            return failure("Invalid artifact descriptor for '${artifact.url}': $it")
+            return failure(
+                "Invalid artifact descriptor for '${artifact.url}': $it",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+            )
         }
         if (artifact.sha256.isBlank()) {
-            return failure("Artifact '${artifact.url}' from '$manifestUrl' is missing sha256 metadata.")
+            return failure(
+                "Artifact '${artifact.url}' from '$manifestUrl' is missing sha256 metadata.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+            )
         }
         if (!sha256Pattern.matches(artifact.sha256)) {
-            return failure("Artifact '${artifact.url}' from '$manifestUrl' has invalid sha256 metadata.")
+            return failure(
+                "Artifact '${artifact.url}' from '$manifestUrl' has invalid sha256 metadata.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+            )
         }
 
         val artifactUrl = resolveArtifactUrl(manifestUrl, artifact.url)
@@ -115,24 +145,36 @@ internal object WasmlineRemotePackageResolution {
             is ArtifactFileResolution.HashMismatch -> return failure(
                 "Artifact '${artifact.url}' from '$artifactUrl' failed sha256 verification. " +
                     "Expected $expectedSha256, actual ${resolution.actualSha256}.",
+                WasmlineLoadStage.SIGNATURE_VERIFICATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
             )
 
             is ArtifactFileResolution.HttpFailure -> return failure(
                 "Failed to fetch artifact '$artifactUrl': HTTP ${resolution.statusCode}.",
+                WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_DOWNLOAD_FAILED,
             )
 
             is ArtifactFileResolution.WriteFailure -> return failure(
                 "Failed to fetch or atomically cache artifact '$artifactUrl': " +
                     (resolution.cause.message ?: "unknown error"),
+                WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_IO_FAILED,
             )
 
             ArtifactFileResolution.Missing -> return if (networkClient == null) {
                 failure(
                     "Artifact '$artifactUrl' is not available in cache. " +
                         "Provide request.options.networkClient or request.resolvers.remotePackage.",
+                    WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                    WasmlineErrorCode.ARTIFACT_NOT_FOUND,
                 )
             } else {
-                failure("Failed to fetch artifact from '$artifactUrl'.")
+                failure(
+                    "Failed to fetch artifact from '$artifactUrl'.",
+                    WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                    WasmlineErrorCode.ARTIFACT_DOWNLOAD_FAILED,
+                )
             }
         }
 
@@ -311,12 +353,11 @@ internal object WasmlineRemotePackageResolution {
         return "${target.os}/${target.cpu} ($bitness)"
     }
 
-    private fun failure(cause: String): WasmlineSourceResolution.Complete = WasmlineSourceResolution.Complete(
-        WasmlineLoadState.Failure(
-            code = WasmlineLoadState.CODE_FAILURE,
-            cause = cause,
-        ),
-    )
+    private fun failure(
+        cause: String,
+        stage: WasmlineLoadStage = WasmlineLoadStage.SOURCE_RESOLUTION,
+        code: WasmlineErrorCode = WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
+    ): WasmlineSourceResolution.Complete = structuredResolutionFailure(stage, code, cause)
 
     private class ArtifactLockEntry(val mutex: Mutex = Mutex(), var users: Int = 0)
 

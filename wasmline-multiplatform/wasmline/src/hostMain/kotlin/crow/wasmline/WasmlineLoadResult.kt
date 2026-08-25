@@ -1,12 +1,57 @@
 package crow.wasmline
 
 /**
- * Public result of a Wasmline load operation.
+ * Represents the result of loading an uninstantiated Core Wasm module.
  *
- * - [Success]: Module loaded successfully, contains a [Wasmline] instance for communication.
- * - [Failure]: Loading failed, contains a descriptive error message.
+ * Date: 2026-08-25
+ * Author: crowforkotlin
+ */
+sealed interface WasmlineCoreLoadResult {
+    /**
+     * Carries a loaded, uninstantiated Core Wasm module.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     *
+     * @property module Loaded module handle.
+     */
+    data class Success(val module: CoreWasmModule) : WasmlineCoreLoadResult
+
+    /**
+     * Carries a structured Core Wasm load failure.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     *
+     * @property failure Failure stage, code, and diagnostics.
+     */
+    data class Failure(val failure: WasmlineLoadFailure) : WasmlineCoreLoadResult
+}
+
+/**
+ * Represents the result of loading a Wasmline runtime handle.
+ *
+ * Date: 2026-08-25
+ * Author: crowforkotlin
  */
 sealed interface WasmlineLoadResult {
+    /**
+     * Carries a loaded Wasmline handle.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     *
+     * @property wasmline Loaded runtime handle.
+     */
     data class Success(val wasmline: Wasmline) : WasmlineLoadResult
-    data class Failure(val cause: String) : WasmlineLoadResult
+
+    /**
+     * Carries a structured load failure.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     *
+     * @property failure Failure stage, code, and diagnostics.
+     */
+    data class Failure(val failure: WasmlineLoadFailure) : WasmlineLoadResult
 }

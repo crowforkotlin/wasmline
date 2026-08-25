@@ -72,7 +72,7 @@ suspend fun main() {
         ),
     )) {
         is WasmlineLoadResult.Success -> result.wasmline
-        is WasmlineLoadResult.Failure -> error(result.cause)
+        is WasmlineLoadResult.Failure -> error(result.failure.message)
     }
 
     module.bind(object : HostNotificationService {
@@ -180,22 +180,99 @@ when (result) {
         ),
     ) {
         is WasmlineCallResult.Success -> useValues(call.value.values)
-        is WasmlineCallResult.Failure -> log(call.error.message)
+        is WasmlineCallResult.Failure -> log(call.failure.message)
     }
 
-    is WasmlineLoadResult.Failure -> log(result.cause)
+        is WasmlineLoadResult.Failure -> log(result.failure.message)
 }
 ```
 
-`WASMLINE_SERVICE` is the unified service protocol. `CORE_WASM` uses the existing Core bridge, while `COMPONENT_MODEL` uses the fixed `wasmline.wit` envelope. `CORE_WASM + RAW_EXPORT` is for an explicitly declared numeric ABI, and `COMPONENT_MODEL + COMPONENT_EXPORT` is for business-specific typed WIT values. The runtime does not run WIT-to-Wasm or binding tools during load; the optional Gradle/CLI Component pipeline performs that build step ahead of time. See the [Wasmline Service guide](/en/docs/component-service) for the envelope and callback flow.
+`WASMLINE_SERVICE` is the service protocol. `CORE_WASM` can use either that
+Service bridge or `RAW_EXPORT`. Raw Export uses `CoreWasmModule` and
+`CoreWasmSession` with `RawValue` (`i32`, `i64`, `f32`, `f64`), multi-value
+results, synchronous `RawImport` callbacks, and checked `RawMemory`; it does
+not use action/payload frames. On Web, register bytes with
+`WasmlineWeb.registerBytes()` or prefetch them before loading, and register all
+imports before `instantiate()`. Web `i64` uses `BigInt` at the JavaScript
+boundary, and imports cannot wait for asynchronous APIs. Native Raw Export
+loads matching `.cwasm` or `.pwasm` artifacts through Wasmtime. The Component
+Model path remains a separate typed WIT boundary. The runtime does not run
+WIT-to-Wasm or binding tools during load; the optional Gradle/CLI Component
+pipeline performs that build step ahead of time. See the [Wasmline Service
+guide](/en/docs/component-service) for the Service envelope and callback flow.
+
+For a direct Core Wasm module, keep loading and instantiation separate so every
+host import is registered before the WebAssembly instance is created:
+
+```kotlin
+import crow.wasmline.CoreWasmSessionOptions
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawImport
+import crow.wasmline.RawValue
+import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineCoreLoadResult
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineWeb
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.loader.WasmlineLoader
+
+WasmlineWeb.registerBytes("math.wasm", wasmBytes)
+val module = when (val loaded = WasmlineLoader.loadCoreModule(
+    WasmlineArtifactDescriptor(
+        path = "math.wasm",
+        artifactFormat = WasmlineArtifactFormat.RAW_WASM,
+        executionModel = WasmlineExecutionModel.CORE_WASM,
+        invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+    ),
+)) {
+    is WasmlineCoreLoadResult.Success -> loaded.module
+    is WasmlineCoreLoadResult.Failure -> error("${loaded.failure.code}: ${loaded.failure.message}")
+}
+
+val session = module.instantiate(
+    CoreWasmSessionOptions(
+        imports = listOf(
+            RawImport(
+                module = "env",
+                name = "host_add",
+                signature = RawFunctionSignature(
+                    parameters = listOf(RawValueType.I32, RawValueType.I32),
+                    results = listOf(RawValueType.I32),
+                ),
+            ) { _, values ->
+                WasmlineCallResult.Success(
+                    listOf(RawValue.I32((values[0] as RawValue.I32).value + (values[1] as RawValue.I32).value)),
+                )
+            },
+        ),
+    ),
+).getOrThrow()
+
+val values = session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow()
+session.memory?.write(0, byteArrayOf(1, 2, 3))?.getOrThrow()
+session.close()
+module.close()
+```
+
+The canonical failure types are `WasmlineFailure` for result values,
+`WasmlineException` for explicit throwing adapters, and `WasmlineLoadFailure`
+for failures that happen before a module exists. Result APIs expose
+`failure`, `failure.code`, and `failure.message` as their only failure model.
 
 ## Result and Exception Boundary
 
-Use `callResult`, `invokeRawResult`, and `invokeComponentResult` when normal call failures should be handled as data. The result has either `Success(value)` or `Failure(error)`; inspect `error.code` rather than parsing the message.
+Use `callResult`, `invokeRawResult`, and the Core session API when normal call
+failures should be handled as data. The result has either `Success(value)` or
+`Failure(failure)`; inspect `failure.code` rather than parsing the message.
 
 An action that has no bound handler returns `ACTION_NOT_BOUND`. It is not represented by an empty payload and does not crash the host. Unknown actions, invalid payloads, handler failures, traps, transport failures, and malformed response frames also return a failure result when the runtime can construct one.
 
-`getOrNull()` and `errorOrNull()` provide non-throwing reads. `throwOnFailure()` is an explicit exception adapter for callers that need the older exception-style API. It is not part of the default result path. An exception remains appropriate for a violated programming contract, an invalid runtime state, or a failure that cannot produce a reliable result object.
+`getOrNull()` and `failureOrNull()` provide non-throwing reads.
+`throwOnFailure()` adapts a `WasmlineFailure` to `WasmlineException` explicitly;
+it is not part of the default result path.
 
 The Core response frame uses the fixed `WLMF` magic marker and a one-byte `frameVersion`. The current value is `1`. The magic marker identifies the frame entry format; it is not authentication. `frameVersion` identifies the response byte layout; it is not the Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not add this Core frame.
 
@@ -214,6 +291,24 @@ Error codes are stable identifiers. Applications should branch on the code and u
 | `CORE_TRAP` | `2002` | Core Wasm execution trapped. |
 | `CORE_EXPORT_NOT_FOUND` | `2003` | A Core export is missing. |
 | `INVOCATION_PROTOCOL_MISMATCH` | `2004` | The descriptor and call API do not match. |
+| `MODULE_FORMAT_INVALID` | `2201` | The raw or AOT module format is invalid. |
+| `WASM_FEATURE_UNSUPPORTED` | `2202` | A required WebAssembly feature is unavailable. |
+| `IMPORT_MISSING` | `2203` | A declared host import was not registered. |
+| `IMPORT_SIGNATURE_MISMATCH` | `2204` | An import signature does not match the module. |
+| `INSTANTIATION_FAILED` | `2205` | Module instantiation failed. |
+| `EXPORT_KIND_MISMATCH` | `2206` | An export exists but has the wrong kind. |
+| `ARGUMENT_COUNT_MISMATCH` | `2207` | The argument count is incorrect. |
+| `ARGUMENT_TYPE_MISMATCH` | `2208` | An argument type is incorrect. |
+| `RESULT_TYPE_UNSUPPORTED` | `2209` | A result type is outside the scalar ABI. |
+| `MEMORY_OUT_OF_BOUNDS` | `2210` | A linear-memory range is invalid. |
+| `IMPORT_HANDLER_FAILED` | `2211` | A synchronous host import failed. |
+| `SESSION_CLOSED` | `2212` | A closed module or session was used. |
+| `CONCURRENT_ACCESS` | `2213` | A session already has an active operation. |
+| `REENTRANT_CALL` | `2214` | An import callback reentered its session. |
+| `UNSUPPORTED_EXPORT_KIND` | `2215` | The backend cannot use the requested export kind. |
+| `WASM_TRAP` | `2216` | Core Wasm execution trapped. |
+| `EXPORT_SIGNATURE_MISSING` | `2217` | A Web call lacks signature metadata. |
+| `EXPORT_NOT_FOUND` | `2218` | The requested raw export is missing. |
 | `COMPONENT_TRAP` | `2101` | Component Model execution trapped. |
 | `COMPONENT_EXPORT_NOT_FOUND` | `2102` | A Component export is missing. |
 | `COMPONENT_CALL_FAILED` | `2103` | A Component call did not return successfully. |

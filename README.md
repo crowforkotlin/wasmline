@@ -110,7 +110,7 @@ suspend fun main() {
         ),
     )) {
         is WasmlineLoadResult.Success -> result.wasmline
-        is WasmlineLoadResult.Failure -> error(result.cause)
+        is WasmlineLoadResult.Failure -> error(result.failure.message)
     }
 
     val response = module.link<EchoService>().echo("ping")
@@ -134,7 +134,7 @@ Wasmline supports four explicit host-side invocation paths:
 | Execution model | Invocation protocol | Input | Result |
 |---|---|---|---|
 | `CORE_WASM` | `WASMLINE_SERVICE` | action name and byte payload | `WasmlineCallResult<ByteArray>` |
-| `CORE_WASM` | `RAW_EXPORT` | declared Core Wasm numeric values | `WasmlineCallResult<WasmlineRawCallResult>` |
+| `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession` numeric values, synchronous imports, and linear memory | `WasmlineCallResult<List<RawValue>>` |
 | `COMPONENT_MODEL` | `WASMLINE_SERVICE` | action name and byte payload through `wasmline.wit` | `WasmlineCallResult<ByteArray>` |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | declared Component Model values | `WasmlineCallResult<WasmlineComponentCallResult>` |
 
@@ -145,7 +145,15 @@ the loader itself does not run those tools. `contractMetadata` describes the
 call contract when needed; it is not a WIT compiler input. See the
 [Wasmline Service guide](docs/content/docs/component-service.mdx).
 
-The current browser runtime supports the Core Wasmline bridge. Raw Export and Component Model typed calls are provided by the native host backend, where the Wasmtime C API is available.
+The browser runtime supports both Core Service and Core Raw Export paths. Web
+uses raw `.wasm`, `WebAssembly.Module`/`WebAssembly.Instance`, synchronous
+imports, and checked linear memory; native uses the Wasmtime bridge with
+`.cwasm`/`.pwasm` AOT artifacts. Component Model typed calls remain native-only.
+
+For `RAW_EXPORT`, load a `CoreWasmModule`, register synchronous `RawImport`
+handlers before `instantiate()`, invoke `RawValue` exports, and use
+`RawMemory` for bulk data. `WasmlineWeb.registerBytes()` is the browser path
+for embedded `.wasm`; native selection remains AOT-only.
 
 Core Wasmline calls return results instead of using exceptions for normal call failures:
 
@@ -157,15 +165,21 @@ import crow.wasmline.invocation.WasmlineErrorCode
 when (val result = module.callResult("echo", payload)) {
     is WasmlineCallResult.Success -> usePayload(result.value)
     is WasmlineCallResult.Failure -> {
-        if (result.error.code == WasmlineErrorCode.ACTION_NOT_BOUND) {
+        if (result.failure.code == WasmlineErrorCode.ACTION_NOT_BOUND) {
             log("The plugin did not bind this action.")
         }
-        log(result.error.message)
+        log(result.failure.message)
     }
 }
 ```
 
 An unbound action returns `ACTION_NOT_BOUND`. It does not return an empty payload and does not crash the host. The same result-first rule applies to unknown actions, invalid payloads, traps, and handler failures. `throwOnFailure()` is an explicit adapter for code that chooses exception-style handling; it is not used by the result API by default.
+
+`WasmlineFailure` is the canonical non-throwing failure value,
+`WasmlineException` is reserved for explicit throwing adapters, and
+`WasmlineLoadFailure` describes failures before module creation. The
+`failure` property is the single authoritative failure payload across result
+APIs.
 
 The `WASMLINE_SERVICE` response frame starts with the four-byte `WLMF` magic marker and a one-byte `frameVersion` whose current value is `1`. The magic marker identifies the frame format; it is not a security check. `frameVersion` identifies the response byte layout; it is not a Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not use this Core response frame.
 

@@ -15,9 +15,9 @@
 #include <memory>
 #include <utility>
 
-#include "logging/NativeLogger.h"
-#include "wasi/WasiConfig.h"
-#include "wasmtime/WasmtimeMessage.h"
+#include "wasmline/internal/logging/NativeLogger.h"
+#include "wasmline/internal/wasi/WasiConfig.h"
+#include "wasmline/internal/wasmtime/WasmtimeMessage.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/ComponentHostHandler.h"
 #include "wasmline/runtime/OutboundHandler.h"
@@ -831,7 +831,8 @@ namespace wasmline {
     } // namespace
 
     ComponentSession::ComponentSession(wasm_engine_t* engine, wasmtime_component_t* component, std::string key)
-        : key_(std::move(key)), engine_(engine), component_(component) {
+        : key_(std::move(key)), engine_(engine ? wasmtime_engine_clone(engine) : nullptr),
+          component_(component ? wasmtime_component_clone(component) : nullptr) {
         if (!engine_) {
             LOGE("[Wasmtime] ComponentSession -> Engine is null: %s", key_.c_str());
             return;
@@ -868,6 +869,8 @@ namespace wasmline {
             }
         }
         importedResourceBindings_.clear();
+        if (component_) wasmtime_component_delete(component_);
+        if (engine_) wasm_engine_delete(engine_);
     }
 
     bool ComponentSession::registerResource(wasmtime_component_resource_any_t* value, ComponentResourceOwnership ownership,

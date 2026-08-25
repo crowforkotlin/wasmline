@@ -19,12 +19,17 @@ const EXTERNAL_SOURCES: []const []const u8 = &.{
     "src/api/Api.cpp",
     "src/runtime/Component.cpp",
     "src/runtime/ComponentSession.cpp",
+    "src/runtime/ComponentSessionRegistry.cpp",
     "src/runtime/Engine.cpp",
     "src/runtime/Module.cpp",
+    "src/runtime/NativeRuntime.cpp",
     "src/runtime/RawModuleSession.cpp",
+    "src/runtime/RawSessionRegistry.cpp",
     "src/runtime/Session.cpp",
+    "src/runtime/ServiceSessionRegistry.cpp",
     "src/value/ComponentValue.cpp",
     "src/invocation/InvocationResult.cpp",
+    "src/invocation/CoreWasmBridgeCodec.cpp",
     "src/invocation/TypedInvocationCodec.cpp",
     "src/protocol/WasmlineProtocol.cpp",
     "src/io/FileIO.cpp",
@@ -160,6 +165,8 @@ fn configureOptimization(lib: *std.Build.Step.Compile, target: std.Build.Resolve
 fn addSourceFiles(b: *std.Build, lib: *std.Build.Step.Compile, core_dir: []const u8) !void {
     // Native JNI
     lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/WasmlineJni.cpp"), .flags = CPP_FLAGS });
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniRawImportHandler.cpp"), .flags = CPP_FLAGS });
+    lib.root_module.addCSourceFile(.{ .file = b.path("src/nativeMain/native/WasmlineNative.cpp"), .flags = CPP_FLAGS });
 
     // Desktop Adapter (ConsoleLogger, JniHostHandler)
     lib.root_module.addCSourceFile(.{ .file = b.path("src/jvmMain/native/ConsoleLogger.cpp"), .flags = CPP_FLAGS });
@@ -184,7 +191,6 @@ fn addIncludePaths(
     lib.root_module.addIncludePath(b.path("src/jvmMain/native")); // ConsoleLogger might be here
 
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include" }) });
-    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "src" }) });
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ wasmtime_dir, "include" }) });
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include" }) });
 

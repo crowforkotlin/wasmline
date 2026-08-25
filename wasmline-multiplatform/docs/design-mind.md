@@ -24,7 +24,8 @@ Valid runtime combinations:
 ## Artifact Model
 
 - Raw `.wasm` is a source/build format.
-  - The browser executes it only as `CORE_WASM + WASMLINE_SERVICE`.
+  - The browser executes it as `CORE_WASM + WASMLINE_SERVICE` or
+    `CORE_WASM + RAW_EXPORT`.
   - Native loading rejects raw Core and Component artifacts.
 - `.cwasm` is platform-specific Cranelift AOT output.
 - `.pwasm` is Wasmtime Pulley bytecode, normally `pulley32` or `pulley64`.
@@ -37,7 +38,11 @@ Valid runtime combinations:
 
 - `wasmline-core`
   - C/C++ native runtime compiled through Zig 0.16.0
-  - `Api.cpp`: public native facade and artifact dispatch
+  - `include/wasmline/`: stable native API headers
+  - `include/wasmline/internal/`: native implementation headers; not a compatibility surface
+  - `Api.cpp`: short public native facade
+  - `NativeRuntime.cpp`: engine, artifact, and process lifecycle coordination
+  - `ServiceSessionRegistry.cpp`, `RawSessionRegistry.cpp`, `ComponentSessionRegistry.cpp`: session lookup, ownership, and artifact detachment
   - `Engine.cpp`: Cranelift/Pulley engine lifecycle
   - `Module.cpp`: deserialize-only Core artifact cache
   - `Component.cpp`: deserialize-only Component artifact cache
@@ -79,12 +84,21 @@ WasmlineLoader
   -> select CWASM/PWASM for host runtime
   -> internal runtime bridge
   -> Wasmline platform implementation (JNI or Kotlin/Native C interop)
-  -> wasmline-core Api
+  -> wasmline-core Api facade
+  -> NativeRuntime lifecycle coordinator
   -> Module or Component cache
+  -> ServiceSessionRegistry, RawSessionRegistry, or ComponentSessionRegistry
   -> Session, RawModuleSession, or ComponentSession
   -> Wasmtime
   -> WasmlineCallResult
 ```
+
+Cached session calls do not acquire the global lifecycle mutex. Each registry
+retains the selected session under its own shared mutex, and each session owns
+cloned Wasmtime engine and artifact handles. Artifact release and shutdown take
+the lifecycle write lock, detach matching sessions first, release the cached
+artifact and process engine, then destroy detached sessions after the global
+lock is released.
 
 Native loading is deserialize-only. `wasmtime_module_new` and `wasmtime_component_new` are intentionally rejected in the runtime path; compilation belongs to plugin-core, the Gradle plugin, or the CLI.
 
@@ -98,26 +112,32 @@ The selected physical format controls engine mode:
 ## Browser Host Flow
 
 ```text
-WasmlineWeb.prefetch(url)
-  -> Fetch API
+WasmlineWeb.prefetch(url) or WasmlineWeb.registerBytes(key, bytes)
+  -> Fetch API or caller-provided bytes
   -> WebWasmArtifacts byte cache
-  -> WasmlineLoader.load(url) [suspend]
+  -> WasmlineLoader.load(...) [suspend]
   -> WebAssembly.Module and WebAssembly.Instance
-  -> __wasmline_wasi_init
-  -> __wasmline_wasi_entry
-  -> Core Wasmline response frame
+  -> Service path: __wasmline_wasi_init / __wasmline_wasi_entry / response frame
+  -> Raw path: CoreWasmModule / CoreWasmSession / direct exports
 ```
 
 Browser limits:
 
 - raw `.wasm` only
-- `CORE_WASM + WASMLINE_SERVICE` only
+- `CORE_WASM + WASMLINE_SERVICE` or `CORE_WASM + RAW_EXPORT`
 - no native runtime identity
 - no concurrent loading
-- no Raw Export typed carrier
 - no Component instances or resources
+- raw imports are synchronous and must be registered before instantiation
+- `i64` crosses the JavaScript boundary as `BigInt`; threads/shared memory are not promised
+- raw memory access is bounds-checked and refreshed after `memory.grow`
 
 The shared `webMain` layer contains no platform interop. `jsMain` supplies typed JS externals; `wasmJsMain` supplies `JsAny` and constant `js()` helpers.
+
+The Service/WASI lifecycle and the Raw Export lifecycle are intentionally
+separate. Raw modules do not assume `__wasmline_wasi_init`,
+`__wasmline_wasi_entry`, or `env.bridge_*`; they register only the imports
+their module declares.
 
 ## Core Wasmline Service Flow
 

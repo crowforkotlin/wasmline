@@ -86,14 +86,17 @@ object WasmlineInvocationBenchmark {
             kind = ArtifactKind.WASMLINE_SERVICE,
             propertyName = WASMLINE_SERVICE_AOT_PROPERTY,
         )
-        val rawExportArtifact = requiredAotArtifact(
+        val rawExportArtifact = optionalAotArtifact(
             kind = ArtifactKind.RAW_EXPORT,
             propertyName = RAW_EXPORT_AOT_PROPERTY,
         )
-        val componentArtifact = requiredAotArtifact(
+        val componentArtifact = optionalAotArtifact(
             kind = ArtifactKind.COMPONENT_EXPORT,
             propertyName = COMPONENT_AOT_PROPERTY,
         )
+        require(wasmlineCore != null || rawExportArtifact != null || componentArtifact != null) {
+            "Invocation benchmark requires at least one AOT artifact property."
+        }
 
         var wasmlineCoreHandle: Wasmline? = null
         var rawExportHandle: Wasmline? = null
@@ -101,10 +104,8 @@ object WasmlineInvocationBenchmark {
         WasmlineRuntime.preload()
         try {
             wasmlineCoreHandle = wasmlineCore?.let(::load)
-            val rawExport = load(rawExportArtifact)
-            rawExportHandle = rawExport
-            val component = load(componentArtifact)
-            componentHandle = component
+            rawExportHandle = rawExportArtifact?.let(::load)
+            componentHandle = componentArtifact?.let(::load)
 
             wasmlineCoreHandle?.let { handle ->
                 benchmark(
@@ -117,44 +118,48 @@ object WasmlineInvocationBenchmark {
                     handle.callResult("benchmark.core.success", CORE_ADD_PAYLOAD)
                 }
             }
-            benchmark(
-                name = "raw_export_success",
-                payloadBytes = 20,
-                codecPasses = 4,
-                warmup = warmup,
-                iterations = iterations,
-            ) {
-                rawExport.invokeRawResult("add", listOf(WasmlineRawValue.I32(2), WasmlineRawValue.I32(3)))
+            rawExportHandle?.let { rawExport ->
+                benchmark(
+                    name = "raw_export_success",
+                    payloadBytes = 20,
+                    codecPasses = 4,
+                    warmup = warmup,
+                    iterations = iterations,
+                ) {
+                    rawExport.invokeRawResult("add", listOf(WasmlineRawValue.I32(2), WasmlineRawValue.I32(3)))
+                }
+                benchmark(
+                    name = "raw_export_failure",
+                    payloadBytes = 4,
+                    codecPasses = 4,
+                    warmup = warmup,
+                    iterations = iterations,
+                ) {
+                    rawExport.invokeRawResult("missing")
+                }
             }
-            benchmark(
-                name = "raw_export_failure",
-                payloadBytes = 4,
-                codecPasses = 4,
-                warmup = warmup,
-                iterations = iterations,
-            ) {
-                rawExport.invokeRawResult("missing")
-            }
-            benchmark(
-                name = "component_export_success",
-                payloadBytes = 9,
-                codecPasses = 4,
-                warmup = warmup,
-                iterations = iterations,
-            ) {
-                component.invokeComponentResult(
-                    "add",
-                    listOf(WasmlineComponentValue.S32(2), WasmlineComponentValue.S32(3)),
-                )
-            }
-            benchmark(
-                name = "component_export_failure",
-                payloadBytes = 4,
-                codecPasses = 4,
-                warmup = warmup,
-                iterations = iterations,
-            ) {
-                component.invokeComponentResult("missing")
+            componentHandle?.let { component ->
+                benchmark(
+                    name = "component_export_success",
+                    payloadBytes = 9,
+                    codecPasses = 4,
+                    warmup = warmup,
+                    iterations = iterations,
+                ) {
+                    component.invokeComponentResult(
+                        "add",
+                        listOf(WasmlineComponentValue.S32(2), WasmlineComponentValue.S32(3)),
+                    )
+                }
+                benchmark(
+                    name = "component_export_failure",
+                    payloadBytes = 4,
+                    codecPasses = 4,
+                    warmup = warmup,
+                    iterations = iterations,
+                ) {
+                    component.invokeComponentResult("missing")
+                }
             }
         } finally {
             componentHandle?.close()
@@ -347,7 +352,7 @@ object WasmlineInvocationBenchmark {
             "wasmline_core_success", "raw_export_success", "component_export_success" ->
                 check(result is WasmlineCallResult.Success) { "$name returned $result" }
 
-            "raw_export_failure" -> checkFailure(result, WasmlineErrorCode.CORE_EXPORT_NOT_FOUND)
+            "raw_export_failure" -> checkFailure(result, WasmlineErrorCode.EXPORT_NOT_FOUND)
 
             "component_export_failure" -> checkFailure(result, WasmlineErrorCode.COMPONENT_EXPORT_NOT_FOUND)
 
@@ -357,7 +362,7 @@ object WasmlineInvocationBenchmark {
 
     private fun checkFailure(result: WasmlineCallResult<*>, code: WasmlineErrorCode) {
         check(result is WasmlineCallResult.Failure) { "Expected $code but received $result" }
-        check(result.error.code == code) { "Expected $code but received ${result.error.code}" }
+        check(result.failure.code == code) { "Expected $code but received ${result.failure.code}" }
     }
 
     private fun load(artifact: AotArtifact): Wasmline {

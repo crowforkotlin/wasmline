@@ -3,9 +3,10 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.extensions.Keys
+import crow.wasmline.loader.internal.WasmlineHostArtifactTarget
 import crow.wasmline.loader.internal.crypto.Ed25519
-import crow.wasmline.loader.internal.currentHostArtifactTarget
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
@@ -62,7 +63,15 @@ class WasmlineRemotePackageResolutionTest {
         .build()
 
     private fun compatibleCraneliftArtifact(url: String, sha256: String): WasmlineArtifact {
-        val target = currentHostArtifactTarget
+        // Resolution tests use a deterministic target and must not require the
+        // optional JNI engine resource merely to construct manifest metadata.
+        val target = WasmlineHostArtifactTarget(
+            os = "linux",
+            cpu = "x86_64",
+            is64Bit = true,
+            nativeBackend = WasmlineNativeBackend.CRANELIFT,
+            wasmtimeVersion = "47.0.2",
+        )
         return WasmlineArtifact(
             type = WasmlineArtifactType.CWASM,
             url = url,
@@ -83,7 +92,7 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("request.options.networkClient or request.resolvers.remotePackage"))
+        assertTrue(failure.failure.message.contains("request.options.networkClient or request.resolvers.remotePackage"))
     }
 
     @Test
@@ -103,7 +112,11 @@ class WasmlineRemotePackageResolutionTest {
                         WasmlineSourceResolution.Complete(
                             WasmlineLoadState.Failure(
                                 code = WasmlineLoadState.CODE_FAILURE,
-                                cause = "custom resolver was called",
+                                failure = crow.wasmline.WasmlineLoadFailure(
+                                    stage = crow.wasmline.WasmlineLoadStage.SOURCE_RESOLUTION,
+                                    code = crow.wasmline.invocation.WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
+                                    message = "custom resolver was called",
+                                ),
                             ),
                         )
                     },
@@ -113,7 +126,7 @@ class WasmlineRemotePackageResolutionTest {
 
         assertTrue(customCalled[0], "Custom resolver should have been called")
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertEquals("custom resolver was called", failure.cause)
+        assertEquals("custom resolver was called", failure.failure.message)
     }
 
     @Test
@@ -159,10 +172,10 @@ class WasmlineRemotePackageResolutionTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertTrue(
-            failure.cause.contains("Load failure") ||
-                failure.cause.contains("not found") ||
-                failure.cause.contains("artifact path"),
-            "Expected runtime load error, got: ${failure.cause}",
+            failure.failure.message.contains("Load failure") ||
+                failure.failure.message.contains("not found") ||
+                failure.failure.message.contains("artifact path"),
+            "Expected runtime load error, got: ${failure.failure.message}",
         )
     }
 
@@ -231,7 +244,7 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("Failed to fetch manifest"))
+        assertTrue(failure.failure.message.contains("Failed to fetch manifest"))
     }
 
     @Test
@@ -251,7 +264,7 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("Failed to parse manifest"))
+        assertTrue(failure.failure.message.contains("Failed to parse manifest"))
     }
 
     @Test
@@ -289,7 +302,7 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("signature verification failed"))
+        assertTrue(failure.failure.message.contains("signature verification failed"))
     }
 
     @Test
@@ -324,7 +337,7 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("requires trustedKeys"))
+        assertTrue(failure.failure.message.contains("requires trustedKeys"))
     }
 
     @Test
@@ -359,7 +372,7 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.cause.contains("sha256 verification"))
+        assertTrue(failure.failure.message.contains("sha256 verification"))
     }
 
     @Test
@@ -434,8 +447,8 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertFalse(failure.cause.contains("networkClient"), failure.cause)
-        assertFalse(failure.cause.contains("not available in cache"), failure.cause)
+        assertFalse(failure.failure.message.contains("networkClient"), failure.failure.message)
+        assertFalse(failure.failure.message.contains("not available in cache"), failure.failure.message)
     }
 
     private fun manifestCacheKey(url: String): String = "manifest_${url.encodeToByteArray().toByteString().sha256().hex()}"

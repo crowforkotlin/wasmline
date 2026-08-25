@@ -5,9 +5,9 @@ package crow.wasmline
 import crow.wasmline.extensions.ensureNativeRuntimeLoaded
 import crow.wasmline.internal.WasmlineComponentBindings
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 import java.io.File
 
 actual class Wasmline internal actual constructor(
@@ -38,6 +38,10 @@ actual class Wasmline internal actual constructor(
 
     internal actual fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         decodeNativeCarrier(JniWasmlineBindings.invokeRaw(moduleKey, exportName, arguments))
+
+    internal actual fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> = createJniCoreWasmBackend(moduleKey, descriptor)
+
+    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = createCoreWasmModule(this)
 
     internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         decodeNativeCarrier(JniWasmlineBindings.invokeComponent(moduleKey, exportName, arguments))
@@ -76,7 +80,7 @@ actual class Wasmline internal actual constructor(
 
 private fun decodeNativeCarrier(bytes: ByteArray?): WasmlineCallResult<ByteArray> = if (bytes == null) {
     WasmlineCallResult.Failure(
-        WasmlineCallError(
+        WasmlineFailure(
             code = WasmlineErrorCode.TRANSPORT_FAILURE,
             message = "JNI typed invocation returned no response.",
         ),
@@ -98,7 +102,7 @@ private fun decodeResourceCarrier(bytes: ByteArray?): WasmlineCallResult<Wasmlin
                     WasmlineCallResult.Success(resource)
                 } else {
                     WasmlineCallResult.Failure(
-                        WasmlineCallError(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is invalid."),
+                        WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "Native Host resource carrier is invalid."),
                     )
                 }
             }
@@ -112,7 +116,7 @@ internal actual class WasmlineHostServiceLock {
 @Volatile
 private var jniRuntimeLoaded = false
 
-private fun ensureJniRuntimeLoaded() {
+internal fun ensureJniRuntimeLoaded() {
     if (jniRuntimeLoaded) return
     synchronized(JniWasmlineBindings) {
         if (jniRuntimeLoaded) return

@@ -8,7 +8,7 @@
 #include "JniHostHandler.h"
 #include <limits>
 #include "wasmline/protocol/WasmlineProtocol.h"
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 
 /** Creates a handler and caches its Java dispatch method. */
 JniHostHandler::JniHostHandler(JNIEnv *env, jobject dispatcher) {

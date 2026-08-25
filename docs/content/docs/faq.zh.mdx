@@ -82,7 +82,7 @@ Wasmline 原生运行时不会通过 Pulley 引擎加载原始 `.wasm`。必须�
 
 调用返回包含 `WasmlineErrorCode.ACTION_NOT_BOUND` 的 `WasmlineCallResult.Failure`。它不返回空的成功 payload，也不会导致宿主崩溃。未知 action、无效 payload、handler 失败、trap 和响应帧格式错误，在运行时能够构造可靠结果时都遵循相同的结果优先规则。
 
-使用 `callResult`、`invokeRawResult` 或 `invokeComponentResult`，并读取 `Failure.error.code`。`getOrNull()` 与 `errorOrNull()` 是无异常辅助方法。`throwOnFailure()` 只为明确选择异常风格的调用方提供适配，不是默认的传输行为。
+使用 `callResult`、`invokeRawResult` 或 `invokeComponentResult`，并读取 `Failure.failure.code`。`getOrNull()` 与 `failureOrNull()` 是无异常辅助方法。`throwOnFailure()` 只为明确选择异常风格的调用方提供适配，不是默认的传输行为。
 
 </details>
 

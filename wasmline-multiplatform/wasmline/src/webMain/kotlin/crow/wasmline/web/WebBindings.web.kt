@@ -30,6 +30,58 @@ internal expect class WebWasmModule
 /** Opaque handle to an instantiated `WebAssembly.Instance`. */
 internal expect class WebWasmInstance
 
+/**
+ * Describes one item returned by `WebAssembly.Module.exports()`.
+ *
+ * Date: 2026-08-25
+ * Author: crowforkotlin
+ *
+ * @property name Export field name.
+ * @property kind JavaScript WebAssembly export kind.
+ */
+internal data class WebWasmModuleExport(val name: String, val kind: String)
+
+/**
+ * Describes one item returned by `WebAssembly.Module.imports()`.
+ *
+ * Date: 2026-08-25
+ * Author: crowforkotlin
+ *
+ * @property module Import module namespace.
+ * @property name Import field name.
+ * @property kind JavaScript WebAssembly import kind.
+ */
+internal data class WebWasmModuleImport(val module: String, val name: String, val kind: String)
+
+/**
+ * Captures a JavaScript function call without allowing a WebAssembly trap to
+ * escape through the Kotlin/Wasm boundary.
+ *
+ * Date: 2026-08-25
+ * Author: crowforkotlin
+ */
+internal sealed interface WebWasmCallOutcome {
+    /**
+     * Represents a completed call and its optional JavaScript return value.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     *
+     * @property value Optional JavaScript result.
+     */
+    data class Success(val value: WebJsValue?) : WebWasmCallOutcome
+
+    /**
+     * Represents a JavaScript exception or WebAssembly trap raised by a call.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     *
+     * @property message Stable diagnostic text captured by the trampoline.
+     */
+    data class Failure(val message: String) : WebWasmCallOutcome
+}
+
 internal expect fun webUndefined(): WebJsValue
 
 /** True when [value] is Kotlin null, JS null, or JS undefined. */
@@ -87,6 +139,12 @@ internal expect fun webCompileWasm(binary: ByteArray): WebWasmModule
 /** Instantiates a compiled module with the supplied import object. */
 internal expect fun webInstantiateWasm(module: WebWasmModule, imports: WebJsObject): WebWasmInstance
 
+/** Returns the module's declared export inventory. */
+internal expect fun webWasmModuleExports(module: WebWasmModule): List<WebWasmModuleExport>
+
+/** Returns the module's declared import inventory. */
+internal expect fun webWasmModuleImports(module: WebWasmModule): List<WebWasmModuleImport>
+
 internal expect fun webExportsOf(instance: WebWasmInstance): WebJsObject
 
 internal expect fun webIsFunction(value: WebJsValue): Boolean
@@ -96,6 +154,9 @@ internal expect fun webIsWasmMemory(value: WebJsValue): Boolean
 /** Invokes a JS function; null when it returns nothing. */
 internal expect fun webCallFunction(function: WebJsValue, args: WebJsArray): WebJsValue?
 
+/** Invokes a JS function inside a platform-side `try/catch` trampoline. */
+internal expect fun webCallFunctionSafely(function: WebJsValue, args: WebJsArray): WebWasmCallOutcome
+
 /**
  * Wraps a Kotlin handler into a variadic JS function so it can be installed
  * as a wasm import. A null result maps to JS `undefined`.
@@ -104,6 +165,12 @@ internal expect fun webHostFunction(handler: (List<WebJsValue>) -> WebJsValue?):
 
 /** Creates a `Uint8Array` window over `memory.buffer` at [pointer]/[length]. */
 internal expect fun webMemoryBytes(memory: WebJsValue, pointer: Int, length: Int): WebBytes
+
+/** Returns the current linear-memory byte length. */
+internal expect fun webMemoryByteSize(memory: WebJsValue): Long
+
+/** Grows linear memory and returns its previous page count. */
+internal expect fun webMemoryGrow(memory: WebJsValue, deltaPages: Int): Long
 
 /** Copies the window content out into a fresh Kotlin ByteArray. */
 internal expect fun webBytesCopyOut(bytes: WebBytes): ByteArray

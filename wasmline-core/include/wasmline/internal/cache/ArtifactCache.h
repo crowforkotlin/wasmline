@@ -1,5 +1,5 @@
 /**
- * Provides thread-safe caching for native Wasmtime artifacts.
+ * Provides internal thread-safe caching for native Wasmtime artifacts.
  *
  * Date: 2026-08-02
  * Author: crowforkotlin
@@ -16,6 +16,12 @@
 #include <unordered_set>
 
 namespace wasmline::cache {
+    /**
+     * Caches reference-counted native Wasmtime artifact handles.
+     *
+     * Date: 2026-08-25
+     * Author: crowforkotlin
+     */
     template <typename Handle> class ArtifactCache final {
     public:
         using Loader = std::function<Handle*(const std::string&, const std::string&)>;
@@ -129,6 +135,12 @@ namespace wasmline::cache {
             condition_.notify_all();
         }
 
+        /**
+         * Stores one cached artifact handle and its logical reference count.
+         *
+         * Date: 2026-08-25
+         * Author: crowforkotlin
+         */
         struct Entry {
             Handle* handle;
             size_t references;

@@ -71,8 +71,11 @@ Do not initialize assets merely because the directory exists or is absent. Confi
 
 ### Native Runtime
 
-- Public headers: `wasmline-core/include/wasmline/`
+- Stable native API headers: `wasmline-core/include/wasmline/`, excluding `internal/`
+- Native implementation headers: `wasmline-core/include/wasmline/internal/`
 - API entry: `wasmline-core/src/api/Api.cpp`
+- Runtime coordinator: `wasmline-core/src/runtime/NativeRuntime.cpp`
+- Session registries: `ServiceSessionRegistry.cpp`, `RawSessionRegistry.cpp`, `ComponentSessionRegistry.cpp`
 - Engine and artifacts: `wasmline-core/src/runtime/Engine.cpp`, `Module.cpp`, `Component.cpp`
 - Invocation sessions: `Session.cpp`, `RawModuleSession.cpp`, `ComponentSession.cpp`
 - Typed Component values: `wasmline-core/src/value/ComponentValue.cpp`

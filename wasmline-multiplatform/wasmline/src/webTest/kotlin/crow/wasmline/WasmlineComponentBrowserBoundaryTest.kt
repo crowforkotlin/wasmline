@@ -18,8 +18,11 @@ class WasmlineComponentBrowserBoundaryTest {
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(state)
-        assertTrue(failure.cause.contains("Browser host supports only CORE_WASM with WASMLINE_SERVICE"), failure.cause)
-        assertTrue(!failure.cause.contains("prefetch", ignoreCase = true), failure.cause)
+        assertTrue(
+            failure.failure.message.contains("Browser host supports CORE_WASM with WASMLINE_SERVICE or RAW_EXPORT"),
+            failure.failure.message,
+        )
+        assertTrue(!failure.failure.message.contains("prefetch", ignoreCase = true), failure.failure.message)
     }
 
     @Test

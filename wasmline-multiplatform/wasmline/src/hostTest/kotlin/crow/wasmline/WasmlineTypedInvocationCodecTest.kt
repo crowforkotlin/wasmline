@@ -1,8 +1,8 @@
 package crow.wasmline
 
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -128,7 +128,7 @@ class WasmlineTypedInvocationCodecTest {
         val encoded = assertIs<WasmlineCallResult.Success<ByteArray>>(
             WasmlineTypedInvocationCodec.encodeComponentResult(
                 WasmlineCallResult.Failure(
-                    WasmlineCallError(
+                    WasmlineFailure(
                         code = WasmlineErrorCode.UNKNOWN,
                         message = "host rejected call",
                         details = byteArrayOf(7, 8),
@@ -142,10 +142,10 @@ class WasmlineTypedInvocationCodecTest {
             WasmlineTypedInvocationCodec.decodeComponentResult(encoded.value),
         )
 
-        assertEquals(WasmlineErrorCode.UNKNOWN, decoded.error.code)
-        assertEquals(9_999, decoded.error.rawCode)
-        assertEquals("host rejected call", decoded.error.message)
-        assertContentEquals(byteArrayOf(7, 8), decoded.error.details)
+        assertEquals(WasmlineErrorCode.UNKNOWN, decoded.failure.code)
+        assertEquals(9_999, decoded.failure.rawCode)
+        assertEquals("host rejected call", decoded.failure.message)
+        assertContentEquals(byteArrayOf(7, 8), decoded.failure.details)
     }
 
     @Test
@@ -160,9 +160,9 @@ class WasmlineTypedInvocationCodecTest {
         )
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeRawResult(response))
-        assertEquals(WasmlineErrorCode.CORE_EXPORT_NOT_FOUND, result.error.code)
-        assertEquals("missing", result.error.message)
-        assertContentEquals(byteArrayOf(9, 8), result.error.details)
+        assertEquals(WasmlineErrorCode.CORE_EXPORT_NOT_FOUND, result.failure.code)
+        assertEquals("missing", result.failure.message)
+        assertContentEquals(byteArrayOf(9, 8), result.failure.details)
     }
 
     @Test
@@ -170,7 +170,7 @@ class WasmlineTypedInvocationCodecTest {
         val response = successResponse(1, byteArrayOf(0, 0, 0, 0)) + byteArrayOf(1)
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeRawResult(response))
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
     }
 
     @Test
@@ -180,12 +180,12 @@ class WasmlineTypedInvocationCodecTest {
         val invalidStatus = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(response),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, invalidStatus.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, invalidStatus.failure.code)
 
         val invalidKind = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(successResponse(2, byteArrayOf())),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, invalidKind.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, invalidKind.failure.code)
     }
 
     @Test
@@ -193,7 +193,7 @@ class WasmlineTypedInvocationCodecTest {
         val result = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(ByteArray(13)),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
     }
 
     @Test
@@ -209,7 +209,7 @@ class WasmlineTypedInvocationCodecTest {
         val successFailure = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(successWithError),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, successFailure.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, successFailure.failure.code)
 
         val failedWithoutCode = response(
             status = 1,
@@ -222,7 +222,7 @@ class WasmlineTypedInvocationCodecTest {
         val failure = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(failedWithoutCode),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, failure.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, failure.failure.code)
     }
 
     @Test
@@ -238,7 +238,7 @@ class WasmlineTypedInvocationCodecTest {
         val messageFailure = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(message),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, messageFailure.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, messageFailure.failure.code)
 
         val details = response(
             status = 1,
@@ -251,7 +251,7 @@ class WasmlineTypedInvocationCodecTest {
         val detailsFailure = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(details),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, detailsFailure.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, detailsFailure.failure.code)
     }
 
     @Test
@@ -260,13 +260,13 @@ class WasmlineTypedInvocationCodecTest {
         val rawFailure = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeRawResult(successResponse(1, rawValues)),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, rawFailure.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, rawFailure.failure.code)
 
         val componentValues = byteArrayOf(1, 0, 0, 0, 22)
         val componentFailure = assertIs<WasmlineCallResult.Failure>(
             WasmlineTypedInvocationCodec.decodeComponentResult(successResponse(2, componentValues)),
         )
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, componentFailure.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, componentFailure.failure.code)
     }
 
     /** Rejects boolean values with a marker other than zero or one. */
@@ -278,7 +278,7 @@ class WasmlineTypedInvocationCodecTest {
             ),
         )
 
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
     }
 
     @Test
@@ -293,7 +293,7 @@ class WasmlineTypedInvocationCodecTest {
         )
 
         val result = assertIs<WasmlineCallResult.Failure>(WasmlineTypedInvocationCodec.decodeRawResult(response))
-        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.error.code)
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
     }
 
     private fun successResponse(kind: Int, values: ByteArray): ByteArray = response(

@@ -50,7 +50,7 @@ internal object NativePluginTestSupport {
             )
             val wasmline = assertIs<WasmlineLoadResult.Success>(
                 value = result,
-                message = (result as? WasmlineLoadResult.Failure)?.cause,
+                message = (result as? WasmlineLoadResult.Failure)?.failure?.message,
             ).wasmline
             try {
                 block(wasmline)

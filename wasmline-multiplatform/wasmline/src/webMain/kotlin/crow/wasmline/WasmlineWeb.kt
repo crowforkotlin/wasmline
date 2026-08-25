@@ -21,6 +21,19 @@ import crow.wasmline.web.WebWasmArtifacts
 object WasmlineWeb {
 
     /**
+     * Registers caller-trusted raw Wasm bytes under [key].
+     *
+     * The bytes are copied into the Web artifact cache and can subsequently be
+     * referenced by a caller-trusted [WasmlineArtifactDescriptor]. Existing
+     * live modules are unaffected.
+     * @param key Non-blank cache key used as the artifact path.
+     * @param bytes Complete raw WebAssembly binary.
+     */
+    fun registerBytes(key: String, bytes: ByteArray) {
+        WebWasmArtifacts.register(key, bytes)
+    }
+
+    /**
      * Downloads and caches the artifact at [url].
      *
      * Exactly one callback is invoked: [onReady] once the bytes are cached,

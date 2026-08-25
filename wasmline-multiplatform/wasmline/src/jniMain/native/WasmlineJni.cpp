@@ -16,12 +16,14 @@ extern "C" {
 #endif
 
 #include "WasmlineJni.h"
+#include "../../nativeMain/native/WasmlineNative.h"
+#include "JniRawImportHandler.h"
 #include <limits>
 #include <vector>
 #include "wasmline/invocation/TypedInvocationCodec.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/AotLoadPathDiagnostics.h"
-#include "logging/NativeLogger.h"
+#include "wasmline/internal/logging/NativeLogger.h"
 
 static jbyteArray newByteArray(JNIEnv *env, const void *data, size_t size) {
     if (size > static_cast<size_t>(std::numeric_limits<jsize>::max())) return nullptr;
@@ -232,6 +234,160 @@ static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr, jstring exportS
 JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmline_JniWasmlineBindings_nativeInvokeRaw(JNIEnv *env, jclass thiz, jstring keyStr, jstring exportStr, jbyteArray inputBytes) {
     return invokeTypedCommon(env, keyStr, exportStr, inputBytes, wasmline::TypedInvocationKind::RAW);
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreModuleExports(JNIEnv *env, jclass thiz, jstring keyStr) {
+    if (!env || !keyStr) return nullptr;
+    const char *key = env->GetStringUTFChars(keyStr, nullptr);
+    if (!key) return nullptr;
+    size_t length = 0;
+    char *bytes = wasmline_core_module_exports(key, &length);
+    env->ReleaseStringUTFChars(keyStr, key);
+    if (!bytes) return nullptr;
+    jbyteArray result = newByteArray(env, bytes, length);
+    wasmline_free_memory(bytes);
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreCreateSession(JNIEnv *env, jclass thiz, jstring artifactKeyStr,
+                                                                jstring sessionKeyStr, jbyteArray importsBytes,
+                                                                jobject dispatcher, jstring memoryExportNameStr) {
+    if (!env || !artifactKeyStr || !sessionKeyStr || !importsBytes || !dispatcher) {
+        return transportFailure(env, "JNI Core session received a null input.");
+    }
+    const char *artifactKey = env->GetStringUTFChars(artifactKeyStr, nullptr);
+    const char *sessionKey = env->GetStringUTFChars(sessionKeyStr, nullptr);
+    const char *memoryExportName = memoryExportNameStr ? env->GetStringUTFChars(memoryExportNameStr, nullptr) : nullptr;
+    jsize importsLength = env->GetArrayLength(importsBytes);
+    jbyte *imports = importsLength > 0 ? env->GetByteArrayElements(importsBytes, nullptr) : nullptr;
+    if (!artifactKey || !sessionKey || (importsLength > 0 && !imports) || (memoryExportNameStr && !memoryExportName)) {
+        if (imports) env->ReleaseByteArrayElements(importsBytes, imports, JNI_ABORT);
+        if (memoryExportName) env->ReleaseStringUTFChars(memoryExportNameStr, memoryExportName);
+        if (sessionKey) env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+        if (artifactKey) env->ReleaseStringUTFChars(artifactKeyStr, artifactKey);
+        return transportFailure(env, "JNI Core session input could not be read.");
+    }
+    auto handler = std::make_unique<JniRawImportHandler>(env, dispatcher);
+    std::vector<uint8_t> response;
+    if (!handler->isValid()) {
+        response = wasmline::TypedInvocationCodec::encodeResult(
+            wasmline::InvocationResult::failure(wasmline::WasmlineErrorCode::IMPORT_HANDLER_FAILED,
+                                                 "JNI raw import dispatcher is not initialized."),
+            wasmline::TypedInvocationKind::RAW);
+    } else {
+        size_t outLength = 0;
+        JniRawImportHandler *rawHandler = handler.release();
+        char *raw = wasmline_core_create_session(
+            artifactKey, sessionKey,
+            importsLength == 0 ? nullptr : imports, static_cast<size_t>(importsLength),
+            &JniRawImportHandler::callback, &JniRawImportHandler::freeBuffer,
+            rawHandler, &JniRawImportHandler::finalize, memoryExportName, &outLength);
+        if (raw && outLength > 0) {
+            response.assign(reinterpret_cast<uint8_t *>(raw), reinterpret_cast<uint8_t *>(raw) + outLength);
+            wasmline_free_memory(raw);
+        } else {
+            response = wasmline::TypedInvocationCodec::encodeResult(
+                wasmline::InvocationResult::failure(wasmline::WasmlineErrorCode::INSTANTIATION_FAILED,
+                                                     "Native Core session creation returned no response."),
+                wasmline::TypedInvocationKind::RAW);
+        }
+    }
+    if (imports) env->ReleaseByteArrayElements(importsBytes, imports, JNI_ABORT);
+    if (memoryExportName) env->ReleaseStringUTFChars(memoryExportNameStr, memoryExportName);
+    env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+    env->ReleaseStringUTFChars(artifactKeyStr, artifactKey);
+    return newByteArray(env, response);
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreInvoke(JNIEnv *env, jclass thiz, jstring sessionKeyStr,
+                                                         jstring exportStr, jbyteArray inputBytes) {
+    if (!env || !sessionKeyStr || !exportStr || !inputBytes) return nullptr;
+    const char *sessionKey = env->GetStringUTFChars(sessionKeyStr, nullptr);
+    const char *exportName = env->GetStringUTFChars(exportStr, nullptr);
+    const jsize length = env->GetArrayLength(inputBytes);
+    jbyte *input = length > 0 ? env->GetByteArrayElements(inputBytes, nullptr) : nullptr;
+    if (!sessionKey || !exportName || (length > 0 && !input)) {
+        if (input) env->ReleaseByteArrayElements(inputBytes, input, JNI_ABORT);
+        if (exportName) env->ReleaseStringUTFChars(exportStr, exportName);
+        if (sessionKey) env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+        return nullptr;
+    }
+    size_t outLength = 0;
+    char *output = wasmline_core_invoke(sessionKey, exportName, env->GetStringUTFLength(exportStr), input,
+                                        static_cast<size_t>(length), &outLength);
+    if (input) env->ReleaseByteArrayElements(inputBytes, input, JNI_ABORT);
+    env->ReleaseStringUTFChars(exportStr, exportName);
+    env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+    if (!output) return nullptr;
+    jbyteArray result = newByteArray(env, output, outLength);
+    wasmline_free_memory(output);
+    return result;
+}
+
+JNIEXPORT void JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreReleaseSession(JNIEnv *env, jclass thiz, jstring sessionKeyStr) {
+    if (!env || !sessionKeyStr) return;
+    const char *sessionKey = env->GetStringUTFChars(sessionKeyStr, nullptr);
+    if (!sessionKey) return;
+    wasmline_core_release_session(sessionKey);
+    env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+}
+
+static jbyteArray coreMemoryCarrier(JNIEnv *env, jstring sessionKeyStr, int operation, jboolean pages,
+                                    jlong offset, jlong delta, jbyteArray bytes) {
+    if (!env || !sessionKeyStr || offset < 0 || delta < 0) return nullptr;
+    const char *sessionKey = env->GetStringUTFChars(sessionKeyStr, nullptr);
+    if (!sessionKey) return nullptr;
+    size_t outLength = 0;
+    char *output = nullptr;
+    if (operation == 0) {
+        output = wasmline_core_memory_size(sessionKey, pages == JNI_TRUE, &outLength);
+    } else if (operation == 1) {
+        output = wasmline_core_memory_read(sessionKey, static_cast<uint64_t>(offset), static_cast<uint64_t>(delta), &outLength);
+    } else if (operation == 2) {
+        if (!bytes) {
+            env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+            return nullptr;
+        }
+        const jsize length = env->GetArrayLength(bytes);
+        jbyte *data = length > 0 ? env->GetByteArrayElements(bytes, nullptr) : nullptr;
+        if (length > 0 && !data) {
+            env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+            return nullptr;
+        }
+        output = wasmline_core_memory_write(sessionKey, static_cast<uint64_t>(offset), data, static_cast<uint64_t>(length), &outLength);
+        if (data) env->ReleaseByteArrayElements(bytes, data, JNI_ABORT);
+    } else {
+        output = wasmline_core_memory_grow(sessionKey, static_cast<uint64_t>(delta), &outLength);
+    }
+    env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
+    if (!output) return nullptr;
+    jbyteArray result = newByteArray(env, output, outLength);
+    wasmline_free_memory(output);
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreMemorySize(JNIEnv *env, jclass thiz, jstring sessionKeyStr, jboolean pages) {
+    return coreMemoryCarrier(env, sessionKeyStr, 0, pages, 0, 0, nullptr);
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreMemoryRead(JNIEnv *env, jclass thiz, jstring sessionKeyStr, jlong offset, jint length) {
+    return coreMemoryCarrier(env, sessionKeyStr, 1, JNI_FALSE, offset, length, nullptr);
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreMemoryWrite(JNIEnv *env, jclass thiz, jstring sessionKeyStr, jlong offset, jbyteArray bytes) {
+    return coreMemoryCarrier(env, sessionKeyStr, 2, JNI_FALSE, offset, 0, bytes);
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeCoreMemoryGrow(JNIEnv *env, jclass thiz, jstring sessionKeyStr, jlong deltaPages) {
+    return coreMemoryCarrier(env, sessionKeyStr, 3, JNI_FALSE, 0, deltaPages, nullptr);
 }
 
 JNIEXPORT jbyteArray JNICALL

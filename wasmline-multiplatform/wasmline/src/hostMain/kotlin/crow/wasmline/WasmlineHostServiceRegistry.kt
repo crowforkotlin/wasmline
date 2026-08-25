@@ -3,9 +3,9 @@ package crow.wasmline
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
-import crow.wasmline.invocation.WasmlineCallError
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 /** Instance-owned dispatcher registry shared by Core and Wasmline Service callbacks. */
 internal class WasmlineHostServiceRegistry {
@@ -75,7 +75,7 @@ internal class WasmlineHostServiceRegistry {
             return try {
                 when (val result = handler(action, payload)) {
                     is WasmlineCallResult.Success -> WasmlineResponseCodec.encodeSuccess(result.value)
-                    is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.error)
+                    is WasmlineCallResult.Failure -> WasmlineResponseCodec.encodeFailure(result.failure)
                 }
             } catch (error: Throwable) {
                 failure(WasmlineErrorCode.HANDLER_FAILED, error.message ?: "Wasmline action handler failed.")
@@ -111,7 +111,7 @@ internal class WasmlineHostServiceRegistry {
     }
 
     private fun failure(code: WasmlineErrorCode, message: String): ByteArray =
-        WasmlineResponseCodec.encodeFailure(WasmlineCallError(code, message))
+        WasmlineResponseCodec.encodeFailure(WasmlineFailure(code, message))
 
     private data class Handler(val contractId: String, val invoke: (ByteArray) -> ByteArray)
 
