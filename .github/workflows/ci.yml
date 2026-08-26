@@ -257,6 +257,8 @@ jobs:
 
       - name: Run JVM tests
         working-directory: wasmline-multiplatform
+        env:
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: |
           ./gradlew :wasmline-kotlin-plugin:generateTests \
                     :wasmline-kotlin-plugin:test \
@@ -499,4 +501,6 @@ jobs:
 
       - name: Run plugin integration tests
         working-directory: wasmline-multiplatform/wasmline-plugin-test
+        env:
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: ./gradlew jvmTest --no-daemon -Pgithub.token="${{ github.token }}"

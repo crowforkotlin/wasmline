@@ -211,9 +211,12 @@ Pushes and pull requests targeting `main` ignore `docs/**`, root `*.md`, and `.a
 
 Cranelift and Pulley native asset builds run in parallel and have independent
 Wasmtime platform caches. The Cranelift Linux x64 JNI library is transferred to
-dependent jobs with a run-scoped workflow artifact; platform downloads remain
-cross-run caches. Browser, Node, iOS, and Kotlin/Native jobs do not wait for JNI
-asset builds they do not consume.
+the owning engine module with a run-scoped workflow artifact. Source-based JVM
+tests set `WASMLINE_NATIVE_LIBRARY_PATH` to that engine-owned file because the
+platform-neutral JVM API JAR excludes JNI resources; published consumers receive
+the selected platform classifier instead. Platform downloads remain cross-run
+caches. Browser, Node, iOS, and Kotlin/Native jobs do not wait for JNI asset builds
+they do not consume.
 
 The CI workflow performs validation only. It does not publish artifacts or create a GitHub release.
 
