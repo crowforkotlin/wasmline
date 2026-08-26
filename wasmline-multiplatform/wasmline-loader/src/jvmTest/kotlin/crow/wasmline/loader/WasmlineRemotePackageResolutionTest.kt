@@ -3,10 +3,9 @@
 package crow.wasmline.loader
 
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.extensions.Keys
-import crow.wasmline.loader.internal.WasmlineHostArtifactTarget
 import crow.wasmline.loader.internal.crypto.Ed25519
+import crow.wasmline.loader.internal.currentHostArtifactTarget
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.loader.model.WasmlineArtifactType
@@ -63,15 +62,7 @@ class WasmlineRemotePackageResolutionTest {
         .build()
 
     private fun compatibleCraneliftArtifact(url: String, sha256: String): WasmlineArtifact {
-        // Resolution tests use a deterministic target and must not require the
-        // optional JNI engine resource merely to construct manifest metadata.
-        val target = WasmlineHostArtifactTarget(
-            os = "linux",
-            cpu = "x86_64",
-            is64Bit = true,
-            nativeBackend = WasmlineNativeBackend.CRANELIFT,
-            wasmtimeVersion = "12.3.4",
-        )
+        val target = currentHostArtifactTarget
         return WasmlineArtifact(
             type = WasmlineArtifactType.CWASM,
             url = url,
