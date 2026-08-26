@@ -200,12 +200,20 @@ Pushes and pull requests targeting `main` ignore `docs/**`, root `*.md`, and `.a
 | Job | Role | Dependency |
 | --- | --- | --- |
 | `lint-kotlin`, `lint-clang`, `lint-zig` | Full repository formatting checks | None |
-| `build-assets` | Build and cache native Wasmtime assets | None |
-| `test-jvm` | Compiler plugin, loader, runtime, and CLI JVM tests | `build-assets` |
-| `test-web` | Runtime and loader JS/WasmJS browser tests | `build-assets` |
-| `test-node` | Wasm/WASI Node tests | `build-assets` |
-| `test-ios` | Runtime and loader iOS simulator tests | `build-assets` |
-| `test-plugin` | Gradle-plugin integration tests | `build-assets` |
+| `build-cranelift-assets` | Build Cranelift Android/JVM native assets and upload the Linux x64 JNI library | None |
+| `build-pulley-assets` | Build Pulley Android/JVM native assets | None |
+| `test-jvm` | Compiler plugin, loader, runtime, and CLI JVM tests using the Cranelift JNI artifact | `build-cranelift-assets` |
+| `test-kotlin-native` | Kotlin/Native sample using an independently cached Linux x64 Pulley platform asset | None |
+| `test-web` | Runtime and loader JS/WasmJS browser tests | None |
+| `test-node` | Wasm/WASI Node tests | None |
+| `test-ios` | Runtime and loader iOS simulator tests using an independently cached Pulley platform asset | None |
+| `test-plugin` | Gradle-plugin integration tests using the Cranelift JNI artifact | `build-cranelift-assets` |
+
+Cranelift and Pulley native asset builds run in parallel and have independent
+Wasmtime platform caches. The Cranelift Linux x64 JNI library is transferred to
+dependent jobs with a run-scoped workflow artifact; platform downloads remain
+cross-run caches. Browser, Node, iOS, and Kotlin/Native jobs do not wait for JNI
+asset builds they do not consume.
 
 The CI workflow performs validation only. It does not publish artifacts or create a GitHub release.
 
