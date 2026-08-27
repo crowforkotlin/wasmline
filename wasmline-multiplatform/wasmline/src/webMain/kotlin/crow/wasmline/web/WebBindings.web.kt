@@ -175,8 +175,11 @@ internal expect fun webMemoryGrow(memory: WebJsValue, deltaPages: Int): Long
 /** Copies the window content out into a fresh Kotlin ByteArray. */
 internal expect fun webBytesCopyOut(bytes: WebBytes): ByteArray
 
-/** Copies Kotlin bytes into the window (window must be large enough). */
-internal expect fun webBytesCopyIn(bytes: WebBytes, source: ByteArray)
+/** Copies the window content into an existing Kotlin ByteArray. */
+internal expect fun webBytesCopyOut(bytes: WebBytes, destination: ByteArray, destinationOffset: Int)
+
+/** Copies a Kotlin ByteArray range into the window. */
+internal expect fun webBytesCopyIn(bytes: WebBytes, source: ByteArray, sourceOffset: Int)
 
 /** Current epoch time in milliseconds (`Date.now()`). */
 internal expect fun webNowMillis(): Double

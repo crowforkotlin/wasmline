@@ -37,7 +37,7 @@ Read only the documents required by the current task.
 ## Artifact and Execution Model
 
 - Physical format, execution model, and invocation protocol are separate fields. A filename extension does not select `CORE_WASM` or `COMPONENT_MODEL`.
-- Raw `.wasm` is a build input. The browser runtime executes raw `.wasm` only with `CORE_WASM + WASMLINE_SERVICE`; native loading rejects raw Core and Component artifacts.
+- Raw `.wasm` is a build input and a browser runtime artifact for `CORE_WASM + WASMLINE_SERVICE` or `CORE_WASM + RAW_EXPORT`; native loading rejects raw Core and Component artifacts.
 - `.cwasm` is platform-specific Cranelift AOT output. `.pwasm` is Pulley bytecode produced by Wasmtime; it is not raw WebAssembly.
 - A Cranelift engine can select matching `.cwasm` and fall back to compatible `.pwasm`. A Pulley engine accepts `.pwasm` only.
 - iOS uses the Pulley interpreter. Select `pulley64` `.pwasm`; never select iOS `.cwasm`.

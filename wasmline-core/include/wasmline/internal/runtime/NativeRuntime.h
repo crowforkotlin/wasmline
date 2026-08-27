@@ -77,8 +77,8 @@ namespace wasmline {
         InvocationResult invokeRawInstance(const std::string& sessionKey, std::string_view exportName,
                                            const std::vector<RawValue>& arguments);
 
-        /** Reads explicit raw session memory. */
-        InvocationResult readRawMemory(const std::string& sessionKey, uint64_t offset, uint64_t length, std::vector<uint8_t>* output);
+        /** Reads explicit raw session memory into caller-owned storage. */
+        InvocationResult readRawMemory(const std::string& sessionKey, uint64_t offset, uint8_t* destination, uint64_t length);
 
         /** Writes explicit raw session memory. */
         InvocationResult writeRawMemory(const std::string& sessionKey, uint64_t offset, const uint8_t* bytes, uint64_t length);

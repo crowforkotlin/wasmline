@@ -83,24 +83,32 @@ def _jni_build(args: argparse.Namespace) -> int:
 
 
 def _kotlin_native_build(args: argparse.Namespace) -> int:
-    if args.target != "all":
-        configured = next(
-            (target for target in load_targets() if target.kotlin_native_target == args.target),
-            None,
-        )
-        if configured is None:
-            raise RuntimeError(f"Unknown Kotlin/Native target: {args.target}")
-        if configured.install_path.startswith(("ios/", "mac/")) and sys.platform != "darwin":
-            raise RuntimeError(f"Target {args.target} requires macOS.")
-        selected_engine = args.engine or "pulley"
-        if selected_engine not in configured.engines:
+    if args.target == "all":
+        arguments = [args.target]
+        if args.engine and args.engine != "all":
+            arguments.append(args.engine)
+        return _run_shell("internal/native/build-kotlin-native.sh", arguments)
+
+    configured = next(
+        (target for target in load_targets() if target.kotlin_native_target == args.target),
+        None,
+    )
+    if configured is None:
+        raise RuntimeError(f"Unknown Kotlin/Native target: {args.target}")
+    if configured.install_path.startswith(("ios/", "mac/")) and sys.platform != "darwin":
+        raise RuntimeError(f"Target {args.target} requires macOS.")
+
+    selected_engine = args.engine or "pulley"
+    engines = configured.engines if selected_engine == "all" else (selected_engine,)
+    for engine in engines:
+        if engine not in configured.engines:
             raise RuntimeError(
-                f"Target {args.target} does not provide the {selected_engine} engine."
+                f"Target {args.target} does not provide the {engine} engine."
             )
-    arguments = [args.target]
-    if args.engine:
-        arguments.append(args.engine)
-    return _run_shell("internal/native/build-kotlin-native.sh", arguments)
+        result = _run_shell("internal/native/build-kotlin-native.sh", [args.target, engine])
+        if result != 0:
+            return result
+    return 0
 
 
 def _versions(args: argparse.Namespace) -> int:
@@ -203,17 +211,17 @@ def _parser() -> argparse.ArgumentParser:
     )
     native_build_parser.add_argument(
         "--target",
-        required=True,
+        default="all",
         metavar="TARGET",
         help=(
             "linuxArm64, linuxX64, mingwX64, macosArm64, macosX64, "
-            "iosArm64, iosSimulatorArm64, or all."
+            "iosArm64, iosSimulatorArm64, or all (default: all)."
         ),
     )
     native_build_parser.add_argument(
         "--engine",
-        choices=ENGINES,
-        help="Defaults to pulley for one target and both engines for all targets.",
+        choices=(*ENGINES, "all"),
+        help="Defaults to all engines for all targets and pulley for one target.",
     )
     native_build_parser.set_defaults(handler=_kotlin_native_build)
 

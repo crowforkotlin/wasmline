@@ -106,15 +106,28 @@ internal class WebWasmMemory internal constructor(private val memory: WebJsValue
     val pageCount: Long get() = byteSize / WASM_PAGE_SIZE
 
     fun read(pointer: Int, length: Int): ByteArray {
+        require(length >= 0) { "WebAssembly memory length must not be negative." }
+        return ByteArray(length).also { destination ->
+            readInto(destination, 0, pointer, length)
+        }
+    }
+
+    fun readInto(destination: ByteArray, destinationOffset: Int, pointer: Int, length: Int) {
+        requireArrayRange(destination.size, destinationOffset, length)
         requireValidRange(pointer, length)
-        if (length == 0) return ByteArray(0)
-        return webBytesCopyOut(webMemoryBytes(memory, pointer, length))
+        if (length == 0) return
+        webBytesCopyOut(webMemoryBytes(memory, pointer, length), destination, destinationOffset)
     }
 
     fun write(pointer: Int, bytes: ByteArray) {
-        requireValidRange(pointer, bytes.size)
-        if (bytes.isEmpty()) return
-        webBytesCopyIn(webMemoryBytes(memory, pointer, bytes.size), bytes)
+        writeFrom(bytes, 0, pointer, bytes.size)
+    }
+
+    fun writeFrom(source: ByteArray, sourceOffset: Int, pointer: Int, length: Int) {
+        requireArrayRange(source.size, sourceOffset, length)
+        requireValidRange(pointer, length)
+        if (length == 0) return
+        webBytesCopyIn(webMemoryBytes(memory, pointer, length), source, sourceOffset)
     }
 
     fun readText(pointer: Int, length: Int): String = read(pointer, length).decodeToString()
@@ -128,6 +141,12 @@ internal class WebWasmMemory internal constructor(private val memory: WebJsValue
         val size = byteSize
         require(pointer >= 0 && length >= 0 && pointer.toLong() <= size && length.toLong() <= size - pointer.toLong()) {
             "WebAssembly memory range pointer=$pointer length=$length exceeds size=$size."
+        }
+    }
+
+    private fun requireArrayRange(size: Int, offset: Int, length: Int) {
+        require(offset >= 0 && length >= 0 && offset <= size && length <= size - offset) {
+            "ByteArray range offset=$offset length=$length exceeds size=$size."
         }
     }
 

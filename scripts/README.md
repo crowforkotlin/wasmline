@@ -79,8 +79,8 @@ Wasmtime files must be present before building engine libraries.
   --target linuxX64 \
   --engine pulley
 
-# Build every target supported by the current host.
-./scripts/wasmline kotlin-native build --target all
+# Build every target and engine supported by the current host.
+./scripts/wasmline kotlin-native build
 ```
 
 JNI builds use Android CMake and the NDK for Android libraries, and Zig for JVM

@@ -46,8 +46,8 @@ namespace wasmline {
         /** Returns reflected exports of a compiled module. */
         static std::vector<RawExportDefinition> describe(const wasmtime_module_t* module);
 
-        /** Reads the current exported linear memory. */
-        InvocationResult readMemory(uint64_t offset, uint64_t length, std::vector<uint8_t>* output);
+        /** Reads the current exported linear memory into caller-owned storage. */
+        InvocationResult readMemory(uint64_t offset, uint8_t* destination, uint64_t length);
 
         /** Writes bytes into the current exported linear memory. */
         InvocationResult writeMemory(uint64_t offset, const uint8_t* bytes, uint64_t length);

@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <cstring>
 #include <exception>
-#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -574,21 +573,22 @@ namespace wasmline {
         return true;
     }
 
-    InvocationResult RawModuleSession::readMemory(uint64_t offset, uint64_t length, std::vector<uint8_t>* output) {
+    InvocationResult RawModuleSession::readMemory(uint64_t offset, uint8_t* destination, uint64_t length) {
         std::unique_lock<std::recursive_mutex> lock(mutex_, std::try_to_lock);
         if (!lock.owns_lock()) {
             return InvocationResult::failure(WasmlineErrorCode::CONCURRENT_ACCESS, "Raw module session already has an active operation.");
         }
-        if (!output) return InvocationResult::failure(WasmlineErrorCode::TRANSPORT_FAILURE, "Memory output is null.");
+        if (length > 0 && !destination) {
+            return InvocationResult::failure(WasmlineErrorCode::TRANSPORT_FAILURE, "Memory destination is null.");
+        }
         wasmtime_memory_t memory{};
         if (!findMemory(&memory))
             return InvocationResult::failure(WasmlineErrorCode::MEMORY_OUT_OF_BOUNDS, "Exported linear memory is unavailable.");
         const size_t size = wasmtime_memory_data_size(context_, &memory);
-        if (offset > size || length > size - offset || length > static_cast<uint64_t>(std::numeric_limits<size_t>::max())) {
+        if (offset > size || length > size - offset) {
             return InvocationResult::failure(WasmlineErrorCode::MEMORY_OUT_OF_BOUNDS, "Linear memory read is out of bounds.");
         }
-        output->resize(static_cast<size_t>(length));
-        if (length > 0) std::memcpy(output->data(), wasmtime_memory_data(context_, &memory) + offset, static_cast<size_t>(length));
+        if (length > 0) std::memcpy(destination, wasmtime_memory_data(context_, &memory) + offset, static_cast<size_t>(length));
         return InvocationResult::success();
     }
 

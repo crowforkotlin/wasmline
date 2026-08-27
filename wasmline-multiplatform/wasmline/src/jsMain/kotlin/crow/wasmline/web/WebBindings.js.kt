@@ -151,9 +151,14 @@ internal actual fun webBytesCopyOut(bytes: WebBytes): ByteArray {
     return copy.unsafeCast<ByteArray>()
 }
 
-internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray) {
+internal actual fun webBytesCopyOut(bytes: WebBytes, destination: ByteArray, destinationOffset: Int) {
+    val destinationView = destination.unsafeCast<Int8Array>()
+    destinationView.set(Int8Array(bytes.raw.buffer, bytes.raw.byteOffset, bytes.raw.length), destinationOffset)
+}
+
+internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray, sourceOffset: Int) {
     val sourceView = source.unsafeCast<Int8Array>()
-    bytes.raw.set(Uint8Array(sourceView.buffer, sourceView.byteOffset, sourceView.length))
+    bytes.raw.set(Uint8Array(sourceView.buffer, sourceView.byteOffset + sourceOffset, bytes.raw.length))
 }
 
 internal actual fun webNowMillis(): Double = rawNowMillis()

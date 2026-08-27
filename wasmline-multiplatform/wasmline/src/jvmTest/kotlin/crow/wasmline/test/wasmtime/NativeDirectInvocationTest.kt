@@ -262,6 +262,24 @@ class NativeDirectInvocationTest {
                     assertEquals(65_536L, memory.byteSize().getOrThrow())
                     assertEquals(1L, memory.pageCount().getOrThrow())
                     assertContentEquals(byteArrayOf(4, 5, 6), memory.read(0, 3).getOrThrow())
+                    val source = byteArrayOf(99, 10, 11, 12, 88)
+                    val destination = ByteArray(7) { -1 }
+                    memory.writeFrom(source, sourceOffset = 1, destinationOffset = 48, length = 3).getOrThrow()
+                    memory.readInto(destination, destinationOffset = 2, sourceOffset = 48, length = 3).getOrThrow()
+                    assertContentEquals(byteArrayOf(-1, -1, 10, 11, 12, -1, -1), destination)
+                    memory.readInto(destination, destinationOffset = destination.size, sourceOffset = 65_536, length = 0).getOrThrow()
+                    assertEquals(
+                        WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
+                        assertIs<WasmlineCallResult.Failure>(
+                            memory.writeFrom(source, sourceOffset = 4, destinationOffset = 48, length = 2),
+                        ).failure.code,
+                    )
+                    assertEquals(
+                        WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
+                        assertIs<WasmlineCallResult.Failure>(
+                            memory.readInto(destination, destinationOffset = 6, sourceOffset = 48, length = 2),
+                        ).failure.code,
+                    )
                     assertEquals(
                         WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
                         assertIs<WasmlineCallResult.Failure>(memory.read(-1, 1)).failure.code,

@@ -163,7 +163,8 @@ python3 scripts/tests/test_wasmtime.py
 
 # Build native engine assets after platform initialization
 ./scripts/wasmline jni build --engine <pulley|cranelift|all>
-./scripts/wasmline kotlin-native build --target <target|all> [--engine <pulley|cranelift>]
+./scripts/wasmline kotlin-native build
+./scripts/wasmline kotlin-native build --target <target> [--engine <pulley|cranelift|all>]
 
 # IR runner generation and box tests
 cd wasmline-multiplatform

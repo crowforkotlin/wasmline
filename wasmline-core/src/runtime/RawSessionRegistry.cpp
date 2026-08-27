@@ -125,10 +125,9 @@ namespace wasmline {
         return session ? session->invoke(exportName, arguments) : closedRawSession();
     }
 
-    InvocationResult RawSessionRegistry::readMemory(const std::string& sessionKey, uint64_t offset, uint64_t length,
-                                                    std::vector<uint8_t>* output) {
+    InvocationResult RawSessionRegistry::readMemory(const std::string& sessionKey, uint64_t offset, uint8_t* destination, uint64_t length) {
         const auto session = findExplicit(sessionKey);
-        return session ? session->readMemory(offset, length, output) : closedRawSession();
+        return session ? session->readMemory(offset, destination, length) : closedRawSession();
     }
 
     InvocationResult RawSessionRegistry::writeMemory(const std::string& sessionKey, uint64_t offset, const uint8_t* bytes,

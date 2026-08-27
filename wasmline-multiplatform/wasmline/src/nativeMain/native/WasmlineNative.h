@@ -106,18 +106,21 @@ void wasmline_core_release_session(const char* sessionKey);
 /** Returns raw session memory size as a typed result carrier. */
 char* wasmline_core_memory_size(const char* sessionKey, bool pages, size_t* outLen);
 
-/** Reads raw session memory using a checked memory carrier. */
-char* wasmline_core_memory_read(const char* sessionKey,
-                                uint64_t offset,
-                                uint64_t length,
-                                size_t* outLen);
+/** Reads raw session memory directly into caller-owned storage and returns only a failure carrier. */
+char* wasmline_core_memory_read_into(const char* sessionKey,
+                                     uint64_t offset,
+                                     void* destination,
+                                     uint64_t length,
+                                     bool* outSuccess,
+                                     size_t* outLen);
 
-/** Writes raw session memory and returns a typed result carrier. */
-char* wasmline_core_memory_write(const char* sessionKey,
-                                 uint64_t offset,
-                                 const void* bytes,
-                                 uint64_t length,
-                                 size_t* outLen);
+/** Writes caller-owned storage directly into raw session memory and returns only a failure carrier. */
+char* wasmline_core_memory_write_from(const char* sessionKey,
+                                      uint64_t offset,
+                                      const void* source,
+                                      uint64_t length,
+                                      bool* outSuccess,
+                                      size_t* outLen);
 
 /** Grows raw session memory and returns the previous page count. */
 char* wasmline_core_memory_grow(const char* sessionKey,

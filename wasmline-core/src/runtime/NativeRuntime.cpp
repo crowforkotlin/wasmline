@@ -182,9 +182,8 @@ namespace wasmline {
         return rawSessions_.invokeInstance(sessionKey, exportName, arguments);
     }
 
-    InvocationResult NativeRuntime::readRawMemory(const std::string& sessionKey, uint64_t offset, uint64_t length,
-                                                  std::vector<uint8_t>* output) {
-        return rawSessions_.readMemory(sessionKey, offset, length, output);
+    InvocationResult NativeRuntime::readRawMemory(const std::string& sessionKey, uint64_t offset, uint8_t* destination, uint64_t length) {
+        return rawSessions_.readMemory(sessionKey, offset, destination, length);
     }
 
     InvocationResult NativeRuntime::writeRawMemory(const std::string& sessionKey, uint64_t offset, const uint8_t* bytes, uint64_t length) {

@@ -257,8 +257,8 @@ internal interface CoreWasmBackendMemory {
     val byteSize: Long
     val pageCount: Long
 
-    fun read(offset: Long, length: Int): ByteArray
-    fun write(offset: Long, bytes: ByteArray)
+    fun readInto(destination: ByteArray, destinationOffset: Int, sourceOffset: Long, length: Int)
+    fun writeFrom(source: ByteArray, sourceOffset: Int, destinationOffset: Long, length: Int)
     fun grow(deltaPages: Long): Long
 }
 
@@ -609,32 +609,35 @@ private class RawMemoryImpl(
     override fun pageCount(): WasmlineCallResult<Long> = memoryOperation { backend.pageCount }
 
     override fun read(offset: Long, length: Int): WasmlineCallResult<ByteArray> = memoryOperation {
-        val failure = checkMemoryRange(offset, length, backend.byteSize)
+        val failure = checkMemoryInputRange(offset, length)
         if (failure != null) throw RawMemoryRangeException(failure)
-        backend.read(offset, length)
+        ByteArray(length).also { destination ->
+            backend.readInto(destination, 0, offset, length)
+        }
     }
 
     override fun readInto(destination: ByteArray, destinationOffset: Int, sourceOffset: Long, length: Int): WasmlineCallResult<Unit> {
         checkArrayRange(destination.size, destinationOffset, length)?.let { return WasmlineCallResult.Failure(it) }
-        return when (val bytes = read(sourceOffset, length)) {
-            is WasmlineCallResult.Failure -> bytes
-
-            is WasmlineCallResult.Success -> {
-                bytes.value.copyInto(destination, destinationOffset)
-                WasmlineCallResult.Success(Unit)
-            }
+        return memoryOperation {
+            val failure = checkMemoryInputRange(sourceOffset, length)
+            if (failure != null) throw RawMemoryRangeException(failure)
+            backend.readInto(destination, destinationOffset, sourceOffset, length)
         }
     }
 
     override fun write(offset: Long, bytes: ByteArray): WasmlineCallResult<Unit> = memoryOperation {
-        val failure = checkMemoryRange(offset, bytes.size, backend.byteSize)
+        val failure = checkMemoryInputRange(offset, bytes.size)
         if (failure != null) throw RawMemoryRangeException(failure)
-        backend.write(offset, bytes)
+        backend.writeFrom(bytes, 0, offset, bytes.size)
     }
 
     override fun writeFrom(source: ByteArray, sourceOffset: Int, destinationOffset: Long, length: Int): WasmlineCallResult<Unit> {
         checkArrayRange(source.size, sourceOffset, length)?.let { return WasmlineCallResult.Failure(it) }
-        return write(destinationOffset, source.copyOfRange(sourceOffset, sourceOffset + length))
+        return memoryOperation {
+            val failure = checkMemoryInputRange(destinationOffset, length)
+            if (failure != null) throw RawMemoryRangeException(failure)
+            backend.writeFrom(source, sourceOffset, destinationOffset, length)
+        }
     }
 
     override fun readUtf8(offset: Long, length: Int): WasmlineCallResult<String> = when (val bytes = read(offset, length)) {
@@ -749,11 +752,11 @@ private fun validateValues(values: List<RawValue>, expected: List<RawValueType>,
     )
 }
 
-private fun checkMemoryRange(offset: Long, length: Int, byteSize: Long): WasmlineFailure? {
-    if (offset < 0 || length < 0 || offset > byteSize || length.toLong() > byteSize - offset) {
+private fun checkMemoryInputRange(offset: Long, length: Int): WasmlineFailure? {
+    if (offset < 0 || length < 0) {
         return WasmlineFailure(
             WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
-            "Linear memory range offset=$offset length=$length exceeds size=$byteSize.",
+            "Linear memory range offset=$offset length=$length is invalid.",
         )
     }
     return null

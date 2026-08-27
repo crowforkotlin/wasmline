@@ -54,7 +54,7 @@ private class JniCoreWasmModule(
         if (lock.withLock { closed }) return coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Native Core Wasm module is closed.")
         val memory = options.memoryExportName
             ?.takeIf { memoryName -> exports.any { it.name == memoryName && it.kind == RawExportKind.MEMORY } }
-            ?.let { JniCoreWasmMemory(sessionKey, it) }
+            ?.let { JniCoreWasmMemory(sessionKey) }
         val importDispatcher = JniRawImportDispatcher(options.imports, dispatcher, memory)
         val imports = CoreWasmNativeCodec.encodeImports(options.imports)
         val carrier = JniWasmlineBindings.coreCreateSession(
@@ -176,32 +176,20 @@ private class JniRawImportDispatcher(
  * Date: 2026-08-25
  * Author: crowforkotlin
  */
-private class JniCoreWasmMemory(private val sessionKey: String, private val memoryExportName: String) : CoreWasmBackendMemory {
+private class JniCoreWasmMemory(private val sessionKey: String) : CoreWasmBackendMemory {
     override val byteSize: Long get() = readSize(pages = false)
     override val pageCount: Long get() = readSize(pages = true)
 
-    override fun read(offset: Long, length: Int): ByteArray {
-        if (offset < 0 || length < 0) {
-            throw CoreWasmBackendFailure(
-                crow.wasmline.invocation.WasmlineFailure(WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS, "Invalid native memory range."),
-            )
-        }
-        val carrier = JniWasmlineBindings.coreMemoryRead(sessionKey, offset, length)
-            ?: throw CoreWasmBackendFailure(
-                crow.wasmline.invocation.WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native memory read returned no response."),
-            )
-        return when (val result = CoreWasmNativeCodec.decodeMemoryRead(carrier)) {
-            is WasmlineCallResult.Success -> result.value
-            is WasmlineCallResult.Failure -> throw CoreWasmBackendFailure(result.failure)
+    override fun readInto(destination: ByteArray, destinationOffset: Int, sourceOffset: Long, length: Int) {
+        JniWasmlineBindings.coreMemoryReadInto(sessionKey, sourceOffset, destination, destinationOffset, length)?.let { carrier ->
+            throw CoreWasmBackendFailure(CoreWasmNativeCodec.decodeOperationFailure(carrier))
         }
     }
 
-    override fun write(offset: Long, bytes: ByteArray) {
-        val carrier = JniWasmlineBindings.coreMemoryWrite(sessionKey, offset, bytes)
-            ?: throw CoreWasmBackendFailure(
-                crow.wasmline.invocation.WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native memory write returned no response."),
-            )
-        checkEmptyResult(carrier)
+    override fun writeFrom(source: ByteArray, sourceOffset: Int, destinationOffset: Long, length: Int) {
+        JniWasmlineBindings.coreMemoryWriteFrom(sessionKey, source, sourceOffset, destinationOffset, length)?.let { carrier ->
+            throw CoreWasmBackendFailure(CoreWasmNativeCodec.decodeOperationFailure(carrier))
+        }
     }
 
     override fun grow(deltaPages: Long): Long {
@@ -240,12 +228,4 @@ private class JniCoreWasmMemory(private val sessionKey: String, private val memo
             is WasmlineCallResult.Success -> result.value
             is WasmlineCallResult.Failure -> throw CoreWasmBackendFailure(result.failure)
         }
-
-    private fun checkEmptyResult(carrier: ByteArray) {
-        if (decodeValues(carrier).isNotEmpty()) {
-            throw CoreWasmBackendFailure(
-                crow.wasmline.invocation.WasmlineFailure(WasmlineErrorCode.RESULT_TYPE_UNSUPPORTED, "Native memory write returned values."),
-            )
-        }
-    }
 }

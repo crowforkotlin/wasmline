@@ -193,6 +193,20 @@ class WebCoreWasmTest {
                 assertEquals(1L, memory.pageCount().getOrThrow())
                 memory.write(32, byteArrayOf(1, 2, 3)).getOrThrow()
                 assertContentEquals(byteArrayOf(1, 2, 3), memory.read(32, 3).getOrThrow())
+                val source = byteArrayOf(99, 10, 11, 12, 88)
+                val destination = ByteArray(7) { -1 }
+                memory.writeFrom(source, sourceOffset = 1, destinationOffset = 48, length = 3).getOrThrow()
+                memory.readInto(destination, destinationOffset = 2, sourceOffset = 48, length = 3).getOrThrow()
+                assertContentEquals(byteArrayOf(-1, -1, 10, 11, 12, -1, -1), destination)
+                memory.readInto(destination, destinationOffset = destination.size, sourceOffset = 65_536, length = 0).getOrThrow()
+                assertEquals(
+                    WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
+                    requireFailure(memory.writeFrom(source, sourceOffset = 4, destinationOffset = 48, length = 2)).code,
+                )
+                assertEquals(
+                    WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
+                    requireFailure(memory.readInto(destination, destinationOffset = 6, sourceOffset = 48, length = 2)).code,
+                )
                 assertEquals(WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS, requireFailure(memory.read(-1, 1)).code)
                 assertEquals(WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS, requireFailure(memory.read(65_535, 2)).code)
                 assertEquals(WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS, requireFailure(memory.write(65_536, byteArrayOf(1))).code)

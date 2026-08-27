@@ -16,7 +16,7 @@
 
 namespace wasmline {
     /**
-     * Encodes metadata and memory records shared by JNI and Kotlin/Native.
+     * Encodes Core Wasm metadata records shared by JNI and Kotlin/Native.
      *
      * Date: 2026-08-25
      * Author: crowforkotlin
@@ -28,8 +28,5 @@ namespace wasmline {
 
         /** Encodes the reflected export inventory of a compiled module. */
         static std::vector<uint8_t> encodeExports(const std::vector<RawExportDefinition>& exports);
-
-        /** Encodes one checked linear-memory operation result. */
-        static std::vector<uint8_t> encodeMemoryResult(const InvocationResult& result, const std::vector<uint8_t>& bytes = {});
     };
 } // namespace wasmline

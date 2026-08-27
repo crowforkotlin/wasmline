@@ -179,13 +179,12 @@ private class WebCoreWasmMemory(private val memory: WebWasmMemory) : CoreWasmBac
     override val byteSize: Long get() = memory.byteSize
     override val pageCount: Long get() = memory.pageCount
 
-    override fun read(offset: Long, length: Int): ByteArray {
-        require(length >= 0) { "Web memory length must not be negative." }
-        return memory.read(offset.toWebOffset(), length)
+    override fun readInto(destination: ByteArray, destinationOffset: Int, sourceOffset: Long, length: Int) {
+        memory.readInto(destination, destinationOffset, sourceOffset.toWebOffset(), length)
     }
 
-    override fun write(offset: Long, bytes: ByteArray) {
-        memory.write(offset.toWebOffset(), bytes)
+    override fun writeFrom(source: ByteArray, sourceOffset: Int, destinationOffset: Long, length: Int) {
+        memory.writeFrom(source, sourceOffset, destinationOffset.toWebOffset(), length)
     }
 
     override fun grow(deltaPages: Long): Long {

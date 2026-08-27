@@ -2,7 +2,12 @@ package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 
-/** JNI symbols and narrow Kotlin adapters for the native Wasmline runtime. */
+/**
+ * Exposes JNI symbols through narrow Kotlin adapters for the native Wasmline runtime.
+ *
+ * Date: 2026-08-26
+ * Author: crowforkotlin
+ */
 internal object JniWasmlineBindings {
     @JvmStatic
     private external fun nativeLoadAotWithFormat(key: String, path: String, formatCode: Int): Boolean
@@ -53,10 +58,22 @@ internal object JniWasmlineBindings {
     private external fun nativeCoreMemorySize(sessionKey: String, pages: Boolean): ByteArray?
 
     @JvmStatic
-    private external fun nativeCoreMemoryRead(sessionKey: String, offset: Long, length: Int): ByteArray?
+    private external fun nativeCoreMemoryReadInto(
+        sessionKey: String,
+        sourceOffset: Long,
+        destination: ByteArray,
+        destinationOffset: Int,
+        length: Int,
+    ): ByteArray?
 
     @JvmStatic
-    private external fun nativeCoreMemoryWrite(sessionKey: String, offset: Long, bytes: ByteArray): ByteArray?
+    private external fun nativeCoreMemoryWriteFrom(
+        sessionKey: String,
+        source: ByteArray,
+        sourceOffset: Int,
+        destinationOffset: Long,
+        length: Int,
+    ): ByteArray?
 
     @JvmStatic
     private external fun nativeCoreMemoryGrow(sessionKey: String, deltaPages: Long): ByteArray?
@@ -150,9 +167,16 @@ internal object JniWasmlineBindings {
 
     fun coreMemorySize(sessionKey: String, pages: Boolean): ByteArray? = nativeCoreMemorySize(sessionKey, pages)
 
-    fun coreMemoryRead(sessionKey: String, offset: Long, length: Int): ByteArray? = nativeCoreMemoryRead(sessionKey, offset, length)
+    fun coreMemoryReadInto(
+        sessionKey: String,
+        sourceOffset: Long,
+        destination: ByteArray,
+        destinationOffset: Int,
+        length: Int,
+    ): ByteArray? = nativeCoreMemoryReadInto(sessionKey, sourceOffset, destination, destinationOffset, length)
 
-    fun coreMemoryWrite(sessionKey: String, offset: Long, bytes: ByteArray): ByteArray? = nativeCoreMemoryWrite(sessionKey, offset, bytes)
+    fun coreMemoryWriteFrom(sessionKey: String, source: ByteArray, sourceOffset: Int, destinationOffset: Long, length: Int): ByteArray? =
+        nativeCoreMemoryWriteFrom(sessionKey, source, sourceOffset, destinationOffset, length)
 
     fun coreMemoryGrow(sessionKey: String, deltaPages: Long): ByteArray? = nativeCoreMemoryGrow(sessionKey, deltaPages)
 

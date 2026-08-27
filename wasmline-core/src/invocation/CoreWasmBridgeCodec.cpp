@@ -178,14 +178,4 @@ namespace wasmline {
         }
         return writer.finish();
     }
-
-    std::vector<uint8_t> CoreWasmBridgeCodec::encodeMemoryResult(const InvocationResult& result, const std::vector<uint8_t>& bytes) {
-        Writer writer;
-        writer.byte(result.isSuccess() ? 0 : 1);
-        writer.u32(result.isSuccess() ? 0 : static_cast<uint32_t>(result.errorCode()));
-        writer.bytes(result.message());
-        writer.bytes(result.details());
-        writer.bytes(result.isSuccess() ? bytes : std::vector<uint8_t>());
-        return writer.finish();
-    }
 } // namespace wasmline

@@ -2,6 +2,7 @@ package crow.wasmline
 
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 /**
  * Encodes the small, private bridge records used by native Core Wasm sessions.
@@ -52,55 +53,16 @@ internal object CoreWasmNativeCodec {
         return WasmlineCallResult.Success(exports)
     }
 
-    /** Decodes a memory read response from the native bridge. */
-    fun decodeMemoryRead(bytes: ByteArray): WasmlineCallResult<ByteArray> {
-        val reader = Reader(bytes)
-        val status = reader.byte() ?: return reader.failure()
-        val code = reader.u32()?.toInt() ?: return reader.failure()
-        val message = reader.text() ?: return reader.failure()
-        val details = reader.bytes() ?: return reader.failure()
-        val payload = reader.bytes() ?: return reader.failure()
-        if (!reader.atEnd()) return reader.failure("Native memory response has trailing bytes.")
-        if (status == 0) {
-            if (code != 0 || message.isNotEmpty() || details.isNotEmpty()) {
-                return reader.failure("Successful native memory response contains error fields.")
-            }
-            return WasmlineCallResult.Success(payload)
-        }
-        if (status != 1 || code == 0 || payload.isNotEmpty()) return reader.failure("Native memory response status is invalid.")
-        return WasmlineCallResult.Failure(
-            crow.wasmline.invocation.WasmlineFailure(
-                code = WasmlineErrorCode.fromValue(code),
-                message = message,
-                details = details,
-                rawCode = code,
-            ),
-        )
-    }
+    /** Decodes the failure-only carrier returned by a direct native memory operation. */
+    fun decodeOperationFailure(bytes: ByteArray): WasmlineFailure =
+        when (val result = WasmlineTypedInvocationCodec.decodeRawValues(bytes)) {
+            is WasmlineCallResult.Failure -> result.failure
 
-    /** Encodes an empty successful memory response or a structured failure. */
-    fun encodeMemoryResponse(result: WasmlineCallResult<ByteArray>): ByteArray {
-        val writer = Writer()
-        when (result) {
-            is WasmlineCallResult.Success -> {
-                writer.byte(0)
-                writer.u32(0)
-                writer.text("")
-                writer.bytes(ByteArray(0))
-                writer.bytes(result.value)
-            }
-
-            is WasmlineCallResult.Failure -> {
-                val failure = result.failure
-                writer.byte(1)
-                writer.u32(failure.rawCode)
-                writer.text(failure.message)
-                writer.bytes(failure.details ?: ByteArray(0))
-                writer.bytes(ByteArray(0))
-            }
+            is WasmlineCallResult.Success -> WasmlineFailure(
+                WasmlineErrorCode.TRANSPORT_FAILURE,
+                "Native memory operation returned an unexpected success carrier.",
+            )
         }
-        return writer.finish()
-    }
 
     /**
      * Writes bounded little-endian native bridge records.

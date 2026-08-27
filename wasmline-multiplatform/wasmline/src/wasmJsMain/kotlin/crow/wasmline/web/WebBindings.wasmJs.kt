@@ -174,9 +174,15 @@ internal actual fun webBytesCopyOut(bytes: WebBytes): ByteArray {
     return ByteArray(length) { index -> rawReadByte(bytes.raw, index).toByte() }
 }
 
-internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray) {
-    for (index in source.indices) {
-        rawWriteByte(bytes.raw, index, source[index].toInt() and 0xFF)
+internal actual fun webBytesCopyOut(bytes: WebBytes, destination: ByteArray, destinationOffset: Int) {
+    for (index in 0 until rawByteLength(bytes.raw)) {
+        destination[destinationOffset + index] = rawReadByte(bytes.raw, index).toByte()
+    }
+}
+
+internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray, sourceOffset: Int) {
+    for (index in 0 until rawByteLength(bytes.raw)) {
+        rawWriteByte(bytes.raw, index, source[sourceOffset + index].toInt() and 0xFF)
     }
 }
 

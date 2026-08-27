@@ -120,6 +120,7 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
 
     override fun apply(target: Project) {
         super.apply(target)
+        target.pluginManager.apply(WasmlineRuntimePlugin::class.java)
 
         // 1. Create the DSL extension (available for all projects)
         val extension = target.extensions.create("wasmline", WasmlineExtension::class.java, target)

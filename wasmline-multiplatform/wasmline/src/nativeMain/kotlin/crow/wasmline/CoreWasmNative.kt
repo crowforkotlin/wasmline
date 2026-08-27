@@ -57,7 +57,7 @@ private class NativeCoreWasmModule(
         if (lock.withLock { closed }) return coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Native Core Wasm module is closed.")
         val memory = options.memoryExportName
             ?.takeIf { memoryName -> exports.any { it.name == memoryName && it.kind == RawExportKind.MEMORY } }
-            ?.let { NativeCoreWasmMemory(sessionKey, it) }
+            ?.let { NativeCoreWasmMemory(sessionKey) }
         val holder = NativeRawImportDispatcher(options.imports, dispatcher, memory)
         NativeRawImportRegistry.register(sessionKey, holder)
         val imports = CoreWasmNativeCodec.encodeImports(options.imports)
@@ -220,40 +220,40 @@ private object NativeRawImportRegistry {
  * Date: 2026-08-25
  * Author: crowforkotlin
  */
-private class NativeCoreWasmMemory(private val sessionKey: String, private val memoryExportName: String) : CoreWasmBackendMemory {
+private class NativeCoreWasmMemory(private val sessionKey: String) : CoreWasmBackendMemory {
     override val byteSize: Long get() = size(false)
     override val pageCount: Long get() = size(true)
 
-    override fun read(offset: Long, length: Int): ByteArray {
-        val carrier = readNativeBuffer { outLen -> wasmline_core_memory_read(sessionKey, offset.toULong(), length.toULong(), outLen) }
-            ?: throw CoreWasmBackendFailure(
-                WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native memory read returned no response."),
-            )
-        return when (val result = CoreWasmNativeCodec.decodeMemoryRead(carrier)) {
-            is WasmlineCallResult.Success -> result.value
-            is WasmlineCallResult.Failure -> throw CoreWasmBackendFailure(result.failure)
-        }
-    }
-
-    override fun write(offset: Long, bytes: ByteArray) {
-        val carrier = readNativeBuffer { outLen ->
-            bytes.usePinned { pinned ->
-                wasmline_core_memory_write(
+    override fun readInto(destination: ByteArray, destinationOffset: Int, sourceOffset: Long, length: Int) {
+        val failure = readNativeMemoryFailure { outSuccess, outLen ->
+            destination.usePinned { pinned ->
+                wasmline_core_memory_read_into(
                     sessionKey,
-                    offset.toULong(),
-                    if (bytes.isEmpty()) null else pinned.addressOf(0),
-                    bytes.size.toULong(),
+                    sourceOffset.toULong(),
+                    if (length == 0) null else pinned.addressOf(destinationOffset),
+                    length.toULong(),
+                    outSuccess,
                     outLen,
                 )
             }
-        } ?: throw CoreWasmBackendFailure(WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native memory write returned no response."))
-        decodeValues(carrier).also {
-            if (it.isNotEmpty()) {
-                throw CoreWasmBackendFailure(
-                    WasmlineFailure(WasmlineErrorCode.RESULT_TYPE_UNSUPPORTED, "Native memory write returned values."),
+        }
+        if (failure != null) throw CoreWasmBackendFailure(CoreWasmNativeCodec.decodeOperationFailure(failure))
+    }
+
+    override fun writeFrom(source: ByteArray, sourceOffset: Int, destinationOffset: Long, length: Int) {
+        val failure = readNativeMemoryFailure { outSuccess, outLen ->
+            source.usePinned { pinned ->
+                wasmline_core_memory_write_from(
+                    sessionKey,
+                    destinationOffset.toULong(),
+                    if (length == 0) null else pinned.addressOf(sourceOffset),
+                    length.toULong(),
+                    outSuccess,
+                    outLen,
                 )
             }
         }
+        if (failure != null) throw CoreWasmBackendFailure(CoreWasmNativeCodec.decodeOperationFailure(failure))
     }
 
     override fun grow(deltaPages: Long): Long {
@@ -336,3 +336,31 @@ private inline fun readNativeBuffer(invoke: (CPointer<ULongVar>) -> CPointer<Byt
     wasmline_free_memory(pointer)
     result
 }
+
+/** Reads the optional failure carrier from an allocation-free successful native memory operation. */
+private inline fun readNativeMemoryFailure(invoke: (CPointer<BooleanVar>, CPointer<ULongVar>) -> CPointer<ByteVar>?): ByteArray? =
+    memScoped {
+        val outSuccess = alloc<BooleanVar>()
+        val outLen = alloc<ULongVar>()
+        outSuccess.value = false
+        outLen.value = 0uL
+        val pointer = invoke(outSuccess.ptr, outLen.ptr)
+        if (outSuccess.value) {
+            if (pointer != null) wasmline_free_memory(pointer)
+            return@memScoped null
+        }
+        if (pointer == null) {
+            throw CoreWasmBackendFailure(
+                WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native memory operation returned no failure response."),
+            )
+        }
+        if (outLen.value > Int.MAX_VALUE.toULong()) {
+            wasmline_free_memory(pointer)
+            throw CoreWasmBackendFailure(
+                WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native memory failure response exceeds Kotlin limits."),
+            )
+        }
+        val result = pointer.readBytes(outLen.value.toInt())
+        wasmline_free_memory(pointer)
+        result
+    }

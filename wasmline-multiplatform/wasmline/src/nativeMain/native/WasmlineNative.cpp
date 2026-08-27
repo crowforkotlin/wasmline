@@ -231,6 +231,19 @@ static char *copyNativeBytes(const std::vector<uint8_t> &bytes, size_t *outLen) 
   return output;
 }
 
+static char *copyMemoryOperationFailure(const InvocationResult &result,
+                                        bool *outSuccess, size_t *outLen) {
+  if (outSuccess)
+    *outSuccess = result.isSuccess();
+  if (outLen)
+    *outLen = 0;
+  if (result.isSuccess())
+    return nullptr;
+  return copyNativeBytes(
+      TypedInvocationCodec::encodeResult(result, TypedInvocationKind::RAW),
+      outLen);
+}
+
 char *wasmline_core_module_exports(const char *key, size_t *outLen) {
   if (outLen)
     *outLen = 0;
@@ -332,37 +345,30 @@ char *wasmline_core_memory_size(const char *sessionKey, bool pages,
       outLen);
 }
 
-char *wasmline_core_memory_read(const char *sessionKey, uint64_t offset,
-                                uint64_t length, size_t *outLen) {
-  if (outLen)
-    *outLen = 0;
-  std::vector<uint8_t> bytes;
-  InvocationResult result = sessionKey
-                                ? Api::readRawMemory(sessionKey, offset, length,
-                                                     &bytes)
-                                : InvocationResult::failure(
-                                      WasmlineErrorCode::TRANSPORT_FAILURE,
-                                      "Raw memory session key is null.");
-  return copyNativeBytes(CoreWasmBridgeCodec::encodeMemoryResult(result, bytes),
-                         outLen);
+char *wasmline_core_memory_read_into(const char *sessionKey, uint64_t offset,
+                                     void *destination, uint64_t length,
+                                     bool *outSuccess, size_t *outLen) {
+  InvocationResult result =
+      sessionKey && (length == 0 || destination)
+          ? Api::readRawMemory(sessionKey, offset,
+                               static_cast<uint8_t *>(destination), length)
+          : InvocationResult::failure(
+                WasmlineErrorCode::TRANSPORT_FAILURE,
+                "Raw memory read received invalid caller-owned storage.");
+  return copyMemoryOperationFailure(result, outSuccess, outLen);
 }
 
-char *wasmline_core_memory_write(const char *sessionKey, uint64_t offset,
-                                 const void *bytes, uint64_t length,
-                                 size_t *outLen) {
-  if (outLen)
-    *outLen = 0;
-  InvocationResult result = sessionKey
-                                ? Api::writeRawMemory(
-                                      sessionKey, offset,
-                                      static_cast<const uint8_t *>(bytes),
-                                      length)
-                                : InvocationResult::failure(
-                                      WasmlineErrorCode::TRANSPORT_FAILURE,
-                                      "Raw memory session key is null.");
-  return copyNativeBytes(
-      TypedInvocationCodec::encodeResult(result, TypedInvocationKind::RAW),
-      outLen);
+char *wasmline_core_memory_write_from(const char *sessionKey, uint64_t offset,
+                                      const void *source, uint64_t length,
+                                      bool *outSuccess, size_t *outLen) {
+  InvocationResult result =
+      sessionKey && (length == 0 || source)
+          ? Api::writeRawMemory(sessionKey, offset,
+                                static_cast<const uint8_t *>(source), length)
+          : InvocationResult::failure(
+                WasmlineErrorCode::TRANSPORT_FAILURE,
+                "Raw memory write received invalid caller-owned storage.");
+  return copyMemoryOperationFailure(result, outSuccess, outLen);
 }
 
 char *wasmline_core_memory_grow(const char *sessionKey, uint64_t deltaPages,

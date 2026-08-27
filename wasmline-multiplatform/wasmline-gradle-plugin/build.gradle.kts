@@ -83,6 +83,12 @@ gradlePlugin {
             description = "wasmline desc"
             implementationClass = "crow.wasmline.WasmlinePlugin"
         }
+        create("wasmlineRuntime") {
+            id = "crow.wasmline.runtime"
+            displayName = "Wasmline runtime resolver"
+            description = "Selects the native Wasmline engine artifact for the current JVM host"
+            implementationClass = "crow.wasmline.WasmlineRuntimePlugin"
+        }
     }
 }
 
