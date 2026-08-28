@@ -520,13 +520,10 @@ class NativeDirectInvocationTest {
         val runtime = platformWasmlineRuntimeCapabilities()
         try {
             val state = platformWasmlineLoadArtifact(
-                descriptor = WasmlineArtifactDescriptor(
+                descriptor = nativeTestArtifactDescriptor(
                     path = artifact.absolutePath,
                     artifactFormat = WasmlineArtifactFormat.CWASM,
-                    targetCpu = runtime.targetCpu,
-                    targetOs = runtime.targetOs,
-                    targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-                    is64Bit = runtime.is64Bit,
+                    runtime = runtime,
                     executionModel = WasmlineExecutionModel.CORE_WASM,
                     invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
                     exportName = "add",
@@ -601,13 +598,10 @@ class NativeDirectInvocationTest {
 
     private fun componentAotDescriptor(path: String, artifactFormat: WasmlineArtifactFormat): WasmlineArtifactDescriptor {
         val runtime = platformWasmlineRuntimeCapabilities()
-        return WasmlineArtifactDescriptor(
+        return nativeTestArtifactDescriptor(
             path = path,
             artifactFormat = artifactFormat,
-            targetCpu = targetCpuFor(artifactFormat, runtime.is64Bit, runtime.targetCpu),
-            targetOs = targetOsFor(artifactFormat, runtime.targetOs),
-            targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-            is64Bit = runtime.is64Bit,
+            runtime = runtime,
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
             invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
             exportName = "add",
@@ -616,13 +610,10 @@ class NativeDirectInvocationTest {
 
     private fun coreAotDescriptor(path: String, artifactFormat: WasmlineArtifactFormat): WasmlineArtifactDescriptor {
         val runtime = platformWasmlineRuntimeCapabilities()
-        return WasmlineArtifactDescriptor(
+        return nativeTestArtifactDescriptor(
             path = path,
             artifactFormat = artifactFormat,
-            targetCpu = targetCpuFor(artifactFormat, runtime.is64Bit, runtime.targetCpu),
-            targetOs = targetOsFor(artifactFormat, runtime.targetOs),
-            targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-            is64Bit = runtime.is64Bit,
+            runtime = runtime,
             executionModel = WasmlineExecutionModel.CORE_WASM,
             invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
             exportName = "add",
@@ -735,18 +726,6 @@ class NativeDirectInvocationTest {
     private fun WasmlineArtifactFormat.fileSuffix(): String = when (this) {
         WasmlineArtifactFormat.CWASM -> ".cwasm"
         WasmlineArtifactFormat.PWASM -> ".pwasm"
-        WasmlineArtifactFormat.RAW_WASM -> error("Direct Component fixtures cannot use raw Wasm.")
-    }
-
-    private fun targetCpuFor(artifactFormat: WasmlineArtifactFormat, is64Bit: Boolean, runtimeCpu: String): String = when (artifactFormat) {
-        WasmlineArtifactFormat.CWASM -> runtimeCpu
-        WasmlineArtifactFormat.PWASM -> if (is64Bit) "pulley64" else "pulley32"
-        WasmlineArtifactFormat.RAW_WASM -> error("Direct Component fixtures cannot use raw Wasm.")
-    }
-
-    private fun targetOsFor(artifactFormat: WasmlineArtifactFormat, runtimeOs: String): String? = when (artifactFormat) {
-        WasmlineArtifactFormat.CWASM -> runtimeOs
-        WasmlineArtifactFormat.PWASM -> null
         WasmlineArtifactFormat.RAW_WASM -> error("Direct Component fixtures cannot use raw Wasm.")
     }
 

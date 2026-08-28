@@ -2,7 +2,7 @@
 title: 常见问题
 description: 浏览器执行路径、产物格式差异、编译器插件必要性与插件隔离模型
 createdAt: 2026-07-18
-updatedAt: 2026-08-18
+updatedAt: 2026-08-28
 ---
 
 # 常见问题
@@ -35,22 +35,22 @@ Web 目标实现（`webMain` / `jsMain` / `wasmJsMain`）通过浏览器原生 W
 
 这三种产物类型在 Wasmline 流水线中相关，但它们在**编译发生的时机**以及**编译目标**上有根本区别：
 
-| 产物 | 编译时机 | 执行方式 | 版本关联性 |
+| 产物 | 编译时机 | 执行方式 | 兼容身份 |
 |---|---|---|---|
-| `.wasm` | 源格式；仅由浏览器路径直接加载 | 浏览器 WebAssembly 运行时 | **无 — 不与 Wasmtime 版本绑定** |
-| `.cwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | 直接在原生硬件上执行（例如 arm64 machine code） | 与编译它的 wasmtime 版本关联 |
-| `.pwasm` | 由 `wasmtime compile` 面向 Pulley 提前编译 | wasmtime **Pulley** 解释器 | 与编译它的 wasmtime 版本关联 |
+| `.wasm` | 源格式；仅由浏览器路径直接加载 | 浏览器 WebAssembly 运行时 | **无**；不与 Wasmtime 绑定 |
+| `.cwasm` | 由 `wasmtime compile` 通过 Cranelift 提前编译 | 直接在原生硬件上执行（例如 arm64 machine code） | 精确 Cranelift AOT profile 与 native target |
+| `.pwasm` | 由 `wasmtime compile` 面向 Pulley 提前编译 | Wasmtime **Pulley** 解释器 | 精确 Pulley AOT profile 与 pointer width |
 
 **`.cwasm`（平台特定 AOT）** 会为特定 target triple（例如 `aarch64-android`）生成原生机器码。吞吐量最高；但每个平台都需要单独产物。
 
-**`.pwasm`（Pulley AOT）** 由 `wasmtime compile` 面向 **Pulley** 字节码 ISA 生成，而不是原生机器码，运行时由 Pulley 解释器执行。`.pwasm` 不是原始 WebAssembly，而是与 Wasmtime 版本绑定的预编译产物。`pulley64.pwasm` 可在受支持的 64 位原生 Wasmtime 目标上运行；32 位目标使用匹配的 `pulley32.pwasm`。
+**`.pwasm`（Pulley AOT）** 由 `wasmtime compile` 面向 **Pulley** 字节码 ISA 生成，而不是原生机器码，运行时由 Pulley 解释器执行。`.pwasm` 不是原始 WebAssembly，而是绑定到精确 Pulley AOT compatibility profile 的预编译产物。`pulley64.pwasm` 可在受支持的 64 位原生 Wasmtime 目标上运行；32 位目标使用匹配的 `pulley32.pwasm`。
 
-原始 `.wasm` 只有浏览器路径可以直接接受。Wasmline 原生运行时要求预编译的 `.cwasm` 或 `.pwasm`；这两者都是特定 wasmtime 发行版的输出，因此升级 wasmtime 后会失效，必须重新编译。
+原始 `.wasm` 只有浏览器路径可以直接接受。Wasmline 原生运行时要求预编译的 `.cwasm` 或 `.pwasm`，且其 backend profile ID 必须与 engine identity 精确匹配。Wasmtime 升级通常会引入新的 profile ID；已有产物仍保持不可变，但 package 必须已经包含该 profile 的 variant，或者重新构建以增加该 variant。
 
 Wasmline 原生运行时不会通过 Pulley 引擎加载原始 `.wasm`。必须提前生成 `.pwasm`，让 Pulley 解释器直接执行预编译字节码，避免进程内编译步骤；这对 Android 这类内存受限环境尤其重要。
 
-<Callout type="info" title="版本绑定">
-`.cwasm` 与 `.pwasm` 都**与生成它们的 wasmtime 编译器版本绑定**。一旦升级 wasmtime 版本，所有已编译产物都会失效，必须重新编译。正因如此，除 Web 外的所有原生目标都使用预编译的 `.cwasm` 或 `.pwasm`，而不是原始 `.wasm`。Web 是唯一的例外，它依赖浏览器自身的 WebAssembly 运行时并使用原始 `.wasm` 文件。
+<Callout type="info" title="AOT compatibility profile">
+Wasmtime 版本文本只用于诊断，不是兼容证明。签名 manifest 将每个 `.cwasm` 或 `.pwasm` variant 映射到精确且区分 backend 的 profile ID，native engine 则报告自身能够反序列化的 ID。一个 package 可以携带多个 profile 的 variant，同时只存储一份 Web `.wasm`。
 </Callout>
 
 </details>

@@ -10,7 +10,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
-private const val WEB_PLUGIN_URL = "plugin/wasmline-sample-sample-plugin.wasm"
+private const val WEB_PLUGIN_URL = "plugin/manifest.wlm"
 
 fun main() {
     ComposeViewport {

@@ -19,10 +19,10 @@ The task chain materializes Wasmline's canonical WIT, generates Kotlin bindings 
 Wasmline transport adapter under `build/generated`, compiles the
 Kotlin/Wasm WASI library with JDK 21, embeds WIT, creates and validates the
 Component with the pinned `wit-bindgen` 0.57.1 and `wasm-tools` 1.256.0, then
-uses the fork's `cranelift-min` CLI to produce matching `.pwasm` and `.cwasm` Component
-artifacts. Generated bindings and intermediate Wasm files are build outputs and
-are not committed. The Gradle plugin downloads the pinned minimal Wasmtime CLI
-automatically when the compiler is not already available.
+uses catalog-backed, backend-specific profiles to produce matching `.pwasm` and
+`.cwasm` Component artifacts. Generated bindings and intermediate Wasm files
+are build outputs and are not committed. The Gradle plugin downloads a missing
+compiler archive only after validating the catalog digest.
 
 The guest never imports generated `Host`/`Plugin` types directly and does not maintain an
 action switch or Service error conversion. The fixed WIT `list<u8>` payload remains exactly the

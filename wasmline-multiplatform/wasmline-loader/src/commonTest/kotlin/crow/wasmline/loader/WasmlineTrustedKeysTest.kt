@@ -4,7 +4,12 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertNull
 
-/** Verifies exact, wildcard, and algorithm-specific trusted key lookup. */
+/**
+ * Verifies exact, wildcard, and algorithm-specific trusted key lookup.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 class WasmlineTrustedKeysTest {
 
     @Test
@@ -53,7 +58,7 @@ class WasmlineTrustedKeysTest {
             .add("Ed25519", keyId = null, publicKey = byteArrayOf(1, 2, 3))
             .build()
 
-        assertNull(keys.getPublicKey("EcdsaP256", null))
+        assertNull(keys.getPublicKey("UnknownSignatureAlgorithm", null))
     }
 
     @Test

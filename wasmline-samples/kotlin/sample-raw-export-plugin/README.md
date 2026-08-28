@@ -2,7 +2,9 @@
 
 This module demonstrates `CORE_WASM + RAW_EXPORT`. The guest exposes the numeric
 Core Wasm function `add_i32(i32, i32) -> i32` with Kotlin's `@WasmExport`, and
-the Wasmline Gradle plugin publishes matching signed CWASM/PWASM artifacts.
+the Wasmline Gradle plugin publishes matching signed CWASM/PWASM artifacts. Its
+typed `manifest.rawAbi` configuration records the export signature in the
+signed runtime contract.
 
 ```shell
 ./gradlew :sample-raw-export-plugin:wasmlineAssembleDebug

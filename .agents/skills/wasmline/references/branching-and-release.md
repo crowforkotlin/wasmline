@@ -48,9 +48,24 @@ The root `wasmline-multiplatform/build.gradle.kts` assigns `wasmline.version` to
 
 Engine modules do **not** use `x.y.z.v` Maven versions. JVM native libraries are published as platform classifiers and advertised as variants in Gradle module metadata. Android and other KMP variants use the same project version.
 
-The Wasmtime identity is carried separately by native assets and artifact metadata such as `targetCompilerVersion`. Precompiled `.cwasm` and `.pwasm` artifacts must match the runtime's Wasmtime version and target properties.
+Wasmtime AOT identity is carried separately from the Maven version. Native
+engines report backend-specific compatibility profile IDs, and signed manifests
+bind CWASM or PWASM variants to those exact IDs. The human-readable Wasmtime
+`x.y.z` is a catalog selector and diagnostic value; it is not sufficient proof
+that a serialized artifact can be loaded.
+
+The published `wasmline-bom` applies strict same-version constraints to runtime,
+loader, network, build-tool, and engine modules. Consumers that cannot use the
+BOM must still assign the same `wasmline_version` to every Wasmline coordinate.
 
 Because Maven coordinates are immutable, a Wasmtime upgrade that changes published engine binaries also requires a new `wasmline_version`. A patch increment is sufficient when no public API changes.
+
+A Wasmtime upgrade appends immutable Cranelift and Pulley profile descriptors,
+compiler-asset digests, and build-host bindings to `scripts/versions.json`.
+Already released profile IDs and provenance records are never rewritten. A
+plugin may select several complete Wasmtime versions or exact profile IDs and
+publish them through one manifest; this does not create additional Wasmline
+Maven versions or engine artifacts.
 
 ## Release Tag
 
@@ -68,6 +83,10 @@ Example: Wasmtime `12.3.4` encodes to `1234`, so Wasmline `1.2.3` uses `release-
 The encoding is unambiguous only while Wasmtime minor and patch values are single digits. Revise the tag format before accepting a version that violates this condition.
 
 Tags are immutable. Do not move or reuse a release tag.
+
+The tag suffix describes the Wasmtime version linked by that Wasmline release.
+It does not enumerate every historical AOT profile that the plugin build catalog
+can compile.
 
 ## Tag and Maven Pairing
 

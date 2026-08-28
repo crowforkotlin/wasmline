@@ -23,6 +23,7 @@ const EXTERNAL_SOURCES: []const []const u8 = &.{
     "src/runtime/Engine.cpp",
     "src/runtime/Module.cpp",
     "src/runtime/NativeRuntime.cpp",
+    "src/runtime/NativeRuntimeIdentityProvider.cpp",
     "src/runtime/RawModuleSession.cpp",
     "src/runtime/RawSessionRegistry.cpp",
     "src/runtime/Session.cpp",

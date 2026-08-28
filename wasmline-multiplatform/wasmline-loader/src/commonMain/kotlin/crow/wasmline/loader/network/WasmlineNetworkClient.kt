@@ -5,28 +5,25 @@ package crow.wasmline.loader.network
  *
  * The loader never chooses an HTTP engine. Applications opt into an adapter such
  * as `wasmline-network-ktor` or `wasmline-network-okhttp`, or provide their own.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
  */
-fun interface WasmlineNetworkClient {
+interface WasmlineNetworkClient {
+    /** Fetches a bounded manifest or other small response as bytes. */
     suspend fun fetch(url: String): WasmlineHttpResponse
 
-    /**
-     * Streams a response body into [sink]. The sink consumes each byte range
-     * synchronously; implementations may reuse the supplied array afterward.
-     *
-     * The default implementation preserves compatibility with simple clients
-     * by delegating to [fetch]. Network adapters should override this method to
-     * avoid materializing large artifact responses in memory.
-     */
-    suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
-        val response = fetch(url)
-        if (response.isSuccess) {
-            sink.write(response.bytes, offset = 0, byteCount = response.bytes.size)
-        }
-        return WasmlineHttpStatus(response.statusCode)
-    }
+    /** Streams a response body into [sink] without materializing the complete body. */
+    suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus
 }
 
-/** Synchronous byte consumer used by streaming network responses. */
+/**
+ * Consumes synchronous byte ranges supplied by a streaming network response.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 fun interface WasmlineNetworkSink {
+    /** Consumes one response-body range before the backing array may be reused. */
     fun write(bytes: ByteArray, offset: Int, byteCount: Int)
 }

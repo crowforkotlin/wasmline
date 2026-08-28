@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 from urllib.request import Request, urlopen
 
-from . import toolchain_lock
+from . import aot_compatibility, toolchain_lock
 from .output import Console
 from .paths import MANIFEST_PATH, PROJECT_ROOT
 KTLINT_LATEST_RELEASE_URL = "https://api.github.com/repos/ktlint/ktlint/releases/latest"
@@ -86,7 +86,7 @@ def render(value: Replacement, versions: VersionMap) -> str:
     return value(versions) if callable(value) else value
 
 
-def load_manifest() -> dict[str, VersionMap]:
+def load_manifest() -> dict[str, Any]:
     try:
         data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
@@ -103,10 +103,15 @@ def load_manifest() -> dict[str, VersionMap]:
     if missing:
         raise SystemExit(f"Manifest is missing required keys: {', '.join(missing)}")
     validate_versions(normalized)
-    return {"versions": normalized}
+    data["versions"] = normalized
+    try:
+        aot_compatibility.validate_source(data, normalized)
+    except aot_compatibility.AotCompatibilityError as error:
+        raise SystemExit(str(error)) from error
+    return data
 
 
-def render_manifest(data: dict[str, VersionMap]) -> str:
+def render_manifest(data: Mapping[str, Any]) -> str:
     """Render the version manifest in its canonical format."""
 
     return json.dumps(data, ensure_ascii=True, indent=2) + "\n"
@@ -377,13 +382,8 @@ def file_specs() -> tuple[FileSpec, ...]:
 
     cli_docs_rules = (
         Rule(
-            r"download -v v[0-9]+(?:\.[0-9]+){2,3}",
-            lambda v: f"download -v v{v['wasmtime_release_version']}",
-            min_count=0,
-        ),
-        Rule(
-            r"wasmtime-v[0-9]+(?:\.[0-9]+){2,3}-aarch64-macos",
-            lambda v: f"wasmtime-v{v['wasmtime_release_version']}-aarch64-macos",
+            r"(--aot-wasmtime-version )[0-9]+\.[0-9]+\.[0-9]+",
+            lambda v: rf"\g<1>{v['wasmtime_version']}",
             min_count=0,
         ),
     )
@@ -405,54 +405,6 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
     )
 
-    cli_version_rules = (
-        Rule(
-            r'(?m)^VERSION="[0-9A-Za-z.\-]+"$',
-            lambda v: f'VERSION="{v["sample_plugin_version"]}"',
-        ),
-        Rule(
-            r'(?m)^VERSION_ALT="[0-9A-Za-z.\-]+"$',
-            lambda v: f'VERSION_ALT="{v["sample_plugin_version"]}"',
-        ),
-        Rule(
-            r'(?m)^VERSION_CODE_ALT="[0-9]+"$',
-            lambda v: f'VERSION_CODE_ALT="{v["sample_plugin_version"].split(".")[0]}"',
-        ),
-        Rule(
-            r'(?m)^WASMTIME_VERSION="v[0-9.]+"$',
-            lambda v: f'WASMTIME_VERSION="v{v["wasmtime_release_version"]}"',
-        ),
-        Rule(
-            r'wasmtime-v[0-9]+(?:\.[0-9]+){2,3}',
-            lambda v: f'wasmtime-v{v["wasmtime_release_version"]}',
-            min_count=0,
-        ),
-        Rule(
-            r'(?m)(\\`)[0-9]+\.[0-9]+\.[0-9]+(\\`)(?=\s+\|\s+(?:Semantic version|Version string))',
-            lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-            min_count=0,
-        ),
-        Rule(
-            r'(?m)(\\`)[0-9]+\.[0-9]+\.[0-9]+(\\`)(?=\s+\|\s+Version string for output directory)',
-            lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-            min_count=0,
-        ),
-        Rule(
-            r'(?m)(\\`)[0-9]+\.[0-9]+\.[0-9]+(\\`)(?=\s+\|\s+Integer version code)',
-            lambda v: rf'\g<1>{v["sample_plugin_version"].split(".")[0]}\g<2>',
-            min_count=0,
-        ),
-        Rule(
-            r'(?m)(\\`)[0-9]+\.[0-9]+\.[0-9]+(\\`)(?=\s+\|\s+Semantic version\s*$)',
-            lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-            min_count=0,
-        ),
-        Rule(
-            r'(?m)(download -v )v[0-9]+(?:\.[0-9]+){2,3}',
-            lambda v: rf'\g<1>v{v["wasmtime_release_version"]}',
-            min_count=0,
-        ),
-    )
     development_guide_rules = (
         Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}", min_count=0),
         Rule(
@@ -460,12 +412,6 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: f"The pre-check also reports Zig {v['zig_version']}",
         ),
         Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}", min_count=0),
-    )
-    manifest_test_rules = (
-        Rule(
-            r'(?m)(private fun createTestManifest\([^\n]*\): WasmlineManifest = WasmlineManifest\(\n\s+pluginId = "[^"]+",\n\s+version = ")[0-9A-Za-z.\-]+(")',
-            lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-        ),
     )
     sample_manifest_rules = (
         Rule(
@@ -479,16 +425,16 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
         ),
     )
-    sample_wasmtime_release_fallback_rules = (
-        Rule(
-            r'(providers\.gradleProperty\("wasmtime\.release\.version"\)\.orElse\(")[0-9.]+("\)\.get\(\))',
-            lambda v: rf'\g<1>{v["wasmtime_release_version"]}\g<2>',
-        ),
-    )
     sample_output_rules = (
         Rule(
             r'(wasmline/output/[^"\s]*-)[0-9]+\.[0-9]+\.[0-9]+',
             lambda v: rf'\g<1>{v["sample_plugin_version"]}',
+        ),
+    )
+    aot_wasmtime_selector_rules = (
+        Rule(
+            r'(wasmtimeVersions\.set\(listOf\(")[0-9A-Za-z.\-]+("\)\))',
+            lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
         ),
     )
 
@@ -613,15 +559,11 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            sample_manifest_rules
-            + sample_wasmtime_fallback_rules
-            + sample_wasmtime_release_fallback_rules,
+            sample_manifest_rules + sample_wasmtime_fallback_rules,
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts",
-            sample_manifest_rules
-            + sample_wasmtime_fallback_rules
-            + sample_wasmtime_release_fallback_rules,
+            sample_manifest_rules + sample_wasmtime_fallback_rules,
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
@@ -645,12 +587,6 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r'(?m)^    val wasmtimeVersion = "[0-9.]+"$',
                     lambda v: f'    val wasmtimeVersion = "{v["wasmtime_version"]}"',
-                ),
-                Rule(
-                    r'(?m)^    val wasmtimeReleaseVersion = "[0-9.]+"$',
-                    lambda v: (
-                        f'    val wasmtimeReleaseVersion = "{v["wasmtime_release_version"]}"'
-                    ),
                 ),
             ),
         ),
@@ -685,7 +621,7 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         FileSpec(
             "wasmline-samples/kotlin/README.md",
-            sample_output_rules,
+            sample_output_rules + aot_wasmtime_selector_rules,
         ),
         FileSpec(
             "wasmline-samples/kotlin/sample-apps/README.md",
@@ -730,10 +666,6 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-cli/cli.sh",
-            cli_version_rules,
-        ),
-        FileSpec(
             "wasmline-multiplatform/docs/ir/box-ir.md",
             readme_en,
         ),
@@ -747,33 +679,17 @@ def file_specs() -> tuple[FileSpec, ...]:
         FileSpec("docs/content/docs/architecture.zh.mdx", architecture_rules),
         FileSpec("docs/content/docs/cli.mdx", cli_docs_rules),
         FileSpec("docs/content/docs/cli.zh.mdx", cli_docs_rules),
+        FileSpec("docs/content/docs/gradle-plugin.mdx", aot_wasmtime_selector_rules),
+        FileSpec("docs/content/docs/gradle-plugin.zh.mdx", aot_wasmtime_selector_rules),
         FileSpec("docs/content/docs/testing.mdx", version_sync_docs_rules),
         FileSpec("docs/content/docs/testing.zh.mdx", version_sync_docs_rules),
         FileSpec(
             "docs/content/docs/wasmtime-download.mdx",
-            (
-                Rule(
-                    r'(?m)^(\s*version = ")[0-9A-Za-z.\-]+(")$',
-                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
-                ),
-                Rule(
-                    r'(?m)^(\s*releaseVersion = "v)[0-9.]+(")$',
-                    lambda v: rf'\g<1>{v["wasmtime_release_version"]}\g<2>',
-                ),
-            ),
+            aot_wasmtime_selector_rules,
         ),
         FileSpec(
             "docs/content/docs/wasmtime-download.zh.mdx",
-            (
-                Rule(
-                    r'(?m)^(\s*version = ")[0-9A-Za-z.\-]+(")$',
-                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
-                ),
-                Rule(
-                    r'(?m)^(\s*releaseVersion = "v)[0-9.]+(")$',
-                    lambda v: rf'\g<1>{v["wasmtime_release_version"]}\g<2>',
-                ),
-            ),
+            aot_wasmtime_selector_rules,
         ),
         FileSpec(
             "wasmline-multiplatform/docs/native-library-loading.md",
@@ -885,30 +801,11 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-cli/src/test/kotlin/crow/wasmline/cli/CoreCliRegressionTest.kt",
-            (
-                Rule(
-                    r'(File\(outputRoot, "core-plugin-)[0-9A-Za-z.\-]+(/debug/)',
-                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-                ),
-            ),
-        ),
-        FileSpec(
             "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/WasmlinePlugin.kt",
             (
                 Rule(
                     r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
                     lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-                ),
-                Rule(
-                    r'(?m)(^ \*         directory = .*\n^ \*         version = ")[0-9.]+("$)',
-                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
-                ),
-                Rule(
-                    r'(?m)^ \*         releaseVersion = "v[0-9.]+"$',
-                    lambda v: (
-                        f' *         releaseVersion = "v{v["wasmtime_release_version"]}"'
-                    ),
                 ),
             ),
         ),
@@ -944,52 +841,7 @@ def file_specs() -> tuple[FileSpec, ...]:
                     r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
                     lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
                 ),
-                Rule(
-                    r'(?m)(^ \*         autoDownload = true\n^ \*         version = ")[0-9.]+("$)',
-                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
-                ),
-                Rule(
-                    r'(?m)^ \*         releaseVersion = "v[0-9.]+"$',
-                    lambda v: (
-                        f' *         releaseVersion = "v{v["wasmtime_release_version"]}"'
-                    ),
-                ),
             ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/WasmtimeExtension.kt",
-            (
-                Rule(
-                    r'wasmtime-v[0-9]+(?:\.[0-9]+){2,3}-x86_64-linux-min',
-                    lambda v: (
-                        f'wasmtime-v{v["wasmtime_release_version"]}-x86_64-linux-min'
-                    ),
-                ),
-                Rule(
-                    r'(?m)(^ \*         autoDownload = true\n^ \*         version = ")[0-9.]+("$)',
-                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
-                ),
-                Rule(
-                    r'(?m)^ \*         releaseVersion = "v[0-9.]+"$',
-                    lambda v: (
-                        f' *         releaseVersion = "v{v["wasmtime_release_version"]}"'
-                    ),
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt",
-            manifest_test_rules
-            + (
-                Rule(
-                    r'(?m)(pluginId = "test",\n\s+version = ")[0-9A-Za-z.\-]+(")',
-                    lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt",
-            manifest_test_rules,
         ),
         FileSpec(
             "wasmline-samples/c/sample-component-plugin/CMakeLists.txt",
@@ -1082,18 +934,6 @@ def file_specs() -> tuple[FileSpec, ...]:
                     lambda v: (
                         rf'\g<1>{v["wit_bindgen_version"]}'
                         rf'\g<2>{v["wasm_tools_version"]}\g<3>'
-                    ),
-                ),
-            ),
-        ),
-        FileSpec(
-            "wasmline-multiplatform/wasmline-plugin-test/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativePluginTestSupport.kt",
-            (
-                Rule(
-                    r'(?m)^                    targetCompilerVersion = "wasmtime-[0-9A-Za-z.\-]+",$',
-                    lambda v: (
-                        '                    targetCompilerVersion = '
-                        f'"wasmtime-{v["wasmtime_version"]}",'
                     ),
                 ),
             ),
@@ -1352,11 +1192,36 @@ def main(argv: Sequence[str] | None = None) -> int:
     except toolchain_lock.ToolchainLockError as error:
         raise SystemExit(str(error)) from error
 
+    try:
+        generated_aot_lock = aot_compatibility.render_lock(data, versions)
+        if aot_compatibility.AOT_LOCK_PATH.is_file():
+            aot_compatibility.validate_append_only(
+                aot_compatibility.load_lock(),
+                generated_aot_lock,
+            )
+    except aot_compatibility.AotCompatibilityError as error:
+        raise SystemExit(str(error)) from error
+
     additional_files: tuple[AdditionalFile, ...] = (
         (
             toolchain_lock.LOCK_PATH.relative_to(PROJECT_ROOT).as_posix(),
             toolchain_lock.LOCK_PATH,
             toolchain_lock.render_lock(lock),
+        ),
+        (
+            aot_compatibility.AOT_LOCK_PATH.relative_to(PROJECT_ROOT).as_posix(),
+            aot_compatibility.AOT_LOCK_PATH,
+            json.dumps(generated_aot_lock, ensure_ascii=True, indent=2) + "\n",
+        ),
+        (
+            aot_compatibility.NATIVE_BUILD_IDENTITY_PATH.relative_to(PROJECT_ROOT).as_posix(),
+            aot_compatibility.NATIVE_BUILD_IDENTITY_PATH,
+            aot_compatibility.render_native_build_identity(data, versions),
+        ),
+        (
+            aot_compatibility.KOTLIN_RELEASE_IDENTITY_PATH.relative_to(PROJECT_ROOT).as_posix(),
+            aot_compatibility.KOTLIN_RELEASE_IDENTITY_PATH,
+            aot_compatibility.render_kotlin_release_identity(versions),
         ),
         (
             MANIFEST_PATH.relative_to(PROJECT_ROOT).as_posix(),

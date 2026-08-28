@@ -47,7 +47,6 @@
 
 ### Security & Manifest
 - [x] Ed25519 digital signatures
-- [x] ECDSA-P256 support
 - [x] Protobuf manifest format (`.wlm`)
 - [x] Manifest verification on load
 

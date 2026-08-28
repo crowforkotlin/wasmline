@@ -7,22 +7,15 @@ import crow.wasmline.gradle.WasmlineBuildVariant
 import crow.wasmline.gradle.WasmtimeTarget
 import crow.wasmline.gradle.extensions.WasmlineExtension
 import crow.wasmline.gradle.tasks.DownloadComponentToolsTask
-import crow.wasmline.gradle.tasks.DownloadWasmtimeTask
+import crow.wasmline.gradle.tasks.WasmlineAotBuildTask
 import crow.wasmline.gradle.tasks.WasmlineAssembleTask
-import crow.wasmline.gradle.tasks.WasmlineComponentAotTask
 import crow.wasmline.gradle.tasks.WasmlineComponentizeTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateHostWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineServerDeployTask
-import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
-import crow.wasmline.plugin.core.component.ComponentBuildRecords
-import crow.wasmline.plugin.core.download.WasmtimeDistribution
-import crow.wasmline.plugin.core.download.WasmtimeDownloader
+import crow.wasmline.plugin.core.aot.WasmlineRawAbiMetadataCodec
 import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
-import crow.wasmline.plugin.core.manifest.ManifestSigningAlgorithm
 import crow.wasmline.plugin.core.util.PlatformDetector
-import kotlinx.coroutines.runBlocking
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
@@ -51,18 +44,14 @@ import kotlin.jvm.java
  * - `wasmlineServerDeploy` — start an HTTP server serving the assembled artifacts
  *
  * Toolchain and signing tasks:
- * - `wasmlineDownloadWasmtime` — download wasmtime binary
- * - `wasmlineDownloadWasmtimeCompiler` — download the minimal Cranelift Component AOT compiler
  * - `wasmlineDownloadComponentTools` — download Component Model tools
- * - `checkWasmlineToolchain` — verify wasmtime is available
  * - `generateWasmlineManifestKeyPairEd25519` — generate an Ed25519 manifest key pair
- * - `generateWasmlineManifestKeyPairEcdsaP256` — generate an ECDSA P-256 manifest key pair
  *
  * Component pipeline tasks:
  * - `wasmlineGenerateWitBindings`
  * - `wasmlineGenerateHostWitBindings`
  * - `wasmlineComponentizeDebug` / `wasmlineComponentizeRelease`
- * - `wasmlineComponentAotDebug` / `wasmlineComponentAotRelease`
+ * - `wasmlineAotBuildDebug` / `wasmlineAotBuildRelease`
  *
  * DSL usage (in the consuming project's `build.gradle.kts`):
  * ```kotlin
@@ -73,12 +62,9 @@ import kotlin.jvm.java
  *         signingKey = file("../keys/private.key")
  *     }
  *     wasmtime {
- *         // Optional: defaults to ~/.wasmline/wasmtime (base directory).
- *         // The plugin searches for the executable in versioned subdirectories.
- *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
- *         version = "48.0.1"
- *         releaseVersion = "v48.0.1.1"
- *         autoDownload = true
+ *         aotCompatibility { wasmtimeVersions.set(listOf("47.0.3", "48.0.0")) }
+ *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
+ *         autoDownload.set(true)
  *     }
  *     server {
  *         port = 8080
@@ -87,7 +73,7 @@ import kotlin.jvm.java
  * }
  * ```
  *
- * Date: 2026-06-05
+ * Date: 2026-08-28
  * Author: crowforkotlin
  */
 public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
@@ -144,48 +130,11 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         // Register Wasmtime tasks only once, even when a project declares multiple WASI targets.
         kotlinExtension.targets.withType(KotlinJsIrTarget::class.java).configureEach { wasiTarget ->
             if (wasiTarget.wasmTargetType == KotlinWasmTargetType.WASI && wasiTasksRegistered.compareAndSet(false, true)) {
-                createWasmlineDownloadTask(project = target, ext = extension)
                 createComponentDownloadTask(project = target, ext = extension)
-                createWasmtimeCheckTask(project = target, ext = extension)
                 createGenerateKeyPairTasks(project = target)
                 registerAssembleTasks(project = target, ext = extension)
                 registerServerDeployTask(project = target, ext = extension)
             }
-        }
-    }
-
-    /**
-     * Creates a `wasmlineDownloadWasmtime` task that users can run manually
-     * to download the wasmtime toolchain before building.
-     *
-     * This is available regardless of autoDownload setting and provides
-     * a convenient way to download wasmtime through Gradle.
-     */
-    private fun createWasmlineDownloadTask(project: Project, ext: WasmlineExtension) {
-        project.tasks.register("wasmlineDownloadWasmtime", DownloadWasmtimeTask::class.java) { task ->
-            task.group = "wasmline"
-            task.description = "Download wasmtime binary for current platform"
-
-            // Pass DSL configuration to the task
-            task.wasmtimeDirectory.set(ext.wasmtime.directory)
-            task.runtimeVersion.set(ext.wasmtime.version)
-            task.releaseVersion.set(ext.wasmtime.releaseVersion)
-            task.platform.convention(detectCurrentPlatform())
-            task.distribution.set(WasmtimeDistribution.MINIMAL)
-            task.githubToken.set(ext.wasmtime.githubToken)
-        }
-        project.tasks.register("wasmlineDownloadWasmtimeCompiler", DownloadWasmtimeTask::class.java) { task ->
-            task.group = "wasmline"
-            task.description = "Download the minimal Cranelift CLI used for Component AOT compilation"
-            task.wasmtimeDirectory.set(ext.wasmtime.compilerDirectory)
-            task.runtimeVersion.set(ext.wasmtime.compilerVersion)
-            task.releaseVersion.set(ext.wasmtime.releaseVersion)
-            task.platform.convention(detectCurrentPlatform())
-            task.distribution.set(WasmtimeDistribution.MINIMAL)
-            task.githubToken.set(ext.wasmtime.githubToken)
-            task.installedExecutable.set(
-                ext.wasmtime.compilerDirectory.file(minimalWasmtimeExecutableName()),
-            )
         }
     }
 
@@ -202,192 +151,7 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
-    // ==================== Wasmtime toolchain check ====================
-
-    /**
-     * Creates a `checkWasmlineToolchain` task that:
-     * 1. Searches for wasmtime in the configured/default base directory
-     *    (including versioned subdirectories)
-     * 2. Optionally downloads wasmtime if autoDownload is enabled
-     * 3. Provides helpful error messages with download instructions
-     */
-    private fun createWasmtimeCheckTask(project: Project, ext: WasmlineExtension) {
-        project.tasks.register("checkWasmlineToolchain", DefaultTask::class.java) { task ->
-            task.group = "wasmline"
-            task.description = "Check and optionally download wasmtime toolchain"
-            task.onlyIf {
-                ext.manifest.executionModel.get() == WasmlineExecutionModel.CORE_WASM
-            }
-
-            task.doLast {
-                val baseDir = resolveWasmtimeBaseDirectory(project, ext)
-                val platform = detectCurrentPlatform()
-                project.logger.info("Wasmtime base directory: ${baseDir.absolutePath}")
-
-                // Search for executable (direct + versioned subdirectories)
-                val executable = WasmtimeCompiler.findWasmtimeInDirectory(
-                    baseDir = baseDir,
-                    platform = platform,
-                    version = ext.wasmtime.version.get(),
-                )
-                if (executable != null) {
-                    project.logger.info("Found wasmtime: ${executable.absolutePath}")
-                    val versionOutput = runCommand(listOf(executable.absolutePath, "--version"))
-                    project.logger.info("Wasmtime version: ${versionOutput.trim()}")
-                    return@doLast
-                }
-
-                // Not found — handle missing wasmtime
-                handleMissingWasmtime(project, ext, baseDir, platform)
-            }
-        }
-
-        // Make all assemble tasks depend on the check task
-        project.tasks.matching { it.name.startsWith("wasmlineAssemble") }.configureEach {
-            it.dependsOn("checkWasmlineToolchain")
-        }
-    }
-
-    /**
-     * Resolve the base directory for wasmtime.
-     *
-     * Layer 1: DSL-configured directory
-     * Layer 2: WASMTIME_ROOT environment variable
-     * Layer 3: ~/.wasmline/wasmtime (default)
-     */
-    private fun resolveWasmtimeBaseDirectory(project: Project, ext: WasmlineExtension): File {
-        ext.wasmtime.directory.orNull?.let { dir ->
-            return dir.asFile
-        }
-        System.getenv("WASMTIME_ROOT")?.let { envPath ->
-            project.logger.info("Using WASMTIME_ROOT: $envPath")
-            return File(envPath)
-        }
-        return File(System.getProperty("user.home"), ".wasmline/wasmtime")
-    }
-
-    /**
-     * Handles missing wasmtime:
-     * 1. If autoDownload is enabled, download through plugin-core
-     * 2. After download, verify the executable exists
-     * 3. If download fails or autoDownload is disabled, show instructions and throw
-     */
-    private fun handleMissingWasmtime(project: Project, ext: WasmlineExtension, baseDir: File, platform: String) {
-        project.logger.error("Wasmtime ${ext.wasmtime.version.get()} was not found in: ${baseDir.absolutePath}")
-
-        // Show attempted locations
-        val attemptedLocations = mutableListOf<String>()
-        ext.wasmtime.directory.orNull?.let {
-            attemptedLocations.add("Configured: ${it.asFile.absolutePath}")
-        }
-        System.getenv("WASMTIME_ROOT")?.let {
-            attemptedLocations.add("Environment: $it")
-        }
-        attemptedLocations.add("Default: ~/.wasmline/wasmtime")
-
-        project.logger.error("Attempted locations:")
-        attemptedLocations.forEach { project.logger.error("  - $it") }
-
-        // Attempt automatic download
-        if (ext.wasmtime.autoDownload.get()) {
-            project.logger.lifecycle("Attempting automatic Wasmtime download")
-            val runtimeVersion = ext.wasmtime.version.get()
-            val success = attemptAutoDownload(project, ext, baseDir, platform, runtimeVersion)
-            if (success) {
-                // Re-verify after download
-                val executable = WasmtimeCompiler.findWasmtimeInDirectory(
-                    baseDir = baseDir,
-                    platform = platform,
-                    version = runtimeVersion,
-                )
-                if (executable != null) {
-                    project.logger.lifecycle("Wasmtime download completed: ${executable.absolutePath}")
-                    return
-                }
-                project.logger.warn("Wasmtime download completed but the executable was not found.")
-            } else {
-                project.logger.warn("Automatic Wasmtime download failed or is unavailable.")
-            }
-        }
-
-        // Provide comprehensive download instructions
-        provideDownloadInstructions(project)
-
-        // Add specific hint for sample projects
-        if (project.rootProject.name != "wasmline") {
-            project.logger.warn("This appears to be a sample project.")
-            project.logger.warn("   Please ensure you have downloaded wasmtime separately from:")
-            project.logger.warn("   https://github.com/wasmtime/wasmtime/releases")
-        }
-
-        throw GradleException(
-            "wasmtime toolchain required but not found. " +
-                "See error output above for download instructions.",
-        )
-    }
-
-    private fun attemptAutoDownload(
-        project: Project,
-        ext: WasmlineExtension,
-        baseDir: File,
-        platform: String,
-        runtimeVersion: String,
-    ): Boolean = try {
-        project.logger.info("Wasmtime platform: $platform")
-        project.logger.info("Wasmtime runtime version: $runtimeVersion")
-        project.logger.info("Wasmtime release version: ${ext.wasmtime.releaseVersion.get()}")
-        project.logger.info("Wasmtime output: ${baseDir.absolutePath}")
-        runBlocking {
-            val downloader = WasmtimeDownloader()
-            try {
-                downloader.download(
-                    githubToken = ext.wasmtime.githubToken.orNull,
-                    version = ext.wasmtime.releaseVersion.get(),
-                    platform = platform,
-                    outputDir = baseDir,
-                )
-            } finally {
-                downloader.close()
-            }
-        }
-        WasmtimeCompiler.findWasmtimeInDirectory(
-            baseDir = baseDir,
-            platform = platform,
-            version = runtimeVersion,
-        ) != null
-    } catch (e: Exception) {
-        project.logger.warn("Failed to download wasmtime: ${e.message}")
-        false
-    }
-
-    /**
-     * Provides comprehensive, user-friendly download instructions.
-     */
-    private fun provideDownloadInstructions(project: Project) {
-        project.logger.error("Download Wasmtime using one of these methods:")
-        project.logger.lifecycle("Method 1: Using Gradle task (Recommended)")
-        project.logger.lifecycle("  ./gradlew wasmlineDownloadWasmtime")
-        project.logger.lifecycle("Method 2: Using standalone wasmline CLI")
-        project.logger.lifecycle("  wasmline download -a x86_64-linux")
-        project.logger.lifecycle("Method 3: Manual download from GitHub")
-        project.logger.lifecycle("  https://github.com/crowforkotlin/wasmtime/releases")
-        project.logger.lifecycle("Method 4: Set environment variable")
-        project.logger.lifecycle("  export WASMTIME_ROOT=/path/to/wasmtime")
-    }
-
     private fun detectCurrentPlatform(): String = PlatformDetector.detectPlatform()
-
-    private fun minimalWasmtimeExecutableName(): String =
-        if (System.getProperty("os.name").lowercase().contains("win")) "wasmtime-min.exe" else "wasmtime-min"
-
-    private fun runCommand(command: List<String>): String = try {
-        val process = ProcessBuilder(command).redirectErrorStream(true).start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        process.waitFor()
-        output
-    } catch (e: Exception) {
-        ""
-    }
 
     // ==================== Task registration ====================
 
@@ -407,31 +171,21 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             taskName = "wasmlineComponentizeRelease",
             variantName = "release",
         )
-        registerComponentAotTask(
-            project = project,
-            ext = ext,
-            componentTask = debugComponent,
-            taskName = "wasmlineComponentAotDebug",
-            variantName = "debug",
-        )
-        registerComponentAotTask(
-            project = project,
-            ext = ext,
-            componentTask = releaseComponent,
-            taskName = "wasmlineComponentAotRelease",
-            variantName = "release",
-        )
+        val debugAot = registerAotBuildTask(project, ext, "wasmlineAotBuildDebug", "debug")
+        val releaseAot = registerAotBuildTask(project, ext, "wasmlineAotBuildRelease", "release")
 
         project.tasks.register(WasmlineBuildVariant.DEBUG.assembleTaskName, WasmlineAssembleTask::class.java) { task ->
             task.description = "Assemble wasmline plugin (debug / Development variant)"
             task.buildVariant.set(WasmlineBuildVariant.DEBUG.compilationName)
             configureAssembleTask(task, project, ext)
+            task.aotOutputDirectory.set(debugAot.flatMap { it.outputDirectory })
         }
 
         project.tasks.register(WasmlineBuildVariant.RELEASE.assembleTaskName, WasmlineAssembleTask::class.java) { task ->
             task.description = "Assemble wasmline plugin (release / Production variant)"
             task.buildVariant.set(WasmlineBuildVariant.RELEASE.compilationName)
             configureAssembleTask(task, project, ext)
+            task.aotOutputDirectory.set(releaseAot.flatMap { it.outputDirectory })
         }
     }
 
@@ -525,14 +279,8 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             "wasmlineComponentizeRelease",
             WasmlineComponentizeTask::class.java,
         )
-        val debugComponentAot = project.tasks.named(
-            "wasmlineComponentAotDebug",
-            WasmlineComponentAotTask::class.java,
-        )
-        val releaseComponentAot = project.tasks.named(
-            "wasmlineComponentAotRelease",
-            WasmlineComponentAotTask::class.java,
-        )
+        val debugAot = project.tasks.named("wasmlineAotBuildDebug", WasmlineAotBuildTask::class.java)
+        val releaseAot = project.tasks.named("wasmlineAotBuildRelease", WasmlineAotBuildTask::class.java)
         val debugCompileTask = "compileDevelopmentLibraryKotlinWasmWasiOptimize"
         val releaseCompileTask = "compileProductionLibraryKotlinWasmWasiOptimize"
 
@@ -572,34 +320,32 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             WasmlineBuildVariant.DEBUG.assembleTaskName,
             WasmlineAssembleTask::class.java,
         ).configure { task ->
-            if (componentBuild) {
-                task.componentOutputDirectory.set(debugComponentAot.flatMap { it.outputDirectory })
-                task.dependsOn(debugComponentAot)
-            } else {
-                task.wasmCompileOutputDir.set(
-                    project.layout.buildDirectory.dir(
-                        "compileSync/wasmWasi/main/developmentLibrary/optimized",
-                    ),
-                )
-                task.dependsOn(debugCompileTask)
-            }
+            task.dependsOn(debugAot)
         }
         project.tasks.named(
             WasmlineBuildVariant.RELEASE.assembleTaskName,
             WasmlineAssembleTask::class.java,
         ).configure { task ->
-            if (componentBuild) {
-                task.componentOutputDirectory.set(releaseComponentAot.flatMap { it.outputDirectory })
-                task.dependsOn(releaseComponentAot)
-            } else {
-                task.wasmCompileOutputDir.set(
-                    project.layout.buildDirectory.dir(
-                        "compileSync/wasmWasi/main/productionLibrary/optimized",
-                    ),
-                )
-                task.dependsOn(releaseCompileTask)
-            }
+            task.dependsOn(releaseAot)
         }
+        configureAotBuildTask(
+            task = debugAot,
+            project = project,
+            ext = ext,
+            componentTask = debugComponent,
+            componentBuild = componentBuild,
+            compileTaskName = debugCompileTask,
+            libraryDir = "developmentLibrary",
+        )
+        configureAotBuildTask(
+            task = releaseAot,
+            project = project,
+            ext = ext,
+            componentTask = releaseComponent,
+            componentBuild = componentBuild,
+            compileTaskName = releaseCompileTask,
+            libraryDir = "productionLibrary",
+        )
     }
 
     private fun registerComponentizeTask(project: Project, ext: WasmlineExtension, taskName: String, variantName: String) =
@@ -624,58 +370,45 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.githubToken.set(ext.wasmtime.githubToken)
         }
 
-    private fun registerComponentAotTask(
+    private fun registerAotBuildTask(project: Project, ext: WasmlineExtension, taskName: String, variantName: String) =
+        project.tasks.register(taskName, WasmlineAotBuildTask::class.java) { task ->
+            task.productName.set(ext.manifest.pluginId.map { id -> id.substringAfterLast('.') })
+            task.executionModel.set(ext.manifest.executionModel)
+            task.invocationProtocol.set(ext.manifest.invocationProtocol)
+            task.exportName.set(ext.manifest.exportName)
+            task.contractMetadata.set(ext.manifest.contractMetadata)
+            task.rawAbiMetadataJson.set(ext.manifest.rawAbi.map(WasmlineRawAbiMetadataCodec::encode))
+            task.targets.set(ext.wasmtime.targetsProvider.map { targets -> targets.map(WasmtimeTarget::targetName) })
+            task.wasmtimeVersions.set(ext.wasmtime.aotCompatibility.wasmtimeVersions)
+            task.aotCompatibilityProfileIds.set(ext.wasmtime.aotCompatibility.profileIds)
+            task.autoDownload.set(ext.wasmtime.autoDownload)
+            task.buildHost.set(detectCurrentPlatform())
+            task.maxParallelCompilations.set(ext.wasmtime.maxParallelCompilations)
+            task.githubToken.set(ext.wasmtime.githubToken)
+            task.compilerCacheDirectory.set(ext.wasmtime.compilerCacheDirectory)
+            task.outputDirectory.set(project.layout.buildDirectory.dir("wasmline/aot/$variantName"))
+        }
+
+    private fun configureAotBuildTask(
+        task: TaskProvider<WasmlineAotBuildTask>,
         project: Project,
         ext: WasmlineExtension,
         componentTask: TaskProvider<WasmlineComponentizeTask>,
-        taskName: String,
-        variantName: String,
-    ) = project.tasks.register(taskName, WasmlineComponentAotTask::class.java) { task ->
-        task.group = "wasmline"
-        task.description = "Compile the $variantName Component to native CWASM/PWASM artifacts"
-        task.componentDirectory.set(componentTask.flatMap { it.outputDirectory })
-        task.componentRecordFile.set(
-            componentTask.flatMap { it.outputDirectory.file(ComponentBuildRecords.FILE_NAME) },
-        )
-        task.wasmtimeCompilerExecutable.set(
-            project.layout.file(
-                project.provider {
-                    ext.wasmtime.compilerExecutable.orNull?.asFile ?: run {
-                        val directory = ext.wasmtime.compilerDirectory.get().asFile
-                        val version = ext.wasmtime.compilerVersion.get()
-                        WasmtimeCompiler.findComponentCompilerInDirectory(
-                            baseDir = directory,
-                            platform = detectCurrentPlatform(),
-                            version = version,
-                        ) ?: if (ext.wasmtime.autoDownload.get()) {
-                            File(directory, minimalWasmtimeExecutableName())
-                        } else {
-                            throw GradleException(
-                                "A compile-capable Wasmtime CLI $version was not found in ${directory.absolutePath}. " +
-                                    "Configure wasmline.wasmtime.compilerExecutable or run " +
-                                    "./gradlew wasmlineDownloadWasmtimeCompiler.",
-                            )
-                        }
-                    }
-                },
-            ),
-        )
-        task.wasmtimeVersion.set(ext.wasmtime.compilerVersion)
-        task.targets.set(
-            ext.wasmtime.targetsProvider.map { targets -> targets.map(WasmtimeTarget::targetName) },
-        )
-        task.productName.set(ext.manifest.pluginId.map { id -> id.substringAfterLast('.') })
-        task.outputDirectory.set(project.layout.buildDirectory.dir("wasmline/component-aot/$variantName"))
-        task.dependsOn(componentTask)
-        task.dependsOn(
-            project.provider<List<String>> {
-                if (!ext.wasmtime.compilerExecutable.isPresent && ext.wasmtime.autoDownload.get()) {
-                    listOf("wasmlineDownloadWasmtimeCompiler")
-                } else {
-                    emptyList()
-                }
-            },
-        )
+        componentBuild: Boolean,
+        compileTaskName: String,
+        libraryDir: String,
+    ) {
+        task.configure { aot ->
+            if (componentBuild) {
+                aot.componentOutputDirectory.set(componentTask.flatMap { it.outputDirectory })
+                aot.dependsOn(componentTask)
+            } else {
+                aot.coreWasmCompileOutputDirectory.set(
+                    project.layout.buildDirectory.dir("compileSync/wasmWasi/main/$libraryDir/optimized"),
+                )
+                aot.dependsOn(compileTaskName)
+            }
+        }
     }
 
     private fun configureComponentizeInputs(
@@ -735,10 +468,6 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         task.homePageUrl.set(manifestExt.homePageUrl)
         task.signingKey.set(manifestExt.signingKey.map { it.asFile.readText().trim() })
         task.metadata.set(manifestExt.metadata)
-        task.executionModel.set(manifestExt.executionModel)
-        task.invocationProtocol.set(manifestExt.invocationProtocol)
-        task.exportName.set(manifestExt.exportName)
-        task.contractMetadata.set(manifestExt.contractMetadata)
         task.manifestToolClasspath.from(
             project.provider {
                 project.buildscript.configurations.getByName("classpath").files
@@ -751,16 +480,13 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         )
 
         // Wasmtime configuration
-        task.wasmtimeDirectory.set(ext.wasmtime.directory)
-        task.compileTargets.set(
-            ext.wasmtime.targetsProvider.map { targets -> targets.map(WasmtimeTarget::targetName) },
-        )
-        task.wasmtimeVersion.set(ext.wasmtime.version)
+        task.buildTimestamp.set(manifestExt.buildTimestamp)
 
         // Output directory: build/wasmline/output/
-        task.outputDir.set(
+        task.outputDirectory.set(
             project.layout.buildDirectory.dir("wasmline/output"),
         )
+        task.distributionDirectory.set(project.layout.buildDirectory.dir("wasmline/dist"))
     }
 
     private fun registerServerDeployTask(project: Project, ext: WasmlineExtension) {
@@ -818,14 +544,7 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.group = "wasmline"
             task.description = "Generate an Ed25519 manifest signing key pair"
             task.doLast {
-                generateKeyPair(ManifestSigningAlgorithm.Ed25519)
-            }
-        }
-        project.tasks.register("generateWasmlineManifestKeyPairEcdsaP256") { task ->
-            task.group = "wasmline"
-            task.description = "Generate an ECDSA P-256 manifest signing key pair"
-            task.doLast {
-                generateKeyPair(ManifestSigningAlgorithm.EcdsaP256)
+                generateKeyPair()
             }
         }
     }
@@ -834,11 +553,11 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         const val GUEST_TRANSPORT_OPTION = "guestTransport"
     }
 
-    private fun generateKeyPair(algorithm: ManifestSigningAlgorithm) {
+    private fun generateKeyPair() {
         val logger = LoggerFactory.getLogger(WasmlinePlugin::class.java)
-        val keyPair = ManifestKeyGenerator.generate(algorithm)
+        val keyPair = ManifestKeyGenerator.generate()
         logger.warn("---------------- ----------------------------------------------------------------")
-        logger.warn("    ALGORITHM: $algorithm")
+        logger.warn("    ALGORITHM: Ed25519")
         logger.warn("    PUBLIC KEY: ${keyPair.publicKeyHex}")
         logger.warn("    PRIVATE KEY: ${keyPair.privateKeyHex}")
         logger.warn("---------------- ----------------------------------------------------------------")

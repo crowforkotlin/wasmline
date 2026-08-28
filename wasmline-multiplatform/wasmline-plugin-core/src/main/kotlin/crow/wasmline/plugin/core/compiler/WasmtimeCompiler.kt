@@ -1,35 +1,114 @@
 package crow.wasmline.plugin.core.compiler
 
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import crow.wasmline.plugin.core.aot.AotCompatibilityProfileSpec
+import crow.wasmline.plugin.core.aot.WasmlineAotCompileOptions
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
 
 /**
- * Compiles WebAssembly modules with Wasmtime.
+ * Executes a verified Wasmtime compiler with the frozen Wasmline AOT profile.
  *
- * Date: 2026-07-31
+ * Date: 2026-08-28
  * Author: crowforkotlin
  */
-
 @InternalWasmlineToolingApi
-class WasmtimeCompiler {
+class WasmtimeCompiler(
+    private val runner: WasmtimeCompilerRunner = ExternalWasmtimeCompilerRunner,
+    private val logger: (String) -> Unit = {},
+) {
+    /** Verifies the compiler version and compile capability before matrix execution. */
+    fun verify(executable: File, profile: AotCompatibilityProfileSpec) {
+        require(executable.isFile) { "Wasmtime compiler does not exist: ${executable.absolutePath}" }
+        require(executable.canExecute()) { "Wasmtime compiler is not executable: ${executable.absolutePath}" }
+        val version = runner.run(executable, listOf("--version"))
+        check(version.exitCode == 0 && parseWasmtimeVersion(version.output) == profile.wasmtimeVersion) {
+            "AOT compiler does not report Wasmtime ${profile.wasmtimeVersion}: ${executable.absolutePath}"
+        }
+        val capability = runner.run(executable, listOf("compile", "--help"))
+        check(capability.exitCode == 0) {
+            "AOT compiler does not provide the compile subcommand: ${executable.absolutePath}"
+        }
+    }
 
+    /** Compiles one matrix unit and returns its non-empty output file. */
+    fun compile(executable: File, inputFile: File, outputFile: File, normalizedTarget: String, options: WasmlineAotCompileOptions): File {
+        require(inputFile.isFile && inputFile.length() > 0) { "AOT input does not exist or is empty: ${inputFile.absolutePath}" }
+        outputFile.parentFile?.let { parent -> check(parent.isDirectory || parent.mkdirs()) }
+        if (outputFile.exists()) check(outputFile.delete()) { "Unable to remove stale AOT output: ${outputFile.absolutePath}" }
+        val arguments = options.compilerArguments(
+            inputFile = inputFile.absolutePath,
+            outputFile = outputFile.absolutePath,
+            normalizedTarget = normalizedTarget,
+        )
+        logger("Compiling AOT target $normalizedTarget")
+        val result = runner.run(executable, arguments)
+        result.output.lineSequence().filter(String::isNotBlank).forEach { logger("  [wasmtime] $it") }
+        check(result.exitCode == 0) {
+            "Wasmtime compile failed for $normalizedTarget with exit code ${result.exitCode}."
+        }
+        check(outputFile.isFile && outputFile.length() > 0) {
+            "Wasmtime completed without producing AOT output: ${outputFile.absolutePath}"
+        }
+        return outputFile
+    }
+
+    /**
+     * Defines supported target aliases and compiler identity helpers.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
     companion object {
-        const val COMPILE_RESULT_FILE = "compile-result.json"
+        val defaultTargets: List<String> = listOf(
+            "pulley32",
+            "pulley64",
+            "x86_64-linux",
+            "aarch64-linux",
+            "aarch64-android",
+            "aarch64-macos",
+            "x86_64-windows",
+        )
 
-        private val json = Json {
-            prettyPrint = true
-            encodeDefaults = true
+        /** Returns the Wasmtime target triple for a configured target name. */
+        fun normalizeTarget(target: String): String = TARGET_ALIASES[target] ?: target
+
+        /** Parses a normalized target into architecture and canonical operating system. */
+        fun parseTarget(target: String): Pair<String, String?> {
+            val normalized = normalizeTarget(target)
+            val architecture = normalized.substringBefore('-')
+            if (architecture == "pulley32" || architecture == "pulley64") return architecture to null
+            val parts = normalized.split('-')
+            val rawOperatingSystem = when {
+                parts.size >= 3 -> parts[2]
+                parts.size == 2 -> parts[1]
+                else -> return architecture to null
+            }
+            return architecture to normalizeOperatingSystem(rawOperatingSystem)
         }
 
-        private val targetAliases = mapOf(
+        /** Reads the exact x.y.z version reported by a Wasmtime executable. */
+        fun detectWasmtimeVersion(executable: File): String? = runCatching {
+            val result = ExternalWasmtimeCompilerRunner.run(executable, listOf("--version"))
+            if (result.exitCode == 0) parseWasmtimeVersion(result.output) else null
+        }.getOrNull()
+
+        /** Parses the stable x.y.z token from Wasmtime version output. */
+        internal fun parseWasmtimeVersion(output: String): String? =
+            Regex("(?:^|\\s)wasmtime\\s+(\\d+\\.\\d+\\.\\d+)(?:\\s|$)", RegexOption.IGNORE_CASE)
+                .find(output)
+                ?.groupValues
+                ?.get(1)
+
+        private fun normalizeOperatingSystem(value: String): String = when {
+            "android" in value -> "android"
+            "darwin" in value || "macos" in value -> "macos"
+            "ios" in value -> "ios"
+            "linux" in value -> "linux"
+            "windows" in value -> "windows"
+            else -> value
+        }
+
+        private val TARGET_ALIASES: Map<String, String> = mapOf(
             "x86_64-linux" to "x86_64-unknown-linux-gnu",
             "aarch64-linux" to "aarch64-unknown-linux-gnu",
             "aarch64-android" to "aarch64-linux-android",
@@ -42,340 +121,42 @@ class WasmtimeCompiler {
             "aarch64-ios-sim" to "aarch64-apple-ios-sim",
             "x86_64-windows" to "x86_64-pc-windows-msvc",
         )
-
-        val defaultTargets = listOf(
-            "pulley32",
-            "pulley64",
-            "x86_64-linux",
-            "aarch64-linux",
-            "aarch64-android",
-            "aarch64-macos",
-            "x86_64-windows",
-        )
-
-        /** Returns the Wasmtime target triple for a configured target name. */
-        fun normalizeTarget(target: String): String = targetAliases[target] ?: target
-
-        /** Reads the exact x.y.z version reported by a Wasmtime executable. */
-        fun detectWasmtimeVersion(executable: File): String? = runCatching {
-            val process = ProcessBuilder(executable.absolutePath, "--version")
-                .redirectErrorStream(true)
-                .start()
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            if (process.waitFor() == 0) parseWasmtimeVersion(output) else null
-        }.getOrNull()
-
-        internal fun parseWasmtimeVersion(output: String): String? =
-            Regex("(?:^|\\s)wasmtime\\s+(\\d+\\.\\d+\\.\\d+)(?:\\s|$)", RegexOption.IGNORE_CASE)
-                .find(output)
-                ?.groupValues
-                ?.get(1)
-
-        /** Finds a matching Wasmtime executable in the base directory. */
-        fun findWasmtimeInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
-            findDirectWasmtimeExecutable(baseDir)?.let { executable ->
-                if (matchesVersion(executable, version)) return executable
-            }
-            if (!baseDir.isDirectory) return null
-
-            return baseDir.listFiles()
-                ?.asSequence()
-                ?.filter(File::isDirectory)
-                ?.filter { platform == null || it.name.contains(platform) }
-                ?.sortedByDescending(File::getName)
-                ?.mapNotNull(::findWasmtimeExecutable)
-                ?.firstOrNull { matchesVersion(it, version) }
-        }
-
-        /** Finds a minimal cache alias or the reduced Cranelift release used by download tasks. */
-        fun findWasmtimeMinimalInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
-            findDirectWasmtimeMinimalExecutable(baseDir)?.let { executable ->
-                if (matchesVersion(executable, version)) return executable
-            }
-            if (!baseDir.isDirectory) return null
-
-            return baseDir.listFiles()
-                ?.asSequence()
-                ?.filter(File::isDirectory)
-                ?.filter { platform == null || it.name.contains(platform) }
-                ?.filter(::isCraneliftMinimalReleaseDirectory)
-                ?.sortedByDescending(File::getName)
-                ?.mapNotNull(::findWasmtimeExecutable)
-                ?.firstOrNull { matchesVersion(it, version) }
-        }
-
-        /**
-         * Finds a Component AOT compiler candidate from an installed executable or release directory.
-         * Cranelift minimal releases are preferred over full Cranelift and Pulley releases.
-         * ComponentCompiler verifies the compile subcommand before using the executable.
-         */
-        fun findComponentCompilerInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
-            findDirectWasmtimeExecutable(baseDir)?.let { executable ->
-                if (matchesVersion(executable, version)) return executable
-            }
-            if (!baseDir.isDirectory) return null
-
-            return baseDir.listFiles()
-                ?.asSequence()
-                ?.filter(File::isDirectory)
-                ?.filter { platform == null || it.name.contains(platform) }
-                ?.filterNot { it.name.contains("c-api", ignoreCase = true) }
-                ?.sortedWith(
-                    compareBy<File>(::componentCompilerDirectoryPriority)
-                        .thenByDescending(File::getName),
-                )
-                ?.mapNotNull(::findWasmtimeExecutable)
-                ?.firstOrNull { matchesVersion(it, version) }
-        }
-
-        /** Finds a direct Wasmtime override or a full Cranelift release candidate. */
-        fun findWasmtimeCompilerInDirectory(baseDir: File, platform: String? = null, version: String? = null): File? {
-            findDirectWasmtimeCompilerExecutable(baseDir)?.let { executable ->
-                if (matchesVersion(executable, version)) return executable
-            }
-            if (!baseDir.isDirectory) return null
-
-            return baseDir.listFiles()
-                ?.asSequence()
-                ?.filter(File::isDirectory)
-                ?.filter { platform == null || it.name.contains(platform) }
-                ?.filter(::isFullCraneliftReleaseDirectory)
-                ?.sortedByDescending(File::getName)
-                ?.mapNotNull(::findWasmtimeCompilerExecutable)
-                ?.firstOrNull { matchesVersion(it, version) }
-        }
-
-        /** Finds a Wasmtime executable below the given directory. */
-        fun findWasmtimeExecutable(directory: File): File? {
-            if (!directory.exists()) return null
-            return findDirectWasmtimeExecutable(directory)
-                ?: directory.listFiles()
-                    ?.asSequence()
-                    ?.filter(File::isDirectory)
-                    ?.mapNotNull(::findWasmtimeExecutable)
-                    ?.firstOrNull()
-        }
-
-        /** Finds the executable layout used by a preselected full Wasmtime CLI archive. */
-        fun findWasmtimeCompilerExecutable(directory: File): File? {
-            if (!directory.exists()) return null
-            return findDirectWasmtimeCompilerExecutable(directory)
-                ?: directory.listFiles()
-                    ?.asSequence()
-                    ?.filter(File::isDirectory)
-                    ?.mapNotNull(::findWasmtimeCompilerExecutable)
-                    ?.firstOrNull()
-        }
-
-        private fun findDirectWasmtimeExecutable(directory: File): File? {
-            val isWindows = System.getProperty("os.name").lowercase().contains("win")
-            val candidateNames = if (isWindows) {
-                listOf("wasmtime-min.exe", "wasmtime.exe")
-            } else {
-                listOf("wasmtime-min", "wasmtime")
-            }
-            return candidateNames.firstNotNullOfOrNull { targetName ->
-                directory.listFiles()?.firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
-            }?.also { executable ->
-                if (!isWindows) executable.setExecutable(true)
-            }
-        }
-
-        private fun findDirectWasmtimeCompilerExecutable(directory: File): File? {
-            val isWindows = System.getProperty("os.name").lowercase().contains("win")
-            val targetName = if (isWindows) "wasmtime.exe" else "wasmtime"
-            return directory.listFiles()
-                ?.firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
-                ?.also { executable -> if (!isWindows) executable.setExecutable(true) }
-        }
-
-        private fun findDirectWasmtimeMinimalExecutable(directory: File): File? {
-            val isWindows = System.getProperty("os.name").lowercase().contains("win")
-            val targetName = if (isWindows) "wasmtime-min.exe" else "wasmtime-min"
-            return directory.listFiles()
-                ?.firstOrNull { it.isFile && it.name.equals(targetName, ignoreCase = true) }
-                ?.also { executable -> if (!isWindows) executable.setExecutable(true) }
-        }
-
-        private fun componentCompilerDirectoryPriority(directory: File): Int {
-            val name = directory.name.lowercase()
-            return when {
-                "-pulley" in name -> 2
-                "-min" in name -> 0
-                else -> 1
-            }
-        }
-
-        private fun isFullCraneliftReleaseDirectory(directory: File): Boolean {
-            val name = directory.name.lowercase()
-            return "-min" !in name && "-pulley" !in name && "c-api" !in name
-        }
-
-        private fun isCraneliftMinimalReleaseDirectory(directory: File): Boolean {
-            val name = directory.name.lowercase()
-            return "-min" in name && "-pulley" !in name && "c-api" !in name
-        }
-
-        private fun matchesVersion(executable: File, requestedVersion: String?): Boolean {
-            if (requestedVersion.isNullOrBlank() || requestedVersion == "latest") return true
-            val expectedVersion = requestedVersion
-                .removePrefix("release-")
-                .removePrefix("v")
-            return detectWasmtimeVersion(executable) == expectedVersion
-        }
     }
+}
 
-    /** Compiles a module for each target and copies the browser artifact. */
-    fun compileAll(
-        wasmtimeExec: File,
-        inputWasm: File,
-        outputDir: File,
-        productName: String,
-        targets: Collection<String> = defaultTargets,
-        wasmtimeVersion: String? = null,
-        logger: (String) -> Unit = {},
-    ): List<WasmlineArtifact> {
-        val artifacts = mutableListOf<WasmlineArtifact>()
-        copyBrowserArtifact(inputWasm, outputDir, productName, logger)?.let(artifacts::add)
+/**
+ * Captures one local Wasmtime process result for deterministic tests and diagnostics.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
+@InternalWasmlineToolingApi
+data class WasmtimeCompilerProcessResult(val exitCode: Int, val output: String)
 
-        val effectiveTargets = if (targets.isEmpty()) defaultTargets else targets
-        effectiveTargets.forEach { target ->
-            validateNativeTarget(target)
-            val artifact = compileTarget(wasmtimeExec, inputWasm, outputDir, productName, target, wasmtimeVersion, logger)
-                ?: throw IllegalStateException("Failed to compile Wasmtime target '$target'.")
-            artifacts += artifact
-        }
-        return artifacts
-    }
+/**
+ * Executes Wasmtime compiler processes.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
+@InternalWasmlineToolingApi
+fun interface WasmtimeCompilerRunner {
+    /** Runs one executable invocation. */
+    fun run(executable: File, arguments: List<String>): WasmtimeCompilerProcessResult
+}
 
-    private fun validateNativeTarget(target: String) {
-        val normalizedTarget = normalizeTarget(target)
-        val (targetCpu, targetOs) = parseTarget(normalizedTarget)
-        require(targetOs != "ios") {
-            "iOS native artifacts must use portable pulley64 PWASM; use target 'pulley64' instead of '$target'."
-        }
-        if (targetOs == "android" && (targetCpu == "armv7" || targetCpu == "i686" || targetCpu == "x86")) {
-            throw IllegalArgumentException(
-                "32-bit Android native artifacts must use portable pulley32 PWASM; use target 'pulley32' instead of '$target'.",
-            )
-        }
-    }
-
-    /** Writes the compilation result used by manifest creation. */
-    fun writeCompileResult(inputFile: File, debugDir: File, artifacts: List<WasmlineArtifact>, wasmtimeVersion: String) {
-        debugDir.mkdirs()
-        val result = CompileResult(wasmtimeVersion, inputFile.name, artifacts)
-        File(debugDir, COMPILE_RESULT_FILE).writeText(json.encodeToString(result))
-    }
-
-    /** Reads a compilation result written by [writeCompileResult]. */
-    fun readCompileResult(file: File): CompileResult = json.decodeFromString(file.readText())
-
-    private fun copyBrowserArtifact(inputFile: File, outputDir: File, productName: String, logger: (String) -> Unit): WasmlineArtifact? {
-        val outFile = File(outputDir, "$productName.wasm")
-        return runCatching {
-            Files.copy(inputFile.toPath(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
-            logger("Copying browser wasm artifact: ${outFile.name}")
-            WasmlineArtifact(
-                type = WasmlineArtifactType.WASM,
-                url = outFile.name,
-                sha256 = sha256Hex(outFile),
-                targetCpu = "wasmjs",
-                targetOs = "browser",
-            )
-        }.onFailure { logger("Failed to copy browser wasm artifact: ${it.message}") }.getOrNull()
-    }
-
-    private fun compileTarget(
-        executable: File,
-        inputFile: File,
-        outputDir: File,
-        productName: String,
-        target: String,
-        wasmtimeVersion: String?,
-        logger: (String) -> Unit,
-    ): WasmlineArtifact? {
-        val normalizedTarget = normalizeTarget(target)
-        val targetCpu = normalizedTarget.substringBefore("-")
-        val isPulley = targetCpu == "pulley32" || targetCpu == "pulley64"
-        val extension = if (isPulley) "pwasm" else "cwasm"
-        val outFileName = "$productName-$target.$extension"
-        val outFile = File(outputDir, outFileName)
-        logger("Compiling for target: $target")
-
-        val command = listOf(
-            executable.absolutePath,
-            "compile",
-            inputFile.absolutePath,
-            "-o", outFile.absolutePath,
-            "--target", normalizedTarget,
-            "-W", "gc=y",
-            "-W", "function-references=y",
-            "-W", "exceptions=y",
-            "-W", "threads=n",
-            "-W", "simd=n",
-            "-W", "relaxed-simd=n",
-            "-O", "static-memory-guard-size=0",
-            "-O", "dynamic-memory-guard-size=0",
-            "-O", "signals-based-traps=n",
-            "-O", "opt-level=2",
-            "-C", "cranelift-debug-verifier=no",
-        )
-
-        return runCatching {
-            val process = ProcessBuilder(command).redirectErrorStream(true).start()
-            process.inputStream.bufferedReader().use { reader ->
-                reader.forEachLine { logger("  [wasmtime] $it") }
-            }
-            check(process.waitFor() == 0 && outFile.exists()) {
-                "wasmtime did not produce $outFileName"
-            }
-            val (cpu, os) = parseTarget(target)
-            logger("Success: $outFileName")
-            WasmlineArtifact(
-                type = if (isPulley) WasmlineArtifactType.PWASM else WasmlineArtifactType.CWASM,
-                url = outFileName,
-                sha256 = sha256Hex(outFile),
-                targetCpu = cpu,
-                targetOs = os,
-                targetCompilerVersion = wasmtimeVersion?.let { "wasmtime-$it" },
-                is64Bit = target.contains("64") || target.contains("aarch64"),
-            )
-        }.onFailure { logger("Failed to compile for $target: ${it.message}") }.getOrNull()
-    }
-
-    internal fun parseTarget(target: String): Pair<String, String?> {
-        val normalized = normalizeTarget(target)
-        val cpu = normalized.substringBefore("-")
-        if (cpu == "pulley32" || cpu == "pulley64") return cpu to null
-        val parts = normalized.split("-")
-        val rawOs = when {
-            parts.size >= 3 -> parts[2]
-            parts.size == 2 -> parts[1]
-            else -> return cpu to null
-        }
-        return cpu to normalizeOs(rawOs)
-    }
-
-    private fun normalizeOs(raw: String): String = when {
-        "android" in raw -> "android"
-        "darwin" in raw -> "macos"
-        "ios" in raw -> "ios"
-        "linux" in raw -> "linux"
-        "windows" in raw -> "windows"
-        else -> raw
-    }
-
-    private fun sha256Hex(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(8192)
-            while (true) {
-                val read = input.read(buffer)
-                if (read == -1) break
-                digest.update(buffer, 0, read)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
+/**
+ * Implements compiler process execution without a shell.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
+private object ExternalWasmtimeCompilerRunner : WasmtimeCompilerRunner {
+    override fun run(executable: File, arguments: List<String>): WasmtimeCompilerProcessResult {
+        val process = ProcessBuilder(listOf(executable.absolutePath) + arguments)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        return WasmtimeCompilerProcessResult(process.waitFor(), output)
     }
 }

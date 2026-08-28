@@ -1,11 +1,15 @@
 package crow.wasmline.loader.tooling
 
 import crow.wasmline.loader.internal.crypto.Ed25519
-import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
 import okio.ByteString.Companion.toByteString
-import crow.wasmline.loader.internal.crypto.generateKeyPair as generateInternalKeyPair
+import crow.wasmline.loader.internal.crypto.generateEd25519KeyPair as generateInternalEd25519KeyPair
 
-/** Marks JVM tooling hooks that are shared with Wasmline's build tools but are not public runtime API. */
+/**
+ * Marks JVM hooks shared with Wasmline build tools but excluded from the runtime API.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @RequiresOptIn(
     level = RequiresOptIn.Level.ERROR,
     message = "This API is reserved for Wasmline build tooling.",
@@ -20,7 +24,12 @@ import crow.wasmline.loader.internal.crypto.generateKeyPair as generateInternalK
 )
 public annotation class WasmlineLoaderToolingApi
 
-/** Immutable key material returned to Wasmline's JVM build tools. */
+/**
+ * Contains immutable Ed25519 key material returned to Wasmline JVM build tools.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @WasmlineLoaderToolingApi
 public class WasmlineSigningKeyPair internal constructor(publicKey: ByteArray, privateKey: ByteArray) {
     private val publicKeyBytes = publicKey.copyOf()
@@ -33,16 +42,18 @@ public class WasmlineSigningKeyPair internal constructor(publicKey: ByteArray, p
         get() = privateKeyBytes.copyOf()
 }
 
-/** Narrow JVM facade over the loader's private signing implementation. */
+/**
+ * Exposes the Loader's Ed25519 implementation to Wasmline JVM build tools.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @WasmlineLoaderToolingApi
 public object WasmlineSigningTooling {
-    public fun generateEd25519KeyPair(): WasmlineSigningKeyPair = generateInternalKeyPair(
-        SignatureAlgorithmId.Ed25519,
-    ).toToolingKeyPair()
+    /** Generates a new Ed25519 signing key pair. */
+    public fun generateEd25519KeyPair(): WasmlineSigningKeyPair = generateInternalEd25519KeyPair().toToolingKeyPair()
 
-    public fun generateEcdsaP256KeyPair(): WasmlineSigningKeyPair =
-        generateInternalKeyPair(SignatureAlgorithmId.EcdsaP256).toToolingKeyPair()
-
+    /** Signs one exact message with an Ed25519 private key. */
     public fun signEd25519(message: ByteArray, privateKey: ByteArray): ByteArray =
         Ed25519.sign(message.toByteString(), privateKey.toByteString()).toByteArray()
 

@@ -11,6 +11,12 @@ plugins {
     alias(libs.plugins.wasmline)
 }
 
+// Compose uses this configuration internally to unpack Skiko for Web. It is
+// not a library variant and must not participate in KMP dependency selection.
+configurations.matching { it.name == "COMPOSE_SKIKO_JS_WASM_RUNTIME" }.configureEach {
+    isCanBeConsumed = false
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -32,6 +38,7 @@ kotlin {
             dependencies {
                 api(libs.crow.wasmline)
                 api(libs.crow.wasmline.loader)
+                api(libs.crow.wasmline.network.ktor)
 
                 api(projects.sampleCommon)
 

@@ -3,85 +3,82 @@ package crow.wasmline.sample
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
 
-private val bundledPluginAssets = listOf("plugin.cwasm", "plugin.pwasm")
+private const val bundledManifestAsset = "manifest.wlm"
+private const val bundledArtifactsAsset = "artifacts"
 
 @Composable
-fun AndroidApp(
-    wasmFilename: String? = null,
-    autoExecute: Boolean = false,
-) {
+fun AndroidApp(autoExecute: Boolean = false) {
     val context = LocalContext.current
-    val resolvedWasmFilename = resolveAndroidAssetFilename(context, wasmFilename)
-    val wasmFile = File(context.cacheDir, resolvedWasmFilename)
-    val refresher = remember(context) { AndroidAssetRefresher(context) }
+    val packageDirectory = remember(context) { File(context.cacheDir, "wasmline-package") }
+    val manifestFile = remember(packageDirectory) { File(packageDirectory, bundledManifestAsset) }
+    val refresher = remember(context, packageDirectory) { AndroidAssetRefresher(context, packageDirectory) }
+    var packageReady by remember(manifestFile) { mutableStateOf(manifestFile.isFile) }
+
     App(
-        wasmPath = wasmFile.absolutePath,
-        autoExecute = autoExecute,
+        wasmPath = manifestFile.absolutePath,
+        autoExecute = autoExecute && packageReady,
         execDispatcher = Dispatchers.Main,
         assetRefresher = refresher,
     )
-    LaunchedEffect(context, resolvedWasmFilename) {
-        ensureAndroidAssetCopied(
-            context = context,
-            wasmFilename = resolvedWasmFilename,
-            destination = wasmFile,
-        )
+    LaunchedEffect(context, packageDirectory) {
+        ensureBundledPackageCopied(context, packageDirectory)
+        packageReady = true
     }
 }
 
-private fun resolveAndroidAssetFilename(context: Context, explicitFilename: String?): String {
-    if (explicitFilename != null) {
-        return explicitFilename
-    }
-
-    val availableAssets = context.assets.list("")?.toSet().orEmpty()
-    return bundledPluginAssets.firstOrNull { it in availableAssets }
-        ?: error("Android asset not found: ${bundledPluginAssets.joinToString(" or ")}")
-}
-
-private suspend fun ensureAndroidAssetCopied(
+private suspend fun ensureBundledPackageCopied(
     context: Context,
-    wasmFilename: String,
     destination: File,
     forceOverwrite: Boolean = false,
 ) {
-    if (destination.exists() && !forceOverwrite) {
+    val manifest = File(destination, bundledManifestAsset)
+    if (manifest.isFile && !forceOverwrite) return
+    withContext(Dispatchers.IO) {
+        if (forceOverwrite) destination.deleteRecursively()
+        copyAssetTree(context, bundledManifestAsset, manifest)
+        copyAssetTree(context, bundledArtifactsAsset, File(destination, bundledArtifactsAsset))
+    }
+}
+
+private fun copyAssetTree(context: Context, assetPath: String, destination: File) {
+    val children = context.assets.list(assetPath).orEmpty()
+    if (children.isEmpty()) {
+        destination.parentFile?.mkdirs()
+        context.assets.open(assetPath).use { input ->
+            destination.outputStream().use { output -> input.copyTo(output) }
+        }
         return
     }
-    withContext(Dispatchers.IO) {
-        context.assets.open(wasmFilename).use { input ->
-            FileOutputStream(destination).use { output ->
-                input.copyTo(output)
-            }
-        }
+
+    check(destination.isDirectory || destination.mkdirs()) {
+        "Unable to create Android package directory: ${destination.absolutePath}"
+    }
+    children.forEach { child ->
+        copyAssetTree(context, "$assetPath/$child", File(destination, child))
     }
 }
 
 /**
- * Android implementation of [AssetRefresher].
- * Deletes the cached wasm file and re-copies it from APK assets.
+ * Restores the complete signed package from APK assets for explicit reloads.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
  */
 private class AndroidAssetRefresher(
     private val context: Context,
+    private val packageDirectory: File,
 ) : AssetRefresher {
     override suspend fun refresh(wasmPath: String): String {
-        val file = File(wasmPath)
-        val filename = file.name
-        withContext(Dispatchers.IO) {
-            file.delete()
-            context.assets.open(filename).use { input ->
-                FileOutputStream(file).use { output ->
-                    input.copyTo(output)
-                }
-            }
-        }
-        return wasmPath
+        ensureBundledPackageCopied(context, packageDirectory, forceOverwrite = true)
+        return File(packageDirectory, bundledManifestAsset).absolutePath
     }
 }

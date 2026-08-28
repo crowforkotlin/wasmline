@@ -16,16 +16,11 @@ import javax.inject.Inject
  *         signingKey = file("../keys/private.key")
  *     }
  *     wasmtime {
- *         // Configure wasmtime location and behavior
- *         directory = file(System.getenv("WASMTIME_MIN_HOME") ?: "$home/.wasmline/wasmtime")
- *
- *         // Enable auto-download if wasmtime is missing
- *         autoDownload = true
- *         version = "48.0.1"
- *         releaseVersion = "v48.0.1.1"
- *
- *         // Optional: Set GitHub token for higher API rate limits
- *         // Use environment variable from CI or local config
+ *         aotCompatibility {
+ *             wasmtimeVersions.set(listOf("47.0.3", "48.0.0"))
+ *         }
+ *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
+ *         autoDownload.set(true)
  *         githubToken.set(System.getenv("GITHUB_TOKEN"))
  *     }
  *     server {
@@ -35,7 +30,7 @@ import javax.inject.Inject
  * }
  * ```
  *
- * Date: 2026-06-05
+ * Date: 2026-08-28
  * Author: crowforkotlin
  */
 public open class WasmlineExtension @Inject constructor(project: Project) {

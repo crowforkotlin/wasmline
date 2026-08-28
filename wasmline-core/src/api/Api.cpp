@@ -10,33 +10,17 @@
 #include <utility>
 
 #include "wasmline/internal/runtime/NativeRuntime.h"
+#include "wasmline/internal/runtime/NativeRuntimeIdentityProvider.h"
 #include "wasmline/runtime/ComponentHostHandler.h"
 #include "wasmline/runtime/OutboundHandler.h"
-#include <wasmtime.h>
 
 namespace wasmline {
     bool Api::warmupEngine(bool usePulley) {
         return NativeRuntime::instance().warmup(usePulley);
     }
 
-    const char* Api::wasmtimeVersion() {
-        return WASMTIME_VERSION;
-    }
-
-    bool Api::supportsCranelift() {
-#ifdef WASMTIME_FEATURE_CRANELIFT
-        return true;
-#else
-        return false;
-#endif
-    }
-
-    bool Api::supportsPulley() {
-#ifdef WASMTIME_FEATURE_PULLEY
-        return true;
-#else
-        return false;
-#endif
+    const WasmlineNativeRuntimeIdentity& Api::nativeRuntimeIdentity() {
+        return NativeRuntimeIdentityProvider::identity();
     }
 
     void Api::releaseEngine() {
@@ -161,3 +145,7 @@ namespace wasmline {
         return NativeRuntime::instance().setComponentHostHandler(key, std::move(handler));
     }
 } // namespace wasmline
+
+extern "C" const WasmlineNativeRuntimeIdentity* wasmline_get_native_runtime_identity(void) {
+    return &wasmline::Api::nativeRuntimeIdentity();
+}

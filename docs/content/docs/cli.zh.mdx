@@ -1,65 +1,129 @@
 ---
 title: CLI 参考
-description: 插件构建流水线命令与构建产物布局
+description: 构建、签名并检查多兼容档案 Wasmline package
 createdAt: 2026-07-18
-updatedAt: 2026-08-10
+updatedAt: 2026-08-28
 ---
 
 # CLI 参考
 
-`wasmline-cli` 模块实现了完整的插件构建流水线。所有命令都从 `wasmline-multiplatform/` 通过 Gradle 分发：
+在 `wasmline-multiplatform/` 下运行 CLI。仓库启动脚本会构建 distribution，
+并将全部参数原样传给 Kotlin 命令：
 
 ```bash
-cd wasmline-multiplatform
-./gradlew :wasmline-cli:run --args="<command> [options]"
+./wasmline-cli/cli.sh <command> [options]
 ```
 
 ## 命令集
 
-| 命令 | 说明 |
+| 命令 | 用途 |
 |---|---|
-| `download` | 下载一个或多个目标平台的 wasmtime 发行版二进制 |
-| `generate-key-pair` | 生成 Ed25519 签名密钥对 |
-| `compile` | 将原始 `.wasm` 二进制编译为平台特定 `.cwasm` 产物以及一个可移植 `.pwasm` 镜像 |
-| `manifest` | 从已编译产物集合生成带密码学签名的 `.wlm` 清单（Protobuf + Ed25519） |
-| `build` | 执行完整流水线：`compile → manifest → zip packaging` |
+| `build` | 构建 AOT 矩阵、签名一个 manifest，并创建完整离线 ZIP |
+| `compile` | 构建 AOT 矩阵并写入 `aot-build-record.json`，但不签名 |
+| `manifest` | 对已完成的构建记录签名，不修改其中的 runtime contract |
+| `generate-key-pair` | 生成当前 manifest 格式要求的 Ed25519 密钥对 |
+| `aot-profiles list` | 列出 catalog 中的 Wasmtime 版本、backend 与 profile ID |
+| `aot-profiles describe <id>` | 显示一个 profile 的不可变描述和构建宿主 |
+| `componentize` | 创建或检查作为 AOT 输入的 raw Component |
+| `tools download`、`wit generate`、`component validate`、`component inspect` | 管理 Component 构建工具和元数据 |
 
-## 流水线执行
+已删除的 `download` 命令、`--wasmtime` 目录和任意 compiler executable
+配置不再接受。AOT compiler 必须通过带摘要锁定的 catalog 解析。
+
+## 构建 Package
 
 ```bash
-cd wasmline-multiplatform
+./wasmline-cli/cli.sh generate-key-pair --save
 
-# 下载 wasmtime min 工具链二进制
-./gradlew :wasmline-cli:run --args="download -v v48.0.1.1"
-
-# 生成 Ed25519 签名密钥对
-./gradlew :wasmline-cli:run --args="generate-key-pair --save"
-
-# 执行完整构建流水线
-./gradlew :wasmline-cli:run --args="build \
-  -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v48.0.1.1-aarch64-macos-min \
-  --key build/wasmline/keys/ed25519_private.key"
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --aot-wasmtime-version 48.0.1 \
+  --target pulley64 \
+  --target x86_64-linux \
+  --auto-download \
+  --plugin-id com.example.plugin \
+  --version 1.0.0 \
+  --build-timestamp 0 \
+  --key build/wasmline/keys/ed25519_private.key
 ```
 
-## 构建产物目录结构
+重复传入 `--aot-wasmtime-version` 可以支持多个完整 Wasmtime `x.y.z`
+版本。每个版本会分别为所请求的 artifact backend 解析一次。当同一版本、
+同一 backend 存在多个 profile 时，使用可重复的
+`--aot-compatibility-profile-id sha256:<digest>` 精确选择。
+
+未提供版本或 profile ID 时，每个请求的 backend 使用当前 Wasmline 发行版的
+默认 profile。使用 `aot-profiles list` 与 `aot-profiles describe` 查询 ID，
+不要根据 Wasmtime 或 Wasmline 版本自行推导。
+
+## Raw Export ABI
+
+`build` 与 `compile` 都可通过 `--raw-abi-metadata <file>` 配置
+`CORE_WASM + RAW_EXPORT`。该文件有明确的大小上限，并使用与 Gradle DSL
+相同的 `RawAbiMetadata` JSON schema：
+
+```json
+{
+  "version": 1,
+  "exports": [
+    {
+      "name": "add_i32",
+      "kind": "FUNCTION",
+      "signature": {
+        "parameters": ["I32", "I32"],
+        "results": ["I32"]
+      }
+    }
+  ],
+  "imports": [],
+  "memoryExport": "memory",
+  "requiredFeatures": []
+}
+```
+
+```bash
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --execution-model CORE_WASM \
+  --invocation-protocol RAW_EXPORT \
+  --export-name add_i32 \
+  --raw-abi-metadata raw-abi.json \
+  --target pulley64 \
+  --key build/wasmline/keys/ed25519_private.key
+```
+
+共享的 plugin-core codec 会拒绝未知或无效元数据，并在创建 build record
+前规范化 export、import 与 feature 的顺序。`contractMetadata` 仍可保存其他
+契约注记，但不能替代 raw ABI 模型。
+
+## 输出结构
 
 ```text
 build/wasmline/
-├── output/{name}-{version}/
-│   ├── manifest.wlm                      # 已签名清单（Protobuf + Ed25519 签名）
-│   ├── {name}-pulley32.pwasm             # 可移植 Pulley 字节码 — Android 32 位
-│   ├── {name}-pulley64.pwasm             # 可移植 Pulley 字节码 — 64 位原生目标与 iOS
-│   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
-│   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
-│   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
-│   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
+├── output/com.example.plugin-1.0.0/
+│   ├── manifest.wlm
+│   ├── artifacts/sha256/
+│   │   ├── 4f/4f13c7...a920.cwasm
+│   │   ├── 91/91aa42...c810.wasm
+│   │   └── b8/b8072d...0f31.pwasm
 │   └── debug/
-│       ├── compile-result.json
-│       └── manifest.json
-├── dist/
-│   └── {name}-{version}.zip
+│       ├── manifest.json
+│       ├── aot-build-record.json
+│       └── artifact-index.json
+├── dist/com.example.plugin-1.0.0.zip
 └── keys/
     ├── ed25519_private.key
     └── ed25519_public.key
 ```
+
+一个签名后的 `manifest.wlm` 描述全部 AOT profile。Core package 的 Web
+`.wasm` 位于 Wasmtime profile 矩阵之外，只保存一次。Component package 的
+raw Component 仅作为构建输入，不作为 Web artifact 发布。内容完全相同的输出
+会共用一个内容寻址文件。
+
+ZIP 包含完整 artifact 矩阵。远程 Loader 不下载 ZIP；它先校验 manifest，
+根据 native runtime identity 选择一个 target variant，然后只下载该内容寻址
+artifact。
+
+编译和正式 package 发布均使用 staging 目录。任一矩阵单元、签名或 ZIP
+替换失败时，都会恢复上一次 package 目录与离线 ZIP。

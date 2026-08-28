@@ -226,6 +226,7 @@ internal actual class WasmlineHostServiceLock {
 internal fun ensureNativeRuntimeLoaded() {
     ensureLinkedNativeRuntimeLoaded()
     wasmline_native_engine_link_anchor()
+    nativeRuntimeCapabilities
 }
 
 internal actual fun platformWasmlinePreload() {
@@ -240,7 +241,7 @@ internal actual fun platformWasmlineShutdown() {
 internal actual fun platformWasmlineWarmUp(engine: WasmlineEngineKind) {
     ensureNativeRuntimeLoaded()
     val usePulley = engine == WasmlineEngineKind.PULLEY
-    val supported = if (usePulley) wasmline_supports_pulley() else wasmline_supports_cranelift()
+    val supported = engine in requireNotNull(nativeRuntimeCapabilities.nativeRuntimeInfo).supportedEngines
     require(supported) {
         "The linked Wasmline runtime does not support the $engine engine."
     }
@@ -251,18 +252,48 @@ internal actual fun platformWasmlineWarmUp(engine: WasmlineEngineKind) {
 
 internal actual fun platformWasmlineRuntimeCapabilities(): WasmlineRuntimeCapabilities {
     ensureNativeRuntimeLoaded()
-    return WasmlineRuntimeCapabilities(
-        wasmtimeVersion = requireNotNull(wasmline_wasmtime_version()).toKString(),
-        supportsCranelift = wasmline_supports_cranelift(),
-        supportsPulley = wasmline_supports_pulley(),
-        targetOs = requireNotNull(wasmline_target_os()).toKString(),
-        targetCpu = requireNotNull(wasmline_target_cpu()).toKString(),
-        is64Bit = wasmline_target_is_64_bit(),
-    )
+    return nativeRuntimeCapabilities
 }
 
 internal actual fun platformWasmlineNativeRuntimeInfo(): WasmlineNativeRuntimeInfo? =
     platformWasmlineRuntimeCapabilities().nativeRuntimeInfo
+
+private val nativeRuntimeCapabilities: WasmlineRuntimeCapabilities by lazy {
+    val identity = requireNotNull(wasmline_get_native_runtime_identity()?.pointed) {
+        "Native Wasmline runtime identity is unavailable."
+    }
+    val formatCapabilities = identity.supported_artifact_formats.toUInt()
+    WasmlineRuntimeCapabilities(
+        backend = when (identity.backend) {
+            2 -> WasmlineNativeBackend.CRANELIFT
+            1 -> WasmlineNativeBackend.PULLEY
+            else -> error("Native Wasmline runtime reported an unknown backend.")
+        },
+        supportedArtifactFormats = buildSet {
+            if (formatCapabilities and 1u != 0u) add(WasmlineArtifactFormat.CWASM)
+            if (formatCapabilities and 2u != 0u) add(WasmlineArtifactFormat.PWASM)
+        },
+        wasmtimeVersion = requireNotNull(identity.wasmtime_version).toKString(),
+        aotCompatibilityProfileIdsByBackend = buildMap {
+            identity.cranelift_aot_compatibility_profile_id?.toKString()?.takeIf(String::isNotBlank)?.let {
+                put(WasmlineEngineKind.CRANELIFT, setOf(it))
+            }
+            identity.pulley_aot_compatibility_profile_id?.toKString()?.takeIf(String::isNotBlank)?.let {
+                put(WasmlineEngineKind.PULLEY, setOf(it))
+            }
+        },
+        nativeBridgeAbiVersion = identity.native_bridge_abi_version,
+        wasmlineReleaseVersion = requireNotNull(identity.wasmline_release_version).toKString(),
+        operatingSystem = requireNotNull(identity.operating_system).toKString(),
+        architecture = requireNotNull(identity.architecture).toKString(),
+        pointerWidth = identity.pointer_width,
+        supportedCpuFeatureProfiles = requireNotNull(identity.supported_cpu_feature_profiles)
+            .toKString()
+            .split(',')
+            .filter(String::isNotBlank)
+            .toSet(),
+    ).validatedNativeIdentity()
+}
 
 internal actual fun platformWasmlineLoadArtifact(filepath: String, config: WasmlineConfig): WasmlineLoadState =
     platformWasmlineLoadArtifact(WasmlineArtifactDescriptor(path = filepath), config)

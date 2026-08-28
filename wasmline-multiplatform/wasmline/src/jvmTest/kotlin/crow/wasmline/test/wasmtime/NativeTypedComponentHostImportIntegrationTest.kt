@@ -157,13 +157,10 @@ class NativeTypedComponentHostImportIntegrationTest {
         val artifactFormat = componentAotFormat(artifact.name)
         val runtime = platformWasmlineRuntimeCapabilities()
         val state = platformWasmlineLoadArtifact(
-            descriptor = WasmlineArtifactDescriptor(
+            descriptor = nativeTestArtifactDescriptor(
                 path = artifact.absolutePath,
                 artifactFormat = artifactFormat,
-                targetCpu = targetCpuFor(artifactFormat, runtime.is64Bit, runtime.targetCpu),
-                targetOs = targetOsFor(artifactFormat, runtime.targetOs),
-                targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-                is64Bit = runtime.is64Bit,
+                runtime = runtime,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = "run",
@@ -198,18 +195,6 @@ class NativeTypedComponentHostImportIntegrationTest {
     private fun WasmlineArtifactFormat.fileSuffix(): String = when (this) {
         WasmlineArtifactFormat.CWASM -> ".cwasm"
         WasmlineArtifactFormat.PWASM -> ".pwasm"
-        WasmlineArtifactFormat.RAW_WASM -> error("Typed Component host fixtures cannot use raw Wasm.")
-    }
-
-    private fun targetCpuFor(artifactFormat: WasmlineArtifactFormat, is64Bit: Boolean, runtimeCpu: String): String = when (artifactFormat) {
-        WasmlineArtifactFormat.CWASM -> runtimeCpu
-        WasmlineArtifactFormat.PWASM -> if (is64Bit) "pulley64" else "pulley32"
-        WasmlineArtifactFormat.RAW_WASM -> error("Typed Component host fixtures cannot use raw Wasm.")
-    }
-
-    private fun targetOsFor(artifactFormat: WasmlineArtifactFormat, runtimeOs: String): String? = when (artifactFormat) {
-        WasmlineArtifactFormat.CWASM -> runtimeOs
-        WasmlineArtifactFormat.PWASM -> null
         WasmlineArtifactFormat.RAW_WASM -> error("Typed Component host fixtures cannot use raw Wasm.")
     }
 

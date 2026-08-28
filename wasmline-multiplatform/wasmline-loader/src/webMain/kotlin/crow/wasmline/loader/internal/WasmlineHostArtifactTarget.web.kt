@@ -1,8 +1,11 @@
 package crow.wasmline.loader.internal
 
+import crow.wasmline.WasmlineArtifactFormat
+
 internal val browserCurrentHostArtifactTarget: WasmlineHostArtifactTarget =
     WasmlineHostArtifactTarget(
-        os = "browser",
-        cpu = "wasmjs",
-        is64Bit = true,
+        operatingSystem = "browser",
+        architecture = "wasm32",
+        pointerWidth = 32,
+        supportedArtifactFormats = setOf(WasmlineArtifactFormat.RAW_WASM),
     )

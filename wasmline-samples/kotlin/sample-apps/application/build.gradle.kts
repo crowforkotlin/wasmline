@@ -1,4 +1,3 @@
-import crow.wasmline.gradle.WasmtimeTarget
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
@@ -32,53 +31,29 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
 }
 
-val componentServiceAotOutput = project(":sample-component-plugin").layout.buildDirectory.dir(
-    "wasmline/component-aot/debug",
+val componentServicePackage = project(":sample-component-plugin").layout.buildDirectory.dir(
+    "wasmline/output/crow.wasmline.component.sample-1.0.0",
 )
 
 tasks.test {
-    dependsOn(project(":sample-component-plugin").tasks.named("wasmlineComponentAotDebug"))
+    dependsOn(project(":sample-component-plugin").tasks.named("wasmlineAssembleDebug"))
     useJUnitPlatform()
     systemProperty(
-        "wasmline.test.componentService.cwasm",
-        componentServiceAotOutput.map { it.file("sample-aarch64-macos.cwasm").asFile.absolutePath }.get(),
-    )
-    systemProperty(
-        "wasmline.test.componentService.pwasm",
-        componentServiceAotOutput.map { it.file("sample-pulley64.pwasm").asFile.absolutePath }.get(),
+        "wasmline.test.componentService.manifest",
+        componentServicePackage.map { it.file("manifest.wlm").asFile.absolutePath }.get(),
     )
 }
 
-val requestedArtifactFormat = providers.gradleProperty("wasmline.artifact.format")
-    .orElse(providers.environmentVariable("WASMLINE_ARTIFACT_FORMAT"))
-    .map { it.lowercase() }
-    .orElse("cwasm")
-    .map { if (it == "pwasm") "pwasm64" else it }
-    .get()
-require(requestedArtifactFormat in setOf("pwasm32", "pwasm64", "cwasm")) {
-    "Unsupported wasmline.artifact.format '$requestedArtifactFormat'. Expected pwasm32, pwasm64, or cwasm."
-}
-
-val requestedCwasmTarget = providers.gradleProperty("wasmline.compile.target")
-    .orElse(WasmtimeTarget.currentHost.targetName)
-    .get()
 val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
     "wasmline/output/crow.wasmline.demo-1.0.0",
 )
-val samplePluginArtifactName = when (requestedArtifactFormat) {
-    "pwasm32" -> "demo-pulley32.pwasm"
-    "pwasm64" -> "demo-pulley64.pwasm"
-    "cwasm" -> "demo-$requestedCwasmTarget.cwasm"
-    else -> error("Unsupported wasmline artifact format: $requestedArtifactFormat")
-}
-val samplePluginArtifactExtension = samplePluginArtifactName.substringAfterLast('.')
 val syncSamplePluginArtifact = tasks.register<Sync>("syncWasmlineSamplePlugin") {
     group = "wasmline"
-    description = "Build and expose the sample plugin artifact to the application"
+    description = "Build and expose the signed sample plugin package to the application"
     dependsOn(project(":sample-plugin").tasks.named("wasmlineAssembleDebug"))
     from(samplePluginOutput) {
-        include(samplePluginArtifactName)
-        rename { "plugin.$samplePluginArtifactExtension" }
+        include("manifest.wlm", "artifacts/**")
+        into("wasmline-package")
     }
     into(layout.buildDirectory.dir("generated/application-resources"))
 }
@@ -91,5 +66,4 @@ tasks.named<ProcessResources>("processResources") {
 
 tasks.named<JavaExec>("run") {
     dependsOn(syncSamplePluginArtifact)
-    systemProperty("wasmline.artifact.format", requestedArtifactFormat)
 }

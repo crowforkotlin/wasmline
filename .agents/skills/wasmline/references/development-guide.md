@@ -59,7 +59,7 @@ Do not initialize assets merely because the directory exists or is absent. Confi
 | `wasmline-multiplatform/wasmline-kotlin-plugin/` | Kotlin IR validation, bridge generation, entry-point rewriting, and WASI/Component hooks |
 | `wasmline-multiplatform/wasmline-plugin-core/` | Shared plugin build pipeline, Component tooling, manifest signing, packaging, and host WIT generation |
 | `wasmline-multiplatform/wasmline-gradle-plugin/` | Consumer DSL and Gradle tasks built on the compiler plugin and plugin core |
-| `wasmline-multiplatform/wasmline-cli/` | CLI adapters for download, compilation, Component tools, manifests, and packaging |
+| `wasmline-multiplatform/wasmline-cli/` | CLI adapters for catalog-backed AOT builds, Component tools, manifests, and packaging |
 | `wasmline-multiplatform/wasmline-network-ktor/` | Ktor network adapter for the loader |
 | `wasmline-multiplatform/wasmline-network-okhttp/` | OkHttp network adapter for the loader |
 | `wasmline-multiplatform/wasmline-plugin-test/` | End-to-end Gradle-plugin and native-plugin integration tests |

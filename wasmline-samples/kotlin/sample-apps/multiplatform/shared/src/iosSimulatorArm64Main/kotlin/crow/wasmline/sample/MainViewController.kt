@@ -8,7 +8,8 @@ fun MainViewController() =
     ComposeUIViewController {
         MaterialTheme {
             App(
-                wasmPath = NSBundle.mainBundle.pathForResource("plugin", "pwasm") ?: return@MaterialTheme,
+                wasmPath = NSBundle.mainBundle.pathForResource("manifest", "wlm", "plugin-package")
+                    ?: return@MaterialTheme,
                 autoExecute = true,
                 assetRefresher = NoOpAssetRefresher,
             )

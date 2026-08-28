@@ -2,7 +2,7 @@
 title: Usage Guide
 description: Service contract definition, plugin implementation, and host-side module loading
 createdAt: 2026-07-18
-updatedAt: 2026-08-18
+updatedAt: 2026-08-28
 ---
 
 # Usage Guide
@@ -86,6 +86,14 @@ suspend fun main() {
 
 Local artifacts and local manifests do not require a network artifact. For remote manifests, add either `wasmline-network-ktor` (JVM, Android, iOS) or `wasmline-network-okhttp` (JVM, Android). The adapter is consulted only on a fresh-manifest or artifact cache miss; a fully cached package can load without a network client. The built-in file cache streams artifact bodies into atomically published content-addressed files and evicts older entries above `WasmlineLoadOptions.maxCacheBytes` (512 MiB by default). Applications can also implement `WasmlineNetworkClient`, provide a custom cache, or provide a custom remote resolver.
 
+One remote manifest can contain variants for several Wasmtime AOT profiles and
+platforms. The loader verifies the Ed25519 envelope, compares the manifest with
+the native engine's backend-specific profile IDs and target identity, and then
+requests one content-addressed artifact. A cold load normally performs one
+manifest request and one artifact request. It does not download the complete
+offline ZIP or unrelated variants. Core Web packages select the single
+profile-independent RAW_WASM variant.
+
 ## Runtime Lifecycle and API Ownership
 
 `WasmlineLoader`, `WasmlineRuntime`, and a loaded `Wasmline` have separate responsibilities:
@@ -148,6 +156,7 @@ Use `WasmlineArtifactDescriptor` when the artifact is not a default Core Wasmlin
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentValue
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
@@ -157,14 +166,16 @@ import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoader
 
 val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
-val is64Bit = requireNotNull(runtime.is64Bit)
+val pulleyProfileId = requireNotNull(
+    runtime.aotCompatibilityProfileIdsByBackend[WasmlineEngineKind.PULLEY],
+).single()
 val result = WasmlineLoader.load(
     WasmlineArtifactDescriptor(
         path = "component.pwasm",
         artifactFormat = WasmlineArtifactFormat.PWASM,
-        targetCpu = if (is64Bit) "pulley64" else "pulley32",
-        targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-        is64Bit = is64Bit,
+        architecture = "pulley${runtime.pointerWidth}",
+        pointerWidth = runtime.pointerWidth,
+        aotCompatibilityProfileId = pulleyProfileId,
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
         invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
         exportName = "wasmline:sample-component-export/calculator@1.0.0#add",
@@ -187,6 +198,10 @@ when (result) {
 }
 ```
 
+This explicit descriptor form is intended for a known local artifact. For a
+package manifest, pass its path or URL and let the shared selector choose CWASM,
+PWASM, or Web WASM. Do not derive an AOT profile from `wasmtimeVersion`.
+
 `WASMLINE_SERVICE` is the service protocol. `CORE_WASM` can use either that
 Service bridge or `RAW_EXPORT`. Raw Export uses `CoreWasmModule` and
 `CoreWasmSession` with `RawValue` (`i32`, `i64`, `f32`, `f64`), multi-value
@@ -206,10 +221,14 @@ host import is registered before the WebAssembly instance is created:
 
 ```kotlin
 import crow.wasmline.CoreWasmSessionOptions
+import crow.wasmline.RawAbiMetadata
+import crow.wasmline.RawExport
+import crow.wasmline.RawExportKind
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.RawFunctionSignature
 import crow.wasmline.RawImport
+import crow.wasmline.RawImportDeclaration
 import crow.wasmline.RawValue
 import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineCoreLoadResult
@@ -226,6 +245,28 @@ val module = when (val loaded = WasmlineLoader.loadCoreModule(
         artifactFormat = WasmlineArtifactFormat.RAW_WASM,
         executionModel = WasmlineExecutionModel.CORE_WASM,
         invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+        rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport(
+                    name = "add",
+                    kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+            imports = listOf(
+                RawImportDeclaration(
+                    module = "env",
+                    name = "host_add",
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+        ),
     ),
 )) {
     is WasmlineCoreLoadResult.Success -> loaded.module

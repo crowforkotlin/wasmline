@@ -79,12 +79,16 @@ internal actual fun platformWasmlineLoadArtifact(descriptor: WasmlineArtifactDes
     browserWasmlineLoadArtifact(descriptor, config)
 
 private fun browserRuntimeCapabilities(): WasmlineRuntimeCapabilities = WasmlineRuntimeCapabilities(
+    backend = null,
+    supportedArtifactFormats = setOf(WasmlineArtifactFormat.RAW_WASM),
     wasmtimeVersion = "0.0.0",
-    supportsCranelift = false,
-    supportsPulley = false,
-    targetOs = "browser",
-    targetCpu = "wasmjs",
-    is64Bit = false,
+    aotCompatibilityProfileIdsByBackend = emptyMap(),
+    nativeBridgeAbiVersion = 0,
+    wasmlineReleaseVersion = WasmlineReleaseIdentity.RELEASE_VERSION,
+    operatingSystem = "browser",
+    architecture = "wasm32",
+    pointerWidth = 32,
+    supportedCpuFeatureProfiles = emptySet(),
 )
 
 internal actual class WasmlineHostServiceLock {

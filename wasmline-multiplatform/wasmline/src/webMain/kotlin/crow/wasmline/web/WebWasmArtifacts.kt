@@ -46,6 +46,9 @@ internal object WebWasmArtifacts {
     /** Returns cached bytes, or null when the artifact was never prefetched. */
     fun bytesOrNull(url: String): ByteArray? = cache[url]?.copyOf()
 
+    /** Returns whether bytes are cached under [url] without copying them. */
+    fun contains(url: String): Boolean = cache.containsKey(url)
+
     fun invalidate(url: String) {
         cache.remove(url)
     }

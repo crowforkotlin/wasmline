@@ -43,28 +43,25 @@ val testPluginId = "crow.wasmline.test.plugin"
 val testPluginVersion = "1.0.0"
 val testPluginCompileTarget = WasmtimeTarget.currentHost
 val testPluginArtifactDirectory = layout.buildDirectory.dir("wasmline/output/$testPluginId-$testPluginVersion")
-val testPluginArtifact = testPluginArtifactDirectory.map { it.file("plugin-${testPluginCompileTarget.targetName}.cwasm") }
+val testPluginManifest = testPluginArtifactDirectory.map { it.file("manifest.wlm") }
 
 tasks.named<Test>("jvmTest") {
     dependsOn("wasmlineAssembleDebug")
-    systemProperty("wasmline.plugin.artifact.path", testPluginArtifact.get().asFile.absolutePath)
+    systemProperty("wasmline.plugin.manifest.path", testPluginManifest.get().asFile.absolutePath)
 }
 
-// WASMTIME directory uses a path relative to the multiplatform root.
 wasmline {
     val wasmtimeVersion = "48.0.1"
-    val wasmtimeReleaseVersion = "48.0.1.1"
-    val wasmtimePlatformDir = "wasmtime-v$wasmtimeReleaseVersion-${testPluginCompileTarget.targetName}-min"
     manifest {
         pluginId = testPluginId
         version = testPluginVersion
         signingKey = file("keys/private.key")
     }
     wasmtime {
-        directory = file("${file("build/wasmline/wasmtime")}/$wasmtimePlatformDir")
+        aotCompatibility {
+            wasmtimeVersions.set(listOf(wasmtimeVersion))
+        }
         autoDownload = true
-        version = wasmtimeVersion
-        releaseVersion = "v$wasmtimeReleaseVersion"
         targets = listOf(testPluginCompileTarget)
         githubToken = providers.gradleProperty("github.token").orNull
     }

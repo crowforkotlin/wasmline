@@ -2,14 +2,28 @@
 
 package crow.wasmline.loader
 
+import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.WasmlineEngineKind
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineNativeBackend
+import crow.wasmline.WasmlineNativeRuntimeInfo
 import crow.wasmline.extensions.Keys
+import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.loader.internal.WasmlineFileCache
+import crow.wasmline.loader.internal.WasmlineHostArtifactTarget
+import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
 import crow.wasmline.loader.internal.crypto.Ed25519
-import crow.wasmline.loader.internal.currentHostArtifactTarget
 import crow.wasmline.loader.model.SignedManifestEnvelope
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineAotCompatibilityProfile
+import crow.wasmline.loader.model.WasmlineArtifactTarget
+import crow.wasmline.loader.model.WasmlineArtifactVariant
 import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.loader.model.WasmlineManifestLimits
+import crow.wasmline.loader.model.WasmlineManifestProtocol
+import crow.wasmline.loader.model.WasmlineManifestWireFormat
+import crow.wasmline.loader.model.WasmlineRuntimeContract
 import crow.wasmline.loader.network.WasmlineHttpResponse
 import crow.wasmline.loader.network.WasmlineHttpStatus
 import crow.wasmline.loader.network.WasmlineNetworkClient
@@ -19,438 +33,421 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
+import java.io.File
+import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
-import kotlin.time.Clock
 
-/** Verifies remote manifest resolution, caching, compatibility, and signatures. */
+/**
+ * Verifies remote manifest caching and single-artifact streaming resolution.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 class WasmlineRemotePackageResolutionTest {
-
     private val privateKey = Keys.PRIVATE_KEY_1.decodeHex()
     private val publicKey = Keys.PUBLIC_KEY_1.decodeHex()
 
-    private fun createTestManifest(artifacts: List<WasmlineArtifact>): WasmlineManifest = WasmlineManifest(
-        pluginId = "crow.wasmline.test",
-        version = "1.0.0",
+    @Test
+    fun coldLoadRequestsManifestAndOneContentAddressedArtifact() = runTest {
+        withRemoteCache { cache ->
+            val artifactBytes = byteArrayOf(1, 2, 3)
+            val digest = artifactBytes.toByteString().sha256().hex()
+            val envelopeBytes = signAndEncode(rawManifest(digest, artifactBytes.size.toLong()))
+            val expectedArtifactUrl = "https://example.com/plugin/" +
+                WasmlineManifestProtocol.artifactRelativePath(digest, WasmlineArtifactFormat.RAW_WASM)
+            val requested = mutableListOf<String>()
+            var wholeArtifactFetchCalled = false
+            val networkClient = object : WasmlineNetworkClient {
+                override suspend fun fetch(url: String): WasmlineHttpResponse {
+                    wholeArtifactFetchCalled = true
+                    error("Remote package data must use fetchTo.")
+                }
+
+                override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+                    requested += url
+                    return when (url) {
+                        MANIFEST_URL -> {
+                            sink.write(envelopeBytes, 0, envelopeBytes.size)
+                            WasmlineHttpStatus(200)
+                        }
+
+                        expectedArtifactUrl -> {
+                            sink.write(artifactBytes, 0, artifactBytes.size)
+                            WasmlineHttpStatus(200)
+                        }
+
+                        else -> WasmlineHttpStatus(404)
+                    }
+                }
+            }
+
+            val resolution = resolve(
+                manifestUrl = MANIFEST_URL,
+                networkClient = networkClient,
+                cache = cache,
+                trustedKeys = trustedKeys(),
+                host = browserHost(),
+            )
+
+            val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
+            val artifact = assertIs<VerifiedPackageArtifact>(continuation.source)
+            assertEquals(WasmlineArtifactFormat.RAW_WASM, artifact.descriptor.artifactFormat)
+            assertEquals(listOf(MANIFEST_URL, expectedArtifactUrl), requested)
+            assertFalse(wholeArtifactFetchCalled)
+        }
+    }
+
+    @Test
+    fun selectedCwasmIntegrityFailureDoesNotFallBackToPulley() = runTest {
+        withRemoteCache { cache ->
+            val manifest = nativeManifest()
+            val cwasmPath = WasmlineManifestProtocol.artifactRelativePath(CWASM_DIGEST, WasmlineArtifactFormat.CWASM)
+            val pwasmPath = WasmlineManifestProtocol.artifactRelativePath(PWASM_DIGEST, WasmlineArtifactFormat.PWASM)
+            val requestedArtifacts = mutableListOf<String>()
+            val envelopeBytes = signAndEncode(manifest)
+            val networkClient = object : WasmlineNetworkClient {
+                override suspend fun fetch(url: String): WasmlineHttpResponse = error("Remote package data must use fetchTo.")
+
+                override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+                    if (url == MANIFEST_URL) {
+                        sink.write(envelopeBytes, 0, envelopeBytes.size)
+                        return WasmlineHttpStatus(200)
+                    }
+                    requestedArtifacts += url
+                    assertTrue(url.endsWith(cwasmPath))
+                    assertFalse(url.endsWith(pwasmPath))
+                    sink.write(byteArrayOf(9, 9, 9), 0, 3)
+                    return WasmlineHttpStatus(200)
+                }
+            }
+
+            val resolution = resolve(
+                MANIFEST_URL,
+                networkClient,
+                cache,
+                trustedKeys(),
+                nativeHost(),
+            )
+
+            val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
+            val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
+            assertEquals(WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED, failure.failure.code)
+            assertEquals(1, requestedArtifacts.size)
+        }
+    }
+
+    @Test
+    fun cachedManifestIsReverifiedWhenTrustPolicyChanges() = runTest {
+        withRemoteCache { cache ->
+            val artifactBytes = byteArrayOf(1, 2, 3)
+            val digest = artifactBytes.toByteString().sha256().hex()
+            val envelopeBytes = signAndEncode(rawManifest(digest, 3))
+            var manifestFetches = 0
+            val networkClient = object : WasmlineNetworkClient {
+                override suspend fun fetch(url: String): WasmlineHttpResponse = error("Remote package data must use fetchTo.")
+
+                override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+                    val bytes = if (url == MANIFEST_URL) {
+                        manifestFetches++
+                        envelopeBytes
+                    } else {
+                        artifactBytes
+                    }
+                    sink.write(bytes, 0, bytes.size)
+                    return WasmlineHttpStatus(200)
+                }
+            }
+            assertIs<WasmlineSourceResolution.ContinueWith>(
+                resolve(MANIFEST_URL, networkClient, cache, trustedKeys(), browserHost()),
+            )
+
+            val wrongKeys = WasmlineTrustedKeySet.Builder()
+                .add("Ed25519", null, "a".repeat(64).decodeHex().toByteArray())
+                .build()
+            val second = resolve(MANIFEST_URL, networkClient, cache, wrongKeys, browserHost())
+
+            val complete = assertIs<WasmlineSourceResolution.Complete>(second)
+            val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
+            assertEquals(WasmlineErrorCode.SIGNATURE_VERIFICATION_FAILED, failure.failure.code)
+            assertEquals(1, manifestFetches)
+        }
+    }
+
+    @Test
+    fun customByteCacheCanResolveACompletePackageOffline() = runTest {
+        val artifactBytes = byteArrayOf(1, 2, 3)
+        val digest = artifactBytes.toByteString().sha256().hex()
+        val envelopeBytes = signAndEncode(rawManifest(digest, artifactBytes.size.toLong()))
+        val manifestCacheKey = "manifest_${MANIFEST_URL.encodeToByteArray().toByteString().sha256().hex()}"
+        val entries = mutableMapOf(
+            manifestCacheKey to envelopeBytes,
+            "$manifestCacheKey.timestamp" to System.currentTimeMillis().toString().encodeToByteArray(),
+            "artifact_$digest" to artifactBytes,
+        )
+        val cache = object : WasmlineCache {
+            override fun get(key: String): ByteArray? = entries[key]?.copyOf()
+
+            override fun put(key: String, bytes: ByteArray) {
+                entries[key] = bytes.copyOf()
+            }
+
+            override fun exists(key: String): Boolean = key in entries
+        }
+        val source = WasmlineSource.RemoteManifestUrl(MANIFEST_URL)
+
+        val resolution = WasmlineRemotePackageResolution.resolve(
+            source,
+            WasmlineLoadRequest(
+                source,
+                options = WasmlineLoadOptions(
+                    trustedKeys = trustedKeys(),
+                    cache = cache,
+                ),
+            ),
+            browserHost(),
+        )
+
+        val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
+        val artifact = assertIs<VerifiedPackageArtifact>(continuation.source)
+        assertTrue(File(artifact.descriptor.path).isFile)
+        assertEquals(WasmlineArtifactFormat.RAW_WASM, artifact.descriptor.artifactFormat)
+    }
+
+    @Test
+    fun rejectsSelectedArtifactAboveConfiguredLimitBeforeDownload() = runTest {
+        withRemoteCache { cache ->
+            val envelopeBytes = signAndEncode(rawManifest(RAW_DIGEST, 4))
+            var artifactDownloadCalled = false
+            val networkClient = object : WasmlineNetworkClient {
+                override suspend fun fetch(url: String): WasmlineHttpResponse = error("Remote package data must use fetchTo.")
+
+                override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+                    if (url == MANIFEST_URL) {
+                        sink.write(envelopeBytes, 0, envelopeBytes.size)
+                        return WasmlineHttpStatus(200)
+                    }
+                    artifactDownloadCalled = true
+                    return WasmlineHttpStatus(200)
+                }
+            }
+            val source = WasmlineSource.RemoteManifestUrl(MANIFEST_URL)
+            val resolution = WasmlineRemotePackageResolution.resolve(
+                source,
+                WasmlineLoadRequest(
+                    source,
+                    options = WasmlineLoadOptions(
+                        networkClient = networkClient,
+                        trustedKeys = trustedKeys(),
+                        cache = cache,
+                        maxArtifactBytes = 3,
+                    ),
+                ),
+                browserHost(),
+            )
+
+            val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
+            val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
+            assertEquals(WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED, failure.failure.code)
+            assertFalse(artifactDownloadCalled)
+        }
+    }
+
+    @Test
+    fun rejectsStreamedManifestAboveConfiguredLimit() = runTest {
+        withRemoteCache { cache ->
+            val oversizedManifest = ByteArray(5) { 1 }
+            var requests = 0
+            val networkClient = object : WasmlineNetworkClient {
+                override suspend fun fetch(url: String): WasmlineHttpResponse = error("Remote package data must use fetchTo.")
+
+                override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+                    requests++
+                    sink.write(oversizedManifest, 0, oversizedManifest.size)
+                    return WasmlineHttpStatus(200)
+                }
+            }
+            val source = WasmlineSource.RemoteManifestUrl(MANIFEST_URL)
+            val resolution = WasmlineRemotePackageResolution.resolve(
+                source,
+                WasmlineLoadRequest(
+                    source,
+                    options = WasmlineLoadOptions(
+                        networkClient = networkClient,
+                        trustedKeys = trustedKeys(),
+                        cache = cache,
+                        manifestLimits = WasmlineManifestLimits(maxManifestBytes = 4, maxPayloadBytes = 4),
+                    ),
+                ),
+                browserHost(),
+            )
+
+            val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
+            val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
+            assertEquals(WasmlineErrorCode.MANIFEST_INVALID, failure.failure.code)
+            assertEquals(1, requests)
+        }
+    }
+
+    private suspend fun resolve(
+        manifestUrl: String,
+        networkClient: WasmlineNetworkClient,
+        cache: WasmlineFileCache,
+        trustedKeys: WasmlineTrustedKeys,
+        host: WasmlineHostArtifactTarget,
+    ): WasmlineSourceResolution {
+        val source = WasmlineSource.RemoteManifestUrl(manifestUrl)
+        return WasmlineRemotePackageResolution.resolve(
+            source = source,
+            request = WasmlineLoadRequest(
+                source = source,
+                options = WasmlineLoadOptions(
+                    networkClient = networkClient,
+                    trustedKeys = trustedKeys,
+                    cache = cache,
+                ),
+            ),
+            host = host,
+        )
+    }
+
+    private fun rawManifest(digest: String, sizeBytes: Long): WasmlineManifest = WasmlineManifest(
+        pluginId = "crow.wasmline.remote",
+        version = "12.3.4",
         versionCode = 1,
-        minSdkVersion = "0.9.0",
-        buildTimestamp = Clock.System.now().toEpochMilliseconds(),
-        artifacts = artifacts,
+        minSdkVersion = "12.3.4",
+        buildTimestamp = 0,
+        runtimeContract = contract(),
+        artifactTargets = listOf(
+            WasmlineArtifactTarget(
+                format = WasmlineArtifactFormat.RAW_WASM,
+                architecture = "wasm32",
+                pointerWidth = 32,
+                variants = listOf(WasmlineArtifactVariant(sha256 = digest, sizeBytes = sizeBytes)),
+            ),
+        ),
     )
 
-    private fun signAndEncodeEnvelope(manifest: WasmlineManifest, publicKeyId: String? = null): ByteArray {
-        val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
-        val signature = Ed25519.sign(manifestBytes.toByteString(), privateKey)
+    private fun nativeManifest(): WasmlineManifest = WasmlineManifestProtocol.canonicalize(
+        WasmlineManifest(
+            pluginId = "crow.wasmline.remote",
+            version = "12.3.4",
+            versionCode = 1,
+            minSdkVersion = "12.3.4",
+            buildTimestamp = 0,
+            runtimeContract = contract(),
+            aotCompatibilityProfiles = listOf(
+                profile(CRANELIFT_PROFILE_ID, WasmlineEngineKind.CRANELIFT),
+                profile(PULLEY_PROFILE_ID, WasmlineEngineKind.PULLEY),
+            ),
+            artifactTargets = listOf(
+                WasmlineArtifactTarget(
+                    format = WasmlineArtifactFormat.CWASM,
+                    operatingSystem = "linux",
+                    architecture = "x86_64",
+                    pointerWidth = 64,
+                    cpuFeatureProfile = "baseline-v1",
+                    variants = listOf(WasmlineArtifactVariant(listOf(CRANELIFT_PROFILE_ID), CWASM_DIGEST, 3)),
+                ),
+                WasmlineArtifactTarget(
+                    format = WasmlineArtifactFormat.PWASM,
+                    architecture = "pulley64",
+                    pointerWidth = 64,
+                    variants = listOf(WasmlineArtifactVariant(listOf(PULLEY_PROFILE_ID), PWASM_DIGEST, 3)),
+                ),
+            ),
+        ),
+    )
+
+    private fun profile(id: String, backend: WasmlineEngineKind) = WasmlineAotCompatibilityProfile(
+        id = id,
+        artifactBackend = backend,
+        wasmtimeVersion = "12.3.4",
+        wasmtimeDistributionVersion = "12.3.4.1",
+        compileProfileSchemaVersion = 1,
+    )
+
+    private fun contract() = WasmlineRuntimeContract(
+        WasmlineExecutionModel.CORE_WASM,
+        WasmlineInvocationProtocol.WASMLINE_SERVICE,
+    )
+
+    private fun signAndEncode(manifest: WasmlineManifest): ByteArray {
+        val canonical = WasmlineManifestProtocol.canonicalize(manifest)
+        val payload = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), canonical)
+        val version = WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION
         val envelope = SignedManifestEnvelope(
-            signature = signature.toByteArray(),
-            manifest = manifest,
-            algorithm = "Ed25519",
-            publicKeyId = publicKeyId,
+            signature = Ed25519.sign(
+                WasmlineManifestProtocol.signingMessage(version, payload).toByteString(),
+                privateKey,
+            ).toByteArray(),
+            formatVersion = version,
+            payload = payload,
         )
         return ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
     }
 
-    private fun fakeArtifactBytes(): ByteArray = "fake compiled wasm artifact content for testing".encodeToByteArray()
-
-    private fun fakeArtifactSha256(): String = fakeArtifactBytes().toByteString().sha256().hex()
-
     private fun trustedKeys(): WasmlineTrustedKeySet = WasmlineTrustedKeySet.Builder()
-        .add("Ed25519", keyId = null, publicKey = publicKey.toByteArray())
+        .add("Ed25519", null, publicKey.toByteArray())
         .build()
 
-    private fun compatibleCraneliftArtifact(url: String, sha256: String): WasmlineArtifact {
-        val target = currentHostArtifactTarget
-        return WasmlineArtifact(
-            type = WasmlineArtifactType.CWASM,
-            url = url,
-            sha256 = sha256,
-            targetCpu = target.cpu,
-            targetOs = target.os,
-            targetCompilerVersion = "wasmtime-${requireNotNull(target.wasmtimeVersion)}",
-            is64Bit = target.is64Bit,
+    private fun browserHost() = WasmlineHostArtifactTarget(
+        operatingSystem = "browser",
+        architecture = "wasm32",
+        pointerWidth = 32,
+        supportedArtifactFormats = setOf(WasmlineArtifactFormat.RAW_WASM),
+    )
+
+    private fun nativeHost(): WasmlineHostArtifactTarget {
+        val formats = setOf(WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.PWASM)
+        val runtime = WasmlineNativeRuntimeInfo(
+            backend = WasmlineNativeBackend.CRANELIFT,
+            supportedArtifactFormats = formats,
+            wasmtimeVersion = "12.3.4",
+            aotCompatibilityProfileIdsByBackend = mapOf(
+                WasmlineEngineKind.CRANELIFT to setOf(CRANELIFT_PROFILE_ID),
+                WasmlineEngineKind.PULLEY to setOf(PULLEY_PROFILE_ID),
+            ),
+            nativeBridgeAbiVersion = 1,
+            wasmlineReleaseVersion = "1.0.0",
+            operatingSystem = "linux",
+            architecture = "x86_64",
+            pointerWidth = 64,
+            supportedCpuFeatureProfiles = setOf("baseline-v1"),
+        )
+        return WasmlineHostArtifactTarget(
+            operatingSystem = "linux",
+            architecture = "x86_64",
+            pointerWidth = 64,
+            supportedArtifactFormats = formats,
+            nativeRuntimeInfo = runtime,
         )
     }
 
-    @Test
-    fun `remote source without networkClient returns failure`() = runTest {
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("request.options.networkClient or request.resolvers.remotePackage"))
+    /**
+     * Defines remote package fixture locations and content identities.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
+    private companion object {
+        const val MANIFEST_URL = "https://example.com/plugin/manifest.wlm"
+        const val RAW_DIGEST = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        const val CWASM_DIGEST = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        const val PWASM_DIGEST = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        const val CRANELIFT_PROFILE_ID = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        const val PULLEY_PROFILE_ID = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
     }
-
-    @Test
-    fun `custom resolver takes priority over networkClient`() = runTest {
-        val customCalled = booleanArrayOf(false)
-        val fakeNetworkClient = WasmlineNetworkClient { _ ->
-            throw AssertionError("Network client should not be called when custom resolver is provided")
-        }
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                options = WasmlineLoadOptions(networkClient = fakeNetworkClient),
-                resolvers = WasmlineSourceResolvers(
-                    remotePackage = WasmlineRemotePackageResolver { _, _ ->
-                        customCalled[0] = true
-                        WasmlineSourceResolution.Complete(
-                            WasmlineLoadState.Failure(
-                                code = WasmlineLoadState.CODE_FAILURE,
-                                failure = crow.wasmline.WasmlineLoadFailure(
-                                    stage = crow.wasmline.WasmlineLoadStage.SOURCE_RESOLUTION,
-                                    code = crow.wasmline.invocation.WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
-                                    message = "custom resolver was called",
-                                ),
-                            ),
-                        )
-                    },
-                ),
-            ),
-        )
-
-        assertTrue(customCalled[0], "Custom resolver should have been called")
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertEquals("custom resolver was called", failure.failure.message)
-    }
-
-    @Test
-    fun `networkClient auto-delegates when no custom resolver`() = runTest {
-        val manifest = createTestManifest(
-            artifacts = listOf(
-                compatibleCraneliftArtifact(
-                    url = "lib.cwasm",
-                    sha256 = fakeArtifactSha256(),
-                ),
-            ),
-        )
-        val envelopeBytes = signAndEncodeEnvelope(manifest)
-        val artifactBytes = fakeArtifactBytes()
-
-        val networkClient = WasmlineNetworkClient { url ->
-            when {
-                url.endsWith(".wlm") || url.endsWith("/manifest.wlm") ->
-                    WasmlineHttpResponse(200, envelopeBytes)
-
-                url.endsWith("lib.cwasm") ->
-                    WasmlineHttpResponse(200, artifactBytes)
-
-                else ->
-                    WasmlineHttpResponse(404, ByteArray(0))
-            }
-        }
-
-        val trustedKeys = WasmlineTrustedKeySet.Builder()
-            .add("Ed25519", keyId = null, publicKey = publicKey.toByteArray())
-            .build()
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    trustedKeys = trustedKeys,
-                    cache = WasmlineNoOpCache,
-                ),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(
-            failure.failure.message.contains("Load failure") ||
-                failure.failure.message.contains("not found") ||
-                failure.failure.message.contains("artifact path"),
-            "Expected runtime load error, got: ${failure.failure.message}",
-        )
-    }
-
-    @Test
-    fun `built-in artifact download uses streaming network path`() = runTest {
-        val artifactBytes = "streamed artifact content".encodeToByteArray()
-        val manifest = createTestManifest(
-            artifacts = listOf(
-                compatibleCraneliftArtifact(
-                    url = "streamed.cwasm",
-                    sha256 = artifactBytes.toByteString().sha256().hex(),
-                ),
-            ),
-        )
-        val envelopeBytes = signAndEncodeEnvelope(manifest)
-        var wholeArtifactFetchCalled = false
-        var streamingArtifactFetchCalled = false
-        val networkClient = object : WasmlineNetworkClient {
-            override suspend fun fetch(url: String): WasmlineHttpResponse = when {
-                url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
-
-                url.endsWith("streamed.cwasm") -> {
-                    wholeArtifactFetchCalled = true
-                    error("Artifact must use fetchTo")
-                }
-
-                else -> WasmlineHttpResponse(404, ByteArray(0))
-            }
-
-            override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
-                streamingArtifactFetchCalled = true
-                sink.write(artifactBytes, offset = 0, byteCount = artifactBytes.size)
-                return WasmlineHttpStatus(200)
-            }
-        }
-
-        DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/streamed.wlm"),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    trustedKeys = trustedKeys(),
-                    cache = WasmlineNoOpCache,
-                ),
-            ),
-        )
-
-        assertFalse(wholeArtifactFetchCalled)
-        assertTrue(streamingArtifactFetchCalled)
-    }
-
-    @Test
-    fun `manifest fetch failure returns descriptive error`() = runTest {
-        val networkClient = WasmlineNetworkClient { _ ->
-            WasmlineHttpResponse(500, ByteArray(0))
-        }
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    cache = WasmlineNoOpCache,
-                ),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("Failed to fetch manifest"))
-    }
-
-    @Test
-    fun `invalid manifest protobuf returns parse error`() = runTest {
-        val networkClient = WasmlineNetworkClient { _ ->
-            WasmlineHttpResponse(200, "not valid protobuf".encodeToByteArray())
-        }
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    cache = WasmlineNoOpCache,
-                ),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("Failed to parse manifest"))
-    }
-
-    @Test
-    fun `signature verification fails with wrong key`() = runTest {
-        val manifest = createTestManifest(
-            artifacts = listOf(
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.PWASM,
-                    url = "lib.pwasm",
-                    sha256 = fakeArtifactSha256(),
-                    is64Bit = true,
-                ),
-            ),
-        )
-        val envelopeBytes = signAndEncodeEnvelope(manifest)
-
-        val networkClient = WasmlineNetworkClient { _ ->
-            WasmlineHttpResponse(200, envelopeBytes)
-        }
-
-        val wrongKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".decodeHex()
-        val trustedKeys = WasmlineTrustedKeySet.Builder()
-            .add("Ed25519", keyId = null, publicKey = wrongKey.toByteArray())
-            .build()
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    trustedKeys = trustedKeys,
-                    cache = WasmlineNoOpCache,
-                ),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("signature verification failed"))
-    }
-
-    @Test
-    fun `remote package rejects a missing trusted key source`() = runTest {
-        val manifest = createTestManifest(
-            artifacts = listOf(
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.PWASM,
-                    url = "lib.pwasm",
-                    sha256 = fakeArtifactSha256(),
-                    is64Bit = true,
-                ),
-            ),
-        )
-        val envelopeBytes = signAndEncodeEnvelope(manifest)
-        val networkClient = WasmlineNetworkClient { url ->
-            when {
-                url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
-                else -> WasmlineHttpResponse(404, ByteArray(0))
-            }
-        }
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    trustedKeys = null,
-                    cache = WasmlineNoOpCache,
-                ),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("requires trustedKeys"))
-    }
-
-    @Test
-    fun `artifact SHA256 mismatch returns descriptive error`() = runTest {
-        val manifest = createTestManifest(
-            artifacts = listOf(
-                compatibleCraneliftArtifact(
-                    url = "lib.cwasm",
-                    sha256 = "0".repeat(64),
-                ),
-            ),
-        )
-        val envelopeBytes = signAndEncodeEnvelope(manifest)
-
-        val networkClient = WasmlineNetworkClient { url ->
-            when {
-                url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
-                url.endsWith("lib.cwasm") -> WasmlineHttpResponse(200, fakeArtifactBytes())
-                else -> WasmlineHttpResponse(404, ByteArray(0))
-            }
-        }
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl("https://example.com/plugin.wlm"),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    trustedKeys = trustedKeys(),
-                    cache = WasmlineNoOpCache,
-                ),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("sha256 verification"))
-    }
-
-    @Test
-    fun `cache hit avoids network call for manifest`() = runTest {
-        val manifest = createTestManifest(
-            artifacts = listOf(
-                compatibleCraneliftArtifact(
-                    url = "lib.cwasm",
-                    sha256 = fakeArtifactSha256(),
-                ),
-            ),
-        )
-        val envelopeBytes = signAndEncodeEnvelope(manifest)
-        val artifactBytes = fakeArtifactBytes()
-
-        val cache = InMemoryCache()
-        val manifestUrl = "https://example.com/plugin.wlm"
-        val manifestCacheKey = manifestCacheKey(manifestUrl)
-        cache.put(manifestCacheKey, envelopeBytes)
-        cache.put("$manifestCacheKey.timestamp", Clock.System.now().toEpochMilliseconds().toString().encodeToByteArray())
-
-        var fetchCount = 0
-        val networkClient = WasmlineNetworkClient { url ->
-            fetchCount++
-            when {
-                url.endsWith(".wlm") -> WasmlineHttpResponse(200, envelopeBytes)
-                url.endsWith("lib.cwasm") -> WasmlineHttpResponse(200, artifactBytes)
-                else -> WasmlineHttpResponse(404, ByteArray(0))
-            }
-        }
-
-        DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl(manifestUrl),
-                options = WasmlineLoadOptions(
-                    networkClient = networkClient,
-                    trustedKeys = trustedKeys(),
-                    cache = cache,
-                ),
-            ),
-        )
-
-        assertEquals(1, fetchCount, "Only artifact fetch expected, manifest should come from cache")
-    }
-
-    @Test
-    fun `fresh manifest and artifact cache load without networkClient`() = runTest {
-        val artifactBytes = fakeArtifactBytes()
-        val artifactSha256 = fakeArtifactSha256()
-        val manifest = createTestManifest(
-            artifacts = listOf(compatibleCraneliftArtifact(url = "lib.cwasm", sha256 = artifactSha256)),
-        )
-        val manifestUrl = "https://example.com/offline-plugin.wlm"
-        val manifestCacheKey = manifestCacheKey(manifestUrl)
-        val cache = InMemoryCache().apply {
-            put(manifestCacheKey, signAndEncodeEnvelope(manifest))
-            put(
-                "$manifestCacheKey.timestamp",
-                Clock.System.now().toEpochMilliseconds().toString().encodeToByteArray(),
-            )
-            put("artifact_$artifactSha256", artifactBytes)
-        }
-
-        val result = DefaultWasmlineLoader.load(
-            WasmlineLoadRequest(
-                source = WasmlineSource.RemoteManifestUrl(manifestUrl),
-                options = WasmlineLoadOptions(
-                    trustedKeys = trustedKeys(),
-                    cache = cache,
-                ),
-            ),
-        )
-
-        val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertFalse(failure.failure.message.contains("networkClient"), failure.failure.message)
-        assertFalse(failure.failure.message.contains("not available in cache"), failure.failure.message)
-    }
-
-    private fun manifestCacheKey(url: String): String = "manifest_${url.encodeToByteArray().toByteString().sha256().hex()}"
 }
 
-private class InMemoryCache : WasmlineCache {
-    private val store = mutableMapOf<String, ByteArray>()
-
-    override fun get(key: String): ByteArray? = store[key]
-    override fun put(key: String, bytes: ByteArray) {
-        store[key] = bytes
+private suspend fun withRemoteCache(block: suspend (WasmlineFileCache) -> Unit) {
+    val directory = createTempDirectory("wasmline-remote-cache-test").toFile()
+    try {
+        block(WasmlineFileCache(File(directory, "cache").absolutePath, maxCacheBytes = 1024 * 1024))
+    } finally {
+        directory.deleteRecursively()
     }
-    override fun exists(key: String): Boolean = store.containsKey(key)
 }

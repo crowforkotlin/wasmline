@@ -2,7 +2,7 @@
 title: 使用指南
 description: 服务契约定义、插件实现与宿主端模块加载
 createdAt: 2026-07-18
-updatedAt: 2026-08-18
+updatedAt: 2026-08-28
 ---
 
 # 使用指南
@@ -86,6 +86,12 @@ suspend fun main() {
 
 本地产物和本地 manifest 不需要 network 构件。加载远程 manifest 时，可选择 `wasmline-network-ktor`（JVM、Android、iOS）或 `wasmline-network-okhttp`（JVM、Android）。只有 fresh manifest 或 artifact 未命中缓存时才会调用 adapter；manifest 与所选 artifact 均已缓存时，即使没有 network client 也能继续加载。内置文件缓存会把 artifact body 流式写入原子发布的内容寻址文件，并在超过 `WasmlineLoadOptions.maxCacheBytes` 时淘汰旧条目；默认上限为 512 MiB。应用也可以自行实现 `WasmlineNetworkClient`、提供自定义缓存，或提供自定义远程 resolver。
 
+一个远程 manifest 可以包含多个 Wasmtime AOT profile 和平台 variant。Loader
+先校验 Ed25519 envelope，再把 manifest 与 native engine 实际报告的 backend-specific
+profile ID 和 target identity 比较，最后只请求一个内容寻址 artifact。冷加载通常
+只有一次 manifest 请求和一次 artifact 请求，不会下载完整离线 ZIP 或无关 variant。
+Core Web package 只选择一个与 profile 无关的 RAW_WASM variant。
+
 ## 运行时生命周期与 API 职责
 
 `WasmlineLoader`、`WasmlineRuntime` 与已加载的 `Wasmline` 各自承担不同职责：
@@ -148,6 +154,7 @@ suspend fun loadWithCustomResolver(
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentValue
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
@@ -157,14 +164,16 @@ import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoader
 
 val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
-val is64Bit = requireNotNull(runtime.is64Bit)
+val pulleyProfileId = requireNotNull(
+    runtime.aotCompatibilityProfileIdsByBackend[WasmlineEngineKind.PULLEY],
+).single()
 val result = WasmlineLoader.load(
     WasmlineArtifactDescriptor(
         path = "component.pwasm",
         artifactFormat = WasmlineArtifactFormat.PWASM,
-        targetCpu = if (is64Bit) "pulley64" else "pulley32",
-        targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-        is64Bit = is64Bit,
+        architecture = "pulley${runtime.pointerWidth}",
+        pointerWidth = runtime.pointerWidth,
+        aotCompatibilityProfileId = pulleyProfileId,
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
         invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
         exportName = "wasmline:sample-component-export/calculator@1.0.0#add",
@@ -187,6 +196,10 @@ when (result) {
 }
 ```
 
+这种显式 descriptor 用于已知的本地 artifact。加载 package manifest 时，只需传入
+路径或 URL，由共享 selector 选择 CWASM、PWASM 或 Web WASM。不要根据
+`wasmtimeVersion` 推导 AOT profile。
+
 `WASMLINE_SERVICE` 是服务协议。`CORE_WASM` 可以使用 Service bridge，也可以使用
 `RAW_EXPORT`。Raw Export 通过 `CoreWasmModule` 和 `CoreWasmSession` 使用 `RawValue`
 （`i32`、`i64`、`f32`、`f64`）、多返回值、同步 `RawImport` 回调与有边界检查的
@@ -202,10 +215,14 @@ WebAssembly instance 前注册全部宿主 import：
 
 ```kotlin
 import crow.wasmline.CoreWasmSessionOptions
+import crow.wasmline.RawAbiMetadata
+import crow.wasmline.RawExport
+import crow.wasmline.RawExportKind
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.RawFunctionSignature
 import crow.wasmline.RawImport
+import crow.wasmline.RawImportDeclaration
 import crow.wasmline.RawValue
 import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineCoreLoadResult
@@ -222,6 +239,28 @@ val module = when (val loaded = WasmlineLoader.loadCoreModule(
         artifactFormat = WasmlineArtifactFormat.RAW_WASM,
         executionModel = WasmlineExecutionModel.CORE_WASM,
         invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
+        rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport(
+                    name = "add",
+                    kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+            imports = listOf(
+                RawImportDeclaration(
+                    module = "env",
+                    name = "host_add",
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+        ),
     ),
 )) {
     is WasmlineCoreLoadResult.Success -> loaded.module

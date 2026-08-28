@@ -17,7 +17,7 @@ from unittest import mock
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "lib" / "python"))
 
-from wasmline_tools import toolchain_lock
+from wasmline_tools import aot_compatibility, toolchain_lock
 from wasmline_tools import versions as sync_version
 
 
@@ -99,7 +99,8 @@ class SyncVersionTest(unittest.TestCase):
         }
         manifest_path = sync_version.MANIFEST_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
         lock_path = toolchain_lock.LOCK_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
-        allowed_paths = managed_paths | {manifest_path, lock_path}
+        aot_lock_path = aot_compatibility.AOT_LOCK_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
+        allowed_paths = managed_paths | {manifest_path, lock_path, aot_lock_path}
         unexpected_paths = sorted(set(result.stdout.splitlines()) - allowed_paths)
 
         self.assertEqual(
@@ -140,7 +141,6 @@ class SyncVersionTest(unittest.TestCase):
             "wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts",
             "wasmline-multiplatform/gradle/gradle-daemon-jvm.properties",
             "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-cli/cli.sh",
             "wasmline-multiplatform/gradle/libs.versions.toml",
             "docs/content/docs/installation.mdx",
             "docs/content/docs/installation.zh.mdx",
@@ -148,8 +148,6 @@ class SyncVersionTest(unittest.TestCase):
             "docs/content/docs/wasmtime-download.zh.mdx",
             "wasmline-samples/kotlin/run-ios.sh",
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
-            "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt",
-            "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt",
         }
         self.assertTrue(expected_paths.issubset(rendered_paths))
 
@@ -182,24 +180,16 @@ class SyncVersionTest(unittest.TestCase):
             ".agents/skills/wasmline/references/development-guide.md": "The pre-check also reports Zig 9.9.9",
             "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts":
                 "JavaLanguageVersion.of(99)",
-            "wasmline-multiplatform/wasmline-loader/src/commonTest/kotlin/crow/wasmline/ManifestTest.kt":
-                'version = "6.5.4"',
-            "wasmline-multiplatform/wasmline-loader/src/jvmTest/kotlin/crow/wasmline/loader/WasmlineRemotePackageResolutionTest.kt":
-                'version = "6.5.4"',
             "wasmline-samples/kotlin/run-ios.sh": "v99.8.7.6",
             "wasmline-multiplatform/gradle/gradle-daemon-jvm.properties": "toolchainVersion=99",
             "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts":
                 "JavaLanguageVersion.of(99)",
             "wasmline-samples/kotlin/sample-apps/multiplatform/shared/src/desktopMain/Requirement.md":
                 "JBR 99",
-            "wasmline-multiplatform/wasmline-plugin-test/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativePluginTestSupport.kt":
-                'targetCompilerVersion = "wasmtime-99.8.7"',
             "wasmline-multiplatform/wasmline/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativeWasmtimeIntegrationTest.kt":
                 'assertEquals("99.8.7", capabilities.wasmtimeVersion)',
             "wasmline-multiplatform/wasmline-cli/src/test/kotlin/crow/wasmline/cli/ComponentCliIntegrationTest.kt":
                 'File(compileRoot, "cli-compile-6.5.4")',
-            "wasmline-multiplatform/wasmline-cli/src/test/kotlin/crow/wasmline/cli/CoreCliRegressionTest.kt":
-                'File(outputRoot, "core-plugin-6.5.4/debug/',
             "wasmline-samples/kotlin/sample-component-fixture/README.md":
                 "wasmline/output/crow.wasmline.component.fixture-6.5.4/",
             "ROADMAP.md": "Wasmtime C-API integration (v99.8.7)",
@@ -210,13 +200,8 @@ class SyncVersionTest(unittest.TestCase):
         for path, fragment in expected_fragments.items():
             self.assertIn(fragment, rendered[path], msg=f"Missing rendered value in {path}")
 
-        manifest_test = (sync_version.PROJECT_ROOT / next(iter(
-            path for path in expected_fragments if path.endswith("ManifestTest.kt")
-        ))).read_text(encoding="utf-8")
-        self.assertIn('version = "0.1.0"', manifest_test)
-
-    def test_sample_versions_update_manifests_fallbacks_and_output_paths(self) -> None:
-        """Sample manifests, Wasmtime fallbacks, and consumers stay synchronized."""
+    def test_sample_versions_update_manifests_selectors_and_output_paths(self) -> None:
+        """Sample manifests, Wasmtime selectors, and consumers stay synchronized."""
         versions = {
             "wasmline_version": "9.8.7",
             "sample_plugin_version": "6.5.4",
@@ -287,7 +272,6 @@ class SyncVersionTest(unittest.TestCase):
             'version = "6.5.4"',
             rendered["wasmline-samples/kotlin/sample-plugin/build.gradle.kts"],
         )
-        self.assertIn(r"\`6.5.4\`", rendered["wasmline-multiplatform/wasmline-cli/cli.sh"])
         self.assertIn(
             "wasmline-engine-pulley-jvm-9.8.7.jar",
             rendered["wasmline-multiplatform/docs/native-library-loading.md"],
@@ -340,6 +324,79 @@ class SyncVersionTest(unittest.TestCase):
         versions = sync_version.load_manifest()["versions"]
         lock = toolchain_lock.load_lock()
         toolchain_lock.validate_lock(lock, versions)
+
+    def test_checked_in_aot_compatibility_lock_matches_manifest(self) -> None:
+        """The generated AOT lock must exactly match the immutable source catalog."""
+        manifest = sync_version.load_manifest()
+        expected = aot_compatibility.render_lock(manifest, manifest["versions"])
+
+        self.assertEqual(expected, aot_compatibility.load_lock())
+
+    def test_native_build_identity_uses_format_stable_profile_macros(self) -> None:
+        """Generated profile macros must remain stable under clang-format."""
+        manifest = sync_version.load_manifest()
+        rendered = aot_compatibility.render_native_build_identity(
+            manifest,
+            manifest["versions"],
+        )
+        defaults = manifest["aotCompatibility"]["currentDefaultProfileIdsByBackend"]
+
+        for backend in aot_compatibility.BACKENDS:
+            self.assertIn(
+                f'#define WASMLINE_{backend}_AOT_COMPATIBILITY_PROFILE_ID "{defaults[backend]}"',
+                rendered,
+            )
+
+    def test_aot_catalog_contains_a_three_version_backend_matrix(self) -> None:
+        """The catalog fixture must exercise multi-version resolution for both backends."""
+        manifest = sync_version.load_manifest()
+        profiles = manifest["aotCompatibility"]["profiles"]
+        versions_by_backend = {
+            backend: {
+                profile["wasmtimeVersion"]
+                for profile in profiles
+                if profile["artifactBackend"] == backend
+            }
+            for backend in aot_compatibility.BACKENDS
+        }
+
+        self.assertTrue(all(len(versions) >= 3 for versions in versions_by_backend.values()))
+
+    def test_aot_catalog_rejects_runtime_only_compiler_distribution(self) -> None:
+        """AOT catalog assets must contain the Wasmtime compile command."""
+        manifest = copy.deepcopy(sync_version.load_manifest())
+        manifest["aotCompatibility"]["compilerAssets"][0]["distribution"] = "MINIMAL"
+
+        with self.assertRaisesRegex(
+            aot_compatibility.AotCompatibilityError,
+            "FULL Wasmtime distribution",
+        ):
+            aot_compatibility.validate_source(manifest, manifest["versions"])
+
+    def test_aot_catalog_rejects_historical_profile_mutation(self) -> None:
+        """Synchronization must not rewrite a profile that appeared in an earlier lock."""
+        previous = aot_compatibility.load_lock()
+        generated = copy.deepcopy(previous)
+        generated["profiles"][0]["wasmtimeSourceRevision"] = "0" * 40
+
+        with self.assertRaisesRegex(
+            aot_compatibility.AotCompatibilityError,
+            "cannot be modified",
+        ):
+            aot_compatibility.validate_append_only(previous, generated)
+
+    def test_aot_catalog_allows_new_records_and_additional_mirrors(self) -> None:
+        """Append-only updates may add records and equivalent download mirrors."""
+        previous = aot_compatibility.load_lock()
+        generated = copy.deepcopy(previous)
+        generated["compilerAssets"][0]["downloadUrls"].append(
+            "https://mirror.example.invalid/wasmtime-compiler"
+        )
+        generated["profiles"].append(
+            {"id": "sha256:" + "f" * 64, "artifactBackend": "PULLEY"}
+        )
+
+        aot_compatibility.validate_append_only(previous, generated)
 
     def test_toolchain_lock_generation_is_deterministic(self) -> None:
         """Equivalent release metadata must reproduce the checked-in lock."""

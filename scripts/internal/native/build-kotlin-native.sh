@@ -334,6 +334,7 @@ SOURCES=(
   "${CORE_ROOT}/src/runtime/Engine.cpp"
   "${CORE_ROOT}/src/runtime/Module.cpp"
   "${CORE_ROOT}/src/runtime/NativeRuntime.cpp"
+  "${CORE_ROOT}/src/runtime/NativeRuntimeIdentityProvider.cpp"
   "${CORE_ROOT}/src/runtime/RawModuleSession.cpp"
   "${CORE_ROOT}/src/runtime/RawSessionRegistry.cpp"
   "${CORE_ROOT}/src/runtime/Session.cpp"

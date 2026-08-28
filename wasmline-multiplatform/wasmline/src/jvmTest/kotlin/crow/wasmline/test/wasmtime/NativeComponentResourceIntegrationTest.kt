@@ -233,13 +233,10 @@ class NativeComponentResourceIntegrationTest {
     private fun loadComponent(artifact: File): Wasmline {
         val runtime = platformWasmlineRuntimeCapabilities()
         val state = platformWasmlineLoadArtifact(
-            descriptor = WasmlineArtifactDescriptor(
+            descriptor = nativeTestArtifactDescriptor(
                 path = artifact.absolutePath,
                 artifactFormat = WasmlineArtifactFormat.CWASM,
-                targetCpu = runtime.targetCpu,
-                targetOs = runtime.targetOs,
-                targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-                is64Bit = runtime.is64Bit,
+                runtime = runtime,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
             ),

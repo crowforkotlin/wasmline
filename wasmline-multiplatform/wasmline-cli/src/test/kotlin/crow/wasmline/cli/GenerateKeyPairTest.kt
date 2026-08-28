@@ -25,7 +25,12 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Verifies CLI key-pair generation and output formatting. */
+/**
+ * Verifies CLI key-pair generation and output formatting.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 class GenerateKeyPairTest {
     private val systemOut = Buffer()
 
@@ -34,22 +39,6 @@ class GenerateKeyPairTest {
         assertLineMatches(systemOut.readUtf8Line(), "ALGORITHM: Ed25519")
         assertLineMatches(systemOut.readUtf8Line(), "PUBLIC KEY: [\\da-f]{64}")
         assertLineMatches(systemOut.readUtf8Line(), "PRIVATE KEY: [\\da-f]{64}")
-        assertNull(systemOut.readUtf8Line())
-    }
-
-    @Test fun happyPathEd25519() {
-        runCommand("-a", "Ed25519")
-        assertLineMatches(systemOut.readUtf8Line(), "ALGORITHM: Ed25519")
-        assertLineMatches(systemOut.readUtf8Line(), "PUBLIC KEY: [\\da-f]{64}")
-        assertLineMatches(systemOut.readUtf8Line(), "PRIVATE KEY: [\\da-f]{64}")
-        assertNull(systemOut.readUtf8Line())
-    }
-
-    @Test fun happyPathEcdsaP256() {
-        runCommand("-a", "EcdsaP256")
-        assertLineMatches(systemOut.readUtf8Line(), "ALGORITHM: EcdsaP256")
-        assertLineMatches(systemOut.readUtf8Line(), "PUBLIC KEY: [\\da-f]{130}")
-        assertLineMatches(systemOut.readUtf8Line(), "PRIVATE KEY: [\\da-f]{134}")
         assertNull(systemOut.readUtf8Line())
     }
 

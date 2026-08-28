@@ -110,17 +110,10 @@ class NativeTypedComponentShapesHostImportIntegrationTest {
         val runtime = platformWasmlineRuntimeCapabilities()
         val format = componentAotFormat(artifact.name)
         val state = platformWasmlineLoadArtifact(
-            descriptor = WasmlineArtifactDescriptor(
+            descriptor = nativeTestArtifactDescriptor(
                 path = artifact.absolutePath,
                 artifactFormat = format,
-                targetCpu = when (format) {
-                    WasmlineArtifactFormat.CWASM -> runtime.targetCpu
-                    WasmlineArtifactFormat.PWASM -> "pulley64"
-                    WasmlineArtifactFormat.RAW_WASM -> error("Structured Component fixture cannot use raw Wasm.")
-                },
-                targetOs = if (format == WasmlineArtifactFormat.CWASM) runtime.targetOs else null,
-                targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-                is64Bit = runtime.is64Bit,
+                runtime = runtime,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = "run",

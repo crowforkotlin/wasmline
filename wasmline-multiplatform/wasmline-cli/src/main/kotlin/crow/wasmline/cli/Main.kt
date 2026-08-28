@@ -15,6 +15,8 @@ public fun main(vararg args: String) {
         .subcommands(commands = arrayOf(WitGenerate()))
     val component = NoOpCliktCommand(name = "component")
         .subcommands(commands = arrayOf(ComponentValidate(), ComponentInspect()))
+    val aotProfiles = NoOpCliktCommand(name = "aot-profiles")
+        .subcommands(commands = arrayOf(AotProfilesList(), AotProfilesDescribe()))
 
     NoOpCliktCommand(name = "wasmline")
         .subcommands(
@@ -22,9 +24,9 @@ public fun main(vararg args: String) {
                 Build(),
                 Compile(),
                 Manifest(),
-                Download(),
                 GenerateKeyPair(),
                 Componentize(),
+                aotProfiles,
                 tools,
                 wit,
                 component,

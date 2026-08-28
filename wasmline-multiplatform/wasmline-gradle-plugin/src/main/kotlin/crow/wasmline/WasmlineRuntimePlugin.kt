@@ -2,8 +2,11 @@ package crow.wasmline
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
+import org.gradle.api.attributes.java.TargetJvmEnvironment
 import org.gradle.nativeplatform.MachineArchitecture
 import org.gradle.nativeplatform.OperatingSystemFamily
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 /**
  * Selects the native Wasmline engine artifact for the current JVM host.
@@ -18,10 +21,29 @@ public class WasmlineRuntimePlugin : Plugin<Project> {
 
         target.configurations.configureEach { configuration ->
             if (configuration.isCanBeResolved) {
-                configuration.attributes.attribute(OperatingSystemFamily.OPERATING_SYSTEM_ATTRIBUTE, operatingSystem)
-                configuration.attributes.attribute(MachineArchitecture.ARCHITECTURE_ATTRIBUTE, architecture)
+                configuration.incoming.beforeResolve {
+                    configureJvmHostAttributes(configuration, operatingSystem, architecture)
+                }
             }
         }
+    }
+
+    private fun configureJvmHostAttributes(
+        configuration: Configuration,
+        operatingSystem: OperatingSystemFamily,
+        architecture: MachineArchitecture,
+    ) {
+        if (!configuration.isCanBeResolved || !configuration.isStandardJvmConfiguration()) return
+        configuration.attributes.attribute(OperatingSystemFamily.OPERATING_SYSTEM_ATTRIBUTE, operatingSystem)
+        configuration.attributes.attribute(MachineArchitecture.ARCHITECTURE_ATTRIBUTE, architecture)
+    }
+
+    private fun Configuration.isStandardJvmConfiguration(): Boolean {
+        val kotlinPlatform = attributes.getAttribute(KotlinPlatformType.attribute)
+        if (kotlinPlatform != null) return kotlinPlatform == KotlinPlatformType.jvm
+        return attributes
+            .getAttribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE)
+            ?.name == TargetJvmEnvironment.STANDARD_JVM
     }
 }
 

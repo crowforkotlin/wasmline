@@ -1,8 +1,10 @@
 package crow.wasmline
 
+import org.gradle.api.attributes.java.TargetJvmEnvironment
 import org.gradle.nativeplatform.MachineArchitecture
 import org.gradle.nativeplatform.OperatingSystemFamily
 import org.gradle.testfixtures.ProjectBuilder
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -36,9 +38,14 @@ class WasmlineRuntimePluginTest {
         val project = ProjectBuilder.builder().build()
         val runtime = project.configurations.create("consumerRuntime") { configuration ->
             configuration.isCanBeResolved = true
+            configuration.attributes.attribute(
+                TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                project.objects.named(TargetJvmEnvironment::class.java, TargetJvmEnvironment.STANDARD_JVM),
+            )
         }
 
         project.pluginManager.apply(WasmlineRuntimePlugin::class.java)
+        runtime.resolve()
 
         assertEquals(
             currentGradleOperatingSystem(),
@@ -48,5 +55,20 @@ class WasmlineRuntimePluginTest {
             currentGradleArchitecture(),
             runtime.attributes.getAttribute(MachineArchitecture.ARCHITECTURE_ATTRIBUTE)?.name,
         )
+    }
+
+    @Test
+    fun doesNotConfigureWebConsumerAttributes() {
+        val project = ProjectBuilder.builder().build()
+        val runtime = project.configurations.create("wasmJsCompileClasspath") { configuration ->
+            configuration.isCanBeResolved = true
+            configuration.attributes.attribute(KotlinPlatformType.attribute, KotlinPlatformType.wasm)
+        }
+
+        project.pluginManager.apply(WasmlineRuntimePlugin::class.java)
+        runtime.resolve()
+
+        assertEquals(null, runtime.attributes.getAttribute(OperatingSystemFamily.OPERATING_SYSTEM_ATTRIBUTE))
+        assertEquals(null, runtime.attributes.getAttribute(MachineArchitecture.ARCHITECTURE_ATTRIBUTE))
     }
 }

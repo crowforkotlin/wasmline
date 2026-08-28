@@ -20,13 +20,12 @@ import io.ktor.utils.io.readAvailable
  * - Apple Native: Darwin engine
  * - Linux Native: Curl engine
  * - Windows Native: WinHTTP engine
- * Browser targets use the raw `.wasm` prefetch flow and are intentionally not
- * published by this adapter.
+ * - JS and WasmJS: JavaScript Fetch engine
  *
  * @param client Optional pre-configured [HttpClient] for custom configuration.
  *
- * Author: crowforkotlin
  * Date: 2026-08-19
+ * Author: crowforkotlin
  */
 class KtorNetworkClient(private val client: HttpClient = HttpClient()) : WasmlineNetworkClient {
 
@@ -61,10 +60,5 @@ class KtorNetworkClient(private val client: HttpClient = HttpClient()) : Wasmlin
     }
 }
 
-/**
- * Creates a [KtorNetworkClient] as a [WasmlineNetworkClient].
- *
- * Author: crowforkotlin
- * Date: 2026-08-19
- */
+/** Creates a [KtorNetworkClient] as a [WasmlineNetworkClient]. */
 fun ktorNetworkClient(client: HttpClient = HttpClient()): WasmlineNetworkClient = KtorNetworkClient(client)

@@ -109,13 +109,10 @@ internal object JniWasmlineBindings {
     private external fun nativeWarmUp(usePulley: Boolean): Boolean
 
     @JvmStatic
-    private external fun nativeWasmtimeVersion(): String
+    private external fun nativeRuntimeIdentity(field: Int): String?
 
     @JvmStatic
-    private external fun nativeSupportsCranelift(): Boolean
-
-    @JvmStatic
-    private external fun nativeSupportsPulley(): Boolean
+    private external fun nativeRuntimeIdentityInt(field: Int): Int
 
     @JvmStatic
     private external fun nativeReleaseEngine()
@@ -198,14 +195,31 @@ internal object JniWasmlineBindings {
 
     fun warmUp(engine: WasmlineEngineKind): Boolean = nativeWarmUp(engine == WasmlineEngineKind.PULLEY)
 
-    fun runtimeCapabilities(): WasmlineRuntimeCapabilities = WasmlineRuntimeCapabilities(
-        wasmtimeVersion = nativeWasmtimeVersion(),
-        supportsCranelift = nativeSupportsCranelift(),
-        supportsPulley = nativeSupportsPulley(),
-        targetOs = jniTargetOs(),
-        targetCpu = jniTargetCpu(),
-        is64Bit = jniIs64Bit(),
-    )
+    fun runtimeCapabilities(): WasmlineRuntimeCapabilities = WasmlineRuntimeIdentityCache.getOrLoad {
+        val formatCapabilities = nativeRuntimeIdentityInt(1)
+        WasmlineRuntimeCapabilities(
+            backend = when (nativeRuntimeIdentityInt(0)) {
+                2 -> WasmlineNativeBackend.CRANELIFT
+                1 -> WasmlineNativeBackend.PULLEY
+                else -> error("Native Wasmline runtime reported an unknown backend.")
+            },
+            supportedArtifactFormats = buildSet {
+                if (formatCapabilities and 1 != 0) add(WasmlineArtifactFormat.CWASM)
+                if (formatCapabilities and 2 != 0) add(WasmlineArtifactFormat.PWASM)
+            },
+            wasmtimeVersion = nativeRuntimeIdentity(6).orEmpty(),
+            aotCompatibilityProfileIdsByBackend = buildMap {
+                nativeRuntimeIdentity(0)?.takeIf(String::isNotBlank)?.let { put(WasmlineEngineKind.CRANELIFT, setOf(it)) }
+                nativeRuntimeIdentity(1)?.takeIf(String::isNotBlank)?.let { put(WasmlineEngineKind.PULLEY, setOf(it)) }
+            },
+            nativeBridgeAbiVersion = nativeRuntimeIdentityInt(2),
+            wasmlineReleaseVersion = nativeRuntimeIdentity(2).orEmpty(),
+            operatingSystem = nativeRuntimeIdentity(3).orEmpty(),
+            architecture = nativeRuntimeIdentity(4).orEmpty(),
+            pointerWidth = nativeRuntimeIdentityInt(3),
+            supportedCpuFeatureProfiles = nativeRuntimeIdentity(5).orEmpty().split(',').filter(String::isNotBlank).toSet(),
+        ).validatedNativeIdentity()
+    }
 
     fun releaseEngine() = nativeReleaseEngine()
 
@@ -215,4 +229,23 @@ internal object JniWasmlineBindings {
 
     internal fun loadModuleWithFormatCode(key: String, path: String, formatCode: Int): Boolean =
         nativeLoadAotWithFormat(key, path, formatCode)
+}
+
+/**
+ * Caches the immutable JNI runtime identity after its first native read.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
+private object WasmlineRuntimeIdentityCache {
+    @Volatile
+    private var value: WasmlineRuntimeCapabilities? = null
+
+    /** Returns the cached identity or loads it exactly once. */
+    fun getOrLoad(loader: () -> WasmlineRuntimeCapabilities): WasmlineRuntimeCapabilities {
+        value?.let { return it }
+        return synchronized(this) {
+            value ?: loader().also { value = it }
+        }
+    }
 }

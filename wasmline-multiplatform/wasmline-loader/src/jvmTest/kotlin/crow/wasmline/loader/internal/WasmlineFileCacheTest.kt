@@ -44,6 +44,8 @@ class WasmlineFileCacheTest {
                 key = "artifact_${bytes.sha256()}",
                 extension = ".cwasm",
                 expectedSha256 = bytes.sha256(),
+                expectedSizeBytes = bytes.size.toLong(),
+                maxArtifactBytes = bytes.size.toLong(),
                 networkClient = client,
                 artifactUrl = "https://example.com/plugin.cwasm",
             )
@@ -69,6 +71,8 @@ class WasmlineFileCacheTest {
                 key = "artifact_${expected.sha256()}",
                 extension = ".pwasm",
                 expectedSha256 = expected.sha256(),
+                expectedSizeBytes = downloaded.size.toLong(),
+                maxArtifactBytes = downloaded.size.toLong(),
                 networkClient = client,
                 artifactUrl = "https://example.com/plugin.pwasm",
             )
@@ -87,6 +91,8 @@ class WasmlineFileCacheTest {
                 key = key,
                 extension = ".cwasm",
                 expectedSha256 = bytes.sha256(),
+                expectedSizeBytes = bytes.size.toLong(),
+                maxArtifactBytes = bytes.size.toLong(),
                 networkClient = streamingClient(bytes),
                 artifactUrl = "https://example.com/plugin.cwasm",
             )
@@ -96,6 +102,8 @@ class WasmlineFileCacheTest {
                 key = key,
                 extension = ".cwasm",
                 expectedSha256 = bytes.sha256(),
+                expectedSizeBytes = bytes.size.toLong(),
+                maxArtifactBytes = bytes.size.toLong(),
                 networkClient = null,
                 artifactUrl = "https://example.com/plugin.cwasm",
             )

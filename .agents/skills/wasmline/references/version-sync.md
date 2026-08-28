@@ -7,12 +7,17 @@
 - [Change Procedure](#change-procedure)
 - [Adding a Version Reference](#adding-a-version-reference)
 - [Values That Must Remain Independent](#values-that-must-remain-independent)
-- [Generated Toolchain Lock](#generated-toolchain-lock)
+- [Generated Locks](#generated-locks)
 - [Required Verification](#required-verification)
 
 ## Source of Truth
 
 `scripts/versions.json` is the repository manifest for duplicated project and toolchain versions.
+
+Its `aotCompatibility` object also stores immutable historical profile
+descriptors, backend defaults, compiler assets, and profile-to-build-host
+bindings. Those records are protocol history rather than duplicated scalar
+version strings.
 
 | Key | Scope |
 | --- | --- |
@@ -42,13 +47,15 @@ Use the singular command in documentation and normal work:
 ./scripts/wasmline versions verify-upstream
 ```
 
-`./scripts/wasmline` is the only public entry point. Synchronization rules and toolchain-lock handling are internal Python modules under `scripts/lib/python/wasmline_tools/`.
+`./scripts/wasmline` is the only public entry point. Synchronization rules and
+generated-lock handling are internal Python modules under
+`scripts/lib/python/wasmline_tools/`.
 
 ## Change Procedure
 
 1. Edit `scripts/versions.json` and run `./scripts/wasmline versions sync`, or supply every intended change through `versions sync --set`.
 2. For a Component toolchain key, allow the synchronizer to resolve every required GitHub release asset.
-3. Inspect every file listed by the synchronizer, including the generated toolchain lock.
+3. Inspect every file listed by the synchronizer, including both generated locks.
 4. Run `--check`.
 5. Run `--verify-upstream` when network verification is required.
 6. Run `python3 scripts/tests/test_versions.py`.
@@ -70,6 +77,11 @@ python3 scripts/tests/test_versions.py
 ```
 
 Direct manifest edits are supported. Normal synchronization refreshes the toolchain lock when its versions trail the manifest, then renders all managed files in memory before writing derived files. If release resolution or a synchronization rule fails, the edited manifest remains unchanged and derived files are not written.
+
+For an AOT profile addition, append records only. Synchronization validates the
+canonical backend-specific profile ID, current backend defaults, compiler asset
+digests, and references. It must not replace a historical descriptor with the
+current `wasmtime_version`.
 
 ## Adding a Version Reference
 
@@ -105,13 +117,23 @@ rebuilt when its binaries or generated pages embed an older toolchain version.
 
 Kotlin code obtains Component CLI tool versions from `ToolchainCatalog`. Do not add synchronization rules that rewrite `.kt` files for `wasm_tools_version` or `wit_bindgen_version`. Tests that exercise catalog defaults must read the catalog; unrelated fixture versions remain independent.
 
-## Generated Toolchain Lock
+## Generated Locks
 
 The packaged lock at `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` is derived from `scripts/versions.json`. It records the GitHub release, asset ID, size, URL, and SHA-256 for every supported Component tool platform.
 
+The separate packaged AOT lock at
+`META-INF/wasmline/aot/aot-compatibility-lock.json` contains immutable
+backend-specific profiles, deduplicated compiler assets, and build-host
+bindings. It is generated from the same manifest and is not a second source of
+truth. Normal synchronization validates existing history without downloading
+all compiler archives.
+
 Do not edit the lock or `ToolchainCatalog.kt` to perform a version upgrade. Changing `wasmtime_version`, `wasm_tools_version`, or `wit_bindgen_version` in the manifest and running `./scripts/wasmline versions sync` resolves and validates all three locked releases before writing derived files. The same behavior applies when versions are supplied through `--set`. The WASI Preview 1 adapter version remains derived from `wasmtime_version` and has no independent manifest key.
 
-`--check` validates the checked-in manifest, managed references, and lock without network access or lock refresh. `--verify-upstream` performs the separate network check and fails if current GitHub release metadata differs from the checked-in lock.
+`--check` validates the checked-in manifest, managed references, and generated
+locks without network access or lock refresh. `--verify-upstream` performs the
+separate network check and fails if current GitHub release metadata differs from
+the checked-in locks.
 
 ## Required Verification
 

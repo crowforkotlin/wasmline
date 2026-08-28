@@ -2,25 +2,36 @@
 
 package crow.wasmline.loader.internal
 
-import crow.wasmline.WasmlineExecutionModel
-import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadStage
-import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
 import crow.wasmline.loader.model.SignedManifestEnvelope
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineManifestProtocol
 import crow.wasmline.loader.toDescriptor
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
-import okio.ByteString.Companion.toByteString
+import okio.Buffer
+import okio.HashingSource
+import okio.Path.Companion.toPath
+import okio.buffer
+import okio.use
 
+/**
+ * Resolves a signed local package through the shared manifest selector.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 internal object WasmlineLocalPackageResolution {
-    fun resolve(source: WasmlineSource.LocalManifestPath, request: WasmlineLoadRequest): WasmlineSourceResolution {
+    /** Resolves one local manifest and its selected content-addressed artifact. */
+    fun resolve(
+        source: WasmlineSource.LocalManifestPath,
+        request: WasmlineLoadRequest,
+        host: WasmlineHostArtifactTarget? = null,
+    ): WasmlineSourceResolution {
         val manifestPath = source.path
         if (!hostPathExists(manifestPath)) {
             return failure(
@@ -30,229 +41,142 @@ internal object WasmlineLocalPackageResolution {
             )
         }
 
-        val envelope = readEnvelope(manifestPath) ?: return failure(
-            "Failed to parse local package manifest '${source.path}'.",
+        val maxManifestBytes = request.options.manifestLimits.maxManifestBytes
+        if (hostFileSize(manifestPath)?.let { it > maxManifestBytes } == true) {
+            return failure(
+                "Local package manifest '${source.path}' exceeds the configured manifest byte limit.",
+                WasmlineLoadStage.MANIFEST_DECODING,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
+        }
+        val manifestBytes = readHostFileBytes(manifestPath) ?: return failure(
+            "Failed to read local package manifest '${source.path}'.",
             WasmlineLoadStage.MANIFEST_DECODING,
-            WasmlineErrorCode.MANIFEST_INVALID,
+            WasmlineErrorCode.ARTIFACT_IO_FAILED,
         )
+        if (manifestBytes.size > maxManifestBytes) {
+            return failure(
+                "Local package manifest '${source.path}' exceeds the configured manifest byte limit.",
+                WasmlineLoadStage.MANIFEST_DECODING,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
+        }
+        val envelope = try {
+            ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
+        } catch (_: Exception) {
+            return failure(
+                "Failed to parse local package manifest '${source.path}'.",
+                WasmlineLoadStage.MANIFEST_DECODING,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
+        }
         val manifest = when (
             val verification = WasmlinePackageSignatureVerifier.verify(
                 envelope = envelope,
                 trustedKeys = request.options.trustedKeys,
                 packageLocation = source.path,
+                limits = request.options.manifestLimits,
             )
         ) {
             is WasmlineManifestVerification.Verified -> verification.manifest
 
             is WasmlineManifestVerification.Rejected -> return failure(
                 verification.cause,
-                WasmlineLoadStage.SIGNATURE_VERIFICATION,
-                WasmlineErrorCode.SIGNATURE_VERIFICATION_FAILED,
+                verification.stage,
+                verification.code,
             )
         }
-        val artifact = selectArtifact(manifest.artifacts) ?: return failure(
-            "No compatible artifact found in local package '${source.path}' for host ${describe(currentHostArtifactTarget)}.",
-            WasmlineLoadStage.ARTIFACT_SELECTION,
-            WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE,
-        )
-        val artifactPath = resolveArtifactPath(manifestPath, artifact.url)
-        val descriptor = artifact.toDescriptor(artifactPath)
-        descriptor.validationError()?.let {
-            return failure(
-                "Invalid artifact descriptor for '${artifact.url}': $it",
-                WasmlineLoadStage.ARTIFACT_VALIDATION,
-                WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+        val resolvedHost = host ?: currentHostArtifactTarget
+        val selected = when (val selection = WasmlineArtifactSelector.select(manifest, resolvedHost)) {
+            is WasmlineArtifactSelection.Selected -> selection
+
+            is WasmlineArtifactSelection.Invalid -> return failure(
+                selection.cause,
+                WasmlineLoadStage.ARTIFACT_SELECTION,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
+
+            WasmlineArtifactSelection.NotCompatible -> return failure(
+                "No compatible artifact found in local package '${source.path}' for host " +
+                    describe(resolvedHost) + ".",
+                WasmlineLoadStage.ARTIFACT_SELECTION,
+                WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE,
             )
         }
-        if (artifact.sha256.isBlank()) {
+
+        val variant = selected.variant
+        if (variant.sizeBytes > request.options.maxArtifactBytes) {
             return failure(
-                "Artifact '${artifact.url}' referenced by local package '${source.path}' is missing sha256 metadata.",
+                "Selected artifact '${variant.sha256}' exceeds the configured artifact byte limit.",
                 WasmlineLoadStage.ARTIFACT_VALIDATION,
                 WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
             )
         }
+        val relativePath = WasmlineManifestProtocol.artifactRelativePath(variant.sha256, selected.target.format)
+        val artifactPath = resolveHostArtifactPath(manifestPath, relativePath)
+        val descriptor = selected.toDescriptor(artifactPath, manifest.runtimeContract)
+        descriptor.validationError()?.let { cause ->
+            return failure(
+                "Invalid selected artifact descriptor for '$relativePath': $cause",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+            )
+        }
         if (!hostPathExists(artifactPath)) {
             return failure(
-                "Artifact '${artifact.url}' referenced by local package '${source.path}' was not found at '$artifactPath'.",
+                "Artifact '$relativePath' referenced by local package '${source.path}' was not found.",
                 WasmlineLoadStage.ARTIFACT_RESOLUTION,
                 WasmlineErrorCode.ARTIFACT_NOT_FOUND,
             )
         }
 
-        val actualSha256 = sha256HexOrNull(artifactPath) ?: return failure(
-            "Failed to read artifact '${artifact.url}' referenced by local package '${source.path}'.",
+        val identity = localArtifactIdentity(artifactPath) ?: return failure(
+            "Failed to read artifact '$relativePath' referenced by local package '${source.path}'.",
             WasmlineLoadStage.ARTIFACT_RESOLUTION,
             WasmlineErrorCode.ARTIFACT_IO_FAILED,
         )
-        if (!actualSha256.equals(artifact.sha256, ignoreCase = true)) {
+        if (identity.first != variant.sizeBytes) {
             return failure(
-                "Artifact '${artifact.url}' referenced by local package '${source.path}' failed sha256 verification. " +
-                    "Expected ${artifact.sha256}, actual $actualSha256.",
-                WasmlineLoadStage.SIGNATURE_VERIFICATION,
+                "Artifact '$relativePath' has size ${identity.first}, expected ${variant.sizeBytes} bytes.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+            )
+        }
+        if (identity.second != variant.sha256) {
+            return failure(
+                "Artifact '$relativePath' failed SHA-256 verification. " +
+                    "Expected ${variant.sha256}, actual ${identity.second}.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
                 WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
             )
         }
 
-        return WasmlineSourceResolution.ContinueWith(
-            VerifiedPackageArtifact(
-                descriptor = descriptor,
-            ),
-        )
+        return WasmlineSourceResolution.ContinueWith(VerifiedPackageArtifact(descriptor = descriptor))
     }
 
-    internal fun selectArtifact(
-        artifacts: List<WasmlineArtifact>,
-        target: WasmlineHostArtifactTarget = currentHostArtifactTarget,
-    ): WasmlineArtifact? = artifacts
-        .mapNotNull { artifact ->
-            artifact.selectionScoreFor(target)?.let { score -> score to artifact }
+    private fun localArtifactIdentity(path: String): Pair<Long, String>? {
+        val fileSystem = defaultHostFileSystem()
+        if (fileSystem == null) {
+            val bytes = readHostFileBytes(path) ?: return null
+            return bytes.size.toLong() to okio.ByteString.of(*bytes).sha256().hex()
         }
-        .maxByOrNull { (score, _) -> score }
-        ?.second
-
-    private fun readEnvelope(manifestPath: String): SignedManifestEnvelope? {
-        val bytes = readHostFileBytes(manifestPath) ?: return null
-        return try {
-            ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), bytes)
-        } catch (_: Exception) {
-            null
-        }
+        return runCatching {
+            val filePath = path.toPath()
+            val size = fileSystem.metadata(filePath).size ?: error("Artifact size is unavailable.")
+            val hashingSource = HashingSource.sha256(fileSystem.source(filePath))
+            hashingSource.buffer().use { source ->
+                val discard = Buffer()
+                while (source.read(discard, STREAM_BUFFER_SIZE) != -1L) discard.clear()
+            }
+            size to hashingSource.hash.hex()
+        }.getOrNull()
     }
 
-    private fun sha256HexOrNull(path: String): String? = readHostFileBytes(path)?.toByteString()?.sha256()?.hex()
+    private fun describe(target: WasmlineHostArtifactTarget): String =
+        "${target.operatingSystem}/${target.architecture}/${target.pointerWidth}"
 
-    private fun resolveArtifactPath(manifestPath: String, artifactUrl: String): String = resolveHostArtifactPath(manifestPath, artifactUrl)
+    private fun failure(cause: String, stage: WasmlineLoadStage, code: WasmlineErrorCode): WasmlineSourceResolution.Complete =
+        structuredResolutionFailure(stage, code, cause)
 
-    private fun WasmlineArtifact.selectionScoreFor(target: WasmlineHostArtifactTarget): Int? {
-        if (!hasEligibleRuntimeContract()) return null
-        return when (type) {
-            WasmlineArtifactType.WASM -> wasmSelectionScore(target)
-            WasmlineArtifactType.CWASM -> cwasmSelectionScore(target)
-            WasmlineArtifactType.PWASM -> pwasmSelectionScore(target)
-            WasmlineArtifactType.COMPONENT_WASM -> null
-        }
-    }
-
-    private fun WasmlineArtifact.hasEligibleRuntimeContract(): Boolean {
-        if (toDescriptor(path = "selection-candidate").validationError() != null) return false
-        return when (type) {
-            WasmlineArtifactType.WASM ->
-                executionModel == WasmlineExecutionModel.CORE_WASM &&
-                    invocationProtocol in setOf(
-                        WasmlineInvocationProtocol.WASMLINE_SERVICE,
-                        WasmlineInvocationProtocol.RAW_EXPORT,
-                    )
-
-            WasmlineArtifactType.CWASM,
-            WasmlineArtifactType.PWASM,
-            -> true
-
-            WasmlineArtifactType.COMPONENT_WASM -> false
-        }
-    }
-
-    private fun WasmlineArtifact.wasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
-        val hostOs = normalizeOs(target.os) ?: return null
-        val hostCpu = normalizeCpu(target.cpu) ?: return null
-        if (hostOs != "browser") {
-            return null
-        }
-        val artifactOs = normalizeOs(targetOs)
-        if (artifactOs != null && artifactOs != "browser") {
-            return null
-        }
-        val artifactCpu = normalizeCpu(targetCpu)
-        if (artifactCpu != null && artifactCpu != hostCpu) {
-            return null
-        }
-        return 500
-    }
-
-    private fun WasmlineArtifact.cwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
-        if (target.nativeBackend != WasmlineNativeBackend.CRANELIFT) return null
-        if (!matchesWasmtimeVersion(target)) return null
-        val hostOs = normalizeOs(target.os) ?: return null
-        if (hostOs == "ios") return null
-        val hostCpu = normalizeCpu(target.cpu) ?: return null
-        val artifactOs = normalizeOs(targetOs) ?: return null
-        val artifactCpu = normalizeCpu(targetCpu) ?: return null
-        if (artifactOs != hostOs || artifactCpu != hostCpu || is64Bit != target.is64Bit) {
-            return null
-        }
-        return 300
-    }
-
-    private fun WasmlineArtifact.pwasmSelectionScore(target: WasmlineHostArtifactTarget): Int? {
-        // The Cranelift runtime is built with Pulley support as well. PWASM is
-        // therefore a valid fallback for both engine modules; only the
-        // Pulley-only runtime excludes CWASM in cwasmSelectionScore.
-        if (target.nativeBackend != WasmlineNativeBackend.CRANELIFT &&
-            target.nativeBackend != WasmlineNativeBackend.PULLEY
-        ) {
-            return null
-        }
-        if (!matchesWasmtimeVersion(target)) return null
-        val hostOs = normalizeOs(target.os) ?: return null
-        if (hostOs == "browser") {
-            return null
-        }
-        val artifactCpu = normalizeCpu(targetCpu) ?: return null
-        if (!isPulleyCpu(artifactCpu) ||
-            !matchesPulleyBitness(artifactCpu, target.is64Bit) ||
-            is64Bit != target.is64Bit
-        ) {
-            return null
-        }
-        val artifactOs = normalizeOs(targetOs)
-        if (artifactOs != null && artifactOs != "pulley") {
-            return null
-        }
-        return 180
-    }
-
-    private fun WasmlineArtifact.matchesWasmtimeVersion(target: WasmlineHostArtifactTarget): Boolean {
-        val runtimeVersion = target.wasmtimeVersion ?: return false
-        if (!wasmtimeVersionPattern.matches(runtimeVersion)) return false
-        return targetCompilerVersion == "wasmtime-$runtimeVersion"
-    }
-
-    private fun matchesPulleyBitness(cpu: String, is64Bit: Boolean): Boolean = when {
-        cpu.endsWith("64") -> is64Bit
-        cpu.endsWith("32") -> !is64Bit
-        else -> true
-    }
-
-    private fun isPulleyCpu(cpu: String): Boolean = cpu == "pulley32" || cpu == "pulley64"
-
-    private fun describe(target: WasmlineHostArtifactTarget): String {
-        val bitness = if (target.is64Bit) "64-bit" else "32-bit"
-        return "${target.os}/${target.cpu} ($bitness)"
-    }
-
-    private fun normalizeOs(value: String?): String? = when (value?.lowercase()) {
-        null -> null
-        "mac", "macos", "darwin", "osx" -> "macos"
-        "win", "windows" -> "windows"
-        "linux" -> "linux"
-        "android" -> "android"
-        "ios" -> "ios"
-        "web", "browser" -> "browser"
-        else -> value.lowercase()
-    }
-
-    private fun normalizeCpu(value: String?): String? = when (value?.lowercase()) {
-        null -> null
-        "amd64", "x86_64" -> "x86_64"
-        "arm64", "aarch64" -> "aarch64"
-        "wasm", "wasm32", "wasmjs", "browser" -> "wasmjs"
-        else -> value.lowercase()
-    }
-
-    private val wasmtimeVersionPattern = Regex("^\\d+\\.\\d+\\.\\d+$")
-
-    private fun failure(
-        cause: String,
-        stage: WasmlineLoadStage = WasmlineLoadStage.SOURCE_RESOLUTION,
-        code: WasmlineErrorCode = WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
-    ): WasmlineSourceResolution.Complete = structuredResolutionFailure(stage, code, cause)
+    private const val STREAM_BUFFER_SIZE: Long = 64L * 1024L
 }

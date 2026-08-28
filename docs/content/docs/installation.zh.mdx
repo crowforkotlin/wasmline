@@ -2,7 +2,7 @@
 title: 安装
 description: 在使用方项目中通过 Gradle 引入 Wasmline — 插件应用与 Maven 依赖
 createdAt: 2026-07-18
-updatedAt: 2026-08-19
+updatedAt: 2026-08-28
 ---
 
 # 安装
@@ -35,16 +35,23 @@ plugins {
 
 ```kotlin
 dependencies {
-    // 核心加载器 — 清单解析、签名校验、模块加载
-    implementation("crow.wasmline:wasmline-loader:1.0.0")
+    implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
 
-    // 可选：远程 manifest 缓存未命中时使用的 HTTP 客户端
-    implementation("crow.wasmline:wasmline-network-ktor:1.0.0")
+    // 核心加载器：manifest 校验、选择与模块加载
+    implementation("crow.wasmline:wasmline-loader")
 
-    // 引擎后端 — 按平台变体提供原生运行时库
-    implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+    // 可选：远程缓存未命中时使用的 HTTP 客户端
+    implementation("crow.wasmline:wasmline-network-ktor")
+
+    // 只选择一个 native engine backend
+    implementation("crow.wasmline:wasmline-engine-pulley")
 }
 ```
+
+BOM 对 runtime、Loader、network adapter、compiler/Gradle plugin、CLI、
+plugin core 和两个 engine 模块施加 strict constraint。所有模块使用同一个
+Wasmline `x.y.z` 版本发布，不得单独升级 engine。Native 启动还会在反序列化
+任何 AOT artifact 前校验 Wasmline release identity 与 bridge ABI。
 
 | 构件 | 说明 |
 |---|---|
@@ -65,13 +72,15 @@ Kotlin/Native 应用使用与 JVM、Android 宿主相同的 `WasmlineLoader` API
 
 ```kotlin
 // build.gradle.kts
+val wasmlineVersion = "1.0.0"
+
 kotlin {
     sourceSets {
         val nativeMain by getting {
             dependencies {
-                implementation("crow.wasmline:wasmline:1.0.0")
-                implementation("crow.wasmline:wasmline-loader:1.0.0")
-                implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+                implementation("crow.wasmline:wasmline:$wasmlineVersion")
+                implementation("crow.wasmline:wasmline-loader:$wasmlineVersion")
+                implementation("crow.wasmline:wasmline-engine-pulley:$wasmlineVersion")
                 // 需要 .cwasm 时改用 wasmline-engine-cranelift。
             }
         }
@@ -79,9 +88,15 @@ kotlin {
 }
 ```
 
-Pulley 在所有 Native 目标上接受可移植的 `.pwasm`。Cranelift 接受匹配平台的 `.cwasm`，并可回退到 `.pwasm`；iOS 仍只使用 Pulley。Native 应用不加载 JNI 库，也不依赖源码目录路径。远程加载可以使用 `wasmline-network-ktor`，它会根据 Native 目标选择 Darwin、Curl 或 WinHTTP。
+Pulley 在所有 Native 目标上接受 pointer width 匹配的 `.pwasm`。Cranelift
+会先按精确 profile、平台、pointer width 与 CPU feature 选择 `.cwasm`。
+只有不存在兼容 CWASM，并且 runtime 报告对应 Pulley profile 与 capability 时，
+才能使用 `.pwasm`。iOS 仍只使用 `pulley64`。Native 应用不加载 JNI 库，也不
+依赖源码目录路径。远程加载可使用 `wasmline-network-ktor`，它会根据 Native
+目标选择 Darwin、Curl 或 WinHTTP。
 
-签名 Native package 时，建议使用 Ed25519，以便所有 Native 平台使用同一种 manifest 格式。Apple Native 通过 Security 校验 ECDSA P-256；Linux 与 Windows Native 当前会拒绝 ECDSA P-256 manifest，因为 Wasmline 分发包尚未为这两个目标捆绑平台密码学 provider。
+当前 manifest 格式只接受 Ed25519。一个 package 使用一个签名 manifest 描述
+全部 AOT compatibility profile 与内容寻址 target。
 
 <Callout type="info" title="分发状态">
   Wasmline 目前仍在开发中，尚未正式上线。构件通过 `mavenLocal()` 分发——在 `wasmline-multiplatform/` 下执行 `./gradlew publishToMavenLocal` 即可安装到本地仓库。Maven Central 发布正在筹备中。

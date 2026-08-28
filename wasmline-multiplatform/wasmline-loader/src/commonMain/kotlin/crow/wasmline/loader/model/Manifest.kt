@@ -4,6 +4,8 @@
 package crow.wasmline.loader.model
 
 import crow.wasmline.RawAbiMetadata
+import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -11,51 +13,49 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 
 /**
- * Signed manifest envelope for a Wasmline package.
+ * Contains a signed, versioned Wasmline manifest payload.
  *
- * The envelope contains the manifest payload together with its detached
- * signature information so the loader layer can verify integrity before it
- * resolves a concrete runtime artifact.
- *
- * Date: 2026-08-25
+ * Date: 2026-08-28
  * Author: crowforkotlin
  *
- * @property signature Detached signature bytes for [manifest].
+ * @property signature Detached Ed25519 signature over the versioned raw payload.
  * @property algorithm Signature algorithm identifier.
  * @property publicKeyId Optional trusted-key identifier.
- * @property manifest Signed package manifest payload.
+ * @property formatVersion Envelope format version.
+ * @property payload Exact serialized [WasmlineManifest] bytes covered by [signature].
  */
 @Serializable
 data class SignedManifestEnvelope(
-    @property:ProtoNumber(1) val signature: ByteArray,
+    @property:ProtoNumber(1) val signature: ByteArray = byteArrayOf(),
     @property:ProtoNumber(2) val algorithm: String = "Ed25519",
     @property:ProtoNumber(3) val publicKeyId: String? = null,
-    @property:ProtoNumber(4) val manifest: WasmlineManifest,
+    @property:ProtoNumber(5) val formatVersion: Int = 0,
+    @property:ProtoNumber(6) val payload: ByteArray = byteArrayOf(),
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other == null || this::class != other::class) return false
-        other as SignedManifestEnvelope
-        if (!signature.contentEquals(other.signature)) return false
-        if (manifest != other.manifest) return false
-        if (algorithm != other.algorithm) return false
-        if (publicKeyId != other.publicKeyId) return false
-        return true
+        if (other !is SignedManifestEnvelope) return false
+        return signature.contentEquals(other.signature) &&
+            algorithm == other.algorithm &&
+            publicKeyId == other.publicKeyId &&
+            formatVersion == other.formatVersion &&
+            payload.contentEquals(other.payload)
     }
 
     override fun hashCode(): Int {
         var result = signature.contentHashCode()
-        result = 31 * result + manifest.hashCode()
         result = 31 * result + algorithm.hashCode()
         result = 31 * result + (publicKeyId?.hashCode() ?: 0)
+        result = 31 * result + formatVersion
+        result = 31 * result + payload.contentHashCode()
         return result
     }
 }
 
 /**
- * Package manifest model owned by the loader layer.
+ * Describes one logical Wasmline package and all published artifact targets.
  *
- * Date: 2026-08-25
+ * Date: 2026-08-28
  * Author: crowforkotlin
  *
  * @property pluginId Stable package identifier.
@@ -67,9 +67,11 @@ data class SignedManifestEnvelope(
  * @property description Optional package description.
  * @property iconUrl Optional package icon URL.
  * @property homePageUrl Optional package home-page URL.
- * @property buildTimestamp Build timestamp in milliseconds.
+ * @property buildTimestamp Reproducible build timestamp in milliseconds.
  * @property metadata Additional package metadata.
- * @property artifacts Published runtime artifacts.
+ * @property runtimeContract Logical execution and invocation contract.
+ * @property aotCompatibilityProfiles Immutable AOT compatibility identities.
+ * @property artifactTargets Fixed physical targets with profile variants.
  */
 @Serializable
 data class WasmlineManifest(
@@ -84,54 +86,89 @@ data class WasmlineManifest(
     @property:ProtoNumber(9) val homePageUrl: String? = null,
     @property:ProtoNumber(10) val buildTimestamp: Long,
     @property:ProtoNumber(11) val metadata: Map<String, String> = emptyMap(),
-    @property:ProtoNumber(12) val artifacts: List<WasmlineArtifact>,
+    @property:ProtoNumber(13) val runtimeContract: WasmlineRuntimeContract,
+    @property:ProtoNumber(14) val aotCompatibilityProfiles: List<WasmlineAotCompatibilityProfile> = emptyList(),
+    @property:ProtoNumber(15) val artifactTargets: List<WasmlineArtifactTarget>,
 )
 
 /**
- * Describes one compiled runtime artifact published by a Wasmline package.
+ * Defines the shared execution and invocation contract for every artifact target.
  *
- * Date: 2026-08-25
+ * Date: 2026-08-28
  * Author: crowforkotlin
  *
- * @property type Physical artifact kind.
- * @property url Artifact URL or package-relative path.
- * @property sha256 Expected SHA-256 digest.
- * @property targetCpu Native CPU target, when applicable.
- * @property targetOs Native operating-system target, when applicable.
- * @property targetCompilerVersion Compiler/runtime compatibility marker.
- * @property is64Bit Native artifact bitness marker.
- * @property executionModel Runtime execution model.
+ * @property executionModel WebAssembly execution model.
  * @property invocationProtocol Host invocation protocol.
  * @property exportName Optional selected export name.
  * @property contractMetadata Additional invocation-contract metadata.
- * @property rawAbi Versioned scalar Core Wasm ABI metadata for RAW_EXPORT.
+ * @property rawAbi Optional versioned scalar Core Wasm ABI metadata.
  */
 @Serializable
-data class WasmlineArtifact(
-    @property:ProtoNumber(1) val type: WasmlineArtifactType,
-    @property:ProtoNumber(2) val url: String,
-    @property:ProtoNumber(3) val sha256: String,
-    @property:ProtoNumber(4) val targetCpu: String? = null,
-    @property:ProtoNumber(5) val targetOs: String? = null,
-    @property:ProtoNumber(6) val targetCompilerVersion: String? = null,
-    @property:ProtoNumber(7) val is64Bit: Boolean = true,
-    @property:ProtoNumber(8) val executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
-    @property:ProtoNumber(9) val invocationProtocol: WasmlineInvocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
-    @property:ProtoNumber(10) val exportName: String? = null,
-    @property:ProtoNumber(11) val contractMetadata: Map<String, String> = emptyMap(),
-    @property:ProtoNumber(12) val rawAbi: RawAbiMetadata? = null,
+data class WasmlineRuntimeContract(
+    @property:ProtoNumber(1) val executionModel: WasmlineExecutionModel,
+    @property:ProtoNumber(2) val invocationProtocol: WasmlineInvocationProtocol,
+    @property:ProtoNumber(3) val exportName: String? = null,
+    @property:ProtoNumber(4) val contractMetadata: Map<String, String> = emptyMap(),
+    @property:ProtoNumber(5) val rawAbi: RawAbiMetadata? = null,
 )
 
 /**
- * Supported runtime artifact kinds for the current package pipeline.
+ * Identifies one backend-specific serialized Wasmtime artifact contract.
  *
- * Date: 2026-08-25
+ * Date: 2026-08-28
  * Author: crowforkotlin
+ *
+ * @property id Canonical SHA-256 compatibility identifier.
+ * @property artifactBackend Backend that creates and loads artifacts for this profile.
+ * @property wasmtimeVersion Upstream Wasmtime semantic version.
+ * @property wasmtimeDistributionVersion Downstream immutable distribution version.
+ * @property compileProfileSchemaVersion Wasmline compile-profile schema version.
  */
 @Serializable
-enum class WasmlineArtifactType {
-    WASM,
-    CWASM,
-    PWASM,
-    COMPONENT_WASM,
-}
+data class WasmlineAotCompatibilityProfile(
+    @property:ProtoNumber(1) val id: String,
+    @property:ProtoNumber(2) val artifactBackend: WasmlineEngineKind,
+    @property:ProtoNumber(3) val wasmtimeVersion: String,
+    @property:ProtoNumber(4) val wasmtimeDistributionVersion: String,
+    @property:ProtoNumber(5) val compileProfileSchemaVersion: Int,
+)
+
+/**
+ * Describes one fixed physical artifact target and its compatibility variants.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ *
+ * @property format Physical artifact format.
+ * @property operatingSystem Canonical target operating system when platform-specific.
+ * @property architecture Canonical target architecture.
+ * @property pointerWidth Target pointer width in bits.
+ * @property cpuFeatureProfile Deterministic CPU feature policy for CWASM.
+ * @property variants Content-addressed variants indexed by AOT profile.
+ */
+@Serializable
+data class WasmlineArtifactTarget(
+    @property:ProtoNumber(1) val format: WasmlineArtifactFormat,
+    @property:ProtoNumber(2) val operatingSystem: String? = null,
+    @property:ProtoNumber(3) val architecture: String? = null,
+    @property:ProtoNumber(4) val pointerWidth: Int? = null,
+    @property:ProtoNumber(5) val cpuFeatureProfile: String? = null,
+    @property:ProtoNumber(6) val variants: List<WasmlineArtifactVariant>,
+)
+
+/**
+ * Maps one or more compatible AOT profiles to a content-addressed artifact.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ *
+ * @property aotCompatibilityProfileIds Backend-specific AOT profile identifiers.
+ * @property sha256 Lowercase SHA-256 artifact digest.
+ * @property sizeBytes Exact artifact size in bytes.
+ */
+@Serializable
+data class WasmlineArtifactVariant(
+    @property:ProtoNumber(1) val aotCompatibilityProfileIds: List<String> = emptyList(),
+    @property:ProtoNumber(2) val sha256: String,
+    @property:ProtoNumber(3) val sizeBytes: Long,
+)

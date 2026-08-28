@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		DF9942A12F17EA45002565A0 /* AppsMultiplatformShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DF9942A02F17EA45002565A0 /* AppsMultiplatformShared.framework */; };
 		DF9942A22F17EA45002565A0 /* AppsMultiplatformShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DF9942A02F17EA45002565A0 /* AppsMultiplatformShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		DF9942AE2F18152D002565A0 /* plugin.pwasm in Resources */ = {isa = PBXBuildFile; fileRef = DF9942AD2F18152D002565A0 /* plugin.pwasm */; };
+		DF9942AE2F18152D002565A0 /* plugin-package in Resources */ = {isa = PBXBuildFile; fileRef = DF9942AD2F18152D002565A0 /* plugin-package */; };
 		DF9942B12F17EA45002565A0 /* wasmline.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DF9942B02F17EA45002565A0 /* wasmline.framework */; };
 		DF9942B22F17EA45002565A0 /* wasmline.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DF9942B02F17EA45002565A0 /* wasmline.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -32,7 +32,7 @@
 /* Begin PBXFileReference section */
 		D8F84E2CFC11F7E7321906E0 /* wasmline.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = wasmline.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF9942A02F17EA45002565A0 /* AppsMultiplatformShared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppsMultiplatformShared.framework; path = ../sample-apps/multiplatform/shared/build/bin/iosSimulatorArm64/debugFramework/AppsMultiplatformShared.framework; sourceTree = "<group>"; };
-		DF9942AD2F18152D002565A0 /* plugin.pwasm */ = {isa = PBXFileReference; lastKnownFileType = file; path = plugin.pwasm; sourceTree = "<group>"; };
+		DF9942AD2F18152D002565A0 /* plugin-package */ = {isa = PBXFileReference; lastKnownFileType = folder; path = "plugin-package"; sourceTree = "<group>"; };
 		DF9942B02F17EA45002565A0 /* wasmline.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = wasmline.framework; path = ../../../wasmline-multiplatform/wasmline/build/bin/iosSimulatorArm64/debugFramework/wasmline.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -86,7 +86,7 @@
 		61B3113FDCF7D72DE269DDE5 = {
 			isa = PBXGroup;
 			children = (
-				DF9942AD2F18152D002565A0 /* plugin.pwasm */,
+				DF9942AD2F18152D002565A0 /* plugin-package */,
 				9DC644EB24D5BD7F080260FE /* Configuration */,
 				DB09F76FD598AEA002E059A7 /* iosApp */,
 				DF99429B2F17E8A2002565A0 /* Frameworks */,
@@ -169,7 +169,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DF9942AE2F18152D002565A0 /* plugin.pwasm in Resources */,
+				DF9942AE2F18152D002565A0 /* plugin-package in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

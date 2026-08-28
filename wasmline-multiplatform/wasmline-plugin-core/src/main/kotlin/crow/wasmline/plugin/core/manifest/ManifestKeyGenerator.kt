@@ -7,27 +7,25 @@ import crow.wasmline.loader.tooling.WasmlineSigningTooling
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import okio.ByteString.Companion.toByteString
 
-/** Signing algorithms supported by Wasmline's manifest key generator. */
-@InternalWasmlineToolingApi
-public enum class ManifestSigningAlgorithm {
-    Ed25519,
-    EcdsaP256,
-}
-
-/** Hex-encoded key material emitted by Wasmline's build tools. */
+/**
+ * Contains hex-encoded Ed25519 manifest key material.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @InternalWasmlineToolingApi
 public data class ManifestKeyPair(val publicKeyHex: String, val privateKeyHex: String)
 
-/** Generates signing keys without exposing loader crypto implementation types. */
+/**
+ * Generates Ed25519 manifest signing keys without exposing loader crypto types.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @InternalWasmlineToolingApi
 public object ManifestKeyGenerator {
-    public fun generate(algorithm: ManifestSigningAlgorithm): ManifestKeyPair {
-        val keyPair = when (algorithm) {
-            ManifestSigningAlgorithm.Ed25519 -> WasmlineSigningTooling.generateEd25519KeyPair()
-            ManifestSigningAlgorithm.EcdsaP256 -> WasmlineSigningTooling.generateEcdsaP256KeyPair()
-        }
-        return keyPair.toManifestKeyPair()
-    }
+    /** Generates one Ed25519 key pair for the current manifest format. */
+    public fun generate(): ManifestKeyPair = WasmlineSigningTooling.generateEd25519KeyPair().toManifestKeyPair()
 
     private fun WasmlineSigningKeyPair.toManifestKeyPair(): ManifestKeyPair = ManifestKeyPair(
         publicKeyHex = publicKey.toByteString().hex(),

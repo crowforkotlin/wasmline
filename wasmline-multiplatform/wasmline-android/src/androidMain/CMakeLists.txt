@@ -52,6 +52,7 @@ add_library(wasmline_core STATIC
         ${ROOT_DIR}/wasmline-core/src/runtime/Engine.cpp
         ${ROOT_DIR}/wasmline-core/src/runtime/Module.cpp
         ${ROOT_DIR}/wasmline-core/src/runtime/NativeRuntime.cpp
+        ${ROOT_DIR}/wasmline-core/src/runtime/NativeRuntimeIdentityProvider.cpp
         ${ROOT_DIR}/wasmline-core/src/runtime/RawModuleSession.cpp
         ${ROOT_DIR}/wasmline-core/src/runtime/RawSessionRegistry.cpp
         ${ROOT_DIR}/wasmline-core/src/runtime/Session.cpp

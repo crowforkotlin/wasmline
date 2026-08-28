@@ -18,7 +18,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
+private const val INCOMPATIBLE_AOT_PROFILE_ID =
+    "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 
 /**
  * Integration tests driving a real Wasmtime engine through Wasmline with native JNI bindings.
@@ -32,6 +33,7 @@ private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
  * Unlike webtest which uses hand-encoded wasm binaries, these tests use the full
  * Wasmline runtime pipeline including artifact loading and module caching.
  *
+ * Date: 2026-08-28
  * Author: crowforkotlin
  */
 class NativeWasmtimeIntegrationTest {
@@ -48,10 +50,17 @@ class NativeWasmtimeIntegrationTest {
             setOf(WasmlineEngineKind.PULLEY, WasmlineEngineKind.CRANELIFT),
             runtimeInfo.supportedEngines,
         )
-        assertTrue(capabilities.supportsCranelift)
-        assertTrue(capabilities.supportsPulley)
-        assertTrue(capabilities.targetOs.isNotBlank())
-        assertTrue(capabilities.targetCpu.isNotBlank())
+        assertEquals(
+            setOf(WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.PWASM),
+            capabilities.supportedArtifactFormats,
+        )
+        assertEquals(
+            setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
+            capabilities.aotCompatibilityProfileIdsByBackend.keys,
+        )
+        assertTrue(capabilities.operatingSystem.isNotBlank())
+        assertTrue(capabilities.architecture.isNotBlank())
+        assertTrue(capabilities.pointerWidth in setOf(32, 64))
     }
 
     @Test
@@ -72,19 +81,18 @@ class NativeWasmtimeIntegrationTest {
         val capabilities = platformWasmlineRuntimeCapabilities()
 
         val result = platformWasmlineLoadArtifact(
-            descriptor = WasmlineArtifactDescriptor(
+            descriptor = nativeTestArtifactDescriptor(
                 path = "/does/not/exist/plugin.cwasm",
                 artifactFormat = WasmlineArtifactFormat.CWASM,
-                targetCpu = capabilities.targetCpu,
-                targetOs = capabilities.targetOs,
-                targetCompilerVersion = "wasmtime-$INCOMPATIBLE_WASMTIME_VERSION",
-                is64Bit = capabilities.is64Bit,
-            ),
+                runtime = capabilities,
+                executionModel = crow.wasmline.WasmlineExecutionModel.CORE_WASM,
+                invocationProtocol = crow.wasmline.WasmlineInvocationProtocol.WASMLINE_SERVICE,
+            ).copy(aotCompatibilityProfileId = INCOMPATIBLE_AOT_PROFILE_ID),
             config = WasmlineConfig(),
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
+        assertTrue(failure.failure.message.contains("profile '$INCOMPATIBLE_AOT_PROFILE_ID' is not supported"))
     }
 
     private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): Boolean = JniWasmlineBindings.loadModuleWithFormatCode(

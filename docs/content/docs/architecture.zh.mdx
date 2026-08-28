@@ -2,7 +2,7 @@
 title: 平台架构
 description: 各平台执行栈、模块依赖关系与仓库目录结构
 createdAt: 2026-07-18
-updatedAt: 2026-08-19
+updatedAt: 2026-08-28
 ---
 
 # 平台架构
@@ -40,7 +40,10 @@ wasmtime C-API  v48.0.1
 Precompiled artifact  (.cwasm — Cranelift 原生 AOT  |  .pwasm — Pulley 字节码；Core 或 Component 需独立声明)
 ```
 
-产物层与引擎层是两组独立能力。Cranelift Wasmtime 构建同时包含 Cranelift 编译器和 Pulley 解释器，因此可以加载匹配的 `.cwasm`，并在缺少时回退到 `.pwasm`。Pulley 引擎构建只包含 Pulley 解释器，仅接受 `.pwasm`。iOS 使用 Pulley 引擎，因此始终选择 `.pwasm`。
+Artifact 层与 engine 层是两组独立能力。Cranelift runtime 只加载 backend-specific
+profile 与完整 target identity 均匹配的 CWASM。只有不存在兼容 CWASM，并且它报告
+匹配的 Pulley profile 与 PWASM capability 时，才能使用 PWASM。Pulley runtime
+只接受 PWASM。iOS 使用 `pulley64` PWASM。
 
 ### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
 
@@ -74,6 +77,39 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
 Plugin binary  (raw .wasm — 先通过 Fetch 异步预取，再从字节缓存同步加载)
 ```
 
+## Package 与选择模型
+
+一个签名 manifest 描述逻辑插件 contract 与完整 artifact 矩阵，不为每个文件重复
+contract：
+
+```text
+SignedManifestEnvelope
+└── exact signed payload bytes
+    └── WasmlineManifest
+        ├── runtimeContract
+        ├── aotCompatibilityProfiles
+        └── artifactTargets
+            └── variants (profile IDs, SHA-256, size)
+```
+
+Envelope format 与签名算法固定。Loader 先检查 format version、解析 trusted key，
+并对收到的原始 payload 字节执行 Ed25519 校验，然后才解码并验证 manifest。
+Artifact 路径只根据摘要与格式推导：
+
+```text
+artifacts/sha256/{digest-prefix}/{digest}.{extension}
+```
+
+Native engine identity 提供支持的格式、backend-specific AOT profile ID、Wasmline
+release、bridge ABI、操作系统、架构、pointer width 与 CPU feature profile。
+选择器只构建一次 profile-ID map，并对 profile、target 和 variant 扫描一次，复杂度
+与 manifest 大小线性相关，不扫描 package 目录。
+
+远程冷加载先请求 `manifest.wlm`，选择唯一 variant，再流式下载一个 artifact，
+同时校验声明的 size 和 SHA-256。完整离线 ZIP 不参与该流程。Core Web `.wasm`
+variant 与 profile 无关，只保存一次。Component raw Wasm 仍是构建输入，不为当前
+Web runtime 发布。
+
 ## 执行模型
 
 运行时根据 `WasmlineArtifactDescriptor` 选择后端。文件扩展名不用于选择执行模型。
@@ -87,7 +123,7 @@ Plugin binary  (raw .wasm — 先通过 Fetch 异步预取，再从字节缓存�
 
 `WASMLINE_SERVICE` 选择 Wasmline 服务 API。与 `CORE_WASM` 组合时，响应字节使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`；与 `COMPONENT_MODEL` 组合时，则使用固定的 `wasmline:service@1.0.0` WIT envelope 和 Canonical ABI。因此真正决定 transport 的是执行模型，不能只看协议名。
 
-Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。该路径不分配或解析 Core 响应帧。
+Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。Export signature、同步 import、memory 与所需 feature 保存在签名后的 `runtimeContract.rawAbi` 模型中，不编码到自由格式 metadata。该路径不分配或解析 Core 响应帧。
 
 Component Model 调用通过 Wasmtime Component Model API 反序列化预编译的 Component `.cwasm` 或 `.pwasm` 产物。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen`、`wasm-tools` 或 `wasmtime compile`；可选的 `wasmline-plugin-core`、Gradle 插件与 CLI 构建流水线会在加载前完成构建工作。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
 
@@ -112,6 +148,7 @@ wasmline-gradle-plugin ─► wasmline-plugin-core
 wasmline ◄──── native runtime assets ──── wasmline-engine-cranelift / wasmline-engine-pulley
 wasmline-network-ktor / wasmline-network-okhttp ──────► wasmline-loader
 wasmline-core (C/C++) ◄──── JNI / Native C Interop ─── wasmline
+wasmline-bom ── strict same-version constraints ──────► published Wasmline modules
 ```
 
 network、cache、trusted key 与 load request API 都归 `wasmline-loader` 所有。Ktor 与 OkHttp 构件实现 loader 的 suspend network SPI，并单向依赖 loader；核心 `wasmline` runtime 不依赖任何 HTTP engine。应用只在远程缓存未命中时选择 adapter：Ktor 通过 CIO、OkHttp、Darwin、Curl 与 WinHTTP 覆盖 JVM、Android、Apple、Linux 与 Windows Native，OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 仍使用独立的 `WasmlineWeb.prefetch()` 流程。
@@ -141,6 +178,7 @@ wasmline/
 │   ├── wasmline-engine-pulley/         # Pulley runtime distribution 与平台变体
 │   ├── wasmline-network-ktor/          # Ktor loader 网络 adapter
 │   ├── wasmline-network-okhttp/        # OkHttp loader 网络 adapter
+│   ├── wasmline-bom/                   # Maven 模块同版本 strict constraint
 │   ├── wasmline-plugin-test/           # 端到端 plugin 与 native 集成测试
 │   └── wasmline-build-logic/           # Shared Gradle convention plugins
 ├── wasmline-samples/

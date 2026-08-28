@@ -16,6 +16,9 @@ import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import crow.wasmline.loader.model.SignedManifestEnvelope
+import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.loader.model.WasmlineManifestProtocol
+import crow.wasmline.loader.model.WasmlineManifestWireFormat
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -202,9 +205,17 @@ private fun bundledPluginResourcePaths(packageRoot: String): Map<String, String>
     val manifestBytes = classLoader.getResourceAsStream(manifestResource)?.use { it.readBytes() }
         ?: error("Resource not found: $manifestResource")
     val envelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
+    require(envelope.formatVersion == WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION) {
+        "Unsupported bundled manifest format ${envelope.formatVersion}."
+    }
+    val manifest = ProtoBuf.decodeFromByteArray(WasmlineManifest.serializer(), envelope.payload)
     val relativePaths = buildList {
         add("manifest.wlm")
-        envelope.manifest.artifacts.mapTo(this) { it.url }
+        manifest.artifactTargets.forEach { target ->
+            target.variants.mapTo(this) { variant ->
+                WasmlineManifestProtocol.artifactRelativePath(variant.sha256, target.format)
+            }
+        }
     }.distinct()
 
     return relativePaths.associate { relativePath ->

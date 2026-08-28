@@ -2,7 +2,6 @@ package crow.wasmline.plugin.core.component
 
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.loader.model.WasmlineArtifact
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.component.hostgen.WitParser
 import crow.wasmline.plugin.core.component.hostgen.WitSources
@@ -72,26 +71,7 @@ data class ComponentizeResult(
     val adapterVersion: String?,
     val witBindgenVersion: String?,
     val wasmToolsVersion: String,
-) {
-    /** Creates the portable raw Component artifact stored in a Wasmline package. */
-    fun toArtifact(): WasmlineArtifact = ComponentBuildRecord(
-        componentFile = componentWasm.name,
-        embeddedFile = embeddedWasm.name,
-        inspectedWitFile = inspectedWit?.name,
-        world = world,
-        witPackage = witPackage,
-        invocationProtocol = invocationProtocol,
-        exportName = exportName,
-        codec = codec,
-        serviceProtocolVersion = serviceProtocolVersion,
-        componentSha256 = componentSha256,
-        witSha256 = witSha256,
-        adapterSha256 = adapterSha256,
-        adapterVersion = adapterVersion,
-        witBindgenVersion = witBindgenVersion,
-        wasmToolsVersion = wasmToolsVersion,
-    ).toArtifact(componentWasm.parentFile)
-}
+)
 
 /**
  * Shared Component build implementation used by Gradle and the CLI.

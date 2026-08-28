@@ -86,10 +86,11 @@ class WasmlineIosComponentHostCallbackTest {
             descriptor = WasmlineArtifactDescriptor(
                 path = fixturePath,
                 artifactFormat = WasmlineArtifactFormat.PWASM,
-                targetCpu = "pulley64",
-                targetOs = null,
-                targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-                is64Bit = true,
+                architecture = "pulley${runtime.pointerWidth}",
+                pointerWidth = runtime.pointerWidth,
+                aotCompatibilityProfileId = runtime.aotCompatibilityProfileIdsByBackend[WasmlineEngineKind.PULLEY]
+                    ?.singleOrNull()
+                    ?: error("The iOS runtime must report exactly one Pulley AOT compatibility profile."),
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = "run",

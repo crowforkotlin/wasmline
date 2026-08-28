@@ -10,9 +10,7 @@ MULTIPLATFORM_ROOT="${REPO_ROOT}/wasmline-multiplatform"
 SAMPLE_PLUGIN_ROOT="${SAMPLE_ROOT}/sample-plugin"
 SAMPLE_PLUGIN_OUTPUT_ROOT="${SAMPLE_PLUGIN_ROOT}/build/wasmline/output"
 QUIET=0
-ARTIFACT_FORMAT=""
 PLUGIN_ASSEMBLY_ROOT=""
-RUNTIME_PWASM_FILE=""
 
 require_value() {
     local option="$1"
@@ -62,30 +60,12 @@ run_gradle_build() {
     fi
 }
 
-copy_artifact() {
-    local source_file="$1"
-    local target_file="$2"
-    mkdir -p "$(dirname "$target_file")"
-    rm -f "$target_file"
-    cp "$source_file" "$target_file"
-}
-
-detect_current_platform() {
-    local arch_name
-    arch_name="$(uname -m)"
-    if [ "$(uname -s)" != "Darwin" ]; then
-        echo "iOS sample requires macOS." >&2
-        exit 1
-    fi
-    if [ "$arch_name" = "x86_64" ] && command -v sysctl >/dev/null 2>&1 &&
-        [ "$(sysctl -in hw.optional.arm64 2>/dev/null || true)" = "1" ]; then
-        arch_name="arm64"
-    fi
-    case "$arch_name" in
-        arm64|aarch64) printf '%s\n' "aarch64-macos" ;;
-        x86_64|amd64) printf '%s\n' "x86_64-macos" ;;
-        *) echo "Unsupported macOS architecture: $arch_name" >&2; exit 1 ;;
-    esac
+copy_package() {
+    local source_directory="$1"
+    local target_directory="$2"
+    rm -rf "$target_directory"
+    mkdir -p "$target_directory"
+    cp -R "${source_directory}/." "$target_directory"
 }
 
 load_wasmline_metadata() {
@@ -94,15 +74,9 @@ load_wasmline_metadata() {
 }
 
 assemble_sample_plugin() {
-    local cwasm_target="$1"
-    local artifact_description="$2"
-    local gradle_args=(
-        :sample-plugin:wasmlineAssembleDebug
-        "-Pwasmline.compile.target=${cwasm_target}"
-        "-Pwasmline.artifact.format=${ARTIFACT_FORMAT}"
-    )
+    local artifact_description="$1"
+    local gradle_args=(:sample-plugin:wasmlineAssembleDebug)
 
-    rm -rf "$SAMPLE_PLUGIN_OUTPUT_ROOT"
     run_gradle_build "$SAMPLE_ROOT" "${gradle_args[@]}"
     local manifest_file
     manifest_file="$(find "$SAMPLE_PLUGIN_OUTPUT_ROOT" -mindepth 2 -maxdepth 2 -type f -name manifest.wlm | sort | head -n 1)"
@@ -113,21 +87,10 @@ assemble_sample_plugin() {
     PLUGIN_ASSEMBLY_ROOT="$(dirname "$manifest_file")"
 }
 
-build_plugin_runtime_artifacts() {
-    local cwasm_target="$1"
-    local artifact_description="$2"
-    assemble_sample_plugin "$cwasm_target" "$artifact_description"
-    RUNTIME_PWASM_FILE="$(find "$PLUGIN_ASSEMBLY_ROOT" -maxdepth 1 -type f -name '*-pulley64.pwasm' | sort | head -n 1)"
-    if [ -z "$RUNTIME_PWASM_FILE" ]; then
-        echo "Unable to locate ${artifact_description} pwasm64 artifact" >&2
-        exit 1
-    fi
-}
-
 IOS_APP_ROOT="${SAMPLE_ROOT}/iosApp"
 IOS_PROJECT_FILE="${IOS_APP_ROOT}/iosApp.xcodeproj"
 IOS_SCHEME="iosApp"
-IOS_RESOURCE_FILE="${IOS_APP_ROOT}/plugin.pwasm"
+IOS_RESOURCE_DIRECTORY="${IOS_APP_ROOT}/plugin-package"
 IOS_DERIVED_DATA_PATH="${SAMPLE_ROOT}/build/ios-derived-data"
 IOS_PRODUCT_NAME="wasmline"
 IOS_BUNDLE_ID="crow.wasmline.wasmline"
@@ -301,11 +264,9 @@ install_and_launch_ios_sample() {
 load_wasmline_metadata
 parse_ios_args "$@"
 ensure_ios_prerequisites
-PLATFORM="$(detect_current_platform)"
-ARTIFACT_FORMAT="pwasm64"
 build_ios_frameworks
-build_plugin_runtime_artifacts "$PLATFORM" "ios plugin artifact"
-copy_artifact "$RUNTIME_PWASM_FILE" "$IOS_RESOURCE_FILE"
+assemble_sample_plugin "ios plugin package"
+copy_package "$PLUGIN_ASSEMBLY_ROOT" "$IOS_RESOURCE_DIRECTORY"
 SIMULATOR_INFO="$(select_ios_simulator)"
 SIMULATOR_ID="${SIMULATOR_INFO%%|*}"
 SIMULATOR_NAME_AND_STATE="${SIMULATOR_INFO#*|}"

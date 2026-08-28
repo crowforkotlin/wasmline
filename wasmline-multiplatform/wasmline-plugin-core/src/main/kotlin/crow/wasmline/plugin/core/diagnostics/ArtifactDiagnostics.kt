@@ -1,70 +1,64 @@
 package crow.wasmline.plugin.core.diagnostics
 
 import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
+import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecord
+import crow.wasmline.plugin.core.aot.WasmlineCompiledArtifact
 
-@InternalWasmlineToolingApi
-enum class WasmlineArtifactBackend {
-    RAW,
-    CRANELIFT,
-    PULLEY,
-}
-
+/**
+ * Describes one compiled content object without exposing filesystem-specific paths.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @InternalWasmlineToolingApi
 data class WasmlineArtifactDiagnostic(
     val artifact: String,
     val format: WasmlineArtifactFormat,
     val executionModel: WasmlineExecutionModel,
-    val backend: WasmlineArtifactBackend,
+    val artifactBackend: WasmlineEngineKind?,
     val target: String,
     val wasmtimeVersion: String?,
+    val aotCompatibilityProfileId: String?,
 ) {
+    /** Renders one stable diagnostic line. */
     fun render(): String = buildString {
         append("artifact=").append(artifact)
         append(" format=").append(format.name)
         append(" executionModel=").append(executionModel.name)
-        append(" backend=").append(backend.name)
+        append(" backend=").append(artifactBackend?.name ?: "RAW")
         append(" target=").append(target)
         append(" wasmtime=").append(wasmtimeVersion ?: "n/a")
+        append(" profile=").append(aotCompatibilityProfileId ?: "n/a")
     }
 }
 
-/** Produces consistent native artifact diagnostics for CLI and Gradle adapters. */
-
+/**
+ * Produces consistent artifact diagnostics for CLI and Gradle adapters.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @InternalWasmlineToolingApi
 object WasmlineArtifactDiagnostics {
-    fun describe(artifact: WasmlineArtifact): WasmlineArtifactDiagnostic {
-        val (format, backend) = when (artifact.type) {
-            WasmlineArtifactType.WASM,
-            WasmlineArtifactType.COMPONENT_WASM,
-            -> WasmlineArtifactFormat.RAW_WASM to WasmlineArtifactBackend.RAW
-
-            WasmlineArtifactType.CWASM -> WasmlineArtifactFormat.CWASM to WasmlineArtifactBackend.CRANELIFT
-
-            WasmlineArtifactType.PWASM -> WasmlineArtifactFormat.PWASM to WasmlineArtifactBackend.PULLEY
+    /** Describes one output using its unified build record. */
+    fun describe(artifact: WasmlineCompiledArtifact, record: WasmlineAotBuildRecord): WasmlineArtifactDiagnostic {
+        val profile = artifact.aotCompatibilityProfileId?.let { profileId ->
+            record.resolvedProfiles.single { it.id == profileId }
         }
         return WasmlineArtifactDiagnostic(
-            artifact = artifact.url,
-            format = format,
-            executionModel = artifact.executionModel,
-            backend = backend,
-            target = renderTarget(artifact.targetCpu, artifact.targetOs),
-            wasmtimeVersion = artifact.targetCompilerVersion
-                ?.let(WASMTIME_COMPILER_VERSION::matchEntire)
-                ?.groupValues
-                ?.get(1),
+            artifact = artifact.contentRelativePath,
+            format = artifact.format,
+            executionModel = record.runtimeContract.executionModel,
+            artifactBackend = artifact.artifactBackend,
+            target = artifact.normalizedTarget,
+            wasmtimeVersion = profile?.wasmtimeVersion,
+            aotCompatibilityProfileId = profile?.id,
         )
     }
 
-    fun format(artifact: WasmlineArtifact): String = describe(artifact).render()
-
-    private fun renderTarget(targetCpu: String?, targetOs: String?): String =
-        listOfNotNull(targetCpu?.takeIf(String::isNotBlank), targetOs?.takeIf(String::isNotBlank))
-            .joinToString("-")
-            .ifBlank { "unspecified" }
-
-    private val WASMTIME_COMPILER_VERSION = Regex("wasmtime-([0-9]+\\.[0-9]+\\.[0-9]+)")
+    /** Formats one output using its unified build record. */
+    fun format(artifact: WasmlineCompiledArtifact, record: WasmlineAotBuildRecord): String = describe(artifact, record).render()
 }

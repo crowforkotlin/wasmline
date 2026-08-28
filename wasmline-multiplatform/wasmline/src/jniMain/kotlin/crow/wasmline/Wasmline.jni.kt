@@ -121,6 +121,7 @@ internal fun ensureJniRuntimeLoaded() {
     synchronized(JniWasmlineBindings) {
         if (jniRuntimeLoaded) return
         ensureNativeRuntimeLoaded()
+        JniWasmlineBindings.runtimeCapabilities()
         jniRuntimeLoaded = true
     }
 }
@@ -162,10 +163,7 @@ private fun Long.aotLoadPathField(shift: Int): Int = ((this ushr shift) and 0xff
 internal actual fun platformWasmlineWarmUp(engine: WasmlineEngineKind) {
     ensureJniRuntimeLoaded()
     val capabilities = JniWasmlineBindings.runtimeCapabilities()
-    val supported = when (engine) {
-        WasmlineEngineKind.CRANELIFT -> capabilities.supportsCranelift
-        WasmlineEngineKind.PULLEY -> capabilities.supportsPulley
-    }
+    val supported = engine in requireNotNull(capabilities.nativeRuntimeInfo).supportedEngines
     require(supported) {
         "The linked Wasmline runtime does not support the $engine engine."
     }

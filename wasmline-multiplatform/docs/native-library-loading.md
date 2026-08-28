@@ -20,9 +20,16 @@ kotlin {
 }
 ```
 
-Use Pulley for portable `.pwasm` artifacts on iOS, macOS, Linux, or Windows. Use Cranelift when the host needs matching `.cwasm` artifacts; it also supports `.pwasm` fallback. Select exactly one engine module because both expose the same Wasmline native bridge symbols. The runtime API remains `WasmlineLoader.load()` and `WasmlineRuntime`; no JNI loader call is required.
+Use Pulley for portable `.pwasm` artifacts on iOS, macOS, Linux, or Windows. Use
+Cranelift when the host needs matching `.cwasm` artifacts. It can use `.pwasm`
+only when no compatible CWASM exists and the runtime reports the corresponding
+Pulley profile and capability. Select exactly one engine module because both
+expose the same Wasmline native bridge symbols. The runtime API remains
+`WasmlineLoader.load()` and `WasmlineRuntime`; no JNI loader call is required.
 
-For signed Native packages, use Ed25519 on every target. Apple Native also verifies ECDSA P-256 through Security; Linux and Windows Native reject ECDSA P-256 manifests until a platform provider is distributed for those targets.
+The current signed manifest format accepts Ed25519 only. Runtime, Loader, and
+the selected engine must use the same Wasmline Maven version. Native startup
+checks the release identity and bridge ABI before deserializing an artifact.
 
 ---
 
@@ -90,7 +97,7 @@ Wasmline provides two engine modules. They are mutually exclusive — a project 
 | Module | Artifact ID | Description |
 |--------|------------|-------------|
 | `wasmline-engine-pulley` | `crow.wasmline:wasmline-engine-pulley` | Pulley-only interpreter. Supports `.pwasm` only; smaller binary and broader platform support. Use `pulley32` or `pulley64` to match host bitness. |
-| `wasmline-engine-cranelift` | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime. Supports `.cwasm` and `.pwasm`; prefers matching `.cwasm`, then matching-bitness `.pwasm`. |
+| `wasmline-engine-cranelift` | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime. Requires exact backend profile and target identity for `.cwasm`; uses `.pwasm` only when no compatible CWASM exists and a matching Pulley profile is reported. |
 
 Both modules follow the same build and publishing structure. The examples below use `pulley`.
 These modules intentionally do not expose a Kotlin runtime API. The dependency selects the native runtime distribution; the `wasmline` runtime reports the linked backend through `WasmlineNativeBackend`.

@@ -127,6 +127,59 @@ API ownership is explicit: `WasmlineLoader` resolves, verifies, selects, and loa
 > [!NOTE]
 > `link<T>()` and `bind(impl)` are rewrite targets of the Kotlin IR compiler plugin. If `wasmline-kotlin-plugin` is not applied to the compilation unit, these calls throw `UnsupportedOperationException` at runtime.
 
+## Package and AOT Compatibility
+
+A plugin release uses one `manifest.wlm` for every configured Wasmtime AOT
+compatibility profile and physical target. Plugin authors select complete
+Wasmtime `x.y.z` versions; Wasmline resolves immutable, backend-specific profile
+IDs from its catalog.
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            wasmtimeVersions.set(listOf("47.0.3", "48.0.1"))
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+            WasmtimeTarget.X86_64_WINDOWS,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+The package stores artifacts by SHA-256:
+
+```text
+{pluginId}-{version}/
+├── manifest.wlm
+├── artifacts/sha256/{prefix}/{digest}.wasm|cwasm|pwasm
+└── debug/
+    ├── manifest.json
+    ├── aot-build-record.json
+    └── artifact-index.json
+```
+
+Core Web `.wasm` is generated and stored once; it is not repeated for every
+Wasmtime version. Native CWASM and PWASM variants are compiled only for profiles
+with the same backend. The offline ZIP contains the complete matrix. Remote
+loading fetches the manifest and one selected artifact, not the ZIP or unrelated
+targets.
+
+Pulley selects `pulley32` or `pulley64` by pointer width. Cranelift requires an
+exact profile, operating system, architecture, pointer width, and CPU feature
+match. It may use PWASM only when no compatible CWASM exists and the runtime
+reports a matching Pulley profile and PWASM capability. Artifact download or
+digest failure does not trigger fallback.
+
+Compiler archives are catalog-locked and cached by digest under
+`~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/`. Builds do not accept
+an arbitrary local compiler executable.
+
 ## Execution Models and Call Results
 
 Wasmline supports four explicit host-side invocation paths:
@@ -153,7 +206,9 @@ imports, and checked linear memory; native uses the Wasmtime bridge with
 For `RAW_EXPORT`, load a `CoreWasmModule`, register synchronous `RawImport`
 handlers before `instantiate()`, invoke `RawValue` exports, and use
 `RawMemory` for bulk data. `WasmlineWeb.registerBytes()` is the browser path
-for embedded `.wasm`; native selection remains AOT-only.
+for embedded `.wasm`; native selection remains AOT-only. Signed packages store
+export signatures, imports, memory, and required features in
+`runtimeContract.rawAbi`, not in free-form `contractMetadata` entries.
 
 Core Wasmline calls return results instead of using exceptions for normal call failures:
 
@@ -183,18 +238,11 @@ APIs.
 
 The `WASMLINE_SERVICE` response frame starts with the four-byte `WLMF` magic marker and a one-byte `frameVersion` whose current value is `1`. The magic marker identifies the frame format; it is not a security check. `frameVersion` identifies the response byte layout; it is not a Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not use this Core response frame.
 
-For direct calls, the descriptor must declare both the execution model and protocol:
-
-```kotlin
-val component = WasmlineLoader.load(
-    WasmlineArtifactDescriptor(
-        path = "component.wasm",
-        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-        exportName = "add",
-    ),
-)
-```
+Loading `manifest.wlm` is the standard path. The Loader verifies the package and
+copies its execution model, invocation protocol, target identity, artifact
+format, and AOT compatibility profile into the selected descriptor. A direct,
+caller-trusted AOT descriptor must provide all of those fields explicitly; a
+path such as `component.cwasm` is not enough to prove compatibility.
 
 ## Platform Support
 
@@ -208,6 +256,9 @@ val component = WasmlineLoader.load(
 | Windows  | x86_64       | `.cwasm` / `.pwasm` | wasmtime |
 | Web (Kotlin/JS · Kotlin/WasmJS) | Browser JS engine | Raw `.wasm` only | web |
 
+Native selection uses the AOT compatibility profile IDs reported by the linked
+engine. It does not infer compatibility from a Maven version or filename.
+
 ## Installation
 
 > [!NOTE]
@@ -217,6 +268,23 @@ val component = WasmlineLoader.load(
 > The minimum required Kotlin version is **2.3.0-RC2**.
 >
 > ![Kotlin/Wasm runtime support matrix](docs/public/images/kotlin_support.png)
+
+Use the BOM on JVM and Android so the runtime, Loader, network adapter, and
+engine resolve to one strict Wasmline version:
+
+```kotlin
+dependencies {
+    implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
+    implementation("crow.wasmline:wasmline-loader")
+    implementation("crow.wasmline:wasmline-network-ktor")
+    implementation("crow.wasmline:wasmline-engine-cranelift")
+}
+```
+
+Kotlin Multiplatform source sets should use one shared version variable for all
+Wasmline coordinates. Engine modules are not versioned independently. Native
+startup validates the Wasmline release identity and bridge ABI before loading an
+AOT artifact.
 
 ## Gradle Wrapper Tasks
 
@@ -245,7 +313,10 @@ wasmline {
 }
 ```
 
-The default is `DEBUG`, served at `http://localhost:8080`. Required toolchain and Component pipeline tasks run automatically. The [Gradle plugin task reference](docs/content/docs/gradle-plugin.mdx) covers all 15 user-facing tasks and their registration conditions.
+The default is `DEBUG`, served at `http://localhost:8080`. Required AOT and
+Component pipeline tasks run automatically. See the
+[Gradle plugin task reference](docs/content/docs/gradle-plugin.mdx) for the
+current task set and registration conditions.
 
 ## Architecture Mind Map
 

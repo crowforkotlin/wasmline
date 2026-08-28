@@ -93,6 +93,7 @@ class WasmlineArtifactDescriptorTest {
         )
     }
 
+    /** Verifies that AOT physical formats do not determine the execution model. */
     @Test
     fun aotFormatIsIndependentFromExecutionModel() {
         listOf(
@@ -105,6 +106,7 @@ class WasmlineArtifactDescriptorTest {
             val descriptor = WasmlineArtifactDescriptor(
                 path = if (format == WasmlineArtifactFormat.CWASM) "plugin.cwasm" else "plugin.pwasm",
                 artifactFormat = format,
+                aotCompatibilityProfileId = "sha256:${"a".repeat(64)}",
                 executionModel = executionModel,
                 invocationProtocol = if (component) {
                     WasmlineInvocationProtocol.COMPONENT_EXPORT

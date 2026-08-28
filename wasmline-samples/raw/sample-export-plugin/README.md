@@ -36,21 +36,16 @@ module.invokeRawResult(
 )
 ```
 
-The Compose sample's **Raw Export** mode uses this same ABI. For a native
-`.cwasm`, use the Wasmline compiler profile so the artifact matches the native
-engine configuration:
+The Compose sample's **Raw Export** mode uses this same ABI. Build native
+artifacts through `sample-raw-export-plugin`, which resolves the exact
+backend-specific AOT profile and compiler asset:
 
 ```shell
-wasm-tools parse plugin.wat -o sample-export.wasm
-wasmtime compile sample-export.wasm -o sample-export.cwasm \
-  -C collector=drc \
-  -W gc=y -W function-references=y -W exceptions=y -W threads=n \
-  -W simd=n -W relaxed-simd=n \
-  -O static-memory-guard-size=0 -O dynamic-memory-guard-size=0 \
-  -O signals-based-traps=n -O opt-level=2
+cd ../../kotlin
+./gradlew :sample-raw-export-plugin:wasmlineAssembleDebug
 ```
 
 The artifact descriptor must preserve the `RAW_EXPORT` protocol,
-`exportName = "add_i32"`, and the matching Wasmtime/target metadata. The
-Compose runner fills the current native target metadata for direct `.cwasm` or
-`.pwasm` paths.
+`exportName = "add_i32"`, and the matching backend profile and target identity.
+The Compose runner fills the current native runtime identity for direct
+`.cwasm` or `.pwasm` paths.

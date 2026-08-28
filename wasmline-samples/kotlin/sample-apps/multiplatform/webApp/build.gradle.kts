@@ -46,12 +46,11 @@ val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
 )
 val syncWasmlineSamplePlugin = tasks.register<Sync>("syncWasmlineSamplePlugin") {
     group = "wasmline"
-    description = "Build and expose the raw Wasmline plugin to web resources"
+    description = "Build and expose the signed Wasmline plugin package to web resources"
     dependsOn(project(":sample-plugin").tasks.named("wasmlineAssembleDebug"))
     from(samplePluginOutput) {
-        include("demo.wasm")
+        include("manifest.wlm", "artifacts/**")
         into("plugin")
-        rename { "wasmline-sample-sample-plugin.wasm" }
     }
     into(layout.buildDirectory.dir("generated/web-resources"))
 }

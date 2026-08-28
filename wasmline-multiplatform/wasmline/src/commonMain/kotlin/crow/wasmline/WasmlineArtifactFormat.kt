@@ -2,7 +2,12 @@ package crow.wasmline
 
 import kotlinx.serialization.Serializable
 
-/** Identifies an existing Wasmline artifact's physical binary format. */
+/**
+ * Identifies an existing Wasmline artifact's physical binary format.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @Serializable
 enum class WasmlineArtifactFormat {
     RAW_WASM,

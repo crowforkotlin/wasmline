@@ -1,22 +1,21 @@
 ---
-title: Wasmtime 工具链
-description: 配置精简 Cranelift 编译器与完整 CLI 后备方案
+title: Wasmtime AOT 兼容档案
+description: 选择不可变兼容档案与经过校验的 compiler asset
 createdAt: 2026-08-15
-updatedAt: 2026-08-16
+updatedAt: 2026-08-28
 ---
 
-# Wasmtime 工具链
+# Wasmtime AOT 兼容档案
 
-Gradle 插件默认在两条 AOT 流水线中使用 fork 提供的精简 Cranelift CLI：
+Wasmline 不会把 Wasmtime 版本字符串直接作为 serialized AOT artifact 的兼容
+证明。该版本是面向用户的 selector，用于选择不可变且区分 backend 的 AOT
+compatibility profile。
 
-| 工具链 | 用途 | 默认缓存目录 |
-|---|---|---|
-| 精简 Cranelift CLI | Core Wasm AOT 打包 | `~/.wasmline/wasmtime` |
-| 精简 Cranelift CLI | Component AOT 编译 | `~/.wasmline/wasmtime-compiler` |
-
-`cranelift-min` CLI 包含 `compile`、Component Model 和 Pulley 支持，因此既能生成 Cranelift `.cwasm`，也能生成可移植的 Pulley `.pwasm`。完整 Cranelift 和 Pulley CLI 同样提供 `compile`，但它们仅作为后备方案，因为精简 Cranelift 压缩包体积更小，并且已经覆盖两种输出格式。Pulley minimal release 只包含 C API 产物，绝不会被选为构建期 CLI 编译器。
-
-release 变体通过 `*-min`、`*-pulley` 等压缩包名称区分。这些 CLI 压缩包内的可执行文件都名为 `wasmtime`，因此 Wasmline 会校验可执行文件的版本和 `compile` 能力，而不会根据文件名推断能力。
+每个 profile 绑定完整 Wasmtime `x.y.z`、downstream distribution、source
+revision、serialized-artifact identity、compile-profile schema、engine
+configuration 与 artifact backend。其规范化描述会计算为
+`sha256:<digest>` profile ID。即使使用同一 Wasmtime release，Cranelift 与
+Pulley 也始终具有不同 ID。
 
 ## 配置
 
@@ -25,41 +24,70 @@ import crow.wasmline.gradle.WasmtimeTarget
 
 wasmline {
     wasmtime {
-        autoDownload = true
-        version = "48.0.1"
-        releaseVersion = "v48.0.1.1"
+        aotCompatibility {
+            wasmtimeVersions.set(listOf("48.0.1"))
+            // profileIds.set(listOf("sha256:<complete-profile-digest>"))
+        }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
             WasmtimeTarget.X86_64_LINUX,
         )
+        autoDownload.set(true)
     }
 }
 ```
 
-`version` 是可执行文件报告并用于 AOT 兼容性校验的三段版本；`releaseVersion` 是提供二进制资产的四段下游 GitHub Release 版本。`directory` 可用于指定精简 Wasmtime 的缓存目录或可执行文件目录。未设置时，插件依次检查 `WASMTIME_ROOT` 和 `~/.wasmline/wasmtime`。
+配置多个完整 `x.y.z`，可以让同一插件支持多个 Wasmtime AOT contract。
+版本 selector 会为每个请求的 backend 独立解析。Catalog 中同一版本、同一
+backend 存在多个 profile 时，构建会失败，直到 `profileIds` 精确选择。
 
-`compilerDirectory`、`compilerVersion` 和 `compilerExecutable` 用于配置 Component AOT 编译使用的 CLI。自动下载选择 `cranelift-min`；`compilerExecutable` 可以显式指定任意具备编译能力的 minimal 或完整 CLI。Wasmline 会在编译前校验精确版本和 `compile` 子命令。
+未配置 selector 时，每个请求的 backend 使用当前 Wasmline 发行版 profile；
+这不表示选择全部历史 Wasmtime 版本。
 
-## 手动任务
+## Catalog 与缓存
 
-```bash
-# 检查 Core Wasm 使用的精简工具链
-./gradlew checkWasmlineToolchain
+`scripts/versions.json` 是当前默认值、不可变历史 profile 和 compiler
+provenance 的唯一权威源。版本同步会生成
+`META-INF/wasmline/aot/aot-compatibility-lock.json`；构建工具校验该 lock，
+不接受任意本地 compiler 路径。
 
-# 下载精简 Wasmtime 发行包
-./gradlew wasmlineDownloadWasmtime
+Compiler asset 根据执行构建的机器选择，而不是根据 artifact target 选择。
+每个 archive 和解压后的 executable 都有锁定的 SHA-256。共享缓存按内容寻址：
 
-# 下载精简 Component AOT 编译器
-./gradlew wasmlineDownloadWasmtimeCompiler
-
-# 下载 wit-bindgen、wasm-tools 和 WASI adapter
-./gradlew wasmlineDownloadComponentTools
+```text
+~/.wasmline/toolchains/wasmtime/compiler-assets/
+└── sha256/{prefix}/{archiveDigest}/{buildHost}/
 ```
 
-启用 `autoDownload` 时，assemble 任务会自动执行所需的检查与下载。完整任务清单参见 [Gradle 插件参考](/zh/docs/gradle-plugin)。
+同一个 archive 可以同时服务两个 backend profile，并且只下载一次。命中缓存
+时不会访问网络。设置 `autoDownload = false` 后，全部所需资产必须已存在并通过
+校验；构建会在一次失败中列出全部缺失 profile。不支持任意 compiler executable
+或目录。
 
-确实需要完整 Cranelift 后备 CLI 时，独立 CLI 仍支持 `wasmline download --distribution full`。已有的完整 Pulley CLI 可以通过 `compilerExecutable` 显式指定。
+使用 CLI 检查可用 profile：
 
-## 诊断
+```bash
+./wasmline-cli/cli.sh aot-profiles list
+./wasmline-cli/cli.sh aot-profiles describe sha256:<digest>
+```
 
-使用 `./gradlew checkWasmlineToolchain --info` 查看精简工具链的解析过程。需要认证的 GitHub 请求时，配置 `wasmtime.githubToken`。
+## Target 与运行时规则
+
+`pulley32` 生成 32 位 PWASM，`pulley64` 生成 64 位 PWASM。PWASM 不是 raw
+WebAssembly，Loader 按 pointer width 选择。iOS 使用 `pulley64`，32 位 Android
+使用 `pulley32`。
+
+CWASM 按 runtime 实际报告的 Cranelift profile ID、操作系统、架构、pointer
+width 与 CPU feature profile 精确匹配。只有不存在兼容 CWASM，且 runtime
+明确报告匹配的 Pulley profile 和 PWASM capability 时，Cranelift runtime 才能
+回退到 PWASM。CWASM 下载、size、digest 或 deserialize 失败不会触发回退。
+
+Web 不使用 Wasmtime profile。无论 native AOT profile 数量是多少，Core package
+都只保存一个供 JavaScript WebAssembly engine 使用的 raw `.wasm` variant。
+
+## 增加 Wasmtime Release
+
+只有某个 Wasmline engine 发行版实际采用该 contract 时，仓库维护者才会增加
+profile。维护者向 `scripts/versions.json` 追加不可变 profile 与 compiler-asset
+记录，执行 `./scripts/wasmline versions sync`，并验证生成的 catalog ID 和摘要。
+普通同步不会下载全部历史 compiler archive，也不会改写已经发布的 profile。

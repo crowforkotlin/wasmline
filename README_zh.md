@@ -127,6 +127,55 @@ API 职责是明确分开的：`WasmlineLoader` 负责解析、校验、选择�
 > [!NOTE]
 > `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。编译单元未应用 `wasmline-kotlin-plugin` 时，这些调用会在运行时抛出 `UnsupportedOperationException`。
 
+## Package 与 AOT 兼容性
+
+一个插件发行版只使用一个 `manifest.wlm`，用于描述全部已配置 Wasmtime AOT
+compatibility profile 和物理 target。插件作者配置完整 Wasmtime `x.y.z`；
+Wasmline 从 catalog 解析不可变且区分 backend 的 profile ID。
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            wasmtimeVersions.set(listOf("47.0.3", "48.0.1"))
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+            WasmtimeTarget.X86_64_WINDOWS,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+Package 按 SHA-256 保存 artifact：
+
+```text
+{pluginId}-{version}/
+├── manifest.wlm
+├── artifacts/sha256/{prefix}/{digest}.wasm|cwasm|pwasm
+└── debug/
+    ├── manifest.json
+    ├── aot-build-record.json
+    └── artifact-index.json
+```
+
+Core Web `.wasm` 只生成和保存一次，不随 Wasmtime 版本重复。Native CWASM
+与 PWASM 只针对 backend 相同的 profile 编译。离线 ZIP 包含完整矩阵；远程
+加载只获取 manifest 和一个已选择 artifact，不下载 ZIP 或无关 target。
+
+Pulley 按 pointer width 选择 `pulley32` 或 `pulley64`。Cranelift 要求 profile、
+操作系统、架构、pointer width 与 CPU feature 精确匹配。只有不存在兼容 CWASM，
+且 runtime 报告匹配的 Pulley profile 与 PWASM capability 时，才能使用 PWASM。
+Artifact 下载或摘要失败不会触发回退。
+
+Compiler archive 由 catalog 锁定，并按摘要缓存在
+`~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/`。构建不接受任意
+本地 compiler executable。
+
 ## 执行模型与调用结果
 
 Wasmline 支持四种显式的宿主调用路径：
@@ -147,7 +196,8 @@ native 使用 Wasmtime bridge 与 `.cwasm`/`.pwasm` AOT 产物。Component Model
 对于 `RAW_EXPORT`，先加载 `CoreWasmModule`，在 `instantiate()` 前注册同步
 `RawImport` handler，再调用 `RawValue` export；高频数据通过 `RawMemory`
 批量访问。浏览器内嵌 `.wasm` 使用 `WasmlineWeb.registerBytes()`，native
-仍只选择 AOT 产物。
+仍只选择 AOT 产物。签名 package 将 export signature、import、memory 与所需
+feature 保存在 `runtimeContract.rawAbi` 中，不写入自由格式 `contractMetadata`。
 
 Core Wasmline 调用通过结果返回普通调用错误，不使用异常作为普通控制流：
 
@@ -175,18 +225,10 @@ when (val result = module.callResult("echo", payload)) {
 
 `WASMLINE_SERVICE` 响应帧以四字节 `WLMF` magic 标记开始，并使用一个字节的 `frameVersion`，当前值为 `1`。magic 只用于识别帧格式，不提供安全校验。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
 
-直接调用时，描述对象必须同时声明执行模型和调用协议：
-
-```kotlin
-val component = WasmlineLoader.load(
-    WasmlineArtifactDescriptor(
-        path = "component.wasm",
-        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-        exportName = "add",
-    ),
-)
-```
+加载 `manifest.wlm` 是标准路径。Loader 会校验 package，并将 execution model、
+invocation protocol、target identity、artifact format 与 AOT compatibility
+profile 写入所选 descriptor。直接加载调用方信任的 AOT artifact 时，必须显式提供
+全部字段；仅提供 `component.cwasm` 路径不能证明兼容性。
 
 ## 支持平台
 
@@ -200,7 +242,8 @@ val component = WasmlineLoader.load(
 | Windows | x86_64 | `.cwasm` / `.pwasm` | wasmtime |
 | Web（Kotlin/JS · Kotlin/WasmJS） | 浏览器 JS 引擎 | 仅原始 `.wasm` | web |
 
-Cranelift Wasmtime 运行时同时支持 `.cwasm` 和 `.pwasm`；原生宿主优先选择匹配的 `.cwasm`，缺少时回退到匹配位数的 `.pwasm`。Pulley 引擎仅支持 `.pwasm`。iOS 只能使用解释器，因此始终使用 `.pwasm`。
+Native 选择使用已链接 engine 实际报告的 AOT compatibility profile ID，
+不会根据 Maven 版本或文件名推导兼容性。iOS 只使用 `pulley64` PWASM。
 
 ## 安装
 
@@ -211,6 +254,22 @@ Cranelift Wasmtime 运行时同时支持 `.cwasm` 和 `.pwasm`；原生宿主优
 > 最低需要 **Kotlin 2.3.0-RC2** 版本。
 >
 > ![Kotlin/Wasm 运行时支持矩阵](docs/public/images/kotlin_support.png)
+
+JVM 与 Android 使用 BOM，使 runtime、Loader、network adapter 与 engine
+解析为同一个 strict Wasmline 版本：
+
+```kotlin
+dependencies {
+    implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
+    implementation("crow.wasmline:wasmline-loader")
+    implementation("crow.wasmline:wasmline-network-ktor")
+    implementation("crow.wasmline:wasmline-engine-cranelift")
+}
+```
+
+Kotlin Multiplatform source set 应为全部 Wasmline coordinate 使用同一个版本
+变量。Engine 模块不能单独升级。Native 启动会在加载 AOT artifact 前校验
+Wasmline release identity 与 bridge ABI。
 
 ## Gradle Wrapper 任务
 
@@ -239,7 +298,9 @@ wasmline {
 }
 ```
 
-默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。所需工具链与 Component 流水线任务会自动执行。[Gradle 插件任务参考](docs/content/docs/gradle-plugin.zh.mdx)列出全部 15 个面向用户的任务及其注册条件。
+默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。所需 AOT 与 Component
+流水线任务会自动执行。[Gradle 插件任务参考](docs/content/docs/gradle-plugin.zh.mdx)
+列出当前任务及其注册条件。
 
 ## 架构思维导图
 

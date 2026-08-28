@@ -1,7 +1,6 @@
 @file:Suppress("OPT_IN_USAGE")
 
 import crow.wasmline.gradle.WasmlineBuildVariant
-import crow.wasmline.gradle.WasmtimeTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -43,12 +42,12 @@ wasmline {
         signingKey = file("../keys/private.key")
     }
     wasmtime {
-        directory = file(
-            System.getenv("WASMTIME_ROOT") ?: "${rootDir.parentFile.parentFile}/build/wasmline/wasmtime",
-        )
+        aotCompatibility {
+            wasmtimeVersions.set(
+                listOf(providers.gradleProperty("wasmtime.version").orElse("48.0.1").get()),
+            )
+        }
         autoDownload = true
-        version = providers.gradleProperty("wasmtime.version").orElse("48.0.1").get()
-        releaseVersion = "v${providers.gradleProperty("wasmtime.release.version").orElse("48.0.1.1").get()}"
         githubToken = providers.gradleProperty("github.token").orNull
         targets = emptyList()
     }

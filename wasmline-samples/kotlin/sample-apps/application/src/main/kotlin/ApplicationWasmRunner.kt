@@ -1,179 +1,79 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package crow.wasmline.sample.application
 
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineExecutionModel
-import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
 import crow.wasmline.link
-import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineLoadOptions
-import crow.wasmline.serialization.WasmlineSerializationConfig
+import crow.wasmline.loader.WasmlineLoader
+import crow.wasmline.loader.WasmlineTrustedKeySet
+import crow.wasmline.loader.model.SignedManifestEnvelope
+import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.loader.model.WasmlineManifestProtocol
+import crow.wasmline.loader.model.WasmlineManifestWireFormat
 import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
+import crow.wasmline.serialization.WasmlineSerializationConfig
 import java.io.File
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.time.Instant
+import kotlinx.serialization.protobuf.ProtoBuf
 
-private const val artifactFormatProperty = "wasmline.artifact.format"
-private const val artifactFormatEnvironment = "WASMLINE_ARTIFACT_FORMAT"
-private const val artifactUrlProperty = "wasmline.artifact.url"
-private const val artifactUrlEnvironment = "WASMLINE_ARTIFACT_URL"
+private const val manifestUrlProperty = "wasmline.manifest.url"
+private const val manifestUrlEnvironment = "WASMLINE_MANIFEST_URL"
+private const val bundledPackageRoot = "wasmline-package"
 
-private val bundledPluginResources = listOf(
-    "plugin.cwasm",
-    "plugin.pwasm",
-    "plugin.generated.cwasm",
-    "plugin.generated.pwasm",
-)
-
-private fun requestedBundledArtifactFormat(): String? {
-    val rawFormat = System.getProperty(artifactFormatProperty)?.ifBlank { null }
-        ?: System.getenv(artifactFormatEnvironment)?.ifBlank { null }
-        ?: return null
-    val normalized = rawFormat.lowercase()
-    return when (normalized) {
-        "pwasm", "pwasm32", "pwasm64", "cwasm" -> normalized
-        else -> error("[Application] Unsupported runtime artifact format '$rawFormat'. Expected pwasm32, pwasm64, or cwasm.")
-    }
-}
-
-private fun findBundledPluginResource(vararg candidates: String): String? {
-    val classLoader = Thread.currentThread().contextClassLoader
-    return candidates.firstOrNull { classLoader.getResource(it) != null }
-}
-
-private fun resolveBundledPluginResourceNames(): List<String> {
-    val classLoader = Thread.currentThread().contextClassLoader
-    val requestedFormat = requestedBundledArtifactFormat()
-    if (requestedFormat != null) {
-        val selected = when (requestedFormat) {
-            "pwasm", "pwasm32", "pwasm64" -> findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm")
-            "cwasm" -> findBundledPluginResource("plugin.cwasm", "plugin.generated.cwasm")
-            else -> null
-        }
-        if (selected != null) {
-            return listOf(selected)
-        }
-
-        val available = bundledPluginResources.filter { classLoader.getResource(it) != null }
-        error(
-            "[Application] Requested ${requestedFormat} bundled artifact was not found. " +
-                "Available resources: ${available.ifEmpty { listOf("<none>") }.joinToString(", ")}"
-        )
-    }
-
-    val preferredResources = listOfNotNull(
-        findBundledPluginResource("plugin.cwasm", "plugin.generated.cwasm"),
-        findBundledPluginResource("plugin.pwasm", "plugin.generated.pwasm"),
+private val sampleTrustedKeys = WasmlineTrustedKeySet.Builder()
+    .addHex(
+        algorithm = "Ed25519",
+        keyId = null,
+        publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
     )
-    if (preferredResources.isNotEmpty()) {
-        return preferredResources
-    }
-
-    error("[Application] Resource not found: ${bundledPluginResources.joinToString(" or ")}")
-}
-
-private fun resolveRemoteWlmUrl(): String? {
-    return System.getProperty(artifactUrlProperty)?.ifBlank { null }
-        ?: System.getenv(artifactUrlEnvironment)?.ifBlank { null }
-}
-
-private suspend fun loadDirectArtifact(path: String, options: WasmlineLoadOptions): WasmlineLoadResult {
-    val format = when {
-        path.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
-        path.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
-        path.endsWith(".wasm", ignoreCase = true) -> WasmlineArtifactFormat.RAW_WASM
-        else -> return WasmlineLoader.load(source = path, options = options)
-    }
-    val runtime = WasmlineRuntime.nativeInfo()
-    val requestedFormat = requestedBundledArtifactFormat()
-    val targetCpu = when (format) {
-        WasmlineArtifactFormat.CWASM -> runtime?.targetCpu
-        WasmlineArtifactFormat.PWASM -> when (requestedFormat) {
-            "pwasm32" -> "pulley32"
-            "pwasm64" -> "pulley64"
-            else -> if (runtime?.is64Bit == false) "pulley32" else "pulley64"
-        }
-        WasmlineArtifactFormat.RAW_WASM -> null
-    }
-    val targetOs = when (format) {
-        WasmlineArtifactFormat.CWASM -> runtime?.targetOs
-        WasmlineArtifactFormat.PWASM, WasmlineArtifactFormat.RAW_WASM -> null
-    }
-    return WasmlineLoader.load(
-        descriptor = WasmlineArtifactDescriptor(
-            path = path,
-            artifactFormat = format,
-            targetCpu = targetCpu,
-            targetOs = targetOs,
-            targetCompilerVersion = runtime?.wasmtimeVersion?.let { "wasmtime-$it" },
-            is64Bit = when (format) {
-                WasmlineArtifactFormat.PWASM -> when (requestedFormat) {
-                    "pwasm32" -> false
-                    "pwasm64" -> true
-                    else -> runtime?.is64Bit
-                }
-                WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.RAW_WASM -> runtime?.is64Bit
-            },
-            executionModel = WasmlineExecutionModel.CORE_WASM,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
-        ),
-        options = options,
-    )
-}
+    .build()
 
 internal suspend fun runApplicationSample() {
-    val remoteUrl = resolveRemoteWlmUrl()
-    val source: String
-    if (remoteUrl != null) {
-        println("[Application] Loading from remote WLM URL: $remoteUrl")
-        source = remoteUrl
-    } else {
-        val (resourceName, artifactFile) = extractBundledPluginArtifact()
-        println("[Application] Loading bundled artifact ($resourceName) from: ${artifactFile.absolutePath}")
-        source = artifactFile.absolutePath
-    }
-
+    val source = resolveRemoteManifestUrl() ?: extractBundledPackage().absolutePath
+    println("[Application] Loading Wasmline package: $source")
     try {
-        val options = WasmlineLoadOptions(
-            runtimeConfig = WasmlineConfig(
-                serialization = WasmlineSerializationConfig.protobuf(),
+        val result = WasmlineLoader.load(
+            source = source,
+            options = WasmlineLoadOptions(
+                runtimeConfig = WasmlineConfig(
+                    serialization = WasmlineSerializationConfig.protobuf(),
+                ),
+                networkClient = KtorNetworkClient(),
+                trustedKeys = sampleTrustedKeys,
             ),
-            networkClient = KtorNetworkClient(),
         )
-        when (
-            val result = loadDirectArtifact(source, options)
-        ) {
-            is WasmlineLoadResult.Failure -> {
-                error("[Application] Failed to load wasm: ${result.failure.message}")
-            }
-
+        when (result) {
+            is WasmlineLoadResult.Failure -> error("[Application] Failed to load Wasmline package: ${result.failure.message}")
             is WasmlineLoadResult.Success -> {
-                println("[Application] Wasm load success")
                 val module = result.wasmline
-                module.bind(object : EchoService {
-                    override fun echo() {
-                        println("[Application] Plugin invoked host echo()")
-                    }
-                })
-
-                val request = PlatformBean(
-                    platform = "Application",
-                    content = "Hello from application",
-                    timeStr = Instant.now().toString(),
-                    timeMs = System.currentTimeMillis(),
-                )
-                println("[Application] Sending request: ${toJsonString(request)}")
-
-                val response = module.link<TimeSyncService>().timeSync(request)
-                println("[Application] Plugin response: ${toJsonString(value = response)}")
-                module.close()
+                try {
+                    module.bind(object : EchoService {
+                        override fun echo() {
+                            println("[Application] Plugin invoked host echo()")
+                        }
+                    })
+                    val request = PlatformBean(
+                        platform = "Application",
+                        content = "Hello from application",
+                        timeStr = Instant.now().toString(),
+                        timeMs = System.currentTimeMillis(),
+                    )
+                    println("[Application] Sending request: ${toJsonString(request)}")
+                    val response = module.link<TimeSyncService>().timeSync(request)
+                    println("[Application] Plugin response: ${toJsonString(response)}")
+                } finally {
+                    module.close()
+                }
             }
         }
     } finally {
@@ -181,47 +81,52 @@ internal suspend fun runApplicationSample() {
     }
 }
 
-private fun copyBundledPluginArtifact(resourceName: String, targetFile: File) {
-    targetFile.parentFile?.mkdirs()
-    val stream = Thread.currentThread().contextClassLoader.getResourceAsStream(resourceName)
-        ?: error("[Application] Resource not found: $resourceName")
-    stream.use { input ->
-        targetFile.outputStream().use { output ->
-            input.copyTo(output)
+private fun resolveRemoteManifestUrl(): String? =
+    System.getProperty(manifestUrlProperty)?.takeIf(String::isNotBlank)
+        ?: System.getenv(manifestUrlEnvironment)?.takeIf(String::isNotBlank)
+
+private fun extractBundledPackage(): File {
+    val classLoader = Thread.currentThread().contextClassLoader
+    val manifestResource = "$bundledPackageRoot/manifest.wlm"
+    val manifestBytes = classLoader.getResourceAsStream(manifestResource)?.use { it.readBytes() }
+        ?: error("[Application] Resource not found: $manifestResource")
+    val envelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
+    require(envelope.formatVersion == WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION) {
+        "[Application] Unsupported bundled manifest format ${envelope.formatVersion}."
+    }
+    val manifest = ProtoBuf.decodeFromByteArray(WasmlineManifest.serializer(), envelope.payload)
+    val packageDirectory = kotlin.io.path.createTempDirectory("wasmline_application_package_").toFile()
+    val paths = buildList {
+        add("manifest.wlm")
+        manifest.artifactTargets.forEach { target ->
+            target.variants.mapTo(this) { variant ->
+                WasmlineManifestProtocol.artifactRelativePath(variant.sha256, target.format)
+            }
         }
+    }.distinct()
+    paths.forEach { relativePath ->
+        val safePath = requireSafeRelativePath(relativePath)
+        val target = File(packageDirectory, safePath)
+        target.parentFile?.mkdirs()
+        val resource = "$bundledPackageRoot/$safePath"
+        classLoader.getResourceAsStream(resource)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        } ?: error("[Application] Resource not found: $resource")
+        target.deleteOnExit()
     }
+    packageDirectory.deleteOnExit()
+    return File(packageDirectory, "manifest.wlm")
 }
 
-private fun extractBundledPluginArtifact(resourceName: String): File {
-    val suffix = "." + resourceName.substringAfterLast('.', missingDelimiterValue = "bin")
-    val prefix = "wasmline_application_plugin_${resourceName.substringAfterLast('.', missingDelimiterValue = "bin")}_"
-    val tempFile = File.createTempFile(prefix, suffix)
-    tempFile.deleteOnExit()
-    copyBundledPluginArtifact(resourceName, tempFile)
-    return tempFile
-}
-
-private fun extractBundledPluginArtifact(): Pair<String, File> {
-    val resourceNames = resolveBundledPluginResourceNames()
-    if (resourceNames.size == 1) {
-        val resourceName = resourceNames.single()
-        return resourceName to extractBundledPluginArtifact(resourceName)
-    }
-
-    val markerFile = File.createTempFile("wasmline_application_plugin_bundle_", ".tmp")
-    val parentDir = markerFile.parentFile
-    val baseName = markerFile.name.removeSuffix(".tmp")
-    markerFile.delete()
-
-    val extractedFiles = linkedMapOf<String, File>()
-    for (resourceName in resourceNames) {
-        val suffix = "." + resourceName.substringAfterLast('.', missingDelimiterValue = "bin")
-        val targetFile = File(parentDir, baseName + suffix)
-        targetFile.deleteOnExit()
-        copyBundledPluginArtifact(resourceName, targetFile)
-        extractedFiles[resourceName] = targetFile
-    }
-
-    val primaryResourceName = resourceNames.first()
-    return primaryResourceName to checkNotNull(extractedFiles[primaryResourceName])
+private fun requireSafeRelativePath(value: String): String {
+    val normalized: Path = Paths.get(value).normalize()
+    val safePath = normalized.toString().replace(File.separatorChar, '/')
+    require(
+        value.isNotBlank() &&
+            !normalized.isAbsolute &&
+            !normalized.startsWith("..") &&
+            safePath != "." &&
+            safePath == value,
+    ) { "[Application] Invalid package path: $value" }
+    return safePath
 }

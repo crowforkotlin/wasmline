@@ -1,9 +1,9 @@
 package crow.wasmline.plugin.core.component
 
 import crow.wasmline.WasmlineComponentServiceContract
+import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineTypedComponentContract
-import crow.wasmline.loader.model.WasmlineArtifactType
 import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import java.io.File
@@ -35,11 +35,13 @@ class ComponentPipelineTest {
         assertEquals(listOf("version", "embed", "new", "validate", "inspect"), tools.operations)
         assertTrue(result.componentWasm.isFile)
         assertTrue(result.inspectedWit?.isFile == true)
-        assertEquals(WasmlineArtifactType.COMPONENT_WASM, result.toArtifact().type)
-        assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, result.invocationProtocol)
-        assertEquals(null, result.toArtifact().exportName)
-        assertEquals("test:plugin", result.toArtifact().contractMetadata[WasmlineTypedComponentContract.METADATA_WIT_PACKAGE])
-        assertEquals(null, result.toArtifact().contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC])
+        val record = ComponentBuildRecords.write(result, File(root, "output/${ComponentBuildRecords.FILE_NAME}"))
+        val contract = record.runtimeContract()
+        assertEquals(WasmlineExecutionModel.COMPONENT_MODEL, contract.executionModel)
+        assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, contract.invocationProtocol)
+        assertEquals(null, contract.exportName)
+        assertEquals("test:plugin", contract.contractMetadata[WasmlineTypedComponentContract.METADATA_WIT_PACKAGE])
+        assertEquals(null, contract.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC])
     }
 
     @Test
@@ -78,12 +80,14 @@ class ComponentPipelineTest {
             ),
         )
 
-        val artifact = result.toArtifact()
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_SERVICE, artifact.invocationProtocol)
-        assertEquals(WasmlineComponentServiceContract.DEFAULT_EXPORT, artifact.exportName)
+        val contract = ComponentBuildRecords
+            .write(result, File(root, "output/${ComponentBuildRecords.FILE_NAME}"))
+            .runtimeContract()
+        assertEquals(WasmlineInvocationProtocol.WASMLINE_SERVICE, contract.invocationProtocol)
+        assertEquals(WasmlineComponentServiceContract.DEFAULT_EXPORT, contract.exportName)
         assertEquals(
             WasmlineComponentServiceContract.DEFAULT_CODEC,
-            artifact.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC],
+            contract.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC],
         )
     }
 

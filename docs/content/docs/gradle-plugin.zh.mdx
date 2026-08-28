@@ -1,32 +1,108 @@
 ---
 title: Gradle 插件
-description: 构建、服务、工具链、签名与 Component 流水线任务
+description: 配置多兼容档案 AOT 构建、签名、打包与 Component 工具
 createdAt: 2026-08-15
-updatedAt: 2026-08-17
+updatedAt: 2026-08-28
 ---
 
 # Gradle 插件
 
-`crow.wasmline` 插件会为声明 `wasmWasi` 目标的 Kotlin Multiplatform 模块注册构件任务。
+`crow.wasmline` 插件会为声明 `wasmWasi` 目标的 Kotlin Multiplatform
+模块注册 package 任务。Gradle 与 CLI 共用 plugin-core 中的 AOT catalog、
+compiler resolver、target 聚合器、签名器和打包器。
+
+## AOT 配置
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    manifest {
+        pluginId = "com.example.plugin"
+        version = "1.0.0"
+        buildTimestamp = 0L
+        signingKey = file("keys/ed25519_private.key")
+    }
+    wasmtime {
+        aotCompatibility {
+            wasmtimeVersions.set(listOf("48.0.1"))
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+`wasmtimeVersions` 接受完整 Wasmtime `x.y.z`，并可配置多个版本。同一版本、
+同一 backend 存在多个 profile 时，使用 `profileIds` 配置精确的
+`sha256:<digest>` ID。两个 selector 都未配置时，请求的 Cranelift 与 Pulley
+target 使用 catalog 中当前发行版的默认 profile。
+
+`targets` 只控制物理输出。Pulley target 为 `pulley32` 与 `pulley64`；native
+Cranelift target 同时包含操作系统和架构。iOS 必须使用 `pulley64`，32 位
+Android 必须使用 `pulley32`。
+
+Compiler archive 从生成的 AOT compatibility lock 解析，并按 archive digest
+缓存在 `~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/` 下。
+`autoDownload` 只允许下载缺失的锁定资产，不允许任意 compiler executable
+或未经校验的本地目录。
+
+## Raw Export ABI
+
+`CORE_WASM + RAW_EXPORT` package 通过强类型 `manifest.rawAbi` 属性声明数值
+ABI。该元数据写入签名后的 runtime contract，由 native 与 Web Loader 共用。
+
+```kotlin
+import crow.wasmline.RawAbiMetadata
+import crow.wasmline.RawExport
+import crow.wasmline.RawExportKind
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+
+wasmline {
+    manifest {
+        executionModel = WasmlineExecutionModel.CORE_WASM
+        invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT
+        exportName = "add_i32"
+        rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport(
+                    name = "add_i32",
+                    kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+        )
+    }
+}
+```
+
+不要在 `contractMetadata` 中编码参数或返回值类型。AOT 任务会先规范化
+`rawAbi`，再将其写入 cache input 与 build record。
 
 ## 构建与服务
 
 ```bash
-# 本地验证包
 ./gradlew wasmlineAssembleDebug
-
-# 发行包
 ./gradlew wasmlineAssembleRelease
-
-# 构建并提供选定的构件
 ./gradlew wasmlineServerDeploy
 ```
 
-构件目录为 `build/wasmline/output/{pluginId}-{version}/`，发行压缩包为 `build/wasmline/dist/{pluginId}-{version}.zip`。
+多模块构建需要增加模块路径，例如
+`./gradlew :plugin:wasmlineAssembleRelease`。
 
-多模块项目需要增加模块路径，例如 `./gradlew :plugin:wasmlineAssembleRelease`。
-
-## 服务配置
+两个 assemble 任务都只生成一个签名 manifest，用于描述全部已选择 profile
+与 target。Core Web `.wasm` 只保存一次。Package 目录为
+`build/wasmline/output/{pluginId}-{version}/`，完整离线 archive 为
+`build/wasmline/dist/{pluginId}-{version}.zip`。
 
 ```kotlin
 import crow.wasmline.gradle.WasmlineBuildVariant
@@ -40,44 +116,41 @@ wasmline {
 }
 ```
 
-`deployVariant` 默认为 `WasmlineBuildVariant.DEBUG`。`wasmlineServerDeploy` 会构建选定的构件，并持续提供其中的文件，直到任务停止。
+`deployVariant` 默认为 `DEBUG`。Server 会构建选中的 package，并持续提供其中
+的内容寻址文件，直到任务停止。
 
-本页列出插件定义的全部 15 个面向用户的任务。
-
-## 工具链与签名任务
-
-| 任务 | 用途 |
-|---|---|
-| `checkWasmlineToolchain` | 检查 Core Wasm 打包使用的精简 Wasmtime 工具链 |
-| `wasmlineDownloadWasmtime` | 下载精简 Wasmtime 工具链 |
-| `wasmlineDownloadWasmtimeCompiler` | 下载 Component AOT 编译使用的精简 Cranelift CLI |
-| `wasmlineDownloadComponentTools` | 下载 `wit-bindgen`、`wasm-tools` 和 WASI Preview 1 adapter |
-| `generateWasmlineManifestKeyPairEd25519` | 生成 Ed25519 清单签名密钥对 |
-| `generateWasmlineManifestKeyPairEcdsaP256` | 生成 ECDSA P-256 清单签名密钥对 |
-
-## Component 流水线任务
-
-四个 Componentize 和 AOT 任务会随 `wasmWasi` 目标注册，仅在 Component 构建中接入 assemble 任务。未设置 `componentInput` 的 Component 构建会注册 `wasmlineGenerateWitBindings`。`hostBindingsEnabled = true` 时会注册 `wasmlineGenerateHostWitBindings`。直接执行仅用于检查单个流水线阶段。
+## 注册任务
 
 | 任务 | 用途 |
 |---|---|
-| `wasmlineGenerateWitBindings` | 根据 WIT 生成 Kotlin guest binding |
-| `wasmlineGenerateHostWitBindings` | 启用 host binding 时，根据 WIT 生成 Kotlin host facade |
-| `wasmlineComponentizeDebug` | 创建或校验 Debug Component |
-| `wasmlineComponentizeRelease` | 创建或校验 Release Component |
-| `wasmlineComponentAotDebug` | 将 Debug Component 编译为已配置目标的 CWASM 和 PWASM |
-| `wasmlineComponentAotRelease` | 将 Release Component 编译为已配置目标的 CWASM 和 PWASM |
+| `wasmlineAotBuildDebug` | 构建 Debug profile 与兼容 target 矩阵 |
+| `wasmlineAotBuildRelease` | 构建 Release profile 与兼容 target 矩阵 |
+| `wasmlineAssembleDebug` | 签名并发布 Debug 目录和离线 ZIP |
+| `wasmlineAssembleRelease` | 签名并发布 Release 目录和离线 ZIP |
+| `wasmlineServerDeploy` | 构建并提供所选 package 目录 |
+| `generateWasmlineManifestKeyPairEd25519` | 生成当前 manifest 格式唯一接受的密钥类型 |
+| `wasmlineDownloadComponentTools` | 下载锁定的 `wit-bindgen`、`wasm-tools` 和 WASI adapter |
+| `wasmlineComponentizeDebug` | 创建或校验 Debug Component AOT 输入 |
+| `wasmlineComponentizeRelease` | 创建或校验 Release Component AOT 输入 |
+| `wasmlineGenerateWitBindings` | Component 构建未提供直接 component input 时生成 guest binding |
+| `wasmlineGenerateHostWitBindings` | 启用 host binding 时生成 host facade |
 
-`wasmlineAssembleDebug` 和 `wasmlineAssembleRelease` 会自动执行所需的编译、工具下载、binding 生成、Component 转换、AOT、清单、签名和打包步骤。
+AOT 任务只会在允许时下载缺失的 compiler asset。插件不再提供独立的
+Wasmtime download/check 任务。Component raw Wasm 是中间输入，不作为浏览器
+artifact 发布。
 
-缓存与下载配置参见 [Wasmtime 工具链](/zh/docs/wasmtime-download)。
+## 事务与可复现性
+
+签名开始前必须完成整个 AOT 矩阵。编译、摘要校验、签名或 ZIP 替换失败时，
+上一次 package 目录与离线 ZIP 都保持不变。需要可复现字节时，应显式设置
+`manifest.buildTimestamp`，通常可从 `SOURCE_DATE_EPOCH` 取得。
 
 ## API 文档
 
-在仓库根目录执行以下命令，生成聚合的 Kotlin API 参考：
+在仓库根目录执行：
 
 ```bash
 ./wasmline-multiplatform/gradlew -p wasmline-multiplatform dokkaGenerate
 ```
 
-HTML 输出位于 `wasmline-multiplatform/build/dokka/html/`，仅包含面向用户的公开声明，不包含内部实现包。已发布的 Kotlin 模块也会在 `javadoc.jar` 中包含 Dokka HTML 文档。
+输出位于 `wasmline-multiplatform/build/dokka/html/`。

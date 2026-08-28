@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "wasmline/api/NativeRuntimeIdentity.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,26 +23,8 @@ bool wasmline_warmup_engine(bool usePulley);
 /** Releases the global engine and cached runtime state. */
 void wasmline_release_engine();
 
-/** Returns the exact linked Wasmtime version. */
-const char* wasmline_wasmtime_version();
-
-/** Returns whether the linked runtime supports Cranelift artifacts. */
-bool wasmline_supports_cranelift();
-
-/** Returns whether the linked runtime supports Pulley artifacts. */
-bool wasmline_supports_pulley();
-
 /** Forces the selected Native engine archive into the final link. */
 void wasmline_native_engine_link_anchor();
-
-/** Returns the operating system of the linked Native runtime. */
-const char* wasmline_target_os();
-
-/** Returns the CPU of the linked Native runtime. */
-const char* wasmline_target_cpu();
-
-/** Returns whether the linked Native runtime is 64-bit. */
-bool wasmline_target_is_64_bit();
 
 /** Returns whether a host filesystem path exists. */
 bool wasmline_path_exists(const char* path);

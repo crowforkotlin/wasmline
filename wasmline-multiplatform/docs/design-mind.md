@@ -183,7 +183,11 @@ WIT and guest source
   -> signed manifest and package
 ```
 
-The raw Component is an intermediate build result, not a native runtime artifact. Component AOT compilation uses the fork's `cranelift-min` CLI by default, accepts compile-capable full CLIs as fallbacks, verifies the exact Wasmtime version and `compile` capability, and rejects iOS CWASM targets in favor of `pulley64`.
+The raw Component is an intermediate build result, not a native runtime
+artifact. Component AOT compilation resolves immutable backend-specific
+profiles and digest-locked compiler assets from the shared catalog. It rejects
+iOS CWASM targets in favor of `pulley64` and does not accept arbitrary compiler
+executables.
 
 ### Runtime
 

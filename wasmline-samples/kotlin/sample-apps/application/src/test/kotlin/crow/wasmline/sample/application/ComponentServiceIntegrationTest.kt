@@ -1,18 +1,14 @@
 package crow.wasmline.sample.application
 
 import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineConfig
-import crow.wasmline.WasmlineExecutionModel
-import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.sample.component.ComponentEchoRequest
 import crow.wasmline.sample.component.ComponentHostService
 import crow.wasmline.sample.component.ComponentPluginService
@@ -38,26 +34,15 @@ class ComponentServiceIntegrationTest {
     }
 
     @Test
-    fun cwasmUsesGeneratedLinkBindInBothDirections() = runTest {
-        verifyGeneratedServiceRoundTrip(
-            artifact = File(requireNotNull(System.getProperty(CWASM_PROPERTY))),
-            format = WasmlineArtifactFormat.CWASM,
-        )
-    }
-
-    @Test
-    fun pwasmUsesGeneratedLinkBindInBothDirections() = runTest {
-        verifyGeneratedServiceRoundTrip(
-            artifact = File(requireNotNull(System.getProperty(PWASM_PROPERTY))),
-            format = WasmlineArtifactFormat.PWASM,
-        )
+    fun manifestSelectsCompatibleArtifactForGeneratedLinkBind() = runTest {
+        verifyGeneratedServiceRoundTrip(manifestFile())
     }
 
     @Test
     fun initializationAndRouterStateAreInstanceScoped() = runTest {
-        val artifact = File(requireNotNull(System.getProperty(CWASM_PROPERTY)))
-        val first = loadComponent(artifact, WasmlineArtifactFormat.CWASM)
-        val second = loadComponent(artifact, WasmlineArtifactFormat.CWASM)
+        val manifest = manifestFile()
+        val first = loadComponent(manifest)
+        val second = loadComponent(manifest)
         try {
             val firstService = first.link<ComponentPluginService>()
             val secondService = second.link<ComponentPluginService>()
@@ -71,9 +56,9 @@ class ComponentServiceIntegrationTest {
         }
     }
 
-    private suspend fun verifyGeneratedServiceRoundTrip(artifact: File, format: WasmlineArtifactFormat) {
-        assertTrue(artifact.isFile, "Missing Wasmline Service fixture: ${artifact.absolutePath}")
-        val plugin = loadComponent(artifact, format)
+    private suspend fun verifyGeneratedServiceRoundTrip(manifest: File) {
+        assertTrue(manifest.isFile, "Missing Wasmline Service manifest: ${manifest.absolutePath}")
+        val plugin = loadComponent(manifest)
         try {
             var callbacks = 0
             plugin.bind(
@@ -96,37 +81,28 @@ class ComponentServiceIntegrationTest {
         }
     }
 
-    private suspend fun loadComponent(artifact: File, format: WasmlineArtifactFormat): Wasmline {
-        val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
-        val descriptor = WasmlineArtifactDescriptor(
-            path = artifact.absolutePath,
-            artifactFormat = format,
-            targetCpu = if (format == WasmlineArtifactFormat.PWASM) "pulley64" else runtime.targetCpu,
-            targetOs = if (format == WasmlineArtifactFormat.PWASM) null else runtime.targetOs,
-            targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-            is64Bit = true,
-            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
-            exportName = WasmlineComponentServiceContract.DEFAULT_EXPORT,
-            contractMetadata = mapOf(
-                WasmlineComponentServiceContract.METADATA_PROFILE to WasmlineComponentServiceContract.PROFILE,
-                WasmlineComponentServiceContract.METADATA_WIT_PACKAGE to WasmlineComponentServiceContract.WIT_PACKAGE,
-                WasmlineComponentServiceContract.METADATA_CODEC to WasmlineComponentServiceContract.DEFAULT_CODEC,
-                WasmlineComponentServiceContract.METADATA_VERSION to WasmlineComponentServiceContract.VERSION,
-            ),
-        )
+    private suspend fun loadComponent(manifest: File): Wasmline {
         val result = WasmlineLoader.load(
-            descriptor = descriptor,
+            source = manifest.absolutePath,
             options = WasmlineLoadOptions(
                 runtimeConfig = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
+                trustedKeys = trustedKeys,
             ),
         )
         return (result as? WasmlineLoadResult.Success)?.wasmline
             ?: error("Unable to load Wasmline Service fixture: $result")
     }
 
+    private fun manifestFile(): File = File(requireNotNull(System.getProperty(MANIFEST_PROPERTY)))
+
     private companion object {
-        const val CWASM_PROPERTY = "wasmline.test.componentService.cwasm"
-        const val PWASM_PROPERTY = "wasmline.test.componentService.pwasm"
+        const val MANIFEST_PROPERTY = "wasmline.test.componentService.manifest"
+        val trustedKeys = WasmlineTrustedKeySet.Builder()
+            .addHex(
+                algorithm = "Ed25519",
+                keyId = null,
+                publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+            )
+            .build()
     }
 }

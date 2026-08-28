@@ -6,11 +6,11 @@ internal actual val currentHostArtifactTarget: WasmlineHostArtifactTarget
     get() {
         val runtimeInfo = WasmlineRuntime.nativeInfo()
         return WasmlineHostArtifactTarget(
-            os = normalizeHostOs(System.getProperty("os.name")),
-            cpu = normalizeHostCpu(System.getProperty("os.arch")),
-            is64Bit = is64BitArch(System.getProperty("os.arch")),
-            nativeBackend = runtimeInfo?.backend,
-            wasmtimeVersion = runtimeInfo?.wasmtimeVersion,
+            operatingSystem = runtimeInfo?.operatingSystem ?: normalizeHostOs(System.getProperty("os.name")),
+            architecture = runtimeInfo?.architecture ?: normalizeHostCpu(System.getProperty("os.arch")),
+            pointerWidth = runtimeInfo?.pointerWidth ?: pointerWidth(System.getProperty("os.arch")),
+            supportedArtifactFormats = runtimeInfo?.supportedArtifactFormats ?: emptySet(),
+            nativeRuntimeInfo = runtimeInfo,
         )
     }
 
@@ -31,7 +31,7 @@ private fun normalizeHostCpu(arch: String?): String = when (arch?.lowercase()) {
     else -> arch?.lowercase() ?: "unknown"
 }
 
-private fun is64BitArch(arch: String?): Boolean {
-    val value = arch?.lowercase() ?: return true
-    return "64" in value || "aarch64" in value || "arm64" in value
+private fun pointerWidth(arch: String?): Int {
+    val value = arch?.lowercase() ?: return 64
+    return if ("64" in value || "aarch64" in value || "arm64" in value) 64 else 32
 }

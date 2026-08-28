@@ -16,6 +16,7 @@
 
 #include "wasmline/invocation/InvocationResult.h"
 #include "wasmline/invocation/RawWasmTypes.h"
+#include "wasmline/api/NativeRuntimeIdentity.h"
 #include "wasmline/runtime/WasmlineArtifactFormat.h"
 
 namespace wasmline {
@@ -33,14 +34,8 @@ namespace wasmline {
         /** Initializes the selected engine without invalidating loaded artifacts. */
         static bool warmupEngine(bool usePulley);
 
-        /** Returns the exact linked Wasmtime version. */
-        static const char* wasmtimeVersion();
-
-        /** Returns whether the linked runtime supports Cranelift artifacts. */
-        static bool supportsCranelift();
-
-        /** Returns whether the linked runtime supports Pulley artifacts. */
-        static bool supportsPulley();
+        /** Returns the immutable native runtime identity. */
+        static const WasmlineNativeRuntimeIdentity& nativeRuntimeIdentity();
 
         /** Releases the global engine, artifacts, and sessions. */
         static void releaseEngine();

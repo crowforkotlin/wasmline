@@ -3,25 +3,24 @@ package crow.wasmline.loader.internal
 import okio.FileSystem
 import okio.Path.Companion.toPath
 
-/**
- * Native filesystem operations shared by Kotlin/Native host targets.
- *
- * Author: crowforkotlin
- * Date: 2026-08-19
- */
+/** Returns whether [path] exists on a Kotlin/Native host filesystem. */
 internal actual fun hostPathExists(path: String): Boolean = runCatching {
     FileSystem.SYSTEM.exists(path.toPath())
 }.getOrDefault(false)
+
+internal actual fun hostFileSize(path: String): Long? = runCatching {
+    FileSystem.SYSTEM.metadataOrNull(path.toPath())?.takeIf { it.isRegularFile }?.size
+}.getOrNull()
 
 internal actual fun readHostFileBytes(path: String): ByteArray? = runCatching {
     FileSystem.SYSTEM.read(path.toPath()) { readByteArray() }
 }.getOrNull()
 
-internal actual fun resolveHostArtifactPath(manifestPath: String, artifactUrl: String): String {
-    val normalizedUrl = artifactUrl.replace('\\', '/')
-    if (normalizedUrl.startsWith('/') || WINDOWS_ABSOLUTE_PATH.matches(normalizedUrl)) return artifactUrl
+internal actual fun resolveHostArtifactPath(manifestPath: String, artifactRelativePath: String): String {
+    val normalizedPath = artifactRelativePath.replace('\\', '/')
+    if (normalizedPath.startsWith('/') || WINDOWS_ABSOLUTE_PATH.matches(normalizedPath)) return artifactRelativePath
     val manifestDirectory = manifestPath.replace('\\', '/').substringBeforeLast('/', "")
-    return if (manifestDirectory.isEmpty()) artifactUrl else "$manifestDirectory/$artifactUrl"
+    return if (manifestDirectory.isEmpty()) artifactRelativePath else "$manifestDirectory/$artifactRelativePath"
 }
 
 internal actual fun writeHostFileBytes(path: String, bytes: ByteArray): Boolean = runCatching {

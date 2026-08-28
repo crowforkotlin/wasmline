@@ -12,8 +12,7 @@ import crow.wasmline.loader.WasmlineNoOpCache
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
 import crow.wasmline.loader.model.SignedManifestEnvelope
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineManifestProtocol
 import crow.wasmline.loader.network.WasmlineNetworkClient
 import crow.wasmline.loader.toDescriptor
 import kotlinx.coroutines.CancellationException
@@ -23,16 +22,29 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
+import okio.Buffer
 import okio.ByteString.Companion.toByteString
+import okio.HashingSink
+import okio.buffer
 
-/** Built-in remote manifest, artifact verification, and cache pipeline. */
+/**
+ * Resolves remote signed manifests and one selected content-addressed artifact.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 internal object WasmlineRemotePackageResolution {
-    private const val P = "[WasmlineRemotePackageResolution]"
+    private const val P: String = "[WasmlineRemotePackageResolution]"
 
     private val artifactLocksGuard = Mutex()
     private val artifactLocks = mutableMapOf<String, ArtifactLockEntry>()
 
-    suspend fun resolve(source: WasmlineSource.RemoteManifestUrl, request: WasmlineLoadRequest): WasmlineSourceResolution {
+    /** Resolves a remote package without downloading unselected artifact variants. */
+    suspend fun resolve(
+        source: WasmlineSource.RemoteManifestUrl,
+        request: WasmlineLoadRequest,
+        host: WasmlineHostArtifactTarget? = null,
+    ): WasmlineSourceResolution {
         val options = request.options
         val networkClient = options.networkClient
         val defaultFileCache = defaultFileCacheOrNull(options.maxCacheBytes)
@@ -42,14 +54,23 @@ internal object WasmlineRemotePackageResolution {
 
         val manifestCacheKey = "manifest_${sha256Hex(manifestUrl.encodeToByteArray())}"
         val manifestTimestampKey = "$manifestCacheKey.timestamp"
-        val manifestBytes = resolveManifestCached(
-            cache = cache,
-            manifestCacheKey = manifestCacheKey,
-            manifestTimestampKey = manifestTimestampKey,
-            manifestTtlMs = options.manifestTtlMs,
-            networkClient = networkClient,
-            manifestUrl = manifestUrl,
-        ) ?: return if (networkClient == null) {
+        val manifestBytes = try {
+            resolveManifestCached(
+                cache = cache,
+                manifestCacheKey = manifestCacheKey,
+                manifestTimestampKey = manifestTimestampKey,
+                manifestTtlMs = options.manifestTtlMs,
+                maxManifestBytes = options.manifestLimits.maxManifestBytes,
+                networkClient = networkClient,
+                manifestUrl = manifestUrl,
+            )
+        } catch (_: ManifestSizeLimitException) {
+            return failure(
+                "Manifest '$manifestUrl' exceeds the configured manifest byte limit.",
+                WasmlineLoadStage.MANIFEST_DECODING,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
+        } ?: return if (networkClient == null) {
             failure(
                 "Manifest '$manifestUrl' is not available in a fresh cache entry. " +
                     "Provide request.options.networkClient or request.resolvers.remotePackage.",
@@ -63,6 +84,13 @@ internal object WasmlineRemotePackageResolution {
                 WasmlineErrorCode.ARTIFACT_DOWNLOAD_FAILED,
             )
         }
+        if (manifestBytes.size > options.manifestLimits.maxManifestBytes) {
+            return failure(
+                "Manifest '$manifestUrl' exceeds the configured manifest byte limit.",
+                WasmlineLoadStage.MANIFEST_DECODING,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
+        }
 
         val envelope = try {
             ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifestBytes)
@@ -73,57 +101,61 @@ internal object WasmlineRemotePackageResolution {
                 WasmlineErrorCode.MANIFEST_INVALID,
             )
         }
-
         val manifest = when (
             val verification = WasmlinePackageSignatureVerifier.verify(
                 envelope = envelope,
                 trustedKeys = options.trustedKeys,
                 packageLocation = manifestUrl,
+                limits = options.manifestLimits,
             )
         ) {
             is WasmlineManifestVerification.Verified -> verification.manifest
 
             is WasmlineManifestVerification.Rejected -> return failure(
                 verification.cause,
-                WasmlineLoadStage.SIGNATURE_VERIFICATION,
-                WasmlineErrorCode.SIGNATURE_VERIFICATION_FAILED,
+                verification.stage,
+                verification.code,
             )
         }
+        val resolvedHost = host ?: currentHostArtifactTarget
+        val selected = when (val selection = WasmlineArtifactSelector.select(manifest, resolvedHost)) {
+            is WasmlineArtifactSelection.Selected -> selection
 
-        val artifact = WasmlineLocalPackageResolution.selectArtifact(manifest.artifacts)
-            ?: return failure(
-                "No compatible artifact found in remote package '$manifestUrl' " +
-                    "for host ${describe(currentHostArtifactTarget)}.",
+            is WasmlineArtifactSelection.Invalid -> return failure(
+                selection.cause,
+                WasmlineLoadStage.ARTIFACT_SELECTION,
+                WasmlineErrorCode.MANIFEST_INVALID,
+            )
+
+            WasmlineArtifactSelection.NotCompatible -> return failure(
+                "No compatible artifact found in remote package '$manifestUrl' for host " +
+                    describe(resolvedHost) + ".",
                 WasmlineLoadStage.ARTIFACT_SELECTION,
                 WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE,
             )
-        val pendingDescriptor = artifact.toDescriptor(path = "pending")
-        pendingDescriptor.validationError()?.let {
+        }
+
+        val variant = selected.variant
+        if (variant.sizeBytes > options.maxArtifactBytes) {
             return failure(
-                "Invalid artifact descriptor for '${artifact.url}': $it",
+                "Selected artifact '${variant.sha256}' exceeds the configured artifact byte limit.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+            )
+        }
+        val relativePath = WasmlineManifestProtocol.artifactRelativePath(variant.sha256, selected.target.format)
+        val pendingDescriptor = selected.toDescriptor("pending", manifest.runtimeContract)
+        pendingDescriptor.validationError()?.let { cause ->
+            return failure(
+                "Invalid selected artifact descriptor for '$relativePath': $cause",
                 WasmlineLoadStage.ARTIFACT_VALIDATION,
                 WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
             )
         }
-        if (artifact.sha256.isBlank()) {
-            return failure(
-                "Artifact '${artifact.url}' from '$manifestUrl' is missing sha256 metadata.",
-                WasmlineLoadStage.ARTIFACT_VALIDATION,
-                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
-            )
-        }
-        if (!sha256Pattern.matches(artifact.sha256)) {
-            return failure(
-                "Artifact '${artifact.url}' from '$manifestUrl' has invalid sha256 metadata.",
-                WasmlineLoadStage.ARTIFACT_VALIDATION,
-                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
-            )
-        }
 
-        val artifactUrl = resolveArtifactUrl(manifestUrl, artifact.url)
-        val expectedSha256 = artifact.sha256.lowercase()
-        val artifactCacheKey = "artifact_$expectedSha256"
-        val extension = artifactExtension(artifact.type)
+        val artifactUrl = resolveContentAddressedUrl(manifestUrl, relativePath)
+        val artifactCacheKey = "artifact_${variant.sha256}"
+        val extension = ".${WasmlineManifestProtocol.artifactExtension(selected.target.format)}"
         val resolution = withArtifactLock("$artifactCacheKey$extension") {
             resolveArtifactFile(
                 cache = cache,
@@ -132,7 +164,9 @@ internal object WasmlineRemotePackageResolution {
                 extension = extension,
                 networkClient = networkClient,
                 artifactUrl = artifactUrl,
-                expectedSha256 = expectedSha256,
+                expectedSha256 = variant.sha256,
+                expectedSizeBytes = variant.sizeBytes,
+                maxArtifactBytes = options.maxArtifactBytes,
             )
         }
         val localPath = when (resolution) {
@@ -143,9 +177,15 @@ internal object WasmlineRemotePackageResolution {
             }
 
             is ArtifactFileResolution.HashMismatch -> return failure(
-                "Artifact '${artifact.url}' from '$artifactUrl' failed sha256 verification. " +
-                    "Expected $expectedSha256, actual ${resolution.actualSha256}.",
-                WasmlineLoadStage.SIGNATURE_VERIFICATION,
+                "Artifact '$relativePath' failed SHA-256 verification. " +
+                    "Expected ${variant.sha256}, actual ${resolution.actualSha256}.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
+                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+            )
+
+            is ArtifactFileResolution.SizeMismatch -> return failure(
+                "Artifact '$relativePath' has size ${resolution.actualSizeBytes}, expected ${variant.sizeBytes} bytes.",
+                WasmlineLoadStage.ARTIFACT_VALIDATION,
                 WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
             )
 
@@ -179,9 +219,7 @@ internal object WasmlineRemotePackageResolution {
         }
 
         return WasmlineSourceResolution.ContinueWith(
-            VerifiedPackageArtifact(
-                descriptor = artifact.toDescriptor(localPath),
-            ),
+            VerifiedPackageArtifact(selected.toDescriptor(localPath, manifest.runtimeContract)),
         )
     }
 
@@ -190,6 +228,7 @@ internal object WasmlineRemotePackageResolution {
         manifestCacheKey: String,
         manifestTimestampKey: String,
         manifestTtlMs: Long,
+        maxManifestBytes: Int,
         networkClient: WasmlineNetworkClient?,
         manifestUrl: String,
     ): ByteArray? {
@@ -202,14 +241,10 @@ internal object WasmlineRemotePackageResolution {
                 log?.debug("$P Manifest cache hit: $manifestCacheKey")
                 return cached
             }
-            if (cached != null) {
-                log?.debug("$P Manifest cache expired or has no timestamp: $manifestCacheKey")
-            }
         }
-
         if (networkClient == null) return null
         log?.debug("$P Manifest cache miss, fetching: $manifestUrl")
-        val bytes = fetchBytes(networkClient, manifestUrl) ?: return null
+        val bytes = fetchBytes(networkClient, manifestUrl, maxManifestBytes) ?: return null
         cache?.put(manifestCacheKey, bytes)
         cache?.put(manifestTimestampKey, currentTimeMs().toString().encodeToByteArray())
         return bytes
@@ -223,66 +258,179 @@ internal object WasmlineRemotePackageResolution {
         networkClient: WasmlineNetworkClient?,
         artifactUrl: String,
         expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
     ): ArtifactFileResolution {
         if (cache is WasmlineFileCache) {
             return cache.resolveArtifact(
                 key = cacheKey,
                 extension = extension,
                 expectedSha256 = expectedSha256,
+                expectedSizeBytes = expectedSizeBytes,
+                maxArtifactBytes = maxArtifactBytes,
                 networkClient = networkClient,
                 artifactUrl = artifactUrl,
             )
         }
+        if (cache != null && cache !== WasmlineNoOpCache) {
+            when (
+                val customCached = resolveCustomCachedArtifact(
+                    cache = cache,
+                    cacheKey = cacheKey,
+                    extension = extension,
+                    defaultFileCache = defaultFileCache,
+                    platformCacheKey = artifactUrl,
+                    expectedSha256 = expectedSha256,
+                    expectedSizeBytes = expectedSizeBytes,
+                    maxArtifactBytes = maxArtifactBytes,
+                )
+            ) {
+                is ArtifactFileResolution.Ready -> return customCached
 
-        val stagingCache = defaultFileCache
-            ?: return ArtifactFileResolution.WriteFailure(
-                IllegalStateException("The platform default cache directory is unavailable."),
+                is ArtifactFileResolution.HashMismatch,
+                is ArtifactFileResolution.SizeMismatch,
+                -> if (networkClient == null) return customCached
+
+                is ArtifactFileResolution.WriteFailure -> if (networkClient == null) return customCached
+
+                is ArtifactFileResolution.HttpFailure,
+                ArtifactFileResolution.Missing,
+                null,
+                -> Unit
+            }
+        }
+        if (defaultFileCache == null) {
+            return resolvePlatformCachedArtifact(
+                cache = cache,
+                cacheKey = cacheKey,
+                networkClient = networkClient,
+                artifactUrl = artifactUrl,
+                expectedSha256 = expectedSha256,
+                expectedSizeBytes = expectedSizeBytes,
+                maxArtifactBytes = maxArtifactBytes,
             )
-
+        }
+        val stagingCache = defaultFileCache
         if (cache === WasmlineNoOpCache || cache == null) {
             if (networkClient == null) return ArtifactFileResolution.Missing
             return stagingCache.downloadArtifact(
                 key = cacheKey,
                 extension = extension,
                 expectedSha256 = expectedSha256,
+                expectedSizeBytes = expectedSizeBytes,
+                maxArtifactBytes = maxArtifactBytes,
                 networkClient = networkClient,
                 artifactUrl = artifactUrl,
             )
         }
 
-        val cachedBytes = runCatching { cache.get(cacheKey) }
-            .onFailure { WasmlineLog.logger?.warn("$P Custom artifact cache read failed: ${it.message}") }
-            .getOrNull()
-        if (cachedBytes != null) {
-            val actualSha256 = sha256Hex(cachedBytes)
-            if (actualSha256.equals(expectedSha256, ignoreCase = true)) {
-                val path = stagingCache.storeVerifiedArtifact(cacheKey, extension, cachedBytes)
-                    ?: return ArtifactFileResolution.WriteFailure(
-                        IllegalStateException("Failed to materialize the custom artifact cache entry."),
-                    )
-                return ArtifactFileResolution.Ready(path = path, cacheHit = true)
-            }
-            WasmlineLog.logger?.warn(
-                "$P Ignoring corrupt custom artifact cache entry $cacheKey: " +
-                    "expected $expectedSha256, actual $actualSha256",
+        return stagingCache.resolveArtifact(
+            key = cacheKey,
+            extension = extension,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+            networkClient = networkClient,
+            artifactUrl = artifactUrl,
+        )
+    }
+
+    private fun resolveCustomCachedArtifact(
+        cache: WasmlineCache,
+        cacheKey: String,
+        extension: String,
+        defaultFileCache: WasmlineFileCache?,
+        platformCacheKey: String,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+    ): ArtifactFileResolution? {
+        val bytes = runCatching { cache.get(cacheKey) }
+            .onFailure { error -> WasmlineLog.logger?.warn("$P Custom artifact cache read failed: ${error.message}") }
+            .getOrNull() ?: return null
+        val actualSize = bytes.size.toLong()
+        if (actualSize != expectedSizeBytes || actualSize > maxArtifactBytes) {
+            return ArtifactFileResolution.SizeMismatch(actualSize)
+        }
+        val actualSha256 = sha256Hex(bytes)
+        if (actualSha256 != expectedSha256) return ArtifactFileResolution.HashMismatch(actualSha256)
+
+        val path = if (defaultFileCache != null) {
+            defaultFileCache.storeVerifiedArtifact(cacheKey, extension, bytes)
+        } else if (cachePlatformResolvedArtifact(platformCacheKey, bytes)) {
+            platformCacheKey
+        } else {
+            null
+        }
+        return if (path != null) {
+            ArtifactFileResolution.Ready(path = path, cacheHit = true)
+        } else {
+            ArtifactFileResolution.WriteFailure(
+                IllegalStateException("Failed to materialize the custom artifact cache entry."),
             )
-            if (networkClient == null) return ArtifactFileResolution.HashMismatch(actualSha256)
+        }
+    }
+
+    private suspend fun resolvePlatformCachedArtifact(
+        cache: WasmlineCache?,
+        cacheKey: String,
+        networkClient: WasmlineNetworkClient?,
+        artifactUrl: String,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+    ): ArtifactFileResolution {
+        if (platformResolvedArtifactExists(artifactUrl)) {
+            return ArtifactFileResolution.Ready(path = artifactUrl, cacheHit = true)
+        }
+        if (networkClient == null) return ArtifactFileResolution.Missing
+        if (expectedSizeBytes > Int.MAX_VALUE) {
+            return ArtifactFileResolution.WriteFailure(
+                IllegalArgumentException("The selected Web artifact exceeds the platform byte-array limit."),
+            )
         }
 
-        if (networkClient == null) return ArtifactFileResolution.Missing
-        WasmlineLog.logger?.debug("$P Custom artifact cache miss, fetching: $artifactUrl")
-        val downloaded = fetchBytes(networkClient, artifactUrl) ?: return ArtifactFileResolution.Missing
-        val actualSha256 = sha256Hex(downloaded)
-        if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
-            return ArtifactFileResolution.HashMismatch(actualSha256)
-        }
-        val path = stagingCache.storeVerifiedArtifact(cacheKey, extension, downloaded)
-            ?: return ArtifactFileResolution.WriteFailure(
-                IllegalStateException("Failed to materialize the downloaded artifact."),
+        val buffer = Buffer()
+        val hashingSink = HashingSink.sha256(buffer)
+        val sink = hashingSink.buffer()
+        var received = 0L
+        return try {
+            val status = networkClient.fetchTo(
+                url = artifactUrl,
+                sink = { bytes, offset, byteCount ->
+                    received += byteCount
+                    if (received > maxArtifactBytes || received > expectedSizeBytes) {
+                        throw IllegalStateException("Selected Web artifact exceeded its declared size.")
+                    }
+                    sink.write(bytes, offset, byteCount)
+                },
             )
-        runCatching { cache.put(cacheKey, downloaded) }
-            .onFailure { WasmlineLog.logger?.warn("$P Custom artifact cache write failed: ${it.message}") }
-        return ArtifactFileResolution.Ready(path = path, cacheHit = false)
+            sink.flush()
+            if (!status.isSuccess) return ArtifactFileResolution.HttpFailure(status.statusCode)
+            if (received != expectedSizeBytes) return ArtifactFileResolution.SizeMismatch(received)
+            val actualSha256 = hashingSink.hash.hex()
+            if (actualSha256 != expectedSha256) return ArtifactFileResolution.HashMismatch(actualSha256)
+            val bytes = buffer.readByteArray()
+            if (!cachePlatformResolvedArtifact(artifactUrl, bytes)) {
+                ArtifactFileResolution.WriteFailure(
+                    IllegalStateException("The platform cannot cache the selected artifact bytes."),
+                )
+            } else {
+                if (cache != null && cache !== WasmlineNoOpCache) {
+                    runCatching { cache.put(cacheKey, bytes) }
+                        .onFailure { error -> WasmlineLog.logger?.warn("$P Custom artifact cache write failed: ${error.message}") }
+                }
+                ArtifactFileResolution.Ready(path = artifactUrl, cacheHit = false)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            if (received > maxArtifactBytes || received > expectedSizeBytes) {
+                ArtifactFileResolution.SizeMismatch(received)
+            } else {
+                ArtifactFileResolution.WriteFailure(error)
+            }
+        }
     }
 
     private suspend fun <T> withArtifactLock(key: String, block: suspend () -> T): T {
@@ -306,60 +454,62 @@ internal object WasmlineRemotePackageResolution {
         }
     }
 
-    private fun currentTimeMs(): Long = hostCurrentTimeMs()
+    private suspend fun fetchBytes(networkClient: WasmlineNetworkClient, url: String, maxBytes: Int): ByteArray? = try {
+        val buffer = Buffer()
+        var received = 0L
+        val status = networkClient.fetchTo(
+            url = url,
+            sink = { bytes, offset, byteCount ->
+                received += byteCount
+                if (received > maxBytes) throw ManifestSizeLimitException()
+                buffer.write(bytes, offset, byteCount)
+            },
+        )
+        if (status.isSuccess) buffer.readByteArray() else null
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: ManifestSizeLimitException) {
+        throw error
+    } catch (_: Exception) {
+        null
+    }
 
     private fun resolveManifestUrl(sourceUrl: String): String {
         val url = sourceUrl.trim()
         return if (url.endsWith(".wlm")) url else url.trimEnd('/') + "/$MANIFEST_FILE_NAME"
     }
 
-    private suspend fun fetchBytes(networkClient: WasmlineNetworkClient, url: String): ByteArray? = try {
-        val response = networkClient.fetch(url)
-        if (!response.isSuccess) {
-            WasmlineLog.logger?.warn("$P HTTP ${response.statusCode} for $url")
-            null
-        } else {
-            response.bytes
-        }
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Exception) {
-        WasmlineLog.logger?.error("$P Network error fetching $url: ${error.message}")
-        null
-    }
-
-    private fun resolveArtifactUrl(manifestUrl: String, artifactUrl: String): String {
-        if (artifactUrl.startsWith("http://") || artifactUrl.startsWith("https://")) return artifactUrl
+    private fun resolveContentAddressedUrl(manifestUrl: String, relativePath: String): String {
         val baseUrl = manifestUrl.substringBeforeLast('/', missingDelimiterValue = "")
-        return if (baseUrl.isEmpty()) artifactUrl else "$baseUrl/$artifactUrl"
+        return if (baseUrl.isEmpty()) relativePath else "$baseUrl/$relativePath"
     }
 
-    private fun artifactExtension(type: WasmlineArtifactType): String = when (type) {
-        WasmlineArtifactType.WASM -> ".wasm"
-        WasmlineArtifactType.CWASM -> ".cwasm"
-        WasmlineArtifactType.PWASM -> ".pwasm"
-        WasmlineArtifactType.COMPONENT_WASM -> ".component.wasm"
-    }
+    private fun defaultFileCacheOrNull(maxCacheBytes: Long): WasmlineFileCache? =
+        defaultCacheDirectory()?.let { WasmlineFileCache(it, maxCacheBytes) }
 
-    private fun defaultFileCacheOrNull(maxCacheBytes: Long): WasmlineFileCache? {
-        val directory = defaultCacheDirectory() ?: return null
-        return WasmlineFileCache(cacheDirectory = directory, maxCacheBytes = maxCacheBytes)
-    }
+    private fun currentTimeMs(): Long = hostCurrentTimeMs()
 
     private fun sha256Hex(bytes: ByteArray): String = bytes.toByteString().sha256().hex()
 
-    private fun describe(target: WasmlineHostArtifactTarget): String {
-        val bitness = if (target.is64Bit) "64-bit" else "32-bit"
-        return "${target.os}/${target.cpu} ($bitness)"
-    }
+    private fun describe(target: WasmlineHostArtifactTarget): String =
+        "${target.operatingSystem}/${target.architecture}/${target.pointerWidth}"
 
-    private fun failure(
-        cause: String,
-        stage: WasmlineLoadStage = WasmlineLoadStage.SOURCE_RESOLUTION,
-        code: WasmlineErrorCode = WasmlineErrorCode.SOURCE_RESOLUTION_FAILED,
-    ): WasmlineSourceResolution.Complete = structuredResolutionFailure(stage, code, cause)
+    private fun failure(cause: String, stage: WasmlineLoadStage, code: WasmlineErrorCode): WasmlineSourceResolution.Complete =
+        structuredResolutionFailure(stage, code, cause)
 
+    /**
+     * Tracks one keyed artifact download mutex and active users.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
     private class ArtifactLockEntry(val mutex: Mutex = Mutex(), var users: Int = 0)
 
-    private val sha256Pattern = Regex("^[0-9a-fA-F]{64}$")
+    /**
+     * Signals that a streamed manifest exceeded its configured byte limit.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
+    private class ManifestSizeLimitException : IllegalStateException()
 }

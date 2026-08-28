@@ -1,6 +1,10 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package crow.wasmline
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.protobuf.ProtoNumber
 
 /**
  * Defines scalar Core WebAssembly value types supported by `RAW_EXPORT`.
@@ -87,7 +91,10 @@ sealed interface RawValue {
  * @property results Result types in declaration order.
  */
 @Serializable
-data class RawFunctionSignature(val parameters: List<RawValueType> = emptyList(), val results: List<RawValueType> = emptyList())
+data class RawFunctionSignature(
+    @property:ProtoNumber(1) val parameters: List<RawValueType> = emptyList(),
+    @property:ProtoNumber(2) val results: List<RawValueType> = emptyList(),
+)
 
 /**
  * Identifies the kind of an exported Core WebAssembly item.
@@ -115,7 +122,11 @@ enum class RawExportKind {
  * @property signature Function signature when known from module reflection or ABI metadata.
  */
 @Serializable
-data class RawExport(val name: String, val kind: RawExportKind, val signature: RawFunctionSignature? = null)
+data class RawExport(
+    @property:ProtoNumber(1) val name: String,
+    @property:ProtoNumber(2) val kind: RawExportKind,
+    @property:ProtoNumber(3) val signature: RawFunctionSignature? = null,
+)
 
 /**
  * Describes one imported Core WebAssembly host function in ABI metadata.
@@ -128,7 +139,11 @@ data class RawExport(val name: String, val kind: RawExportKind, val signature: R
  * @property signature Function signature.
  */
 @Serializable
-data class RawImportDeclaration(val module: String, val name: String, val signature: RawFunctionSignature)
+data class RawImportDeclaration(
+    @property:ProtoNumber(1) val module: String,
+    @property:ProtoNumber(2) val name: String,
+    @property:ProtoNumber(3) val signature: RawFunctionSignature,
+)
 
 /**
  * Identifies an optional Core WebAssembly feature relevant to artifact selection.
@@ -160,11 +175,11 @@ enum class CoreWasmFeature {
  */
 @Serializable
 data class RawAbiMetadata(
-    val version: Int = CURRENT_VERSION,
-    val exports: List<RawExport> = emptyList(),
-    val imports: List<RawImportDeclaration> = emptyList(),
-    val memoryExport: String? = DEFAULT_MEMORY_EXPORT,
-    val requiredFeatures: Set<CoreWasmFeature> = emptySet(),
+    @property:ProtoNumber(1) val version: Int = CURRENT_VERSION,
+    @property:ProtoNumber(2) val exports: List<RawExport> = emptyList(),
+    @property:ProtoNumber(3) val imports: List<RawImportDeclaration> = emptyList(),
+    @property:ProtoNumber(4) val memoryExport: String? = DEFAULT_MEMORY_EXPORT,
+    @property:ProtoNumber(5) val requiredFeatures: Set<CoreWasmFeature> = emptySet(),
 ) {
     init {
         require(version > 0) { "Raw ABI metadata version must be positive." }

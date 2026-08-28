@@ -1,18 +1,16 @@
 package crow.wasmline.loader.internal
 
-/**
- * Returns whether [path] exists on the host filesystem.
- *
- * Author: crowforkotlin
- * Date: 2026-08-19
- */
+/** Returns whether [path] exists on the host filesystem. */
 internal expect fun hostPathExists(path: String): Boolean
+
+/** Returns the regular-file size at [path], or `null` when it is unavailable. */
+internal expect fun hostFileSize(path: String): Long?
 
 /** Reads [path] into memory, or returns `null` when the host read fails. */
 internal expect fun readHostFileBytes(path: String): ByteArray?
 
-/** Resolves a package-relative [artifactUrl] against [manifestPath]. */
-internal expect fun resolveHostArtifactPath(manifestPath: String, artifactUrl: String): String
+/** Resolves a package-relative [artifactRelativePath] against [manifestPath]. */
+internal expect fun resolveHostArtifactPath(manifestPath: String, artifactRelativePath: String): String
 
 /**
  * Write [bytes] to the file at [path], creating parent directories as needed.

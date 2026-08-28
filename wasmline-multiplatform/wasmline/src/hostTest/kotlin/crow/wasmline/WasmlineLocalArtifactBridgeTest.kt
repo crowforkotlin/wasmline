@@ -5,9 +5,19 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-private const val INCOMPATIBLE_WASMTIME_VERSION = "0.0.0"
+private const val INCOMPATIBLE_PROFILE_ID =
+    "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+private const val CRANELIFT_PROFILE_ID =
+    "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+private const val PULLEY_PROFILE_ID =
+    "sha256:2222222222222222222222222222222222222222222222222222222222222222"
 
-/** Verifies local artifact validation before a platform backend is invoked. */
+/**
+ * Verifies local artifact validation before a platform backend is invoked.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 class WasmlineLocalArtifactBridgeTest {
 
     /** Invalid descriptors fail before artifact resolution is attempted. */
@@ -29,12 +39,19 @@ class WasmlineLocalArtifactBridgeTest {
     @Test
     fun rejectsIncompatibleAotMetadataBeforeResolution() {
         val runtime = WasmlineRuntimeCapabilities(
+            backend = WasmlineNativeBackend.CRANELIFT,
+            supportedArtifactFormats = setOf(WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.PWASM),
             wasmtimeVersion = "12.3.4",
-            supportsCranelift = true,
-            supportsPulley = true,
-            targetOs = "linux",
-            targetCpu = "x86_64",
-            is64Bit = true,
+            aotCompatibilityProfileIdsByBackend = mapOf(
+                WasmlineEngineKind.CRANELIFT to setOf(CRANELIFT_PROFILE_ID),
+                WasmlineEngineKind.PULLEY to setOf(PULLEY_PROFILE_ID),
+            ),
+            nativeBridgeAbiVersion = WasmlineReleaseIdentity.NATIVE_BRIDGE_ABI_VERSION,
+            wasmlineReleaseVersion = WasmlineReleaseIdentity.RELEASE_VERSION,
+            operatingSystem = "linux",
+            architecture = "x86_64",
+            pointerWidth = 64,
+            supportedCpuFeatureProfiles = setOf("baseline-v1"),
         )
         val platform = FakePlatform(
             descriptorValidation = { descriptor -> descriptor.runtimeCompatibilityError(runtime) },
@@ -44,17 +61,18 @@ class WasmlineLocalArtifactBridgeTest {
             descriptor = WasmlineArtifactDescriptor(
                 path = "plugin.cwasm",
                 artifactFormat = WasmlineArtifactFormat.CWASM,
-                targetCpu = "x86_64",
-                targetOs = "linux",
-                targetCompilerVersion = "wasmtime-$INCOMPATIBLE_WASMTIME_VERSION",
-                is64Bit = true,
+                operatingSystem = "linux",
+                architecture = "x86_64",
+                pointerWidth = 64,
+                cpuFeatureProfile = "baseline-v1",
+                aotCompatibilityProfileId = INCOMPATIBLE_PROFILE_ID,
             ),
             config = WasmlineConfig(),
             platform = platform,
         )
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
-        assertTrue(failure.failure.message.contains("requires Wasmtime $INCOMPATIBLE_WASMTIME_VERSION"))
+        assertTrue(failure.failure.message.contains("is not supported by the linked CRANELIFT runtime"))
         assertEquals(0, platform.resolveCalls)
         assertEquals(0, platform.loadCalls)
     }
@@ -154,6 +172,12 @@ class WasmlineLocalArtifactBridgeTest {
         assertEquals(1, platform.loadCalls)
     }
 
+    /**
+     * Records platform bridge calls without loading a native artifact.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
     private class FakePlatform(
         private val resolvedArtifact: ResolvedPrecompiledArtifact? = ResolvedPrecompiledArtifact("plugin.pwasm", "module"),
         private val loadResult: Boolean = true,

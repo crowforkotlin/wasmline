@@ -368,13 +368,10 @@ object WasmlineInvocationBenchmark {
     private fun load(artifact: AotArtifact): Wasmline {
         val runtime = platformWasmlineRuntimeCapabilities()
         val state = platformWasmlineLoadArtifact(
-            descriptor = WasmlineArtifactDescriptor(
+            descriptor = nativeTestArtifactDescriptor(
                 path = artifact.file.absolutePath,
                 artifactFormat = artifact.format,
-                targetCpu = targetCpuFor(artifact.format, runtime.is64Bit, runtime.targetCpu),
-                targetOs = targetOsFor(artifact.format, runtime.targetOs),
-                targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-                is64Bit = runtime.is64Bit,
+                runtime = runtime,
                 executionModel = artifact.kind.executionModel,
                 invocationProtocol = artifact.kind.invocationProtocol,
                 exportName = artifact.kind.exportName,
@@ -424,18 +421,6 @@ object WasmlineInvocationBenchmark {
         "true" -> true
         "false" -> false
         else -> error("$SUPPORT_CONCURRENT_PROPERTY must be true or false.")
-    }
-
-    private fun targetCpuFor(artifactFormat: WasmlineArtifactFormat, is64Bit: Boolean, runtimeCpu: String): String = when (artifactFormat) {
-        WasmlineArtifactFormat.CWASM -> runtimeCpu
-        WasmlineArtifactFormat.PWASM -> if (is64Bit) "pulley64" else "pulley32"
-        WasmlineArtifactFormat.RAW_WASM -> error("Native benchmark artifacts cannot use raw Wasm.")
-    }
-
-    private fun targetOsFor(artifactFormat: WasmlineArtifactFormat, runtimeOs: String): String? = when (artifactFormat) {
-        WasmlineArtifactFormat.CWASM -> runtimeOs
-        WasmlineArtifactFormat.PWASM -> null
-        WasmlineArtifactFormat.RAW_WASM -> error("Native benchmark artifacts cannot use raw Wasm.")
     }
 
     private fun allocatedBytes(): Long? {

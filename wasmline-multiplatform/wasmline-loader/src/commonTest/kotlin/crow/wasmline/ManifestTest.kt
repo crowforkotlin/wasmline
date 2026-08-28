@@ -1,452 +1,430 @@
 @file:OptIn(ExperimentalSerializationApi::class)
-@file:Suppress("SpellCheckingInspection")
 
 package crow.wasmline
 
 import crow.wasmline.extensions.Keys
-import crow.wasmline.extensions.printHeader
 import crow.wasmline.loader.internal.crypto.Ed25519
 import crow.wasmline.loader.model.SignedManifestEnvelope
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineAotCompatibilityProfile
+import crow.wasmline.loader.model.WasmlineArtifactTarget
+import crow.wasmline.loader.model.WasmlineArtifactVariant
 import crow.wasmline.loader.model.WasmlineManifest
+import crow.wasmline.loader.model.WasmlineManifestLimits
+import crow.wasmline.loader.model.WasmlineManifestProtocol
+import crow.wasmline.loader.model.WasmlineManifestWireFormat
+import crow.wasmline.loader.model.WasmlineRuntimeContract
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
-import okio.ByteString
 import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Clock
 
-/** Verifies manifest serialization, signatures, defaults, and artifact models. */
+/**
+ * Verifies the signed manifest wire format, canonical form, and validation rules.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 class ManifestTest {
-
-    private val json = Json {
-        prettyPrint = true
-        ignoreUnknownKeys = true
-    }
-
     private val privateKey = Keys.PRIVATE_KEY_1.decodeHex()
     private val publicKey = Keys.PUBLIC_KEY_1.decodeHex()
 
-    private fun createTestManifest(): WasmlineManifest = WasmlineManifest(
-        pluginId = "crow.wasmline.demo",
-        version = "1.0.0",
-        versionCode = 100,
-        minSdkVersion = "0.9.0",
-        buildTimestamp = Clock.System.now().toEpochMilliseconds(),
-        displayName = "Wasmline Demo Plugin",
-        author = "Crow",
-        description = "A demo plugin for testing manifest capabilities.",
-        iconUrl = "assets/icon.png",
-        homePageUrl = "https://github.com/wasmline/demo",
-        metadata = mapOf("git_hash" to "ff99aa", "compatibility" to "strict"),
-        artifacts = listOf(
-            WasmlineArtifact(
-                type = WasmlineArtifactType.WASM,
-                url = "lib.wasm",
-                sha256 = "rawwasm00112233",
-                targetCpu = "wasmjs",
-                targetOs = "browser",
-            ),
-            WasmlineArtifact(
-                type = WasmlineArtifactType.CWASM,
-                url = "lib.cwasm",
-                sha256 = "deadbeef12345678",
-                targetCompilerVersion = "wasmtime-17.0",
-                targetCpu = "arm64",
-                targetOs = "android",
-            ),
-            WasmlineArtifact(
-                type = WasmlineArtifactType.PWASM,
-                url = "lib.pwasm",
-                sha256 = "cafebabe87654321",
-                targetCompilerVersion = "wasmtime-17.0",
-                is64Bit = true,
-            ),
-        ),
-    )
+    @Test
+    fun protobufRoundTripPreservesEnvelopeByteArrayContent() {
+        val envelope = sign(canonicalManifest())
+        val encoded = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
+        val decoded = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), encoded)
 
-    private fun signManifest(manifest: WasmlineManifest): SignedManifestEnvelope {
-        val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
-        val signature = Ed25519.sign(manifestBytes.toByteString(), privateKey)
-        return SignedManifestEnvelope(
-            signature = signature.toByteArray(),
-            manifest = manifest,
-            algorithm = "Ed25519",
-        )
-    }
-
-    private fun verifyEnvelope(envelope: SignedManifestEnvelope, key: ByteString = publicKey): Boolean {
-        val manifestBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), envelope.manifest)
-        return Ed25519.verify(
-            manifestBytes.toByteString(),
-            envelope.signature.toByteString(),
-            key,
-        )
+        assertEquals(envelope, decoded)
+        assertContentEquals(envelope.signature, decoded.signature)
+        assertContentEquals(envelope.payload, decoded.payload)
+        assertEquals(envelope.hashCode(), decoded.hashCode())
     }
 
     @Test
-    fun `test JSON manifest round-trip serialization`() {
-        printHeader("Test: JSON Manifest Round-Trip")
+    fun signatureCoversDomainFormatVersionAndExactPayload() {
+        val envelope = sign(canonicalManifest())
 
-        val manifest = createTestManifest()
-        val jsonString = json.encodeToString(manifest)
-        println("=== Manifest JSON ===")
-        println(jsonString)
-
-        val decoded = json.decodeFromString<WasmlineManifest>(jsonString)
-
-        assertEquals(manifest.pluginId, decoded.pluginId)
-        assertEquals(manifest.version, decoded.version)
-        assertEquals(manifest.versionCode, decoded.versionCode)
-        assertEquals(manifest.minSdkVersion, decoded.minSdkVersion)
-        assertEquals(manifest.displayName, decoded.displayName)
-        assertEquals(manifest.author, decoded.author)
-        assertEquals(manifest.description, decoded.description)
-        assertEquals(manifest.iconUrl, decoded.iconUrl)
-        assertEquals(manifest.homePageUrl, decoded.homePageUrl)
-        assertEquals(manifest.buildTimestamp, decoded.buildTimestamp)
-        assertEquals(manifest.metadata, decoded.metadata)
-        assertEquals(manifest.artifacts.size, decoded.artifacts.size)
-        manifest.artifacts.forEachIndexed { i, artifact ->
-            assertEquals(artifact.type, decoded.artifacts[i].type)
-            assertEquals(artifact.url, decoded.artifacts[i].url)
-            assertEquals(artifact.sha256, decoded.artifacts[i].sha256)
-            assertEquals(artifact.targetCpu, decoded.artifacts[i].targetCpu)
-            assertEquals(artifact.targetOs, decoded.artifacts[i].targetOs)
-            assertEquals(artifact.targetCompilerVersion, decoded.artifacts[i].targetCompilerVersion)
-            assertEquals(artifact.is64Bit, decoded.artifacts[i].is64Bit)
+        assertTrue(verify(envelope))
+        assertFalse(verify(envelope.copy(formatVersion = envelope.formatVersion + 1)))
+        val tamperedPayload = envelope.payload.copyOf().also {
+            it[it.lastIndex] = (it.last().toInt() xor 1).toByte()
         }
-        println("JSON round-trip serialization successful.")
+        assertFalse(verify(envelope.copy(payload = tamperedPayload)))
+        val tamperedSignature = envelope.signature.copyOf().also {
+            it[0] = (it[0].toInt() xor 1).toByte()
+        }
+        assertFalse(verify(envelope.copy(signature = tamperedSignature)))
     }
 
     @Test
-    fun `test JSON envelope round-trip serialization`() {
-        printHeader("Test: JSON Envelope Round-Trip")
-
-        val envelope = signManifest(createTestManifest())
-        val jsonString = json.encodeToString(envelope)
-        println("=== Envelope JSON ===")
-        println(jsonString)
-
-        val decoded = json.decodeFromString<SignedManifestEnvelope>(jsonString)
-
-        assertTrue(envelope.signature.contentEquals(decoded.signature))
-        assertEquals(envelope.algorithm, decoded.algorithm)
-        assertEquals(envelope.publicKeyId, decoded.publicKeyId)
-        assertEquals(envelope.manifest.pluginId, decoded.manifest.pluginId)
-        println("JSON envelope round-trip serialization successful.")
-    }
-
-    @Test
-    fun `test Protobuf manifest round-trip serialization`() {
-        printHeader("Test: Protobuf Manifest Round-Trip")
-
-        val manifest = createTestManifest()
-        val bytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
-        println("Protobuf manifest size: ${bytes.size} bytes")
-
-        val decoded = ProtoBuf.decodeFromByteArray(WasmlineManifest.serializer(), bytes)
-
-        assertEquals(manifest.pluginId, decoded.pluginId)
-        assertEquals(manifest.version, decoded.version)
-        assertEquals(manifest.versionCode, decoded.versionCode)
-        assertEquals(manifest.artifacts.size, decoded.artifacts.size)
-        assertEquals(manifest.metadata, decoded.metadata)
-        println("Protobuf manifest round-trip serialization successful.")
-    }
-
-    @Test
-    fun `test Protobuf envelope round-trip serialization`() {
-        printHeader("Test: Protobuf Envelope Round-Trip")
-
-        val envelope = signManifest(createTestManifest())
-        val bytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
-        println("Protobuf envelope size: ${bytes.size} bytes")
-
-        val decoded = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), bytes)
-
-        assertTrue(envelope.signature.contentEquals(decoded.signature))
-        assertEquals(envelope.algorithm, decoded.algorithm)
-        assertEquals(envelope.manifest.pluginId, decoded.manifest.pluginId)
-        println("Protobuf envelope round-trip serialization successful.")
-    }
-
-    @Test
-    fun `test Ed25519 signing and verification success`() {
-        printHeader("Test: Ed25519 Valid Signature")
-
-        val manifest = createTestManifest()
-        val envelope = signManifest(manifest)
-
-        println("Signature size: ${envelope.signature.size} bytes")
-        println("Algorithm: ${envelope.algorithm}")
-
-        val isVerified = verifyEnvelope(envelope)
-
-        println("Signature valid: $isVerified")
-        assertTrue(isVerified, "Signature must be valid with matching key pair")
-        assertEquals(manifest.pluginId, envelope.manifest.pluginId)
-        assertEquals(manifest.versionCode, envelope.manifest.versionCode)
-    }
-
-    @Test
-    fun `test Ed25519 full envelope encode-decode-verify flow`() {
-        printHeader("Test: Full Envelope Encode-Decode-Verify")
-
-        val envelope = signManifest(createTestManifest())
-
-        val wireBytes = ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), envelope)
-        val received = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), wireBytes)
-
-        println("Wire size: ${wireBytes.size} bytes")
-
-        val isVerified = verifyEnvelope(received)
-
-        assertTrue(isVerified, "Signature must survive encode-decode round-trip")
-        assertEquals(envelope.manifest.pluginId, received.manifest.pluginId)
-        println("Full encode-decode-verify flow successful.")
-    }
-
-    @Test
-    fun `test signature verification fails with wrong public key`() {
-        printHeader("Test: Signature Failure (Wrong Key)")
-
-        val envelope = signManifest(createTestManifest())
-
-        val wrongKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".decodeHex()
-        val isVerified = verifyEnvelope(envelope, wrongKey)
-
-        println("Verification with wrong key: $isVerified")
-        assertFalse(isVerified, "Signature verification must fail with a mismatched public key")
-    }
-
-    @Test
-    fun `test signature verification fails with tampered manifest`() {
-        printHeader("Test: Signature Failure (Tampered Data)")
-
-        val envelope = signManifest(createTestManifest())
-
-        val tampered = envelope.copy(
-            manifest = envelope.manifest.copy(pluginId = "com.evil.tampered"),
+    fun canonicalizationProducesStableBytesAndMergesEqualContent() {
+        val first = manifest(
+            metadata = linkedMapOf("z" to "last", "a" to "first"),
+            targets = listOf(
+                pulleyTarget(
+                    listOf(
+                        variant(PULLEY_PROFILE_ID, SHARED_DIGEST),
+                        variant(SECOND_PULLEY_PROFILE_ID, SHARED_DIGEST),
+                    ),
+                ),
+                rawTarget(),
+            ),
+            profiles = listOf(profile(SECOND_PULLEY_PROFILE_ID), profile(PULLEY_PROFILE_ID)),
+        )
+        val second = manifest(
+            metadata = linkedMapOf("a" to "first", "z" to "last"),
+            targets = listOf(
+                rawTarget(),
+                pulleyTarget(
+                    listOf(
+                        WasmlineArtifactVariant(
+                            listOf(SECOND_PULLEY_PROFILE_ID, PULLEY_PROFILE_ID),
+                            SHARED_DIGEST,
+                            ARTIFACT_SIZE,
+                        ),
+                    ),
+                ),
+            ),
+            profiles = listOf(profile(PULLEY_PROFILE_ID), profile(SECOND_PULLEY_PROFILE_ID)),
         )
 
-        val isVerified = verifyEnvelope(tampered)
+        val canonicalFirst = WasmlineManifestProtocol.canonicalize(first)
+        val canonicalSecond = WasmlineManifestProtocol.canonicalize(second)
+        val firstBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), canonicalFirst)
+        val secondBytes = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), canonicalSecond)
 
-        println("Verification after tampering: $isVerified")
-        assertFalse(isVerified, "Signature verification must fail when manifest data is tampered")
+        assertEquals(canonicalFirst, canonicalSecond)
+        assertContentEquals(firstBytes, secondBytes)
+        assertEquals(1, canonicalFirst.artifactTargets.single { it.format == WasmlineArtifactFormat.PWASM }.variants.size)
+        assertNull(WasmlineManifestProtocol.validationError(canonicalFirst))
     }
 
     @Test
-    fun `test signature verification fails with corrupted signature`() {
-        printHeader("Test: Signature Failure (Corrupted Signature)")
+    fun rejectsNonCanonicalMapIterationOrder() {
+        val manifest = manifest(
+            metadata = linkedMapOf("z" to "last", "a" to "first"),
+            targets = listOf(pulleyTarget(listOf(variant(PULLEY_PROFILE_ID, SHARED_DIGEST)))),
+            profiles = listOf(profile(PULLEY_PROFILE_ID)),
+        )
 
-        val envelope = signManifest(createTestManifest())
-
-        val corruptedSig = envelope.signature.copyOf()
-        corruptedSig[0] = (corruptedSig[0].toInt() xor 0xFF).toByte()
-        val corrupted = envelope.copy(signature = corruptedSig)
-
-        val isVerified = verifyEnvelope(corrupted)
-
-        println("Verification with corrupted signature: $isVerified")
-        assertFalse(isVerified, "Signature verification must fail with corrupted signature bytes")
+        assertTrue(WasmlineManifestProtocol.validationError(manifest).orEmpty().contains("canonical ordering"))
     }
 
     @Test
-    fun `test manifest optional fields default to null`() {
-        printHeader("Test: Manifest Optional Defaults")
+    fun fieldNumberRegistryNeverReusesRetiredFields() {
+        assertTrue(
+            WasmlineManifestWireFormat.envelopeFieldNumbers
+                .intersect(WasmlineManifestWireFormat.retiredEnvelopeFieldNumbers)
+                .isEmpty(),
+        )
+        assertTrue(
+            WasmlineManifestWireFormat.manifestFieldNumbers
+                .intersect(WasmlineManifestWireFormat.retiredManifestFieldNumbers)
+                .isEmpty(),
+        )
+        assertEquals(setOf(4), WasmlineManifestWireFormat.retiredEnvelopeFieldNumbers)
+        assertEquals(setOf(12), WasmlineManifestWireFormat.retiredManifestFieldNumbers)
+        assertEquals((1..5).toSet(), WasmlineManifestWireFormat.runtimeContractFieldNumbers)
+        assertEquals((1..5).toSet(), WasmlineManifestWireFormat.aotCompatibilityProfileFieldNumbers)
+        assertEquals((1..6).toSet(), WasmlineManifestWireFormat.artifactTargetFieldNumbers)
+        assertEquals((1..3).toSet(), WasmlineManifestWireFormat.artifactVariantFieldNumbers)
+        assertEquals((1..5).toSet(), WasmlineManifestWireFormat.rawAbiMetadataFieldNumbers)
+        assertEquals((1..3).toSet(), WasmlineManifestWireFormat.rawExportFieldNumbers)
+        assertEquals((1..3).toSet(), WasmlineManifestWireFormat.rawImportDeclarationFieldNumbers)
+        assertEquals((1..2).toSet(), WasmlineManifestWireFormat.rawFunctionSignatureFieldNumbers)
+    }
 
-        val minimal = WasmlineManifest(
-            pluginId = "crow.wasmline.minimal",
-            version = "0.1.0",
-            versionCode = 1,
-            minSdkVersion = "0.9.0",
-            buildTimestamp = 0L,
-            artifacts = listOf(
-                WasmlineArtifact(
-                    type = WasmlineArtifactType.PWASM,
-                    url = "lib.pwasm",
-                    sha256 = "abc123",
+    @Test
+    fun contentAddressedPathsAreFormatSpecificAndTraversalFree() {
+        assertEquals(
+            "artifacts/sha256/aa/$SHARED_DIGEST.cwasm",
+            WasmlineManifestProtocol.artifactRelativePath(SHARED_DIGEST, WasmlineArtifactFormat.CWASM),
+        )
+        assertEquals(
+            "artifacts/sha256/aa/$SHARED_DIGEST.pwasm",
+            WasmlineManifestProtocol.artifactRelativePath(SHARED_DIGEST, WasmlineArtifactFormat.PWASM),
+        )
+        assertNotEquals(
+            WasmlineManifestProtocol.artifactRelativePath(SHARED_DIGEST, WasmlineArtifactFormat.CWASM),
+            WasmlineManifestProtocol.artifactRelativePath(SHARED_DIGEST, WasmlineArtifactFormat.PWASM),
+        )
+    }
+
+    @Test
+    fun rejectsDuplicateUnknownAndCrossBackendProfileReferences() {
+        val duplicateProfile = canonicalManifest().let { value ->
+            value.copy(aotCompatibilityProfiles = value.aotCompatibilityProfiles + value.aotCompatibilityProfiles.single())
+        }
+        assertValidationContains(duplicateProfile, "duplicate AOT compatibility profile")
+
+        val unknownReference = canonicalManifest().copy(
+            artifactTargets = listOf(pulleyTarget(listOf(variant(UNKNOWN_PROFILE_ID, SHARED_DIGEST)))),
+        )
+        assertValidationContains(unknownReference, "references unknown profile")
+
+        val crossBackend = canonicalManifest().copy(
+            aotCompatibilityProfiles = listOf(profile(CRANELIFT_PROFILE_ID, WasmlineEngineKind.CRANELIFT)),
+            artifactTargets = listOf(pulleyTarget(listOf(variant(CRANELIFT_PROFILE_ID, SHARED_DIGEST)))),
+        )
+        assertValidationContains(crossBackend, "references CRANELIFT profile")
+    }
+
+    @Test
+    fun rejectsInvalidRawAndAotVariantShapes() {
+        val rawWithProfile = canonicalManifest().copy(
+            artifactTargets = listOf(
+                rawTarget().copy(variants = listOf(variant(PULLEY_PROFILE_ID, RAW_DIGEST))),
+            ),
+        )
+        assertValidationContains(rawWithProfile, "RAW_WASM artifact variants must not reference")
+
+        val aotWithoutProfile = canonicalManifest().copy(
+            artifactTargets = listOf(pulleyTarget(listOf(WasmlineArtifactVariant(emptyList(), SHARED_DIGEST, ARTIFACT_SIZE)))),
+        )
+        assertValidationContains(aotWithoutProfile, "must reference at least one")
+
+        val zeroSize = canonicalManifest().copy(
+            artifactTargets = listOf(pulleyTarget(listOf(variant(PULLEY_PROFILE_ID, SHARED_DIGEST).copy(sizeBytes = 0)))),
+        )
+        assertValidationContains(zeroSize, "sizeBytes must be positive")
+
+        val duplicateTarget = canonicalManifest().let { value ->
+            value.copy(artifactTargets = value.artifactTargets + value.artifactTargets.single())
+        }
+        assertValidationContains(duplicateTarget, "duplicate artifact target")
+    }
+
+    @Test
+    fun rejectsComponentRawWasmAndInvalidProtocolPairs() {
+        val componentRaw = manifest(
+            contract = WasmlineRuntimeContract(
+                WasmlineExecutionModel.COMPONENT_MODEL,
+                WasmlineInvocationProtocol.COMPONENT_EXPORT,
+            ),
+            targets = listOf(rawTarget()),
+            profiles = emptyList(),
+        )
+        assertValidationContains(componentRaw, "Published RAW_WASM targets require")
+
+        val componentRawExport = componentRaw.copy(
+            runtimeContract = WasmlineRuntimeContract(
+                WasmlineExecutionModel.COMPONENT_MODEL,
+                WasmlineInvocationProtocol.RAW_EXPORT,
+            ),
+            artifactTargets = listOf(pulleyTarget(listOf(variant(PULLEY_PROFILE_ID, SHARED_DIGEST)))),
+            aotCompatibilityProfiles = listOf(profile(PULLEY_PROFILE_ID)),
+        )
+        assertValidationContains(componentRawExport, "COMPONENT_MODEL cannot use RAW_EXPORT")
+    }
+
+    @Test
+    fun enforcesEnvelopeAndCollectionLimits() {
+        val envelope = sign(canonicalManifest())
+        assertTrue(
+            WasmlineManifestProtocol.envelopeValidationError(
+                envelope,
+                WasmlineManifestLimits(maxManifestBytes = envelope.payload.size, maxPayloadBytes = envelope.payload.size - 1),
+            ).orEmpty().contains("payload exceeds"),
+        )
+        val tooManyTargets = canonicalManifest().let { value ->
+            value.copy(
+                artifactTargets = listOf(
+                    value.artifactTargets.single(),
+                    rawTarget(),
+                ),
+            )
+        }
+        assertTrue(
+            WasmlineManifestProtocol.validationError(
+                tooManyTargets,
+                WasmlineManifestLimits(maxTargets = 1),
+                requireCanonicalOrder = false,
+            ).orEmpty().contains("artifact targets"),
+        )
+    }
+
+    @Test
+    fun enforcesRawAbiDeclarationSignatureAndStringLimits() {
+        val rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport("first", RawExportKind.FUNCTION, RawFunctionSignature()),
+                RawExport(
+                    "second",
+                    RawExportKind.FUNCTION,
+                    RawFunctionSignature(parameters = listOf(RawValueType.I32, RawValueType.I64)),
                 ),
             ),
         )
-
-        assertNull(minimal.displayName)
-        assertNull(minimal.author)
-        assertNull(minimal.description)
-        assertNull(minimal.iconUrl)
-        assertNull(minimal.homePageUrl)
-        assertEquals(emptyMap(), minimal.metadata)
-        println("Optional field defaults verified.")
-    }
-
-    @Test
-    fun `test artifact optional fields default correctly`() {
-        printHeader("Test: Artifact Optional Defaults")
-
-        val artifact = WasmlineArtifact(
-            type = WasmlineArtifactType.PWASM,
-            url = "lib.pwasm",
-            sha256 = "abc123",
-        )
-
-        assertNull(artifact.targetCpu)
-        assertNull(artifact.targetOs)
-        assertNull(artifact.targetCompilerVersion)
-        assertTrue(artifact.is64Bit, "is64Bit should default to true")
-        assertEquals(WasmlineExecutionModel.CORE_WASM, artifact.executionModel)
-        assertEquals(WasmlineInvocationProtocol.WASMLINE_SERVICE, artifact.invocationProtocol)
-        assertNull(artifact.exportName)
-        assertEquals(emptyMap(), artifact.contractMetadata)
-        println("Artifact default values verified.")
-    }
-
-    @Test
-    fun `test component invocation metadata survives protobuf`() {
-        val artifact = WasmlineArtifact(
-            type = WasmlineArtifactType.CWASM,
-            url = "component.cwasm",
-            sha256 = "component-hash",
-            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-            exportName = "add",
-            contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
-        )
-
-        val bytes = ProtoBuf.encodeToByteArray(WasmlineArtifact.serializer(), artifact)
-        val decoded = ProtoBuf.decodeFromByteArray(WasmlineArtifact.serializer(), bytes)
-
-        assertEquals(artifact, decoded)
-    }
-
-    @Test
-    fun `test native AOT type and execution model combinations survive protobuf`() {
-        val artifacts = listOf(
-            WasmlineArtifact(
-                type = WasmlineArtifactType.CWASM,
-                url = "core.cwasm",
-                sha256 = "core-cwasm",
-                executionModel = WasmlineExecutionModel.CORE_WASM,
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
-            ),
-            WasmlineArtifact(
-                type = WasmlineArtifactType.PWASM,
-                url = "core.pwasm",
-                sha256 = "core-pwasm",
-                targetCpu = "pulley64",
-                executionModel = WasmlineExecutionModel.CORE_WASM,
-                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
-            ),
-            WasmlineArtifact(
-                type = WasmlineArtifactType.CWASM,
-                url = "component.cwasm",
-                sha256 = "component-cwasm",
-                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-                invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-                exportName = "plugin/invoke",
-            ),
-            WasmlineArtifact(
-                type = WasmlineArtifactType.PWASM,
-                url = "component.pwasm",
-                sha256 = "component-pwasm",
-                targetCpu = "pulley64",
-                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-                invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-                exportName = "plugin/invoke",
+        val manifest = canonicalManifest().copy(
+            runtimeContract = WasmlineRuntimeContract(
+                WasmlineExecutionModel.CORE_WASM,
+                WasmlineInvocationProtocol.RAW_EXPORT,
+                rawAbi = rawAbi,
             ),
         )
 
-        artifacts.forEach { artifact ->
-            val bytes = ProtoBuf.encodeToByteArray(WasmlineArtifact.serializer(), artifact)
-            val decoded = ProtoBuf.decodeFromByteArray(WasmlineArtifact.serializer(), bytes)
-
-            assertEquals(artifact, decoded)
-        }
-    }
-
-    @Test
-    fun `test artifact type enum order remains backward compatible`() {
-        assertEquals(
-            listOf(
-                WasmlineArtifactType.WASM,
-                WasmlineArtifactType.CWASM,
-                WasmlineArtifactType.PWASM,
-                WasmlineArtifactType.COMPONENT_WASM,
-            ),
-            WasmlineArtifactType.entries,
+        assertTrue(
+            WasmlineManifestProtocol.validationError(
+                manifest,
+                WasmlineManifestLimits(maxRawAbiExports = 1),
+                requireCanonicalOrder = false,
+            ).orEmpty().contains("more than 1 exports"),
+        )
+        assertTrue(
+            WasmlineManifestProtocol.validationError(
+                manifest,
+                WasmlineManifestLimits(maxRawFunctionParameters = 1),
+                requireCanonicalOrder = false,
+            ).orEmpty().contains("more than 1 parameters"),
+        )
+        assertTrue(
+            WasmlineManifestProtocol.validationError(
+                manifest.copy(
+                    runtimeContract = manifest.runtimeContract.copy(
+                        rawAbi = rawAbi.copy(
+                            exports = rawAbi.exports.mapIndexed { index, export ->
+                                if (index == 0) export.copy(name = "x".repeat(129)) else export
+                            },
+                        ),
+                    ),
+                ),
+                WasmlineManifestLimits(maxStringBytes = 128),
+                requireCanonicalOrder = false,
+            ).orEmpty().contains("rawAbi.exports.name"),
         )
     }
 
     @Test
-    fun `test envelope default values`() {
-        printHeader("Test: Envelope Default Values")
+    fun validatesDistributionIdentityAndTargetStringLimits() {
+        val manifest = canonicalManifest()
+        val profile = manifest.aotCompatibilityProfiles.single()
+        val mismatchedDistribution = manifest.copy(
+            aotCompatibilityProfiles = listOf(profile.copy(wasmtimeDistributionVersion = "12.3.5.1")),
+        )
+        assertValidationContains(mismatchedDistribution, "must extend Wasmtime version")
 
-        val envelope = SignedManifestEnvelope(
-            signature = byteArrayOf(0),
-            manifest = WasmlineManifest(
-                pluginId = "test",
-                version = "1.0.0",
-                versionCode = 1,
-                minSdkVersion = "0.9.0",
-                buildTimestamp = 0L,
-                artifacts = emptyList(),
-            ),
+        val threeSegmentDistribution = manifest.copy(
+            aotCompatibilityProfiles = listOf(profile.copy(wasmtimeDistributionVersion = "12.3.4")),
+        )
+        assertValidationContains(threeSegmentDistribution, "expected x.y.z.d")
+
+        val zeroDistributionRevision = manifest.copy(
+            aotCompatibilityProfiles = listOf(profile.copy(wasmtimeDistributionVersion = "12.3.4.0")),
+        )
+        assertValidationContains(zeroDistributionRevision, "expected x.y.z.d")
+
+        val oversizedArchitecture = manifest.copy(
+            artifactTargets = listOf(manifest.artifactTargets.single().copy(architecture = "x".repeat(129))),
+        )
+        assertTrue(
+            WasmlineManifestProtocol.validationError(
+                oversizedArchitecture,
+                WasmlineManifestLimits(maxStringBytes = 128),
+                requireCanonicalOrder = false,
+            ).orEmpty().contains("artifactTargets.architecture"),
+        )
+    }
+
+    private fun sign(manifest: WasmlineManifest): SignedManifestEnvelope {
+        val payload = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
+        val formatVersion = WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION
+        val signature = Ed25519.sign(
+            WasmlineManifestProtocol.signingMessage(formatVersion, payload).toByteString(),
+            privateKey,
+        )
+        return SignedManifestEnvelope(
+            signature = signature.toByteArray(),
+            formatVersion = formatVersion,
+            payload = payload,
+        )
+    }
+
+    private fun verify(envelope: SignedManifestEnvelope): Boolean = Ed25519.verify(
+        WasmlineManifestProtocol.signingMessage(envelope.formatVersion, envelope.payload).toByteString(),
+        envelope.signature.toByteString(),
+        publicKey,
+    )
+
+    private fun canonicalManifest(): WasmlineManifest = WasmlineManifestProtocol.canonicalize(
+        manifest(
+            targets = listOf(pulleyTarget(listOf(variant(PULLEY_PROFILE_ID, SHARED_DIGEST)))),
+            profiles = listOf(profile(PULLEY_PROFILE_ID)),
+        ),
+    )
+
+    private fun manifest(
+        metadata: Map<String, String> = emptyMap(),
+        contract: WasmlineRuntimeContract = WasmlineRuntimeContract(
+            WasmlineExecutionModel.CORE_WASM,
+            WasmlineInvocationProtocol.WASMLINE_SERVICE,
+        ),
+        targets: List<WasmlineArtifactTarget>,
+        profiles: List<WasmlineAotCompatibilityProfile>,
+    ): WasmlineManifest = WasmlineManifest(
+        pluginId = "crow.wasmline.test",
+        version = "12.3.4",
+        versionCode = 1,
+        minSdkVersion = "12.3.4",
+        buildTimestamp = 1_700_000_000_000,
+        metadata = metadata,
+        runtimeContract = contract,
+        aotCompatibilityProfiles = profiles,
+        artifactTargets = targets,
+    )
+
+    private fun profile(id: String, backend: WasmlineEngineKind = WasmlineEngineKind.PULLEY): WasmlineAotCompatibilityProfile =
+        WasmlineAotCompatibilityProfile(
+            id = id,
+            artifactBackend = backend,
+            wasmtimeVersion = "12.3.4",
+            wasmtimeDistributionVersion = "12.3.4.1",
+            compileProfileSchemaVersion = 1,
         )
 
-        assertEquals("Ed25519", envelope.algorithm, "Default algorithm should be Ed25519")
-        assertNull(envelope.publicKeyId, "publicKeyId should default to null")
-        println("Envelope default values verified.")
+    private fun pulleyTarget(variants: List<WasmlineArtifactVariant>): WasmlineArtifactTarget = WasmlineArtifactTarget(
+        format = WasmlineArtifactFormat.PWASM,
+        architecture = "pulley64",
+        pointerWidth = 64,
+        variants = variants,
+    )
+
+    private fun rawTarget(): WasmlineArtifactTarget = WasmlineArtifactTarget(
+        format = WasmlineArtifactFormat.RAW_WASM,
+        architecture = "wasm32",
+        pointerWidth = 32,
+        variants = listOf(WasmlineArtifactVariant(sha256 = RAW_DIGEST, sizeBytes = ARTIFACT_SIZE)),
+    )
+
+    private fun variant(profileId: String, digest: String): WasmlineArtifactVariant =
+        WasmlineArtifactVariant(listOf(profileId), digest, ARTIFACT_SIZE)
+
+    private fun assertValidationContains(manifest: WasmlineManifest, expected: String) {
+        assertTrue(
+            WasmlineManifestProtocol.validationError(manifest, requireCanonicalOrder = false).orEmpty().contains(expected),
+            "Expected validation error containing '$expected'.",
+        )
     }
 
-    @Test
-    fun `test all artifact types serialize correctly`() {
-        printHeader("Test: All Artifact Types")
-
-        for (type in WasmlineArtifactType.entries) {
-            val artifact = WasmlineArtifact(
-                type = type,
-                url = "lib.${type.name.lowercase()}",
-                sha256 = "hash_${type.name}",
-            )
-
-            val bytes = ProtoBuf.encodeToByteArray(WasmlineArtifact.serializer(), artifact)
-            val decoded = ProtoBuf.decodeFromByteArray(WasmlineArtifact.serializer(), bytes)
-
-            assertEquals(type, decoded.type)
-            assertEquals(artifact.url, decoded.url)
-            assertEquals(artifact.sha256, decoded.sha256)
-            println("  ${type.name}: OK (${bytes.size} bytes)")
-        }
-        println("All artifact types serialize correctly.")
-    }
-
-    @Test
-    fun `test SignedManifestEnvelope equality and hashCode`() {
-        printHeader("Test: Envelope Equality & HashCode")
-
-        val envelope1 = signManifest(createTestManifest())
-
-        val envelope2 = envelope1.copy()
-        assertEquals(envelope1, envelope2)
-        assertEquals(envelope1.hashCode(), envelope2.hashCode())
-
-        val differentSig = envelope1.copy(signature = byteArrayOf(0, 1, 2))
-        assertNotEquals(envelope1, differentSig)
-
-        val differentAlgo = envelope1.copy(algorithm = "ECDSA-P256")
-        assertNotEquals(envelope1, differentAlgo)
-
-        val withKeyId = envelope1.copy(publicKeyId = "key-001")
-        assertNotEquals(envelope1, withKeyId)
-
-        println("Envelope equality and hashCode verified.")
+    /**
+     * Defines immutable manifest fixture identities.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
+    private companion object {
+        const val ARTIFACT_SIZE = 3L
+        const val SHARED_DIGEST = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        const val RAW_DIGEST = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        const val PULLEY_PROFILE_ID = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        const val SECOND_PULLEY_PROFILE_ID = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        const val CRANELIFT_PROFILE_ID = "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        const val UNKNOWN_PROFILE_ID = "sha256:4444444444444444444444444444444444444444444444444444444444444444"
     }
 }

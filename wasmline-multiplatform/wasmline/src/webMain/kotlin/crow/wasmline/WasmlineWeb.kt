@@ -33,6 +33,9 @@ object WasmlineWeb {
         WebWasmArtifacts.register(key, bytes)
     }
 
+    /** Returns whether raw Wasm bytes are already available under [key]. */
+    fun hasBytes(key: String): Boolean = WebWasmArtifacts.contains(key)
+
     /**
      * Downloads and caches the artifact at [url].
      *

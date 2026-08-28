@@ -52,6 +52,7 @@ kotlin {
         binaries.library()
     }
     val nativeHeaderDir = project.file("src/nativeMain/native")
+    val nativeCoreHeaderDir = rootProject.file("../wasmline-core/include")
     val nativeTargets: List<KotlinNativeTarget> = buildList {
         if (HostManager.hostIsMac) {
             add(iosArm64())
@@ -66,8 +67,8 @@ kotlin {
         target.compilations.getByName("main") {
             val wasmline by cinterops.creating {
                 definitionFile.set(project.file("src/nativeMain/native/cinterop/wasmline.def"))
-                includeDirs(nativeHeaderDir)
-                compilerOpts("-I${nativeHeaderDir.absolutePath}")
+                includeDirs(nativeHeaderDir, nativeCoreHeaderDir)
+                compilerOpts("-I${nativeHeaderDir.absolutePath}", "-I${nativeCoreHeaderDir.absolutePath}")
             }
         }
         val nativeLinkerOptions = when (target.name) {

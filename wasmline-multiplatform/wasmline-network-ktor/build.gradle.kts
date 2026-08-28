@@ -1,4 +1,5 @@
 @file:Suppress("OPT_IN_USAGE", "unused", "UnstableApiUsage")
+@file:OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
 
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
@@ -29,6 +30,14 @@ java {
 
 kotlin {
     jvm()
+    js {
+        browser()
+        binaries.library()
+    }
+    wasmJs {
+        browser()
+        binaries.library()
+    }
     android {
         namespace = "crow.wasmline.network.ktor"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -58,6 +67,11 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(libs.ktor.client.cio)
+            }
+        }
+        val webMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
             }
         }
         val commonTest by getting {

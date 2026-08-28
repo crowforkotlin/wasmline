@@ -1,31 +1,37 @@
 # Wasmline Kotlin Samples
 
-All sample builds use the Wasmline Gradle tasks. Run commands from this directory.
+All sample builds use the Wasmline Gradle tasks and the catalog-backed AOT
+pipeline. Run commands from this directory.
 
 ## Core Wasm application
 
-Build the Kotlin/Wasm plugin, produce the native artifact, sync it into the
-application resources, and run the host:
+Build the Kotlin/Wasm plugin package, sync it into the application resources,
+and run the host. The Loader selects the matching native artifact from the
+signed manifest:
 
 ```shell
 ./gradlew :sample-apps:application:run
 ```
 
-Select a portable artifact explicitly:
+Load a published package instead of the bundled package:
 
 ```shell
-./gradlew :sample-apps:application:run -Pwasmline.artifact.format=pwasm64
-./gradlew :sample-apps:application:run -Pwasmline.artifact.format=cwasm
+WASMLINE_MANIFEST_URL=https://example.com/plugins/crow.wasmline.demo/1.0.0/manifest.wlm \
+  ./gradlew :sample-apps:application:run
 ```
 
-`pwasm32` can be assembled, but it requires a 32-bit native runtime. A 64-bit
-desktop runtime rejects it by design.
+The application does not select CWASM or PWASM. The engine identity and
+manifest profiles determine the compatible variant.
 
 Assemble the Core Wasm plugin package without running the host:
 
 ```shell
 ./gradlew :sample-plugin:wasmlineAssembleDebug
 ```
+
+The package contains one signed `manifest.wlm`, one Core Web `.wasm`, and the
+content-addressed CWASM/PWASM variants selected by the configured profile and
+target matrix. The corresponding ZIP contains the complete matrix.
 
 ## Kotlin/Native host
 
@@ -70,9 +76,9 @@ Assemble them independently:
 ./gradlew :sample-component-export-plugin:wasmlineAssembleDebug
 ```
 
-Component AOT uses the fork's compile-capable `cranelift-min` CLI by default.
-The Gradle plugin downloads the pinned compiler automatically for Component
-package tasks; full CLIs remain explicit fallbacks and no shell export is required.
+Component and Core AOT use the same catalog profiles and digest-locked compiler
+assets. With `autoDownload` enabled, the Gradle plugin downloads only missing
+assets for the build host. Arbitrary local compiler paths are not used.
 
 ```shell
 ./gradlew :sample-component-plugin:wasmlineAssembleDebug
@@ -89,6 +95,9 @@ import crow.wasmline.gradle.WasmtimeTarget
 
 wasmline {
     wasmtime {
+        aotCompatibility {
+            wasmtimeVersions.set(listOf("48.0.1"))
+        }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
             WasmtimeTarget.AARCH64_ANDROID,
@@ -99,6 +108,10 @@ wasmline {
 
 `targets` is a DSL property configured only by assignment; function-style
 target selectors are not part of the DSL.
+
+`wasmtimeVersions` selects complete `x.y.z` versions. It resolves a distinct
+backend-specific profile for each requested Cranelift or Pulley target. Omit
+the selector to use the current release defaults.
 
 Use `WasmtimeTarget.custom("target-triple")` only for a Wasmtime target that
 does not have a predefined value.
@@ -124,8 +137,7 @@ native artifact:
 
 ```shell
 ./gradlew :sample-apps:multiplatform:desktopApp:run \
-  -Pwasmline.engine=cranelift \
-  -Pwasmline.artifact.format=cwasm
+  -Pwasmline.engine=cranelift
 ```
 
 The two Android applications expose Gradle tasks that assemble and sync the
@@ -150,8 +162,7 @@ CWASM artifact selection:
 
 ```shell
 ./gradlew :sample-apps:android:wasmlineRunDebug \
-  -Pwasmline.engine=cranelift \
-  -Pwasmline.artifact.format=cwasm
+  -Pwasmline.engine=cranelift
 ```
 
 Web tasks assemble and sync the raw `.wasm` into the browser resources before
@@ -202,5 +213,5 @@ WASMLINE_SAMPLE_COMPONENT_FIXTURE="$PWD/sample-component-fixture/build/wasmline/
 Select **Component Fixture** in the application. It verifies `sample.echo`,
 `sample.callback` through the Kotlin host callback, and `sample.empty`. Replace
 the copied C Component with `../cpp/build/plugin.component.wasm` for the C++
-fixture. The Gradle package contains the matching `.pwasm`, `.cwasm`, and
-signed `manifest.wlm` artifacts.
+fixture. The Gradle package contains one signed `manifest.wlm` and matching
+content-addressed `.pwasm` and `.cwasm` variants.

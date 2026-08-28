@@ -2,7 +2,7 @@
 title: Installation
 description: Add Wasmline to your project with Gradle — plugin application and Maven dependencies
 createdAt: 2026-07-18
-updatedAt: 2026-08-19
+updatedAt: 2026-08-28
 ---
 
 # Installation
@@ -35,16 +35,24 @@ The plugin applies the `wasmline-kotlin-plugin` IR compiler plugin to the curren
 
 ```kotlin
 dependencies {
-    // Core loader — manifest parsing, signature verification, module loading
-    implementation("crow.wasmline:wasmline-loader:1.0.0")
+    implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
 
-    // Optional: HTTP client for remote-manifest cache misses
-    implementation("crow.wasmline:wasmline-network-ktor:1.0.0")
+    // Core loader: manifest verification, selection, and module loading
+    implementation("crow.wasmline:wasmline-loader")
 
-    // Engine backend — provides the native runtime library per platform variant
-    implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+    // Optional HTTP client for remote cache misses
+    implementation("crow.wasmline:wasmline-network-ktor")
+
+    // Select exactly one native engine backend
+    implementation("crow.wasmline:wasmline-engine-pulley")
 }
 ```
+
+The BOM applies strict constraints to the runtime, loader, network adapters,
+compiler and Gradle plugins, CLI, plugin core, and both engine modules. All of
+these artifacts are published with one Wasmline `x.y.z` version. Do not upgrade
+an engine independently. Native startup also checks the Wasmline release
+identity and bridge ABI before any AOT artifact is deserialized.
 
 | Artifact | Description |
 |---|---|
@@ -65,13 +73,15 @@ Kotlin/Native applications use the same `WasmlineLoader` API as JVM and Android 
 
 ```kotlin
 // build.gradle.kts
+val wasmlineVersion = "1.0.0"
+
 kotlin {
     sourceSets {
         val nativeMain by getting {
             dependencies {
-                implementation("crow.wasmline:wasmline:1.0.0")
-                implementation("crow.wasmline:wasmline-loader:1.0.0")
-                implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+                implementation("crow.wasmline:wasmline:$wasmlineVersion")
+                implementation("crow.wasmline:wasmline-loader:$wasmlineVersion")
+                implementation("crow.wasmline:wasmline-engine-pulley:$wasmlineVersion")
                 // Use wasmline-engine-cranelift when .cwasm is required.
             }
         }
@@ -79,9 +89,16 @@ kotlin {
 }
 ```
 
-Pulley accepts portable `.pwasm` artifacts on every Native target. Cranelift accepts matching `.cwasm` artifacts and can fall back to `.pwasm`; iOS remains Pulley-only. Native applications do not load JNI libraries or call a source-checkout path. Remote loading can use `wasmline-network-ktor`, which selects Darwin, Curl, or WinHTTP according to the Native target.
+Pulley accepts portable `.pwasm` artifacts with the matching pointer width on
+every Native target. Cranelift first selects an exact profile, platform, pointer
+width, and CPU-feature match for `.cwasm`. It can use `.pwasm` only when no
+compatible CWASM exists and the runtime reports the corresponding Pulley profile
+and capability. iOS remains `pulley64` only. Native applications do not load JNI
+libraries or call a source-checkout path. Remote loading can use
+`wasmline-network-ktor`, which selects Darwin, Curl, or WinHTTP for the target.
 
-For signed Native packages, use Ed25519 for one cross-platform manifest format. Apple Native verifies ECDSA P-256 through Security; Linux and Windows Native currently reject ECDSA P-256 manifests because those targets do not ship a platform crypto provider in the Wasmline distribution.
+The current manifest format accepts Ed25519 only. A package contains one signed
+manifest for all AOT compatibility profiles and content-addressed targets.
 
 <Callout type="info" title="Distribution status">
   Wasmline is under active development and is not released yet. Artifacts are currently distributed through `mavenLocal()` — run `./gradlew publishToMavenLocal` in `wasmline-multiplatform/` to install them locally. Maven Central publishing is in progress.

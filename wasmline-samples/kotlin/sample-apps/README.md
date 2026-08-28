@@ -28,22 +28,26 @@ Build both Component packages with:
 ```
 
 The Core Wasm application sample is also a Gradle task. It assembles the sample
-plugin, selects the requested artifact, and runs the host application:
+package and runs the host application; the Loader selects the artifact:
 
 ```shell
 ./gradlew :sample-apps:application:run
-./gradlew :sample-apps:application:run -Pwasmline.artifact.format=pwasm64
 ```
 
-Use `-Pwasmline.artifact.format=pwasm32` only with a 32-bit native runtime;
-the current 64-bit desktop runtime rejects it by design. Component AOT builds
-download the pinned `cranelift-min` Wasmtime CLI automatically through the Gradle plugin.
+Set `WASMLINE_MANIFEST_URL` to load a published package instead of the bundled
+one. Component and Core AOT builds resolve the same backend-specific catalog
+profiles and digest-locked compiler assets.
 
 Desktop uses one signed `manifest.wlm` per mode. The host configures the sample
 public key, and the loader selects the compatible artifact after verifying the
 manifest signature and artifact digest. Optional direct paths can still be
 entered in the UI. Raw `.wasm` is a browser/source artifact; native Wasmline
 requires a matching `.cwasm` or `.pwasm` artifact.
+
+Each manifest may describe multiple Wasmtime profiles. The package stores one
+Core Web `.wasm` and content-addressed native variants. The sample copies the
+manifest and `artifacts/` tree into application resources; the loader still
+opens only the selected digest.
 
 Start Desktop and select any contract from the mode control:
 
@@ -55,16 +59,6 @@ Verify the four bundled manifests and invocation paths without opening the UI:
 
 ```shell
 ./gradlew :sample-apps:multiplatform:desktopApp:verifyWasmlineSamples
-```
-
-```shell
-wasm-tools parse wasmline-samples/raw/sample-export-plugin/plugin.wat -o /tmp/sample-export.wasm
-wasmtime compile /tmp/sample-export.wasm -o /tmp/sample-export.cwasm \
-  -C collector=drc \
-  -W gc=y -W function-references=y -W exceptions=y -W threads=n \
-  -W simd=n -W relaxed-simd=n \
-  -O static-memory-guard-size=0 -O dynamic-memory-guard-size=0 \
-  -O signals-based-traps=n -O opt-level=2
 ```
 
 Override bundled packages when validating custom builds:

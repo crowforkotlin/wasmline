@@ -4,8 +4,7 @@ import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineTypedComponentContract
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineRuntimeContract
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import crow.wasmline.plugin.core.toolchain.FileDigest
 import kotlinx.serialization.Serializable
@@ -14,7 +13,12 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
-/** Serializable boundary between componentization and package assembly. */
+/**
+ * Records a verified raw Component used only as native AOT build input.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 @Serializable
 @InternalWasmlineToolingApi
 data class ComponentBuildRecord(
@@ -23,7 +27,7 @@ data class ComponentBuildRecord(
     val inspectedWitFile: String? = null,
     val world: String? = null,
     val witPackage: String? = null,
-    val invocationProtocol: WasmlineInvocationProtocol? = null,
+    val invocationProtocol: WasmlineInvocationProtocol,
     val exportName: String? = null,
     val codec: String? = null,
     val serviceProtocolVersion: String? = null,
@@ -37,7 +41,7 @@ data class ComponentBuildRecord(
     /** Resolves the raw Component artifact relative to its build directory. */
     fun resolveComponentFile(directory: File): File = resolveChild(directory, componentFile)
 
-    fun toArtifact(directory: File): WasmlineArtifact {
+    fun validateComponentFile(directory: File): File {
         val component = resolveComponentFile(directory)
         require(component.isFile) { "Component result file does not exist: " + component.absolutePath }
         val actualDigest = FileDigest.sha256Hex(component)
@@ -45,62 +49,44 @@ data class ComponentBuildRecord(
             "Component result SHA-256 mismatch for " + component.absolutePath +
                 ": expected " + componentSha256 + ", actual " + actualDigest + "."
         }
-        val protocol = resolvedInvocationProtocol()
-        val resolvedExport = resolvedExportName()
         val descriptorError = crow.wasmline.WasmlineArtifactDescriptor(
             path = component.absolutePath,
             executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = protocol,
-            exportName = resolvedExport,
+            invocationProtocol = invocationProtocol,
+            exportName = exportName,
         ).validationError()
         require(descriptorError == null) { "Invalid Component build record: $descriptorError" }
-        return WasmlineArtifact(
-            type = WasmlineArtifactType.COMPONENT_WASM,
-            url = componentFile,
-            sha256 = componentSha256,
-            targetCompilerVersion = wasmToolsVersion,
-            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            invocationProtocol = protocol,
-            exportName = resolvedExport,
-            contractMetadata = buildMap {
-                world?.let { put(WasmlineTypedComponentContract.METADATA_WORLD, it) }
-                put(WasmlineTypedComponentContract.METADATA_WIT_SHA256, witSha256)
-                adapterSha256?.let { put("component.adapter.sha256", it) }
-                adapterVersion?.let { put("component.adapter.version", it) }
-                witBindgenVersion?.let { put("component.wit-bindgen.version", it) }
-                put("component.wasm-tools.version", wasmToolsVersion)
-                if (protocol == WasmlineInvocationProtocol.WASMLINE_SERVICE) {
-                    put(WasmlineComponentServiceContract.METADATA_WIT_PACKAGE, WasmlineComponentServiceContract.WIT_PACKAGE)
-                    put(WasmlineComponentServiceContract.METADATA_PROFILE, WasmlineComponentServiceContract.PROFILE)
-                    put(
-                        WasmlineComponentServiceContract.METADATA_CODEC,
-                        requireNotNull(codec) { "Wasmline Service build record is missing codec metadata." },
-                    )
-                    put(
-                        WasmlineComponentServiceContract.METADATA_VERSION,
-                        requireNotNull(serviceProtocolVersion) { "Wasmline Service build record is missing version metadata." },
-                    )
-                } else {
-                    witPackage?.let { put(WasmlineTypedComponentContract.METADATA_WIT_PACKAGE, it) }
-                }
-            },
-        )
+        return component
     }
 
-    internal fun resolvedInvocationProtocol(): WasmlineInvocationProtocol = invocationProtocol ?: when {
-        exportName == WasmlineComponentServiceContract.DEFAULT_EXPORT &&
-            !codec.isNullOrBlank() &&
-            !serviceProtocolVersion.isNullOrBlank() -> WasmlineInvocationProtocol.WASMLINE_SERVICE
-
-        else -> WasmlineInvocationProtocol.COMPONENT_EXPORT
-    }
-
-    internal fun resolvedExportName(): String? = when (resolvedInvocationProtocol()) {
-        WasmlineInvocationProtocol.WASMLINE_SERVICE ->
-            exportName ?: WasmlineComponentServiceContract.DEFAULT_EXPORT
-
-        else -> exportName
-    }
+    /** Converts raw Component metadata into the package-wide runtime contract. */
+    fun runtimeContract(): WasmlineRuntimeContract = WasmlineRuntimeContract(
+        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+        invocationProtocol = invocationProtocol,
+        exportName = exportName,
+        contractMetadata = buildMap {
+            world?.let { put(WasmlineTypedComponentContract.METADATA_WORLD, it) }
+            put(WasmlineTypedComponentContract.METADATA_WIT_SHA256, witSha256)
+            adapterSha256?.let { put("component.adapter.sha256", it) }
+            adapterVersion?.let { put("component.adapter.version", it) }
+            witBindgenVersion?.let { put("component.wit-bindgen.version", it) }
+            put("component.wasm-tools.version", wasmToolsVersion)
+            if (invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE) {
+                put(WasmlineComponentServiceContract.METADATA_WIT_PACKAGE, WasmlineComponentServiceContract.WIT_PACKAGE)
+                put(WasmlineComponentServiceContract.METADATA_PROFILE, WasmlineComponentServiceContract.PROFILE)
+                put(
+                    WasmlineComponentServiceContract.METADATA_CODEC,
+                    requireNotNull(codec) { "Wasmline Service build record is missing codec metadata." },
+                )
+                put(
+                    WasmlineComponentServiceContract.METADATA_VERSION,
+                    requireNotNull(serviceProtocolVersion) { "Wasmline Service build record is missing version metadata." },
+                )
+            } else {
+                witPackage?.let { put(WasmlineTypedComponentContract.METADATA_WIT_PACKAGE, it) }
+            }
+        },
+    )
 
     private fun resolveChild(directory: File, relativePath: String): File {
         val root = directory.toPath().toAbsolutePath().normalize()
@@ -110,7 +96,12 @@ data class ComponentBuildRecord(
     }
 }
 
-/** Reads and writes Component build stage records. */
+/**
+ * Reads and writes raw Component build-stage records.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 
 @InternalWasmlineToolingApi
 object ComponentBuildRecords {

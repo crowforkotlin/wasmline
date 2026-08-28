@@ -17,20 +17,8 @@
 
 package crow.wasmline.loader.internal
 
-import crow.wasmline.loader.internal.crypto.Ed25519
-import crow.wasmline.loader.internal.crypto.SignatureAlgorithm
-import crow.wasmline.loader.internal.crypto.SignatureAlgorithmId
-
 internal const val MANIFEST_FILE_NAME = "manifest.wlm"
 
 internal fun getApplicationManifestFileName(applicationName: String) = "$applicationName.$MANIFEST_FILE_NAME"
 
-/** ECDSA P-256. https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm */
-internal expect val ecdsaP256: SignatureAlgorithm
-
 internal expect val systemEpochMsClock: () -> Long
-
-internal fun SignatureAlgorithmId.get(): SignatureAlgorithm = when (this) {
-    SignatureAlgorithmId.Ed25519 -> Ed25519
-    SignatureAlgorithmId.EcdsaP256 -> ecdsaP256
-}

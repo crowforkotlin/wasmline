@@ -13,5 +13,404 @@
     "agp_version": "9.3.0",
     "zig_version": "0.16.0",
     "jbr_version": "21"
+  },
+  "aotCompatibility": {
+    "schemaVersion": 1,
+    "currentDefaultProfileIdsByBackend": {
+      "CRANELIFT": "sha256:142beebea8aededab41f4a390d091d261b255c263c2b880e2bba95db804d607a",
+      "PULLEY": "sha256:9283209693219cd8f6468eefed1002a514248427dd84efdf94024b80426fb598"
+    },
+    "profiles": [
+      {
+        "id": "sha256:804934dc950c1b0588cef005071b7ff17b2a53fbd097292f07f9a8d04fdb7aac",
+        "artifactBackend": "CRANELIFT",
+        "wasmtimeVersion": "47.0.3",
+        "wasmtimeDistributionVersion": "47.0.3.1",
+        "wasmtimeSourceRevision": "1714dcd8d1025c0df372218659d110f5d9de1ed0",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      },
+      {
+        "id": "sha256:ee37a4360a155e125665681d8474c41126271de82900b082a1bbf6706adadcc0",
+        "artifactBackend": "PULLEY",
+        "wasmtimeVersion": "47.0.3",
+        "wasmtimeDistributionVersion": "47.0.3.1",
+        "wasmtimeSourceRevision": "1714dcd8d1025c0df372218659d110f5d9de1ed0",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      },
+      {
+        "id": "sha256:255f0e235d0ef0b85336242ae5ddef57b7015ef1934bf14b1a79ec54d80e8599",
+        "artifactBackend": "CRANELIFT",
+        "wasmtimeVersion": "47.0.4",
+        "wasmtimeDistributionVersion": "47.0.4.1",
+        "wasmtimeSourceRevision": "4f448b1346845dbfb26974c94e9351d78fc9c8d2",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      },
+      {
+        "id": "sha256:040ee3bb58cc5be046f9e17012a8a2d69e223c3d8bd408899158991028ce4034",
+        "artifactBackend": "PULLEY",
+        "wasmtimeVersion": "47.0.4",
+        "wasmtimeDistributionVersion": "47.0.4.1",
+        "wasmtimeSourceRevision": "4f448b1346845dbfb26974c94e9351d78fc9c8d2",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      },
+      {
+        "id": "sha256:e3476b92f7e273b1ce94ce9e7dee85fee3395843c78c99d5fe7b80de96c15b66",
+        "artifactBackend": "CRANELIFT",
+        "wasmtimeVersion": "48.0.0",
+        "wasmtimeDistributionVersion": "48.0.0.1",
+        "wasmtimeSourceRevision": "2207ed401cde91d17c96ad808afeee824a7e69c5",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      },
+      {
+        "id": "sha256:1414479af96d2aba4c7bc728307dc13358ac5a7ce7e6e316c3e097e143982e35",
+        "artifactBackend": "PULLEY",
+        "wasmtimeVersion": "48.0.0",
+        "wasmtimeDistributionVersion": "48.0.0.1",
+        "wasmtimeSourceRevision": "2207ed401cde91d17c96ad808afeee824a7e69c5",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      },
+      {
+        "id": "sha256:142beebea8aededab41f4a390d091d261b255c263c2b880e2bba95db804d607a",
+        "artifactBackend": "CRANELIFT",
+        "wasmtimeVersion": "48.0.1",
+        "wasmtimeDistributionVersion": "48.0.1.1",
+        "wasmtimeSourceRevision": "8c6f8507098f6bd326afed48c1f47a925f6ac5ea",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      },
+      {
+        "id": "sha256:9283209693219cd8f6468eefed1002a514248427dd84efdf94024b80426fb598",
+        "artifactBackend": "PULLEY",
+        "wasmtimeVersion": "48.0.1",
+        "wasmtimeDistributionVersion": "48.0.1.1",
+        "wasmtimeSourceRevision": "8c6f8507098f6bd326afed48c1f47a925f6ac5ea",
+        "serializedArtifactFormatIdentity": "wasmtime-module-version-strategy-v1",
+        "compileProfileSchemaVersion": 1,
+        "engineConfigurationProfile": "wasmline-aot-v1;component-model=y;collector=drc;gc=y;gc-support=y;reference-types=y;function-references=y;exceptions=y;threads=n;simd=n;relaxed-simd=n;concurrency-support=y;max-wasm-stack=524288;memory-guard-size=0;signals-based-traps=n;opt-level=0;cranelift-debug-verifier=n",
+        "introducedInWasmlineVersion": "1.0.0"
+      }
+    ],
+    "compilerAssets": [
+      {
+        "wasmtimeDistributionVersion": "47.0.3.1",
+        "buildHost": "aarch64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.3.1-aarch64-linux",
+        "archiveName": "wasmtime-v47.0.3.1-aarch64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.3.1/wasmtime-v47.0.3.1-aarch64-linux.tar.gz"
+        ],
+        "archiveSha256": "701b62e178515e03d20c77271337a82e4115cda8f9085b10f54bc83a2a215dba",
+        "archiveSize": 17192398,
+        "executableRelativePath": "wasmtime-v47.0.3.1-aarch64-linux/wasmtime",
+        "executableSha256": "073d2ffb18543402e9ae3186a4e0f5a09f981ee5387859cfe8451980a3c5985f"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.3.1",
+        "buildHost": "aarch64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.3.1-aarch64-macos",
+        "archiveName": "wasmtime-v47.0.3.1-aarch64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.3.1/wasmtime-v47.0.3.1-aarch64-macos.tar.gz"
+        ],
+        "archiveSha256": "ff37cbbdc9b1263e5475cf3d407c392a63dac7689ba1ef684324d04620010bb1",
+        "archiveSize": 13680665,
+        "executableRelativePath": "wasmtime-v47.0.3.1-aarch64-macos/wasmtime",
+        "executableSha256": "71c7b6cc92581c95a4919f3eb964e4dd755d1fcb3f85dd3f309542e8cd111487"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.3.1",
+        "buildHost": "x86_64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.3.1-x86_64-linux",
+        "archiveName": "wasmtime-v47.0.3.1-x86_64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.3.1/wasmtime-v47.0.3.1-x86_64-linux.tar.gz"
+        ],
+        "archiveSha256": "e339016dcd3c017f54d8bedf0c5588bf55ae26aec7a8720bf23b51ff51c30ebd",
+        "archiveSize": 15835105,
+        "executableRelativePath": "wasmtime-v47.0.3.1-x86_64-linux/wasmtime",
+        "executableSha256": "d1779dbcac8fff01f307440d077a9132f91b8710349222f6feae66adff78b9f1"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.3.1",
+        "buildHost": "x86_64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.3.1-x86_64-macos",
+        "archiveName": "wasmtime-v47.0.3.1-x86_64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.3.1/wasmtime-v47.0.3.1-x86_64-macos.tar.gz"
+        ],
+        "archiveSha256": "531e58cfa24efe942136dd76aab70dc28bbecbba986f78e70e242ae51c6e3313",
+        "archiveSize": 14840683,
+        "executableRelativePath": "wasmtime-v47.0.3.1-x86_64-macos/wasmtime",
+        "executableSha256": "4b4862097032889a17dbaa27bc60fa90faa61eedce8ba713b8c0ad791cdba69f"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.3.1",
+        "buildHost": "x86_64-windows",
+        "distribution": "FULL",
+        "archiveFormat": "ZIP",
+        "assetId": "wasmtime-v47.0.3.1-x86_64-windows",
+        "archiveName": "wasmtime-v47.0.3.1-x86_64-windows.zip",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.3.1/wasmtime-v47.0.3.1-x86_64-windows.zip"
+        ],
+        "archiveSha256": "9510096bdc9fd2e5f4703d303579367081abf463ceca7b12517eef56685caf8c",
+        "archiveSize": 19854855,
+        "executableRelativePath": "wasmtime-v47.0.3.1-x86_64-windows/wasmtime.exe",
+        "executableSha256": "cae918ae5a5d93bdb35cec7a7ce5a1a73c784ab613014bd1d441e9a494eb5b71"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.4.1",
+        "buildHost": "aarch64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.4.1-aarch64-linux",
+        "archiveName": "wasmtime-v47.0.4.1-aarch64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.4.1/wasmtime-v47.0.4.1-aarch64-linux.tar.gz"
+        ],
+        "archiveSha256": "54bcbeaacbf0269a29bdd9cecbd7eebd0f5c582dbb2bc83c08a89037dfc30490",
+        "archiveSize": 17192534,
+        "executableRelativePath": "wasmtime-v47.0.4.1-aarch64-linux/wasmtime",
+        "executableSha256": "745e3af6f07524ae4b012ce3df92ad6349b9fb739e5748b2cc99461de6258f0a"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.4.1",
+        "buildHost": "aarch64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.4.1-aarch64-macos",
+        "archiveName": "wasmtime-v47.0.4.1-aarch64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.4.1/wasmtime-v47.0.4.1-aarch64-macos.tar.gz"
+        ],
+        "archiveSha256": "359440e83f4c7b9a0280e9f49ff7d54b4aa8da3c9f7f65847a888dd4b59a1959",
+        "archiveSize": 13682968,
+        "executableRelativePath": "wasmtime-v47.0.4.1-aarch64-macos/wasmtime",
+        "executableSha256": "b247647a40b1b96b00e496c0a1ea8b01dbdcab544822824bc239f9777a545818"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.4.1",
+        "buildHost": "x86_64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.4.1-x86_64-linux",
+        "archiveName": "wasmtime-v47.0.4.1-x86_64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.4.1/wasmtime-v47.0.4.1-x86_64-linux.tar.gz"
+        ],
+        "archiveSha256": "21d587e457c492fdd9be77f061c081eb4ec5eacf640cc1d089073ad42408298f",
+        "archiveSize": 15837403,
+        "executableRelativePath": "wasmtime-v47.0.4.1-x86_64-linux/wasmtime",
+        "executableSha256": "00fc8578ae99249857d2af3a8cbcda39e617f6f4b87aae22f6d9e753d597fc59"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.4.1",
+        "buildHost": "x86_64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v47.0.4.1-x86_64-macos",
+        "archiveName": "wasmtime-v47.0.4.1-x86_64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.4.1/wasmtime-v47.0.4.1-x86_64-macos.tar.gz"
+        ],
+        "archiveSha256": "d7b303f81a4e86cba82de6a1a7a0de8bc46b9df00e418469133f5cd4dae257d9",
+        "archiveSize": 14844573,
+        "executableRelativePath": "wasmtime-v47.0.4.1-x86_64-macos/wasmtime",
+        "executableSha256": "aef72267459ec9350c570c472a9ff4880a9ff7790d33a69bcb26ae21ac19aeff"
+      },
+      {
+        "wasmtimeDistributionVersion": "47.0.4.1",
+        "buildHost": "x86_64-windows",
+        "distribution": "FULL",
+        "archiveFormat": "ZIP",
+        "assetId": "wasmtime-v47.0.4.1-x86_64-windows",
+        "archiveName": "wasmtime-v47.0.4.1-x86_64-windows.zip",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v47.0.4.1/wasmtime-v47.0.4.1-x86_64-windows.zip"
+        ],
+        "archiveSha256": "3544f318d0d93a94984c0fa15ebe5bef299449480bf0120e833a67d5e34261b1",
+        "archiveSize": 19848731,
+        "executableRelativePath": "wasmtime-v47.0.4.1-x86_64-windows/wasmtime.exe",
+        "executableSha256": "a925117f4ffa975300af3dff86bb97d6807a7bcafd26673612185c879a4be4d3"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.0.1",
+        "buildHost": "aarch64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.0.1-aarch64-linux",
+        "archiveName": "wasmtime-v48.0.0.1-aarch64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.0.1/wasmtime-v48.0.0.1-aarch64-linux.tar.gz"
+        ],
+        "archiveSha256": "42b45713ba49670f04d786327d6d10b04b2baf47796b5750141c51351736a268",
+        "archiveSize": 17263522,
+        "executableRelativePath": "wasmtime-v48.0.0.1-aarch64-linux/wasmtime",
+        "executableSha256": "68c859326729d27bea7f2858976aad5c247235e9d7e297969f75d4e86856c2f3"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.0.1",
+        "buildHost": "aarch64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.0.1-aarch64-macos",
+        "archiveName": "wasmtime-v48.0.0.1-aarch64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.0.1/wasmtime-v48.0.0.1-aarch64-macos.tar.gz"
+        ],
+        "archiveSha256": "1c2abc37d1dfd146a7550d3dc52f283b37701113232967424e68bd871d7ba3dc",
+        "archiveSize": 13717772,
+        "executableRelativePath": "wasmtime-v48.0.0.1-aarch64-macos/wasmtime",
+        "executableSha256": "148e00eb1662833c3b643b8e54b70c4d6f34dd589e0cecf42641c8f38c137f9a"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.0.1",
+        "buildHost": "x86_64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.0.1-x86_64-linux",
+        "archiveName": "wasmtime-v48.0.0.1-x86_64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.0.1/wasmtime-v48.0.0.1-x86_64-linux.tar.gz"
+        ],
+        "archiveSha256": "a4631309b7d17a4c9e1f53197723af3419829f2c5855c789572f8a04307b759d",
+        "archiveSize": 15967874,
+        "executableRelativePath": "wasmtime-v48.0.0.1-x86_64-linux/wasmtime",
+        "executableSha256": "ee2224655fe7c8d3af431d7a44eae99f43d5e40c433320e2efa9f53e75c8eae0"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.0.1",
+        "buildHost": "x86_64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.0.1-x86_64-macos",
+        "archiveName": "wasmtime-v48.0.0.1-x86_64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.0.1/wasmtime-v48.0.0.1-x86_64-macos.tar.gz"
+        ],
+        "archiveSha256": "c5098ba2b79089119bea31314cd387216c86416ed72db17fdefaa76ec5fc2708",
+        "archiveSize": 14959228,
+        "executableRelativePath": "wasmtime-v48.0.0.1-x86_64-macos/wasmtime",
+        "executableSha256": "76dcfae142f272c627af44be518fad2c46c1d6ef838c9fb51684ab4d758947ae"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.0.1",
+        "buildHost": "x86_64-windows",
+        "distribution": "FULL",
+        "archiveFormat": "ZIP",
+        "assetId": "wasmtime-v48.0.0.1-x86_64-windows",
+        "archiveName": "wasmtime-v48.0.0.1-x86_64-windows.zip",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.0.1/wasmtime-v48.0.0.1-x86_64-windows.zip"
+        ],
+        "archiveSha256": "928e824300d09d7f71ab8c54a7caf186abe04df57ab0c074d1b8a1dc0453c8de",
+        "archiveSize": 19928433,
+        "executableRelativePath": "wasmtime-v48.0.0.1-x86_64-windows/wasmtime.exe",
+        "executableSha256": "796a2edb047372ab6e9f0e293b1ba7280866ccab52ca788688460ced3deab6b5"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.1.1",
+        "buildHost": "aarch64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.1.1-aarch64-linux",
+        "archiveName": "wasmtime-v48.0.1.1-aarch64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.1.1/wasmtime-v48.0.1.1-aarch64-linux.tar.gz"
+        ],
+        "archiveSha256": "1e52f4670e25c1ecaff564b87cafc056c52d6e85b8322e6952cfc4c5c4b4ed76",
+        "archiveSize": 17267890,
+        "executableRelativePath": "wasmtime-v48.0.1.1-aarch64-linux/wasmtime",
+        "executableSha256": "79733c4f1f3bfd0faa78b232d099cd2eb176f0d8bd2035ea43540d010bd62dff"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.1.1",
+        "buildHost": "aarch64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.1.1-aarch64-macos",
+        "archiveName": "wasmtime-v48.0.1.1-aarch64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.1.1/wasmtime-v48.0.1.1-aarch64-macos.tar.gz"
+        ],
+        "archiveSha256": "a3e338e3ee32647f472ee2f4c46516e4534c836a9364832beccd0f09db513201",
+        "archiveSize": 13714750,
+        "executableRelativePath": "wasmtime-v48.0.1.1-aarch64-macos/wasmtime",
+        "executableSha256": "c2e374b832c73bbd9cb6fb5f73787f531a28809b1f596dfe92bd1454a1c0fb52"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.1.1",
+        "buildHost": "x86_64-linux",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.1.1-x86_64-linux",
+        "archiveName": "wasmtime-v48.0.1.1-x86_64-linux.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.1.1/wasmtime-v48.0.1.1-x86_64-linux.tar.gz"
+        ],
+        "archiveSha256": "7344ce89ad97f0a1831effbb509a9bd33a98022b50de330e8e56d66b593d5d0c",
+        "archiveSize": 15973032,
+        "executableRelativePath": "wasmtime-v48.0.1.1-x86_64-linux/wasmtime",
+        "executableSha256": "0434b92c8ffc836d4feeed3f272ac30ff94c46c0cba7c73ec325053821b9b605"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.1.1",
+        "buildHost": "x86_64-macos",
+        "distribution": "FULL",
+        "archiveFormat": "TAR_GZ",
+        "assetId": "wasmtime-v48.0.1.1-x86_64-macos",
+        "archiveName": "wasmtime-v48.0.1.1-x86_64-macos.tar.gz",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.1.1/wasmtime-v48.0.1.1-x86_64-macos.tar.gz"
+        ],
+        "archiveSha256": "ec0d1976ed55595a0be38a743f84df53aa1e14e407efb12e3372dfff42e14d97",
+        "archiveSize": 14964118,
+        "executableRelativePath": "wasmtime-v48.0.1.1-x86_64-macos/wasmtime",
+        "executableSha256": "92d2b4110b0d2e17d6796efee68f93f6e456071267181e70dc4c5b768e2c0f2e"
+      },
+      {
+        "wasmtimeDistributionVersion": "48.0.1.1",
+        "buildHost": "x86_64-windows",
+        "distribution": "FULL",
+        "archiveFormat": "ZIP",
+        "assetId": "wasmtime-v48.0.1.1-x86_64-windows",
+        "archiveName": "wasmtime-v48.0.1.1-x86_64-windows.zip",
+        "downloadUrls": [
+          "https://github.com/crowforkotlin/wasmtime/releases/download/v48.0.1.1/wasmtime-v48.0.1.1-x86_64-windows.zip"
+        ],
+        "archiveSha256": "def15126ab921e42cf3e5d64e105ef635c0154cfe689b13573ae4fe3f05448ba",
+        "archiveSize": 19935619,
+        "executableRelativePath": "wasmtime-v48.0.1.1-x86_64-windows/wasmtime.exe",
+        "executableSha256": "9449e7946bf4556c406e2f931c5c4cb0317824d1e65df7e183e3a25ab305d09a"
+      }
+    ]
   }
 }

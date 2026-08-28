@@ -2,7 +2,7 @@
 title: Frequently Asked Questions
 description: Browser execution path, artifact format differences, compiler plugin necessity, and the plugin isolation model
 createdAt: 2026-07-18
-updatedAt: 2026-08-18
+updatedAt: 2026-08-28
 ---
 
 # Frequently Asked Questions
@@ -35,22 +35,22 @@ The runtime layer provides:
 
 These artifact types are related through Wasmline's pipeline, but they differ fundamentally in when compilation happens and what the compilation target is:
 
-| Artifact | Compiled | Execution | Version coupling |
+| Artifact | Compiled | Execution | Compatibility identity |
 |---|---|---|---|
-| `.wasm` | Source format; loaded directly by the browser path | Browser WebAssembly runtime | **None** — not coupled to Wasmtime |
-| `.cwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | Directly on native hardware (e.g., arm64 machine code) | Coupled to the wasmtime version that compiled it |
-| `.pwasm` | Ahead-of-time by `wasmtime compile` targeting Pulley | wasmtime **Pulley** interpreter | Coupled to the wasmtime version that compiled it |
+| `.wasm` | Source format; loaded directly by the browser path | Browser WebAssembly runtime | **None**; not coupled to Wasmtime |
+| `.cwasm` | Ahead-of-time by `wasmtime compile` via Cranelift | Directly on native hardware (e.g., arm64 machine code) | Exact Cranelift AOT profile and native target |
+| `.pwasm` | Ahead-of-time by `wasmtime compile` targeting Pulley | Wasmtime **Pulley** interpreter | Exact Pulley AOT profile and pointer width |
 
 **`.cwasm` (platform-specific AOT)** produces native machine code for a particular target triple (e.g., `aarch64-android`). Maximum throughput; requires one artifact per platform.
 
-**`.pwasm` (Pulley AOT)** is produced by `wasmtime compile` for the **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter executes it at runtime. A `.pwasm` file is not raw WebAssembly: it is a precompiled, Wasmtime-version-coupled artifact. A `pulley64.pwasm` artifact runs across supported 64-bit native Wasmtime targets; 32-bit targets use a matching `pulley32.pwasm` artifact.
+**`.pwasm` (Pulley AOT)** is produced by `wasmtime compile` for the **Pulley** bytecode ISA instead of native machine code. The Pulley interpreter executes it at runtime. A `.pwasm` file is not raw WebAssembly: it is bound to an exact Pulley AOT compatibility profile. A `pulley64.pwasm` artifact runs across supported 64-bit native Wasmtime targets; 32-bit targets use a matching `pulley32.pwasm` artifact.
 
-Raw `.wasm` is accepted directly only by the browser path. Wasmline's native runtime requires a precompiled `.cwasm` or `.pwasm`; both are outputs of a specific wasmtime release, so upgrading wasmtime invalidates them and requires recompilation.
+Raw `.wasm` is accepted directly only by the browser path. Wasmline's native runtime requires a precompiled `.cwasm` or `.pwasm` whose backend-specific profile ID exactly matches the engine identity. A Wasmtime upgrade normally introduces a new profile ID. Existing artifacts remain immutable, but a package must already contain, or be rebuilt to add, a variant for that new profile.
 
 Wasmline's native runtime does not load raw `.wasm` through the Pulley engine. Generate `.pwasm` ahead of time so the Pulley interpreter can execute the precompiled bytecode without an in-process compilation step; this is especially important in memory-constrained environments such as Android.
 
-<Callout type="info" title="Version coupling">
-  Both `.cwasm` and `.pwasm` are **version-coupled to the wasmtime compiler** that produced them. Upgrading the wasmtime version invalidates all previously compiled artifacts — they must be recompiled. This version coupling is why every non-Web native target uses pre-compiled `.cwasm` or `.pwasm` rather than raw `.wasm`. The Web target is the sole exception, relying on the browser's own WebAssembly runtime with raw `.wasm` files.
+<Callout type="info" title="AOT compatibility profiles">
+  Wasmtime version text is diagnostic information, not the compatibility proof. The signed manifest maps each `.cwasm` or `.pwasm` variant to an exact backend-specific profile ID, and the native engine reports the IDs it can deserialize. One package can carry variants for several profiles while storing the Web `.wasm` only once.
 </Callout>
 
 </details>

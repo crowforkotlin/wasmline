@@ -82,18 +82,34 @@ Java_crow_wasmline_JniWasmlineBindings_nativeWarmUp(JNIEnv *env, jclass thiz, jb
 }
 
 JNIEXPORT jstring JNICALL
-Java_crow_wasmline_JniWasmlineBindings_nativeWasmtimeVersion(JNIEnv *env, jclass thiz) {
-    return env ? env->NewStringUTF(wasmline::Api::wasmtimeVersion()) : nullptr;
+Java_crow_wasmline_JniWasmlineBindings_nativeRuntimeIdentity(JNIEnv *env, jclass thiz, jint field) {
+    const auto *identity = wasmline_get_native_runtime_identity();
+    if (!env || !identity) return nullptr;
+    const char *value = "";
+    switch (field) {
+    case 0: value = identity->cranelift_aot_compatibility_profile_id; break;
+    case 1: value = identity->pulley_aot_compatibility_profile_id; break;
+    case 2: value = identity->wasmline_release_version; break;
+    case 3: value = identity->operating_system; break;
+    case 4: value = identity->architecture; break;
+    case 5: value = identity->supported_cpu_feature_profiles; break;
+    case 6: value = identity->wasmtime_version; break;
+    default: return nullptr;
+    }
+    return env->NewStringUTF(value);
 }
 
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_JniWasmlineBindings_nativeSupportsCranelift(JNIEnv *env, jclass thiz) {
-    return wasmline::Api::supportsCranelift() ? JNI_TRUE : JNI_FALSE;
-}
-
-JNIEXPORT jboolean JNICALL
-Java_crow_wasmline_JniWasmlineBindings_nativeSupportsPulley(JNIEnv *env, jclass thiz) {
-    return wasmline::Api::supportsPulley() ? JNI_TRUE : JNI_FALSE;
+JNIEXPORT jint JNICALL
+Java_crow_wasmline_JniWasmlineBindings_nativeRuntimeIdentityInt(JNIEnv *env, jclass thiz, jint field) {
+    const auto *identity = wasmline_get_native_runtime_identity();
+    if (!identity) return 0;
+    switch (field) {
+    case 0: return identity->backend;
+    case 1: return static_cast<jint>(identity->supported_artifact_formats);
+    case 2: return identity->native_bridge_abi_version;
+    case 3: return identity->pointer_width;
+    default: return 0;
+    }
 }
 
 JNIEXPORT void JNICALL

@@ -41,6 +41,9 @@ Read only the documents required by the current task.
 - `.cwasm` is platform-specific Cranelift AOT output. `.pwasm` is Pulley bytecode produced by Wasmtime; it is not raw WebAssembly.
 - A Cranelift engine can select matching `.cwasm` and fall back to compatible `.pwasm`. A Pulley engine accepts `.pwasm` only.
 - iOS uses the Pulley interpreter. Select `pulley64` `.pwasm`; never select iOS `.cwasm`.
+- One signed `manifest.wlm` may describe several immutable, backend-specific AOT compatibility profiles. Wasmtime `x.y.z` selects catalog records; it is not the serialized-artifact identity.
+- Package artifacts use `artifacts/sha256/{prefix}/{digest}.{extension}`. Core Web `.wasm` is profile-independent and stored once; remote loading downloads only the manifest and one selected artifact.
+- Runtime, loader, build tools, and engine modules share one Maven version. Do not upgrade an engine independently; use the BOM where its Gradle platform is consumable.
 
 ## Workflow
 

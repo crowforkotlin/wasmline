@@ -2,6 +2,7 @@
 
 package crow.wasmline.gradle.extensions
 
+import crow.wasmline.RawAbiMetadata
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import org.gradle.api.file.RegularFileProperty
@@ -42,6 +43,9 @@ public abstract class ManifestExtension @Inject constructor(objects: ObjectFacto
 
     /** Integer version code. Default: 1. */
     public val versionCode: Property<Long> = objects.property(Long::class.java).convention(1L)
+
+    /** Reproducible manifest build timestamp in milliseconds. Default: 0. */
+    public val buildTimestamp: Property<Long> = objects.property(Long::class.java).convention(0L)
 
     /** Minimum wasmline SDK version required by this plugin. */
     public val minSdkVersion: Property<String> = objects.property(String::class.java).convention("1.0.0")
@@ -97,4 +101,7 @@ public abstract class ManifestExtension @Inject constructor(objects: ObjectFacto
     /** Type metadata for direct export invocation. */
     public val contractMetadata: MapProperty<String, String> = objects.mapProperty(String::class.java, String::class.java)
         .convention(emptyMap())
+
+    /** Versioned scalar Core Wasm ABI metadata used by `RAW_EXPORT`. */
+    public val rawAbi: Property<RawAbiMetadata> = objects.property(RawAbiMetadata::class.java)
 }

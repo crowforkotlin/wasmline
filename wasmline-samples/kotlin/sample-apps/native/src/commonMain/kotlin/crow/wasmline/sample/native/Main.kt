@@ -37,7 +37,7 @@ fun main(args: Array<String>) = runBlocking {
 
     println(
         "[Kotlin/Native] backend=${runtimeInfo.backend.name.lowercase()} " +
-            "target=${runtimeInfo.targetOs}/${runtimeInfo.targetCpu} " +
+            "target=${runtimeInfo.operatingSystem}/${runtimeInfo.architecture} " +
             "wasmtime=${runtimeInfo.wasmtimeVersion}",
     )
     println("[Kotlin/Native] loading signed package: $manifestPath")

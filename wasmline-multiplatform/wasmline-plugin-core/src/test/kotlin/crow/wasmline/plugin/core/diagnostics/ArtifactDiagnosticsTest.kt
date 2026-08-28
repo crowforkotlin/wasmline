@@ -1,103 +1,103 @@
 package crow.wasmline.plugin.core.diagnostics
 
 import crow.wasmline.WasmlineArtifactFormat
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.loader.model.WasmlineArtifact
-import crow.wasmline.loader.model.WasmlineArtifactType
+import crow.wasmline.loader.model.WasmlineArtifactTarget
+import crow.wasmline.loader.model.WasmlineArtifactVariant
+import crow.wasmline.loader.model.WasmlineRuntimeContract
+import crow.wasmline.plugin.core.aot.AotCompatibilityProfileSpec
+import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecord
+import crow.wasmline.plugin.core.aot.WasmlineAotCompileOptions
+import crow.wasmline.plugin.core.aot.WasmlineCompiledArtifact
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
-
-private const val FIXTURE_WASM_TOOLS_VERSION = "0.0.0-test"
 
 class ArtifactDiagnosticsTest {
     @Test
-    fun `describes core cwasm without changing its execution model`() {
-        val diagnostic = WasmlineArtifactDiagnostics.describe(
-            artifact(
-                type = WasmlineArtifactType.CWASM,
-                targetCpu = "x86_64",
-                targetOs = "linux",
-                compiler = "wasmtime-12.3.4",
-            ),
-        )
+    fun describesAotArtifactFromItsExactProfile() {
+        val output = compiledArtifact()
+        val diagnostic = WasmlineArtifactDiagnostics.describe(output, buildRecord(output))
 
         assertEquals(WasmlineArtifactFormat.CWASM, diagnostic.format)
         assertEquals(WasmlineExecutionModel.CORE_WASM, diagnostic.executionModel)
-        assertEquals(WasmlineArtifactBackend.CRANELIFT, diagnostic.backend)
-        assertEquals("x86_64-linux", diagnostic.target)
+        assertEquals(WasmlineEngineKind.CRANELIFT, diagnostic.artifactBackend)
+        assertEquals("x86_64-unknown-linux-gnu", diagnostic.target)
         assertEquals("12.3.4", diagnostic.wasmtimeVersion)
+        assertEquals(PROFILE_ID, diagnostic.aotCompatibilityProfileId)
     }
 
     @Test
-    fun `renders component pwasm as pulley with portable target`() {
-        val line = WasmlineArtifactDiagnostics.format(
-            artifact(
-                type = WasmlineArtifactType.PWASM,
-                targetCpu = "pulley64",
-                compiler = "wasmtime-12.3.4",
-                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            ),
-        )
+    fun rendersContentPathAndFullCompatibilityIdentity() {
+        val output = compiledArtifact()
 
         assertEquals(
-            "artifact=plugin.pwasm format=PWASM executionModel=COMPONENT_MODEL " +
-                "backend=PULLEY target=pulley64 wasmtime=12.3.4",
-            line,
+            "artifact=${output.contentRelativePath} format=CWASM executionModel=CORE_WASM " +
+                "backend=CRANELIFT target=x86_64-unknown-linux-gnu wasmtime=12.3.4 profile=$PROFILE_ID",
+            WasmlineArtifactDiagnostics.format(output, buildRecord(output)),
         )
     }
 
-    @Test
-    fun `raw component remains a raw physical format without a wasmtime version`() {
-        val diagnostic = WasmlineArtifactDiagnostics.describe(
-            artifact(
-                type = WasmlineArtifactType.COMPONENT_WASM,
-                compiler = "wasm-tools-$FIXTURE_WASM_TOOLS_VERSION",
-                executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-            ),
-        )
-
-        assertEquals(WasmlineArtifactFormat.RAW_WASM, diagnostic.format)
-        assertEquals(WasmlineArtifactBackend.RAW, diagnostic.backend)
-        assertEquals("unspecified", diagnostic.target)
-        assertNull(diagnostic.wasmtimeVersion)
-        assertEquals("n/a", diagnostic.render().substringAfterLast('='))
-    }
-
-    @Test
-    fun `extracts only an exact wasmtime semantic version`() {
-        val diagnostic = WasmlineArtifactDiagnostics.describe(
-            artifact(type = WasmlineArtifactType.CWASM, compiler = "wasmtime-12.3.4-dev"),
-        )
-
-        assertNull(diagnostic.wasmtimeVersion)
-    }
-
-    private fun artifact(
-        type: WasmlineArtifactType,
-        targetCpu: String? = null,
-        targetOs: String? = null,
-        compiler: String? = null,
-        executionModel: WasmlineExecutionModel = WasmlineExecutionModel.CORE_WASM,
-    ): WasmlineArtifact = WasmlineArtifact(
-        type = type,
-        url = when (type) {
-            WasmlineArtifactType.WASM -> "plugin.wasm"
-            WasmlineArtifactType.COMPONENT_WASM -> "plugin.component.wasm"
-            WasmlineArtifactType.CWASM -> "plugin.cwasm"
-            WasmlineArtifactType.PWASM -> "plugin.pwasm"
-        },
-        sha256 = "a".repeat(64),
-        targetCpu = targetCpu,
-        targetOs = targetOs,
-        targetCompilerVersion = compiler,
-        executionModel = executionModel,
-        invocationProtocol = if (executionModel == WasmlineExecutionModel.COMPONENT_MODEL) {
-            WasmlineInvocationProtocol.COMPONENT_EXPORT
-        } else {
-            WasmlineInvocationProtocol.WASMLINE_SERVICE
-        },
-        exportName = if (executionModel == WasmlineExecutionModel.COMPONENT_MODEL) "plugin/invoke" else null,
+    private fun compiledArtifact(): WasmlineCompiledArtifact = WasmlineCompiledArtifact(
+        requestedTarget = "x86_64-linux",
+        normalizedTarget = "x86_64-unknown-linux-gnu",
+        format = WasmlineArtifactFormat.CWASM,
+        artifactBackend = WasmlineEngineKind.CRANELIFT,
+        aotCompatibilityProfileId = PROFILE_ID,
+        operatingSystem = "linux",
+        architecture = "x86_64",
+        pointerWidth = 64,
+        cpuFeatureProfile = "baseline-v1",
+        sha256 = DIGEST,
+        sizeBytes = 3,
+        contentRelativePath = "artifacts/sha256/aa/$DIGEST.cwasm",
     )
+
+    private fun buildRecord(output: WasmlineCompiledArtifact): WasmlineAotBuildRecord {
+        val profile = AotCompatibilityProfileSpec(
+            id = PROFILE_ID,
+            artifactBackend = WasmlineEngineKind.CRANELIFT,
+            wasmtimeVersion = "12.3.4",
+            wasmtimeDistributionVersion = "12.3.4.1",
+            wasmtimeSourceRevision = "revision",
+            serializedArtifactFormatIdentity = "format",
+            compileProfileSchemaVersion = 1,
+            engineConfigurationProfile = WasmlineAotCompileOptions.FROZEN_DESCRIPTOR,
+            introducedInWasmlineVersion = "1.0.0",
+        )
+        val target = WasmlineArtifactTarget(
+            format = WasmlineArtifactFormat.CWASM,
+            operatingSystem = "linux",
+            architecture = "x86_64",
+            pointerWidth = 64,
+            cpuFeatureProfile = "baseline-v1",
+            variants = listOf(WasmlineArtifactVariant(listOf(PROFILE_ID), DIGEST, 3)),
+        )
+        return WasmlineAotBuildRecord(
+            inputFile = "plugin.wasm",
+            inputSha256 = "b".repeat(64),
+            runtimeContract = WasmlineRuntimeContract(
+                WasmlineExecutionModel.CORE_WASM,
+                WasmlineInvocationProtocol.WASMLINE_SERVICE,
+            ),
+            resolvedProfiles = listOf(profile),
+            requestedTargets = listOf("x86_64-linux"),
+            compiledOutputs = listOf(output),
+            compilerProvenance = emptyList(),
+            compileOptions = WasmlineAotCompileOptions(),
+            artifactTargets = listOf(target),
+        )
+    }
+
+    /**
+     * Defines immutable diagnostic fixture identities.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
+    private companion object {
+        const val DIGEST = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        const val PROFILE_ID = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
 }

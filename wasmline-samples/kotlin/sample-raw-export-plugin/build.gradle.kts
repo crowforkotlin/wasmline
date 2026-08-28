@@ -1,5 +1,10 @@
 @file:Suppress("OPT_IN_USAGE")
 
+import crow.wasmline.RawAbiMetadata
+import crow.wasmline.RawExport
+import crow.wasmline.RawExportKind
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 
@@ -35,17 +40,25 @@ wasmline {
         executionModel = WasmlineExecutionModel.CORE_WASM
         invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT
         exportName = "add_i32"
-        contractMetadata = mapOf(
-            "params" to "s32,s32",
-            "result" to "s32",
+        rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport(
+                    name = "add_i32",
+                    kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
         )
     }
     wasmtime {
-        directory = file(
-            System.getenv("WASMTIME_ROOT") ?: "${rootDir.parentFile.parentFile}/build/wasmline/wasmtime",
-        )
+        aotCompatibility {
+            wasmtimeVersions.set(
+                listOf(providers.gradleProperty("wasmtime.version").orElse("48.0.1").get()),
+            )
+        }
         autoDownload = true
-        version = providers.gradleProperty("wasmtime.version").orElse("48.0.1").get()
-        releaseVersion = "v${providers.gradleProperty("wasmtime.release.version").orElse("48.0.1.1").get()}"
     }
 }

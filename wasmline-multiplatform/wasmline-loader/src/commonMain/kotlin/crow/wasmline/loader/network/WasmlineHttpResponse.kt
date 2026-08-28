@@ -1,6 +1,11 @@
 package crow.wasmline.loader.network
 
-/** HTTP response returned by [WasmlineNetworkClient.fetch]. */
+/**
+ * Contains a bounded in-memory HTTP response returned by [WasmlineNetworkClient.fetch].
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 data class WasmlineHttpResponse(val statusCode: Int, val bytes: ByteArray) {
     val isSuccess: Boolean get() = statusCode in 200..299
 
@@ -17,7 +22,12 @@ data class WasmlineHttpResponse(val statusCode: Int, val bytes: ByteArray) {
     }
 }
 
-/** Status metadata returned when a response body is streamed directly to a sink. */
+/**
+ * Contains HTTP status metadata for a body streamed directly to a sink.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 data class WasmlineHttpStatus(val statusCode: Int) {
     val isSuccess: Boolean get() = statusCode in 200..299
 }

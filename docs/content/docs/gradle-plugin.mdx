@@ -1,32 +1,112 @@
 ---
 title: Gradle Plugin
-description: Build, serve, toolchain, signing, and Component pipeline tasks
+description: Configure multi-profile AOT builds, signing, packaging, and Component tools
 createdAt: 2026-08-15
-updatedAt: 2026-08-17
+updatedAt: 2026-08-28
 ---
 
 # Gradle Plugin
 
-The `crow.wasmline` plugin registers package tasks for Kotlin Multiplatform modules that declare a `wasmWasi` target.
+The `crow.wasmline` plugin registers package tasks for Kotlin Multiplatform
+modules that declare a `wasmWasi` target. Gradle and the CLI use the same
+plugin-core AOT catalog, compiler resolver, target aggregator, signer, and
+packager.
+
+## AOT Configuration
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    manifest {
+        pluginId = "com.example.plugin"
+        version = "1.0.0"
+        buildTimestamp = 0L
+        signingKey = file("keys/ed25519_private.key")
+    }
+    wasmtime {
+        aotCompatibility {
+            wasmtimeVersions.set(listOf("48.0.1"))
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+`wasmtimeVersions` accepts complete Wasmtime `x.y.z` values and may contain
+multiple versions. `profileIds` accepts exact backend-specific
+`sha256:<digest>` IDs when version selection is ambiguous. When both selectors
+are absent, the requested Cranelift and Pulley targets use the current release
+defaults from the catalog.
+
+`targets` controls physical outputs only. Pulley targets are `pulley32` and
+`pulley64`; native Cranelift targets include the operating system and
+architecture. iOS must use `pulley64`, and 32-bit Android must use `pulley32`.
+
+Compiler archives resolve from the generated AOT compatibility lock and are
+cached by archive digest under
+`~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/`. `autoDownload`
+permits missing locked assets to be downloaded. It does not permit arbitrary
+compiler executables or unverified local directories.
+
+## Raw Export ABI
+
+`CORE_WASM + RAW_EXPORT` packages declare their scalar ABI through the typed
+`manifest.rawAbi` property. This metadata is stored in the signed runtime
+contract and is shared by native and Web loaders.
+
+```kotlin
+import crow.wasmline.RawAbiMetadata
+import crow.wasmline.RawExport
+import crow.wasmline.RawExportKind
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+
+wasmline {
+    manifest {
+        executionModel = WasmlineExecutionModel.CORE_WASM
+        invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT
+        exportName = "add_i32"
+        rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport(
+                    name = "add_i32",
+                    kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+        )
+    }
+}
+```
+
+Do not encode parameter or result types in `contractMetadata`. The AOT task
+canonicalizes `rawAbi` before writing its cache input and build record.
 
 ## Build and Serve
 
 ```bash
-# Local verification package
 ./gradlew wasmlineAssembleDebug
-
-# Distribution package
 ./gradlew wasmlineAssembleRelease
-
-# Build and serve the selected package
 ./gradlew wasmlineServerDeploy
 ```
 
-The package directory is `build/wasmline/output/{pluginId}-{version}/`. The distribution archive is `build/wasmline/dist/{pluginId}-{version}.zip`.
+For a multi-module build, add the module path, for example
+`./gradlew :plugin:wasmlineAssembleRelease`.
 
-For a multi-module build, add the module path, for example `./gradlew :plugin:wasmlineAssembleRelease`.
-
-## Server Configuration
+Both assemble tasks produce one signed manifest for every selected profile and
+target. Core Web `.wasm` is stored once. The package directory is
+`build/wasmline/output/{pluginId}-{version}/`, and the complete offline archive
+is `build/wasmline/dist/{pluginId}-{version}.zip`.
 
 ```kotlin
 import crow.wasmline.gradle.WasmlineBuildVariant
@@ -40,37 +120,36 @@ wasmline {
 }
 ```
 
-`deployVariant` defaults to `WasmlineBuildVariant.DEBUG`. `wasmlineServerDeploy` builds the selected package and serves its files until the task is stopped.
+`deployVariant` defaults to `DEBUG`. The server builds the selected package and
+serves its content-addressed files until the task is stopped.
 
-This page covers all 15 user-facing tasks defined by the plugin.
-
-## Toolchain and Signing Tasks
-
-| Task | Purpose |
-|---|---|
-| `checkWasmlineToolchain` | Check the minimal Wasmtime toolchain used by Core Wasm packaging |
-| `wasmlineDownloadWasmtime` | Download the minimal Wasmtime toolchain |
-| `wasmlineDownloadWasmtimeCompiler` | Download the minimal Cranelift CLI used for Component AOT compilation |
-| `wasmlineDownloadComponentTools` | Download `wit-bindgen`, `wasm-tools`, and the WASI Preview 1 adapter |
-| `generateWasmlineManifestKeyPairEd25519` | Generate an Ed25519 manifest signing key pair |
-| `generateWasmlineManifestKeyPairEcdsaP256` | Generate an ECDSA P-256 manifest signing key pair |
-
-## Component Pipeline Tasks
-
-The four componentize and AOT tasks are registered for every `wasmWasi` target and join the assemble graph only for Component builds. `wasmlineGenerateWitBindings` is registered for Component builds without `componentInput`. `wasmlineGenerateHostWitBindings` is registered when `hostBindingsEnabled` is `true`. Direct execution is intended for inspecting one pipeline stage.
+## Registered Tasks
 
 | Task | Purpose |
 |---|---|
-| `wasmlineGenerateWitBindings` | Generate Kotlin guest bindings from WIT |
-| `wasmlineGenerateHostWitBindings` | Generate Kotlin host facades from WIT when host bindings are enabled |
-| `wasmlineComponentizeDebug` | Create or validate the Debug Component |
-| `wasmlineComponentizeRelease` | Create or validate the Release Component |
-| `wasmlineComponentAotDebug` | Compile the Debug Component to configured CWASM and PWASM targets |
-| `wasmlineComponentAotRelease` | Compile the Release Component to configured CWASM and PWASM targets |
+| `wasmlineAotBuildDebug` | Build the Debug profile and compatible-target matrix |
+| `wasmlineAotBuildRelease` | Build the Release profile and compatible-target matrix |
+| `wasmlineAssembleDebug` | Sign and publish the Debug directory and offline ZIP |
+| `wasmlineAssembleRelease` | Sign and publish the Release directory and offline ZIP |
+| `wasmlineServerDeploy` | Build and serve the selected package directory |
+| `generateWasmlineManifestKeyPairEd25519` | Generate the only manifest key type accepted by the current format |
+| `wasmlineDownloadComponentTools` | Download locked `wit-bindgen`, `wasm-tools`, and WASI adapter assets |
+| `wasmlineComponentizeDebug` | Create or validate the Debug Component AOT input |
+| `wasmlineComponentizeRelease` | Create or validate the Release Component AOT input |
+| `wasmlineGenerateWitBindings` | Generate guest bindings when a Component build has no direct component input |
+| `wasmlineGenerateHostWitBindings` | Generate host facades when host bindings are enabled |
 
-`wasmlineAssembleDebug` and `wasmlineAssembleRelease` invoke the required compilation, tool download, binding, componentization, AOT, manifest, signing, and packaging steps.
+The AOT tasks download only missing compiler assets when allowed. Separate
+Wasmtime download/check tasks are no longer part of the plugin. Component raw
+Wasm is an intermediate input and is not published as a browser artifact.
 
-See [Wasmtime Toolchains](/en/docs/wasmtime-download) for cache and download configuration.
+## Transaction and Reproducibility
+
+Each AOT matrix is complete before signing starts. A failed compilation,
+digest check, signature, or ZIP replacement leaves the previous package
+directory and offline ZIP unchanged.
+Set `manifest.buildTimestamp` explicitly, commonly from `SOURCE_DATE_EPOCH`,
+when reproducible bytes are required.
 
 ## API Documentation
 
@@ -80,4 +159,4 @@ From the repository root, generate the aggregated Kotlin API reference:
 ./wasmline-multiplatform/gradlew -p wasmline-multiplatform dokkaGenerate
 ```
 
-The HTML output is written to `wasmline-multiplatform/build/dokka/html/`. It contains public user-facing declarations and excludes internal packages. Published Kotlin modules also include Dokka HTML in their `javadoc.jar`.
+The output is written to `wasmline-multiplatform/build/dokka/html/`.

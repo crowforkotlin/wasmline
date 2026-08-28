@@ -9,6 +9,7 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineComponentValue
 import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRawValue
@@ -22,6 +23,7 @@ import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineTrustedKeySet
+import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.component.ComponentEchoRequest
 import crow.wasmline.sample.component.ComponentPluginService
@@ -370,6 +372,7 @@ internal class WasmSampleRunner(
                 serialization = WasmlineSerializationConfig.protobuf(),
             ),
             trustedKeys = samplePackageTrustedKeys,
+            networkClient = KtorNetworkClient(),
         )
         require(mode != WasmSampleMode.COMPONENT_FIXTURE || path.endsWith(".wlm", ignoreCase = true)) {
             "Component Fixture must be a signed manifest.wlm package produced by :sample-component-fixture."
@@ -484,23 +487,32 @@ internal class WasmSampleRunner(
 
         val runtime = WasmlineRuntime.nativeInfo()
             ?: error("Native runtime metadata is unavailable for AOT artifact '$path'. Use a raw .wasm artifact on browser runtimes.")
-        val runtimeBitness = runtime.is64Bit
-            ?: error("Native runtime did not report bitness for AOT artifact '$path'.")
+        val backend = when (format) {
+            WasmlineArtifactFormat.CWASM -> WasmlineEngineKind.CRANELIFT
+            WasmlineArtifactFormat.PWASM -> WasmlineEngineKind.PULLEY
+            WasmlineArtifactFormat.RAW_WASM -> error("RAW_WASM does not use native AOT metadata.")
+        }
 
         return copy(
-            targetCompilerVersion = "wasmtime-${runtime.wasmtimeVersion}",
-            targetCpu = when (format) {
-                WasmlineArtifactFormat.PWASM -> if (runtimeBitness) "pulley64" else "pulley32"
-                WasmlineArtifactFormat.CWASM -> runtime.targetCpu
-                    ?: error("Native runtime did not report CPU for CWASM artifact '$path'.")
-                WasmlineArtifactFormat.RAW_WASM -> null
-            },
-            targetOs = when (format) {
-                WasmlineArtifactFormat.CWASM -> runtime.targetOs
-                    ?: error("Native runtime did not report OS for CWASM artifact '$path'.")
+            operatingSystem = when (format) {
+                WasmlineArtifactFormat.CWASM -> runtime.operatingSystem
                 WasmlineArtifactFormat.PWASM, WasmlineArtifactFormat.RAW_WASM -> null
             },
-            is64Bit = runtimeBitness,
+            architecture = when (format) {
+                WasmlineArtifactFormat.PWASM -> "pulley${runtime.pointerWidth}"
+                WasmlineArtifactFormat.CWASM -> runtime.architecture
+                WasmlineArtifactFormat.RAW_WASM -> null
+            },
+            pointerWidth = runtime.pointerWidth,
+            cpuFeatureProfile = if (format == WasmlineArtifactFormat.CWASM) {
+                runtime.supportedCpuFeatureProfiles.singleOrNull()
+                    ?: error("Native runtime must report one CPU feature profile for direct CWASM loading.")
+            } else {
+                null
+            },
+            aotCompatibilityProfileId = runtime.aotCompatibilityProfileIdsByBackend[backend]
+                ?.singleOrNull()
+                ?: error("Native runtime must report one $backend AOT profile for direct artifact loading."),
         )
     }
 

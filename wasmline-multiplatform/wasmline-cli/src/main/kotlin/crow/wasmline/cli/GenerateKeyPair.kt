@@ -21,20 +21,18 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.file
 import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
-import crow.wasmline.plugin.core.manifest.ManifestSigningAlgorithm
 import java.io.File
 import java.io.PrintStream
 
+/**
+ * Generates the Ed25519 key pair required by the current manifest format.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 internal class GenerateKeyPair(private val out: PrintStream = System.out) : CliktCommand(NAME) {
-
-    private val algorithm by option("-a", "--algorithm")
-        .enum<ManifestSigningAlgorithm>()
-        .default(ManifestSigningAlgorithm.Ed25519)
-        .help("Signing algorithm to use.")
-
     private val save by option("-s", "--save")
         .flag(default = false)
         .help("Save keys to files in the output directory")
@@ -45,13 +43,13 @@ internal class GenerateKeyPair(private val out: PrintStream = System.out) : Clik
         .help("Output directory for key files. Default: $DEFAULT_OUTPUT_DIR")
 
     override fun run() {
-        val keyPair = ManifestKeyGenerator.generate(algorithm)
+        val keyPair = ManifestKeyGenerator.generate()
         val publicKeyHex = keyPair.publicKeyHex
         val privateKeyHex = keyPair.privateKeyHex
 
         out.println(
             """
-      |ALGORITHM: $algorithm
+      |ALGORITHM: Ed25519
       |PUBLIC KEY: $publicKeyHex
       |PRIVATE KEY: $privateKeyHex
             """.trimMargin(),
@@ -59,9 +57,8 @@ internal class GenerateKeyPair(private val out: PrintStream = System.out) : Clik
 
         if (save) {
             if (!outputDir.exists()) outputDir.mkdirs()
-            val algorithmName = algorithm.name.lowercase()
-            val privateKeyFile = File(outputDir, "${algorithmName}_private.key")
-            val publicKeyFile = File(outputDir, "${algorithmName}_public.key")
+            val privateKeyFile = File(outputDir, "ed25519_private.key")
+            val publicKeyFile = File(outputDir, "ed25519_public.key")
             privateKeyFile.writeText(privateKeyHex)
             publicKeyFile.writeText(publicKeyHex)
             out.println("Private key saved to: ${privateKeyFile.absolutePath}")
@@ -69,6 +66,12 @@ internal class GenerateKeyPair(private val out: PrintStream = System.out) : Clik
         }
     }
 
+    /**
+     * Defines stable command and output directory names.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
     companion object {
         const val NAME = "generate-key-pair"
         const val DEFAULT_OUTPUT_DIR = "build/wasmline/keys"

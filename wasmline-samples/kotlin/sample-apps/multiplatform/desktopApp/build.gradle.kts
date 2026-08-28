@@ -61,19 +61,6 @@ require(wasmlineEngine in setOf("pulley", "cranelift")) {
     "Unsupported wasmline.engine '$wasmlineEngine'. Expected pulley or cranelift."
 }
 
-val requestedArtifactFormat = providers.gradleProperty("wasmline.artifact.format")
-    .orElse(providers.environmentVariable("WASMLINE_ARTIFACT_FORMAT"))
-    .map { it.lowercase() }
-    .orElse(if (wasmlineEngine == "cranelift") "cwasm" else "pwasm64")
-    .map { if (it == "pwasm") "pwasm64" else it }
-    .get()
-require(requestedArtifactFormat in setOf("pwasm64", "cwasm")) {
-    "Desktop supports pwasm64 or cwasm artifacts. Received '$requestedArtifactFormat'."
-}
-if (requestedArtifactFormat == "cwasm" && wasmlineEngine != "cranelift") {
-    error("Desktop CWASM requires -Pwasmline.engine=cranelift.")
-}
-
 val samplePackages = listOf(
     Triple(
         project(":sample-plugin"),
@@ -102,7 +89,7 @@ val syncWasmlineSamplePackages = tasks.register<Sync>("syncWasmlineSamplePackage
     samplePackages.forEach { (sampleProject, outputPath, resourcePath) ->
         dependsOn(sampleProject.tasks.named("wasmlineAssembleDebug"))
         from(sampleProject.layout.buildDirectory.dir(outputPath)) {
-            include("manifest.wlm", "*.wasm", "*.pwasm", "*.cwasm")
+            include("manifest.wlm", "artifacts/**")
             into(resourcePath)
         }
     }

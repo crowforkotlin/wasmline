@@ -15,7 +15,12 @@ import okio.buffer
 import okio.use
 import kotlin.random.Random
 
-/** File-system-backed cache with atomic publication and bounded storage. */
+/**
+ * Provides file-system-backed caching with atomic publication and bounded storage.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 internal class WasmlineFileCache(
     cacheDirectory: String,
     private val maxCacheBytes: Long,
@@ -58,11 +63,13 @@ internal class WasmlineFileCache(
         key: String,
         extension: String,
         expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
         networkClient: WasmlineNetworkClient?,
         artifactUrl: String,
     ): ArtifactFileResolution {
         val target = artifactPath(key, extension)
-        val cachedVerification = verifyArtifact(target, expectedSha256)
+        val cachedVerification = verifyArtifact(target, expectedSha256, expectedSizeBytes, maxArtifactBytes)
         when (cachedVerification) {
             is CachedArtifactVerification.Valid -> {
                 trimToSize(protectedPaths = setOf(target))
@@ -87,6 +94,17 @@ internal class WasmlineFileCache(
                 deleteQuietly(target)
             }
 
+            is CachedArtifactVerification.SizeMismatch -> {
+                WasmlineLog.logger?.warn(
+                    "$P Ignoring artifact cache entry '$target' with unexpected size " +
+                        "${cachedVerification.actualSizeBytes}.",
+                )
+                deleteQuietly(target)
+                if (networkClient == null) {
+                    return ArtifactFileResolution.SizeMismatch(cachedVerification.actualSizeBytes)
+                }
+            }
+
             CachedArtifactVerification.Missing -> Unit
         }
 
@@ -94,6 +112,8 @@ internal class WasmlineFileCache(
         return downloadArtifact(
             target = target,
             expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
             networkClient = networkClient,
             artifactUrl = artifactUrl,
         )
@@ -112,11 +132,15 @@ internal class WasmlineFileCache(
         key: String,
         extension: String,
         expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
         networkClient: WasmlineNetworkClient,
         artifactUrl: String,
     ): ArtifactFileResolution = downloadArtifact(
         target = artifactPath(key, extension),
         expectedSha256 = expectedSha256,
+        expectedSizeBytes = expectedSizeBytes,
+        maxArtifactBytes = maxArtifactBytes,
         networkClient = networkClient,
         artifactUrl = artifactUrl,
     )
@@ -124,6 +148,8 @@ internal class WasmlineFileCache(
     private suspend fun downloadArtifact(
         target: Path,
         expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
         networkClient: WasmlineNetworkClient,
         artifactUrl: String,
     ): ArtifactFileResolution {
@@ -137,15 +163,25 @@ internal class WasmlineFileCache(
         }
         val sink = hashingSink.buffer()
 
+        var downloadedBytes = 0L
         val status = try {
             val result = networkClient.fetchTo(
                 url = artifactUrl,
                 sink = WasmlineNetworkSink { bytes, offset, byteCount ->
+                    val nextSize = downloadedBytes + byteCount
+                    if (nextSize > expectedSizeBytes || nextSize > maxArtifactBytes) {
+                        throw ArtifactSizeLimitException(nextSize)
+                    }
                     sink.write(bytes, offset, byteCount)
+                    downloadedBytes = nextSize
                 },
             )
             sink.close()
             result
+        } catch (error: ArtifactSizeLimitException) {
+            runCatching { sink.close() }
+            deleteQuietly(temporary)
+            return ArtifactFileResolution.SizeMismatch(error.actualSizeBytes)
         } catch (error: CancellationException) {
             runCatching { sink.close() }
             deleteQuietly(temporary)
@@ -159,6 +195,10 @@ internal class WasmlineFileCache(
         if (!status.isSuccess) {
             deleteQuietly(temporary)
             return ArtifactFileResolution.HttpFailure(status.statusCode)
+        }
+        if (downloadedBytes != expectedSizeBytes) {
+            deleteQuietly(temporary)
+            return ArtifactFileResolution.SizeMismatch(downloadedBytes)
         }
 
         val actualSha256 = hashingSink.hash.hex()
@@ -177,9 +217,21 @@ internal class WasmlineFileCache(
         }
     }
 
-    private fun verifyArtifact(path: Path, expectedSha256: String): CachedArtifactVerification {
+    private fun verifyArtifact(
+        path: Path,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+    ): CachedArtifactVerification {
         return try {
-            if (fileSystem.metadataOrNull(path)?.isRegularFile != true) return CachedArtifactVerification.Missing
+            val metadata = fileSystem.metadataOrNull(path) ?: return CachedArtifactVerification.Missing
+            if (!metadata.isRegularFile) return CachedArtifactVerification.Missing
+            val actualSize = metadata.size ?: return CachedArtifactVerification.Unreadable(
+                IllegalStateException("Artifact size is unavailable."),
+            )
+            if (actualSize != expectedSizeBytes || actualSize > maxArtifactBytes) {
+                return CachedArtifactVerification.SizeMismatch(actualSize)
+            }
             val hashingSource = HashingSource.sha256(fileSystem.source(path))
             hashingSource.buffer().use { source ->
                 val discard = Buffer()
@@ -273,12 +325,34 @@ internal class WasmlineFileCache(
 
     private data class CacheEntry(val path: Path, val size: Long, val lastUsedAt: Long)
 
+    /**
+     * Represents the integrity state of one cached content-addressed artifact.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
     private sealed interface CachedArtifactVerification {
         data object Valid : CachedArtifactVerification
         data class Corrupt(val actualSha256: String) : CachedArtifactVerification
         data class Unreadable(val cause: Throwable) : CachedArtifactVerification
+
+        /**
+         * Reports the actual size of a cached artifact that violates its declared identity.
+         *
+         * Date: 2026-08-28
+         * Author: crowforkotlin
+         */
+        data class SizeMismatch(val actualSizeBytes: Long) : CachedArtifactVerification
         data object Missing : CachedArtifactVerification
     }
+
+    /**
+     * Stops a streamed artifact write after its declared or configured size limit is exceeded.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
+    private class ArtifactSizeLimitException(val actualSizeBytes: Long) : RuntimeException()
 
     private companion object {
         const val P: String = "[WasmlineFileCache]"
@@ -291,9 +365,23 @@ internal class WasmlineFileCache(
     }
 }
 
+/**
+ * Represents the outcome of resolving one content-addressed artifact file.
+ *
+ * Date: 2026-08-28
+ * Author: crowforkotlin
+ */
 internal sealed interface ArtifactFileResolution {
     data class Ready(val path: String, val cacheHit: Boolean) : ArtifactFileResolution
     data class HashMismatch(val actualSha256: String) : ArtifactFileResolution
+
+    /**
+     * Reports the actual size of an artifact that violates its declared identity.
+     *
+     * Date: 2026-08-28
+     * Author: crowforkotlin
+     */
+    data class SizeMismatch(val actualSizeBytes: Long) : ArtifactFileResolution
     data class HttpFailure(val statusCode: Int) : ArtifactFileResolution
     data class WriteFailure(val cause: Throwable) : ArtifactFileResolution
     data object Missing : ArtifactFileResolution

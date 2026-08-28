@@ -1,65 +1,132 @@
 ---
 title: CLI Reference
-description: Plugin build pipeline commands and build output layout
+description: Build, sign, and inspect multi-profile Wasmline packages
 createdAt: 2026-07-18
-updatedAt: 2026-08-10
+updatedAt: 2026-08-28
 ---
 
 # CLI Reference
 
-The `wasmline-cli` module implements the complete plugin build pipeline. All commands are dispatched via Gradle from `wasmline-multiplatform/`:
+Run the CLI from `wasmline-multiplatform/`. The repository launcher builds the
+distribution and forwards every argument to the Kotlin command:
 
 ```bash
-cd wasmline-multiplatform
-./gradlew :wasmline-cli:run --args="<command> [options]"
+./wasmline-cli/cli.sh <command> [options]
 ```
 
 ## Command Set
 
-| Command | Description |
+| Command | Purpose |
 |---|---|
-| `download` | Download wasmtime release binaries for one or more target platforms |
-| `generate-key-pair` | Generate an Ed25519 signing key pair |
-| `compile` | Compile a raw `.wasm` binary to platform-specific `.cwasm` artifacts and a portable `.pwasm` image |
-| `manifest` | Generate a cryptographically signed `.wlm` manifest (Protobuf + Ed25519) from the compiled artifact set |
-| `build` | Execute the complete pipeline: `compile → manifest → zip packaging` |
+| `build` | Build the AOT matrix, sign one manifest, and create the complete offline ZIP |
+| `compile` | Build the AOT matrix and write `aot-build-record.json` without signing |
+| `manifest` | Sign a completed build record without changing its runtime contract |
+| `generate-key-pair` | Generate the Ed25519 key pair required by the current manifest format |
+| `aot-profiles list` | List catalog profiles with Wasmtime version, backend, and profile ID |
+| `aot-profiles describe <id>` | Show the immutable descriptor and build hosts for one profile |
+| `componentize` | Create or inspect the raw Component used as AOT input |
+| `tools download`, `wit generate`, `component validate`, `component inspect` | Manage Component build tools and metadata |
 
-## Pipeline Execution
+The removed `download` command, `--wasmtime` directory, and arbitrary compiler
+executable options are not accepted. AOT compilers must resolve from the signed
+catalog lock.
+
+## Build a Package
 
 ```bash
-cd wasmline-multiplatform
+./wasmline-cli/cli.sh generate-key-pair --save
 
-# Download wasmtime min toolchain binaries
-./gradlew :wasmline-cli:run --args="download -v v48.0.1.1"
-
-# Generate Ed25519 signing key pair
-./gradlew :wasmline-cli:run --args="generate-key-pair --save"
-
-# Execute the full build pipeline
-./gradlew :wasmline-cli:run --args="build \
-  -i plugin.wasm \
-  -wt build/wasmline/wasmtime/wasmtime-v48.0.1.1-aarch64-macos-min \
-  --key build/wasmline/keys/ed25519_private.key"
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --aot-wasmtime-version 48.0.1 \
+  --target pulley64 \
+  --target x86_64-linux \
+  --auto-download \
+  --plugin-id com.example.plugin \
+  --version 1.0.0 \
+  --build-timestamp 0 \
+  --key build/wasmline/keys/ed25519_private.key
 ```
 
-## Build Output Layout
+Repeat `--aot-wasmtime-version` to support more complete Wasmtime `x.y.z`
+versions. Each version is resolved once for every requested artifact backend.
+When a version has more than one profile for the same backend, select the exact
+record with repeatable `--aot-compatibility-profile-id sha256:<digest>`.
+
+If no version or profile ID is supplied, each requested backend uses the current
+Wasmline release default. Use `aot-profiles list` and `aot-profiles describe`
+instead of deriving a profile ID from a Wasmtime or Wasmline version.
+
+## Raw Export ABI
+
+Both `build` and `compile` accept `--raw-abi-metadata <file>` for
+`CORE_WASM + RAW_EXPORT`. The bounded JSON file uses the same
+`RawAbiMetadata` schema as the Gradle DSL:
+
+```json
+{
+  "version": 1,
+  "exports": [
+    {
+      "name": "add_i32",
+      "kind": "FUNCTION",
+      "signature": {
+        "parameters": ["I32", "I32"],
+        "results": ["I32"]
+      }
+    }
+  ],
+  "imports": [],
+  "memoryExport": "memory",
+  "requiredFeatures": []
+}
+```
+
+```bash
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --execution-model CORE_WASM \
+  --invocation-protocol RAW_EXPORT \
+  --export-name add_i32 \
+  --raw-abi-metadata raw-abi.json \
+  --target pulley64 \
+  --key build/wasmline/keys/ed25519_private.key
+```
+
+The shared plugin-core codec rejects unknown or invalid metadata and
+canonicalizes export, import, and feature ordering before the build record is
+created. `contractMetadata` remains available for unrelated contract
+annotations; it is not a substitute for the raw ABI model.
+
+## Output Layout
 
 ```text
 build/wasmline/
-├── output/{name}-{version}/
-│   ├── manifest.wlm                      # Signed manifest (Protobuf + Ed25519 signature)
-│   ├── {name}-pulley32.pwasm             # Portable Pulley bytecode — 32-bit Android
-│   ├── {name}-pulley64.pwasm             # Portable Pulley bytecode — 64-bit native targets and iOS
-│   ├── {name}-aarch64-android.cwasm      # AOT — Android arm64-v8a
-│   ├── {name}-aarch64-macos.cwasm        # AOT — macOS Apple Silicon
-│   ├── {name}-x86_64-linux.cwasm         # AOT — Linux x86_64
-│   ├── {name}-x86_64-windows.cwasm       # AOT — Windows x86_64
+├── output/com.example.plugin-1.0.0/
+│   ├── manifest.wlm
+│   ├── artifacts/sha256/
+│   │   ├── 4f/4f13c7...a920.cwasm
+│   │   ├── 91/91aa42...c810.wasm
+│   │   └── b8/b8072d...0f31.pwasm
 │   └── debug/
-│       ├── compile-result.json
-│       └── manifest.json
-├── dist/
-│   └── {name}-{version}.zip
+│       ├── manifest.json
+│       ├── aot-build-record.json
+│       └── artifact-index.json
+├── dist/com.example.plugin-1.0.0.zip
 └── keys/
     ├── ed25519_private.key
     └── ed25519_public.key
 ```
+
+One signed `manifest.wlm` describes every requested AOT profile. Core packages
+store the Web `.wasm` once, outside the Wasmtime profile matrix. Component
+packages use their raw Component only as build input and do not publish it as a
+Web artifact. Identical output bytes share one content-addressed file.
+
+The ZIP contains the complete artifact matrix. A remote loader does not fetch
+the ZIP: it verifies the manifest, selects one target variant from native runtime
+identity, and downloads only that content-addressed artifact.
+
+Compilation and final package publication use staging directories. A failed
+matrix unit, signature operation, or ZIP replacement restores both the previous
+package directory and the previous offline ZIP.

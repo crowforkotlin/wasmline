@@ -127,44 +127,7 @@ bool wasmline_warmup_engine(bool usePulley) { return Api::warmupEngine(usePulley
 
 void wasmline_release_engine() { Api::releaseEngine(); }
 
-const char *wasmline_wasmtime_version() { return Api::wasmtimeVersion(); }
-
-bool wasmline_supports_cranelift() { return Api::supportsCranelift(); }
-
-bool wasmline_supports_pulley() { return Api::supportsPulley(); }
-
 void wasmline_native_engine_link_anchor() {}
-
-const char *wasmline_target_os() {
-#if defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__) || \
-    defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__)
-  return "ios";
-#elif defined(__APPLE__)
-  return "macos";
-#elif defined(_WIN32)
-  return "windows";
-#elif defined(__linux__)
-  return "linux";
-#else
-  return "unknown";
-#endif
-}
-
-const char *wasmline_target_cpu() {
-#if defined(__aarch64__) || defined(_M_ARM64)
-  return "aarch64";
-#elif defined(__x86_64__) || defined(_M_X64)
-  return "x86_64";
-#elif defined(__i386__) || defined(_M_IX86)
-  return "x86";
-#elif defined(__arm__) || defined(_M_ARM)
-  return "arm";
-#else
-  return "unknown";
-#endif
-}
-
-bool wasmline_target_is_64_bit() { return sizeof(void *) == 8; }
 
 bool wasmline_path_exists(const char *path) {
   if (!path)
