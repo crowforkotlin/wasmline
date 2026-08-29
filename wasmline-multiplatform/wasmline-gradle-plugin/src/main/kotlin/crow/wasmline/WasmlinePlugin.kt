@@ -8,11 +8,16 @@ import crow.wasmline.gradle.WasmtimeTarget
 import crow.wasmline.gradle.extensions.WasmlineExtension
 import crow.wasmline.gradle.tasks.DownloadComponentToolsTask
 import crow.wasmline.gradle.tasks.WasmlineAotBuildTask
+import crow.wasmline.gradle.tasks.WasmlineAssembleStateService
 import crow.wasmline.gradle.tasks.WasmlineAssembleTask
+import crow.wasmline.gradle.tasks.WasmlineCheckAotCompatibilityTask
 import crow.wasmline.gradle.tasks.WasmlineComponentizeTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateHostWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateWitBindingsTask
+import crow.wasmline.gradle.tasks.WasmlineMarkAssembleAttemptTask
 import crow.wasmline.gradle.tasks.WasmlineServerDeployTask
+import crow.wasmline.plugin.core.aot.WasmlineAotTargetSpec
+import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
 import crow.wasmline.plugin.core.aot.WasmlineRawAbiMetadataCodec
 import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
 import crow.wasmline.plugin.core.util.PlatformDetector
@@ -20,6 +25,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
+import org.gradle.build.event.BuildEventsListenerRegistry
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
@@ -32,6 +38,7 @@ import org.jetbrains.kotlin.gradle.targets.js.ir.KotlinJsIrTarget
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
 import kotlin.jvm.java
 
 /**
@@ -62,7 +69,7 @@ import kotlin.jvm.java
  *         signingKey = file("../keys/private.key")
  *     }
  *     wasmtime {
- *         aotCompatibility { wasmtimeVersions.set(listOf("47.0.3", "48.0.0")) }
+ *         aotCompatibility { current() }
  *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
  *         autoDownload.set(true)
  *     }
@@ -73,10 +80,20 @@ import kotlin.jvm.java
  * }
  * ```
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
-public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
+public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") marker: Unit) : KotlinCompilerPluginSupportPlugin {
+    private var buildEventsListenerRegistry: BuildEventsListenerRegistry? = null
+
+    /** Creates the plugin for isolated unit tests without Gradle service injection. */
+    public constructor() : this(Unit)
+
+    /** Creates the plugin with Gradle's build event registry. */
+    @Inject
+    public constructor(buildEventsListenerRegistry: BuildEventsListenerRegistry) : this(Unit) {
+        this.buildEventsListenerRegistry = buildEventsListenerRegistry
+    }
 
     override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
 
@@ -158,6 +175,17 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
     private fun registerAssembleTasks(project: Project, ext: WasmlineExtension) {
         val debugCompileTask = "compileDevelopmentLibraryKotlinWasmWasiOptimize"
         val releaseCompileTask = "compileProductionLibraryKotlinWasmWasiOptimize"
+        val debugAssemblePath = "${project.path}:${WasmlineBuildVariant.DEBUG.assembleTaskName}"
+        val releaseAssemblePath = "${project.path}:${WasmlineBuildVariant.RELEASE.assembleTaskName}"
+        val stateServiceName = "wasmlineAssembleState" + project.path
+            .replace(Regex("[^A-Za-z0-9_]"), "_")
+        val assembleStateService = project.gradle.sharedServices.registerIfAbsent(
+            stateServiceName,
+            WasmlineAssembleStateService::class.java,
+        ) { specification ->
+            specification.parameters.assembleTaskPaths.set(listOf(debugAssemblePath, releaseAssemblePath))
+        }
+        buildEventsListenerRegistry?.onTaskCompletion(assembleStateService)
 
         val debugComponent = registerComponentizeTask(
             project = project,
@@ -173,21 +201,109 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
         )
         val debugAot = registerAotBuildTask(project, ext, "wasmlineAotBuildDebug", "debug")
         val releaseAot = registerAotBuildTask(project, ext, "wasmlineAotBuildRelease", "release")
+        val debugAttempt = registerAssembleAttemptTask(project, assembleStateService, "wasmlineMarkAssembleDebug")
+        val releaseAttempt = registerAssembleAttemptTask(project, assembleStateService, "wasmlineMarkAssembleRelease")
+        debugAot.configure { task -> task.mustRunAfter(debugAttempt) }
+        releaseAot.configure { task -> task.mustRunAfter(releaseAttempt) }
 
-        project.tasks.register(WasmlineBuildVariant.DEBUG.assembleTaskName, WasmlineAssembleTask::class.java) { task ->
+        val debugAssemble = project.tasks.register(
+            WasmlineBuildVariant.DEBUG.assembleTaskName,
+            WasmlineAssembleTask::class.java,
+        ) { task ->
             task.description = "Assemble wasmline plugin (debug / Development variant)"
             task.buildVariant.set(WasmlineBuildVariant.DEBUG.compilationName)
+            task.assembleStateService.set(assembleStateService)
+            task.usesService(assembleStateService)
             configureAssembleTask(task, project, ext)
             task.aotOutputDirectory.set(debugAot.flatMap { it.outputDirectory })
         }
 
-        project.tasks.register(WasmlineBuildVariant.RELEASE.assembleTaskName, WasmlineAssembleTask::class.java) { task ->
+        val releaseAssemble = project.tasks.register(
+            WasmlineBuildVariant.RELEASE.assembleTaskName,
+            WasmlineAssembleTask::class.java,
+        ) { task ->
             task.description = "Assemble wasmline plugin (release / Production variant)"
             task.buildVariant.set(WasmlineBuildVariant.RELEASE.compilationName)
+            task.assembleStateService.set(assembleStateService)
+            task.usesService(assembleStateService)
             configureAssembleTask(task, project, ext)
             task.aotOutputDirectory.set(releaseAot.flatMap { it.outputDirectory })
         }
+
+        val compatibilityCheck = registerCompatibilityCheckTask(
+            project = project,
+            ext = ext,
+            stateService = assembleStateService,
+        )
+        configureCompatibilityCheckFinalizers(
+            compatibilityCheck = compatibilityCheck,
+            debugAssemble = debugAssemble,
+            releaseAssemble = releaseAssemble,
+            debugAttempt = debugAttempt,
+            releaseAttempt = releaseAttempt,
+        )
     }
+
+    private fun registerAssembleAttemptTask(
+        project: Project,
+        stateService: Provider<WasmlineAssembleStateService>,
+        taskName: String,
+    ): TaskProvider<WasmlineMarkAssembleAttemptTask> = project.tasks.register(
+        taskName,
+        WasmlineMarkAssembleAttemptTask::class.java,
+    ) { task ->
+        task.stateService.set(stateService)
+        task.usesService(stateService)
+    }
+
+    private fun configureCompatibilityCheckFinalizers(
+        compatibilityCheck: TaskProvider<WasmlineCheckAotCompatibilityTask>,
+        debugAssemble: TaskProvider<WasmlineAssembleTask>,
+        releaseAssemble: TaskProvider<WasmlineAssembleTask>,
+        debugAttempt: TaskProvider<WasmlineMarkAssembleAttemptTask>,
+        releaseAttempt: TaskProvider<WasmlineMarkAssembleAttemptTask>,
+    ) {
+        compatibilityCheck.configure { task ->
+            task.mustRunAfter(debugAssemble, releaseAssemble)
+        }
+        debugAssemble.configure { task ->
+            task.dependsOn(debugAttempt)
+            task.finalizedBy(compatibilityCheck)
+        }
+        releaseAssemble.configure { task ->
+            task.dependsOn(releaseAttempt)
+            task.finalizedBy(compatibilityCheck)
+        }
+    }
+
+    private fun registerCompatibilityCheckTask(
+        project: Project,
+        ext: WasmlineExtension,
+        stateService: Provider<WasmlineAssembleStateService>,
+    ) = project.tasks.register("wasmlineCheckAotCompatibility", WasmlineCheckAotCompatibilityTask::class.java) { task ->
+        task.assembleStateService.set(stateService)
+        task.usesService(stateService)
+        task.aotCompatibilitySelector.set(ext.wasmtime.aotCompatibility.selectorKind)
+        task.aotCompatibilityRanges.set(ext.wasmtime.aotCompatibility.selectorRanges)
+        task.minSdkVersion.set(ext.manifest.minSdkVersion)
+        task.requestedBackends.set(project.provider { requestedAotBackends(ext) })
+        task.nativeTargetCount.set(project.provider { requestedAotTargetSpecs(ext).size })
+        task.offline.set(project.provider { project.gradle.startParameter.isOffline })
+        task.suppressCompatibilityWarning.set(ext.wasmtime.aotCompatibility.suppressCompatibilityWarning)
+        task.reportFile.set(project.layout.buildDirectory.file("reports/wasmline/aot-compatibility-check.json"))
+        task.cacheDirectory.set(
+            File(System.getProperty("user.home"), ".gradle/caches/wasmline/aot-compatibility"),
+        )
+    }
+
+    private fun requestedAotTargetSpecs(ext: WasmlineExtension): List<WasmlineAotTargetSpec> =
+        WasmlineArtifactTargetFactory.create(ext.wasmtime.targets.map(WasmtimeTarget::targetName))
+
+    private fun requestedAotBackends(ext: WasmlineExtension): List<String> = requestedAotTargetSpecs(ext)
+        .map(WasmlineAotTargetSpec::artifactBackend)
+        .map(WasmlineEngineKind::name)
+        .distinct()
+        .sorted()
 
     private fun registerGenerateBindingsTask(project: Project, ext: WasmlineExtension) = project.tasks.register(
         "wasmlineGenerateWitBindings",
@@ -379,8 +495,9 @@ public class WasmlinePlugin : KotlinCompilerPluginSupportPlugin {
             task.contractMetadata.set(ext.manifest.contractMetadata)
             task.rawAbiMetadataJson.set(ext.manifest.rawAbi.map(WasmlineRawAbiMetadataCodec::encode))
             task.targets.set(ext.wasmtime.targetsProvider.map { targets -> targets.map(WasmtimeTarget::targetName) })
-            task.wasmtimeVersions.set(ext.wasmtime.aotCompatibility.wasmtimeVersions)
-            task.aotCompatibilityProfileIds.set(ext.wasmtime.aotCompatibility.profileIds)
+            task.aotCompatibilitySelector.set(ext.wasmtime.aotCompatibility.selectorKind)
+            task.aotCompatibilityRanges.set(ext.wasmtime.aotCompatibility.selectorRanges)
+            task.minSdkVersion.set(ext.manifest.minSdkVersion)
             task.autoDownload.set(ext.wasmtime.autoDownload)
             task.buildHost.set(detectCurrentPlatform())
             task.maxParallelCompilations.set(ext.wasmtime.maxParallelCompilations)

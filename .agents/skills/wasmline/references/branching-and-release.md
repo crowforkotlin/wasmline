@@ -61,11 +61,15 @@ BOM must still assign the same `wasmline_version` to every Wasmline coordinate.
 Because Maven coordinates are immutable, a Wasmtime upgrade that changes published engine binaries also requires a new `wasmline_version`. A patch increment is sufficient when no public API changes.
 
 A Wasmtime upgrade appends immutable Cranelift and Pulley profile descriptors,
-compiler-asset digests, and build-host bindings to `scripts/versions.json`.
-Already released profile IDs and provenance records are never rewritten. A
-plugin may select several complete Wasmtime versions or exact profile IDs and
-publish them through one manifest; this does not create additional Wasmline
-Maven versions or engine artifacts.
+compiler-asset digests, and build-host bindings through the root
+`aot-compatibility.json` maintenance workflow. Already released profile IDs and
+provenance records are never rewritten. A
+plugin selects compatibility generations through exactly one of `current()`,
+`minimum()`, `all()`, or `versionRanges { include(from = ..., through = ...) }`.
+Consumers do not enter Wasmtime versions or profile digests in the normal DSL;
+the Gradle plugin resolves those internal bindings from its packaged catalog.
+Publishing several generations in one manifest does not create additional
+Wasmline Maven versions or engine artifacts.
 
 ## Release Tag
 
@@ -100,7 +104,7 @@ Before either action:
 4. Confirm Maven credentials and signing configuration.
 5. Publish the `x.y.z` modules and create the matching `release-x.y.z.v` tag as one release operation.
 
-The GitHub Actions CI workflow has no publication or release jobs. Maven publication and GitHub release automation remain unimplemented; a successful CI run is not a release.
+The GitHub Actions CI workflow has no publication or release jobs; a successful CI run is not a release. Formal publication is implemented by `.github/workflows/release.yml`, which runs only for a validated `release-x.y.z.v` tag. It publishes Maven artifacts, then creates the matching GitHub Release with `aot-compatibility.json` and its checksum. The local `scripts/release.sh` validates inputs and prepares release notes/assets but never creates tags or publishes artifacts.
 
 ## Change Scenarios
 

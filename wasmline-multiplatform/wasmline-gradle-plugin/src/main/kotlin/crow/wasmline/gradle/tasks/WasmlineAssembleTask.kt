@@ -15,6 +15,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
@@ -27,7 +28,7 @@ import javax.inject.Inject
 /**
  * Signs and transactionally publishes one complete Wasmline package and offline ZIP.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 internal abstract class WasmlineAssembleTask @Inject constructor(private val execOperations: ExecOperations) : DefaultTask() {
@@ -87,6 +88,9 @@ internal abstract class WasmlineAssembleTask @Inject constructor(private val exe
     @get:Classpath
     abstract val manifestToolClasspath: ConfigurableFileCollection
 
+    @get:Internal
+    abstract val assembleStateService: org.gradle.api.provider.Property<WasmlineAssembleStateService>
+
     init {
         group = "wasmline"
         description = "Assemble a signed Wasmline plugin package"
@@ -137,6 +141,7 @@ internal abstract class WasmlineAssembleTask @Inject constructor(private val exe
         } finally {
             if (temporaryZip.exists()) temporaryZip.delete()
         }
+        assembleStateService.orNull?.markSuccessful()
     }
 
     private fun createSignedManifest(buildRecordFile: File, packageDirectory: File): File {

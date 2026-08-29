@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
 /**
  * Exercises the complete catalog-backed Component CLI workflow with pinned external tools.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @OptIn(ExperimentalSerializationApi::class)
@@ -177,6 +177,8 @@ class ComponentCliIntegrationTest {
                 wasmTools.absolutePath,
                 "--aot-compiler-cache",
                 compilerCache.absolutePath,
+                "--aot-compatibility",
+                "current",
                 "--auto-download",
                 "--target",
                 "x86_64-linux",
@@ -216,6 +218,8 @@ class ComponentCliIntegrationTest {
                 wasmTools.absolutePath,
                 "--aot-compiler-cache",
                 compilerCache.absolutePath,
+                "--aot-compatibility",
+                "current",
                 "--target",
                 "x86_64-linux",
                 "--target",

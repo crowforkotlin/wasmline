@@ -51,7 +51,6 @@ tasks.named<Test>("jvmTest") {
 }
 
 wasmline {
-    val wasmtimeVersion = "48.0.1"
     manifest {
         pluginId = testPluginId
         version = testPluginVersion
@@ -59,7 +58,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            wasmtimeVersions.set(listOf(wasmtimeVersion))
+            current()
         }
         autoDownload = true
         targets = listOf(testPluginCompileTarget)

@@ -148,6 +148,8 @@ Compilation and test commands below require explicit user instruction.
 ./scripts/wasmline versions verify-upstream
 ./scripts/wasmline versions check-ktlint
 ./scripts/wasmline versions update-ktlint
+./scripts/wasmline aot sync
+./scripts/wasmline aot check
 python3 scripts/tests/test_versions.py
 python3 scripts/tests/test_wasmtime.py
 

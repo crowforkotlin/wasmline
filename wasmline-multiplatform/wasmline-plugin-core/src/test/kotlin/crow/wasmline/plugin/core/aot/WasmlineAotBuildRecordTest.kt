@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 /**
  * Verifies deterministic unified AOT build records and artifact materialization.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 class WasmlineAotBuildRecordTest {
@@ -80,13 +80,15 @@ class WasmlineAotBuildRecordTest {
             compilerProvenance = emptyList(),
             compileOptions = WasmlineAotCompileOptions(),
             artifactTargets = listOf(target),
+            aotCompatibilitySelector = "current",
+            selectedAotGenerations = listOf(1),
         )
     }
 
     /**
      * Defines the compatibility profile ID shared by build record fixtures.
      *
-     * Date: 2026-08-28
+     * Date: 2026-08-29
      * Author: crowforkotlin
      */
     private companion object {

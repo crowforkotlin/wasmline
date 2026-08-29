@@ -25,7 +25,7 @@ import kotlin.math.max
 /**
  * Defines one complete multi-profile AOT build request shared by Gradle and CLI adapters.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @InternalWasmlineToolingApi
@@ -35,8 +35,9 @@ data class WasmlineAotBuildRequest(
     val workingDirectory: File,
     val runtimeContract: WasmlineRuntimeContract,
     val targets: Collection<String>,
-    val wasmtimeVersions: Collection<String> = emptyList(),
-    val aotCompatibilityProfileIds: Collection<String> = emptyList(),
+    val resolvedProfileIds: Collection<String>,
+    val aotCompatibilitySelector: String,
+    val selectedAotGenerations: Collection<Int>,
     val publishRawWasm: Boolean,
     val compilerCacheDirectory: File = defaultCompilerCacheDirectory(),
     val buildHost: String = PlatformDetector.detectPlatform(),
@@ -48,6 +49,13 @@ data class WasmlineAotBuildRequest(
     init {
         require(inputFile.isFile && inputFile.length() > 0) { "AOT input does not exist or is empty: ${inputFile.absolutePath}" }
         require(maxParallelCompilations > 0) { "maxParallelCompilations must be positive." }
+        require(resolvedProfileIds.isNotEmpty()) { "AOT profile resolution must produce at least one profile." }
+        require(aotCompatibilitySelector in AOT_COMPATIBILITY_SELECTOR_NAMES) {
+            "AOT build request must use one explicit compatibility selector."
+        }
+        require(selectedAotGenerations.isNotEmpty() && selectedAotGenerations.all { it > 0 }) {
+            "AOT build request must contain positive selected generations."
+        }
         require(!publishRawWasm || runtimeContract.executionModel == WasmlineExecutionModel.CORE_WASM) {
             "Only Core Wasm builds may publish RAW_WASM."
         }
@@ -70,7 +78,7 @@ data class WasmlineAotBuildRequest(
     /**
      * Resolves standard build request defaults.
      *
-     * Date: 2026-08-28
+     * Date: 2026-08-29
      * Author: crowforkotlin
      */
     companion object {
@@ -85,7 +93,7 @@ data class WasmlineAotBuildRequest(
 /**
  * Expands profiles and targets, compiles bounded parallel units, and aggregates one build record.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @InternalWasmlineToolingApi
@@ -94,11 +102,16 @@ class WasmlineAotBuildService {
     suspend fun build(request: WasmlineAotBuildRequest): WasmlineAotBuildRecord {
         val targetSpecs = WasmlineArtifactTargetFactory.create(request.targets)
         val backends = targetSpecs.map(WasmlineAotTargetSpec::artifactBackend).toSet()
-        val profiles = AotCompatibilityCatalog.resolveProfiles(
-            wasmtimeVersions = request.wasmtimeVersions,
-            profileIds = request.aotCompatibilityProfileIds,
-            artifactBackends = backends,
-        )
+        val profiles = request.resolvedProfileIds
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .distinct()
+            .map(AotCompatibilityCatalog::requireProfile)
+            .also { resolved ->
+                require(resolved.all { it.artifactBackend in backends }) {
+                    "Resolved AOT profiles contain a backend that is not requested by the target matrix."
+                }
+            }
         val options = WasmlineAotCompileOptions()
         profiles.forEach { profile ->
             require(profile.engineConfigurationProfile == options.canonicalDescriptor()) {
@@ -160,6 +173,8 @@ class WasmlineAotBuildService {
                 compilerProvenance = provenance,
                 compileOptions = options,
                 artifactTargets = artifactTargets,
+                aotCompatibilitySelector = request.aotCompatibilitySelector,
+                selectedAotGenerations = request.selectedAotGenerations.distinct().sorted(),
             )
         } finally {
             unitDirectory.deleteRecursively()
@@ -230,7 +245,7 @@ class WasmlineAotBuildService {
     /**
      * Defines deterministic ordering for compiled matrix outputs.
      *
-     * Date: 2026-08-28
+     * Date: 2026-08-29
      * Author: crowforkotlin
      */
     private companion object {

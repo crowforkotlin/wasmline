@@ -3,7 +3,7 @@ package crow.wasmline
 /**
  * Defines the Kotlin runtime identity that must match every linked native engine.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 internal object WasmlineReleaseIdentity {

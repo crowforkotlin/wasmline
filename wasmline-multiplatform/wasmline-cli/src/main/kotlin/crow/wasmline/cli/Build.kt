@@ -29,7 +29,7 @@ import java.nio.file.Files
 /**
  * Builds, signs, and packages one Core Wasm or Component Model plugin.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 internal class Build : CliktCommand(name = "build") {
@@ -38,8 +38,8 @@ internal class Build : CliktCommand(name = "build") {
         .required()
     private val name by option("-n", "--name")
     private val targets by option("-t", "--target").multiple().unique()
-    private val aotWasmtimeVersions by option("--aot-wasmtime-version").multiple().unique()
-    private val aotProfileIds by option("--aot-compatibility-profile-id").multiple().unique()
+    private val aotCompatibility by option("--aot-compatibility")
+    private val aotVersionRanges by option("--aot-version-range").multiple().unique()
     private val compilerCache by option("--aot-compiler-cache")
         .file(canBeFile = false, canBeDir = true)
         .default(defaultAotCompilerCacheDirectory())
@@ -87,6 +87,7 @@ internal class Build : CliktCommand(name = "build") {
         val temporaryZip = Files.createTempFile(distributionDirectory.toPath(), ".$folderName-", ".zip").toFile()
         try {
             val invocation = resolveInvocation()
+            val aotSelection = parseCliAotSelection(aotCompatibility, aotVersionRanges)
             val support = CliAotBuildSupport(::echo)
             WasmlineDirectoryTransaction.create(destination).use { transaction ->
                 val componentInputDirectory = File(transaction.stagingDirectory, ".component-input")
@@ -112,8 +113,8 @@ internal class Build : CliktCommand(name = "build") {
                     packageDirectory = transaction.stagingDirectory,
                     workingDirectory = workingDirectory,
                     targets = targets,
-                    wasmtimeVersions = aotWasmtimeVersions,
-                    profileIds = aotProfileIds,
+                    selection = aotSelection,
+                    minSdkVersion = minSdkVersion,
                     publishRawWasm = invocation.executionModel == WasmlineExecutionModel.CORE_WASM,
                     compilerCacheDirectory = compilerCache,
                     autoDownload = autoDownload,

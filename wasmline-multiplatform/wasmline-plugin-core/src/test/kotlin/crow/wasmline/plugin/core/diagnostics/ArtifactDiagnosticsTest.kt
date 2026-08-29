@@ -14,6 +14,12 @@ import crow.wasmline.plugin.core.aot.WasmlineCompiledArtifact
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+/**
+ * Verifies stable diagnostics for catalog-backed AOT artifacts.
+ *
+ * Date: 2026-08-29
+ * Author: crowforkotlin
+ */
 class ArtifactDiagnosticsTest {
     @Test
     fun describesAotArtifactFromItsExactProfile() {
@@ -87,13 +93,15 @@ class ArtifactDiagnosticsTest {
             compilerProvenance = emptyList(),
             compileOptions = WasmlineAotCompileOptions(),
             artifactTargets = listOf(target),
+            aotCompatibilitySelector = "current",
+            selectedAotGenerations = listOf(1),
         )
     }
 
     /**
      * Defines immutable diagnostic fixture identities.
      *
-     * Date: 2026-08-28
+     * Date: 2026-08-29
      * Author: crowforkotlin
      */
     private companion object {

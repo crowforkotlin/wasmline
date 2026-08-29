@@ -12,6 +12,7 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
 import { AnimatedTab } from '@/components/animated-tab';
+import { AotCompatibilityTable } from '@/components/aot-compatibility-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 
@@ -33,5 +34,6 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     File,
     Folder,
     Files,
+    AotCompatibilityTable,
   };
 }

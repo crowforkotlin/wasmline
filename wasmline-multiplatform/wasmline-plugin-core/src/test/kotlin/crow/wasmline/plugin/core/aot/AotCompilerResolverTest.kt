@@ -12,14 +12,14 @@ import kotlin.test.assertTrue
 /**
  * Verifies compiler asset deduplication and complete offline diagnostics.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 class AotCompilerResolverTest {
     @Test
     fun reportsEveryMissingProfileBeforeOfflineFailure() = runBlocking {
         withCompilerCacheDirectory { root ->
-            val profiles = threeVersionProfiles()
+            val profiles = currentProfiles()
             val resolver = AotCompilerResolver(AotCompilerCache(root))
             try {
                 val failure = assertFailsWith<IllegalStateException> {
@@ -39,7 +39,7 @@ class AotCompilerResolverTest {
 
     @Test
     fun backendProfilesReuseOneCompilerAssetPerWasmtimeRelease() {
-        threeVersionProfiles().groupBy { it.wasmtimeVersion }.values.forEach { profiles ->
+        currentProfiles().groupBy { it.wasmtimeVersion }.values.forEach { profiles ->
             val digests = profiles.map { profile ->
                 AotCompatibilityCatalog.requireCompilerAsset(profile.id, "x86_64-linux").archiveSha256
             }.toSet()
@@ -54,7 +54,7 @@ class AotCompilerResolverTest {
             AotCompilerResolver(AotCompilerCache(root)).use { resolver ->
                 assertFailsWith<IllegalArgumentException> {
                     resolver.resolveAll(
-                        profiles = threeVersionProfiles(),
+                        profiles = currentProfiles(),
                         buildHost = "x86_64-linux",
                         autoDownload = true,
                         maxParallelDownloads = 0,
@@ -64,11 +64,8 @@ class AotCompilerResolverTest {
         }
     }
 
-    private fun threeVersionProfiles(): List<AotCompatibilityProfileSpec> = AotCompatibilityCatalog.resolveProfiles(
-        wasmtimeVersions = listOf("47.0.3", "47.0.4", "48.0.0"),
-        profileIds = emptyList(),
-        artifactBackends = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
-    )
+    private fun currentProfiles(): List<AotCompatibilityProfileSpec> = AotCompatibilityCatalog.profiles()
+        .filter { it.artifactBackend in setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY) }
 }
 
 private inline fun withCompilerCacheDirectory(block: (File) -> Unit) {

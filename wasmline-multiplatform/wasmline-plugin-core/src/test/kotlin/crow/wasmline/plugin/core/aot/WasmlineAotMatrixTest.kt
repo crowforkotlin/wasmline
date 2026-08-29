@@ -15,36 +15,29 @@ import kotlin.test.assertTrue
 /**
  * Verifies multi-version matrix planning and content variant aggregation.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 class WasmlineAotMatrixTest {
     @Test
-    fun plansThreeVersionsWithoutCrossingArtifactBackends() {
+    fun plansCurrentProfilesWithoutCrossingArtifactBackends() {
         val targets = WasmlineArtifactTargetFactory.create(
             listOf("x86_64-linux", "aarch64-linux", "pulley32", "pulley64"),
         )
-        val profiles = AotCompatibilityCatalog.resolveProfiles(
-            wasmtimeVersions = listOf("47.0.3", "47.0.4", "48.0.0"),
-            profileIds = emptyList(),
-            artifactBackends = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
-        )
+        val profiles = AotCompatibilityCatalog.profiles()
 
         val units = planWasmlineAotBuildUnits(targets, profiles)
 
-        assertEquals(12, units.size)
+        assertEquals(4, units.size)
         assertTrue(units.all { (target, profile) -> target.artifactBackend == profile.artifactBackend })
-        assertEquals(6, units.count { it.first.artifactBackend == WasmlineEngineKind.CRANELIFT })
-        assertEquals(6, units.count { it.first.artifactBackend == WasmlineEngineKind.PULLEY })
+        assertEquals(2, units.count { it.first.artifactBackend == WasmlineEngineKind.CRANELIFT })
+        assertEquals(2, units.count { it.first.artifactBackend == WasmlineEngineKind.PULLEY })
     }
 
     @Test
     fun mergesEqualProfileOutputsAndKeepsRawWasmProfileIndependent() {
-        val pulleyProfiles = AotCompatibilityCatalog.resolveProfiles(
-            wasmtimeVersions = listOf("47.0.3", "47.0.4", "48.0.0"),
-            profileIds = emptyList(),
-            artifactBackends = setOf(WasmlineEngineKind.PULLEY),
-        )
+        val pulleyProfiles = AotCompatibilityCatalog.profiles()
+            .filter { it.artifactBackend == WasmlineEngineKind.PULLEY }
         val digest = "a".repeat(64)
         val outputs = pulleyProfiles.map { profile ->
             compiledPulley(profile.id, digest)
@@ -82,6 +75,9 @@ class WasmlineAotMatrixTest {
                     WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 ),
                 targets = listOf("pulley64"),
+                resolvedProfileIds = listOf("sha256:${"a".repeat(64)}"),
+                aotCompatibilitySelector = "current",
+                selectedAotGenerations = listOf(1),
                 publishRawWasm = true,
             )
         }

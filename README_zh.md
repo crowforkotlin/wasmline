@@ -20,7 +20,7 @@
 
 ---
 
-Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Desktop 与 Web 应用中加载并调用符合 WASI 规范的 WebAssembly 插件。
+Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Desktop 与 Web 应用中加载并调用符合 WASI 规范的 WebAssembly 插件。Native 执行由 Wasmline 分发的 Wasmtime fork 驱动；浏览器执行使用平台提供的 WebAssembly API。
 
 <table>
   <tr>
@@ -129,9 +129,9 @@ API 职责是明确分开的：`WasmlineLoader` 负责解析、校验、选择�
 
 ## Package 与 AOT 兼容性
 
-一个插件发行版只使用一个 `manifest.wlm`，用于描述全部已配置 Wasmtime AOT
-compatibility profile 和物理 target。插件作者配置完整 Wasmtime `x.y.z`；
-Wasmline 从 catalog 解析不可变且区分 backend 的 profile ID。
+一个插件发行版只使用一个 `manifest.wlm`，用于描述全部已配置的 AOT
+generation 和物理 target。插件作者选择 Wasmline 发行 generation；本地
+catalog 负责解析不可变且区分 backend 的 profile ID。
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
@@ -139,7 +139,7 @@ import crow.wasmline.gradle.WasmtimeTarget
 wasmline {
     wasmtime {
         aotCompatibility {
-            wasmtimeVersions.set(listOf("47.0.3", "48.0.1"))
+            current()
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -150,6 +150,18 @@ wasmline {
     }
 }
 ```
+
+Native AOT 必须显式配置且只能配置一个 selector。可以使用 `minimum()` 覆盖
+有效支持下限，使用 `all()` 包含 catalog 保留的全部正式 generation，或使用
+`versionRanges { include(from = "1.0.0", through = "1.20.0") }` 选择闭区间。
+`current()` 只支持当前 generation，但仍必须写在 DSL 中。Selector 不接受
+Wasmtime 版本或 profile digest。
+
+assemble 成功后，`wasmlineCheckAotCompatibility` 会将本地选择与最新稳定
+catalog 比较，并写入 `build/reports/wasmline/aot-compatibility-check.json`。
+即使 generation gap 为零也会输出警告。审查报告后可以设置
+`suppressCompatibilityWarning.set(true)`；该设置只抑制日志，不会关闭检查或
+改变报告与 AOT 产物。Web raw `.wasm` 不在该 native AOT 检查范围内。
 
 Package 按 SHA-256 保存 artifact：
 
@@ -301,6 +313,36 @@ wasmline {
 默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。所需 AOT 与 Component
 流水线任务会自动执行。[Gradle 插件任务参考](docs/content/docs/gradle-plugin.zh.mdx)
 列出当前任务及其注册条件。
+
+## Release 构建
+
+以下命令均从仓库根目录执行。每条命令使用其所属项目的 Gradle wrapper：
+
+```bash
+# Wasmline 模块与 Android AAR
+(cd wasmline-multiplatform && ./gradlew assemble)
+(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleDebug)
+(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleRelease)
+
+# JVM 校验与 Gradle plugin 集成测试
+(cd wasmline-multiplatform && ./gradlew :wasmline:jvmTest)
+(cd wasmline-multiplatform/wasmline-plugin-test && ./gradlew jvmTest)
+
+# Web production distribution
+(cd wasmline-multiplatform && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
+(cd wasmline-multiplatform && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
+
+# Apple binary（需要 macOS）
+(cd wasmline-multiplatform && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
+
+# 当前操作系统的 Desktop 分发包
+(cd wasmline-samples/kotlin && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
+```
+
+仓库 release workflow 会构建可发布的 Wasmline 模块、校验 AOT catalog，并上传
+`aot-compatibility.json` 及其 SHA-256 摘要。该流程只响应
+`release-x.y.z.v` 格式的 tag；推送到 `main` 不会发布。`x.y.z` 是 Wasmline
+Maven 版本，`v` 是 Wasmtime runtime 版本的固定数字编码。
 
 ## 架构思维导图
 

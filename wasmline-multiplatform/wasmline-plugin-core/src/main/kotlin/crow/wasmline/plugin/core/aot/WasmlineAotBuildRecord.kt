@@ -14,7 +14,7 @@ import java.io.File
 /**
  * Records one complete Core or Component AOT compatibility build.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
@@ -30,6 +30,8 @@ data class WasmlineAotBuildRecord(
     val compilerProvenance: List<WasmlineAotCompilerProvenance>,
     val compileOptions: WasmlineAotCompileOptions,
     val artifactTargets: List<WasmlineArtifactTarget>,
+    val aotCompatibilitySelector: String,
+    val selectedAotGenerations: List<Int>,
 ) {
     init {
         require(schemaVersion == CURRENT_SCHEMA_VERSION) { "Unsupported AOT build record schema $schemaVersion." }
@@ -38,12 +40,18 @@ data class WasmlineAotBuildRecord(
         require(requestedTargets.isNotEmpty()) { "AOT build record must contain requested targets." }
         require(compiledOutputs.isNotEmpty()) { "AOT build record must contain compiled outputs." }
         require(artifactTargets.isNotEmpty()) { "AOT build record must contain artifact targets." }
+        require(aotCompatibilitySelector in AOT_COMPATIBILITY_SELECTOR_NAMES) {
+            "AOT build record must use one explicit compatibility selector."
+        }
+        require(selectedAotGenerations.isNotEmpty() && selectedAotGenerations.all { it > 0 }) {
+            "AOT build record must contain positive selected generations."
+        }
     }
 
     /**
      * Defines the current build record schema and content digest syntax.
      *
-     * Date: 2026-08-28
+     * Date: 2026-08-29
      * Author: crowforkotlin
      */
     companion object {
@@ -55,7 +63,7 @@ data class WasmlineAotBuildRecord(
 /**
  * Records one physical output produced by a matrix build unit.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
@@ -85,7 +93,7 @@ data class WasmlineCompiledArtifact(
 /**
  * Records the immutable compiler asset used for one compatibility profile.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
@@ -103,7 +111,7 @@ data class WasmlineAotCompilerProvenance(
 /**
  * Reads and writes deterministic AOT build records shared by every build adapter.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @InternalWasmlineToolingApi

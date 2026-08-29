@@ -20,7 +20,7 @@
 
 ---
 
-Wasmline is a Kotlin Multiplatform framework for loading and calling WASI-compliant WebAssembly plugins in Android, iOS, Desktop, and Web applications.
+Wasmline is a Kotlin Multiplatform framework for loading and calling WASI-compliant WebAssembly plugins in Android, iOS, Desktop, and Web applications. Native execution is powered by the Wasmtime fork distributed by Wasmline; browser execution uses the platform WebAssembly API.
 
 <table>
   <tr>
@@ -129,10 +129,9 @@ API ownership is explicit: `WasmlineLoader` resolves, verifies, selects, and loa
 
 ## Package and AOT Compatibility
 
-A plugin release uses one `manifest.wlm` for every configured Wasmtime AOT
-compatibility profile and physical target. Plugin authors select complete
-Wasmtime `x.y.z` versions; Wasmline resolves immutable, backend-specific profile
-IDs from its catalog.
+A plugin release uses one `manifest.wlm` for every configured AOT compatibility
+generation and physical target. Plugin authors select Wasmline release
+generations; the local catalog resolves immutable, backend-specific profile IDs.
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
@@ -140,7 +139,7 @@ import crow.wasmline.gradle.WasmtimeTarget
 wasmline {
     wasmtime {
         aotCompatibility {
-            wasmtimeVersions.set(listOf("47.0.3", "48.0.1"))
+            current()
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -151,6 +150,21 @@ wasmline {
     }
 }
 ```
+
+Native AOT requires exactly one explicit selector. Use `minimum()` to cover the
+effective supported minimum, `all()` to include every formal generation retained
+in the catalog, or `versionRanges { include(from = "1.0.0", through = "1.20.0") }`
+for selected closed intervals. `current()` supports only the current generation
+and must still be written in the DSL. The selector does not accept a Wasmtime
+version or a profile digest.
+
+After a successful assemble, `wasmlineCheckAotCompatibility` compares the local
+selection with the latest stable catalog and writes a report to
+`build/reports/wasmline/aot-compatibility-check.json`. The task emits a warning
+even when the generation gap is zero. Set
+`suppressCompatibilityWarning.set(true)` only after reviewing the report; this
+suppresses the log message and leaves the check and report enabled. Web raw
+`.wasm` is outside this native AOT check.
 
 The package stores artifacts by SHA-256:
 
@@ -317,6 +331,38 @@ The default is `DEBUG`, served at `http://localhost:8080`. Required AOT and
 Component pipeline tasks run automatically. See the
 [Gradle plugin task reference](docs/content/docs/gradle-plugin.mdx) for the
 current task set and registration conditions.
+
+## Release Build
+
+Run the commands below from the repository root. Each command uses the Gradle
+wrapper belonging to the project that it builds:
+
+```bash
+# Wasmline modules and Android AARs
+(cd wasmline-multiplatform && ./gradlew assemble)
+(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleDebug)
+(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleRelease)
+
+# JVM verification and Gradle plugin integration tests
+(cd wasmline-multiplatform && ./gradlew :wasmline:jvmTest)
+(cd wasmline-multiplatform/wasmline-plugin-test && ./gradlew jvmTest)
+
+# Web production distributions
+(cd wasmline-multiplatform && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
+(cd wasmline-multiplatform && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
+
+# Apple binaries (macOS host)
+(cd wasmline-multiplatform && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
+
+# Desktop distribution for the current operating system
+(cd wasmline-samples/kotlin && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
+```
+
+The repository release workflow builds the publishable Wasmline modules,
+validates the AOT catalog, and uploads `aot-compatibility.json` with its
+SHA-256 checksum. It runs only for a tag named `release-x.y.z.v`; pushes to
+`main` never publish a release. Here `x.y.z` is the Wasmline Maven version and
+`v` is the fixed numeric encoding of the Wasmtime runtime version.
 
 ## Architecture Mind Map
 

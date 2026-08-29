@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
 /**
  * Verifies unified AOT task registration and dependency wiring for Core and Component builds.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @OptIn(ExperimentalWasmDsl::class)
@@ -34,8 +34,8 @@ class WasmlineAotBuildRegistrationTest {
         val (project, extension) = wasmWasiProject(root)
         extension.manifest.pluginId.set("crow.test.plugin")
         extension.manifest.invocationProtocol.set(WasmlineInvocationProtocol.RAW_EXPORT)
-        extension.wasmtime.aotCompatibility.wasmtimeVersions.set(listOf("47.0.3", "48.0.1"))
-        extension.wasmtime.aotCompatibility.profileIds.set(listOf("sha256:${"a".repeat(64)}"))
+        extension.wasmtime.aotCompatibility.current()
+        extension.wasmtime.aotCompatibility.suppressCompatibilityWarning.set(true)
         extension.wasmtime.targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.AARCH64_LINUX)
         extension.wasmtime.autoDownload.set(true)
         extension.wasmtime.compilerCacheDirectory.set(File(root, "compiler-cache"))
@@ -54,8 +54,8 @@ class WasmlineAotBuildRegistrationTest {
         val debugAot = project.tasks.named("wasmlineAotBuildDebug", WasmlineAotBuildTask::class.java).get()
         val releaseAot = project.tasks.named("wasmlineAotBuildRelease", WasmlineAotBuildTask::class.java).get()
 
-        assertEquals(listOf("47.0.3", "48.0.1"), debugAot.wasmtimeVersions.get())
-        assertEquals(listOf("sha256:${"a".repeat(64)}"), debugAot.aotCompatibilityProfileIds.get())
+        assertEquals("current", debugAot.aotCompatibilitySelector.get())
+        assertEquals(emptyList(), debugAot.aotCompatibilityRanges.get())
         assertEquals(listOf("pulley64", "aarch64-linux"), debugAot.targets.get())
         assertTrue(debugAot.autoDownload.get())
         assertEquals(3, debugAot.maxParallelCompilations.get())
@@ -65,6 +65,32 @@ class WasmlineAotBuildRegistrationTest {
         assertTrue(releaseAot.outputDirectory.get().asFile.invariantSeparatorsPath.endsWith("wasmline/aot/release"))
         assertTrue(project.tasks.names.none { it.startsWith("wasmlineDownloadWasmtime") })
         assertTrue(project.tasks.names.none { it.startsWith("wasmlineComponentAot") })
+        assertTrue(project.tasks.names.contains("wasmlineCheckAotCompatibility"))
+        assertTrue(project.tasks.names.contains("wasmlineMarkAssembleDebug"))
+        assertTrue(project.tasks.names.contains("wasmlineMarkAssembleRelease"))
+        assertTrue(extension.wasmtime.aotCompatibility.suppressCompatibilityWarning.get())
+
+        val checker = project.tasks.named("wasmlineCheckAotCompatibility", WasmlineCheckAotCompatibilityTask::class.java).get()
+        val checkerDependencies = checker.taskDependencies.getDependencies(checker).map { it.name }
+        assertFalse("wasmlineAotBuildDebug" in checkerDependencies)
+        assertFalse("wasmlineAotBuildRelease" in checkerDependencies)
+
+        val debugAssemble = project.tasks.named("wasmlineAssembleDebug", WasmlineAssembleTask::class.java).get()
+        val releaseAssemble = project.tasks.named("wasmlineAssembleRelease", WasmlineAssembleTask::class.java).get()
+        assertTrue(
+            "wasmlineMarkAssembleDebug" in debugAssemble.taskDependencies.getDependencies(debugAssemble).map { it.name },
+        )
+        assertTrue(
+            "wasmlineMarkAssembleRelease" in releaseAssemble.taskDependencies.getDependencies(releaseAssemble).map { it.name },
+        )
+        assertEquals(
+            setOf("wasmlineCheckAotCompatibility"),
+            debugAssemble.finalizedBy.getDependencies(debugAssemble).map { it.name }.toSet(),
+        )
+        assertEquals(
+            setOf("wasmlineCheckAotCompatibility"),
+            releaseAssemble.finalizedBy.getDependencies(releaseAssemble).map { it.name }.toSet(),
+        )
     }
 
     @Test
@@ -84,6 +110,11 @@ class WasmlineAotBuildRegistrationTest {
         assertTrue(aot.componentOutputDirectory.isPresent)
         assertFalse(aot.coreWasmCompileOutputDirectory.isPresent)
         assertEquals(aot.outputDirectory.get().asFile.canonicalFile, assemble.aotOutputDirectory.get().asFile.canonicalFile)
+        assertTrue(
+            assemble.finalizedBy.getDependencies(assemble).any {
+                it.name == "wasmlineCheckAotCompatibility"
+            },
+        )
     }
 
     @Test
@@ -105,6 +136,11 @@ class WasmlineAotBuildRegistrationTest {
         assertTrue("compileDevelopmentLibraryKotlinWasmWasiOptimize" in aotDependencies)
         assertTrue(aot.coreWasmCompileOutputDirectory.isPresent)
         assertFalse(aot.componentOutputDirectory.isPresent)
+        assertTrue(
+            assemble.finalizedBy.getDependencies(assemble).any {
+                it.name == "wasmlineCheckAotCompatibility"
+            },
+        )
     }
 
     private fun wasmWasiProject(root: File): Pair<org.gradle.api.Project, WasmlineExtension> {

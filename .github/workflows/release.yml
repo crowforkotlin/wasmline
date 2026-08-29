@@ -1,0 +1,157 @@
+name: Release Wasmline
+
+on:
+  push:
+    tags:
+      - "release-*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  ZIG_VERSION: "0.16.0"
+  GITHUB_TOKEN: ${{ github.token }}
+
+jobs:
+  validate:
+    name: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag and release inputs
+        run: ./scripts/release.sh verify-tag "${GITHUB_REF_NAME}"
+
+      - name: Verify managed versions
+        run: ./scripts/wasmline versions check
+
+      - name: Verify repository tooling
+        run: python3 scripts/tests/test_versions.py
+
+      - name: Confirm tag commit is reachable from main
+        run: |
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"
+
+  publish:
+    name: publish-maven
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read toolchain versions
+        id: versions
+        run: |
+          jq -er '.versions.jbr_version' scripts/versions.json | sed 's/^/jbr_version=/' >> "$GITHUB_OUTPUT"
+
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-${{ steps.versions.outputs.jbr_version }}-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          distribution: jetbrains
+          java-version: ${{ steps.versions.outputs.jbr_version }}.x
+          token: ${{ github.token }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mingw-w64
+          NDK_DIR=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NDK_DIR" ]; then
+            sdkmanager --install "ndk;27.0.12077973"
+            NDK_DIR="$ANDROID_HOME/ndk/27.0.12077973"
+          fi
+          echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "MINGW_PATH=/usr/x86_64-w64-mingw32" >> "$GITHUB_ENV"
+
+      - name: Cache Wasmtime platform assets
+        uses: actions/cache@v5
+        with:
+          path: build/platforms
+          key: wasmtime-platforms-release-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
+
+      - name: Download locked Wasmtime assets
+        run: ./scripts/wasmline wasmtime download --engine all --jobs 4
+
+      - name: Build JVM and Android engine assets
+        run: ./scripts/wasmline jni build --engine all
+
+      - name: Run JVM verification tests
+        working-directory: wasmline-multiplatform
+        run: ./gradlew :wasmline-plugin-core:test :wasmline-gradle-plugin:test :wasmline-cli:test --no-daemon
+
+      - name: Publish Maven artifacts
+        working-directory: wasmline-multiplatform
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY_PASSWORD }}
+        run: ./gradlew publishToMavenCentral --no-daemon
+
+      - name: Prepare release catalog assets
+        run: ./scripts/release.sh prepare-assets build/release
+
+      - name: Generate release notes
+        run: ./scripts/release.sh write-notes build/release-notes.md
+
+      - name: Upload release inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasmline-release-inputs
+          path: |
+            build/release/aot-compatibility.json
+            build/release/aot-compatibility.json.sha256
+            build/release-notes.md
+          if-no-files-found: error
+          retention-days: 1
+
+  create-release:
+    name: create-github-release
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download release inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: wasmline-release-inputs
+          path: build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Wasmline ${{ github.ref_name }}
+          body_path: build/release-notes.md
+          files: |
+            build/release/aot-compatibility.json
+            build/release/aot-compatibility.json.sha256
+          draft: false
+          prerelease: false
+          make_latest: true

@@ -10,15 +10,16 @@ import java.security.MessageDigest
 /**
  * Contains the generated AOT compatibility catalog resource.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
 data class AotCompatibilityLock(
     val schemaVersion: Int,
     val generatedBy: String,
-    val sourceManifest: String,
+    val sourceCatalog: String,
     val currentDefaultProfileIdsByBackend: Map<WasmlineEngineKind, String>,
+    val releaseCatalog: WasmlineAotReleaseCatalog,
     val profiles: List<AotCompatibilityProfileSpec>,
     val profileCompilerBindings: List<AotProfileCompilerBinding>,
     val compilerAssets: List<AotCompilerAssetSpec>,
@@ -27,7 +28,7 @@ data class AotCompatibilityLock(
 /**
  * Defines one immutable backend-specific AOT compatibility profile.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
@@ -55,7 +56,7 @@ data class AotCompatibilityProfileSpec(
 /**
  * Binds one AOT profile and build host to a deduplicated compiler archive.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
@@ -69,7 +70,7 @@ data class AotProfileCompilerBinding(
 /**
  * Defines one immutable compiler archive and extracted executable identity.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
@@ -89,7 +90,7 @@ data class AotCompilerAssetSpec(
 /**
  * Identifies the supported physical compiler archive encodings.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @Serializable
@@ -101,7 +102,7 @@ enum class AotCompilerArchiveFormat {
 /**
  * Loads and queries the generated immutable AOT compatibility catalog.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @InternalWasmlineToolingApi
@@ -110,9 +111,16 @@ object AotCompatibilityCatalog {
 
     private val json = Json { ignoreUnknownKeys = false }
     private val lock: AotCompatibilityLock by lazy(::loadAndValidate)
+    private val publicCatalog: WasmlineAotReleaseCatalog by lazy(::loadPublicCatalog)
 
     /** Returns every catalog profile in deterministic order. */
     fun profiles(): List<AotCompatibilityProfileSpec> = lock.profiles
+
+    /** Returns the detailed local release catalog with immutable profile bindings. */
+    fun releaseCatalog(): WasmlineAotReleaseCatalog = lock.releaseCatalog
+
+    /** Returns the public catalog packaged with the current Wasmline release. */
+    fun publicReleaseCatalog(): WasmlineAotReleaseCatalog = publicCatalog
 
     /** Returns one exact profile or fails with a stable catalog diagnostic. */
     fun requireProfile(id: String): AotCompatibilityProfileSpec = lock.profiles.singleOrNull { it.id == id }
@@ -143,65 +151,21 @@ object AotCompatibilityCatalog {
             .toList()
     }
 
-    /** Resolves version and explicit-ID selectors for the requested artifact backends. */
-    fun resolveProfiles(
-        wasmtimeVersions: Collection<String>,
-        profileIds: Collection<String>,
+    /** Resolves one Wasmline release selector for the requested artifact backends. */
+    fun resolveSelection(
+        selection: AotCompatibilitySelection,
+        manifestMinimumWasmlineVersion: String,
         artifactBackends: Set<WasmlineEngineKind>,
-    ): List<AotCompatibilityProfileSpec> {
-        require(artifactBackends.isNotEmpty()) { "At least one AOT artifact backend is required." }
-        val requestedVersions = wasmtimeVersions.map(String::trim).filter(String::isNotEmpty).distinct()
-        requestedVersions.forEach { version ->
-            require(SEMANTIC_VERSION_PATTERN.matches(version)) {
-                "AOT Wasmtime version must use x.y.z: '$version'."
-            }
-        }
-        val normalizedVersions = requestedVersions.sortedWith { left, right -> compareSemanticVersions(left, right) }
-        val normalizedIds = profileIds.map(String::trim).filter(String::isNotEmpty).distinct().sorted()
-        if ((wasmtimeVersions.isNotEmpty() || profileIds.isNotEmpty()) && normalizedVersions.isEmpty() && normalizedIds.isEmpty()) {
-            error("Explicit AOT compatibility selectors must not be empty.")
-        }
-
-        val selected = linkedMapOf<String, AotCompatibilityProfileSpec>()
-        if (normalizedVersions.isEmpty() && normalizedIds.isEmpty()) {
-            artifactBackends.sortedBy(WasmlineEngineKind::name).forEach { backend ->
-                currentDefaultProfile(backend).also { selected[it.id] = it }
-            }
-        } else {
-            normalizedVersions.forEach { version ->
-                artifactBackends.forEach { backend ->
-                    val matches = lock.profiles.filter {
-                        it.wasmtimeVersion == version && it.artifactBackend == backend
-                    }
-                    when (matches.size) {
-                        0 -> error("AOT catalog has no $backend profile for Wasmtime $version.")
-
-                        1 -> selected[matches.single().id] = matches.single()
-
-                        else -> error(
-                            "AOT catalog has multiple $backend profiles for Wasmtime $version; " +
-                                "select a complete profile ID.",
-                        )
-                    }
-                }
-            }
-            normalizedIds.forEach { id ->
-                val profile = requireProfile(id)
-                require(profile.artifactBackend in artifactBackends) {
-                    "AOT profile '$id' uses unrequested backend ${profile.artifactBackend}."
-                }
-                selected[id] = profile
-            }
-        }
-        check(selected.isNotEmpty()) { "AOT compatibility profile selection is empty." }
-        return selected.values.sortedWith { left, right ->
-            val versionOrder = compareSemanticVersions(left.wasmtimeVersion, right.wasmtimeVersion)
-            if (versionOrder != 0) {
-                versionOrder
-            } else {
-                compareValuesBy(left, right, { it.artifactBackend.name }, AotCompatibilityProfileSpec::id)
-            }
-        }
+    ): AotCompatibilityResolution {
+        // Force validation of the packaged public view before compiler resolution.
+        publicReleaseCatalog()
+        return AotCompatibilitySelectionResolver.resolve(
+            selection = selection,
+            manifestMinimumWasmlineVersion = manifestMinimumWasmlineVersion,
+            releaseCatalog = lock.releaseCatalog,
+            profiles = lock.profiles,
+            requestedBackends = artifactBackends,
+        )
     }
 
     /** Calculates the canonical profile ID used by the version synchronizer. */
@@ -227,13 +191,41 @@ object AotCompatibilityCatalog {
             ?: error("Missing AOT compatibility catalog resource '$RESOURCE_PATH'.")
         val value = stream.bufferedReader().use { json.decodeFromString<AotCompatibilityLock>(it.readText()) }
         require(value.schemaVersion == 1) { "Unsupported AOT compatibility catalog schema ${value.schemaVersion}." }
-        require(value.sourceManifest == "scripts/versions.json") { "Invalid AOT compatibility catalog source." }
+        require(value.sourceCatalog == "aot-compatibility.json") { "Invalid AOT compatibility catalog source." }
         require(value.profiles.map(AotCompatibilityProfileSpec::id).distinct().size == value.profiles.size) {
             "AOT compatibility catalog contains duplicate profile IDs."
         }
+        val profilesById = value.profiles.associateBy(AotCompatibilityProfileSpec::id)
         value.profiles.forEach { profile ->
+            require(PROFILE_ID_PATTERN.matches(profile.id)) {
+                "AOT compatibility profile '${profile.id}' has an invalid ID."
+            }
             require(SEMANTIC_VERSION_PATTERN.matches(profile.wasmtimeVersion)) {
                 "AOT compatibility profile '${profile.id}' has an invalid Wasmtime version."
+            }
+            require(WASMTIME_DISTRIBUTION_VERSION.matches(profile.wasmtimeDistributionVersion)) {
+                "AOT compatibility profile '${profile.id}' has an invalid Wasmtime distribution version."
+            }
+            require(profile.wasmtimeDistributionVersion.substringBeforeLast('.') == profile.wasmtimeVersion) {
+                "AOT compatibility profile '${profile.id}' has inconsistent Wasmtime versions."
+            }
+            require(SOURCE_REVISION_PATTERN.matches(profile.wasmtimeSourceRevision)) {
+                "AOT compatibility profile '${profile.id}' has an invalid source revision."
+            }
+            require(profile.serializedArtifactFormatIdentity.isNotBlank()) {
+                "AOT compatibility profile '${profile.id}' has an empty artifact format identity."
+            }
+            require(profile.compileProfileSchemaVersion > 0) {
+                "AOT compatibility profile '${profile.id}' has an invalid compile profile schema version."
+            }
+            require(profile.engineConfigurationProfile.isNotBlank()) {
+                "AOT compatibility profile '${profile.id}' has an empty engine configuration profile."
+            }
+            require(SEMANTIC_VERSION_PATTERN.matches(profile.introducedInWasmlineVersion)) {
+                "AOT compatibility profile '${profile.id}' has an invalid introduced Wasmline version."
+            }
+            require(compareWasmlineVersions(profile.introducedInWasmlineVersion, value.releaseCatalog.currentWasmlineVersion) <= 0) {
+                "AOT compatibility profile '${profile.id}' is introduced after the current Wasmline release."
             }
             require(calculateCompatibilityId(profile) == profile.id) {
                 "AOT compatibility profile '${profile.id}' does not match its canonical descriptor."
@@ -242,43 +234,152 @@ object AotCompatibilityCatalog {
         require(value.compilerAssets.map(AotCompilerAssetSpec::archiveSha256).distinct().size == value.compilerAssets.size) {
             "AOT compatibility catalog contains duplicate compiler archive digests."
         }
+        val assetsByDigest = value.compilerAssets.associateBy(AotCompilerAssetSpec::archiveSha256)
+        val assetsByDistribution = value.compilerAssets
+            .groupBy(::validateCompilerAsset)
+            .mapValues { (_, assets) -> assets.map(AotCompilerAssetSpec::buildHost).toSet() }
         value.compilerAssets.forEach { asset ->
             require(asset.distribution == REQUIRED_COMPILER_DISTRIBUTION) {
                 "AOT compiler asset '${asset.archiveName}' must use the full Wasmtime distribution."
             }
         }
+        require(
+            value.compilerAssets.map(AotCompilerAssetSpec::archiveSha256) ==
+                value.compilerAssets.map(AotCompilerAssetSpec::archiveSha256).sorted(),
+        ) {
+            "AOT compiler assets must be sorted by archive digest."
+        }
+        require(value.profileCompilerBindings.isNotEmpty()) {
+            "AOT compatibility catalog must contain compiler bindings."
+        }
+        val bindingKeys = mutableSetOf<Pair<String, String>>()
+        val hostsByProfile = value.profiles.associate { it.id to mutableSetOf<String>() }
+        val referencedAssets = mutableSetOf<String>()
         value.profileCompilerBindings.forEach { binding ->
-            val profile = value.profiles.singleOrNull { it.id == binding.profileId }
+            val profile = profilesById[binding.profileId]
                 ?: error("AOT compiler binding references unknown profile '${binding.profileId}'.")
             require(profile.artifactBackend == binding.artifactBackend) {
                 "AOT compiler binding backend does not match profile '${binding.profileId}'."
             }
-            require(value.compilerAssets.any { it.archiveSha256 == binding.compilerArchiveSha256 }) {
-                "AOT compiler binding references unknown archive '${binding.compilerArchiveSha256}'."
+            val asset = assetsByDigest[binding.compilerArchiveSha256]
+                ?: error("AOT compiler binding references unknown archive '${binding.compilerArchiveSha256}'.")
+            val assetIdentity = ASSET_ID_PATTERN.matchEntire(asset.assetId)
+                ?: error("AOT compiler asset '${asset.archiveName}' has an invalid asset identity.")
+            require(assetIdentity.groups["host"]?.value == binding.buildHost) {
+                "AOT compiler binding host does not match archive '${asset.archiveName}'."
             }
+            require(assetIdentity.groups["distribution"]?.value == profile.wasmtimeDistributionVersion) {
+                "AOT compiler binding distribution does not match profile '${binding.profileId}'."
+            }
+            require(bindingKeys.add(binding.profileId to binding.buildHost)) {
+                "AOT compiler bindings contain a duplicate profile/build-host pair."
+            }
+            hostsByProfile.getValue(binding.profileId).add(binding.buildHost)
+            referencedAssets.add(binding.compilerArchiveSha256)
+        }
+        value.profiles.forEach { profile ->
+            val expectedHosts = assetsByDistribution[profile.wasmtimeDistributionVersion]
+                ?: error("AOT profile '${profile.id}' has no compiler assets.")
+            require(hostsByProfile.getValue(profile.id) == expectedHosts) {
+                "AOT profile '${profile.id}' must provide exactly one compiler binding for every build host."
+            }
+        }
+        require(referencedAssets == assetsByDigest.keys) {
+            "Every AOT compiler asset must be referenced by a profile binding."
+        }
+        require(
+            value.profileCompilerBindings.map { it.profileId to it.buildHost } ==
+                value.profileCompilerBindings.map { it.profileId to it.buildHost }
+                    .sortedWith(compareBy({ it.first }, { it.second })),
+        ) {
+            "AOT compiler bindings must be sorted by profile ID and build host."
+        }
+        value.releaseCatalog.validate(requireProfileBindings = true, profiles = value.profiles)
+        val referencedProfiles = value.releaseCatalog.ranges
+            .flatMap { it.profileIdsByBackend.values }
+            .toSet()
+        require(referencedProfiles == profilesById.keys) {
+            "Every AOT profile must be bound to a public release generation."
+        }
+        value.releaseCatalog.ranges.forEach { range ->
+            range.profileIdsByBackend.values.forEach { profileId ->
+                val profile = profilesById.getValue(profileId)
+                require(compareWasmlineVersions(profile.introducedInWasmlineVersion, range.fromWasmlineVersion) <= 0) {
+                    "AOT generation ${range.aotGeneration} uses a profile introduced after its range start."
+                }
+            }
+        }
+        require(value.releaseCatalog.ranges.last().profileIdsByBackend == value.currentDefaultProfileIdsByBackend) {
+            "Current AOT defaults do not match the final release generation."
         }
         return value
     }
 
-    private fun compareSemanticVersions(left: String, right: String): Int {
-        val leftParts = left.split('.')
-        val rightParts = right.split('.')
-        leftParts.indices.forEach { index ->
-            val order = compareNumericIdentifier(leftParts[index], rightParts[index])
-            if (order != 0) return order
+    private fun validateCompilerAsset(asset: AotCompilerAssetSpec): String {
+        val identity = ASSET_ID_PATTERN.matchEntire(asset.assetId)
+            ?: error("AOT compiler asset '${asset.archiveName}' has an invalid assetId.")
+        val distribution = identity.groups["distribution"]!!.value
+        val host = identity.groups["host"]!!.value
+        require(host == asset.buildHost) {
+            "AOT compiler asset '${asset.archiveName}' assetId host does not match buildHost."
         }
-        return 0
+        require(asset.archiveSha256.matches(DIGEST_PATTERN)) {
+            "AOT compiler asset '${asset.archiveName}' has an invalid archive digest."
+        }
+        require(asset.executableSha256.matches(DIGEST_PATTERN)) {
+            "AOT compiler asset '${asset.archiveName}' has an invalid executable digest."
+        }
+        require(asset.archiveSize > 0) {
+            "AOT compiler asset '${asset.archiveName}' has an invalid archive size."
+        }
+        val extension = when (asset.archiveFormat) {
+            AotCompilerArchiveFormat.TAR_GZ -> ".tar.gz"
+            AotCompilerArchiveFormat.ZIP -> ".zip"
+        }
+        require(asset.archiveName == asset.assetId + extension) {
+            "AOT compiler asset '${asset.archiveName}' does not match its assetId and archive format."
+        }
+        require(asset.downloadUrls.isNotEmpty() && asset.downloadUrls.distinct().size == asset.downloadUrls.size) {
+            "AOT compiler asset '${asset.archiveName}' has invalid download URLs."
+        }
+        require(asset.downloadUrls.all { url -> url.startsWith("https://") && url.none(Char::isWhitespace) }) {
+            "AOT compiler asset '${asset.archiveName}' download URLs must use HTTPS."
+        }
+        val executablePath = asset.executableRelativePath.replace('\\', '/')
+        val pathParts = executablePath.split('/')
+        require(!executablePath.startsWith('/') && pathParts.none { part -> part.isEmpty() || part == "." || part == ".." }) {
+            "AOT compiler asset '${asset.archiveName}' has an unsafe executable path."
+        }
+        require(pathParts.firstOrNull() == asset.assetId) {
+            "AOT compiler asset '${asset.archiveName}' executable path must stay inside its archive directory."
+        }
+        val executableName = if (host.endsWith("windows")) "wasmtime.exe" else "wasmtime"
+        require(pathParts.lastOrNull() == executableName) {
+            "AOT compiler asset '${asset.archiveName}' executable path must end in $executableName."
+        }
+        return distribution
     }
 
-    private fun compareNumericIdentifier(left: String, right: String): Int {
-        val normalizedLeft = left.trimStart('0').ifEmpty { "0" }
-        val normalizedRight = right.trimStart('0').ifEmpty { "0" }
-        val lengthOrder = normalizedLeft.length.compareTo(normalizedRight.length)
-        return if (lengthOrder != 0) lengthOrder else normalizedLeft.compareTo(normalizedRight)
+    private fun loadPublicCatalog(): WasmlineAotReleaseCatalog {
+        val stream = AotCompatibilityCatalog::class.java.classLoader
+            .getResourceAsStream(WasmlineAotReleaseCatalog.RESOURCE_PATH)
+            ?: error("Missing public AOT compatibility resource '${WasmlineAotReleaseCatalog.RESOURCE_PATH}'.")
+        val value = stream.bufferedReader().use { WasmlineAotReleaseCatalogCodec.decodePublic(it.readText()) }
+        require(value == lock.releaseCatalog.withoutProfileBindings()) {
+            "The public AOT compatibility resource does not match the detailed local catalog."
+        }
+        return value
     }
 
     private fun ByteArray.toHex(): String = joinToString("") { byte -> "%02x".format(byte) }
 
     private val SEMANTIC_VERSION_PATTERN: Regex = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    private val WASMTIME_DISTRIBUTION_VERSION: Regex = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[1-9][0-9]*$")
+    private val SOURCE_REVISION_PATTERN: Regex = Regex("^[0-9a-f]{40}$")
+    private val PROFILE_ID_PATTERN: Regex = Regex("^sha256:[0-9a-f]{64}$")
+    private val DIGEST_PATTERN: Regex = Regex("^[0-9a-f]{64}$")
+    private val ASSET_ID_PATTERN: Regex = Regex(
+        "^wasmtime-v(?<distribution>[0-9]+\\.[0-9]+\\.[0-9]+\\.[1-9][0-9]*)-(?<host>[A-Za-z0-9][A-Za-z0-9._-]*)$",
+    )
     private const val REQUIRED_COMPILER_DISTRIBUTION: String = "FULL"
 }

@@ -94,6 +94,12 @@ def load_manifest() -> dict[str, Any]:
     except json.JSONDecodeError as exc:
         raise SystemExit(f"Invalid JSON in {MANIFEST_PATH}: {exc}") from exc
 
+    if "aotCompatibility" in data:
+        raise SystemExit(
+            "AOT compatibility is maintained in root aot-compatibility.json; "
+            "remove aotCompatibility from scripts/versions.json."
+        )
+
     versions = data.get("versions")
     if not isinstance(versions, dict):
         raise SystemExit("Manifest must contain a 'versions' object.")
@@ -104,10 +110,6 @@ def load_manifest() -> dict[str, Any]:
         raise SystemExit(f"Manifest is missing required keys: {', '.join(missing)}")
     validate_versions(normalized)
     data["versions"] = normalized
-    try:
-        aot_compatibility.validate_source(data, normalized)
-    except aot_compatibility.AotCompatibilityError as error:
-        raise SystemExit(str(error)) from error
     return data
 
 
@@ -380,13 +382,6 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
     )
 
-    cli_docs_rules = (
-        Rule(
-            r"(--aot-wasmtime-version )[0-9]+\.[0-9]+\.[0-9]+",
-            lambda v: rf"\g<1>{v['wasmtime_version']}",
-            min_count=0,
-        ),
-    )
     version_sync_docs_rules = (
         Rule(
             r"(--set wasmtime_version=)[0-9]+\.[0-9]+\.[0-9]+",
@@ -419,25 +414,12 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: f'        version = "{v["sample_plugin_version"]}"',
         ),
     )
-    sample_wasmtime_fallback_rules = (
-        Rule(
-            r'(providers\.gradleProperty\("wasmtime\.version"\)\.orElse\(")[0-9A-Za-z.\-]+("\)\.get\(\))',
-            lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
-        ),
-    )
     sample_output_rules = (
         Rule(
             r'(wasmline/output/[^"\s]*-)[0-9]+\.[0-9]+\.[0-9]+',
             lambda v: rf'\g<1>{v["sample_plugin_version"]}',
         ),
     )
-    aot_wasmtime_selector_rules = (
-        Rule(
-            r'(wasmtimeVersions\.set\(listOf\(")[0-9A-Za-z.\-]+("\)\))',
-            lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
-        ),
-    )
-
     jbr_toolchain_rules = (
         Rule(
             r"JavaLanguageVersion\.of\([0-9]+\)",
@@ -557,14 +539,8 @@ def file_specs() -> tuple[FileSpec, ...]:
                 ),
             ),
         ),
-        FileSpec(
-            "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            sample_manifest_rules + sample_wasmtime_fallback_rules,
-        ),
-        FileSpec(
-            "wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts",
-            sample_manifest_rules + sample_wasmtime_fallback_rules,
-        ),
+        FileSpec("wasmline-samples/kotlin/sample-plugin/build.gradle.kts", sample_manifest_rules),
+        FileSpec("wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts", sample_manifest_rules),
         FileSpec(
             "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
             sample_manifest_rules,
@@ -583,10 +559,6 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     r'(?m)^val testPluginVersion = "[0-9A-Za-z.\-]+"$',
                     lambda v: f'val testPluginVersion = "{v["sample_plugin_version"]}"',
-                ),
-                Rule(
-                    r'(?m)^    val wasmtimeVersion = "[0-9.]+"$',
-                    lambda v: f'    val wasmtimeVersion = "{v["wasmtime_version"]}"',
                 ),
             ),
         ),
@@ -619,10 +591,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             "wasmline-samples/kotlin/sample-apps/multiplatform/webApp/build.gradle.kts",
             sample_output_rules,
         ),
-        FileSpec(
-            "wasmline-samples/kotlin/README.md",
-            sample_output_rules + aot_wasmtime_selector_rules,
-        ),
+        FileSpec("wasmline-samples/kotlin/README.md", sample_output_rules),
         FileSpec(
             "wasmline-samples/kotlin/sample-apps/README.md",
             sample_output_rules,
@@ -677,20 +646,8 @@ def file_specs() -> tuple[FileSpec, ...]:
         FileSpec("docs/content/docs/installation.zh.mdx", installation_zh),
         FileSpec("docs/content/docs/architecture.mdx", architecture_rules),
         FileSpec("docs/content/docs/architecture.zh.mdx", architecture_rules),
-        FileSpec("docs/content/docs/cli.mdx", cli_docs_rules),
-        FileSpec("docs/content/docs/cli.zh.mdx", cli_docs_rules),
-        FileSpec("docs/content/docs/gradle-plugin.mdx", aot_wasmtime_selector_rules),
-        FileSpec("docs/content/docs/gradle-plugin.zh.mdx", aot_wasmtime_selector_rules),
         FileSpec("docs/content/docs/testing.mdx", version_sync_docs_rules),
         FileSpec("docs/content/docs/testing.zh.mdx", version_sync_docs_rules),
-        FileSpec(
-            "docs/content/docs/wasmtime-download.mdx",
-            aot_wasmtime_selector_rules,
-        ),
-        FileSpec(
-            "docs/content/docs/wasmtime-download.zh.mdx",
-            aot_wasmtime_selector_rules,
-        ),
         FileSpec(
             "wasmline-multiplatform/docs/native-library-loading.md",
             (
@@ -705,11 +662,32 @@ def file_specs() -> tuple[FileSpec, ...]:
             ".github/workflows/ci.yml",
             (
                 Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
-                Rule(r"jbr-[0-9]+-", lambda v: f"jbr-{v['jbr_version']}-"),
-                Rule(r"java-version: [0-9]+\.x", lambda v: f"java-version: {v['jbr_version']}.x"),
+                Rule(r"jbr-[0-9]+-", lambda v: f"jbr-{v['jbr_version']}-", min_count=0),
+                Rule(
+                    r"java-version: [0-9]+\.x",
+                    lambda v: f"java-version: {v['jbr_version']}.x",
+                    min_count=0,
+                ),
                 Rule(
                     r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
                     lambda v: f"v{v['wasmtime_release_version']}",
+                    min_count=0,
+                ),
+                Rule(
+                    r'(?m)^  ZIG_VERSION: "[0-9.]+"$',
+                    lambda v: f'  ZIG_VERSION: "{v["zig_version"]}"',
+                    min_count=0,
+                ),
+            ),
+        ),
+        FileSpec(
+            ".github/workflows/release.yml",
+            (
+                Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
+                Rule(r"jbr-[0-9]+-", lambda v: f"jbr-{v['jbr_version']}-", min_count=0),
+                Rule(
+                    r"java-version: [0-9]+\.x",
+                    lambda v: f"java-version: {v['jbr_version']}.x",
                     min_count=0,
                 ),
                 Rule(
@@ -1192,31 +1170,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except toolchain_lock.ToolchainLockError as error:
         raise SystemExit(str(error)) from error
 
-    try:
-        generated_aot_lock = aot_compatibility.render_lock(data, versions)
-        if aot_compatibility.AOT_LOCK_PATH.is_file():
-            aot_compatibility.validate_append_only(
-                aot_compatibility.load_lock(),
-                generated_aot_lock,
-            )
-    except aot_compatibility.AotCompatibilityError as error:
-        raise SystemExit(str(error)) from error
-
     additional_files: tuple[AdditionalFile, ...] = (
         (
             toolchain_lock.LOCK_PATH.relative_to(PROJECT_ROOT).as_posix(),
             toolchain_lock.LOCK_PATH,
             toolchain_lock.render_lock(lock),
-        ),
-        (
-            aot_compatibility.AOT_LOCK_PATH.relative_to(PROJECT_ROOT).as_posix(),
-            aot_compatibility.AOT_LOCK_PATH,
-            json.dumps(generated_aot_lock, ensure_ascii=True, indent=2) + "\n",
-        ),
-        (
-            aot_compatibility.NATIVE_BUILD_IDENTITY_PATH.relative_to(PROJECT_ROOT).as_posix(),
-            aot_compatibility.NATIVE_BUILD_IDENTITY_PATH,
-            aot_compatibility.render_native_build_identity(data, versions),
         ),
         (
             aot_compatibility.KOTLIN_RELEASE_IDENTITY_PATH.relative_to(PROJECT_ROOT).as_posix(),

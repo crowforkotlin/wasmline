@@ -24,7 +24,7 @@ import java.io.File
 /**
  * Compiles Core Wasm or a raw Component into a catalog-backed AOT artifact matrix.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 internal class Compile : CliktCommand(name = "compile") {
@@ -37,8 +37,8 @@ internal class Compile : CliktCommand(name = "compile") {
         .file(canBeFile = false, canBeDir = true)
         .default(File("build/wasmline/output"))
     private val targets by option("-t", "--target").multiple().unique()
-    private val aotWasmtimeVersions by option("--aot-wasmtime-version").multiple().unique()
-    private val aotProfileIds by option("--aot-compatibility-profile-id").multiple().unique()
+    private val aotCompatibility by option("--aot-compatibility")
+    private val aotVersionRanges by option("--aot-version-range").multiple().unique()
     private val compilerCache by option("--aot-compiler-cache")
         .file(canBeFile = false, canBeDir = true)
         .default(defaultAotCompilerCacheDirectory())
@@ -63,12 +63,14 @@ internal class Compile : CliktCommand(name = "compile") {
         .file(canBeFile = false, canBeDir = true)
         .default(defaultToolCacheDirectory())
     private val wasmToolsVersion by option("--wasm-tools-version").default(ToolchainCatalog.WASM_TOOLS_VERSION)
+    private val minSdkVersion by option("--min-sdk").default(BuildConfig.VERSION)
 
     override fun run() = runBlocking {
         val productName = name ?: inputFile.nameWithoutExtension
         val destination = File(outputRoot, "$productName-$version")
         try {
             val invocation = resolveInvocation()
+            val aotSelection = parseCliAotSelection(aotCompatibility, aotVersionRanges)
             val support = CliAotBuildSupport(::echo)
             WasmlineDirectoryTransaction.create(destination).use { transaction ->
                 val componentInputDirectory = File(transaction.stagingDirectory, ".component-input")
@@ -108,8 +110,8 @@ internal class Compile : CliktCommand(name = "compile") {
                     packageDirectory = transaction.stagingDirectory,
                     workingDirectory = workingDirectory,
                     targets = targets,
-                    wasmtimeVersions = aotWasmtimeVersions,
-                    profileIds = aotProfileIds,
+                    selection = aotSelection,
+                    minSdkVersion = minSdkVersion,
                     publishRawWasm = invocation.executionModel == WasmlineExecutionModel.CORE_WASM,
                     compilerCacheDirectory = compilerCache,
                     autoDownload = autoDownload,

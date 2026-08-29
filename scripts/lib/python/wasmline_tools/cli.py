@@ -138,6 +138,22 @@ def _versions(args: argparse.Namespace) -> int:
         return 1
 
 
+def _aot(args: argparse.Namespace) -> int:
+    """Validate or synchronize the standalone AOT compatibility catalog."""
+
+    from . import aot_compatibility
+
+    try:
+        if args.operation == "sync":
+            return aot_compatibility.sync_aot(proxy=args.proxy, jobs=args.jobs)
+        if args.operation == "check":
+            return aot_compatibility.check_aot()
+        raise RuntimeError(f"Unknown AOT operation: {args.operation}")
+    except (OSError, RuntimeError, aot_compatibility.AotCompatibilityError) as error:
+        Console().error("AOT", str(error))
+        return 1
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = ArgumentParser(prog="./scripts/wasmline")
     parser.set_defaults(handler=_show_help(parser))
@@ -243,6 +259,29 @@ def _parser() -> argparse.ArgumentParser:
         version_commands.add_parser(operation, help=help_text)
     for child in version_commands.choices.values():
         child.set_defaults(handler=_versions)
+
+    aot_parser = commands.add_parser(
+        "aot",
+        help="Validate and synchronize the standalone native AOT compatibility catalog.",
+    )
+    aot_parser.set_defaults(handler=_show_help(aot_parser))
+    aot_commands = aot_parser.add_subparsers(dest="operation", metavar="COMMAND")
+    aot_sync_parser = aot_commands.add_parser(
+        "sync",
+        help="Generate the packaged AOT lock, public resource, and native identity.",
+    )
+    aot_sync_parser.add_argument("--proxy", help="HTTP proxy URL or host:port for new release metadata.")
+    aot_sync_parser.add_argument(
+        "--jobs",
+        type=int,
+        help="Limit concurrent compiler archive verification for a new distribution.",
+    )
+    aot_check_parser = aot_commands.add_parser(
+        "check",
+        help="Validate the public catalog and generated AOT files without writing.",
+    )
+    aot_sync_parser.set_defaults(handler=_aot)
+    aot_check_parser.set_defaults(handler=_aot)
 
     return parser
 

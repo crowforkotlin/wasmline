@@ -2,7 +2,7 @@
 title: CLI Reference
 description: Build, sign, and inspect multi-profile Wasmline packages
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-08-29
 ---
 
 # CLI Reference
@@ -38,7 +38,7 @@ catalog lock.
 
 ./wasmline-cli/cli.sh build \
   --input plugin.wasm \
-  --aot-wasmtime-version 48.0.1 \
+  --aot-compatibility current \
   --target pulley64 \
   --target x86_64-linux \
   --auto-download \
@@ -48,14 +48,28 @@ catalog lock.
   --key build/wasmline/keys/ed25519_private.key
 ```
 
-Repeat `--aot-wasmtime-version` to support more complete Wasmtime `x.y.z`
-versions. Each version is resolved once for every requested artifact backend.
-When a version has more than one profile for the same backend, select the exact
-record with repeatable `--aot-compatibility-profile-id sha256:<digest>`.
+Native AOT compilation requires one explicit selector. Select the current
+generation, the supported minimum, the complete formal catalog, or explicit
+inclusive ranges:
 
-If no version or profile ID is supplied, each requested backend uses the current
-Wasmline release default. Use `aot-profiles list` and `aot-profiles describe`
-instead of deriving a profile ID from a Wasmtime or Wasmline version.
+```bash
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility minimum \
+  --target pulley64
+
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility versionRanges \
+  --aot-version-range 1.0.0..1.20.0 \
+  --aot-version-range 1.50.0..1.72.3 \
+  --target x86_64-linux
+```
+
+The ranges are closed and use stable `x.y.z` versions. A selector is resolved
+through the local immutable catalog, then converted to exact backend profile IDs.
+The CLI does not accept arbitrary Wasmtime versions or profile IDs. Use
+`aot-profiles list` and `aot-profiles describe` for diagnostic information only.
 
 ## Raw Export ABI
 
@@ -130,3 +144,7 @@ identity, and downloads only that content-addressed artifact.
 Compilation and final package publication use staging directories. A failed
 matrix unit, signature operation, or ZIP replacement restores both the previous
 package directory and the previous offline ZIP.
+
+The Gradle-only `wasmlineCheckAotCompatibility` task performs the optional online
+comparison with the latest stable release. CLI compilation remains offline and
+uses only its packaged catalog.

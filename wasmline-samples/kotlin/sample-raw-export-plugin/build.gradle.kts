@@ -55,9 +55,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            wasmtimeVersions.set(
-                listOf(providers.gradleProperty("wasmtime.version").orElse("48.0.1").get()),
-            )
+            current()
         }
         autoDownload = true
     }

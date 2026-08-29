@@ -22,14 +22,14 @@ import kotlin.test.assertTrue
 /**
  * Verifies that manifest signing rejects incomplete or inconsistent AOT build records.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 class ManifestSignerTest {
     @Test
     fun rejectsIncompleteProfileTargetMatrixBeforeWritingManifest() = withSigningDirectory { directory ->
-        val firstProfile = profile(FIRST_PROFILE_ID, "47.0.3")
-        val secondProfile = profile(SECOND_PROFILE_ID, "47.0.4")
+        val firstProfile = profile(FIRST_PROFILE_ID, "12.3.4")
+        val secondProfile = profile(SECOND_PROFILE_ID, "49.0.0")
         val outputs = listOf(aotOutput(firstProfile.id), rawOutput())
         val record = record(
             profiles = listOf(firstProfile, secondProfile),
@@ -47,7 +47,7 @@ class ManifestSignerTest {
 
     @Test
     fun rejectsArtifactTargetsThatDoNotMatchCompiledOutputs() = withSigningDirectory { directory ->
-        val selectedProfile = profile(FIRST_PROFILE_ID, "47.0.3")
+        val selectedProfile = profile(FIRST_PROFILE_ID, "12.3.4")
         val outputs = listOf(aotOutput(selectedProfile.id), rawOutput())
         val targets = aggregateWasmlineArtifactTargets(outputs).map { target ->
             if (target.format == WasmlineArtifactFormat.PWASM) {
@@ -142,6 +142,8 @@ private fun record(
     },
     compileOptions = WasmlineAotCompileOptions(),
     artifactTargets = artifactTargets,
+    aotCompatibilitySelector = "current",
+    selectedAotGenerations = listOf(1),
 )
 
 /** Creates a signing request whose key is never reached by invalid fixtures. */

@@ -12,12 +12,11 @@
 
 ## Source of Truth
 
-`scripts/versions.json` is the repository manifest for duplicated project and toolchain versions.
-
-Its `aotCompatibility` object also stores immutable historical profile
-descriptors, backend defaults, compiler assets, and profile-to-build-host
-bindings. Those records are protocol history rather than duplicated scalar
-version strings.
+`scripts/versions.json` is the repository manifest for duplicated project and
+toolchain versions. It intentionally contains no AOT compatibility records.
+The root `aot-compatibility.json` is the only manually maintained AOT catalog;
+its generated profile and compiler lock is managed by the separate `aot`
+command.
 
 | Key | Scope |
 | --- | --- |
@@ -45,6 +44,8 @@ Use the singular command in documentation and normal work:
 ./scripts/wasmline versions check
 ./scripts/wasmline versions sync --set key=value
 ./scripts/wasmline versions verify-upstream
+./scripts/wasmline aot sync
+./scripts/wasmline aot check
 ```
 
 `./scripts/wasmline` is the only public entry point. Synchronization rules and
@@ -55,7 +56,7 @@ generated-lock handling are internal Python modules under
 
 1. Edit `scripts/versions.json` and run `./scripts/wasmline versions sync`, or supply every intended change through `versions sync --set`.
 2. For a Component toolchain key, allow the synchronizer to resolve every required GitHub release asset.
-3. Inspect every file listed by the synchronizer, including both generated locks.
+3. Inspect every file listed by the synchronizer and run `./scripts/wasmline aot check` when the AOT catalog is changed.
 4. Run `--check`.
 5. Run `--verify-upstream` when network verification is required.
 6. Run `python3 scripts/tests/test_versions.py`.
@@ -78,10 +79,12 @@ python3 scripts/tests/test_versions.py
 
 Direct manifest edits are supported. Normal synchronization refreshes the toolchain lock when its versions trail the manifest, then renders all managed files in memory before writing derived files. If release resolution or a synchronization rule fails, the edited manifest remains unchanged and derived files are not written.
 
-For an AOT profile addition, append records only. Synchronization validates the
-canonical backend-specific profile ID, current backend defaults, compiler asset
-digests, and references. It must not replace a historical descriptor with the
-current `wasmtime_version`.
+For an AOT generation addition, update the root `aot-compatibility.json` and
+the scalar Wasmtime versions, then run `versions sync`, `aot sync`, and
+`aot check`. When the current fork distribution is new, `aot sync` resolves and
+verifies its source revision and full compiler archives from the fork GitHub
+release before generating the detailed lock. Do not put profile descriptors,
+compiler assets, or range bindings in `scripts/versions.json`.
 
 ## Adding a Version Reference
 
@@ -124,16 +127,20 @@ The packaged lock at `wasmline-multiplatform/wasmline-plugin-core/src/main/resou
 The separate packaged AOT lock at
 `META-INF/wasmline/aot/aot-compatibility-lock.json` contains immutable
 backend-specific profiles, deduplicated compiler assets, and build-host
-bindings. It is generated from the same manifest and is not a second source of
-truth. Normal synchronization validates existing history without downloading
-all compiler archives.
+bindings. It is generated from the root `aot-compatibility.json` together with
+verified fork release metadata; it is build data, not a user configuration
+file. Normal version synchronization never rewrites this lock. Existing
+distributions are reused offline; resolving a newly appended current
+distribution may temporarily download its five full CLI archives to hash the
+compiler executable on every supported build host.
 
 Do not edit the lock or `ToolchainCatalog.kt` to perform a version upgrade. Changing `wasmtime_version`, `wasm_tools_version`, or `wit_bindgen_version` in the manifest and running `./scripts/wasmline versions sync` resolves and validates all three locked releases before writing derived files. The same behavior applies when versions are supplied through `--set`. The WASI Preview 1 adapter version remains derived from `wasmtime_version` and has no independent manifest key.
 
-`--check` validates the checked-in manifest, managed references, and generated
-locks without network access or lock refresh. `--verify-upstream` performs the
+`versions --check` validates the checked-in manifest and managed references
+without network access or lock refresh. `aot check` validates the public catalog,
+the generated lock, and the packaged resource. `--verify-upstream` performs the
 separate network check and fails if current GitHub release metadata differs from
-the checked-in locks.
+the checked-in toolchain lock.
 
 ## Required Verification
 

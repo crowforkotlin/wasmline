@@ -3,9 +3,14 @@ package crow.wasmline.cli
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.loader.model.WasmlineRuntimeContract
+import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
+import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecord
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRequest
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildService
+import crow.wasmline.plugin.core.aot.WasmlineAotTargetSpec
+import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
+import crow.wasmline.plugin.core.aot.WasmlineVersionRange
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
@@ -20,7 +25,7 @@ import java.io.File
 /**
  * Defines Component preparation options shared by CLI build and compile commands.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 internal data class CliComponentPreparationRequest(
@@ -42,7 +47,7 @@ internal data class CliComponentPreparationRequest(
 /**
  * Contains a finished raw input and its package-wide runtime contract.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 internal data class CliPreparedAotInput(val file: File, val runtimeContract: WasmlineRuntimeContract)
@@ -50,7 +55,7 @@ internal data class CliPreparedAotInput(val file: File, val runtimeContract: Was
 /**
  * Adapts CLI inputs to the shared Component and AOT build services.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 internal class CliAotBuildSupport(private val logger: (String) -> Unit = {}) {
@@ -151,30 +156,39 @@ internal class CliAotBuildSupport(private val logger: (String) -> Unit = {}) {
         packageDirectory: File,
         workingDirectory: File,
         targets: Collection<String>,
-        wasmtimeVersions: Collection<String>,
-        profileIds: Collection<String>,
+        selection: AotCompatibilitySelection,
+        minSdkVersion: String,
         publishRawWasm: Boolean,
         compilerCacheDirectory: File,
         autoDownload: Boolean,
         maxParallelCompilations: Int,
-    ): WasmlineAotBuildRecord = WasmlineAotBuildService().build(
-        WasmlineAotBuildRequest(
-            inputFile = input.file,
-            packageDirectory = packageDirectory,
-            workingDirectory = workingDirectory,
-            runtimeContract = input.runtimeContract,
-            targets = targets,
-            wasmtimeVersions = wasmtimeVersions,
-            aotCompatibilityProfileIds = profileIds,
-            publishRawWasm = publishRawWasm,
-            compilerCacheDirectory = compilerCacheDirectory,
-            buildHost = PlatformDetector.detectPlatform(),
-            autoDownload = autoDownload,
-            githubToken = githubToken(),
-            maxParallelCompilations = maxParallelCompilations,
-            logger = logger,
-        ),
-    )
+    ): WasmlineAotBuildRecord {
+        val targetSpecs = WasmlineArtifactTargetFactory.create(targets)
+        val resolution = AotCompatibilityCatalog.resolveSelection(
+            selection = selection,
+            manifestMinimumWasmlineVersion = minSdkVersion,
+            artifactBackends = targetSpecs.map(WasmlineAotTargetSpec::artifactBackend).toSet(),
+        )
+        return WasmlineAotBuildService().build(
+            WasmlineAotBuildRequest(
+                inputFile = input.file,
+                packageDirectory = packageDirectory,
+                workingDirectory = workingDirectory,
+                runtimeContract = input.runtimeContract,
+                targets = targets,
+                resolvedProfileIds = resolution.profiles.map { it.id },
+                aotCompatibilitySelector = resolution.selection.diagnosticName(),
+                selectedAotGenerations = resolution.selectedGenerations,
+                publishRawWasm = publishRawWasm,
+                compilerCacheDirectory = compilerCacheDirectory,
+                buildHost = PlatformDetector.detectPlatform(),
+                autoDownload = autoDownload,
+                githubToken = githubToken(),
+                maxParallelCompilations = maxParallelCompilations,
+                logger = logger,
+            ),
+        )
+    }
 
     private fun githubToken(): String? = System.getenv("GITHUB_TOKEN")?.takeIf(String::isNotBlank)
 }
@@ -187,3 +201,45 @@ internal fun defaultAotCompilerCacheDirectory(): File = File(
 
 /** Returns the default export for a Component Wasmline Service contract. */
 internal fun defaultComponentServiceExport(): String = WasmlineComponentServiceContract.DEFAULT_EXPORT
+
+/** Parses the CLI selector and its optional closed ranges into the shared model. */
+internal fun parseCliAotSelection(kind: String?, encodedRanges: Collection<String>): AotCompatibilitySelection {
+    val normalizedKind = kind?.trim()?.takeIf(String::isNotEmpty)
+        ?: throw IllegalArgumentException(
+            "An explicit --aot-compatibility selector is required: current, minimum, all, or versionRanges.",
+        )
+    return when (normalizedKind) {
+        "current" -> {
+            require(encodedRanges.isEmpty()) {
+                "--aot-version-range can only be used with --aot-compatibility versionRanges."
+            }
+            AotCompatibilitySelection.Current
+        }
+
+        "minimum" -> {
+            require(encodedRanges.isEmpty()) {
+                "--aot-version-range can only be used with --aot-compatibility versionRanges."
+            }
+            AotCompatibilitySelection.Minimum
+        }
+
+        "all" -> {
+            require(encodedRanges.isEmpty()) {
+                "--aot-version-range can only be used with --aot-compatibility versionRanges."
+            }
+            AotCompatibilitySelection.All
+        }
+
+        "versionRanges" -> AotCompatibilitySelection.VersionRanges(
+            encodedRanges.map { encoded ->
+                val parts = encoded.split("..")
+                require(parts.size == 2) { "AOT version range must use FROM..THROUGH: '$encoded'." }
+                WasmlineVersionRange(parts[0], parts[1])
+            },
+        )
+
+        else -> throw IllegalArgumentException(
+            "Unknown --aot-compatibility selector '$normalizedKind'. Expected current, minimum, all, or versionRanges.",
+        )
+    }
+}

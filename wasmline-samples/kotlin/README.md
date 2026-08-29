@@ -96,7 +96,7 @@ import crow.wasmline.gradle.WasmtimeTarget
 wasmline {
     wasmtime {
         aotCompatibility {
-            wasmtimeVersions.set(listOf("48.0.1"))
+            current()
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -109,9 +109,12 @@ wasmline {
 `targets` is a DSL property configured only by assignment; function-style
 target selectors are not part of the DSL.
 
-`wasmtimeVersions` selects complete `x.y.z` versions. It resolves a distinct
-backend-specific profile for each requested Cranelift or Pulley target. Omit
-the selector to use the current release defaults.
+Native AOT builds require one explicit selector. Use `current()`, `minimum()`,
+`all()`, or `versionRanges { include(from = "1.0.0", through = "1.20.0") }`.
+The selector resolves immutable AOT generations from the packaged catalog;
+Wasmtime versions and profile IDs are not direct DSL inputs. The
+`wasmlineCheckAotCompatibility` task reports newly published generations after a
+successful assemble.
 
 Use `WasmtimeTarget.custom("target-triple")` only for a Wasmtime target that
 does not have a predefined value.

@@ -2,7 +2,7 @@
 title: CLI 参考
 description: 构建、签名并检查多兼容档案 Wasmline package
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-08-29
 ---
 
 # CLI 参考
@@ -37,7 +37,7 @@ updatedAt: 2026-08-28
 
 ./wasmline-cli/cli.sh build \
   --input plugin.wasm \
-  --aot-wasmtime-version 48.0.1 \
+  --aot-compatibility current \
   --target pulley64 \
   --target x86_64-linux \
   --auto-download \
@@ -47,14 +47,26 @@ updatedAt: 2026-08-28
   --key build/wasmline/keys/ed25519_private.key
 ```
 
-重复传入 `--aot-wasmtime-version` 可以支持多个完整 Wasmtime `x.y.z`
-版本。每个版本会分别为所请求的 artifact backend 解析一次。当同一版本、
-同一 backend 存在多个 profile 时，使用可重复的
-`--aot-compatibility-profile-id sha256:<digest>` 精确选择。
+Native AOT 编译必须显式配置一个 selector。可以选择当前 generation、支持
+下限、完整正式 catalog 或明确的闭区间：
 
-未提供版本或 profile ID 时，每个请求的 backend 使用当前 Wasmline 发行版的
-默认 profile。使用 `aot-profiles list` 与 `aot-profiles describe` 查询 ID，
-不要根据 Wasmtime 或 Wasmline 版本自行推导。
+```bash
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility minimum \
+  --target pulley64
+
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility versionRanges \
+  --aot-version-range 1.0.0..1.20.0 \
+  --aot-version-range 1.50.0..1.72.3 \
+  --target x86_64-linux
+```
+
+范围为闭区间，版本必须是稳定的 `x.y.z`。Selector 通过本地不可变 catalog
+解析，再转换为精确的 backend profile ID。CLI 不接受任意 Wasmtime 版本或
+profile ID；`aot-profiles list` 与 `aot-profiles describe` 仅用于诊断。
 
 ## Raw Export ABI
 
@@ -127,3 +139,6 @@ artifact。
 
 编译和正式 package 发布均使用 staging 目录。任一矩阵单元、签名或 ZIP
 替换失败时，都会恢复上一次 package 目录与离线 ZIP。
+
+`wasmlineCheckAotCompatibility` 是 Gradle 任务，用于与最新稳定发行版执行
+可选的在线比较。CLI 编译保持离线，只使用随 CLI 打包的 catalog。

@@ -1,7 +1,7 @@
 /**
- * Defines native engine identity values generated from the Wasmline version manifest.
+ * Defines native engine identity values generated from the Wasmline AOT catalog.
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 

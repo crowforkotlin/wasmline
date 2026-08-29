@@ -2,7 +2,7 @@
 title: Gradle 插件
 description: 配置多兼容档案 AOT 构建、签名、打包与 Component 工具
 createdAt: 2026-08-15
-updatedAt: 2026-08-28
+updatedAt: 2026-08-29
 ---
 
 # Gradle 插件
@@ -25,7 +25,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            wasmtimeVersions.set(listOf("48.0.1"))
+            current()
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -36,10 +36,44 @@ wasmline {
 }
 ```
 
-`wasmtimeVersions` 接受完整 Wasmtime `x.y.z`，并可配置多个版本。同一版本、
-同一 backend 存在多个 profile 时，使用 `profileIds` 配置精确的
-`sha256:<digest>` ID。两个 selector 都未配置时，请求的 Cranelift 与 Pulley
-target 使用 catalog 中当前发行版的默认 profile。
+Native AOT 构建必须显式配置一个 selector。Selector 从插件内置的 catalog
+选择不可变 AOT generation，不接受 Wasmtime 版本或 profile digest 作为直接
+输入。
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            minimum()
+            // all()
+            // versionRanges {
+            //     include(from = "1.0.0", through = "1.20.0")
+            //     include(from = "1.50.0", through = "1.72.3")
+            // }
+            suppressCompatibilityWarning.set(false)
+        }
+    }
+}
+```
+
+`current()` 选择当前 Wasmline 发行版绑定的 generation。`minimum()` 选择从
+有效支持下限到当前发行版的全部 generation。`all()` 选择本地正式 catalog
+保留的全部 generation。`versionRanges {}` 接受闭区间 `x.y.z`，选择与这些
+区间相交的 generation。四种 selector 互斥；selector 缺失或范围为空时，会
+在下载 compiler asset 前失败。
+
+仓库根目录的 `aot-compatibility.json` 是唯一人工维护的公开 AOT catalog。
+执行 `./scripts/wasmline aot sync` 会校验该文件、生成详细 lock，并将逐字节
+一致的资源复制到 plugin-core。AOT generation 只是发行顺序标签，不是运行时
+凭据。Native Loader 仍然使用 engine 与 manifest 中的 backend-specific profile
+ID 精确匹配。
+
+每次 assemble 成功后都会执行 `wasmlineCheckAotCompatibility`。任务将已选择
+的 generation 与 Wasmline GitHub Release 中最新稳定 catalog 比较，并写入
+`build/reports/wasmline/aot-compatibility-check.json`。检查为 advisory，网络
+总等待时间限制为五秒；即使 generation gap 为零也会输出警告。审查报告后
+可以设置 `suppressCompatibilityWarning.set(true)`，该设置只抑制日志，不会
+跳过检查，也不会改变 AOT 产物。
 
 `targets` 只控制物理输出。Pulley target 为 `pulley32` 与 `pulley64`；native
 Cranelift target 同时包含操作系统和架构。iOS 必须使用 `pulley64`，32 位
@@ -125,6 +159,7 @@ wasmline {
 |---|---|
 | `wasmlineAotBuildDebug` | 构建 Debug profile 与兼容 target 矩阵 |
 | `wasmlineAotBuildRelease` | 构建 Release profile 与兼容 target 矩阵 |
+| `wasmlineCheckAotCompatibility` | 将本地 AOT 选择与最新已发布 catalog 比较 |
 | `wasmlineAssembleDebug` | 签名并发布 Debug 目录和离线 ZIP |
 | `wasmlineAssembleRelease` | 签名并发布 Release 目录和离线 ZIP |
 | `wasmlineServerDeploy` | 构建并提供所选 package 目录 |

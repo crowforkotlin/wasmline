@@ -2,7 +2,7 @@
 title: Gradle Plugin
 description: Configure multi-profile AOT builds, signing, packaging, and Component tools
 createdAt: 2026-08-15
-updatedAt: 2026-08-28
+updatedAt: 2026-08-29
 ---
 
 # Gradle Plugin
@@ -26,7 +26,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            wasmtimeVersions.set(listOf("48.0.1"))
+            current()
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -37,11 +37,47 @@ wasmline {
 }
 ```
 
-`wasmtimeVersions` accepts complete Wasmtime `x.y.z` values and may contain
-multiple versions. `profileIds` accepts exact backend-specific
-`sha256:<digest>` IDs when version selection is ambiguous. When both selectors
-are absent, the requested Cranelift and Pulley targets use the current release
-defaults from the catalog.
+Native AOT builds require one explicit selector. The selector chooses immutable
+AOT generations from the catalog packaged with the plugin; it does not accept a
+Wasmtime version or a profile digest directly.
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            minimum()
+            // all()
+            // versionRanges {
+            //     include(from = "1.0.0", through = "1.20.0")
+            //     include(from = "1.50.0", through = "1.72.3")
+            // }
+            suppressCompatibilityWarning.set(false)
+        }
+    }
+}
+```
+
+`current()` selects the generation bound to the current Wasmline release.
+`minimum()` selects every generation from the effective supported minimum to the
+current release. `all()` selects every generation retained in the formal local
+catalog. `versionRanges {}` accepts inclusive `x.y.z` intervals and selects the
+generations that intersect them. Selectors are mutually exclusive, and an empty
+or missing selector fails before compiler assets are downloaded.
+
+The repository root `aot-compatibility.json` is the only manually maintained
+public AOT catalog. Run `./scripts/wasmline aot sync` to validate it, generate
+the detailed lock, and copy an identical resource into plugin-core. AOT
+generation is an ordering label, not a runtime credential. Native loading still
+matches the backend-specific profile ID embedded in the engine and manifest.
+
+Every successful assemble runs `wasmlineCheckAotCompatibility`. It compares the
+selected generations with the latest stable catalog published in the Wasmline
+GitHub Release and writes
+`build/reports/wasmline/aot-compatibility-check.json`. The check is advisory and
+has a bounded five-second network deadline. Warnings remain enabled when the
+generation gap is zero. Set
+`suppressCompatibilityWarning.set(true)` only after reviewing the report; this
+suppresses logging but does not skip the check or alter AOT outputs.
 
 `targets` controls physical outputs only. Pulley targets are `pulley32` and
 `pulley64`; native Cranelift targets include the operating system and
@@ -129,6 +165,7 @@ serves its content-addressed files until the task is stopped.
 |---|---|
 | `wasmlineAotBuildDebug` | Build the Debug profile and compatible-target matrix |
 | `wasmlineAotBuildRelease` | Build the Release profile and compatible-target matrix |
+| `wasmlineCheckAotCompatibility` | Compare the local AOT selection with the latest published catalog |
 | `wasmlineAssembleDebug` | Sign and publish the Debug directory and offline ZIP |
 | `wasmlineAssembleRelease` | Sign and publish the Release directory and offline ZIP |
 | `wasmlineServerDeploy` | Build and serve the selected package directory |

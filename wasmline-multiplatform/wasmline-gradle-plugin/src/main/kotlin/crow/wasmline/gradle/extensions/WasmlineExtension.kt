@@ -17,7 +17,7 @@ import javax.inject.Inject
  *     }
  *     wasmtime {
  *         aotCompatibility {
- *             wasmtimeVersions.set(listOf("47.0.3", "48.0.0"))
+ *             current()
  *         }
  *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
  *         autoDownload.set(true)
@@ -30,7 +30,7 @@ import javax.inject.Inject
  * }
  * ```
  *
- * Date: 2026-08-28
+ * Date: 2026-08-29
  * Author: crowforkotlin
  */
 public open class WasmlineExtension @Inject constructor(project: Project) {

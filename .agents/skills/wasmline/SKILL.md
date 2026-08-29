@@ -16,6 +16,7 @@ Read only the documents required by the current task.
 | [`development-guide.md`](./references/development-guide.md) | Environment checks, module selection, generated files, commands, validation, or CI |
 | [`version-sync.md`](./references/version-sync.md) | Version changes or additions of duplicated version references |
 | [`branching-and-release.md`](./references/branching-and-release.md) | Branches, tags, Maven publication, releases, or hotfixes |
+| [`aot-compatibility.md`](./references/aot-compatibility.md) | AOT generation catalogs, selector DSL, compatibility checks, or release assets |
 | [`web-bindings-guide.md`](./references/web-bindings-guide.md) | `webMain`, `jsMain`, `wasmJsMain`, browser loading, or Web tests |
 | [Technical Mind Map](../../../wasmline-multiplatform/docs/design-mind.md) | Runtime architecture, execution models, invocation protocols, Component Model, or IR flow |
 | [Component Service Guide](../../../docs/content/docs/component-service.mdx) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
@@ -27,7 +28,7 @@ Read only the documents required by the current task.
 2. **Compilation and tests require explicit instruction.** Do not run Gradle, Zig, CMake, native builds, or test suites unless the user explicitly requests the relevant build, test, or verification.
 3. **Generated files are not edited manually.** This includes `test-gen/`, `*.fir.txt`, `*.fir.ir.txt`, `**/build/`, `build/platforms/`, `.zig-cache/`, and `zig-out/`.
 4. **Select the owning module first.** Confirm the module and source set before changing code.
-5. **Versions come from one manifest.** `scripts/versions.json` is authoritative. Edit the manifest and run `./scripts/wasmline versions sync`, or use `versions sync --set key=value` for the same operation. Extend the synchronizer and its tests when adding a duplicated version reference.
+5. **Scalar versions come from one manifest.** `scripts/versions.json` contains only duplicated project and toolchain versions. Edit it and run `./scripts/wasmline versions sync`, or use `versions sync --set key=value` for the same operation. Native AOT compatibility history is maintained separately in the root `aot-compatibility.json` and synchronized with `./scripts/wasmline aot sync`.
 6. **Tags and Maven releases remain paired.** The release tag format is `release-x.y.z.v`. Do not create a release tag without its Maven release, and do not publish a Maven release without its tag.
 7. **Maven modules use one project version.** All published modules, including engine modules, use `wasmline.version` in `x.y.z` form. Do not introduce four-segment engine Maven versions.
 8. **Use `main` and temporary sub-branches.** Do not create long-lived release or Wasmtime-version branches.
@@ -44,6 +45,10 @@ Read only the documents required by the current task.
 - One signed `manifest.wlm` may describe several immutable, backend-specific AOT compatibility profiles. Wasmtime `x.y.z` selects catalog records; it is not the serialized-artifact identity.
 - Package artifacts use `artifacts/sha256/{prefix}/{digest}.{extension}`. Core Web `.wasm` is profile-independent and stored once; remote loading downloads only the manifest and one selected artifact.
 - Runtime, loader, build tools, and engine modules share one Maven version. Do not upgrade an engine independently; use the BOM where its Gradle platform is consumable.
+- Native AOT selection is explicit: use exactly one of `current()`, `minimum()`, `all()`, or `versionRanges {}`. The default is no selector, which is a configuration error for native AOT.
+- `wasmlineCheckAotCompatibility` is advisory and runs after a successful Wasmline assemble. Warnings are enabled by default; `suppressCompatibilityWarning.set(true)` suppresses only the log message.
+- The root `aot-compatibility.json` is the only manually maintained AOT compatibility catalog. `./scripts/wasmline aot sync` validates it, resolves verified fork release metadata only for a newly appended current distribution, generates the internal lock, packages an identical classpath resource, and updates native identity constants. Remote catalog data never enters AOT task inputs.
+- Stable releases use `release-x.y.z.v`; `v` encodes the fork Wasmtime `x.y.z` as `major×100 + minor×10 + patch`. The release workflow validates the tag before Maven publication.
 
 ## Workflow
 
@@ -52,3 +57,5 @@ Read only the documents required by the current task.
 3. Verify current paths, APIs, and generated-file boundaries in the repository.
 4. Make the requested change.
 5. Run only the validation authorized for the task, then inspect the final diff.
+
+For AOT and release changes, read [`aot-compatibility.md`](./references/aot-compatibility.md) and [`branching-and-release.md`](./references/branching-and-release.md) before editing.
