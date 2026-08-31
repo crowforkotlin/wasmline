@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/tools/ktlint
-          key: ktlint-${{ runner.os }}-${{ hashFiles('scripts/versions.json') }}
+          key: ktlint-${{ runner.os }}-${{ hashFiles('versions.json') }}
 
       - name: Kotlin format check
         run: ./scripts/wasmline lint --all kotlin
@@ -125,7 +125,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-cranelift-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
+          key: wasmtime-platforms-cranelift-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json') }}
 
       - name: Initialize Cranelift Wasmtime platform assets
         if: steps.cache-wasmtime-cranelift.outputs.cache-hit != 'true'
@@ -204,7 +204,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-pulley-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
+          key: wasmtime-platforms-pulley-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json') }}
 
       - name: Initialize Pulley Wasmtime platform assets
         if: steps.cache-wasmtime-pulley.outputs.cache-hit != 'true'
@@ -304,7 +304,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-kotlin-native-linux-x64-pulley-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
+          key: wasmtime-platforms-kotlin-native-linux-x64-pulley-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json') }}
 
       - name: Initialize Linux x64 Pulley Wasmtime platform assets
         if: steps.cache-wasmtime-kotlin-native.outputs.cache-hit != 'true'
@@ -436,7 +436,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-ios-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
+          key: wasmtime-platforms-ios-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json') }}
 
       - name: Initialize Wasmtime iOS simulator assets
         if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
@@ -497,7 +497,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: wasmline-multiplatform/wasmline-plugin-test/build/wasmline/wasmtime/
-          key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json', 'wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts') }}
+          key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json', 'wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts') }}
 
       - name: Run plugin integration tests
         working-directory: wasmline-multiplatform/wasmline-plugin-test

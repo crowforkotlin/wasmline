@@ -84,7 +84,7 @@ compiler binding 保留在 packaged lock 中。运行时加载仍使用已链接
 
 ## Catalog 与缓存
 
-`scripts/versions.json` 只维护项目和工具链的标量版本。维护者在根目录
+`versions.json` 只维护项目和工具链的标量版本。维护者在根目录
 `aot-compatibility.json` 中维护 AOT 范围和代际历史。执行
 `./scripts/wasmline aot sync` 会生成 packaged
 `META-INF/wasmline/aot/aot-compatibility-lock.json` 以及逐字节一致的 packaged
@@ -136,7 +136,7 @@ Wasmline 发行版保持相同 generation，则不会重复 AOT 构建。Web raw
 ## 增加 Wasmtime Release
 
 只有 Wasmline engine 发行版实际改变 AOT contract 时，仓库维护者才会增加
-generation。更新 `scripts/versions.json` 中的 Wasmtime 标量版本，在根目录
+generation。更新 `versions.json` 中的 Wasmtime 标量版本，在根目录
 `aot-compatibility.json` 追加 range，然后执行：
 
 ```bash

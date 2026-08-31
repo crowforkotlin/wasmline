@@ -18,7 +18,7 @@ compatibility warning.
 
 The root `aot-compatibility.json` is the only manually maintained AOT
 compatibility source. It contains release range and generation metadata only.
-The scalar project and toolchain versions remain in `scripts/versions.json`.
+The scalar project and toolchain versions remain in `versions.json`.
 
 `./scripts/wasmline aot sync` validates the source and generates the internal
 lock plus the packaged public resource:
@@ -208,12 +208,12 @@ remain explicit workflow actions.
 ## Maintenance rules
 
 When adding a generation, update the root `aot-compatibility.json` and provide
-the matching scalar Wasmtime versions in `scripts/versions.json`. Run
+the matching scalar Wasmtime versions in `versions.json`. Run
 `./scripts/wasmline versions sync`, then `./scripts/wasmline aot sync` and
 `./scripts/wasmline aot check`. The AOT synchronizer resolves new detailed
 metadata from the fork release; use `aot sync --proxy <url>` or `--jobs <count>`
 when required by the maintenance environment. Do not put AOT records in
-`scripts/versions.json` or hand-edit generated resources.
+`versions.json` or hand-edit generated resources.
 Do not expose Wasmtime version strings or arbitrary profile digests as the
 normal Gradle selector. During the active development phase, remove obsolete
 APIs and update all call sites instead of retaining compatibility annotations.

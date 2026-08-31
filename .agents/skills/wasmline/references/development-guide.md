@@ -42,7 +42,7 @@ Download only the targets required by the requested build:
 ./scripts/wasmline wasmtime download --target <target> --engine <pulley|cranelift|all>
 ```
 
-The command reads the exact downstream release from `scripts/versions.json`, matches complete release asset names, verifies `SHA256SUMS`, supports bounded concurrent downloads and an optional `--proxy`, and extracts files under `build/platforms/v<wasmtime-release-version>/`.
+The command reads the exact downstream release from `versions.json`, matches complete release asset names, verifies `SHA256SUMS`, supports bounded concurrent downloads and an optional `--proxy`, and extracts files under `build/platforms/v<wasmtime-release-version>/`.
 
 Do not initialize assets merely because the directory exists or is absent. Confirm that the requested build needs them and that the user authorized the download or build.
 

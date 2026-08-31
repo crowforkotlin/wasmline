@@ -97,7 +97,7 @@ def load_manifest() -> dict[str, Any]:
     if "aotCompatibility" in data:
         raise SystemExit(
             "AOT compatibility is maintained in root aot-compatibility.json; "
-            "remove aotCompatibility from scripts/versions.json."
+            "remove aotCompatibility from versions.json."
         )
 
     versions = data.get("versions")

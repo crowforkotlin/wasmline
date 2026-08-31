@@ -84,7 +84,7 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 ./scripts/wasmline wasmtime download
 ```
 
-该命令读取 `scripts/versions.json` 中固定的版本，并请求对应 release。下载默认全部并发；使用 `--jobs` 限制并发数，需要 HTTP 代理时使用 `--proxy 127.0.0.1:7890`。
+该命令读取 `versions.json` 中固定的版本，并请求对应 release。下载默认全部并发；使用 `--jobs` 限制并发数，需要 HTTP 代理时使用 `--proxy 127.0.0.1:7890`。
 
 ## 原生库构建
 
@@ -153,7 +153,7 @@ cd ../wasmline-samples/kotlin
 
 ## 版本同步
 
-文档和重复配置中的版本号统一由 `scripts/versions.json` 管理，并通过脚本同步：
+文档和重复配置中的版本号统一由 `versions.json` 管理，并通过脚本同步：
 
 ```bash
 ./scripts/wasmline versions sync

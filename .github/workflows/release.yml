@@ -50,7 +50,7 @@ jobs:
       - name: Read toolchain versions
         id: versions
         run: |
-          jq -er '.versions.jbr_version' scripts/versions.json | sed 's/^/jbr_version=/' >> "$GITHUB_OUTPUT"
+          jq -er '.versions.jbr_version' versions.json | sed 's/^/jbr_version=/' >> "$GITHUB_OUTPUT"
 
       - name: Cache JBR 21
         uses: actions/cache@v5
@@ -92,7 +92,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/platforms
-          key: wasmtime-platforms-release-${{ hashFiles('scripts/versions.json', 'scripts/config/wasmtime-targets.json') }}
+          key: wasmtime-platforms-release-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json') }}
 
       - name: Download locked Wasmtime assets
         run: ./scripts/wasmline wasmtime download --engine all --jobs 4

@@ -17,6 +17,7 @@ from .paths import PROJECT_ROOT
 
 
 GENERATOR = "scripts/wasmline versions sync"
+SOURCE_MANIFEST = "versions.json"
 LOCK_PATH = (
     PROJECT_ROOT
     / "wasmline-multiplatform/wasmline-plugin-core/src/main/resources"
@@ -211,7 +212,7 @@ def generate_lock(
     lock = {
         "schemaVersion": LOCK_SCHEMA_VERSION,
         "generatedBy": GENERATOR,
-        "sourceManifest": "scripts/versions.json",
+        "sourceManifest": SOURCE_MANIFEST,
         "versions": {key: versions[key] for key in _LOCK_VERSION_KEYS},
         "tools": tools,
     }
@@ -238,6 +239,7 @@ def render_lock(lock: Mapping[str, Any]) -> str:
 
     rendered = dict(lock)
     rendered["generatedBy"] = GENERATOR
+    rendered["sourceManifest"] = SOURCE_MANIFEST
     return json.dumps(rendered, ensure_ascii=True, indent=2) + "\n"
 
 
@@ -259,7 +261,7 @@ def validate_lock(lock: Mapping[str, Any], versions: Mapping[str, str]) -> None:
         )
     if lock.get("generatedBy") != GENERATOR:
         raise ToolchainLockError("Toolchain lock has an invalid generator identifier.")
-    if lock.get("sourceManifest") != "scripts/versions.json":
+    if lock.get("sourceManifest") != SOURCE_MANIFEST:
         raise ToolchainLockError("Toolchain lock has an invalid source manifest.")
 
     locked_versions = _validated_lock_versions(lock)
@@ -277,7 +279,7 @@ def validate_lock(lock: Mapping[str, Any], versions: Mapping[str, str]) -> None:
     expected_versions = {key: versions[key] for key in _LOCK_VERSION_KEYS}
     if locked_versions != expected_versions:
         raise ToolchainLockVersionMismatchError(
-            "Toolchain lock versions do not match scripts/versions.json. "
+            "Toolchain lock versions do not match versions.json. "
             "Run ./scripts/wasmline versions sync to regenerate the lock."
         )
 

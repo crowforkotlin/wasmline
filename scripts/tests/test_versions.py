@@ -117,6 +117,8 @@ class SyncVersionTest(unittest.TestCase):
     def test_all_managed_files_exist(self) -> None:
         """Every rule must point to a source or documentation file."""
         self.assertTrue(sync_version.MANIFEST_PATH.is_file())
+        self.assertEqual(sync_version.PROJECT_ROOT / "versions.json", sync_version.MANIFEST_PATH)
+        self.assertFalse((sync_version.PROJECT_ROOT / "scripts" / "versions.json").exists())
         self.assertTrue((sync_version.PROJECT_ROOT / "scripts/wasmline").is_file())
         for spec in sync_version.file_specs():
             self.assertTrue(
@@ -397,6 +399,18 @@ class SyncVersionTest(unittest.TestCase):
         expected = aot_compatibility.render_lock(source, versions)
 
         self.assertEqual(expected, aot_compatibility.load_lock())
+
+    def test_aot_sync_and_check_use_the_standard_console_labels(self) -> None:
+        """AOT maintenance commands use Console output and distinguish check mode."""
+        with mock.patch.object(sys, "stdout", new_callable=io.StringIO) as stdout:
+            self.assertEqual(0, aot_compatibility.sync_aot())
+            self.assertEqual(0, aot_compatibility.check_aot())
+
+        self.assertEqual(
+            "OK      AOT sync    Generated files are synchronized.\n"
+            "OK      AOT check    Generated files are synchronized.\n",
+            stdout.getvalue(),
+        )
 
     def test_public_aot_catalog_matches_packaged_resource_and_versions(self) -> None:
         """The public catalog and packaged resource must be byte-identical."""
@@ -975,7 +989,7 @@ class SyncVersionTest(unittest.TestCase):
         self.assertEqual("1.8.1", versions["ktlint_version"])
         additional_files = sync_files.call_args.kwargs["additional_files"]
         manifest = next(
-            content for path, _, content in additional_files if path == "scripts/versions.json"
+            content for path, _, content in additional_files if path == "versions.json"
         )
         self.assertIn('"ktlint_version": "1.8.1"', manifest)
 

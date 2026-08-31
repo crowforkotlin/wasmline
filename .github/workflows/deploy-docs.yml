@@ -33,7 +33,7 @@ jobs:
       - name: Read toolchain versions
         id: versions
         run: |
-          jbr_version="$(jq -er '.versions.jbr_version' scripts/versions.json)"
+          jbr_version="$(jq -er '.versions.jbr_version' versions.json)"
           echo "jbr_version=${jbr_version}.x" >> "$GITHUB_OUTPUT"
 
       - name: Cache JBR

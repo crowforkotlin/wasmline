@@ -82,7 +82,7 @@ extensions.configure<KotlinMultiplatformExtension> {
         rootProject.fileTree("../scripts/lib/shell") {
             include("*.sh")
         },
-        rootProject.file("../scripts/versions.json"),
+        rootProject.file("../versions.json"),
         rootProject.fileTree("../wasmline-core/include") {
             include("**/*.h", "**/*.hpp")
         },

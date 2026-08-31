@@ -12,10 +12,11 @@
 
 ## Source of Truth
 
-`scripts/versions.json` is the repository manifest for duplicated project and
-toolchain versions. It intentionally contains no AOT compatibility records.
-The root `aot-compatibility.json` is the only manually maintained AOT catalog;
-its generated profile and compiler lock is managed by the separate `aot`
+The repository root contains two independent authoritative JSON files:
+`versions.json` is the manifest for duplicated project and toolchain versions,
+and `aot-compatibility.json` is the only manually maintained AOT catalog.
+`versions.json` intentionally contains no AOT compatibility records. The AOT
+catalog's generated profile and compiler lock are managed by the separate `aot`
 command.
 
 | Key | Scope |
@@ -54,7 +55,7 @@ generated-lock handling are internal Python modules under
 
 ## Change Procedure
 
-1. Edit `scripts/versions.json` and run `./scripts/wasmline versions sync`, or supply every intended change through `versions sync --set`.
+1. Edit `versions.json` and run `./scripts/wasmline versions sync`, or supply every intended change through `versions sync --set`.
 2. For a Component toolchain key, allow the synchronizer to resolve every required GitHub release asset.
 3. Inspect every file listed by the synchronizer and run `./scripts/wasmline aot check` when the AOT catalog is changed.
 4. Run `--check`.
@@ -65,7 +66,7 @@ generated-lock handling are internal Python modules under
 Example:
 
 ```bash
-# Synchronize values edited directly in scripts/versions.json.
+# Synchronize values edited directly in versions.json.
 ./scripts/wasmline versions sync
 
 # Alternatively, update the manifest and synchronize in one command.
@@ -84,7 +85,7 @@ the scalar Wasmtime versions, then run `versions sync`, `aot sync`, and
 `aot check`. When the current fork distribution is new, `aot sync` resolves and
 verifies its source revision and full compiler archives from the fork GitHub
 release before generating the detailed lock. Do not put profile descriptors,
-compiler assets, or range bindings in `scripts/versions.json`.
+compiler assets, or range bindings in `versions.json`.
 
 ## Adding a Version Reference
 
@@ -122,7 +123,7 @@ Kotlin code obtains Component CLI tool versions from `ToolchainCatalog`. Do not 
 
 ## Generated Locks
 
-The packaged lock at `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` is derived from `scripts/versions.json`. It records the GitHub release, asset ID, size, URL, and SHA-256 for every supported Component tool platform.
+The packaged lock at `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` is derived from `versions.json`. It records the GitHub release, asset ID, size, URL, and SHA-256 for every supported Component tool platform.
 
 The separate packaged AOT lock at
 `META-INF/wasmline/aot/aot-compatibility-lock.json` contains immutable

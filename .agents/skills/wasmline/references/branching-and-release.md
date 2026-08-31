@@ -25,7 +25,7 @@ Merge temporary branches into `main` and remove them after use. Releases are cut
 
 ## Version Sources
 
-`scripts/versions.json` contains independent version inputs:
+`versions.json` contains independent version inputs:
 
 - `wasmline_version`: the Maven version used by every published Wasmline module.
 - `wasmtime_version`: the Wasmtime toolchain and native-runtime version.
@@ -116,7 +116,7 @@ The GitHub Actions CI workflow has no publication or release jobs; a successful 
 | Breaking public API | Major increment | As required | As required |
 | Wasmtime upgrade only | Patch increment or greater | Update | Yes |
 
-There is no implemented `wasmtime_compat_window` or `wasmtime_min_version` field in `scripts/versions.json`. Do not document or depend on such fields until the manifest, synchronizer, loader policy, and publication workflow implement them together.
+There is no implemented `wasmtime_compat_window` or `wasmtime_min_version` field in `versions.json`. Do not document or depend on such fields until the manifest, synchronizer, loader policy, and publication workflow implement them together.
 
 ## Old Release Hotfix
 

@@ -78,7 +78,7 @@ final row extends through the current release.
 
 ## Catalog and Cache
 
-`scripts/versions.json` contains scalar project and toolchain versions only.
+`versions.json` contains scalar project and toolchain versions only.
 Maintainers edit the root `aot-compatibility.json` for AOT range and generation
 history. `./scripts/wasmline aot sync` derives the packaged
 `META-INF/wasmline/aot/aot-compatibility-lock.json` and the identical packaged
@@ -137,7 +137,7 @@ this native AOT check.
 
 Repository maintainers add a generation only when a Wasmline engine release uses
 a changed AOT contract. Update the scalar Wasmtime versions in
-`scripts/versions.json`, append the range in the root `aot-compatibility.json`,
+`versions.json`, append the range in the root `aot-compatibility.json`,
 and run:
 
 ```bash

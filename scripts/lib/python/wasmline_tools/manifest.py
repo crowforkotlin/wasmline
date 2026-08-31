@@ -17,12 +17,12 @@ def load_versions() -> dict[str, str]:
 
     versions = data.get("versions")
     if not isinstance(versions, dict):
-        raise RuntimeError("scripts/versions.json must contain a versions object.")
+        raise RuntimeError("versions.json must contain a versions object.")
     return {str(key): str(value) for key, value in versions.items()}
 
 
 def version(key: str) -> str:
     value = load_versions().get(key, "")
     if not value:
-        raise RuntimeError(f"Missing version key in scripts/versions.json: {key}")
+        raise RuntimeError(f"Missing version key in versions.json: {key}")
     return value

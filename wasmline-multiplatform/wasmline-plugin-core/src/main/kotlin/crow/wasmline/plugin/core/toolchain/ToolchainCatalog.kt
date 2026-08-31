@@ -150,7 +150,7 @@ private data class LockedToolchain(
     fun validate() {
         require(schemaVersion == 1) { "Unsupported toolchain lock schema: $schemaVersion." }
         require(generatedBy == "scripts/wasmline versions sync") { "Invalid toolchain lock generator: $generatedBy." }
-        require(sourceManifest == "scripts/versions.json") { "Invalid toolchain lock source: $sourceManifest." }
+        require(sourceManifest == "versions.json") { "Invalid toolchain lock source: $sourceManifest." }
 
         val lockedByTool = tools.associateBy { locked -> locked.tool }
         require(lockedByTool.size == tools.size) { "Toolchain lock contains duplicate tools." }

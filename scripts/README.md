@@ -4,17 +4,19 @@ Use `./scripts/wasmline` for repository checks, formatting, Wasmtime downloads,
 native library builds, and version synchronization.
 
 ```text
-scripts/
-|-- wasmline                     Public command
-|-- versions.json                Managed version source
-|-- config/                      Platform and artifact configuration
-|-- lib/
-|   |-- python/wasmline_tools/   Command implementation
-|   `-- shell/                   Shared Shell paths, output, and helpers
-|-- internal/
-|   |-- lint/                    Language-specific format commands
-|   `-- native/                  JNI and Kotlin/Native build backends
-`-- tests/                       Repository tooling tests
+Repository root
+|-- versions.json                Managed scalar version source
+|-- aot-compatibility.json       Native AOT compatibility source
+`-- scripts/
+    |-- wasmline                 Public command
+    |-- config/                  Platform and artifact configuration
+    |-- lib/
+    |   |-- python/wasmline_tools/  Command implementation
+    |   `-- shell/                  Shared Shell paths, output, and helpers
+    |-- internal/
+    |   |-- lint/                Language-specific format commands
+    |   `-- native/              JNI and Kotlin/Native build backends
+    `-- tests/                   Repository tooling tests
 ```
 
 Files under `lib/` and `internal/` are implementation details. CI,

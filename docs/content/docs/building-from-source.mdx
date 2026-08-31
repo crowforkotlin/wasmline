@@ -84,7 +84,7 @@ wasmtime min C-API headers and pre-built libraries must be present under `build/
 ./scripts/wasmline wasmtime download
 ```
 
-The command reads the pinned version from `scripts/versions.json` and requests that exact release. Downloads run concurrently; use `--jobs` to limit concurrency and `--proxy 127.0.0.1:7890` when an HTTP proxy is required.
+The command reads the pinned version from `versions.json` and requests that exact release. Downloads run concurrently; use `--jobs` to limit concurrency and `--proxy 127.0.0.1:7890` when an HTTP proxy is required.
 
 ## Native Library Build
 
@@ -154,7 +154,7 @@ cd ../wasmline-samples/kotlin
 
 ## Version Sync
 
-Shared documentation and duplicated config version strings are synchronized from `scripts/versions.json`:
+Shared documentation and duplicated config version strings are synchronized from `versions.json`:
 
 ```bash
 ./scripts/wasmline versions sync

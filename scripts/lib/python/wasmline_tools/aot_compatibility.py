@@ -7,12 +7,14 @@ import json
 import os
 import re
 import stat
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
 from .aot_metadata import AotMetadataResolver, GitHubAotMetadataResolver
-from .paths import PROJECT_ROOT
+from .output import Console
+from .paths import MANIFEST_PATH, PROJECT_ROOT
 
 AOT_LOCK_PATH = (
     PROJECT_ROOT
@@ -135,7 +137,7 @@ def _source_from(value: Mapping[str, Any] | None) -> Mapping[str, Any]:
     if "aotCompatibility" in value or "versions" in value:
         raise AotCompatibilityError(
             "AOT compatibility must be maintained in root aot-compatibility.json; "
-            "scripts/versions.json must contain only the versions object."
+            "versions.json must contain only the versions object."
         )
     return value
 
@@ -248,13 +250,13 @@ def validate_source(
         if configured_current != current:
             raise AotCompatibilityError(
                 "aot-compatibility.json currentWasmlineVersion must match "
-                f"scripts/versions.json ({configured_current!r})."
+                f"versions.json ({configured_current!r})."
             )
         configured_distribution = versions.get("wasmtime_release_version")
         final_distribution = ranges[-1]["wasmtimeDistributionVersion"]
         if configured_distribution != final_distribution:
             raise AotCompatibilityError(
-                "The final AOT range distribution must match scripts/versions.json "
+                "The final AOT range distribution must match versions.json "
                 f"({configured_distribution!r})."
             )
 
@@ -388,7 +390,10 @@ def prepare_metadata_for_catalog(
                     f"AOT generation {item['aotGeneration']} requires metadata for Wasmtime "
                     f"distribution {distribution}; run './scripts/wasmline aot sync'."
                 )
-            print(f"INFO    AOT metadata    Resolving Wasmtime fork distribution {distribution}.")
+            Console(sys.stdout).info(
+                "AOT metadata",
+                f"Resolving Wasmtime fork distribution {distribution}.",
+            )
             resolved = resolver.resolve(distribution)
             revisions = {resolved.source_revision}
             for asset in resolved.compiler_assets:
@@ -1117,7 +1122,7 @@ def load_lock() -> dict[str, Any]:
 def _read_versions() -> dict[str, str]:
     """Read only the scalar version map without invoking version synchronization."""
 
-    manifest_path = PROJECT_ROOT / "scripts" / "versions.json"
+    manifest_path = MANIFEST_PATH
     try:
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError) as error:
@@ -1160,6 +1165,7 @@ def sync_aot(
 ) -> int:
     """Validate the public catalog and synchronize generated AOT resources."""
 
+    console = Console(sys.stdout)
     versions = _read_versions()
     source = load_public_catalog()
     existing = load_lock()
@@ -1182,13 +1188,16 @@ def sync_aot(
                 _write_text_atomic(path, content)
     if changed and check:
         for item in changed:
-            print(f"ERROR   AOT file    {item}")
+            console.error("AOT file", item)
         return 1
     if changed:
         for item in changed:
-            print(f"OK      AOT file    {item}")
+            console.ok("AOT file", item)
     else:
-        print("OK      AOT sync    Generated files are synchronized.")
+        console.ok(
+            "AOT check" if check else "AOT sync",
+            "Generated files are synchronized.",
+        )
     return 0
 
 

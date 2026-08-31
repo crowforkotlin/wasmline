@@ -311,9 +311,9 @@ fn printMingwRequirements() void {
     , .{});
 }
 
-/// Read the downstream Wasmtime release version from scripts/versions.json.
+/// Read the downstream Wasmtime release version from versions.json.
 fn readWasmtimeReleaseVersion(b: *std.Build, repo_root: []const u8) ![]const u8 {
-    const versions_path = b.pathJoin(&.{ repo_root, "scripts", "versions.json" });
+    const versions_path = b.pathJoin(&.{ repo_root, "versions.json" });
     const content = std.Io.Dir.cwd().readFileAlloc(b.graph.io, versions_path, b.allocator, .limited(1024 * 1024)) catch {
         std.debug.print("[Warn] Could not open {s}, using default version\n", .{versions_path});
         return "v48.0.1.1";

@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd "${SCRIPT_ROOT}/.." && pwd)"
-MANIFEST_FILE="${REPOSITORY_ROOT}/scripts/versions.json"
+MANIFEST_FILE="${REPOSITORY_ROOT}/versions.json"
 CATALOG_FILE="${REPOSITORY_ROOT}/aot-compatibility.json"
 
 usage() {

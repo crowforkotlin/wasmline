@@ -10,5 +10,5 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/paths.sh"
 wasmline_version() {
   python3 -c \
     'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["versions"][sys.argv[2]])' \
-    "${WASMLINE_SCRIPTS_ROOT}/versions.json" "$1"
+    "${WASMLINE_PROJECT_ROOT}/versions.json" "$1"
 }
