@@ -11,8 +11,10 @@ import re
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from typing import Any, Mapping
 from unittest import mock
@@ -152,12 +154,15 @@ class SyncVersionTest(unittest.TestCase):
         packaged_public_catalog_path = aot_compatibility.PACKAGED_PUBLIC_CATALOG_PATH.relative_to(
             sync_version.PROJECT_ROOT
         ).as_posix()
+        aot_compatibility_reference_path = ".agents/skills/wasmline/references/aot-compatibility.md"
+        self.assertNotIn(aot_compatibility_reference_path, rendered)
         allowed_paths = managed_paths | {
             manifest_path,
             lock_path,
             aot_lock_path,
             public_catalog_path,
             packaged_public_catalog_path,
+            aot_compatibility_reference_path,
         }
         unexpected_paths = sorted(set(result.stdout.splitlines()) - allowed_paths)
 
@@ -484,6 +489,234 @@ class SyncVersionTest(unittest.TestCase):
         self.assertEqual(10, len(generated["compilerAssets"]))
         self.assertEqual(20, len(generated["profileCompilerBindings"]))
         self.assertEqual(2, generated["releaseCatalog"]["ranges"][-1]["aotGeneration"])
+
+    def test_aot_sync_reuses_one_backend_for_a_new_generation(self) -> None:
+        """A generation can replace one backend profile without duplicating the other."""
+        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source["currentWasmlineVersion"] = "1.1.0"
+        current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
+        source["ranges"].append(
+            {
+                "fromWasmlineVersion": "1.1.0",
+                "aotGeneration": 2,
+                "wasmtimeDistributionVersion": current_distribution,
+                "changedBackends": ["CRANELIFT"],
+            }
+        )
+        versions = dict(sync_version.load_manifest()["versions"])
+        versions["wasmline_version"] = "1.1.0"
+        previous = aot_compatibility.load_lock()
+        previous_range = previous["releaseCatalog"]["ranges"][-1]
+
+        with mock.patch.dict(
+            aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES,
+            {
+                "CRANELIFT": (
+                    aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES["CRANELIFT"]
+                    + ";synthetic-profile-change=y"
+                )
+            },
+        ):
+            metadata = aot_compatibility.prepare_metadata_for_catalog(
+                source,
+                previous,
+                resolver=None,
+            )
+            generated = aot_compatibility.render_lock(source, versions, metadata)
+            aot_compatibility.validate_lock_against_source(generated, source, versions)
+            aot_compatibility.validate_append_only(previous, generated)
+
+        current_range = generated["releaseCatalog"]["ranges"][-1]
+        self.assertNotEqual(
+            previous_range["profileIdsByBackend"]["CRANELIFT"],
+            current_range["profileIdsByBackend"]["CRANELIFT"],
+        )
+        self.assertEqual(
+            previous_range["profileIdsByBackend"]["PULLEY"],
+            current_range["profileIdsByBackend"]["PULLEY"],
+        )
+        self.assertEqual(3, len(generated["profiles"]))
+        self.assertEqual(5, len(generated["compilerAssets"]))
+        self.assertEqual(15, len(generated["profileCompilerBindings"]))
+
+    def test_aot_sync_rejects_an_unmarked_backend_contract_change(self) -> None:
+        """A backend contract change must be declared by changedBackends."""
+        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source["currentWasmlineVersion"] = "1.1.0"
+        current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
+        source["ranges"].append(
+            {
+                "fromWasmlineVersion": "1.1.0",
+                "aotGeneration": 2,
+                "wasmtimeDistributionVersion": current_distribution,
+                "changedBackends": ["PULLEY"],
+            }
+        )
+
+        with (
+            mock.patch.dict(
+                aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES,
+                {
+                    "CRANELIFT": (
+                        aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES["CRANELIFT"]
+                        + ";synthetic-profile-change=y"
+                    )
+                },
+            ),
+            self.assertRaisesRegex(
+                aot_compatibility.AotCompatibilityError,
+                "does not mark that backend as changed",
+            ),
+        ):
+            aot_compatibility.prepare_metadata_for_catalog(
+                source,
+                aot_compatibility.load_lock(),
+                resolver=None,
+            )
+
+    def test_aot_sync_rejects_a_declared_backend_without_identity_change(self) -> None:
+        """changedBackends cannot create a generation when its profile ID is unchanged."""
+        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source["currentWasmlineVersion"] = "1.1.0"
+        current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
+        source["ranges"].append(
+            {
+                "fromWasmlineVersion": "1.1.0",
+                "aotGeneration": 2,
+                "wasmtimeDistributionVersion": current_distribution,
+                "changedBackends": ["CRANELIFT"],
+            }
+        )
+        versions = dict(sync_version.load_manifest()["versions"])
+        versions["wasmline_version"] = "1.1.0"
+        metadata = aot_compatibility.prepare_metadata_for_catalog(
+            source,
+            aot_compatibility.load_lock(),
+            resolver=None,
+        )
+
+        with self.assertRaisesRegex(
+            aot_compatibility.AotCompatibilityError,
+            "changedBackends does not match detailed profile metadata",
+        ):
+            aot_compatibility.render_lock(source, versions, metadata)
+
+    def test_github_aot_metadata_resolver_verifies_full_archives(self) -> None:
+        """Fork release metadata maps five full archives to verified executables."""
+        distribution = "49.0.0.1"
+        tag = f"v{distribution}"
+        checksum_url = f"https://github.com/crowforkotlin/wasmtime/releases/download/{tag}/SHA256SUMS"
+        response_bytes: dict[str, bytes] = {}
+        executable_bytes: dict[str, bytes] = {}
+        archive_bytes: dict[str, bytes] = {}
+        release_assets: list[dict[str, Any]] = [
+            {
+                "name": "SHA256SUMS",
+                "browser_download_url": checksum_url,
+                "size": 1,
+            }
+        ]
+
+        for build_host in aot_metadata.AOT_COMPILER_BUILD_HOSTS:
+            asset_id = f"wasmtime-v{distribution}-{build_host}"
+            executable_name = "wasmtime.exe" if build_host.endswith("windows") else "wasmtime"
+            executable_path = f"{asset_id}/{executable_name}"
+            executable = f"verified executable for {build_host}".encode()
+            buffer = io.BytesIO()
+            if build_host.endswith("windows"):
+                with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+                    archive.writestr(executable_path, executable)
+                extension = "zip"
+            else:
+                with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
+                    member = tarfile.TarInfo(executable_path)
+                    member.size = len(executable)
+                    archive.addfile(member, io.BytesIO(executable))
+                extension = "tar.gz"
+            archive_name = f"{asset_id}.{extension}"
+            download_url = (
+                f"https://github.com/crowforkotlin/wasmtime/releases/download/{tag}/{archive_name}"
+            )
+            content = buffer.getvalue()
+            executable_bytes[build_host] = executable
+            archive_bytes[build_host] = content
+            response_bytes[download_url] = content
+            release_assets.append(
+                {
+                    "name": archive_name,
+                    "browser_download_url": download_url,
+                    "size": len(content),
+                }
+            )
+
+        checksums = "".join(
+            f"{hashlib.sha256(archive_bytes[host]).hexdigest()}  "
+            f"wasmtime-v{distribution}-{host}.{'zip' if host.endswith('windows') else 'tar.gz'}\n"
+            for host in aot_metadata.AOT_COMPILER_BUILD_HOSTS
+        )
+        response_bytes[checksum_url] = checksums.encode()
+        release_url = f"{aot_metadata.WASMTIME_API_ROOT}/releases/tags/{tag}"
+        commit_url = f"{aot_metadata.WASMTIME_API_ROOT}/commits/{tag}"
+        response_bytes[release_url] = json.dumps(
+            {
+                "tag_name": tag,
+                "draft": False,
+                "prerelease": False,
+                "assets": release_assets,
+            }
+        ).encode()
+        response_bytes[commit_url] = json.dumps({"sha": "c" * 40}).encode()
+        resolver = aot_metadata.GitHubAotMetadataResolver(jobs=3, token="test-token")
+
+        with mock.patch.object(
+            resolver,
+            "_open",
+            side_effect=lambda url: io.BytesIO(response_bytes[url]),
+        ):
+            resolved = resolver.resolve(distribution)
+
+        self.assertEqual("c" * 40, resolved.source_revision)
+        self.assertEqual(
+            set(aot_metadata.AOT_COMPILER_BUILD_HOSTS),
+            {asset["buildHost"] for asset in resolved.compiler_assets},
+        )
+        for asset in resolved.compiler_assets:
+            build_host = asset["buildHost"]
+            self.assertEqual(
+                hashlib.sha256(archive_bytes[build_host]).hexdigest(),
+                asset["archiveSha256"],
+            )
+            self.assertEqual(
+                hashlib.sha256(executable_bytes[build_host]).hexdigest(),
+                asset["executableSha256"],
+            )
+            self.assertEqual("FULL", asset["distribution"])
+
+    def test_github_aot_metadata_token_is_limited_to_the_api_origin(self) -> None:
+        """GitHub credentials must not be forwarded to release asset URLs."""
+        resolver = aot_metadata.GitHubAotMetadataResolver(token="test-token")
+        opener = mock.Mock()
+        opener.open.return_value = object()
+
+        with mock.patch.object(aot_metadata, "build_opener", return_value=opener):
+            resolver._open(f"{aot_metadata.WASMTIME_API_ROOT}/commits/v49.0.0.1")
+            api_request = opener.open.call_args.args[0]
+            self.assertEqual("Bearer test-token", api_request.get_header("Authorization"))
+
+            resolver._open(
+                "https://github.com/crowforkotlin/wasmtime/releases/download/"
+                "v49.0.0.1/wasmtime-v49.0.0.1-x86_64-linux.tar.gz"
+            )
+            asset_request = opener.open.call_args.args[0]
+            self.assertIsNone(asset_request.get_header("Authorization"))
+
+    def test_github_aot_metadata_rejects_malformed_asset_urls(self) -> None:
+        """Malformed release asset URLs produce the stable resolver error type."""
+        with self.assertRaises(aot_metadata.AotMetadataResolutionError):
+            aot_metadata.GitHubAotMetadataResolver._required_https_url(
+                {"browser_download_url": "https://["},
+                "invalid-asset",
+            )
 
     def test_aot_check_does_not_resolve_missing_metadata(self) -> None:
         """Offline validation reports missing generated metadata without network access."""

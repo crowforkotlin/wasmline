@@ -33,6 +33,7 @@
 **/zig-out/
 **/.gradle/
 **/.idea/
+**/.codegraph/
 **/.vscode/
 **/.cache/
 **/__pycache__/

@@ -135,7 +135,12 @@ data class WasmlineAotReleaseCatalog(
         }
     }
 
-    /** Defines the public catalog resource and schema. */
+    /**
+     * Defines the public catalog resource and schema.
+     *
+     * Date: 2026-08-29
+     * Author: crowforkotlin
+     */
     companion object {
         const val CURRENT_SCHEMA_VERSION: Int = 1
         const val RESOURCE_PATH: String = "META-INF/wasmline/aot/aot-compatibility.json"

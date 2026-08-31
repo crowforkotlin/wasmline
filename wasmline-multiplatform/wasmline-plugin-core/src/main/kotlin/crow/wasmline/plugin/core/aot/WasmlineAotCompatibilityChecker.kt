@@ -557,6 +557,12 @@ class WasmlineAotCompatibilityChecker(
         val failureReason: String? = null,
     )
 
+    /**
+     * Defines stable diagnostics and bounded checker limits.
+     *
+     * Date: 2026-08-29
+     * Author: crowforkotlin
+     */
     private companion object {
         const val WARNING_REVIEW: String = "WLAOT001"
         const val WARNING_REMOTE_UNAVAILABLE: String = "WLAOT002"
@@ -684,6 +690,12 @@ class JvmAotCompatibilityHttpTransport : AotCompatibilityHttpTransport {
         if (System.nanoTime() >= deadline) throw SocketTimeoutException(AOT_COMPATIBILITY_TIMEOUT_MESSAGE)
     }
 
+    /**
+     * Defines the maximum duration of one blocking response read.
+     *
+     * Date: 2026-08-29
+     * Author: crowforkotlin
+     */
     private companion object {
         const val MAX_READ_WAIT_MILLIS: Long = 1_000L
     }

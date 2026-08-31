@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
 
@@ -193,7 +193,7 @@ class GitHubAotMetadataResolver:
                             )
                         digest.update(chunk)
                         output.write(chunk)
-            except (HTTPError, URLError, OSError) as error:
+            except (HTTPError, URLError, OSError, ValueError) as error:
                 raise AotMetadataResolutionError(
                     f"Cannot download Wasmtime compiler asset {request.archive_name}: {error}."
                 ) from error
@@ -277,16 +277,17 @@ class GitHubAotMetadataResolver:
         try:
             with self._open(url) as response:
                 return response.read()
-        except (HTTPError, URLError, OSError) as error:
+        except (HTTPError, URLError, OSError, ValueError) as error:
             raise AotMetadataResolutionError(f"Cannot read {url}: {error}.") from error
 
     def _open(self, url: str):
+        parsed_url = urlsplit(url)
         headers = {
             "Accept": "application/vnd.github+json",
             "User-Agent": "wasmline-aot-metadata",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        if self._token:
+        if self._token and parsed_url.scheme == "https" and parsed_url.hostname == "api.github.com":
             headers["Authorization"] = f"Bearer {self._token}"
         proxy = self._proxy if not self._proxy or "://" in self._proxy else f"http://{self._proxy}"
         opener = build_opener(ProxyHandler({"http": proxy, "https": proxy})) if proxy else build_opener()
@@ -308,7 +309,20 @@ class GitHubAotMetadataResolver:
     @staticmethod
     def _required_https_url(asset: dict[str, Any], name: str) -> str:
         value = asset.get("browser_download_url")
-        if not isinstance(value, str) or not value.startswith("https://") or any(char.isspace() for char in value):
+        try:
+            parsed = urlsplit(value) if isinstance(value, str) else None
+        except ValueError as error:
+            raise AotMetadataResolutionError(
+                f"Wasmtime release asset {name} has an invalid download URL."
+            ) from error
+        if (
+            parsed is None
+            or parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or any(char.isspace() for char in value)
+        ):
             raise AotMetadataResolutionError(f"Wasmtime release asset {name} has an invalid download URL.")
         return value
 

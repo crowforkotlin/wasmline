@@ -64,7 +64,9 @@ class WasmlineAotCompatibilityCheckerTest {
 
     @Test
     fun reportsLocallyKnownGenerationOmittedBySelection() = withTemporaryDirectory { directory ->
-        val local = catalogWithSecondGeneration(changedBackends = WasmlineEngineKind.entries)
+        val local = catalogWithSecondGeneration(
+            changedBackends = WasmlineEngineKind.entries.sortedBy(WasmlineEngineKind::name),
+        )
         val result = checker(ScriptedTransport.forCatalog(local)).check(
             request(
                 directory = directory,
@@ -347,7 +349,12 @@ class WasmlineAotCompatibilityCheckerTest {
             return response(url, headers, timeout)
         }
 
-        /** Creates a transport that serves one valid catalog and checksum pair. */
+        /**
+         * Creates transports that serve valid catalog and checksum pairs.
+         *
+         * Date: 2026-08-29
+         * Author: crowforkotlin
+         */
         companion object {
             fun forCatalog(catalog: WasmlineAotReleaseCatalog, validChecksum: Boolean = true): ScriptedTransport {
                 val body = encoded(catalog)
