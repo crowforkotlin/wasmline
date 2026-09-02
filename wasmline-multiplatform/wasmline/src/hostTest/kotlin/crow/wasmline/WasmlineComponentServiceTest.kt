@@ -1,5 +1,6 @@
 package crow.wasmline
 
+import crow.wasmline.internal.service.WasmlineComponentService
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import kotlin.test.Test

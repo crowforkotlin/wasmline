@@ -1,5 +1,6 @@
 package crow.wasmline
 
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
@@ -9,8 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 /**
- * Tests the typed invocation carrier codec.
- *
  * Verifies the typed invocation carrier codec for raw and component values.
  *
  * Date: 2026-08-02
@@ -21,7 +20,7 @@ class WasmlineTypedInvocationCodecTest {
     fun encodesRawArgumentsWithLittleEndianValues() {
         val result = assertIs<WasmlineCallResult.Success<ByteArray>>(
             WasmlineTypedInvocationCodec.encodeRawArguments(
-                listOf(WasmlineRawValue.I32(-1), WasmlineRawValue.I64(2), WasmlineRawValue.F32(1.5f), WasmlineRawValue.F64(2.5)),
+                listOf(RawValue.I32(-1), RawValue.I64(2), RawValue.F32(1.5f), RawValue.F64(2.5)),
             ),
         )
 
@@ -41,10 +40,10 @@ class WasmlineTypedInvocationCodecTest {
     @Test
     fun decodesRawSuccessValues() {
         val values = listOf(
-            WasmlineRawValue.I32(-7),
-            WasmlineRawValue.I64(9_000_000_001L),
-            WasmlineRawValue.F32(-1.25f),
-            WasmlineRawValue.F64(3.5),
+            RawValue.I32(-7),
+            RawValue.I64(9_000_000_001L),
+            RawValue.F32(-1.25f),
+            RawValue.F64(3.5),
         )
         val encoded = assertIs<WasmlineCallResult.Success<ByteArray>>(
             WasmlineTypedInvocationCodec.encodeRawArguments(values),

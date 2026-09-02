@@ -25,17 +25,15 @@ import kotlin.test.assertIs
 /**
  * Verifies flags Component host imports through AOT JNI artifacts.
  *
- * Validates flags arguments and results with external `.cwasm`/`.pwasm` only.
+ * Validates flags arguments and results with generated `.cwasm`/`.pwasm` artifacts.
  *
- * Date: 2026-08-07
+ * Date: 2026-09-01
  * Author: crowforkotlin
  */
 class NativeTypedComponentFlagsHostImportIntegrationTest {
 
     @Test
     fun flagsHostImportRoundTripsThroughTheJniRegistry() {
-        if (System.getenv(LIVE_TESTS_ENV) != "1") return
-
         val artifact = copyFixture()
         try {
             val handle = loadComponent(artifact)
@@ -114,31 +112,11 @@ class NativeTypedComponentFlagsHostImportIntegrationTest {
         return assertIs<WasmlineLoadState.Success>(state).wasmline
     }
 
-    private fun copyFixture(): File {
-        val source = requireNotNull(System.getenv(FIXTURE_ENV)) {
-            "$FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$FIXTURE_ENV does not point to a file: ${source.absolutePath}" }
-        val format = componentAotFormat(source.name)
-        val suffix = when (format) {
-            WasmlineArtifactFormat.CWASM -> ".cwasm"
-            WasmlineArtifactFormat.PWASM -> ".pwasm"
-            WasmlineArtifactFormat.RAW_WASM -> error("Flags Component fixture cannot use raw Wasm.")
-        }
-        return File.createTempFile("wasmline-component-flags-host-", suffix).apply {
-            source.copyTo(this, overwrite = true)
-            deleteOnExit()
-        }
-    }
+    private fun copyFixture(): File = NativeFixtureTestSupport.copy("component-typed-flags")
 
     private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
         else -> error("Flags Component fixture must be a precompiled .cwasm or .pwasm artifact.")
-    }
-
-    private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_FLAGS_HOST"
     }
 }

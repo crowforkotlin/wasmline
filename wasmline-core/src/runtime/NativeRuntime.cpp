@@ -34,10 +34,20 @@ namespace wasmline {
             return std::nullopt;
         }
 
-        bool rejectsRawNativeArtifact(WasmlineArtifactFormat format, const char* kind, const std::string& path) {
-            if (format != WasmlineArtifactFormat::RAW_WASM) return false;
-            LOGE("[Wasmtime] NativeRuntime --> Raw %s Wasm is not accepted on native. Precompile to CWASM/PWASM: %s", kind, path.c_str());
-            return true;
+        bool rejectsRawNativeArtifact(WasmlineArtifactFormat format) {
+            return format == WasmlineArtifactFormat::RAW_WASM;
+        }
+
+        const char* artifactFormatName(WasmlineArtifactFormat format) {
+            switch (format) {
+            case WasmlineArtifactFormat::RAW_WASM:
+                return "RAW_WASM";
+            case WasmlineArtifactFormat::CWASM:
+                return "CWASM";
+            case WasmlineArtifactFormat::PWASM:
+                return "PWASM";
+            }
+            return "unknown";
         }
 
         bool supportsPulley() {
@@ -91,33 +101,58 @@ namespace wasmline {
         }
     }
 
-    bool NativeRuntime::loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat format, bool unsafe) {
-        if (rejectsRawNativeArtifact(format, "Core", path)) return false;
+    ArtifactLoadResult NativeRuntime::loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat format,
+                                                 bool unsafe) {
+        if (rejectsRawNativeArtifact(format)) {
+            return ArtifactLoadResult::failure(WasmlineErrorCode::ARTIFACT_NOT_COMPATIBLE,
+                                               "Native Core Wasm loading requires a precompiled CWASM or PWASM artifact.");
+        }
         {
             std::shared_lock<std::shared_mutex> lock(lifecycleMutex_);
             if (isEngineReadyForArtifact(format)) {
-                return (unsafe ? Module::getInstance().loadUnsafe(key, path, format) : Module::getInstance().load(key, path, format)) !=
-                       nullptr;
+                ArtifactLoadResult result = ArtifactLoadResult::success();
+                const auto module = unsafe ? Module::getInstance().loadUnsafe(key, path, format, &result)
+                                           : Module::getInstance().load(key, path, format, &result);
+                return module ? ArtifactLoadResult::success() : result;
             }
         }
         std::unique_lock<std::shared_mutex> lock(lifecycleMutex_);
-        if (!ensureEngineForArtifact(format, path)) return false;
-        return (unsafe ? Module::getInstance().loadUnsafe(key, path, format) : Module::getInstance().load(key, path, format)) != nullptr;
+        if (!ensureEngineForArtifact(format, path)) {
+            return ArtifactLoadResult::failure(WasmlineErrorCode::ARTIFACT_NOT_COMPATIBLE,
+                                               std::string("Native runtime cannot select an engine for ") + artifactFormatName(format) +
+                                                   ".");
+        }
+        ArtifactLoadResult result = ArtifactLoadResult::success();
+        const auto module =
+            unsafe ? Module::getInstance().loadUnsafe(key, path, format, &result) : Module::getInstance().load(key, path, format, &result);
+        return module ? ArtifactLoadResult::success() : result;
     }
 
-    bool NativeRuntime::loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat format, bool unsafe) {
-        if (rejectsRawNativeArtifact(format, "Component", path)) return false;
+    ArtifactLoadResult NativeRuntime::loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat format,
+                                                    bool unsafe) {
+        if (rejectsRawNativeArtifact(format)) {
+            return ArtifactLoadResult::failure(WasmlineErrorCode::ARTIFACT_NOT_COMPATIBLE,
+                                               "Native Component loading requires a precompiled CWASM or PWASM artifact.");
+        }
         {
             std::shared_lock<std::shared_mutex> lock(lifecycleMutex_);
             if (isEngineReadyForArtifact(format)) {
-                return (unsafe ? Component::getInstance().loadUnsafe(key, path, format)
-                               : Component::getInstance().load(key, path, format)) != nullptr;
+                ArtifactLoadResult result = ArtifactLoadResult::success();
+                const auto component = unsafe ? Component::getInstance().loadUnsafe(key, path, format, &result)
+                                              : Component::getInstance().load(key, path, format, &result);
+                return component ? ArtifactLoadResult::success() : result;
             }
         }
         std::unique_lock<std::shared_mutex> lock(lifecycleMutex_);
-        if (!ensureEngineForArtifact(format, path)) return false;
-        return (unsafe ? Component::getInstance().loadUnsafe(key, path, format) : Component::getInstance().load(key, path, format)) !=
-               nullptr;
+        if (!ensureEngineForArtifact(format, path)) {
+            return ArtifactLoadResult::failure(WasmlineErrorCode::ARTIFACT_NOT_COMPATIBLE,
+                                               std::string("Native runtime cannot select an engine for ") + artifactFormatName(format) +
+                                                   ".");
+        }
+        ArtifactLoadResult result = ArtifactLoadResult::success();
+        const auto component = unsafe ? Component::getInstance().loadUnsafe(key, path, format, &result)
+                                      : Component::getInstance().load(key, path, format, &result);
+        return component ? ArtifactLoadResult::success() : result;
     }
 
     void NativeRuntime::releaseArtifact(const std::string& key) {

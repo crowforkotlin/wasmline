@@ -1,5 +1,8 @@
 package crow.wasmline
 
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -39,7 +42,7 @@ class WasmlineLocalArtifactBridgeTest {
     @Test
     fun rejectsIncompatibleAotMetadataBeforeResolution() {
         val runtime = WasmlineRuntimeCapabilities(
-            backend = WasmlineNativeBackend.CRANELIFT,
+            backend = WasmlineEngineKind.CRANELIFT,
             supportedArtifactFormats = setOf(WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.PWASM),
             wasmtimeVersion = "12.3.4",
             aotCompatibilityProfileIdsByBackend = mapOf(
@@ -150,12 +153,18 @@ class WasmlineLocalArtifactBridgeTest {
         assertEquals(0, platform.loadCalls)
     }
 
-    /** Converts a false native load result into a structured failure. */
+    /** Preserves a structured native load failure. */
     @Test
     fun reportsNativeLoadFailure() {
         val platform = FakePlatform(
             resolvedArtifact = ResolvedPrecompiledArtifact("plugin.wasm", "module"),
-            loadResult = false,
+            loadResult = WasmlineCallResult.Failure(
+                WasmlineFailure(
+                    code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
+                    message = "Native artifact could not be deserialized.",
+                    details = "Invalid ELF header".encodeToByteArray(),
+                ),
+            ),
         )
 
         val result = WasmlineLocalArtifactBridge.load(
@@ -169,7 +178,47 @@ class WasmlineLocalArtifactBridgeTest {
 
         val failure = assertIs<WasmlineLoadState.Failure>(result)
         assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
+        assertEquals(WasmlineErrorCode.MODULE_FORMAT_INVALID, failure.failure.code)
+        assertEquals("Native artifact could not be deserialized.", failure.failure.message)
+        assertEquals("Invalid ELF header", failure.failure.details?.decodeToString())
         assertEquals(1, platform.loadCalls)
+    }
+
+    /** Writes structured native diagnostics only when the host configures a logger. */
+    @Test
+    fun logsNativeLoadFailureWhenLoggerIsConfigured() {
+        val previousLogger = WasmlineLog.logger
+        val logger = CapturingLogger()
+        WasmlineLog.logger = logger
+        try {
+            val platform = FakePlatform(
+                resolvedArtifact = ResolvedPrecompiledArtifact("plugin.wasm", "module"),
+                loadResult = WasmlineCallResult.Failure(
+                    WasmlineFailure(
+                        code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
+                        message = "Native artifact could not be deserialized.",
+                        details = "Invalid ELF header".encodeToByteArray(),
+                    ),
+                ),
+            )
+
+            val result = WasmlineLocalArtifactBridge.load(
+                descriptor = WasmlineArtifactDescriptor(
+                    path = "plugin.wasm",
+                    artifactFormat = WasmlineArtifactFormat.RAW_WASM,
+                ),
+                config = WasmlineConfig(),
+                platform = platform,
+            )
+
+            assertIs<WasmlineLoadState.Failure>(result)
+            assertEquals(
+                "[WasmlineLocalArtifactBridge] Native artifact could not be deserialized.\nInvalid ELF header",
+                logger.errors.single(),
+            )
+        } finally {
+            WasmlineLog.logger = previousLogger
+        }
     }
 
     /**
@@ -180,7 +229,7 @@ class WasmlineLocalArtifactBridgeTest {
      */
     private class FakePlatform(
         private val resolvedArtifact: ResolvedPrecompiledArtifact? = ResolvedPrecompiledArtifact("plugin.pwasm", "module"),
-        private val loadResult: Boolean = true,
+        private val loadResult: WasmlineCallResult<Unit> = WasmlineCallResult.Success(Unit),
         private val descriptorValidation: (WasmlineArtifactDescriptor) -> String? = { null },
         private val requiresExplicitFormat: Boolean = false,
     ) : WasmlinePlatformArtifactBridge {
@@ -199,9 +248,29 @@ class WasmlineLocalArtifactBridgeTest {
 
         override fun requiresExplicitArtifactFormat(): Boolean = requiresExplicitFormat
 
-        override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
+        override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): WasmlineCallResult<Unit> {
             loadCalls++
             return loadResult
+        }
+    }
+
+    /**
+     * Captures messages emitted through the configured Wasmline logger.
+     *
+     * Date: 2026-09-02
+     * Author: crowforkotlin
+     */
+    private class CapturingLogger : WasmlineLogger {
+        val errors = mutableListOf<String>()
+
+        override fun info(message: String) = Unit
+
+        override fun debug(message: String) = Unit
+
+        override fun warn(message: String) = Unit
+
+        override fun error(message: String) {
+            errors += message
         }
     }
 }

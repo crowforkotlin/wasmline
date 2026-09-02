@@ -2,6 +2,7 @@ package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import kotlin.test.Test

@@ -1,13 +1,17 @@
-package crow.wasmline.internal
+package crow.wasmline.internal.component
 
 import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineComponentHostDispatcher
 import crow.wasmline.WasmlineComponentHostRegistry
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.invocation.WasmlineCallResult
 
-/** Shared implementation for the Component bindings exposed as [Wasmline] members. */
+/**
+ * Implements the Component binding members exposed by [Wasmline].
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 internal object WasmlineComponentBindings {
     fun bindHost(wasmline: Wasmline, registry: WasmlineComponentHostRegistry): Wasmline {
         require(wasmline.descriptor.invocationProtocol == WasmlineInvocationProtocol.COMPONENT_EXPORT) {

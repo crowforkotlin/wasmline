@@ -12,7 +12,7 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineRawValue
+import crow.wasmline.RawValue
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
 import crow.wasmline.callResult
@@ -546,8 +546,8 @@ internal class WasmSampleRunner(
         val result = runtime.invokeRawResult(
             exportName = WasmSampleMode.RAW_EXPORT.defaultExport,
             arguments = listOf(
-                WasmlineRawValue.I32(value),
-                WasmlineRawValue.I32(1),
+                RawValue.I32(value),
+                RawValue.I32(1),
             ),
         )
         return when (result) {
@@ -757,11 +757,11 @@ private sealed interface SampleInvocation {
     data class Failure(val message: String) : SampleInvocation
 }
 
-private fun rawValueText(value: WasmlineRawValue): String = when (value) {
-    is WasmlineRawValue.I32 -> value.value.toString()
-    is WasmlineRawValue.I64 -> value.value.toString()
-    is WasmlineRawValue.F32 -> value.value.toString()
-    is WasmlineRawValue.F64 -> value.value.toString()
+private fun rawValueText(value: RawValue): String = when (value) {
+    is RawValue.I32 -> value.value.toString()
+    is RawValue.I64 -> value.value.toString()
+    is RawValue.F32 -> value.value.toString()
+    is RawValue.F64 -> value.value.toString()
 }
 
 private fun String.artifactFormat(): WasmlineArtifactFormat = when {

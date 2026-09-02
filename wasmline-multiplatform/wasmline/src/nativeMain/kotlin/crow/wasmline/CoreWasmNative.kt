@@ -3,6 +3,14 @@
 
 package crow.wasmline
 
+import crow.wasmline.internal.core.CoreWasmBackendFailure
+import crow.wasmline.internal.core.CoreWasmBackendMemory
+import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.core.CoreWasmBackendSession
+import crow.wasmline.internal.core.CoreWasmImportDispatcher
+import crow.wasmline.internal.core.CoreWasmNativeCodec
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
+import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
@@ -45,7 +53,7 @@ private class NativeCoreWasmModule(
         bulkMemory = true,
         referenceTypes = true,
     )
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
     private val sessions = linkedMapOf<String, NativeCoreWasmSession>()
     private var closed = false
 
@@ -133,7 +141,7 @@ private class NativeCoreWasmSession(private val sessionKey: String, override val
         resultTypes: List<RawValueType>,
     ): WasmlineCallResult<List<RawValue>> {
         if (closed) return coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Native Core Wasm session is closed.")
-        val encoded = when (val result = WasmlineTypedInvocationCodec.encodeRawValues(arguments)) {
+        val encoded = when (val result = WasmlineTypedInvocationCodec.encodeRawArguments(arguments)) {
             is WasmlineCallResult.Failure -> return result
             is WasmlineCallResult.Success -> result.value
         }
@@ -206,7 +214,7 @@ private class NativeRawImportDispatcher(
  * Author: crowforkotlin
  */
 private object NativeRawImportRegistry {
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
     private val values = mutableMapOf<String, NativeRawImportDispatcher>()
 
     fun register(key: String, value: NativeRawImportDispatcher) = lock.withLock { values[key] = value }

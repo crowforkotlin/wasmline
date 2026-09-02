@@ -34,9 +34,9 @@ import kotlin.test.assertTrue
 /**
  * Verifies Component Model resource ownership through a Rust wit-bindgen guest.
  *
- * Runs only when the external precompiled Component fixture is explicitly supplied.
+ * Uses the generated fixture index instead of a hand-supplied artifact.
  *
- * Date: 2026-08-12
+ * Date: 2026-09-01
  * Author: crowforkotlin
  */
 class NativeComponentResourceIntegrationTest {
@@ -154,7 +154,6 @@ class NativeComponentResourceIntegrationTest {
     }
 
     private inline fun withResourceModule(block: (Wasmline) -> Unit) {
-        if (System.getenv(LIVE_TESTS_ENV) != "1") return
         val artifact = copyFixture()
         val handle = loadComponent(artifact)
         try {
@@ -245,19 +244,14 @@ class NativeComponentResourceIntegrationTest {
         return assertIs<WasmlineLoadState.Success>(state).wasmline
     }
 
-    private fun copyFixture(): File {
-        val source = requireNotNull(System.getenv(FIXTURE_ENV)) {
-            "$FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile && source.name.endsWith(".cwasm")) {
-            "$FIXTURE_ENV must point to a precompiled Component .cwasm: ${source.absolutePath}"
-        }
-        return File.createTempFile("wasmline-component-resource-", ".cwasm").apply {
-            source.copyTo(this, overwrite = true)
-            deleteOnExit()
-        }
-    }
+    private fun copyFixture(): File = NativeFixtureTestSupport.copy("component-resource")
 
+    /**
+     * Provides typed access to the guest-owned counter resource.
+     *
+     * Date: 2026-09-01
+     * Author: crowforkotlin
+     */
     private class GuestCounter(instance: WasmlineComponentInstance, reference: WasmlineComponentValue.ResourceValue) :
         WasmlineGuestComponentResource(instance, reference) {
         fun get(): UInt = call(COUNTER_GET)
@@ -276,9 +270,21 @@ class NativeComponentResourceIntegrationTest {
             ).value
     }
 
+    /**
+     * Provides typed access to the host callback resource.
+     *
+     * Date: 2026-09-01
+     * Author: crowforkotlin
+     */
     private class HostCallback(instance: WasmlineComponentInstance, reference: WasmlineComponentValue.ResourceValue) :
         WasmlineHostComponentResource(instance, reference)
 
+    /**
+     * Provides typed access to a borrowed counter resource.
+     *
+     * Date: 2026-09-01
+     * Author: crowforkotlin
+     */
     private class BorrowedCounter(instance: WasmlineComponentInstance, reference: WasmlineComponentValue.ResourceValue) :
         WasmlineGuestComponentResource(instance, reference)
 
@@ -302,11 +308,15 @@ class NativeComponentResourceIntegrationTest {
         origin = origin,
     )
 
+    /**
+     * Stores the multiplier used by the host callback fixture.
+     *
+     * Date: 2026-09-01
+     * Author: crowforkotlin
+     */
     private data class CallbackImplementation(val multiplier: UInt)
 
     private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_RESOURCE"
         val EXPORT_INTERFACE = WasmlineComponentInterfaceId.of("wasmline:resource-fixture/resources@1.0.0")
         val HOST_INTERFACE = WasmlineComponentInterfaceId.of("wasmline:resource-fixture/host@1.0.0")
         val CALLBACK_RESOURCE = WasmlineComponentResourceId(HOST_INTERFACE, "callback")

@@ -2,22 +2,21 @@
 
 package crow.wasmline
 
+import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.native.c.wasmline_free_memory
 import kotlinx.cinterop.*
-import kotlinx.cinterop.toKString
-import platform.posix.getenv
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /**
  * Covers the Native callback frame and per-handle registry without loading an artifact.
  *
  * Author: crowforkotlin
- * Date: 2026-08-19
+ * Date: 2026-09-01
  */
 class WasmlineIosComponentHostCallbackTest {
 
@@ -75,22 +74,25 @@ class WasmlineIosComponentHostCallbackTest {
     }
 
     @Test
-    fun liveIosComponentHostRoundTripUsesPwasmOnly() {
-        if (getenv(LIVE_TESTS_ENV)?.toKString() != "1") return
-        val fixturePath = getenv(IOS_FIXTURE_ENV)?.toKString()
-            ?: error("$IOS_FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1.")
-        assertTrue(fixturePath.endsWith(".pwasm", ignoreCase = true))
-
+    fun iosComponentHostRoundTripUsesGeneratedPwasmFixture() {
         val runtime = platformWasmlineRuntimeCapabilities()
+        require(runtime.pointerWidth == 64) { "iOS native AOT tests require a 64-bit Pulley runtime." }
+        val profileId = runtime.aotCompatibilityProfileIdsByBackend[WasmlineEngineKind.PULLEY]
+            ?.singleOrNull()
+            ?: error("The iOS runtime must report exactly one Pulley AOT compatibility profile.")
+        val fixturePath = NativeIosFixtureCatalog.requirePwasmPath(
+            fixtureId = "component-typed-host",
+            profileId = profileId,
+            executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
+            invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
+        )
         val state = platformWasmlineLoadArtifact(
             descriptor = WasmlineArtifactDescriptor(
                 path = fixturePath,
                 artifactFormat = WasmlineArtifactFormat.PWASM,
                 architecture = "pulley${runtime.pointerWidth}",
                 pointerWidth = runtime.pointerWidth,
-                aotCompatibilityProfileId = runtime.aotCompatibilityProfileIdsByBackend[WasmlineEngineKind.PULLEY]
-                    ?.singleOrNull()
-                    ?: error("The iOS runtime must report exactly one Pulley AOT compatibility profile."),
+                aotCompatibilityProfileId = profileId,
                 executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
                 invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
                 exportName = "run",
@@ -159,10 +161,5 @@ class WasmlineIosComponentHostCallbackTest {
                 }
             }
         }
-    }
-
-    private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val IOS_FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_TYPED_HOST_IOS"
     }
 }

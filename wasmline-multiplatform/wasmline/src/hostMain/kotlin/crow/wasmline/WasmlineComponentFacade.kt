@@ -1,11 +1,22 @@
 package crow.wasmline
 
+import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentInstanceConfiguration
+import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.component.componentFailure
+import crow.wasmline.internal.component.requireIdentifier
+import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineException
 import crow.wasmline.invocation.WasmlineFailure
 
-/** Identifies the exact WIT package/world consumed by a generated Host binding. */
+/**
+ * Identifies the exact WIT package and world consumed by a generated Host binding.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 data class WasmlineComponentContract(val packageId: String, val world: String, val witSha256: String) {
     init {
         requireIdentifier(packageId, "WIT package id")
@@ -33,7 +44,12 @@ data class WasmlineComponentContract(val packageId: String, val world: String, v
     }
 }
 
-/** One exported Component function with its canonical interface-qualified name. */
+/**
+ * Identifies one exported Component function by its canonical interface-qualified name.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 class WasmlineComponentExport private constructor(val interfaceId: WasmlineComponentInterfaceId?, val functionName: String) {
     val value: String = interfaceId?.let { "${it.value}#$functionName" } ?: functionName
 
@@ -60,14 +76,24 @@ class WasmlineComponentExport private constructor(val interfaceId: WasmlineCompo
     }
 }
 
-/** Metadata emitted for each generated Host facade function. */
+/**
+ * Describes one function emitted by a generated Component Host facade.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 data class WasmlineComponentFunctionBinding(val export: WasmlineComponentExport, val parameterCount: Int, val hasResult: Boolean) {
     init {
         require(parameterCount >= 0) { "Component parameter count must not be negative." }
     }
 }
 
-/** Value token generated from a WIT export interface. */
+/**
+ * Defines the generated binding for one WIT export interface.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 interface WasmlineComponentExportBinding<out Client> {
     val contract: WasmlineComponentContract
     val interfaceId: WasmlineComponentInterfaceId
@@ -75,7 +101,12 @@ interface WasmlineComponentExportBinding<out Client> {
     fun attach(instance: WasmlineComponentInstance): Client
 }
 
-/** Value token generated from a WIT import interface. */
+/**
+ * Defines the generated binding factory for one WIT import interface.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 interface WasmlineComponentImportBindingFactory<in Implementation : Any> {
     val contract: WasmlineComponentContract
     val interfaceId: WasmlineComponentInterfaceId
@@ -83,13 +114,36 @@ interface WasmlineComponentImportBindingFactory<in Implementation : Any> {
     fun bind(implementation: Implementation, registry: WasmlineComponentHostRegistry.Builder)
 }
 
-/** Preserves the distinction between a WIT business result and a Wasmline runtime failure. */
+/**
+ * Preserves the distinction between a WIT business result and a Wasmline runtime failure.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 sealed interface WasmlineWitResult<out Success, out Error> {
+    /**
+     * Represents a successful WIT result.
+     *
+     * Date: 2026-09-02
+     * Author: crowforkotlin
+     */
     data class Ok<Success>(val value: Success) : WasmlineWitResult<Success, Nothing>
+
+    /**
+     * Represents an error WIT result.
+     *
+     * Date: 2026-09-02
+     * Author: crowforkotlin
+     */
     data class Err<Error>(val error: Error) : WasmlineWitResult<Nothing, Error>
 }
 
-/** Typed Component capability over one loaded compiled artifact. */
+/**
+ * Provides typed Component access over one loaded compiled artifact.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 class WasmlineComponentModule internal constructor(private val state: WasmlineComponentModuleState) {
     val descriptor: WasmlineArtifactDescriptor
         get() = state.descriptor
@@ -100,7 +154,12 @@ class WasmlineComponentModule internal constructor(private val state: WasmlineCo
     }
 }
 
-/** Builds the immutable import registry used by one Component instance. */
+/**
+ * Builds the immutable import registry used by one Component instance.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 class WasmlineComponentInstanceBuilder internal constructor(private val descriptor: WasmlineArtifactDescriptor) {
     private val registry = WasmlineComponentHostRegistry.builder()
     private var requiredContract: WasmlineComponentContract? = null
@@ -126,19 +185,19 @@ class WasmlineComponentInstanceBuilder internal constructor(private val descript
     )
 }
 
-internal data class WasmlineComponentInstanceConfiguration(
-    val contract: WasmlineComponentContract?,
-    val registry: WasmlineComponentHostRegistry,
-)
-
-/** One isolated Store/Linker/Component instance with immutable imports. */
+/**
+ * Represents one isolated Store, Linker, and Component instance with immutable imports.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 class WasmlineComponentInstance internal constructor(
     private val state: WasmlineComponentModuleState,
     internal val instanceKey: String,
     private val contract: WasmlineComponentContract?,
     private val dispatcher: WasmlineComponentHostDispatcher,
 ) {
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
     private var closed = false
 
     val descriptor: WasmlineArtifactDescriptor
@@ -222,7 +281,12 @@ class WasmlineComponentInstance internal constructor(
     }
 }
 
-/** Testable resource-table snapshot for one live Component instance. */
+/**
+ * Reports the Host resource count for one live Component instance.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 data class WasmlineComponentResourceDiagnostics(val activeHostResources: Int)
 
 /**
@@ -231,6 +295,9 @@ data class WasmlineComponentResourceDiagnostics(val activeHostResources: Int)
  * The wrapper carries no ABI logic: its reference is validated and dropped by
  * the owning Wasmline Component instance. A borrowed value must be represented
  * by a call-scoped adapter and must not be wrapped as this type.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
  */
 abstract class WasmlineComponentResource protected constructor(
     protected val instance: WasmlineComponentInstance,
@@ -269,13 +336,23 @@ abstract class WasmlineComponentResource protected constructor(
     }
 }
 
-/** Base class for generated wrappers around a guest-exported resource. */
+/**
+ * Provides the base class for generated wrappers around a guest-exported resource.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 abstract class WasmlineGuestComponentResource protected constructor(
     instance: WasmlineComponentInstance,
     reference: WasmlineComponentValue.ResourceValue,
 ) : WasmlineComponentResource(instance, reference)
 
-/** Base class for generated wrappers around a Host-defined imported resource. */
+/**
+ * Provides the base class for generated wrappers around a Host-defined imported resource.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 abstract class WasmlineHostComponentResource protected constructor(
     instance: WasmlineComponentInstance,
     reference: WasmlineComponentValue.ResourceValue,
@@ -297,91 +374,3 @@ fun Wasmline.component(): WasmlineComponentModule {
     }
     return componentModuleState.module
 }
-
-internal class WasmlineComponentModuleState(private val owner: Wasmline) {
-    private val lock = WasmlineHostServiceLock()
-    private val instances = linkedMapOf<String, WasmlineComponentInstance>()
-    private var closed = false
-
-    val descriptor: WasmlineArtifactDescriptor
-        get() = owner.descriptor
-
-    val module: WasmlineComponentModule = WasmlineComponentModule(this)
-
-    fun instantiate(configuration: WasmlineComponentInstanceConfiguration): WasmlineComponentInstance = lock.withLock {
-        check(!closed) { "Cannot instantiate a closed Component module." }
-        configuration.contract?.requireMatches(descriptor)
-        val instanceKey = "wasmline:component-instance:${WasmlineComponentInstanceIds.next()}:${descriptor.path}"
-        val dispatcher = WasmlineComponentHostDispatcher(configuration.registry)
-        check(owner.instantiateComponentInstance(instanceKey, dispatcher)) {
-            "Failed to instantiate typed Component '$instanceKey'. Verify that all required imports are bound."
-        }
-        WasmlineComponentInstance(this, instanceKey, configuration.contract, dispatcher).also { instances[instanceKey] = it }
-    }
-
-    fun invoke(
-        instanceKey: String,
-        exportName: String,
-        arguments: List<WasmlineComponentValue>,
-    ): WasmlineCallResult<WasmlineComponentCallResult> {
-        if (exportName.isBlank()) return componentFailure(WasmlineErrorCode.INVALID_PAYLOAD, "Export name must not be blank.")
-        return when (val encoded = WasmlineTypedInvocationCodec.encodeComponentArguments(arguments)) {
-            is WasmlineCallResult.Failure -> encoded
-
-            is WasmlineCallResult.Success -> when (
-                val carrier = owner.invokeComponentInstanceCarrier(instanceKey, exportName, encoded.value)
-            ) {
-                is WasmlineCallResult.Failure -> carrier
-                is WasmlineCallResult.Success -> WasmlineTypedInvocationCodec.decodeComponentResult(carrier.value)
-            }
-        }
-    }
-
-    fun release(instanceKey: String) {
-        val shouldRelease = lock.withLock { instances.remove(instanceKey) != null }
-        if (shouldRelease) owner.releaseComponentInstance(instanceKey)
-    }
-
-    fun dropResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean =
-        owner.dropComponentResource(instanceKey, reference)
-
-    fun createHostResource(
-        instanceKey: String,
-        resourceId: WasmlineComponentResourceId,
-        representation: UInt,
-    ): WasmlineCallResult<WasmlineComponentValue.ResourceValue> = owner.createComponentHostResource(
-        instanceKey,
-        resourceId.interfaceId.value,
-        resourceId.resourceName,
-        representation,
-    )
-
-    fun close() {
-        val snapshot: List<WasmlineComponentInstance> = lock.withLock {
-            if (closed) {
-                emptyList()
-            } else {
-                closed = true
-                instances.values.toList()
-            }
-        }
-        snapshot.forEach(WasmlineComponentInstance::close)
-    }
-}
-
-private object WasmlineComponentInstanceIds {
-    private val lock = WasmlineHostServiceLock()
-    private var next = 0UL
-
-    fun next(): ULong = lock.withLock { next++ }
-}
-
-private fun requireIdentifier(value: String, label: String): String {
-    require(value.isNotBlank()) { "$label must not be blank." }
-    require(value == value.trim()) { "$label must not have leading or trailing whitespace." }
-    require(value.none(Char::isWhitespace)) { "$label must not contain whitespace." }
-    return value
-}
-
-private fun componentFailure(code: WasmlineErrorCode, message: String): WasmlineCallResult.Failure =
-    WasmlineCallResult.Failure(WasmlineFailure(code = code, message = message))

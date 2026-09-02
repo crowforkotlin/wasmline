@@ -6,7 +6,12 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.platformWasmlineLoadArtifact
 
-/** Binary bridge used by the separately published `wasmline-loader` module. */
+/**
+ * Provides the loader with the platform artifact-loading entry point.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 @InternalWasmlineRuntimeApi
 object WasmlineRuntimeBridge {
     fun loadResolvedArtifact(descriptor: WasmlineArtifactDescriptor, config: WasmlineConfig): WasmlineLoadState =

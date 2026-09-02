@@ -3,6 +3,10 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
 
 /**

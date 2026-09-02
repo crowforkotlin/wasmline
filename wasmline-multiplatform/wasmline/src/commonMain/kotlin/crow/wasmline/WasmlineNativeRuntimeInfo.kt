@@ -18,7 +18,7 @@ package crow.wasmline
  * @property supportedCpuFeatureProfiles Frozen CWASM CPU feature policies.
  */
 data class WasmlineNativeRuntimeInfo(
-    val backend: WasmlineNativeBackend,
+    val backend: WasmlineEngineKind,
     val supportedArtifactFormats: Set<WasmlineArtifactFormat>,
     val wasmtimeVersion: String,
     val aotCompatibilityProfileIdsByBackend: Map<WasmlineEngineKind, Set<String>>,

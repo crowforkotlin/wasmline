@@ -3,8 +3,13 @@
 package crow.wasmline
 
 import crow.wasmline.extensions.ensureNativeRuntimeLoaded
-import crow.wasmline.internal.WasmlineComponentBindings
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentBindings
+import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
+import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
@@ -109,10 +114,6 @@ private fun decodeResourceCarrier(bytes: ByteArray?): WasmlineCallResult<Wasmlin
         }
     }
 
-internal actual class WasmlineHostServiceLock {
-    actual fun <T> withLock(block: () -> T): T = synchronized(this, block)
-}
-
 @Volatile
 private var jniRuntimeLoaded = false
 
@@ -206,9 +207,18 @@ internal actual fun platformWasmlineLoadArtifact(descriptor: WasmlineArtifactDes
 
             override fun requiresExplicitArtifactFormat(): Boolean = true
 
-            override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
+            override fun loadPrecompiled(
+                moduleKey: String,
+                path: String,
+                descriptor: WasmlineArtifactDescriptor,
+            ): WasmlineCallResult<Unit> {
                 ensureJniRuntimeLoaded()
-                val artifactFormat = descriptor.artifactFormat ?: return false
+                val artifactFormat = descriptor.artifactFormat ?: return WasmlineCallResult.Failure(
+                    WasmlineFailure(
+                        WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+                        "Native artifact loading requires an explicit artifactFormat.",
+                    ),
+                )
                 return when (descriptor.executionModel) {
                     WasmlineExecutionModel.CORE_WASM ->
                         if (supportConcurrent) {

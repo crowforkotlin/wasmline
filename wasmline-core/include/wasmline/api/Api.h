@@ -17,6 +17,7 @@
 #include "wasmline/invocation/InvocationResult.h"
 #include "wasmline/invocation/RawWasmTypes.h"
 #include "wasmline/api/NativeRuntimeIdentity.h"
+#include "wasmline/runtime/ArtifactLoadResult.h"
 #include "wasmline/runtime/WasmlineArtifactFormat.h"
 
 namespace wasmline {
@@ -44,16 +45,17 @@ namespace wasmline {
         static bool tryArtifactFormatFromCode(int32_t formatCode, WasmlineArtifactFormat* format);
 
         /** Loads a Core Wasm artifact with an explicit physical format. */
-        static bool loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
+        static ArtifactLoadResult loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
 
         /** Loads a Core Wasm artifact with an explicit format without cache synchronization. */
-        static bool loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
+        static ArtifactLoadResult loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
 
         /** Loads a Component Model artifact with an explicit physical format. */
-        static bool loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
+        static ArtifactLoadResult loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
 
         /** Loads a Component Model artifact with an explicit format without cache synchronization. */
-        static bool loadComponentUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat);
+        static ArtifactLoadResult loadComponentUnsafe(const std::string& key, const std::string& path,
+                                                      WasmlineArtifactFormat artifactFormat);
 
         /** Releases an artifact and its associated sessions. */
         static void releaseModule(const std::string& key);

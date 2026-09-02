@@ -5,7 +5,6 @@
  * Author: crowforkotlin
  */
 #include "WasmlineNative.h"
-#include "wasmline/internal/logging/NativeLogger.h"
 #include "wasmline/api/Api.h"
 #include "wasmline/invocation/CoreWasmBridgeCodec.h"
 #include "wasmline/invocation/TypedInvocationCodec.h"
@@ -119,6 +118,39 @@ std::recursive_mutex &nativeBridgeMutex() {
   static std::recursive_mutex mutex;
   return mutex;
 }
+
+char *copyNativeBytes(const void *data, size_t size, size_t *outLen) {
+  if (outLen)
+    *outLen = 0;
+  if (size == 0)
+    return nullptr;
+  char *output = wasmline_allocate_memory(size);
+  if (!output)
+    return nullptr;
+  std::memcpy(output, data, size);
+  if (outLen)
+    *outLen = size;
+  return output;
+}
+
+char *copyNativeBytes(const std::vector<uint8_t> &bytes, size_t *outLen) {
+  return copyNativeBytes(bytes.data(), bytes.size(), outLen);
+}
+
+char *encodeArtifactLoadResult(const ArtifactLoadResult &result,
+                               size_t *outLen) {
+  const std::string encoded = result.isSuccess()
+                                  ? WasmlineResponseCodec::success(std::string_view{})
+                                  : WasmlineResponseCodec::failure(
+                                        result.errorCode(), result.message(),
+                                        result.details().empty()
+                                            ? std::string_view{}
+                                            : std::string_view(
+                                                  reinterpret_cast<const char *>(
+                                                      result.details().data()),
+                                                  result.details().size()));
+  return copyNativeBytes(encoded.data(), encoded.size(), outLen);
+}
 } // namespace
 
 extern "C" {
@@ -139,59 +171,62 @@ void wasmline_lock() { nativeBridgeMutex().lock(); }
 
 void wasmline_unlock() { nativeBridgeMutex().unlock(); }
 
-bool wasmline_load_module_with_format(const char *key, const char *path,
-                                      int32_t formatCode, bool isUnsafe) {
+char *wasmline_load_module_with_format(const char *key, const char *path,
+                                       int32_t formatCode, bool isUnsafe,
+                                       size_t *outLen) {
   WasmlineArtifactFormat artifactFormat;
   if (!Api::tryArtifactFormatFromCode(formatCode, &artifactFormat)) {
-    LOGE("[Wasmline] Native --> Invalid artifact format code: %d",
-         static_cast<int>(formatCode));
-    return false;
+    return encodeArtifactLoadResult(
+        ArtifactLoadResult::failure(
+            WasmlineErrorCode::ARTIFACT_DESCRIPTOR_INVALID,
+            "Native Core Wasm load received an invalid artifact format code."),
+        outLen);
   }
-  if (!key || !path)
-    return false;
-  if (isUnsafe) {
-    return Api::loadModuleUnsafe(std::string(key), std::string(path),
+  if (!key || !path) {
+    return encodeArtifactLoadResult(
+        ArtifactLoadResult::failure(
+            WasmlineErrorCode::ARTIFACT_DESCRIPTOR_INVALID,
+            "Native Core Wasm load received a null key or path."),
+        outLen);
+  }
+  const ArtifactLoadResult result =
+      isUnsafe ? Api::loadModuleUnsafe(std::string(key), std::string(path),
+                                       artifactFormat)
+               : Api::loadModule(std::string(key), std::string(path),
                                  artifactFormat);
-  }
-  return Api::loadModule(std::string(key), std::string(path), artifactFormat);
+  return encodeArtifactLoadResult(result, outLen);
 }
 
-bool wasmline_load_component_with_format(const char *key, const char *path,
-                                         int32_t formatCode, bool isUnsafe) {
+char *wasmline_load_component_with_format(const char *key, const char *path,
+                                          int32_t formatCode, bool isUnsafe,
+                                          size_t *outLen) {
   WasmlineArtifactFormat artifactFormat;
   if (!Api::tryArtifactFormatFromCode(formatCode, &artifactFormat)) {
-    LOGE("[Wasmline] Native --> Invalid artifact format code: %d",
-         static_cast<int>(formatCode));
-    return false;
+    return encodeArtifactLoadResult(
+        ArtifactLoadResult::failure(
+            WasmlineErrorCode::ARTIFACT_DESCRIPTOR_INVALID,
+            "Native Component load received an invalid artifact format code."),
+        outLen);
   }
-  if (!key || !path)
-    return false;
-  if (isUnsafe) {
-    return Api::loadComponentUnsafe(std::string(key), std::string(path),
+  if (!key || !path) {
+    return encodeArtifactLoadResult(
+        ArtifactLoadResult::failure(
+            WasmlineErrorCode::ARTIFACT_DESCRIPTOR_INVALID,
+            "Native Component load received a null key or path."),
+        outLen);
+  }
+  const ArtifactLoadResult result =
+      isUnsafe ? Api::loadComponentUnsafe(std::string(key), std::string(path),
+                                          artifactFormat)
+               : Api::loadComponent(std::string(key), std::string(path),
                                     artifactFormat);
-  }
-  return Api::loadComponent(std::string(key), std::string(path),
-                            artifactFormat);
+  return encodeArtifactLoadResult(result, outLen);
 }
 
 void wasmline_release_module(const char *key) {
   if (!key)
     return;
   Api::releaseModule(std::string(key));
-}
-
-static char *copyNativeBytes(const std::vector<uint8_t> &bytes, size_t *outLen) {
-  if (outLen)
-    *outLen = 0;
-  if (bytes.empty())
-    return nullptr;
-  char *output = wasmline_allocate_memory(bytes.size());
-  if (!output)
-    return nullptr;
-  std::memcpy(output, bytes.data(), bytes.size());
-  if (outLen)
-    *outLen = bytes.size();
-  return output;
 }
 
 static char *copyMemoryOperationFailure(const InvocationResult &result,

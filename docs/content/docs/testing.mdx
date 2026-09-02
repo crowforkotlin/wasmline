@@ -2,7 +2,7 @@
 title: Testing
 description: Test matrix, generated artifact rules, and local verification for Wasmline
 createdAt: 2026-08-03
-updatedAt: 2026-08-21
+updatedAt: 2026-09-01
 ---
 
 # Testing
@@ -19,7 +19,7 @@ Wasmline tests are split by the boundary they validate. Run the repository prefl
 |---|---|---|---|
 | Common runtime | `wasmline` | response frames, descriptors, and serialization | `./gradlew :wasmline:jvmTest` |
 | Host runtime | `wasmline` | local artifact bridge, typed raw/component invocation, and host API compilation | `./gradlew :wasmline:jvmTest` |
-| Native Wasmtime | `wasmline` | JNI lifecycle, artifact loading, raw exports, component exports | `./gradlew :wasmline:jvmTest` |
+| Native Wasmtime | `wasmline` | JNI lifecycle, artifact loading, raw exports, component exports | `./gradlew :wasmline:nativeAotJvmTest` |
 | Kotlin/JS | `wasmline` | WebAssembly imports, values, memory, and exports | `./gradlew :wasmline:jsBrowserTest` |
 | Kotlin/WasmJS | `wasmline` | WebAssembly imports, values, memory, and exports | `./gradlew :wasmline:wasmJsBrowserTest` |
 | Kotlin/WasmWasi | `wasmline` | WASI runtime integration | `./gradlew :wasmline:wasmWasiNodeTest` |
@@ -37,7 +37,38 @@ Run all JVM-facing checks from `wasmline-multiplatform/`:
   :wasmline-kotlin-plugin:test
 ```
 
-Native Wasmtime tests load the Cranelift JNI library from `wasmline-engine-cranelift/src/jvmMain/resources/jni/`. The CI pipeline builds that engine library before running `:wasmline:jvmTest`. Web tests do not require native Wasmtime files, but browser tests require a Chrome-compatible runner.
+Native Wasmtime tests load the Cranelift JNI library from `wasmline-engine-cranelift/src/jvmMain/resources/jni/`. The ordinary `jvmTest` task excludes tests that require serialized AOT artifacts. `nativeAotJvmTest` first runs `:wasmline-native-test-fixtures:assembleNativeTestFixtures`, passes its fixture index to the test process, and then runs every native AOT integration test. A missing, changed, or incorrectly indexed artifact fails the task.
+
+## Native AOT Fixtures
+
+Fixture source files are committed under `wasmline-native-test-fixtures/src/fixtures/`. The module generates `.cwasm` or `.pwasm` files in its `build/` directory; these binary files must not be committed or supplied through test environment variables.
+
+From the repository root, build the Cranelift JNI library before the Linux JVM check. The fixture task generates the host-specific Cranelift target and the portable `pulley64` target:
+
+```bash
+./scripts/wasmline jni build --engine cranelift
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
+```
+
+The fixture index records the fixture ID, execution model, invocation protocol, artifact format and backend, requested and normalized targets, AOT profile ID, relative path, file size, and SHA-256 digest. The JVM suite loads a `raw-export-basic` `pulley64` PWASM fixture through the Cranelift native library and invokes its `add` export. The test helper selects the entry whose target and profile match the linked native runtime, then verifies the file again before copying it to a temporary path.
+
+iOS simulator tests use only the portable Pulley target. Run the following on macOS from the repository root:
+
+```bash
+./scripts/wasmline wasmtime download --target ios-simulator-arm64 --engine pulley
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:iosSimulatorArm64Test \
+  :wasmline-loader:iosSimulatorArm64Test \
+  -Pwasmline.native.fixtures.targets=pulley64 \
+  --no-daemon
+```
+
+An iOS test fails when the index is absent, when the selected fixture does not match the requested execution model, invocation protocol, Pulley backend, `pulley64` target, `.pwasm` suffix, file size, or linked AOT profile. Rust resource fixtures require the `wasm32-wasip2` target before assembly.
 
 ## IR Test Rules
 

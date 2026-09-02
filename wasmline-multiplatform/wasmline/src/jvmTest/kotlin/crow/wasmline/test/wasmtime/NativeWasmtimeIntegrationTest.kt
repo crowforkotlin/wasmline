@@ -8,13 +8,13 @@ import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.WasmlineRuntime
+import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.platformWasmlineLoadArtifact
 import crow.wasmline.platformWasmlineRuntimeCapabilities
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -45,7 +45,7 @@ class NativeWasmtimeIntegrationTest {
 
         assertEquals("48.0.1", capabilities.wasmtimeVersion)
         assertEquals(capabilities.wasmtimeVersion, runtimeInfo.wasmtimeVersion)
-        assertEquals(WasmlineNativeBackend.CRANELIFT, runtimeInfo.backend)
+        assertEquals(WasmlineEngineKind.CRANELIFT, runtimeInfo.backend)
         assertEquals(
             setOf(WasmlineEngineKind.PULLEY, WasmlineEngineKind.CRANELIFT),
             runtimeInfo.supportedEngines,
@@ -69,7 +69,9 @@ class NativeWasmtimeIntegrationTest {
 
         try {
             listOf(0, -1, 4).forEach { formatCode ->
-                assertFalse(invokeNativeLoadAotWithFormatCode(formatCode))
+                val failure = assertIs<WasmlineCallResult.Failure>(invokeNativeLoadAotWithFormatCode(formatCode))
+                assertEquals(WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID, failure.failure.code)
+                assertTrue(failure.failure.message.contains("invalid artifact format code"))
             }
         } finally {
             WasmlineRuntime.shutdown()
@@ -95,7 +97,7 @@ class NativeWasmtimeIntegrationTest {
         assertTrue(failure.failure.message.contains("profile '$INCOMPATIBLE_AOT_PROFILE_ID' is not supported"))
     }
 
-    private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): Boolean = JniWasmlineBindings.loadModuleWithFormatCode(
+    private fun invokeNativeLoadAotWithFormatCode(formatCode: Int): WasmlineCallResult<Unit> = JniWasmlineBindings.loadModuleWithFormatCode(
         key = "invalid-format",
         path = "/does/not/exist/plugin.bin",
         formatCode = formatCode,

@@ -267,6 +267,65 @@ jobs:
                     :wasmline-cli:test \
                     --no-daemon
 
+  test-native-aot-jvm:
+    needs: build-cranelift-assets
+    runs-on: ubuntu-latest
+    name: test-native-aot-jvm
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-21-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          distribution: jetbrains
+          java-version: 21.x
+          token: ${{ github.token }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Install Rust Component target
+        run: rustup target add wasm32-wasip2
+
+      - name: Cache native fixture tools and compilers
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.wasmline/tools
+            ~/.wasmline/toolchains/wasmtime/compiler-assets
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: native-fixtures-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-multiplatform/wasmline-native-test-fixtures/src/**') }}
+
+      - name: Download Cranelift JNI library
+        uses: actions/download-artifact@v4
+        with:
+          name: jni-cranelift-linux-x64
+          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
+
+      - name: Run native AOT JVM tests
+        working-directory: wasmline-multiplatform
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+        run: >-
+          ./gradlew :wasmline:nativeAotJvmTest
+          -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64
+          --no-daemon
+
   # ───────────────────────────────────────────────────────────────
   # Kotlin/Native Host Sample
   # ───────────────────────────────────────────────────────────────
@@ -406,6 +465,7 @@ jobs:
   test-ios:
     runs-on: macos-latest
     name: test-ios
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v5
@@ -438,6 +498,19 @@ jobs:
           path: build/platforms
           key: wasmtime-platforms-ios-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json') }}
 
+      - name: Install Rust Component target
+        run: rustup target add wasm32-wasip2
+
+      - name: Cache native fixture tools, compilers, and Cargo data
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.wasmline/tools
+            ~/.wasmline/toolchains/wasmtime/compiler-assets
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: native-fixtures-ios-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-multiplatform/wasmline-native-test-fixtures/src/**') }}
+
       - name: Initialize Wasmtime iOS simulator assets
         if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
         env:
@@ -449,9 +522,13 @@ jobs:
 
       - name: Run iOS simulator tests
         working-directory: wasmline-multiplatform
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           ./gradlew :wasmline:iosSimulatorArm64Test \
                     :wasmline-loader:iosSimulatorArm64Test \
+                    -Pwasmline.native.fixtures.targets=pulley64 \
+                    -Pwasmline.native.fixtures.ids=raw-export-basic,component-typed-host \
                     --no-daemon
 
   # ───────────────────────────────────────────────────────────────

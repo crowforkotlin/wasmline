@@ -18,7 +18,6 @@ int _fltused = 0;
 #include "WasmlineJni.h"
 #include "../../nativeMain/native/WasmlineNative.h"
 #include "JniRawImportHandler.h"
-#include "wasmline/internal/logging/NativeLogger.h"
 #include "wasmline/invocation/TypedInvocationCodec.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/AotLoadPathDiagnostics.h"
@@ -26,7 +25,7 @@ int _fltused = 0;
 #include <vector>
 
 static jbyteArray newByteArray(JNIEnv *env, const void *data, size_t size) {
-  if (size > static_cast<size_t>(std::numeric_limits<jsize>::max()))
+  if (!env || size > static_cast<size_t>(std::numeric_limits<jsize>::max()))
     return nullptr;
   jbyteArray array = env->NewByteArray(static_cast<jsize>(size));
   if (array && size > 0) {
@@ -58,18 +57,13 @@ static jbyteArray rawFailure(JNIEnv *env, wasmline::WasmlineErrorCode code,
                           wasmline::TypedInvocationKind::RAW));
 }
 
-static jboolean loadComponentWithFormatCommon(JNIEnv *env, jstring keyStr,
-                                              jstring pathStr, jint formatCode,
-                                              bool unsafe) {
-  wasmline::WasmlineArtifactFormat artifactFormat;
-  if (!wasmline::Api::tryArtifactFormatFromCode(
-          static_cast<int32_t>(formatCode), &artifactFormat)) {
-    LOGE("[Wasmline] JNI --> Invalid native artifact format code: %d",
-         static_cast<int>(formatCode));
-    return JNI_FALSE;
-  }
+static jbyteArray loadPrecompiledModuleWithFormatCommon(JNIEnv *env,
+                                                        jstring keyStr,
+                                                        jstring pathStr,
+                                                        jint formatCode,
+                                                        bool unsafe) {
   if (!env || !keyStr || !pathStr)
-    return JNI_FALSE;
+    return transportFailure(env, "JNI Core Wasm load received a null input.");
   const char *key = env->GetStringUTFChars(keyStr, nullptr);
   const char *path = env->GetStringUTFChars(pathStr, nullptr);
   if (!key || !path) {
@@ -77,14 +71,46 @@ static jboolean loadComponentWithFormatCommon(JNIEnv *env, jstring keyStr,
       env->ReleaseStringUTFChars(pathStr, path);
     if (key)
       env->ReleaseStringUTFChars(keyStr, key);
-    return JNI_FALSE;
+    return transportFailure(env, "JNI Core Wasm load could not read its input.");
   }
-  bool success =
-      unsafe ? wasmline::Api::loadComponentUnsafe(key, path, artifactFormat)
-             : wasmline::Api::loadComponent(key, path, artifactFormat);
+  size_t outLen = 0;
+  char *response = wasmline_load_module_with_format(
+      key, path, static_cast<int32_t>(formatCode), unsafe, &outLen);
   env->ReleaseStringUTFChars(keyStr, key);
   env->ReleaseStringUTFChars(pathStr, path);
-  return success ? JNI_TRUE : JNI_FALSE;
+  if (!response)
+    return transportFailure(env, "JNI Core Wasm load returned no response.");
+  jbyteArray result = newByteArray(env, response, outLen);
+  wasmline_free_memory(response);
+  return result;
+}
+
+static jbyteArray loadPrecompiledComponentWithFormatCommon(JNIEnv *env,
+                                                           jstring keyStr,
+                                                           jstring pathStr,
+                                                           jint formatCode,
+                                                           bool unsafe) {
+  if (!env || !keyStr || !pathStr)
+    return transportFailure(env, "JNI Component load received a null input.");
+  const char *key = env->GetStringUTFChars(keyStr, nullptr);
+  const char *path = env->GetStringUTFChars(pathStr, nullptr);
+  if (!key || !path) {
+    if (path)
+      env->ReleaseStringUTFChars(pathStr, path);
+    if (key)
+      env->ReleaseStringUTFChars(keyStr, key);
+    return transportFailure(env, "JNI Component load could not read its input.");
+  }
+  size_t outLen = 0;
+  char *response = wasmline_load_component_with_format(
+      key, path, static_cast<int32_t>(formatCode), unsafe, &outLen);
+  env->ReleaseStringUTFChars(keyStr, key);
+  env->ReleaseStringUTFChars(pathStr, path);
+  if (!response)
+    return transportFailure(env, "JNI Component load returned no response.");
+  jbyteArray result = newByteArray(env, response, outLen);
+  wasmline_free_memory(response);
+  return result;
 }
 
 extern "C" {
@@ -170,7 +196,7 @@ Java_crow_wasmline_JniWasmlineBindings_nativeAotLoadPathDiagnostics(
   return static_cast<jlong>(wasmline::AotLoadPathDiagnostics::snapshot());
 }
 
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmline_JniWasmlineBindings_nativeLoadAotWithFormat(
     JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
     jint formatCode) {
@@ -178,7 +204,7 @@ Java_crow_wasmline_JniWasmlineBindings_nativeLoadAotWithFormat(
                                                false);
 }
 
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmline_JniWasmlineBindings_nativeLoadAotUnsafeWithFormat(
     JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
     jint formatCode) {
@@ -186,18 +212,20 @@ Java_crow_wasmline_JniWasmlineBindings_nativeLoadAotUnsafeWithFormat(
                                                true);
 }
 
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmline_JniWasmlineBindings_nativeLoadComponentWithFormat(
     JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
     jint formatCode) {
-  return loadComponentWithFormatCommon(env, keyStr, pathStr, formatCode, false);
+  return loadPrecompiledComponentWithFormatCommon(env, keyStr, pathStr,
+                                                   formatCode, false);
 }
 
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmline_JniWasmlineBindings_nativeLoadComponentUnsafeWithFormat(
     JNIEnv *env, jclass thiz, jstring keyStr, jstring pathStr,
     jint formatCode) {
-  return loadComponentWithFormatCommon(env, keyStr, pathStr, formatCode, true);
+  return loadPrecompiledComponentWithFormatCommon(env, keyStr, pathStr,
+                                                   formatCode, true);
 }
 
 JNIEXPORT void JNICALL

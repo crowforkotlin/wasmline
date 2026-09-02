@@ -2,6 +2,14 @@
 
 package crow.wasmline
 
+import crow.wasmline.internal.core.CoreWasmBackendFailure
+import crow.wasmline.internal.core.CoreWasmBackendMemory
+import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.core.CoreWasmBackendSession
+import crow.wasmline.internal.core.CoreWasmImportDispatcher
+import crow.wasmline.internal.core.CoreWasmNativeCodec
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
+import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 
@@ -42,7 +50,7 @@ private class JniCoreWasmModule(
         referenceTypes = true,
     )
 
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
     private val sessions = linkedMapOf<String, JniCoreWasmSession>()
     private var closed = false
 
@@ -114,7 +122,7 @@ private class JniCoreWasmSession(private val sessionKey: String, override val me
         resultTypes: List<RawValueType>,
     ): WasmlineCallResult<List<RawValue>> {
         if (closed) return coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Native Core Wasm session is closed.")
-        val encodedArguments = when (val encoded = WasmlineTypedInvocationCodec.encodeRawValues(arguments)) {
+        val encodedArguments = when (val encoded = WasmlineTypedInvocationCodec.encodeRawArguments(arguments)) {
             is WasmlineCallResult.Failure -> return encoded
             is WasmlineCallResult.Success -> encoded.value
         }

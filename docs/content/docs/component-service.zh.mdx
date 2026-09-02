@@ -1,8 +1,8 @@
 ---
 title: Wasmline Service
-description: WIT envelope、Component 构建流水线与跨语言回调
+description: WIT envelope、Component 构建步骤与跨语言回调
 createdAt: 2026-08-05
-updatedAt: 2026-08-28
+updatedAt: 2026-09-01
 ---
 
 # Wasmline Service
@@ -79,19 +79,20 @@ C++ 0.57.1 generator 会对 move-only WIT error 生成一次
 `has_value()` 之后将它切换为 `operator*`；该流程不修改 `wit-bindgen` 源码，也不
 提交生成代码。
 
-先将一个完成的 Rust、C 或 C++ Component 编译为 `.cwasm` 或 `.pwasm`，再把该 AOT 产物交给 native runtime 验证：
+仓库使用生成的 AOT fixture 验证 native Component Service runtime。该测试不会通过环境变量接收手工提供的产物：
 
 ```shell
+./scripts/wasmline jni build --engine cranelift
 cd wasmline-multiplatform
-WASMLINE_LIVE_TESTS=1 \
-WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.pwasm \
-./gradlew :wasmline:jvmTest \
-  --tests 'crow.wasmline.test.wasmtime.NativeComponentServiceIntegrationTest' \
-  --rerun-tasks --console=plain
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
 ```
 
-四项测试分别覆盖 callback bytes、未绑定 handler、同 session 重入，以及 callback
-中调用第二个 Component session。
+生成的 fixture 覆盖 callback bytes、未绑定 handler、同 session 重入，以及 callback
+中调用第二个 Component session。同一个 JVM 任务还会通过 Cranelift native library
+加载一个 Core `RAW_EXPORT` 的 `pulley64` PWASM fixture。生产 Component 通过 Wasmline Gradle 或 CLI 构建任务编译和打包；这些任务会根据配置的 AOT compatibility catalog 选择所需的 `.cwasm` 或 `.pwasm` 产物。
 
 ## Codec Profile
 

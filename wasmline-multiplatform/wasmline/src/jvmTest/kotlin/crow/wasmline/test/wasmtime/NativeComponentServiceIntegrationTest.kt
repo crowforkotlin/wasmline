@@ -1,7 +1,6 @@
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineConfig
@@ -16,9 +15,6 @@ import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.platformWasmlineLoadArtifact
 import crow.wasmline.platformWasmlineRuntimeCapabilities
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -29,7 +25,7 @@ import kotlin.test.assertIs
 /**
  * Exercises the wasmline:service Component callback boundary through JNI and Wasmtime.
  *
- * Date: 2026-08-06
+ * Date: 2026-09-01
  * Author: crowforkotlin
  */
 class NativeComponentServiceIntegrationTest {
@@ -44,8 +40,6 @@ class NativeComponentServiceIntegrationTest {
 
     @Test
     fun componentCallsBoundHostHandler() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyFixture()
         val handle = loadComponent(artifact)
         var callbackAction: String? = null
@@ -77,8 +71,6 @@ class NativeComponentServiceIntegrationTest {
 
     @Test
     fun componentCallbackWithoutHandlerReturnsActionNotBound() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyFixture()
         val handle = loadComponent(artifact)
         try {
@@ -96,8 +88,6 @@ class NativeComponentServiceIntegrationTest {
 
     @Test
     fun sameComponentReentryReturnsRecoverableFailure() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyFixture()
         val handle = loadComponent(artifact)
         try {
@@ -125,8 +115,6 @@ class NativeComponentServiceIntegrationTest {
 
     @Test
     fun callbackCanInvokeAnotherComponentSession() {
-        if (!liveTestsEnabled()) return
-
         val outerArtifact = copyFixture()
         val nestedArtifact = copyFixture()
         val outer = loadComponent(outerArtifact)
@@ -156,31 +144,6 @@ class NativeComponentServiceIntegrationTest {
         }
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
-    @Test
-    fun kotlinSampleEchoUsesProtobufPayload() {
-        if (!liveTestsEnabled()) return
-
-        val artifact = copyFixture(KOTLIN_COMPONENT_FIXTURE_ENV)
-        val handle = loadComponent(artifact)
-        try {
-            val request = ProtoBuf.encodeToByteArray(
-                KotlinEchoRequest.serializer(),
-                KotlinEchoRequest("hello"),
-            )
-            val result = assertIs<WasmlineCallResult.Success<ByteArray>>(
-                handle.callResult(KOTLIN_ACTION_ECHO, request),
-            )
-            val response = ProtoBuf.decodeFromByteArray(KotlinEchoResponse.serializer(), result.value)
-
-            assertEquals("plugin:hello", response.value)
-        } finally {
-            handle.close()
-            WasmlineRuntime.shutdown()
-            artifact.delete()
-        }
-    }
-
     private fun loadComponent(artifact: File): Wasmline {
         val artifactFormat = componentAotFormat(artifact.name)
         val runtime = platformWasmlineRuntimeCapabilities()
@@ -203,17 +166,7 @@ class NativeComponentServiceIntegrationTest {
         return assertIs<WasmlineLoadState.Success>(state).wasmline
     }
 
-    private fun copyFixture(environmentVariable: String = COMPONENT_FIXTURE_ENV): File {
-        val source = requireNotNull(System.getenv(environmentVariable)) {
-            "$environmentVariable must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$environmentVariable does not point to a file: ${source.absolutePath}" }
-        val suffix = componentAotFormat(source.name).fileSuffix()
-        return File.createTempFile("wasmline-component-service-", suffix).apply {
-            source.copyTo(this, overwrite = true)
-            deleteOnExit()
-        }
-    }
+    private fun copyFixture(): File = NativeFixtureTestSupport.copy("component-service")
 
     private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
@@ -225,27 +178,9 @@ class NativeComponentServiceIntegrationTest {
         )
     }
 
-    private fun WasmlineArtifactFormat.fileSuffix(): String = when (this) {
-        WasmlineArtifactFormat.CWASM -> ".cwasm"
-        WasmlineArtifactFormat.PWASM -> ".pwasm"
-        WasmlineArtifactFormat.RAW_WASM -> error("Wasmline Service fixtures cannot use raw Wasm.")
-    }
-
-    private fun liveTestsEnabled(): Boolean = System.getenv(LIVE_TESTS_ENV) == "1"
-
-    @Serializable
-    private data class KotlinEchoRequest(val value: String)
-
-    @Serializable
-    private data class KotlinEchoResponse(val value: String)
-
     private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val COMPONENT_FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_SERVICE"
-        const val KOTLIN_COMPONENT_FIXTURE_ENV = "WASMLINE_TEST_KOTLIN_COMPONENT_SERVICE"
         const val ACTION_ECHO = "sample.echo"
         const val ACTION_CALLBACK = "sample.callback"
         const val HOST_CALLBACK_ACTION = "sample.host.callback"
-        const val KOTLIN_ACTION_ECHO = "crow.wasmline.sample.component.ComponentPluginService#echo"
     }
 }

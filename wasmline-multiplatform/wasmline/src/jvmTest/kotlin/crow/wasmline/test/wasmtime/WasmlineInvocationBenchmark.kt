@@ -1,5 +1,6 @@
 package crow.wasmline.test.wasmtime
 
+import crow.wasmline.RawValue
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
@@ -8,7 +9,6 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineRawValue
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.callResult
 import crow.wasmline.invocation.WasmlineCallResult
@@ -126,7 +126,7 @@ object WasmlineInvocationBenchmark {
                     warmup = warmup,
                     iterations = iterations,
                 ) {
-                    rawExport.invokeRawResult("add", listOf(WasmlineRawValue.I32(2), WasmlineRawValue.I32(3)))
+                    rawExport.invokeRawResult("add", listOf(RawValue.I32(2), RawValue.I32(3)))
                 }
                 benchmark(
                     name = "raw_export_failure",

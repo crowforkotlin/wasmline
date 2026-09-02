@@ -10,6 +10,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Verifies Component tool generation and componentization with locked release tools.
+ *
+ * Date: 2026-09-01
+ * Author: crowforkotlin
+ */
 class ComponentToolchainIntegrationTest {
     @Test
     fun generatesAndComponentizesWithPinnedReleaseTools() {
@@ -118,6 +124,6 @@ class ComponentToolchainIntegrationTest {
         const val WASM_TOOLS_ENV = "WASMLINE_TEST_WASM_TOOLS"
         const val WASI_ADAPTER_ENV = "WASMLINE_TEST_WASI_ADAPTER"
         const val CANONICAL_WIT_RESOURCE = "META-INF/wasmline/wit/wasmline-service/wasmline.wit"
-        const val CORE_WAT_RESOURCE = "fixtures/component-service-core.wat"
+        const val CORE_WAT_RESOURCE = "fixtures/component-rpc-core.wat"
     }
 }

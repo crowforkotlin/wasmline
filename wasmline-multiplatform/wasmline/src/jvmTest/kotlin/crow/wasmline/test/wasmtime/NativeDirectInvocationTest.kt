@@ -1,6 +1,5 @@
 package crow.wasmline.test.wasmtime
 
-import crow.wasmline.CoreWasmNativeCodec
 import crow.wasmline.CoreWasmSessionOptions
 import crow.wasmline.JniWasmlineBindings
 import crow.wasmline.RawFunctionSignature
@@ -17,9 +16,9 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineRawCallResult
-import crow.wasmline.WasmlineRawValue
 import crow.wasmline.WasmlineRuntime
-import crow.wasmline.WasmlineTypedInvocationCodec
+import crow.wasmline.internal.core.CoreWasmNativeCodec
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
@@ -38,11 +37,9 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * Tests direct typed Component AOT calls and native raw artifact boundaries.
+ * Tests native AOT direct invocations and raw artifact boundaries.
  *
- * Verifies direct typed Component AOT calls and native raw Core/Component rejection boundaries.
- *
- * Date: 2026-08-02
+ * Date: 2026-09-01
  * Author: crowforkotlin
  */
 class NativeDirectInvocationTest {
@@ -58,8 +55,6 @@ class NativeDirectInvocationTest {
 
     @Test
     fun rawExportAotFixtureReturnsValuesAndRecoverableFailures() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyAotCoreFixture()
         try {
             val handle = loadAotCore(artifact)
@@ -67,15 +62,15 @@ class NativeDirectInvocationTest {
                 val success = assertIs<WasmlineCallResult.Success<WasmlineRawCallResult>>(
                     handle.invokeRawResult(
                         exportName = "add",
-                        arguments = listOf(WasmlineRawValue.I32(2), WasmlineRawValue.I32(3)),
+                        arguments = listOf(RawValue.I32(2), RawValue.I32(3)),
                     ),
                 )
-                assertEquals(listOf(WasmlineRawValue.I32(5)), success.value.values)
+                assertEquals(listOf(RawValue.I32(5)), success.value.values)
 
                 val typeFailure = assertIs<WasmlineCallResult.Failure>(
                     handle.invokeRawResult(
                         exportName = "add",
-                        arguments = listOf(WasmlineRawValue.I64(2), WasmlineRawValue.I64(3)),
+                        arguments = listOf(RawValue.I64(2), RawValue.I64(3)),
                     ),
                 )
                 assertEquals(WasmlineErrorCode.ARGUMENT_TYPE_MISMATCH, typeFailure.failure.code)
@@ -98,11 +93,76 @@ class NativeDirectInvocationTest {
         }
     }
 
+    /** Verifies a Pulley RAW_EXPORT fixture loads and invokes through the JVM native runtime. */
+    @Test
+    fun rawExportPulleyAotFixtureLoadsAndInvokes() {
+        val artifact = NativeFixtureTestSupport.copy("raw-export-basic", WasmlineArtifactFormat.PWASM)
+        try {
+            assertEquals(WasmlineArtifactFormat.PWASM, coreAotFormat(artifact.name))
+            val handle = loadAotCore(artifact)
+            try {
+                assertEquals(
+                    listOf(RawValue.I32(5)),
+                    invokeRawValues(handle, "add", RawValue.I32(2), RawValue.I32(3)),
+                )
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    /** Verifies scalar values, multi-value results, and void results through the direct native RAW_EXPORT API. */
+    @Test
+    fun rawExportAotFixturePreservesScalarValuesAndResultShapes() {
+        val artifact = copyAotCoreFixture()
+        try {
+            val handle = loadAotCore(artifact)
+            try {
+                assertEquals(
+                    listOf(RawValue.I64(2_999_999_999L)),
+                    invokeRawValues(handle, "add64", RawValue.I64(3_000_000_000L), RawValue.I64(-1L)),
+                )
+                assertEquals(
+                    listOf(RawValue.F32(-1.25f)),
+                    invokeRawValues(handle, "neg_f32", RawValue.F32(1.25f)),
+                )
+
+                val f64 = invokeRawValues(handle, "neg_f64", RawValue.F64(-0.0)).single() as RawValue.F64
+                assertEquals(0.0, f64.value)
+                assertEquals(0.0.toBits(), f64.value.toBits())
+
+                assertEquals(
+                    listOf(RawValue.I32(7), RawValue.I64(42L)),
+                    invokeRawValues(handle, "pair", RawValue.I32(7)),
+                )
+                assertEquals(emptyList(), invokeRawValues(handle, "void", RawValue.I32(0)))
+
+                val nan = invokeRawValues(handle, "neg_f32", RawValue.F32(Float.NaN)).single() as RawValue.F32
+                assertTrue(nan.value.isNaN())
+                val infinity = invokeRawValues(
+                    handle,
+                    "neg_f64",
+                    RawValue.F64(Double.POSITIVE_INFINITY),
+                ).single() as RawValue.F64
+                assertEquals(
+                    Double.NEGATIVE_INFINITY,
+                    infinity.value,
+                )
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
     /** Verifies explicit session keys cannot alias implicit artifact sessions. */
     @Test
     fun explicitRawSessionKeyDoesNotAliasAnotherArtifact() {
-        if (!liveTestsEnabled()) return
-
         val importedArtifact = copyAotCoreImportFixture()
         val basicArtifact = copyAotCoreFixture()
         try {
@@ -134,15 +194,15 @@ class NativeDirectInvocationTest {
 
                 val implicitFailure = assertIs<WasmlineCallResult.Failure>(
                     basicHandle.invokeRawResult(
-                        exportName = "add64",
-                        arguments = listOf(WasmlineRawValue.I64(2), WasmlineRawValue.I64(3)),
+                        exportName = "call_host",
+                        arguments = listOf(RawValue.I32(2), RawValue.I32(3)),
                     ),
                 )
                 assertEquals(WasmlineErrorCode.EXPORT_NOT_FOUND, implicitFailure.failure.code)
 
                 basicHandle.close()
                 val explicitArguments = assertIs<WasmlineCallResult.Success<ByteArray>>(
-                    WasmlineTypedInvocationCodec.encodeRawValues(listOf(RawValue.I64(2), RawValue.I64(3))),
+                    WasmlineTypedInvocationCodec.encodeRawArguments(listOf(RawValue.I64(2), RawValue.I64(3))),
                 ).value
                 val explicitCarrier = requireNotNull(
                     JniWasmlineBindings.coreInvoke(basicArtifact.path, "add64", explicitArguments),
@@ -168,8 +228,6 @@ class NativeDirectInvocationTest {
     /** Exercises the Core Wasm module/session contract with a synchronous host import. */
     @Test
     fun coreSessionConformanceCoversImportsMemoryErrorsAndLifecycle() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyAotCoreImportFixture()
         try {
             val handle = loadAotCore(artifact)
@@ -247,6 +305,35 @@ class NativeDirectInvocationTest {
                         listOf(RawValue.I32(5)),
                         assertIs<WasmlineCallResult.Success<List<RawValue>>>(
                             session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))),
+                        ).value,
+                    )
+                    assertEquals(
+                        listOf(RawValue.I64(2_999_999_999L)),
+                        assertIs<WasmlineCallResult.Success<List<RawValue>>>(
+                            session.invoke("add64", listOf(RawValue.I64(3_000_000_000L), RawValue.I64(-1L))),
+                        ).value,
+                    )
+                    assertEquals(
+                        listOf(RawValue.F32(-1.25f)),
+                        assertIs<WasmlineCallResult.Success<List<RawValue>>>(
+                            session.invoke("neg_f32", listOf(RawValue.F32(1.25f))),
+                        ).value,
+                    )
+                    val f64 = assertIs<WasmlineCallResult.Success<List<RawValue>>>(
+                        session.invoke("neg_f64", listOf(RawValue.F64(-0.0))),
+                    ).value.single() as RawValue.F64
+                    assertEquals(0.0, f64.value)
+                    assertEquals(0.0.toBits(), f64.value.toBits())
+                    assertEquals(
+                        listOf(RawValue.I32(7), RawValue.I64(42L)),
+                        assertIs<WasmlineCallResult.Success<List<RawValue>>>(
+                            session.invoke("pair", listOf(RawValue.I32(7))),
+                        ).value,
+                    )
+                    assertEquals(
+                        emptyList(),
+                        assertIs<WasmlineCallResult.Success<List<RawValue>>>(
+                            session.invoke("void", listOf(RawValue.I32(0))),
                         ).value,
                     )
                     assertEquals(
@@ -329,8 +416,6 @@ class NativeDirectInvocationTest {
     /** Verifies a failing synchronous import is surfaced as IMPORT_HANDLER_FAILED. */
     @Test
     fun coreSessionMapsImportHandlerFailure() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyAotCoreImportFixture()
         try {
             val handle = loadAotCore(artifact)
@@ -364,14 +449,12 @@ class NativeDirectInvocationTest {
 
     @Test
     fun conflictingWarmUpPreservesTheLoadedArtifact() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyAotCoreFixture()
         val artifactFormat = coreAotFormat(artifact.name)
         val conflictingEngine = when (artifactFormat) {
             WasmlineArtifactFormat.CWASM -> WasmlineEngineKind.PULLEY
             WasmlineArtifactFormat.PWASM -> WasmlineEngineKind.CRANELIFT
-            WasmlineArtifactFormat.RAW_WASM -> error("A live native fixture must be precompiled.")
+            WasmlineArtifactFormat.RAW_WASM -> error("A native AOT fixture must be precompiled.")
         }
         try {
             val handle = loadAotCore(artifact)
@@ -383,10 +466,10 @@ class NativeDirectInvocationTest {
                 val result = assertIs<WasmlineCallResult.Success<WasmlineRawCallResult>>(
                     handle.invokeRawResult(
                         exportName = "add",
-                        arguments = listOf(WasmlineRawValue.I32(2), WasmlineRawValue.I32(3)),
+                        arguments = listOf(RawValue.I32(2), RawValue.I32(3)),
                     ),
                 )
-                assertEquals(listOf(WasmlineRawValue.I32(5)), result.value.values)
+                assertEquals(listOf(RawValue.I32(5)), result.value.values)
             } finally {
                 handle.close()
             }
@@ -409,8 +492,6 @@ class NativeDirectInvocationTest {
 
     @Test
     fun componentAotExportLoadsWithoutWitAndConvertsValues() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyAotComponentFixture()
         try {
             val handle = loadAotComponent(artifact)
@@ -451,8 +532,6 @@ class NativeDirectInvocationTest {
 
     @Test
     fun successfulCoreAndComponentAotLoadsUseDeserializeWithoutRawCompilation() {
-        if (!liveTestsEnabled()) return
-
         val coreArtifact = copyAotCoreFixture()
         val componentArtifact = copyAotComponentFixture()
         try {
@@ -464,7 +543,7 @@ class NativeDirectInvocationTest {
                 assertIs<WasmlineCallResult.Success<WasmlineRawCallResult>>(
                     core.invokeRawResult(
                         exportName = "add",
-                        arguments = listOf(WasmlineRawValue.I32(2), WasmlineRawValue.I32(3)),
+                        arguments = listOf(RawValue.I32(2), RawValue.I32(3)),
                     ),
                 )
             } finally {
@@ -530,7 +609,9 @@ class NativeDirectInvocationTest {
                 ),
                 config = WasmlineConfig(supportConcurrent = false),
             )
-            assertIs<WasmlineLoadState.Failure>(state)
+            val failure = assertIs<WasmlineLoadState.Failure>(state)
+            assertEquals(WasmlineErrorCode.MODULE_FORMAT_INVALID, failure.failure.code)
+            assertTrue(failure.failure.details?.decodeToString()?.contains("ELF") == true)
         } finally {
             WasmlineRuntime.shutdown()
             artifact.delete()
@@ -567,7 +648,9 @@ class NativeDirectInvocationTest {
                 ),
                 config = WasmlineConfig(supportConcurrent = false),
             )
-            assertIs<WasmlineLoadState.Failure>(state)
+            val failure = assertIs<WasmlineLoadState.Failure>(state)
+            assertEquals(WasmlineErrorCode.MODULE_FORMAT_INVALID, failure.failure.code)
+            assertTrue(failure.failure.details?.decodeToString()?.contains("ELF") == true)
         } finally {
             WasmlineRuntime.shutdown()
             artifact.delete()
@@ -628,6 +711,7 @@ class NativeDirectInvocationTest {
             )
             val failure = assertIs<WasmlineLoadState.Failure>(state)
             assertEquals(WasmlineLoadState.CODE_FAILURE, failure.code)
+            assertEquals(WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE, failure.failure.code)
         }
     }
 
@@ -654,38 +738,17 @@ class NativeDirectInvocationTest {
         return destination
     }
 
-    private fun copyAotComponentFixture(): File {
-        val source = requireNotNull(System.getenv(DIRECT_COMPONENT_AOT_FIXTURE_ENV)) {
-            "$DIRECT_COMPONENT_AOT_FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$DIRECT_COMPONENT_AOT_FIXTURE_ENV does not point to a file: ${source.absolutePath}" }
-        val destination = File.createTempFile("wasmline-component-direct-", componentAotFormat(source.name).fileSuffix())
-        source.copyTo(destination, overwrite = true)
-        destination.deleteOnExit()
-        return destination
-    }
+    private fun copyAotComponentFixture(): File = NativeFixtureTestSupport.copy("component-direct")
 
-    private fun copyAotCoreFixture(): File {
-        val source = requireNotNull(System.getenv(RAW_EXPORT_AOT_FIXTURE_ENV)) {
-            "$RAW_EXPORT_AOT_FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$RAW_EXPORT_AOT_FIXTURE_ENV does not point to a file: ${source.absolutePath}" }
-        val destination = File.createTempFile("wasmline-raw-export-aot-", coreAotFormat(source.name).fileSuffix())
-        source.copyTo(destination, overwrite = true)
-        destination.deleteOnExit()
-        return destination
-    }
+    private fun copyAotCoreFixture(): File = NativeFixtureTestSupport.copy("raw-export-basic")
 
-    private fun copyAotCoreImportFixture(): File {
-        val source = requireNotNull(System.getenv(RAW_EXPORT_IMPORT_AOT_FIXTURE_ENV)) {
-            "$RAW_EXPORT_IMPORT_AOT_FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$RAW_EXPORT_IMPORT_AOT_FIXTURE_ENV does not point to a file: ${source.absolutePath}" }
-        val destination = File.createTempFile("wasmline-raw-export-import-aot-", coreAotFormat(source.name).fileSuffix())
-        source.copyTo(destination, overwrite = true)
-        destination.deleteOnExit()
-        return destination
-    }
+    private fun copyAotCoreImportFixture(): File = NativeFixtureTestSupport.copy("raw-export-import-memory")
+
+    /** Invokes a direct raw export and returns its successful values. */
+    private fun invokeRawValues(handle: crow.wasmline.Wasmline, exportName: String, vararg arguments: RawValue): List<RawValue> =
+        assertIs<WasmlineCallResult.Success<WasmlineRawCallResult>>(
+            handle.invokeRawResult(exportName, arguments.toList()),
+        ).value.values
 
     private fun rawImport(
         signature: RawFunctionSignature = RawFunctionSignature(
@@ -721,20 +784,5 @@ class NativeDirectInvocationTest {
         else -> throw IllegalArgumentException(
             "Core RAW_EXPORT fixture must be a precompiled .cwasm or .pwasm artifact, not '$filename'.",
         )
-    }
-
-    private fun WasmlineArtifactFormat.fileSuffix(): String = when (this) {
-        WasmlineArtifactFormat.CWASM -> ".cwasm"
-        WasmlineArtifactFormat.PWASM -> ".pwasm"
-        WasmlineArtifactFormat.RAW_WASM -> error("Direct Component fixtures cannot use raw Wasm.")
-    }
-
-    private fun liveTestsEnabled(): Boolean = System.getenv(LIVE_TESTS_ENV) == "1"
-
-    private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val DIRECT_COMPONENT_AOT_FIXTURE_ENV = "WASMLINE_TEST_DIRECT_COMPONENT_AOT"
-        const val RAW_EXPORT_AOT_FIXTURE_ENV = "WASMLINE_TEST_RAW_EXPORT_AOT"
-        const val RAW_EXPORT_IMPORT_AOT_FIXTURE_ENV = "WASMLINE_TEST_RAW_EXPORT_IMPORT_AOT"
     }
 }

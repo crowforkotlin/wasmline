@@ -29,7 +29,7 @@ class WasmlineRuntimeCapabilitiesTest {
     fun exposesImmutableRuntimeIdentityAndSupportedEngines() {
         val runtime = requireNotNull(host.nativeRuntimeInfo)
 
-        assertEquals(WasmlineNativeBackend.CRANELIFT, runtime.backend)
+        assertEquals(WasmlineEngineKind.CRANELIFT, runtime.backend)
         assertEquals(setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY), runtime.supportedEngines)
         assertEquals(host.supportedArtifactFormats, runtime.supportedArtifactFormats)
         assertEquals(host.aotCompatibilityProfileIdsByBackend, runtime.aotCompatibilityProfileIdsByBackend)
@@ -74,7 +74,7 @@ class WasmlineRuntimeCapabilitiesTest {
         assertTrue(missingPulleyProfile.message.orEmpty().contains("PWASM without a Pulley"))
 
         val pulleyWithCwasm = assertFailsWith<IllegalStateException> {
-            host.copy(backend = WasmlineNativeBackend.PULLEY).validatedNativeIdentity()
+            host.copy(backend = WasmlineEngineKind.PULLEY).validatedNativeIdentity()
         }
         assertTrue(pulleyWithCwasm.message.orEmpty().contains("PWASM-only"))
     }
@@ -129,7 +129,7 @@ class WasmlineRuntimeCapabilitiesTest {
     }
 
     private fun capabilities(): WasmlineRuntimeCapabilities = WasmlineRuntimeCapabilities(
-        backend = WasmlineNativeBackend.CRANELIFT,
+        backend = WasmlineEngineKind.CRANELIFT,
         supportedArtifactFormats = setOf(WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.PWASM),
         wasmtimeVersion = "12.3.4",
         aotCompatibilityProfileIdsByBackend = mapOf(

@@ -17,6 +17,7 @@ namespace wasmline {
      * Author: crowforkotlin
      */
     enum class WasmlineErrorCode : int32_t {
+        UNKNOWN = -1,
         ACTION_NOT_BOUND = 1001,
         UNKNOWN_ACTION = 1002,
         INVALID_PAYLOAD = 1003,

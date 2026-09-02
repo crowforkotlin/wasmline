@@ -30,8 +30,8 @@ Invoke it with typed Core values:
 module.invokeRawResult(
     exportName = "add_i32",
     arguments = listOf(
-        WasmlineRawValue.I32(21),
-        WasmlineRawValue.I32(1),
+        RawValue.I32(21),
+        RawValue.I32(1),
     ),
 )
 ```

@@ -7,7 +7,7 @@ package crow.wasmline
  * Author: crowforkotlin
  */
 internal data class WasmlineRuntimeCapabilities(
-    val backend: WasmlineNativeBackend?,
+    val backend: WasmlineEngineKind?,
     val supportedArtifactFormats: Set<WasmlineArtifactFormat>,
     val wasmtimeVersion: String,
     val aotCompatibilityProfileIdsByBackend: Map<WasmlineEngineKind, Set<String>>,
@@ -90,11 +90,11 @@ internal fun WasmlineRuntimeCapabilities.validatedNativeIdentity(): WasmlineRunt
         "Native Wasmline runtime reports a Pulley profile without PWASM capability."
     }
     when (selectedBackend) {
-        WasmlineNativeBackend.CRANELIFT -> check(supportsCwasm) {
+        WasmlineEngineKind.CRANELIFT -> check(supportsCwasm) {
             "Cranelift native runtime must report CWASM capability."
         }
 
-        WasmlineNativeBackend.PULLEY -> check(supportsPwasm && !supportsCwasm) {
+        WasmlineEngineKind.PULLEY -> check(supportsPwasm && !supportsCwasm) {
             "Pulley native runtime must report PWASM-only capability."
         }
     }

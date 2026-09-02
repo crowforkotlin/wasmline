@@ -1,6 +1,9 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.runtime.decodeArtifactLoadResult
+import crow.wasmline.invocation.WasmlineCallResult
 
 /**
  * Exposes JNI symbols through narrow Kotlin adapters for the native Wasmline runtime.
@@ -10,16 +13,16 @@ import crow.wasmline.internal.bridge.WasmlineHostDispatcher
  */
 internal object JniWasmlineBindings {
     @JvmStatic
-    private external fun nativeLoadAotWithFormat(key: String, path: String, formatCode: Int): Boolean
+    private external fun nativeLoadAotWithFormat(key: String, path: String, formatCode: Int): ByteArray?
 
     @JvmStatic
-    private external fun nativeLoadAotUnsafeWithFormat(key: String, path: String, formatCode: Int): Boolean
+    private external fun nativeLoadAotUnsafeWithFormat(key: String, path: String, formatCode: Int): ByteArray?
 
     @JvmStatic
-    private external fun nativeLoadComponentWithFormat(key: String, path: String, formatCode: Int): Boolean
+    private external fun nativeLoadComponentWithFormat(key: String, path: String, formatCode: Int): ByteArray?
 
     @JvmStatic
-    private external fun nativeLoadComponentUnsafeWithFormat(key: String, path: String, formatCode: Int): Boolean
+    private external fun nativeLoadComponentUnsafeWithFormat(key: String, path: String, formatCode: Int): ByteArray?
 
     @JvmStatic
     private external fun nativeReleaseModule(key: String)
@@ -123,17 +126,17 @@ internal object JniWasmlineBindings {
     @JvmStatic
     private external fun nativeAotLoadPathDiagnostics(): Long
 
-    fun loadModule(key: String, path: String, artifactFormat: WasmlineArtifactFormat): Boolean =
-        nativeLoadAotWithFormat(key, path, artifactFormat.nativeBridgeCode())
+    fun loadModule(key: String, path: String, artifactFormat: WasmlineArtifactFormat): WasmlineCallResult<Unit> =
+        decodeArtifactLoadResult(nativeLoadAotWithFormat(key, path, artifactFormat.nativeBridgeCode()))
 
-    fun loadModuleUnsafe(key: String, path: String, artifactFormat: WasmlineArtifactFormat): Boolean =
-        nativeLoadAotUnsafeWithFormat(key, path, artifactFormat.nativeBridgeCode())
+    fun loadModuleUnsafe(key: String, path: String, artifactFormat: WasmlineArtifactFormat): WasmlineCallResult<Unit> =
+        decodeArtifactLoadResult(nativeLoadAotUnsafeWithFormat(key, path, artifactFormat.nativeBridgeCode()))
 
-    fun loadComponent(key: String, path: String, artifactFormat: WasmlineArtifactFormat): Boolean =
-        nativeLoadComponentWithFormat(key, path, artifactFormat.nativeBridgeCode())
+    fun loadComponent(key: String, path: String, artifactFormat: WasmlineArtifactFormat): WasmlineCallResult<Unit> =
+        decodeArtifactLoadResult(nativeLoadComponentWithFormat(key, path, artifactFormat.nativeBridgeCode()))
 
-    fun loadComponentUnsafe(key: String, path: String, artifactFormat: WasmlineArtifactFormat): Boolean =
-        nativeLoadComponentUnsafeWithFormat(key, path, artifactFormat.nativeBridgeCode())
+    fun loadComponentUnsafe(key: String, path: String, artifactFormat: WasmlineArtifactFormat): WasmlineCallResult<Unit> =
+        decodeArtifactLoadResult(nativeLoadComponentUnsafeWithFormat(key, path, artifactFormat.nativeBridgeCode()))
 
     fun releaseModule(key: String) = nativeReleaseModule(key)
 
@@ -199,8 +202,8 @@ internal object JniWasmlineBindings {
         val formatCapabilities = nativeRuntimeIdentityInt(1)
         WasmlineRuntimeCapabilities(
             backend = when (nativeRuntimeIdentityInt(0)) {
-                2 -> WasmlineNativeBackend.CRANELIFT
-                1 -> WasmlineNativeBackend.PULLEY
+                2 -> WasmlineEngineKind.CRANELIFT
+                1 -> WasmlineEngineKind.PULLEY
                 else -> error("Native Wasmline runtime reported an unknown backend.")
             },
             supportedArtifactFormats = buildSet {
@@ -227,8 +230,8 @@ internal object JniWasmlineBindings {
 
     fun aotLoadPathDiagnostics(): Long = nativeAotLoadPathDiagnostics()
 
-    internal fun loadModuleWithFormatCode(key: String, path: String, formatCode: Int): Boolean =
-        nativeLoadAotWithFormat(key, path, formatCode)
+    internal fun loadModuleWithFormatCode(key: String, path: String, formatCode: Int): WasmlineCallResult<Unit> =
+        decodeArtifactLoadResult(nativeLoadAotWithFormat(key, path, formatCode))
 }
 
 /**

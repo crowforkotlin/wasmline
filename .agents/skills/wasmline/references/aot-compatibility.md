@@ -26,6 +26,12 @@ lock plus the packaged public resource:
 - `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json`;
 - `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility.json`.
 
+The same command also generates the runtime identity constants used by both
+sides of the native bridge:
+
+- `wasmline-core/include/wasmline/internal/runtime/NativeBuildIdentity.h`;
+- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineReleaseIdentity.kt`.
+
 The root `aot-compatibility.json` is edited by maintainers when a release range
 or generation changes. The synchronizer never overwrites that source file.
 

@@ -64,7 +64,7 @@ KOTLIN_RELEASE_IDENTITY_PATH = (
 
 GENERATOR = "scripts/wasmline aot sync"
 SOURCE_CATALOG = "aot-compatibility.json"
-NATIVE_BRIDGE_ABI_VERSION = 1
+NATIVE_BRIDGE_ABI_VERSION = 2
 PROFILE_DOMAIN = b"wasmline.aot-compatibility-profile\0"
 BACKENDS = ("CRANELIFT", "PULLEY")
 COMPILER_DISTRIBUTION = "FULL"
@@ -1178,6 +1178,7 @@ def sync_aot(
         AOT_LOCK_PATH: json.dumps(generated_lock, ensure_ascii=True, indent=2) + "\n",
         PACKAGED_PUBLIC_CATALOG_PATH: render_public_catalog_text(source, versions),
         NATIVE_BUILD_IDENTITY_PATH: render_native_build_identity(source, versions, generated_lock),
+        KOTLIN_RELEASE_IDENTITY_PATH: render_kotlin_release_identity(versions),
     }
     changed: list[str] = []
     for path, content in generated.items():

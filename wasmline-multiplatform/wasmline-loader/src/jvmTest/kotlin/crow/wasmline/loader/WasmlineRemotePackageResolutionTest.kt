@@ -7,7 +7,6 @@ import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.WasmlineNativeRuntimeInfo
 import crow.wasmline.extensions.Keys
 import crow.wasmline.invocation.WasmlineErrorCode
@@ -404,7 +403,7 @@ class WasmlineRemotePackageResolutionTest {
     private fun nativeHost(): WasmlineHostArtifactTarget {
         val formats = setOf(WasmlineArtifactFormat.CWASM, WasmlineArtifactFormat.PWASM)
         val runtime = WasmlineNativeRuntimeInfo(
-            backend = WasmlineNativeBackend.CRANELIFT,
+            backend = WasmlineEngineKind.CRANELIFT,
             supportedArtifactFormats = formats,
             wasmtimeVersion = "12.3.4",
             aotCompatibilityProfileIdsByBackend = mapOf(

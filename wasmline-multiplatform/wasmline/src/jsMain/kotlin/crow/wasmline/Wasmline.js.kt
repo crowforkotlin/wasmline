@@ -1,7 +1,11 @@
 package crow.wasmline
 
-import crow.wasmline.internal.WasmlineComponentBindings
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentBindings
+import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
 
 actual class Wasmline internal actual constructor(
@@ -90,7 +94,3 @@ private fun browserRuntimeCapabilities(): WasmlineRuntimeCapabilities = Wasmline
     pointerWidth = 32,
     supportedCpuFeatureProfiles = emptySet(),
 )
-
-internal actual class WasmlineHostServiceLock {
-    actual fun <T> withLock(block: () -> T): T = block()
-}

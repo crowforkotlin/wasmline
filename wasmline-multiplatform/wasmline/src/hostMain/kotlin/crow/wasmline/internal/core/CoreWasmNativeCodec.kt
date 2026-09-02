@@ -1,5 +1,7 @@
-package crow.wasmline
+package crow.wasmline.internal.core
 
+import crow.wasmline.*
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure

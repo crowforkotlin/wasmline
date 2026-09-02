@@ -3,9 +3,16 @@
 
 package crow.wasmline
 
-import crow.wasmline.internal.WasmlineComponentBindings
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentBindings
+import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.internal.runtime.WasmlineRuntimeLock
+import crow.wasmline.internal.runtime.decodeArtifactLoadResult
+import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
@@ -206,23 +213,6 @@ private fun invokeTypedCarrier(
     WasmlineCallResult.Success(result)
 }
 
-/**
- * Serializes Native callback registry access through the bridge's recursive lock.
- *
- * Author: crowforkotlin
- * Date: 2026-08-19
- */
-internal actual class WasmlineHostServiceLock {
-    actual fun <T> withLock(block: () -> T): T {
-        wasmline_lock()
-        return try {
-            block()
-        } finally {
-            wasmline_unlock()
-        }
-    }
-}
-
 internal fun ensureNativeRuntimeLoaded() {
     ensureLinkedNativeRuntimeLoaded()
     wasmline_native_engine_link_anchor()
@@ -262,11 +252,11 @@ private val nativeRuntimeCapabilities: WasmlineRuntimeCapabilities by lazy {
     val identity = requireNotNull(wasmline_get_native_runtime_identity()?.pointed) {
         "Native Wasmline runtime identity is unavailable."
     }
-    val formatCapabilities = identity.supported_artifact_formats.toUInt()
+    val formatCapabilities = identity.supported_artifact_formats
     WasmlineRuntimeCapabilities(
         backend = when (identity.backend) {
-            2 -> WasmlineNativeBackend.CRANELIFT
-            1 -> WasmlineNativeBackend.PULLEY
+            2 -> WasmlineEngineKind.CRANELIFT
+            1 -> WasmlineEngineKind.PULLEY
             else -> error("Native Wasmline runtime reported an unknown backend.")
         },
         supportedArtifactFormats = buildSet {
@@ -320,27 +310,52 @@ internal actual fun platformWasmlineLoadArtifact(descriptor: WasmlineArtifactDes
 
             override fun requiresExplicitArtifactFormat(): Boolean = true
 
-            override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean {
+            override fun loadPrecompiled(
+                moduleKey: String,
+                path: String,
+                descriptor: WasmlineArtifactDescriptor,
+            ): WasmlineCallResult<Unit> {
                 ensureNativeRuntimeLoaded()
-                val formatCode = descriptor.artifactFormat?.nativeBridgeCode() ?: return false
-                return when (descriptor.executionModel) {
-                    WasmlineExecutionModel.CORE_WASM ->
-                        wasmline_load_module_with_format(moduleKey, path, formatCode, isUnsafe)
+                val formatCode = descriptor.artifactFormat?.nativeBridgeCode() ?: return WasmlineCallResult.Failure(
+                    WasmlineFailure(
+                        WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
+                        "Native artifact loading requires an explicit artifactFormat.",
+                    ),
+                )
+                val response = when (descriptor.executionModel) {
+                    WasmlineExecutionModel.CORE_WASM -> memScoped {
+                        val outLen = alloc<ULongVar>()
+                        val pointer = wasmline_load_module_with_format(moduleKey, path, formatCode, isUnsafe, outLen.ptr)
+                        readArtifactLoadResponse(pointer, outLen.value)
+                    }
 
-                    WasmlineExecutionModel.COMPONENT_MODEL ->
-                        wasmline_load_component_with_format(moduleKey, path, formatCode, isUnsafe)
+                    WasmlineExecutionModel.COMPONENT_MODEL -> memScoped {
+                        val outLen = alloc<ULongVar>()
+                        val pointer = wasmline_load_component_with_format(moduleKey, path, formatCode, isUnsafe, outLen.ptr)
+                        readArtifactLoadResponse(pointer, outLen.value)
+                    }
                 }
+                return decodeArtifactLoadResult(response)
             }
-
-            override fun loadFailureMessage(descriptor: WasmlineArtifactDescriptor): String =
-                "[Wasmline] Native artifact load failed for: ${descriptor.path}"
         },
     )
 }
 
+private fun readArtifactLoadResponse(pointer: CPointer<ByteVar>?, length: ULong): ByteArray? {
+    if (pointer == null || length > Int.MAX_VALUE.toULong()) {
+        if (pointer != null) wasmline_free_memory(pointer)
+        return null
+    }
+    return try {
+        pointer.readBytes(length.toInt())
+    } finally {
+        wasmline_free_memory(pointer)
+    }
+}
+
 private object WasmlineCallbackRegistry {
     private val dispatchers = mutableMapOf<String, WasmlineHostDispatcher>()
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
 
     fun register(key: String, dispatcher: WasmlineHostDispatcher) {
         lock.withLock {
@@ -365,7 +380,7 @@ private object WasmlineCallbackRegistry {
  */
 internal object WasmlineComponentHostCallbackRegistry {
     private val dispatchers = mutableMapOf<String, WasmlineComponentHostDispatcher>()
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
 
     fun register(key: String, dispatcher: WasmlineComponentHostDispatcher) {
         lock.withLock {

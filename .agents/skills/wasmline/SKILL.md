@@ -42,12 +42,14 @@ Read only the documents required by the current task.
 - `.cwasm` is platform-specific Cranelift AOT output. `.pwasm` is Pulley bytecode produced by Wasmtime; it is not raw WebAssembly.
 - A Cranelift engine can select matching `.cwasm` and fall back to compatible `.pwasm`. A Pulley engine accepts `.pwasm` only.
 - iOS uses the Pulley interpreter. Select `pulley64` `.pwasm`; never select iOS `.cwasm`.
+- Native runtime AOT tests use the internal `wasmline-native-test-fixtures` module. Its `assembleNativeTestFixtures` task generates `.cwasm`, `.pwasm`, and `fixture-index.json` below `build/`; do not commit those files or supply replacement artifacts through test environment variables.
+- `:wasmline:nativeAotJvmTest` depends on fixture assembly and obtains the index through a system property. The iOS simulator test obtains the same index through `WASMLINE_NATIVE_FIXTURE_INDEX` and accepts only a matching `pulley64` `.pwasm` record.
 - One signed `manifest.wlm` may describe several immutable, backend-specific AOT compatibility profiles. Wasmtime `x.y.z` selects catalog records; it is not the serialized-artifact identity.
 - Package artifacts use `artifacts/sha256/{prefix}/{digest}.{extension}`. Core Web `.wasm` is profile-independent and stored once; remote loading downloads only the manifest and one selected artifact.
 - Runtime, loader, build tools, and engine modules share one Maven version. Do not upgrade an engine independently; use the BOM where its Gradle platform is consumable.
 - Native AOT selection is explicit: use exactly one of `current()`, `minimum()`, `all()`, or `versionRanges {}`. The default is no selector, which is a configuration error for native AOT.
 - `wasmlineCheckAotCompatibility` is advisory and runs after a successful Wasmline assemble. Warnings are enabled by default; `suppressCompatibilityWarning.set(true)` suppresses only the log message.
-- The root `aot-compatibility.json` is the only manually maintained AOT compatibility catalog. `./scripts/wasmline aot sync` validates it, resolves verified fork release metadata only for a newly appended current distribution, generates the internal lock, packages an identical classpath resource, and updates native identity constants. Remote catalog data never enters AOT task inputs.
+- The root `aot-compatibility.json` is the only manually maintained AOT compatibility catalog. `./scripts/wasmline aot sync` validates it, resolves verified fork release metadata only for a newly appended current distribution, generates the internal lock, packages an identical classpath resource, and updates `NativeBuildIdentity.h` plus `WasmlineReleaseIdentity.kt`. Remote catalog data never enters AOT task inputs.
 - Stable releases use `release-x.y.z.v`; `v` encodes the fork Wasmtime `x.y.z` as `major×100 + minor×10 + patch`. The release workflow validates the tag before Maven publication.
 
 ## Workflow

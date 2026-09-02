@@ -1,8 +1,15 @@
 package crow.wasmline
 
+import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
 
+/**
+ * Describes a resolved local artifact path and its native module key.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 internal data class ResolvedPrecompiledArtifact(val artifactPath: String, val moduleKey: String)
 
 /**
@@ -12,6 +19,9 @@ internal data class ResolvedPrecompiledArtifact(val artifactPath: String, val mo
  * Host-facing package/manifest/download/signature workflows belong in the
  * separate `wasmline-loader` module, while this bridge only centralizes the
  * final local artifact validation and host load flow used by platform actuals.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
  */
 internal object WasmlineLocalArtifactBridge {
 
@@ -21,15 +31,16 @@ internal object WasmlineLocalArtifactBridge {
         platform: WasmlinePlatformArtifactBridge,
     ): WasmlineLoadState {
         val log = WasmlineLog.logger
+        val descriptorValidationError = descriptor.validationError()
         val requiredFormatError = if (platform.requiresExplicitArtifactFormat() && descriptor.artifactFormat == null) {
             "Native artifact loading requires an explicit artifactFormat."
         } else {
             null
         }
         val validationFailure = when {
-            descriptor.validationError() != null -> WasmlineFailure(
+            descriptorValidationError != null -> WasmlineFailure(
                 code = WasmlineErrorCode.ARTIFACT_DESCRIPTOR_INVALID,
-                message = "[Wasmline] Invalid artifact descriptor: ${descriptor.validationError()}",
+                message = "[Wasmline] Invalid artifact descriptor: $descriptorValidationError",
             )
 
             requiredFormatError != null -> WasmlineFailure(
@@ -75,22 +86,20 @@ internal object WasmlineLocalArtifactBridge {
             }
 
         val loadFailure = try {
-            if (platform.loadPrecompiled(resolvedArtifact.moduleKey, resolvedArtifactPath, resolvedDescriptor)) {
-                null
-            } else {
-                platform.loadFailureValue(resolvedDescriptor)
+            when (val result = platform.loadPrecompiled(resolvedArtifact.moduleKey, resolvedArtifactPath, resolvedDescriptor)) {
+                is WasmlineCallResult.Success -> null
+                is WasmlineCallResult.Failure -> result.failure
             }
         } catch (error: Exception) {
-            val baseMessage = platform.loadFailureMessage(resolvedDescriptor)
             val detail = error.message?.takeIf { it.isNotBlank() } ?: error::class.simpleName.orEmpty()
             WasmlineFailure(
                 code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
-                message = "$baseMessage: $detail",
+                message = "[Wasmline] Native artifact load failed: ${resolvedDescriptor.path}",
                 details = detail.encodeToByteArray(),
             )
         }
         if (loadFailure != null) {
-            log?.error("[WasmlineLocalArtifactBridge] ${loadFailure.message}")
+            log?.error("[WasmlineLocalArtifactBridge] ${loadFailure.logMessage()}")
             return loadFailure(
                 stage = WasmlineLoadStage.MODULE_CREATION,
                 code = loadFailure.code,
@@ -111,18 +120,21 @@ internal object WasmlineLocalArtifactBridge {
         load(WasmlineArtifactDescriptor(path = artifactPath), config, platform)
 }
 
+/**
+ * Defines platform-specific operations used to load a resolved local artifact.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 internal interface WasmlinePlatformArtifactBridge {
     fun createWasmline(moduleKey: String, config: WasmlineConfig, descriptor: WasmlineArtifactDescriptor): Wasmline
     fun resolveArtifact(path: String): ResolvedPrecompiledArtifact?
-    fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean
+    fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): WasmlineCallResult<Unit>
     fun validationError(descriptor: WasmlineArtifactDescriptor): String? = null
     fun requiresExplicitArtifactFormat(): Boolean = false
     fun backendCodeOrNull(path: String, descriptor: WasmlineArtifactDescriptor): Byte? = descriptor.backendCodeOrNull()
     fun unsupportedArtifactMessage(descriptor: WasmlineArtifactDescriptor): String = "[Wasmline] Load failure for " +
         "${descriptor.executionModel}/${descriptor.invocationProtocol}: ${descriptor.path}"
-    fun loadFailureMessage(descriptor: WasmlineArtifactDescriptor): String =
-        "[Wasmline] Load failure, native artifact load returned false: " +
-            descriptor.path
 
     /** Provides a structured platform validation failure. */
     fun validationFailure(descriptor: WasmlineArtifactDescriptor): WasmlineFailure? = validationError(descriptor)?.let { message ->
@@ -134,13 +146,12 @@ internal interface WasmlinePlatformArtifactBridge {
         code = WasmlineErrorCode.ARTIFACT_NOT_COMPATIBLE,
         message = unsupportedArtifactMessage(descriptor),
     )
-
-    /** Provides a structured failure when native module creation returns false. */
-    fun loadFailureValue(descriptor: WasmlineArtifactDescriptor): WasmlineFailure = WasmlineFailure(
-        code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
-        message = loadFailureMessage(descriptor),
-    )
 }
+
+/** Formats optional backend diagnostics for an explicitly configured host logger. */
+private fun WasmlineFailure.logMessage(): String = details?.takeIf(ByteArray::isNotEmpty)?.let { details ->
+    "$message\n${details.decodeToString()}"
+} ?: message
 
 internal fun WasmlineArtifactDescriptor.backendCodeOrNull(): Byte? {
     val formatCode = when (artifactFormat) {

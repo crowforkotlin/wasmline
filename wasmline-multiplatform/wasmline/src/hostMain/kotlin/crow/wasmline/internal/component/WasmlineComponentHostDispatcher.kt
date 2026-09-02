@@ -1,5 +1,14 @@
-package crow.wasmline
+package crow.wasmline.internal.component
 
+import crow.wasmline.WasmlineComponentFunctionId
+import crow.wasmline.WasmlineComponentHostAdapter
+import crow.wasmline.WasmlineComponentHostRegistry
+import crow.wasmline.WasmlineComponentInterfaceId
+import crow.wasmline.WasmlineComponentResourceId
+import crow.wasmline.WasmlineComponentResourceOrigin
+import crow.wasmline.WasmlineComponentValue
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
+import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineException
@@ -18,7 +27,7 @@ import crow.wasmline.invocation.WasmlineFailure
  * Author: crowforkotlin
  */
 internal class WasmlineComponentHostDispatcher(private val registry: WasmlineComponentHostRegistry) {
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
     private val hostResources = linkedMapOf<UInt, HostResourceEntry>()
     private var nextRepresentation = 1u
 

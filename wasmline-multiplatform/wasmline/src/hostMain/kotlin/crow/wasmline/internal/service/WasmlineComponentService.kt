@@ -1,5 +1,6 @@
-package crow.wasmline
+package crow.wasmline.internal.service
 
+import crow.wasmline.*
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure

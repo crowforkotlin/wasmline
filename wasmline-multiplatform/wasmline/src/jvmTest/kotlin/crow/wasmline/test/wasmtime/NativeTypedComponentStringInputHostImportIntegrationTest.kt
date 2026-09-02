@@ -27,15 +27,13 @@ import kotlin.test.assertIs
  *
  * Validates a string Component import with a scalar result and AOT artifacts.
  *
- * Date: 2026-08-07
+ * Date: 2026-09-01
  * Author: crowforkotlin
  */
 class NativeTypedComponentStringInputHostImportIntegrationTest {
 
     @Test
     fun stringInputHostImportRoundTripsThroughTheJniRegistry() {
-        if (System.getenv(LIVE_TESTS_ENV) != "1") return
-
         val artifact = copyFixture()
         try {
             val handle = loadComponent(artifact)
@@ -90,31 +88,11 @@ class NativeTypedComponentStringInputHostImportIntegrationTest {
         return assertIs<WasmlineLoadState.Success>(state).wasmline
     }
 
-    private fun copyFixture(): File {
-        val source = requireNotNull(System.getenv(FIXTURE_ENV)) {
-            "$FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$FIXTURE_ENV does not point to a file: ${source.absolutePath}" }
-        val format = componentAotFormat(source.name)
-        val suffix = when (format) {
-            WasmlineArtifactFormat.CWASM -> ".cwasm"
-            WasmlineArtifactFormat.PWASM -> ".pwasm"
-            WasmlineArtifactFormat.RAW_WASM -> error("String Component fixtures cannot use raw Wasm.")
-        }
-        return File.createTempFile("wasmline-component-string-input-host-", suffix).apply {
-            source.copyTo(this, overwrite = true)
-            deleteOnExit()
-        }
-    }
+    private fun copyFixture(): File = NativeFixtureTestSupport.copy("component-typed-string-input")
 
     private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
         else -> error("String Component fixture must be a precompiled .cwasm or .pwasm artifact.")
-    }
-
-    private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_TYPED_STRING_INPUT_HOST"
     }
 }

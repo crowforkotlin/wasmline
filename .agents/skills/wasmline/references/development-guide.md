@@ -63,6 +63,7 @@ Do not initialize assets merely because the directory exists or is absent. Confi
 | `wasmline-multiplatform/wasmline-network-ktor/` | Ktor network adapter for the loader |
 | `wasmline-multiplatform/wasmline-network-okhttp/` | OkHttp network adapter for the loader |
 | `wasmline-multiplatform/wasmline-plugin-test/` | End-to-end Gradle-plugin and native-plugin integration tests |
+| `wasmline-multiplatform/wasmline-native-test-fixtures/` | Internal native AOT fixture sources, generation task, and fixture index model |
 | `wasmline-samples/` | Kotlin, Rust, C, and C++ examples and fixtures |
 | `scripts/` | Repository automation, environment checks, lint, assets, and version synchronization |
 | `docs/` | Documentation site |
@@ -88,6 +89,24 @@ Do not initialize assets merely because the directory exists or is absent. Confi
 - `wasmWasiMain`: Core guest router and Component Service guest initialization
 - `webMain`, `jsMain`, `wasmJsMain`: browser host implementation
 - Internal generated-bridge contracts: `wasmline/src/commonMain/kotlin/crow/wasmline/internal/bridge/`
+
+The host runtime keeps public API types in `crow.wasmline`. New implementation
+code must use the narrowest matching internal package:
+
+| Package | Responsibility |
+| --- | --- |
+| `crow.wasmline.internal.core` | Core Wasm backend contracts, module and session lifecycle, import dispatch, memory access, and native Core Wasm codec. |
+| `crow.wasmline.internal.component` | Component instance state, Host import dispatch, resource state, and Component-specific validation. |
+| `crow.wasmline.internal.service` | Wasmline Service request/response adapter and per-instance host service registrations. |
+| `crow.wasmline.internal.invocation` | Typed raw and Component carrier encoding and decoding. |
+| `crow.wasmline.internal.runtime` | Platform runtime bridge and cross-platform runtime-state synchronization. |
+| `crow.wasmline.internal.bridge` | Shared generated bridge contracts and platform dispatcher interfaces. |
+| `crow.wasmline.internal.protocol` | Stable byte protocol codecs used by the Wasmline Service implementation. |
+
+Do not move public `CoreWasm*`, `Raw*`, `WasmlineComponent*`, `Wasmline`, or
+result types into an internal package. Platform `actual` implementations may
+depend on internal types through explicit imports, but public callers must only
+need `crow.wasmline` imports.
 
 The `wasmline/` paths in this section are relative to `wasmline-multiplatform/`.
 
@@ -124,6 +143,13 @@ Do not hand-edit:
 - `build/platforms/`
 - `.zig-cache/` and `zig-out/`
 - generated WIT/Kotlin/C/C++ binding output under build directories
+- native fixture `.cwasm`, `.pwasm`, and `fixture-index.json` files below `wasmline-native-test-fixtures/build/`
+
+Native AOT fixture source files belong in
+`wasmline-native-test-fixtures/src/fixtures/`. The fixture task writes compiled
+artifacts and its index below that module's `build/` directory. Do not commit
+those generated files or add environment variables that point tests at
+hand-built artifacts.
 
 For an IR fixture change:
 
@@ -179,6 +205,21 @@ cd wasmline-multiplatform
 
 # Wasm/WASI Node tests
 ./gradlew :wasmline:wasmWasiNodeTest
+
+# Native AOT fixture generation and JVM runtime tests
+../scripts/wasmline jni build --engine cranelift
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
+
+# macOS only: iOS simulator Pulley fixture tests
+../scripts/wasmline wasmtime download --target ios-simulator-arm64 --engine pulley
+rustup target add wasm32-wasip2
+./gradlew :wasmline:iosSimulatorArm64Test \
+  :wasmline-loader:iosSimulatorArm64Test \
+  -Pwasmline.native.fixtures.targets=pulley64 \
+  --no-daemon
 ```
 
 ## Formatting Scope
@@ -206,10 +247,11 @@ Pushes and pull requests targeting `main` ignore `docs/**`, root `*.md`, and `.a
 | `build-cranelift-assets` | Build Cranelift Android/JVM native assets and upload the Linux x64 JNI library | None |
 | `build-pulley-assets` | Build Pulley Android/JVM native assets | None |
 | `test-jvm` | Compiler plugin, loader, runtime, and CLI JVM tests using the Cranelift JNI artifact | `build-cranelift-assets` |
+| `test-native-aot-jvm` | Generated Cranelift and `pulley64` Core, Component, and Service AOT fixtures with JVM runtime integration tests | `build-cranelift-assets` |
 | `test-kotlin-native` | Kotlin/Native sample using an independently cached Linux x64 Pulley platform asset | None |
 | `test-web` | Runtime and loader JS/WasmJS browser tests | None |
 | `test-node` | Wasm/WASI Node tests | None |
-| `test-ios` | Runtime and loader iOS simulator tests using an independently cached Pulley platform asset | None |
+| `test-ios` | Runtime and loader iOS simulator tests, including generated `pulley64` AOT fixtures | None |
 | `test-plugin` | Gradle-plugin integration tests using the Cranelift JNI artifact | `build-cranelift-assets` |
 
 Cranelift and Pulley native asset builds run in parallel and have independent
@@ -222,6 +264,16 @@ caches. Browser, Node, iOS, and Kotlin/Native jobs do not wait for JNI asset bui
 they do not consume.
 
 The CI workflow performs validation only. It does not publish artifacts or create a GitHub release.
+
+`test-native-aot-jvm` generates `x86_64-linux` Cranelift and `pulley64` Pulley
+fixtures from committed WAT, Component, WIT, and Rust sources. It passes the
+generated absolute index path to `nativeAotJvmTest`; the test process validates
+the indexed file path, size, and SHA-256 digest before loading an artifact. The
+JVM suite includes a direct Core `RAW_EXPORT` PWASM load and invocation. `test-ios`
+uses the same generation task with its existing `pulley64` subset and validates
+selected Core `RAW_EXPORT` and Component fixtures before the iOS runtime loads
+them. Cached tool and compiler directories only reduce download and compile
+time. Missing fixture output still fails the test task.
 
 ## Cross-Environment Work
 

@@ -1,5 +1,6 @@
-package crow.wasmline
+package crow.wasmline.internal.invocation
 
+import crow.wasmline.*
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
@@ -19,14 +20,11 @@ internal object WasmlineTypedInvocationCodec {
     private const val MAX_STRING_SIZE = 16L * 1024L * 1024L
     private const val MAX_DEPTH = 64
 
-    fun encodeRawArguments(values: List<WasmlineRawValue>): WasmlineCallResult<ByteArray> = encodeArguments { writer ->
+    /** Encodes scalar Core Wasm values for a native raw-session call. */
+    fun encodeRawArguments(values: List<RawValue>): WasmlineCallResult<ByteArray> = encodeArguments { writer ->
         writer.count(values.size)
         values.forEach { writeRawValue(writer, it) }
     }
-
-    /** Encodes canonical Core Wasm values for a native raw-session call. */
-    fun encodeRawValues(values: List<RawValue>): WasmlineCallResult<ByteArray> =
-        encodeRawArguments(values.map(RawValue::toWasmlineRawValue))
 
     /** Decodes canonical Core Wasm values passed to a native host import. */
     fun decodeRawArguments(bytes: ByteArray): WasmlineCallResult<List<RawValue>> {
@@ -34,7 +32,7 @@ internal object WasmlineTypedInvocationCodec {
         val count = reader.count() ?: return reader.failure()
         val values = ArrayList<RawValue>(count.toInt())
         repeat(count.toInt()) {
-            values += (readRawValue(reader) ?: return reader.failure()).toRawValue()
+            values += readRawValue(reader) ?: return reader.failure()
         }
         if (!reader.isAtEnd()) return malformed("Raw invocation payload has trailing bytes.")
         return WasmlineCallResult.Success(values)
@@ -51,7 +49,7 @@ internal object WasmlineTypedInvocationCodec {
                 writer.string("")
                 writer.bytes(ByteArray(0))
                 writer.count(result.value.size)
-                result.value.forEach { writeRawValue(writer, it.toWasmlineRawValue()) }
+                result.value.forEach { writeRawValue(writer, it) }
             }
 
             is WasmlineCallResult.Failure -> {
@@ -69,7 +67,7 @@ internal object WasmlineTypedInvocationCodec {
     /** Decodes a native raw-session response into canonical Core Wasm values. */
     fun decodeRawValues(bytes: ByteArray): WasmlineCallResult<List<RawValue>> = when (val result = decodeRawResult(bytes)) {
         is WasmlineCallResult.Failure -> result
-        is WasmlineCallResult.Success -> WasmlineCallResult.Success(result.value.values.map(WasmlineRawValue::toRawValue))
+        is WasmlineCallResult.Success -> WasmlineCallResult.Success(result.value.values)
     }
 
     fun encodeComponentArguments(values: List<WasmlineComponentValue>): WasmlineCallResult<ByteArray> = encodeArguments { writer ->
@@ -114,6 +112,7 @@ internal object WasmlineTypedInvocationCodec {
         return if (error == null) WasmlineCallResult.Success(writer.toByteArray()) else malformed(error)
     }
 
+    /** Decodes a raw-session response into scalar Core Wasm values. */
     fun decodeRawResult(bytes: ByteArray): WasmlineCallResult<WasmlineRawCallResult> {
         val reader = Reader(bytes)
         val header = readHeader(reader, RAW_KIND) ?: return reader.failure()
@@ -122,7 +121,7 @@ internal object WasmlineTypedInvocationCodec {
             return WasmlineCallResult.Failure(header.error)
         }
 
-        val values = ArrayList<WasmlineRawValue>(header.valueCount.toInt())
+        val values = ArrayList<RawValue>(header.valueCount.toInt())
         repeat(header.valueCount.toInt()) {
             val value = readRawValue(reader) ?: return reader.failure()
             values += value
@@ -165,24 +164,24 @@ internal object WasmlineTypedInvocationCodec {
         }
     }
 
-    private fun writeRawValue(writer: Writer, value: WasmlineRawValue) {
+    private fun writeRawValue(writer: Writer, value: RawValue) {
         when (value) {
-            is WasmlineRawValue.I32 -> {
+            is RawValue.I32 -> {
                 writer.byte(0)
                 writer.u32(value.value.toLong() and 0xFFFF_FFFFL)
             }
 
-            is WasmlineRawValue.I64 -> {
+            is RawValue.I64 -> {
                 writer.byte(1)
                 writer.u64(value.value.toULong())
             }
 
-            is WasmlineRawValue.F32 -> {
+            is RawValue.F32 -> {
                 writer.byte(2)
                 writer.u32(value.value.toRawBits().toLong() and 0xFFFF_FFFFL)
             }
 
-            is WasmlineRawValue.F64 -> {
+            is RawValue.F64 -> {
                 writer.byte(3)
                 writer.u64(value.value.toRawBits().toULong())
             }
@@ -363,11 +362,11 @@ internal object WasmlineTypedInvocationCodec {
         )
     }
 
-    private fun readRawValue(reader: Reader): WasmlineRawValue? = when (reader.byte()) {
-        0 -> reader.u32()?.toInt()?.let(WasmlineRawValue::I32)
-        1 -> reader.u64()?.toLong()?.let(WasmlineRawValue::I64)
-        2 -> reader.u32()?.toInt()?.let { WasmlineRawValue.F32(Float.fromBits(it)) }
-        3 -> reader.u64()?.toLong()?.let { WasmlineRawValue.F64(Double.fromBits(it)) }
+    private fun readRawValue(reader: Reader): RawValue? = when (reader.byte()) {
+        0 -> reader.u32()?.toInt()?.let(RawValue::I32)
+        1 -> reader.u64()?.toLong()?.let(RawValue::I64)
+        2 -> reader.u32()?.toInt()?.let { RawValue.F32(Float.fromBits(it)) }
+        3 -> reader.u64()?.toLong()?.let { RawValue.F64(Double.fromBits(it)) }
         else -> null
     }
 

@@ -35,11 +35,19 @@ void wasmline_lock();
 /** Leaves the process-wide bridge lock. */
 void wasmline_unlock();
 
-/** Loads a Core Wasm artifact with an explicit physical artifact format. */
-bool wasmline_load_module_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe);
+/** Loads a Core Wasm artifact and returns a WLMF result carrier. */
+char* wasmline_load_module_with_format(const char* key,
+                                       const char* path,
+                                       int32_t formatCode,
+                                       bool isUnsafe,
+                                       size_t* outLen);
 
-/** Loads a Component Model artifact with an explicit physical artifact format. */
-bool wasmline_load_component_with_format(const char* key, const char* path, int32_t formatCode, bool isUnsafe);
+/** Loads a Component Model artifact and returns a WLMF result carrier. */
+char* wasmline_load_component_with_format(const char* key,
+                                          const char* path,
+                                          int32_t formatCode,
+                                          bool isUnsafe,
+                                          size_t* outLen);
 
 /** Releases a previously loaded artifact. */
 void wasmline_release_module(const char* key);

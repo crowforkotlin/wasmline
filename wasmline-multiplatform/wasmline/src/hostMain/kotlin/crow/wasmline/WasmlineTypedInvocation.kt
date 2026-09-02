@@ -1,23 +1,28 @@
 package crow.wasmline
 
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
 
 /**
- * Provides direct typed export calls for host runtimes.
+ * Holds values returned by a direct raw export invocation.
  *
- * Date: 2026-08-02
+ * Date: 2026-09-02
  * Author: crowforkotlin
  */
-data class WasmlineRawCallResult(val values: List<WasmlineRawValue>)
+data class WasmlineRawCallResult(val values: List<RawValue>)
 
+/**
+ * Holds values returned by a direct Component export invocation.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 data class WasmlineComponentCallResult(val values: List<WasmlineComponentValue>)
 
-fun Wasmline.invokeRawResult(
-    exportName: String,
-    arguments: List<WasmlineRawValue> = emptyList(),
-): WasmlineCallResult<WasmlineRawCallResult> {
+/** Invokes a typed raw export on this loaded host runtime. */
+fun Wasmline.invokeRawResult(exportName: String, arguments: List<RawValue> = emptyList()): WasmlineCallResult<WasmlineRawCallResult> {
     val protocolError = validateProtocol(WasmlineInvocationProtocol.RAW_EXPORT, exportName)
     if (protocolError != null) return protocolError
 
@@ -31,6 +36,7 @@ fun Wasmline.invokeRawResult(
     }
 }
 
+/** Invokes a typed Component export on this loaded host runtime. */
 fun Wasmline.invokeComponentResult(
     exportName: String,
     arguments: List<WasmlineComponentValue> = emptyList(),

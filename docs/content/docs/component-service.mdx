@@ -1,8 +1,8 @@
 ---
 title: Wasmline Service
-description: WIT envelope, Component build pipeline, and cross-language callbacks
+description: WIT envelope, Component build stages, and cross-language callbacks
 createdAt: 2026-08-05
-updatedAt: 2026-08-28
+updatedAt: 2026-09-01
 ---
 
 # Wasmline Service
@@ -81,20 +81,26 @@ move-only WIT error type. Its fixture applies a fail-closed generated-source
 compatibility step that switches that checked access to `operator*` after
 `has_value()`; it does not modify `wit-bindgen` source or commit generated code.
 
-Compile one finished Rust, C, or C++ Component to `.cwasm` or `.pwasm`, then
-validate that AOT artifact against the native runtime:
+The repository validates the native Component Service runtime with a generated
+AOT fixture. It does not accept a hand-supplied artifact through an environment
+variable:
 
 ```shell
+./scripts/wasmline jni build --engine cranelift
 cd wasmline-multiplatform
-WASMLINE_LIVE_TESTS=1 \
-WASMLINE_TEST_COMPONENT_SERVICE=/absolute/path/to/plugin.pwasm \
-./gradlew :wasmline:jvmTest \
-  --tests 'crow.wasmline.test.wasmtime.NativeComponentServiceIntegrationTest' \
-  --rerun-tasks --console=plain
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
 ```
 
-The four tests cover callback bytes, an unbound handler, same-session reentry,
-and callback into a second Component session.
+The generated fixture tests callback bytes, an unbound handler, same-session
+reentry, and callback into a second Component session. The same JVM task also
+loads a Core `RAW_EXPORT` `pulley64` PWASM fixture through the Cranelift native
+library. Production Components
+are compiled and packaged through the Wasmline Gradle or CLI build tasks, which
+select the required `.cwasm` or `.pwasm` artifacts from the configured AOT
+compatibility catalog.
 
 ## Codec Profiles
 

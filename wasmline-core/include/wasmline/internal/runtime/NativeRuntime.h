@@ -17,6 +17,7 @@
 #include "wasmline/internal/runtime/ComponentSessionRegistry.h"
 #include "wasmline/internal/runtime/RawSessionRegistry.h"
 #include "wasmline/internal/runtime/ServiceSessionRegistry.h"
+#include "wasmline/runtime/ArtifactLoadResult.h"
 #include "wasmline/runtime/WasmlineArtifactFormat.h"
 
 namespace wasmline {
@@ -44,10 +45,10 @@ namespace wasmline {
         void shutdown();
 
         /** Loads a Core Wasm artifact. */
-        bool loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat format, bool unsafe);
+        ArtifactLoadResult loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat format, bool unsafe);
 
         /** Loads a Component Model artifact. */
-        bool loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat format, bool unsafe);
+        ArtifactLoadResult loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat format, bool unsafe);
 
         /** Releases an artifact and every associated session. */
         void releaseArtifact(const std::string& key);

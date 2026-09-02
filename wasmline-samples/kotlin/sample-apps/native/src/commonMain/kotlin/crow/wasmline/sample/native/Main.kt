@@ -1,7 +1,7 @@
 package crow.wasmline.sample.native
 
 import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineRawValue
+import crow.wasmline.RawValue
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invokeRawResult
@@ -56,8 +56,8 @@ fun main(args: Array<String>) = runBlocking {
             val invocation = wasmline.invokeRawResult(
                 exportName = "add_i32",
                 arguments = listOf(
-                    WasmlineRawValue.I32(left),
-                    WasmlineRawValue.I32(right),
+                    RawValue.I32(left),
+                    RawValue.I32(right),
                 ),
             )
             val actual = when (invocation) {
@@ -66,7 +66,7 @@ fun main(args: Array<String>) = runBlocking {
                 )
 
                 is WasmlineCallResult.Success ->
-                    (invocation.value.values.singleOrNull() as? WasmlineRawValue.I32)?.value
+                    (invocation.value.values.singleOrNull() as? RawValue.I32)?.value
                         ?: error("add_i32 returned an unexpected value: ${invocation.value.values}")
             }
             val expected = left + right

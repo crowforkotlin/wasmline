@@ -208,19 +208,3 @@ data class RawAbiMetadata(
         const val DEFAULT_MEMORY_EXPORT: String = "memory"
     }
 }
-
-/** Converts a compatibility raw value to the canonical raw value model. */
-internal fun WasmlineRawValue.toRawValue(): RawValue = when (this) {
-    is WasmlineRawValue.I32 -> RawValue.I32(value)
-    is WasmlineRawValue.I64 -> RawValue.I64(value)
-    is WasmlineRawValue.F32 -> RawValue.F32(value)
-    is WasmlineRawValue.F64 -> RawValue.F64(value)
-}
-
-/** Converts a canonical raw value to the compatibility raw value model. */
-internal fun RawValue.toWasmlineRawValue(): WasmlineRawValue = when (this) {
-    is RawValue.I32 -> WasmlineRawValue.I32(value)
-    is RawValue.I64 -> WasmlineRawValue.I64(value)
-    is RawValue.F32 -> WasmlineRawValue.F32(value)
-    is RawValue.F64 -> WasmlineRawValue.F64(value)
-}

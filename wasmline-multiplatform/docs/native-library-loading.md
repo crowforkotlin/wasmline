@@ -100,7 +100,7 @@ Wasmline provides two engine modules. They are mutually exclusive — a project 
 | `wasmline-engine-cranelift` | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime. Requires exact backend profile and target identity for `.cwasm`; uses `.pwasm` only when no compatible CWASM exists and a matching Pulley profile is reported. |
 
 Both modules follow the same build and publishing structure. The examples below use `pulley`.
-These modules intentionally do not expose a Kotlin runtime API. The dependency selects the native runtime distribution; the `wasmline` runtime reports the linked backend through `WasmlineNativeBackend`.
+These modules intentionally do not expose a Kotlin runtime API. The dependency selects the native runtime distribution; the `wasmline` runtime reports the linked engine through `WasmlineEngineKind`.
 
 ### Source Layout
 

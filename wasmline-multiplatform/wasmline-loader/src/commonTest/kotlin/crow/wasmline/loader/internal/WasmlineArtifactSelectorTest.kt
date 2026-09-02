@@ -4,7 +4,6 @@ import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.WasmlineNativeBackend
 import crow.wasmline.WasmlineNativeRuntimeInfo
 import crow.wasmline.loader.model.WasmlineAotCompatibilityProfile
 import crow.wasmline.loader.model.WasmlineArtifactTarget
@@ -169,7 +168,7 @@ class WasmlineArtifactSelectorTest {
         profiles: Map<WasmlineEngineKind, Set<String>>,
     ): WasmlineHostArtifactTarget {
         val runtime = WasmlineNativeRuntimeInfo(
-            backend = WasmlineNativeBackend.CRANELIFT,
+            backend = WasmlineEngineKind.CRANELIFT,
             supportedArtifactFormats = formats,
             wasmtimeVersion = "12.3.4",
             aotCompatibilityProfileIdsByBackend = profiles,

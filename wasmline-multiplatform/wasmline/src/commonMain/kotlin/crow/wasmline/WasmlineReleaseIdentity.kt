@@ -8,5 +8,5 @@ package crow.wasmline
  */
 internal object WasmlineReleaseIdentity {
     const val RELEASE_VERSION: String = "1.0.0"
-    const val NATIVE_BRIDGE_ABI_VERSION: Int = 1
+    const val NATIVE_BRIDGE_ABI_VERSION: Int = 2
 }

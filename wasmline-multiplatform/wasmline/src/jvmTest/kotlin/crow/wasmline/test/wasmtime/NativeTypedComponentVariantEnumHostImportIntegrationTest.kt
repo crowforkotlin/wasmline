@@ -24,17 +24,15 @@ import kotlin.test.assertIs
 /**
  * Verifies variant and enum Component host imports through AOT JNI artifacts.
  *
- * Validates variant and enum Component imports with external `.cwasm`/`.pwasm`.
+ * Validates variant and enum Component imports with generated `.cwasm`/`.pwasm` artifacts.
  *
- * Date: 2026-08-07
+ * Date: 2026-09-01
  * Author: crowforkotlin
  */
 class NativeTypedComponentVariantEnumHostImportIntegrationTest {
 
     @Test
     fun variantAndEnumHostImportRoundTripsThroughTheJniRegistry() {
-        if (System.getenv(LIVE_TESTS_ENV) != "1") return
-
         val artifact = copyFixture()
         try {
             val handle = loadComponent(artifact)
@@ -127,31 +125,11 @@ class NativeTypedComponentVariantEnumHostImportIntegrationTest {
         return assertIs<WasmlineLoadState.Success>(state).wasmline
     }
 
-    private fun copyFixture(): File {
-        val source = requireNotNull(System.getenv(FIXTURE_ENV)) {
-            "$FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$FIXTURE_ENV does not point to a file: ${source.absolutePath}" }
-        val format = componentAotFormat(source.name)
-        val suffix = when (format) {
-            WasmlineArtifactFormat.CWASM -> ".cwasm"
-            WasmlineArtifactFormat.PWASM -> ".pwasm"
-            WasmlineArtifactFormat.RAW_WASM -> error("Variant/enum Component fixture cannot use raw Wasm.")
-        }
-        return File.createTempFile("wasmline-component-variant-enum-host-", suffix).apply {
-            source.copyTo(this, overwrite = true)
-            deleteOnExit()
-        }
-    }
+    private fun copyFixture(): File = NativeFixtureTestSupport.copy("component-typed-variant-enum")
 
     private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
         filename.endsWith(".pwasm", ignoreCase = true) -> WasmlineArtifactFormat.PWASM
         else -> error("Variant/enum Component fixture must be a precompiled .cwasm or .pwasm artifact.")
-    }
-
-    private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_VARIANT_ENUM_HOST"
     }
 }

@@ -6,6 +6,7 @@ import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.konan.target.HostManager
 
 
@@ -133,6 +134,7 @@ kotlin {
             dependsOn(other = hostTest)
             dependencies {
                 implementation(projects.wasmlineEngineCranelift) // Provides libwasmline.so for testing
+                implementation(projects.wasmlineNativeTestFixtures)
             }
         }
 
@@ -160,6 +162,74 @@ kotlin {
             }
         }
 //        val androidInstrumentedTest by getting { dependsOn(other = hostTest) }
+    }
+}
+
+val nativeAotFixtureTask = ":wasmline-native-test-fixtures:assembleNativeTestFixtures"
+val nativeAotFixtureIndex = project(":wasmline-native-test-fixtures")
+    .layout
+    .buildDirectory
+    .file("wasmline/native-fixtures/fixture-index.json")
+val nativeAotJvmLibrary = run {
+    val osName = System.getProperty("os.name").lowercase()
+    val platform = when {
+        osName.contains("linux") -> "linux"
+        osName.contains("mac") || osName.contains("darwin") -> "darwin"
+        osName.contains("windows") -> "windows"
+        else -> error("Unsupported native AOT JVM test operating system: $osName")
+    }
+    val extension = when (platform) {
+        "linux" -> "so"
+        "darwin" -> "dylib"
+        "windows" -> "dll"
+        else -> error("Unsupported native AOT JVM test platform: $platform")
+    }
+    val architecture = when (System.getProperty("os.arch").lowercase()) {
+        "amd64", "x86_64" -> "x86_64"
+        "arm64", "aarch64" -> "aarch64"
+        else -> error("Unsupported native AOT JVM test architecture: ${System.getProperty("os.arch")}")
+    }
+    project(":wasmline-engine-cranelift").file(
+        "src/jvmMain/resources/jni/$platform/$architecture/libwasmline.$extension",
+    )
+}
+val nativeAotJvmLibraryPath = providers.environmentVariable("WASMLINE_NATIVE_LIBRARY_PATH")
+    .orElse(nativeAotJvmLibrary.absolutePath)
+val nativeAotTestClassPatterns = listOf(
+    "**/NativeDirectInvocationTest.class",
+    "**/NativeComponentServiceIntegrationTest.class",
+    "**/NativeComponentResourceIntegrationTest.class",
+    "**/NativeTypedComponentFlagsHostImportIntegrationTest.class",
+    "**/NativeTypedComponentHostImportIntegrationTest.class",
+    "**/NativeTypedComponentOptionResultHostImportIntegrationTest.class",
+    "**/NativeTypedComponentShapesHostImportIntegrationTest.class",
+    "**/NativeTypedComponentStringHostImportIntegrationTest.class",
+    "**/NativeTypedComponentStringInputHostImportIntegrationTest.class",
+    "**/NativeTypedComponentVariantEnumHostImportIntegrationTest.class",
+)
+val standardJvmTest = tasks.named<Test>("jvmTest") {
+    exclude(*nativeAotTestClassPatterns.toTypedArray())
+}
+
+tasks.register<Test>("nativeAotJvmTest") {
+    group = "verification"
+    description = "Runs native JVM tests against generated and verified AOT fixture artifacts."
+    dependsOn("jvmTestClasses", nativeAotFixtureTask)
+    inputs.file(nativeAotFixtureIndex)
+    testClassesDirs = standardJvmTest.get().testClassesDirs
+    classpath = standardJvmTest.get().classpath
+    include(*nativeAotTestClassPatterns.toTypedArray())
+    systemProperty("wasmline.native.fixtures.index", nativeAotFixtureIndex.get().asFile.absolutePath)
+    systemProperty("wasmline.native.library.path", nativeAotJvmLibraryPath.get())
+}
+
+if (HostManager.hostIsMac) {
+    tasks.withType<KotlinNativeTest>().configureEach {
+        if (name == "iosSimulatorArm64Test") {
+            dependsOn(nativeAotFixtureTask)
+            inputs.file(nativeAotFixtureIndex)
+            environment("WASMLINE_NATIVE_FIXTURE_INDEX", nativeAotFixtureIndex.get().asFile.absolutePath)
+        }
     }
 }
 

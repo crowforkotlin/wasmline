@@ -1,10 +1,6 @@
 package crow.wasmline.web
 
-import crow.wasmline.CoreWasmBackendMemory
-import crow.wasmline.CoreWasmBackendModule
-import crow.wasmline.CoreWasmBackendSession
 import crow.wasmline.CoreWasmCapabilities
-import crow.wasmline.CoreWasmImportDispatcher
 import crow.wasmline.CoreWasmSessionOptions
 import crow.wasmline.RawExport
 import crow.wasmline.RawExportKind
@@ -13,6 +9,10 @@ import crow.wasmline.RawValue
 import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.coreFailure
+import crow.wasmline.internal.core.CoreWasmBackendMemory
+import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.core.CoreWasmBackendSession
+import crow.wasmline.internal.core.CoreWasmImportDispatcher
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 

@@ -31,9 +31,9 @@ import kotlin.test.assertTrue
 /**
  * Verifies native linking for synchronous typed Component Model host imports.
  *
- * Validates typed Component JNI registry dispatch with external AOT artifacts only.
+ * Validates typed Component JNI registry dispatch with generated AOT artifacts.
  *
- * Date: 2026-08-07
+ * Date: 2026-09-01
  * Author: crowforkotlin
  */
 class NativeTypedComponentHostImportIntegrationTest {
@@ -49,8 +49,6 @@ class NativeTypedComponentHostImportIntegrationTest {
 
     @Test
     fun genericTypedImportReachesTheCanonicalMissingAdapterCallbackError() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyFixture()
         try {
             val handle = loadComponent(artifact)
@@ -82,8 +80,6 @@ class NativeTypedComponentHostImportIntegrationTest {
 
     @Test
     fun typedHostImportRoundTripsThroughTheJniRegistry() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyFixture()
         try {
             val handle = loadComponent(artifact)
@@ -107,8 +103,6 @@ class NativeTypedComponentHostImportIntegrationTest {
 
     @Test
     fun facadeCreatesIsolatedInstancesFromOneLoadedModule() {
-        if (!liveTestsEnabled()) return
-
         val artifact = copyFixture()
         try {
             val handle = loadComponent(artifact)
@@ -170,17 +164,7 @@ class NativeTypedComponentHostImportIntegrationTest {
         return assertIs<WasmlineLoadState.Success>(state).wasmline
     }
 
-    private fun copyFixture(): File {
-        val source = requireNotNull(System.getenv(TYPED_HOST_FIXTURE_ENV)) {
-            "$TYPED_HOST_FIXTURE_ENV must be set when $LIVE_TESTS_ENV=1."
-        }.let(::File)
-        require(source.isFile) { "$TYPED_HOST_FIXTURE_ENV does not point to a file: ${source.absolutePath}" }
-        val suffix = componentAotFormat(source.name).fileSuffix()
-        return File.createTempFile("wasmline-component-typed-host-", suffix).apply {
-            source.copyTo(this, overwrite = true)
-            deleteOnExit()
-        }
-    }
+    private fun copyFixture(): File = NativeFixtureTestSupport.copy("component-typed-host")
 
     private fun componentAotFormat(filename: String): WasmlineArtifactFormat = when {
         filename.endsWith(".cwasm", ignoreCase = true) -> WasmlineArtifactFormat.CWASM
@@ -192,19 +176,6 @@ class NativeTypedComponentHostImportIntegrationTest {
         )
     }
 
-    private fun WasmlineArtifactFormat.fileSuffix(): String = when (this) {
-        WasmlineArtifactFormat.CWASM -> ".cwasm"
-        WasmlineArtifactFormat.PWASM -> ".pwasm"
-        WasmlineArtifactFormat.RAW_WASM -> error("Typed Component host fixtures cannot use raw Wasm.")
-    }
-
-    private fun liveTestsEnabled(): Boolean = System.getenv(LIVE_TESTS_ENV) == "1"
-
     private fun WasmlineErrorCode.isComponentCallFailure(): Boolean =
         this == WasmlineErrorCode.COMPONENT_CALL_FAILED || this == WasmlineErrorCode.COMPONENT_TRAP
-
-    private companion object {
-        const val LIVE_TESTS_ENV = "WASMLINE_LIVE_TESTS"
-        const val TYPED_HOST_FIXTURE_ENV = "WASMLINE_TEST_COMPONENT_TYPED_HOST"
-    }
 }

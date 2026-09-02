@@ -44,19 +44,19 @@ namespace wasmline {
         }
     }
 
-    bool Api::loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+    ArtifactLoadResult Api::loadModule(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         return NativeRuntime::instance().loadModule(key, path, artifactFormat, false);
     }
 
-    bool Api::loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+    ArtifactLoadResult Api::loadModuleUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         return NativeRuntime::instance().loadModule(key, path, artifactFormat, true);
     }
 
-    bool Api::loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+    ArtifactLoadResult Api::loadComponent(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         return NativeRuntime::instance().loadComponent(key, path, artifactFormat, false);
     }
 
-    bool Api::loadComponentUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
+    ArtifactLoadResult Api::loadComponentUnsafe(const std::string& key, const std::string& path, WasmlineArtifactFormat artifactFormat) {
         return NativeRuntime::instance().loadComponent(key, path, artifactFormat, true);
     }
 

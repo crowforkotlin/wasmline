@@ -3,6 +3,7 @@
 package crow.wasmline
 
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
+import crow.wasmline.internal.core.CoreWasmBackendModule
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
@@ -108,11 +109,20 @@ internal object BrowserWasmlineRuntime {
                 override fun unsupportedArtifactMessage(descriptor: WasmlineArtifactDescriptor): String =
                     "[Wasmline] Browser web host only supports raw .wasm artifacts: ${descriptor.path}"
 
-                override fun loadPrecompiled(moduleKey: String, path: String, descriptor: WasmlineArtifactDescriptor): Boolean =
-                    WasmlineWebModuleRegistry.load(moduleKey, path, descriptor)
-
-                override fun loadFailureMessage(descriptor: WasmlineArtifactDescriptor): String =
-                    WasmlineWebModuleRegistry.failureMessage(descriptor.path)
+                override fun loadPrecompiled(
+                    moduleKey: String,
+                    path: String,
+                    descriptor: WasmlineArtifactDescriptor,
+                ): WasmlineCallResult<Unit> = if (WasmlineWebModuleRegistry.load(moduleKey, path, descriptor)) {
+                    WasmlineCallResult.Success(Unit)
+                } else {
+                    WasmlineCallResult.Failure(
+                        WasmlineFailure(
+                            WasmlineErrorCode.MODULE_FORMAT_INVALID,
+                            WasmlineWebModuleRegistry.failureMessage(descriptor.path),
+                        ),
+                    )
+                }
             },
         )
     }

@@ -1,15 +1,24 @@
-package crow.wasmline
+package crow.wasmline.internal.service
 
 import crow.wasmline.internal.bridge.WasmlineGeneratedBridge
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
 
-/** Instance-owned dispatcher registry shared by Core and Wasmline Service callbacks. */
+/**
+ * Stores the dispatcher registrations for one loaded host runtime.
+ *
+ * Core Wasm and Wasmline Service callbacks use this registry to preserve one
+ * registration mode and to reject duplicate action names.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 internal class WasmlineHostServiceRegistry {
-    private val lock = WasmlineHostServiceLock()
+    private val lock = WasmlineRuntimeLock()
     private var state = State()
 
     val dispatcher: WasmlineHostDispatcher = WasmlineHostDispatcher(::dispatch)
@@ -129,8 +138,4 @@ internal class WasmlineHostServiceRegistry {
         GENERATED,
         RAW,
     }
-}
-
-internal expect class WasmlineHostServiceLock() {
-    fun <T> withLock(block: () -> T): T
 }

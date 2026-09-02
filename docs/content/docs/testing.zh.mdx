@@ -2,7 +2,7 @@
 title: 测试
 description: Wasmline 测试矩阵、生成产物规则与本地验证方式
 createdAt: 2026-08-03
-updatedAt: 2026-08-21
+updatedAt: 2026-09-01
 ---
 
 # 测试
@@ -19,7 +19,7 @@ Wasmline 按边界拆分测试。每个会话仅执行一次仓库预检，执�
 |---|---|---|---|
 | Common runtime | `wasmline` | 响应帧、descriptor 与序列化 | `./gradlew :wasmline:jvmTest` |
 | Host runtime | `wasmline` | 本地 artifact bridge、typed raw/component 调用与宿主 API 编译 | `./gradlew :wasmline:jvmTest` |
-| Native Wasmtime | `wasmline` | JNI 生命周期、产物加载、raw export、component export | `./gradlew :wasmline:jvmTest` |
+| Native Wasmtime | `wasmline` | JNI 生命周期、产物加载、raw export、component export | `./gradlew :wasmline:nativeAotJvmTest` |
 | Kotlin/JS | `wasmline` | WebAssembly imports、值、内存与 exports | `./gradlew :wasmline:jsBrowserTest` |
 | Kotlin/WasmJS | `wasmline` | WebAssembly imports、值、内存与 exports | `./gradlew :wasmline:wasmJsBrowserTest` |
 | Kotlin/WasmWasi | `wasmline` | WASI 运行时集成 | `./gradlew :wasmline:wasmWasiNodeTest` |
@@ -37,7 +37,38 @@ Wasmline 按边界拆分测试。每个会话仅执行一次仓库预检，执�
   :wasmline-kotlin-plugin:test
 ```
 
-Native Wasmtime 测试从 `wasmline-engine-cranelift/src/jvmMain/resources/jni/` 加载 Cranelift JNI 库。CI 会先构建该引擎库，再运行 `:wasmline:jvmTest`。Web 测试不需要 Native Wasmtime 文件，但浏览器测试需要可用的 Chrome runner。
+Native Wasmtime 测试从 `wasmline-engine-cranelift/src/jvmMain/resources/jni/` 加载 Cranelift JNI 库。普通 `jvmTest` 会排除需要序列化 AOT 产物的测试。`nativeAotJvmTest` 先运行 `:wasmline-native-test-fixtures:assembleNativeTestFixtures`，把 fixture index 传给测试进程，再运行全部 native AOT 集成测试。fixture 缺失、文件被修改或 index 内容不正确都会使任务失败。
+
+## Native AOT Fixture
+
+Fixture 源文件提交在 `wasmline-native-test-fixtures/src/fixtures/`。该模块把 `.cwasm` 或 `.pwasm` 写入自己的 `build/` 目录；这些二进制文件不能提交到仓库，也不能通过测试环境变量手工提供。
+
+从仓库根目录开始时，Linux JVM 校验前必须先构建 Cranelift JNI 库。fixture 任务会生成宿主平台的 Cranelift target 和可移植的 `pulley64` target：
+
+```bash
+./scripts/wasmline jni build --engine cranelift
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
+```
+
+fixture index 记录 fixture ID、执行模型、调用协议、产物格式和后端、请求与规范化目标、AOT profile ID、相对路径、文件大小和 SHA-256 摘要。JVM suite 会通过 Cranelift native library 加载 `raw-export-basic` 的 `pulley64` PWASM fixture，并调用其 `add` export。测试 helper 只选择与当前 native runtime 的 target 和 profile 匹配的条目，并在复制到临时文件前再次校验文件。
+
+iOS simulator 只使用可移植 Pulley 目标。请在 macOS 上从仓库根目录运行：
+
+```bash
+./scripts/wasmline wasmtime download --target ios-simulator-arm64 --engine pulley
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:iosSimulatorArm64Test \
+  :wasmline-loader:iosSimulatorArm64Test \
+  -Pwasmline.native.fixtures.targets=pulley64 \
+  --no-daemon
+```
+
+当 index 缺失、选中的 fixture 与请求的执行模型、调用协议、Pulley 后端、`pulley64` 目标、`.pwasm` 后缀、文件大小或已链接的 AOT profile 不一致时，iOS 测试会失败。Rust resource fixture 生成前必须安装 `wasm32-wasip2` target。
 
 ## IR 测试规则
 

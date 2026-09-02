@@ -13,6 +13,8 @@
 #include "wasmline/runtime/AotLoadPathDiagnostics.h"
 #include "wasmline/runtime/Engine.h"
 
+#include <utility>
+
 // Native Component loading is deserialize-only. Any future raw compiler call fails closed and is observable in diagnostics.
 #define wasmtime_component_new(...) ::wasmline::AotLoadPathDiagnostics::rejectComponentNew(__VA_ARGS__)
 
@@ -34,18 +36,28 @@ namespace wasmline {
     }
 
     wasmtime_component_t* Component::compileInternal(const std::string& key, const std::string& filePath,
-                                                     WasmlineArtifactFormat artifactFormat) {
+                                                     WasmlineArtifactFormat artifactFormat, ArtifactLoadResult* result) {
         if (artifactFormat == WasmlineArtifactFormat::RAW_WASM) {
-            LOGE("[Wasmtime] Component -> Raw Component Wasm is not accepted on native. Precompile to CWASM/PWASM: %s", filePath.c_str());
+            if (result) {
+                *result = ArtifactLoadResult::failure(WasmlineErrorCode::ARTIFACT_NOT_COMPATIBLE,
+                                                      "Native Component loading requires a precompiled CWASM or PWASM artifact.");
+            }
             return nullptr;
         }
         if (artifactFormat != WasmlineArtifactFormat::CWASM && artifactFormat != WasmlineArtifactFormat::PWASM) {
-            LOGE("[Wasmtime] Component -> Unsupported artifact format for %s", filePath.c_str());
+            if (result) {
+                *result = ArtifactLoadResult::failure(WasmlineErrorCode::ARTIFACT_NOT_COMPATIBLE,
+                                                      "Native Component loading does not support the requested artifact format.");
+            }
             return nullptr;
         }
 
         wasm_engine_t* engine = Engine::getInstance().getEngine();
         if (!engine) {
+            if (result) {
+                *result =
+                    ArtifactLoadResult::failure(WasmlineErrorCode::ENGINE_NOT_INITIALIZED, "Native Wasmline engine is not initialized.");
+            }
             LOGE("[Wasmtime] Component -> Engine not initialized.");
             return nullptr;
         }
@@ -54,8 +66,12 @@ namespace wasmline {
         wasmtime_error_t* error = wasmtime_component_deserialize_file(engine, filePath.c_str(), &component);
 
         if (error) {
-            const std::string message = wasmtime::errorMessage(error);
-            LOGE("[Wasmtime] Component -> Failed to load %s: %s", key.c_str(), message.c_str());
+            const std::string detail = wasmtime::errorMessage(error);
+            if (result) {
+                *result = ArtifactLoadResult::failure(WasmlineErrorCode::MODULE_FORMAT_INVALID,
+                                                      "Failed to deserialize Component artifact '" + key + "'.",
+                                                      std::vector<uint8_t>(detail.begin(), detail.end()));
+            }
             wasmtime_error_delete(error);
             return nullptr;
         }
@@ -63,17 +79,32 @@ namespace wasmline {
         return component;
     }
 
-    wasmtime_component_t* Component::load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat) {
-        return impl_->cache.load(key, filePath, [this, artifactFormat](const std::string& loadKey, const std::string& path) {
-            return compileInternal(loadKey, path, artifactFormat);
-        });
+    wasmtime_component_t* Component::load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat,
+                                          ArtifactLoadResult* result) {
+        ArtifactLoadResult loadResult = ArtifactLoadResult::success();
+        wasmtime_component_t* component =
+            impl_->cache.load(key, filePath, [this, artifactFormat, &loadResult](const std::string& loadKey, const std::string& path) {
+                return compileInternal(loadKey, path, artifactFormat, &loadResult);
+            });
+        if (!component && loadResult.isSuccess()) {
+            loadResult = ArtifactLoadResult::failure(WasmlineErrorCode::MODULE_FORMAT_INVALID, "Native Component artifact load failed.");
+        }
+        if (result) *result = std::move(loadResult);
+        return component;
     }
 
-    wasmtime_component_t* Component::loadUnsafe(const std::string& key, const std::string& filePath,
-                                                WasmlineArtifactFormat artifactFormat) {
-        return impl_->cache.loadUnsafe(key, filePath, [this, artifactFormat](const std::string& loadKey, const std::string& path) {
-            return compileInternal(loadKey, path, artifactFormat);
-        });
+    wasmtime_component_t* Component::loadUnsafe(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat,
+                                                ArtifactLoadResult* result) {
+        ArtifactLoadResult loadResult = ArtifactLoadResult::success();
+        wasmtime_component_t* component = impl_->cache.loadUnsafe(
+            key, filePath, [this, artifactFormat, &loadResult](const std::string& loadKey, const std::string& path) {
+                return compileInternal(loadKey, path, artifactFormat, &loadResult);
+            });
+        if (!component && loadResult.isSuccess()) {
+            loadResult = ArtifactLoadResult::failure(WasmlineErrorCode::MODULE_FORMAT_INVALID, "Native Component artifact load failed.");
+        }
+        if (result) *result = std::move(loadResult);
+        return component;
     }
 
     wasmtime_component_t* Component::get(const std::string& key) {

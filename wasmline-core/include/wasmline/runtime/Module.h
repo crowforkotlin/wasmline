@@ -11,6 +11,7 @@
 #include <string>
 #include <wasmtime.h>
 
+#include "wasmline/runtime/ArtifactLoadResult.h"
 #include "wasmline/runtime/WasmlineArtifactFormat.h"
 
 namespace wasmline {
@@ -25,10 +26,12 @@ namespace wasmline {
         Module& operator=(const Module&) = delete;
 
         /** Loads a Core Wasm artifact with an explicit physical format. */
-        wasmtime_module_t* load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat);
+        wasmtime_module_t* load(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat,
+                                ArtifactLoadResult* result = nullptr);
 
         /** Loads an artifact with an explicit physical format without cache synchronization. */
-        wasmtime_module_t* loadUnsafe(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat);
+        wasmtime_module_t* loadUnsafe(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat,
+                                      ArtifactLoadResult* result = nullptr);
 
         /** Returns a cached module or nullptr. */
         wasmtime_module_t* get(const std::string& key);
@@ -49,7 +52,8 @@ namespace wasmline {
 
         ~Module();
 
-        wasmtime_module_t* compileInternal(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat);
+        wasmtime_module_t* compileInternal(const std::string& key, const std::string& filePath, WasmlineArtifactFormat artifactFormat,
+                                           ArtifactLoadResult* result);
 
         std::unique_ptr<Impl> impl_;
     };
