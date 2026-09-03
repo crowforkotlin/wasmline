@@ -74,7 +74,7 @@ import crow.wasmline.Wasmline
 import crow.wasmline.bind
 
 fun main() {
-    Wasmline.current.bind(object : EchoService {
+    Wasmline.get().bind(object : EchoService {
         override fun echo(message: String): String {
             return "Response from WASI plugin: $message"
         }
@@ -311,7 +311,7 @@ wasmline {
 ```
 
 默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。所需 AOT 与 Component
-流水线任务会自动执行。[Gradle 插件任务参考](docs/content/docs/gradle-plugin.zh.mdx)
+构建任务会自动执行。[Gradle 插件任务参考](<docs/content/docs/(reference)/(plugin-development)/gradle-plugin.zh.mdx>)
 列出当前任务及其注册条件。
 
 ## Release 构建

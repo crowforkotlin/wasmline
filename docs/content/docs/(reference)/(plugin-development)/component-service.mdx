@@ -1,0 +1,143 @@
+---
+title: Component Service Protocol
+description: Fixed WIT request format, Component build steps, and host callbacks
+createdAt: 2026-08-05
+updatedAt: 2026-09-03
+---
+
+# Component Service Protocol
+
+The Component Service protocol is the fixed `wasmline:service@1.0.0` world.
+WIT defines the Component boundary and Canonical ABI. The `payload: list<u8>`
+field carries serialized application bytes; WIT does not decode those bytes.
+
+```wit
+package wasmline:service@1.0.0;
+
+world plugin {
+  import host: interface {
+    record request { action: string, codec: string, payload: list<u8> }
+    record service-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, service-error>
+  }
+
+  export plugin: interface {
+    record request { action: string, codec: string, payload: list<u8> }
+    record service-error { code: string, message: string, details: list<u8> }
+    invoke: func(request: request) -> result<list<u8>, service-error>
+  }
+}
+```
+
+## Build Steps
+
+For the Kotlin/Wasm WASI sample, run these steps in order:
+
+1. `wit-bindgen kotlin` generates guest bindings under `build/generated`.
+2. Kotlin/Wasm WASI compiles the guest to Core Wasm.
+3. `wasm-tools component embed` embeds the WIT world.
+4. `wasm-tools component new --adapt wasi_snapshot_preview1=...` creates the raw Component.
+5. `wasm-tools validate` and `wasm-tools component wit` verify the result.
+6. The AOT catalog selects the backend profile and locked compiler files, then
+   compiles the raw Component for the configured `.cwasm` and `.pwasm` targets.
+7. The manifest records the `COMPONENT_MODEL + WASMLINE_SERVICE` contract, each
+   AOT profile, and each target variant with its digest and size.
+
+The Gradle entry point is `wasmlineAssembleDebug` or
+`wasmlineAssembleRelease`. The CLI exposes the individual stages through
+`wit generate`, `componentize`, `component validate`, and `component inspect`.
+`compile --execution-model COMPONENT_MODEL` also runs Component AOT. See the
+[Gradle Plugin reference](/en/docs/gradle-plugin) for task names. The native
+loader receives a finished Component artifact and does not run generators or
+compilers while loading.
+
+Rust can target `wasm32-wasip2` and produce a Component directly. The fixture at
+`wasmline-samples/rust/sample-component-plugin` pins the forked `wit-bindgen`
+0.57.1 Git tag. Generated bindings are build outputs and are not committed.
+
+C and C++ target `wasm32-wasip1` through the verified WASI SDK 33 baseline. Their
+fixtures are `wasmline-samples/c/sample-component-plugin` and
+`wasmline-samples/cpp/sample-component-plugin`. Each reads the canonical WIT
+world from `wasmline-plugin-core`, generates bindings in the CMake build
+directory, links the Component type object, and runs `wasm-tools component new`.
+Pass a Preview 1 reactor adapter when the selected SDK leaves Preview 1 imports
+in the Core Wasm.
+
+## Language Bindings
+
+Each guest implements the generated export and calls the generated import. These
+steps do not modify Wasmtime, `wit-bindgen`, or the canonical WIT source.
+
+| Language | Binding generation | Plugin export implementation | Host callback API |
+|---|---|---|---|
+| Kotlin | `wit-bindgen kotlin --world plugin` | `PluginImpl.invoke` | `Host.Import.invoke` |
+| Rust | `wit_bindgen::generate!({ world: "plugin" })` | `exports::plugin::Guest::invoke` | `host::invoke` |
+| C | `wit-bindgen c --world plugin` | `plugin_invoke` | `host_invoke` |
+| C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::service::Invoke` | `wasmline::service::Invoke` |
+
+Generated source and Component type objects remain build outputs. The C++ fixtures enforce `wit-bindgen 0.57.1` and `wasm-tools 1.256.0` at CMake
+configure time; their READMEs list the required WASI SDK commands.
+The pinned C++ generator emits one `std::expected::value()` use with a
+move-only WIT error type. Its fixture applies a fail-closed generated-source
+compatibility step that switches that checked access to `operator*` after
+`has_value()`; it does not modify `wit-bindgen` source or commit generated code.
+
+The repository validates the native Component Service runtime with a generated
+AOT fixture. The test obtains its fixture index from the fixture build task; it
+does not accept a hand-supplied artifact through an environment variable:
+
+```shell
+./scripts/wasmline jni build --engine cranelift
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
+```
+
+The fixture test checks callback bytes, an unbound handler, same-session
+reentry, and a callback into a second Component session. The same JVM task also
+loads a Core `RAW_EXPORT` `pulley64` PWASM fixture through the Cranelift native
+library. Gradle and CLI tasks compile and package production Components and
+select `.cwasm` or `.pwasm` from the configured AOT catalog.
+
+## Codec Profiles
+
+The WIT request format does not make arbitrary business bytes decodable. The
+`codec` string is part of the request and is checked by the host runtime.
+
+| Profile | Codec ID | Payload rule | Reference |
+|---|---|---|---|
+| Kotlin request bytes | `protobuf` | Kotlin Serialization Protobuf bytes; the Kotlin sample decodes `sample.echo` | `sample-component-plugin` |
+| Rust request fixture | `protobuf` | Payload is opaque and is echoed or forwarded to `host.invoke`; no Rust business decoder is claimed | `wasmline-samples/rust/sample-component-plugin` |
+| C request fixture | `protobuf` | Payload is opaque and is copied or forwarded through generated C bindings | `wasmline-samples/c/sample-component-plugin` |
+| C++ request fixture | `protobuf` | Payload is opaque and is moved or forwarded through generated C++ bindings | `wasmline-samples/cpp/sample-component-plugin` |
+| Native typed WIT | no byte profile | Business arguments are WIT values and must be described by the Component contract | Explicit typed Component descriptor |
+
+Cross-language plugins that exchange business objects must use a codec
+implemented by every participant, or expose the objects as typed WIT values.
+The `protobuf` label alone does not make bytes decodable.
+
+## Host Callback Adaptation
+
+The generated guest binding calls the WIT import `host.invoke`. Wasmline's
+Component session registers that import, maps its `action`, `codec`, and
+`payload` fields to `HostDispatcher`, and converts the response back to
+`result<list<u8>, service-error>`.
+
+Therefore a Rust, C, C++, or Kotlin Component plugin implements the WIT world,
+not these Core Wasm-only imports:
+
+- `bridge_inbound_copy_params`
+- `bridge_inbound_set_response`
+- `bridge_outbound_call_host`
+- `bridge_outbound_get_response`
+
+The plugin still needs the generated language binding and a WIT `host.invoke`
+call. The Wasmline host connects that call to its dispatcher. The Kotlin, Rust,
+C, and C++ fixtures call `sample.callback` through their generated host import
+and return either the WIT success value or `service-error` through the export.
+
+The native Wasmtime backend supports this Component path. Browser targets still
+advertise only the Core Wasmline bridge and reject Component descriptors during
+loading.

@@ -49,7 +49,7 @@ const homeContent = {
       docs: {
         title: 'Documentation',
         description:
-          'Installation, usage guides, CLI reference, and architecture details.',
+          'Installation, usage, plugin development, and runtime reference.',
       },
       runtime: {
         title: 'Runtime',

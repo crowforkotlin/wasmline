@@ -1,0 +1,118 @@
+---
+title: Component Gallery
+description: Examples of the Fumadocs components used by this site
+createdAt: 2026-01-08
+updatedAt: 2026-09-03
+---
+
+# Text and Typography
+
+This paragraph contains **bold text**, *italic text*, ~~strikethrough~~, and
+`inline code`.
+
+## Blockquote
+
+> This is a blockquote.
+> It can contain multiple lines.
+
+## Callouts
+
+<Callout title="Default callout">
+  This is a standard callout.
+</Callout>
+
+<Callout type="info" title="Information">
+  This callout provides additional context.
+</Callout>
+
+<Callout type="warn" title="Warning">
+  Check the configuration before continuing.
+</Callout>
+
+<Callout type="error" title="Error">
+  The operation failed. Check the input.
+</Callout>
+
+## Cards
+
+<Cards>
+  <Card href="https://nextjs.org/docs" title="Next.js documentation" description="Read the official Next.js documentation" />
+  <Card href="https://fumadocs.dev" title="Fumadocs documentation" description="Read the Fumadocs user guide" />
+</Cards>
+
+## Tabs
+
+<Tabs items={['JavaScript', 'Rust', 'Go']}>
+  <Tab value="JavaScript">
+    ```javascript
+    console.log('Hello World');
+    ```
+  </Tab>
+  <Tab value="Rust">
+    ```rust
+    fn main() {
+        println!("Hello World");
+    }
+    ```
+  </Tab>
+  <Tab value="Go">
+    ```go
+    package main
+
+    import "fmt"
+
+    func main() {
+        fmt.Println("Hello World")
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Accordions
+
+<Accordions>
+  <Accordion title="What is Fumadocs?">
+    Fumadocs is a documentation framework built on Next.js.
+  </Accordion>
+  <Accordion title="How is Fumadocs installed?">
+    Run `pnpm create fumadocs-app` to create a project.
+  </Accordion>
+</Accordions>
+
+## Steps
+
+<Steps>
+  <Step>
+    ### Step 1: Install dependencies
+
+    ```bash
+    pnpm install
+    ```
+  </Step>
+  <Step>
+    ### Step 2: Start the development server
+
+    ```bash
+    pnpm dev
+    ```
+  </Step>
+  <Step>
+    ### Step 3: Build the site
+
+    ```bash
+    pnpm build
+    ```
+  </Step>
+</Steps>
+
+## Code Blocks
+
+Code blocks can show a file name and highlighted lines:
+
+```tsx title="src/app/page.tsx"
+import { useMDXComponents } from '@/mdx-components'; // [!code highlight]
+
+export default function Page() {
+  return <h1>Hello World</h1>;
+}
+```

@@ -32,10 +32,9 @@ from your browser settings. You can also open a language directly:
 
 | Path | What it contains |
 | --- | --- |
-| `content/docs/*.mdx` | English documentation pages. |
-| `content/docs/*.zh.mdx` | Chinese documentation pages. |
-| `content/docs/meta.json` | English sidebar order and labels. |
-| `content/docs/meta.zh.json` | Chinese sidebar order and labels. |
+| `content/docs/` | Localized documentation pages and route-group metadata. |
+| `content/docs/meta.json` | English sidebar order for the direct pages and the `Reference` folder. |
+| `content/docs/meta.zh.json` | Chinese sidebar order for the direct pages and the `参考` folder. |
 | `content/site.zh.json` | Chinese text used outside the MDX pages. |
 | `src/app/` | Pages, layouts, search data, and image routes. |
 | `src/lib/` | Fumadocs source, language, and layout settings. |
@@ -45,11 +44,18 @@ from your browser settings. You can also open a language directly:
 ## Add or edit a page
 
 English is the default language. An English page uses `<name>.mdx`, and its
-Chinese version uses `<name>.zh.mdx`.
+Chinese version uses `<name>.zh.mdx`. Parenthesized directories such as
+`(reference)` are route groups: they organize navigation without adding a URL
+segment. The root metadata lists `index`, `installation`, `usage`, and
+`(reference)` in the sidebar, so these four entries are visible together. The
+`Reference` metadata lists its child folders. A directory whose `meta.json`
+sets `root` to `true` becomes a separate documentation tab; the current
+documentation intentionally does not set `root`. Omit `defaultOpen` when a
+folder must be collapsed on first render.
 
 1. Add or edit both files in `content/docs/`.
 2. Keep the same frontmatter fields and page structure in both files.
-3. When adding a page, add its slug to both `meta.json` files.
+3. Add the page to the matching English and Chinese group metadata files.
 4. Run `pnpm types:check` before sending the change.
 
 Keep source code, code comments, and this README in English. Put Chinese page

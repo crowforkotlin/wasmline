@@ -1,17 +1,23 @@
 ---
-title: Usage Guide
-description: Service contract definition, plugin implementation, and host-side module loading
+title: Usage
+description: Define a service, build a plugin, load it, and handle results
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-09-03
 ---
 
-# Usage Guide
+# Usage
 
-The following example walks through the complete integration flow: define a service contract, implement it in a plugin, then load the plugin and invoke its services from the host.
+This page shows the normal service API: define a contract in shared code,
+implement it in a plugin, load the plugin in the host, and call the contract.
+For the fixed Component Model service format, see
+[Component Service Protocol](/en/docs/component-service).
 
-## Define the Service Contract
+## 1. Define a Service Contract
 
-A service contract is a Kotlin `interface` extending `WasmlineService`, declared in shared source (`commonMain`). The contract defines the binary protocol boundary between host and plugin. Each method uses an action in the form `<fully-qualified-contract>#<method-name>`; overloaded method names are not supported.
+Declare a Kotlin `interface` in shared source and extend `WasmlineService`.
+Each method becomes an action named
+`<fully-qualified-contract-name>#<method-name>`. A service cannot overload a
+method name.
 
 ```kotlin
 // shared/src/commonMain/kotlin/com/example/EchoService.kt
@@ -22,45 +28,43 @@ interface EchoService : WasmlineService {
 }
 ```
 
-## Implement the Plugin (WASI Target)
+## 2. Implement the Plugin
 
-The plugin binary registers service implementations through `Wasmline.current.bind(impl)`. The IR compiler plugin rewrites this call site to register the implementation into the generated `*_WasmlineBridge` at the IR level:
+The plugin binds an implementation in its `wasmWasiMain` entry point. The
+Kotlin IR compiler plugin replaces `bind(impl)` with a call to the generated
+bridge class.
 
 ```kotlin
 // plugin/src/wasmWasiMain/kotlin/Main.kt
 import crow.wasmline.Wasmline
 import crow.wasmline.bind
 
-val wasmline = Wasmline.current
-
 fun main() {
-    wasmline.bind(object : EchoService {
-        override fun echo(message: String): String {
-            return "Response from WASI plugin: $message"
-        }
+    Wasmline.get().bind(object : EchoService {
+        override fun echo(message: String): String = "Plugin response: $message"
     })
 }
 ```
 
-## Host-Side Module Loading and Service Invocation
+## 3. Load and Call the Plugin
 
-The host loads a plugin through the suspending `WasmlineLoader.load()` API. Native targets use verified manifests or precompiled `.pwasm` / `.cwasm` artifacts; raw `.wasm` is accepted only by the browser Core Wasmline path. An `http(s)://` source is resolved as a remote manifest and verified before its artifact is loaded. The host then registers host-side service implementations accessible to the plugin via `bind(impl)`, and obtains typed proxies for plugin-side services via `link<T>()`:
+`WasmlineLoader.load()` returns `WasmlineLoadResult.Success` with a loaded
+`Wasmline` instance or `WasmlineLoadResult.Failure` containing a
+`WasmlineLoadFailure`. The example below loads a signed remote manifest. A
+local manifest path or local artifact does not require a network client.
 
 ```kotlin
-import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.bind
 import crow.wasmline.link
-import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
-suspend fun main() {
+suspend fun callPlugin() {
     val module = when (val result = WasmlineLoader.load(
         source = "https://example.com/plugin/manifest.wlm",
         options = WasmlineLoadOptions(
-            runtimeConfig = WasmlineConfig(),
             networkClient = KtorNetworkClient(),
             trustedKeys = WasmlineTrustedKeySet.Builder()
                 .addHex(
@@ -75,162 +79,64 @@ suspend fun main() {
         is WasmlineLoadResult.Failure -> error(result.failure.message)
     }
 
-    module.bind(object : HostNotificationService {
-        override fun notify(event: String) { /* host-side handler */ }
-    })
-
-    val response = module.link<EchoService>().echo("ping")
-    module.close()
-}
-```
-
-Local artifacts and local manifests do not require a network artifact. For remote manifests, add either `wasmline-network-ktor` (JVM, Android, iOS) or `wasmline-network-okhttp` (JVM, Android). The adapter is consulted only on a fresh-manifest or artifact cache miss; a fully cached package can load without a network client. The built-in file cache streams artifact bodies into atomically published content-addressed files and evicts older entries above `WasmlineLoadOptions.maxCacheBytes` (512 MiB by default). Applications can also implement `WasmlineNetworkClient`, provide a custom cache, or provide a custom remote resolver.
-
-One remote manifest can contain variants for several Wasmtime AOT profiles and
-platforms. The loader verifies the Ed25519 envelope, compares the manifest with
-the native engine's backend-specific profile IDs and target identity, and then
-requests one content-addressed artifact. A cold load normally performs one
-manifest request and one artifact request. It does not download the complete
-offline ZIP or unrelated variants. Core Web packages select the single
-profile-independent RAW_WASM variant.
-
-## Runtime Lifecycle and API Ownership
-
-`WasmlineLoader`, `WasmlineRuntime`, and a loaded `Wasmline` have separate responsibilities:
-
-| API | Responsibility |
-|---|---|
-| `WasmlineLoader` | Resolve sources, verify packages, select a compatible artifact, and load it |
-| `WasmlineRuntime` | Manage process-wide platform linking, engine warm-up, runtime information, and shutdown |
-| `Wasmline` | Represent one loaded artifact and release that handle with `close()` |
-
-Most applications should call `WasmlineLoader.load()` directly. Native linking and engine creation happen lazily. Startup optimization is optional:
-
-```kotlin
-import crow.wasmline.WasmlineEngineKind
-import crow.wasmline.WasmlineRuntime
-
-WasmlineRuntime.preload() // Link the platform runtime without creating an engine.
-WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY) // Create the selected engine early.
-```
-
-`WasmlineRuntime.nativeInfo()` returns the linked native runtime identity and its `supportedEngines`; it returns `null` in a browser. Browser runtimes do not provide native engine warm-up. Repeating `warmUp()` for the selected engine is safe. Switching engines is allowed only after all loaded artifact handles have been closed; otherwise warm-up or a conflicting artifact load fails without invalidating the live handles.
-
-Use `Wasmline.close()` for normal artifact ownership. Reserve `WasmlineRuntime.shutdown()` for process or application teardown because it releases all engines, artifacts, and sessions and invalidates every live `Wasmline` handle.
-
-The complete request overload is public when a load needs metadata or custom resolver hooks:
-
-```kotlin
-import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.loader.WasmlineLoadRequest
-import crow.wasmline.loader.WasmlineLoadOptions
-import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineRemotePackageResolver
-import crow.wasmline.loader.WasmlineSource
-import crow.wasmline.loader.WasmlineSourceResolvers
-
-suspend fun loadWithCustomResolver(
-    packageUrl: String,
-    loadOptions: WasmlineLoadOptions,
-    appPackageResolver: WasmlineRemotePackageResolver,
-): WasmlineLoadResult =
-    WasmlineLoader.load(
-        WasmlineLoadRequest(
-            source = WasmlineSource.RemoteManifestUrl(packageUrl),
-            options = loadOptions,
-            metadata = mapOf("channel" to "beta"),
-            resolvers = WasmlineSourceResolvers(remotePackage = appPackageResolver),
-        ),
-    )
-```
-
-<Callout type="info" title="IR plugin rewrite targets">
-  `link<T>()` and `bind(impl)` are Kotlin IR compiler plugin rewrite targets. The IR plugin replaces each call site with a direct invocation of the synthesized `*_WasmlineBridge`. If the `wasmline-kotlin-plugin` is not applied to the compilation unit, these functions throw `UnsupportedOperationException` at runtime.
-</Callout>
-
-## Select an Invocation Path
-
-Use `WasmlineArtifactDescriptor` when the artifact is not a default Core Wasmline module. The execution model and invocation protocol are validated as a pair:
-
-```kotlin
-import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineComponentValue
-import crow.wasmline.WasmlineEngineKind
-import crow.wasmline.WasmlineExecutionModel
-import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineRuntime
-import crow.wasmline.invokeComponentResult
-import crow.wasmline.invocation.WasmlineCallResult
-import crow.wasmline.loader.WasmlineLoader
-
-val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
-val pulleyProfileId = requireNotNull(
-    runtime.aotCompatibilityProfileIdsByBackend[WasmlineEngineKind.PULLEY],
-).single()
-val result = WasmlineLoader.load(
-    WasmlineArtifactDescriptor(
-        path = "component.pwasm",
-        artifactFormat = WasmlineArtifactFormat.PWASM,
-        architecture = "pulley${runtime.pointerWidth}",
-        pointerWidth = runtime.pointerWidth,
-        aotCompatibilityProfileId = pulleyProfileId,
-        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-        exportName = "wasmline:sample-component-export/calculator@1.0.0#add",
-        contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
-    ),
-)
-
-when (result) {
-    is WasmlineLoadResult.Success -> when (
-        val call = result.wasmline.invokeComponentResult(
-            exportName = "add",
-            arguments = listOf(WasmlineComponentValue.S32(1), WasmlineComponentValue.S32(2)),
-        ),
-    ) {
-        is WasmlineCallResult.Success -> useValues(call.value.values)
-        is WasmlineCallResult.Failure -> log(call.failure.message)
+    try {
+        val reply = module.link<EchoService>().echo("ping")
+        println(reply)
+    } finally {
+        module.close()
     }
-
-        is WasmlineLoadResult.Failure -> log(result.failure.message)
 }
 ```
 
-This explicit descriptor form is intended for a known local artifact. For a
-package manifest, pass its path or URL and let the shared selector choose CWASM,
-PWASM, or Web WASM. Do not derive an AOT profile from `wasmtimeVersion`.
+The loader verifies the manifest signature before it selects an artifact. For a
+remote package, it fetches the manifest and one selected artifact; it does not
+download the offline ZIP or unrelated platform files.
 
-`WASMLINE_SERVICE` is the service protocol. `CORE_WASM` can use either that
-Service bridge or `RAW_EXPORT`. Raw Export uses `CoreWasmModule` and
-`CoreWasmSession` with `RawValue` (`i32`, `i64`, `f32`, `f64`), multi-value
-results, synchronous `RawImport` callbacks, and checked `RawMemory`; it does
-not use action/payload frames. On Web, register bytes with
-`WasmlineWeb.registerBytes()` or prefetch them before loading, and register all
-imports before `instantiate()`. Web `i64` uses `BigInt` at the JavaScript
-boundary, and imports cannot wait for asynchronous APIs. Native Raw Export
-loads matching `.cwasm` or `.pwasm` artifacts through Wasmtime. The Component
-Model path remains a separate typed WIT boundary. The runtime does not run
-WIT-to-Wasm or binding tools during load; the optional Gradle/CLI Component
-pipeline performs that build step ahead of time. See the [Wasmline Service
-guide](/en/docs/component-service) for the Service envelope and callback flow.
+## Load Sources and Ownership
 
-For a direct Core Wasm module, keep loading and instantiation separate so every
-host import is registered before the WebAssembly instance is created:
+| Source | Accepted by | Requirement |
+|---|---|---|
+| Local manifest | Native and Web, when its variants match the platform | Supply a path to `WasmlineLoader.load()` |
+| Remote manifest URL | Native and Web, when its variants match the platform | Supply trusted keys and a network client for cache misses |
+| Local `.cwasm` or `.pwasm` descriptor | Native only | Specify the execution model, invocation protocol, and matching profile |
+| Raw `.wasm` descriptor | Web Core Wasm only | Register or prefetch bytes before loading |
+
+Call `Wasmline.close()` for each successfully loaded module. Use
+`WasmlineRuntime.shutdown()` only at application or process shutdown because it
+closes every live Wasmline module and session.
+
+## Choose an Invocation API
+
+| Execution model and protocol | Main API | Where it runs |
+|---|---|---|
+| `CORE_WASM + WASMLINE_SERVICE` | `link<T>()`, `bind(impl)`, or `callResult()` | Native and Web |
+| `CORE_WASM + RAW_EXPORT` | `CoreWasmModule`, `CoreWasmSession`, and `RawValue` | Native and Web |
+| `COMPONENT_MODEL + WASMLINE_SERVICE` | `link<T>()` and `bind(impl)` | Native |
+| `COMPONENT_MODEL + COMPONENT_EXPORT` | `invokeComponentResult()` | Native |
+
+The file extension does not choose this API. A signed manifest or explicit
+`WasmlineArtifactDescriptor` declares the execution model and invocation
+protocol.
+
+## Call a Raw Export
+
+Raw Export does not use service action bytes. It calls declared numeric exports
+and returns `RawValue` values. The Web API requires byte registration and all
+imports before instantiation. Web `i64` values cross the JavaScript boundary as
+`BigInt`; an import callback must return synchronously.
 
 ```kotlin
 import crow.wasmline.CoreWasmSessionOptions
 import crow.wasmline.RawAbiMetadata
 import crow.wasmline.RawExport
 import crow.wasmline.RawExportKind
-import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.RawFunctionSignature
 import crow.wasmline.RawImport
 import crow.wasmline.RawImportDeclaration
 import crow.wasmline.RawValue
 import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineCoreLoadResult
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -270,7 +176,7 @@ val module = when (val loaded = WasmlineLoader.loadCoreModule(
     ),
 )) {
     is WasmlineCoreLoadResult.Success -> loaded.module
-    is WasmlineCoreLoadResult.Failure -> error("${loaded.failure.code}: ${loaded.failure.message}")
+    is WasmlineCoreLoadResult.Failure -> error(loaded.failure.message)
 }
 
 val session = module.instantiate(
@@ -284,90 +190,41 @@ val session = module.instantiate(
                     results = listOf(RawValueType.I32),
                 ),
             ) { _, values ->
-                WasmlineCallResult.Success(
-                    listOf(RawValue.I32((values[0] as RawValue.I32).value + (values[1] as RawValue.I32).value)),
-                )
+                val left = (values[0] as RawValue.I32).value
+                val right = (values[1] as RawValue.I32).value
+                WasmlineCallResult.Success(listOf(RawValue.I32(left + right)))
             },
         ),
     ),
 ).getOrThrow()
 
-val values = session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow()
-session.memory?.write(0, byteArrayOf(1, 2, 3))?.getOrThrow()
-session.close()
-module.close()
+try {
+    val values = session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow()
+    check(values == listOf(RawValue.I32(5)))
+} finally {
+    session.close()
+    module.close()
+}
 ```
 
-The canonical failure types are `WasmlineFailure` for result values,
-`WasmlineException` for explicit throwing adapters, and `WasmlineLoadFailure`
-for failures that happen before a module exists. Result APIs expose
-`failure`, `failure.code`, and `failure.message` as their only failure model.
+Native Raw Export uses a matching `.cwasm` or `.pwasm` descriptor instead of
+`RAW_WASM`. The session API, scalar values, imports, and checked memory API are
+the same.
 
-## Result and Exception Boundary
+## Handle Results and Errors
 
-Use `callResult`, `invokeRawResult`, and the Core session API when normal call
-failures should be handled as data. The result has either `Success(value)` or
-`Failure(failure)`; inspect `failure.code` rather than parsing the message.
+Use `callResult()`, `invokeRawResult()`, `invokeComponentResult()`, or the Core
+session result APIs when a failure must be handled as data. Each result is
+`Success(value)` or `Failure(failure)`. Branch on `failure.code`, not the text
+of `failure.message`.
 
-An action that has no bound handler returns `ACTION_NOT_BOUND`. It is not represented by an empty payload and does not crash the host. Unknown actions, invalid payloads, handler failures, traps, transport failures, and malformed response frames also return a failure result when the runtime can construct one.
+For example, an action without a bound handler returns `ACTION_NOT_BOUND`.
+`throwOnFailure()` converts a failure into `WasmlineException` only when the
+caller explicitly requests exceptions. See [FAQ](/en/docs/faq) for the Core
+response-frame fields and artifact rules.
 
-`getOrNull()` and `failureOrNull()` provide non-throwing reads.
-`throwOnFailure()` adapts a `WasmlineFailure` to `WasmlineException` explicitly;
-it is not part of the default result path.
+## Next Pages
 
-The Core response frame uses the fixed `WLMF` magic marker and a one-byte `frameVersion`. The current value is `1`. The magic marker identifies the frame entry format; it is not authentication. `frameVersion` identifies the response byte layout; it is not the Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not add this Core frame.
-
-## Stable Error Codes
-
-Error codes are stable identifiers. Applications should branch on the code and use the message only for diagnostics.
-
-| Code | Value | Meaning |
-|---|---:|---|
-| `ACTION_NOT_BOUND` | `1001` | No handler is bound for the action scope. |
-| `UNKNOWN_ACTION` | `1002` | The action name is not registered. |
-| `INVALID_PAYLOAD` | `1003` | The payload or typed arguments are invalid. |
-| `HANDLER_FAILED` | `1004` | A handler failed during execution. |
-| `SERIALIZATION_FAILED` | `1005` | Business data could not be serialized. |
-| `ENGINE_NOT_INITIALIZED` | `2001` | The Wasmtime engine is not initialized. |
-| `CORE_TRAP` | `2002` | Core Wasm execution trapped. |
-| `CORE_EXPORT_NOT_FOUND` | `2003` | A Core export is missing. |
-| `INVOCATION_PROTOCOL_MISMATCH` | `2004` | The descriptor and call API do not match. |
-| `MODULE_FORMAT_INVALID` | `2201` | The raw or AOT module format is invalid. |
-| `WASM_FEATURE_UNSUPPORTED` | `2202` | A required WebAssembly feature is unavailable. |
-| `IMPORT_MISSING` | `2203` | A declared host import was not registered. |
-| `IMPORT_SIGNATURE_MISMATCH` | `2204` | An import signature does not match the module. |
-| `INSTANTIATION_FAILED` | `2205` | Module instantiation failed. |
-| `EXPORT_KIND_MISMATCH` | `2206` | An export exists but has the wrong kind. |
-| `ARGUMENT_COUNT_MISMATCH` | `2207` | The argument count is incorrect. |
-| `ARGUMENT_TYPE_MISMATCH` | `2208` | An argument type is incorrect. |
-| `RESULT_TYPE_UNSUPPORTED` | `2209` | A result type is outside the scalar ABI. |
-| `MEMORY_OUT_OF_BOUNDS` | `2210` | A linear-memory range is invalid. |
-| `IMPORT_HANDLER_FAILED` | `2211` | A synchronous host import failed. |
-| `SESSION_CLOSED` | `2212` | A closed module or session was used. |
-| `CONCURRENT_ACCESS` | `2213` | A session already has an active operation. |
-| `REENTRANT_CALL` | `2214` | An import callback reentered its session. |
-| `UNSUPPORTED_EXPORT_KIND` | `2215` | The backend cannot use the requested export kind. |
-| `WASM_TRAP` | `2216` | Core Wasm execution trapped. |
-| `EXPORT_SIGNATURE_MISSING` | `2217` | A Web call lacks signature metadata. |
-| `EXPORT_NOT_FOUND` | `2218` | The requested raw export is missing. |
-| `COMPONENT_TRAP` | `2101` | Component Model execution trapped. |
-| `COMPONENT_EXPORT_NOT_FOUND` | `2102` | A Component export is missing. |
-| `COMPONENT_CALL_FAILED` | `2103` | A Component call did not return successfully. |
-| `RESPONSE_MALFORMED` | `3001` | The response frame is invalid. |
-| `RESPONSE_MISSING` | `3002` | No response was returned. |
-| `TRANSPORT_FAILURE` | `3003` | A platform bridge failed. |
-| `RESPONSE_UNSUPPORTED_VERSION` | `3004` | The Core response frame version is unsupported. |
-
-## Sample Applications
-
-Reference implementations are located under `wasmline-samples/kotlin/`:
-
-| Module | Description |
-|---|---|
-| `sample-common` | Shared service contract interface definitions: `EchoService`, `TimeSyncService`, `WebBridgeService` |
-| `sample-plugin` | Kotlin/WasmWasi plugin — registers implementations via `bind()`, invokes host services via `link()` |
-| `sample-component-plugin` | Kotlin/WasmWasi `wasmline:service@1.0.0` Component with a generated host callback |
-| `sample-apps/android` | Android host — loads `.pwasm` artifact, registers host callbacks, invokes plugin services |
-| `sample-apps/application` | JVM headless desktop host |
-| `sample-apps/multiplatform` | Compose Multiplatform application — Android and Desktop |
-| `sample-apps/multiplatform/webApp` | Web host — Kotlin/JS and Kotlin/WasmJS targets |
+- [Component Service Protocol](/en/docs/component-service): fixed WIT requests and host callbacks.
+- [Gradle Plugin](/en/docs/gradle-plugin): create signed packages and AOT artifacts.
+- [Platform Architecture](/en/docs/architecture): execution models and module ownership.

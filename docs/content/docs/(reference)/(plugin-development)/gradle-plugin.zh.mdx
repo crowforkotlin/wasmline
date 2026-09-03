@@ -1,0 +1,185 @@
+---
+title: Gradle 插件
+description: 配置 AOT profile、签名、打包与 Component 工具
+createdAt: 2026-08-15
+updatedAt: 2026-09-03
+---
+
+# Gradle 插件
+
+`crow.wasmline` 插件会为声明 `wasmWasi` 目标的 Kotlin Multiplatform 模块注册
+构建任务。它与 CLI 使用相同的 AOT catalog、compiler resolver、签名代码和
+package 写入代码。
+
+## AOT Profile 选择
+
+Native AOT 构建必须选择一组 catalog generation。选择器与产物 target 相互独立：
+`targets` 决定写入哪些文件，selector 决定编译哪些 AOT profile。
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    manifest {
+        pluginId = "com.example.plugin"
+        version = "1.0.0"
+        buildTimestamp = 0L
+        signingKey = file("keys/ed25519_private.key")
+    }
+    wasmtime {
+        aotCompatibility {
+            current()
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+可用 selector 互斥：
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            minimum()
+            // all()
+            // versionRanges {
+            //     include(from = "1.0.0", through = "1.20.0")
+            //     include(from = "1.50.0", through = "1.72.3")
+            // }
+            suppressCompatibilityWarning.set(false)
+        }
+    }
+}
+```
+
+| Selector | 结果 |
+|---|---|
+| `current()` | 当前 Wasmline 发行版使用的 generation |
+| `minimum()` | 从配置的支持下限到当前发行版的全部 generation |
+| `all()` | 本地 catalog 中的全部 generation |
+| `versionRanges {}` | 与列出的闭区间 `x.y.z` 相交的 generation |
+
+selector 缺失或范围为空时，会在下载 compiler asset 前失败。仓库根目录的
+`aot-compatibility.json` 是唯一人工维护的 AOT catalog。修改后执行
+`./scripts/wasmline aot sync`；该命令会校验条目并生成构建工具使用的 packaged
+lock。generation 编号只用于排列 catalog 条目，Native 加载仍按已链接 engine
+报告的 backend-specific profile ID 匹配。
+
+每次 assemble 成功后，`wasmlineCheckAotCompatibility` 会将本地选择与最新稳定
+catalog 比较，并写入 `build/reports/wasmline/aot-compatibility-check.json`。
+检查的网络等待时间上限为五秒，即使没有缺失 generation 也会输出警告。
+确认报告后才应设置 `suppressCompatibilityWarning.set(true)`；它只隐藏警告，不会
+跳过检查或改变 AOT 文件。
+
+`targets` 决定生成文件。PWASM 使用 `pulley32` 或 `pulley64`，CWASM 使用例如
+`x86_64-linux` 的平台 target。iOS 只使用 `pulley64`。Compiler archive 从生成
+的 lock 解析，并缓存到 `~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/`。
+`autoDownload` 只允许下载 lock 中已有摘要的文件。
+
+## Raw Export ABI
+
+`CORE_WASM + RAW_EXPORT` package 使用 `manifest.rawAbi` 声明数值 ABI。Native
+和 Web Loader 都读取签名后的 contract。
+
+```kotlin
+import crow.wasmline.RawAbiMetadata
+import crow.wasmline.RawExport
+import crow.wasmline.RawExportKind
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+
+wasmline {
+    manifest {
+        executionModel = WasmlineExecutionModel.CORE_WASM
+        invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT
+        exportName = "add_i32"
+        rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport(
+                    name = "add_i32",
+                    kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+        )
+    }
+}
+```
+
+不要在 `contractMetadata` 中写入参数或返回值类型。AOT 任务会先规范化
+`rawAbi`，再写入 cache input 和 build record。
+
+## 构建并提供 Package
+
+```bash
+./gradlew wasmlineAssembleDebug
+./gradlew wasmlineAssembleRelease
+./gradlew wasmlineServerDeploy
+```
+
+多模块构建需要加入模块路径，例如 `./gradlew :plugin:wasmlineAssembleRelease`。
+
+assemble 任务会为全部选中的 profile 和 target 写入一个签名 manifest。Core Web
+`.wasm` 只保存一次，输出目录为：
+
+```text
+build/wasmline/output/{pluginId}-{version}/
+build/wasmline/dist/{pluginId}-{version}.zip
+```
+
+```kotlin
+import crow.wasmline.gradle.WasmlineBuildVariant
+
+wasmline {
+    server {
+        host = "0.0.0.0"
+        port = 8080
+        deployVariant = WasmlineBuildVariant.RELEASE
+    }
+}
+```
+
+`deployVariant` 默认为 `DEBUG`。Server 会提供所选 package 的文件，直到任务停止。
+
+## 注册任务
+
+| 任务 | 用途 |
+|---|---|
+| `wasmlineAotBuildDebug` | 为配置的 target 构建 Debug AOT profile |
+| `wasmlineAotBuildRelease` | 为配置的 target 构建 Release AOT profile |
+| `wasmlineCheckAotCompatibility` | 将本地 AOT profile 与最新 catalog 比较 |
+| `wasmlineAssembleDebug` | 签名 Debug manifest 并打包文件 |
+| `wasmlineAssembleRelease` | 签名 Release manifest 并打包文件 |
+| `wasmlineServerDeploy` | 构建并提供 package 目录 |
+| `generateWasmlineManifestKeyPairEd25519` | 生成 Ed25519 manifest 密钥对 |
+| `wasmlineDownloadComponentTools` | 下载锁定的 `wit-bindgen`、`wasm-tools` 和 WASI adapter |
+| `wasmlineComponentizeDebug` | 创建或校验 Debug Component 输入 |
+| `wasmlineComponentizeRelease` | 创建或校验 Release Component 输入 |
+| `wasmlineGenerateWitBindings` | 未提供 Component 输入时生成 guest binding |
+| `wasmlineGenerateHostWitBindings` | 启用 host binding 时生成 host facade |
+
+Raw Component Wasm 是构建输入，不作为浏览器 artifact 发布。
+
+## 构建替换与可复现性
+
+签名开始前必须完成全部 AOT 构建。编译、摘要校验、签名或 ZIP 替换失败时，上一
+个 package 目录和 ZIP 保持不变。需要可复现字节时，设置
+`manifest.buildTimestamp`，通常取自 `SOURCE_DATE_EPOCH`。
+
+## API 文档
+
+```bash
+./wasmline-multiplatform/gradlew -p wasmline-multiplatform dokkaGenerate
+```
+
+生成的 API 文档位于 `wasmline-multiplatform/build/dokka/html/`。

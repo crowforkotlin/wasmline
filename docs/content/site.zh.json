@@ -29,7 +29,7 @@
     "cards": {
       "docs": {
         "title": "文档",
-        "description": "安装、使用指南、CLI 参考与架构细节。"
+        "description": "安装、使用、插件开发与运行时参考。"
       },
       "runtime": {
         "title": "运行时",

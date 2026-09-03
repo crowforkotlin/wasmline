@@ -4,8 +4,12 @@
 
 - Put documentation pages in `docs/content/docs/`.
 - Use `<slug>.mdx` for English and `<slug>.zh.mdx` for Chinese.
-- Keep page order in `meta.json` and `meta.zh.json`. Use the same slug order in
-  both files unless the user asks for a locale-specific difference.
+- Keep page order in the nearest `meta.json` and `meta.zh.json` files. Use the
+  same slug order in both files unless the user asks for a locale-specific
+  difference. Parenthesized directories such as `(reference)` are route
+  groups; they organize the page tree without adding a URL segment. A group
+  whose metadata sets `root: true` is a top-level sidebar tab. Nested groups
+  omit `root` and render as sidebar folders.
 - Keep shared Chinese site copy outside MDX in `docs/content/site.zh.json`.
 - Keep code samples in Chinese pages in English unless the sample itself must
   show localized data.

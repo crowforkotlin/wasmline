@@ -1,0 +1,117 @@
+---
+title: 组件全览
+description: 本站使用的 Fumadocs 组件示例
+createdAt: 2026-01-08
+updatedAt: 2026-09-03
+---
+
+# 文本与排版
+
+这是一个普通段落，包含 **加粗**、*斜体*、~~删除线~~ 和 `行内代码`。
+
+## 引用
+
+> 这是一个引用块。
+> 可以包含多行文字。
+
+## 提示框
+
+<Callout title="默认提示">
+  这是一条普通提示信息。
+</Callout>
+
+<Callout type="info" title="信息">
+  这里展示补充信息。
+</Callout>
+
+<Callout type="warn" title="警告">
+  请在继续操作前检查配置。
+</Callout>
+
+<Callout type="error" title="错误">
+  操作失败，请检查输入。
+</Callout>
+
+## 卡片
+
+<Cards>
+  <Card href="https://nextjs.org/docs" title="Next.js 文档" description="访问 Next.js 官方文档" />
+  <Card href="https://fumadocs.dev" title="Fumadocs 文档" description="查看 Fumadocs 使用说明" />
+</Cards>
+
+## 选项卡
+
+<Tabs items={['JavaScript', 'Rust', 'Go']}>
+  <Tab value="JavaScript">
+    ```javascript
+    console.log('Hello World');
+    ```
+  </Tab>
+  <Tab value="Rust">
+    ```rust
+    fn main() {
+        println!("Hello World");
+    }
+    ```
+  </Tab>
+  <Tab value="Go">
+    ```go
+    package main
+
+    import "fmt"
+
+    func main() {
+        fmt.Println("Hello World")
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 折叠面板
+
+<Accordions>
+  <Accordion title="什么是 Fumadocs？">
+    Fumadocs 是一个基于 Next.js 的文档构建框架。
+  </Accordion>
+  <Accordion title="如何安装 Fumadocs？">
+    运行 `pnpm create fumadocs-app` 创建项目。
+  </Accordion>
+</Accordions>
+
+## 步骤条
+
+<Steps>
+  <Step>
+    ### 第一步：安装依赖
+
+    ```bash
+    pnpm install
+    ```
+  </Step>
+  <Step>
+    ### 第二步：启动开发服务器
+
+    ```bash
+    pnpm dev
+    ```
+  </Step>
+  <Step>
+    ### 第三步：构建网站
+
+    ```bash
+    pnpm build
+    ```
+  </Step>
+</Steps>
+
+## 代码块
+
+代码块可以显示文件名和高亮行：
+
+```tsx title="src/app/page.tsx"
+import { useMDXComponents } from '@/mdx-components'; // [!code highlight]
+
+export default function Page() {
+  return <h1>Hello World</h1>;
+}
+```

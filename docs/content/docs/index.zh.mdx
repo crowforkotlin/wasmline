@@ -1,13 +1,13 @@
 ---
-title: wasmline 概览
-description: 基于 Kotlin Multiplatform 的跨平台 WebAssembly (WASI) 插件框架
+title: 概览
+description: 用于加载和调用 WebAssembly 插件的 Kotlin Multiplatform API
 createdAt: 2026-01-08
-updatedAt: 2026-08-15
+updatedAt: 2026-09-03
 ---
 
-# wasmline
+# 概览
 
-Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Desktop 与 Web 应用中加载并调用符合 WASI 规范的 WebAssembly 插件。服务契约以 Kotlin `interface` 声明，序列化与分发代码由内置的 Kotlin IR 编译器插件在编译期生成。
+Wasmline 提供 Kotlin Multiplatform API，可在 Android、iOS、macOS、Linux、Windows 和 Web 上加载并调用 WebAssembly 插件。原生目标使用 Wasmtime 后端，浏览器目标使用浏览器的 WebAssembly API。服务契约使用 Kotlin `interface` 声明；可选的 Kotlin IR 编译器插件在编译期生成桥接代码。
 
 ## 平台支持
 
@@ -22,7 +22,7 @@ Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Deskt
 | Web（Kotlin/JS · Kotlin/WasmJS） | 浏览器 JS 引擎 | 仅原始 `.wasm` | web |
 
 <Callout type="warn" title="Web 产物限制">
-  CLI 流水线生成的 AOT 产物（`.cwasm`、`.pwasm`）不能用于 Web。Web 目标只接受原始 `.wasm` 二进制。
+  CLI 生成的 AOT 产物（`.cwasm`、`.pwasm`）不能用于 Web。Web 目标只接受原始 `.wasm` 二进制。
 </Callout>
 
 ## 示例应用
@@ -44,17 +44,9 @@ Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Deskt
   </Tab>
 </Tabs>
 
-## 文档导航
+## 开始使用
 
 <Cards>
-  <Card href="/zh/docs/installation" title="安装" description="在使用方项目中通过 Gradle 引入 Wasmline — 插件应用与 Maven 依赖" />
-  <Card href="/zh/docs/gradle-plugin" title="Gradle 插件" description="构件、服务、工具链、签名与 Component 流水线任务" />
-  <Card href="/zh/docs/building-from-source" title="从源码编译" description="面向贡献者的工具链要求与构建工作流" />
-  <Card href="/zh/docs/usage" title="使用指南" description="服务契约定义、插件实现与宿主端模块加载" />
-  <Card href="/zh/docs/component-service" title="Wasmline Service" description="WIT envelope、Component 构建流水线与跨语言回调" />
-  <Card href="/zh/docs/testing" title="测试" description="运行时、native、Web、IR 与版本同步检查" />
-  <Card href="/zh/docs/cli" title="CLI 参考" description="插件构建流水线命令与构建产物布局" />
-  <Card href="/zh/docs/architecture" title="平台架构" description="各平台执行栈、模块依赖关系与仓库目录结构" />
-  <Card href="/zh/docs/compiler-plugin" title="编译器插件" description="IR 变换流水线、静态契约约束与测试工作流" />
-  <Card href="/zh/docs/faq" title="常见问题" description="浏览器执行路径、产物格式差异与插件隔离模型" />
+  <Card href="/zh/docs/installation" title="安装" description="应用 Gradle 插件，添加运行时模块和一个原生引擎" />
+  <Card href="/zh/docs/usage" title="使用" description="定义服务、构建插件、加载插件并处理调用结果" />
 </Cards>

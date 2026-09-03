@@ -1,15 +1,17 @@
 ---
 title: Building from Source
-description: Toolchain requirements and build workflows for contributors working on the Wasmline repository itself
+description: Required tools and commands for building the Wasmline repository
 createdAt: 2026-07-18
-updatedAt: 2026-08-21
+updatedAt: 2026-09-03
 ---
 
 # Building from Source
 
-This page is for developers who want to build the Wasmline framework itself — for example, to fork the repository, modify the runtime or compiler plugin, and submit a pull request. If you only want to **use** Wasmline in your own project, see [Installation](/en/docs/installation).
+This page is for contributors who build or modify the Wasmline repository. If
+you only want to use Wasmline in an application, see
+[Installation](/en/docs/installation).
 
-## System Requirements
+## Required Tools
 
 | Component | Required Version | Scope |
 |---|---|---|
@@ -20,31 +22,30 @@ This page is for developers who want to build the Wasmline framework itself — 
 | Python | **3.10+** | `./scripts/wasmline` repository commands |
 | Bash | **3.2+** | Internal JNI and Kotlin/Native build backends |
 
-The Kotlin/WasmWasi compiler backend must provide complete implementations of the following WebAssembly proposals:
+The Kotlin/WasmWasi compiler backend must support these WebAssembly proposals:
 
 | Proposal | Requirement | Rationale |
 |---|---|---|
-| GC (garbage collection) | Mandatory | Kotlin managed-object allocation within Wasm linear memory |
-| Function References | Mandatory | Interface vtable dispatch and closure representation |
-| Exception Handling | Mandatory | Kotlin exception propagation across the Wasm execution boundary |
-| Tail Call Optimization | Recommended | Stack overflow prevention in deep recursive call chains |
+| GC (garbage collection) | Required | Kotlin object allocation in Wasm |
+| Function References | Required | Interface dispatch and closures |
+| Exception Handling | Required | Kotlin exception propagation in Wasm |
+| Tail Call Optimization | Recommended | Reduces stack use in deep recursion |
 
 ## Environment Variables
 
 The following environment variables must be configured before building:
 
 ```bash
-# Android SDK path (required for Gradle Android builds)
+# Android SDK path
 export ANDROID_HOME="/home/<user>/Android/Sdk"
 
-# Android NDK path (required for Android native library builds)
+# Android NDK path
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638"
 
-# MinGW-w64 toolchain path (required for Zig Windows cross-compilation)
+# MinGW-w64 toolchain path for Windows cross-compilation
 export MINGW_PATH="/usr/x86_64-w64-mingw32"
 
-# macOS/Homebrew: use the formula root; build.zig resolves toolchain-x86_64/
-# automatically. The brew --prefix path remains valid across formula upgrades.
+# macOS/Homebrew: use the formula root; build.zig resolves toolchain-x86_64.
 # export MINGW_PATH="$(brew --prefix mingw-w64)"
 ```
 
@@ -58,7 +59,7 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
   If Windows artifacts are not required, `MINGW_PATH` can be omitted. Do not download or select the Windows target when its cross-compilation toolchain is unavailable.
 </Callout>
 
-## Environment Preflight
+## Check the Environment
 
 Run the repository preflight once per session, immediately before the first validation required after changing Wasmline files. Skip it for read-only work, changes outside Wasmline, and file changes that require no validation:
 
@@ -66,15 +67,17 @@ Run the repository preflight once per session, immediately before the first vali
 ./scripts/wasmline doctor
 ```
 
-The command checks JBR 21, Zig 0.16.0, downloaded Wasmtime files, JNI libraries, and Kotlin/Native libraries.
+The command checks JBR 21, Zig 0.16.0, Wasmtime files, JNI libraries, and
+Kotlin/Native libraries.
 
 <Callout type="info" title="local.properties">
   When building or running project commands manually, a `local.properties` file is required in the project root. Open the project in Android Studio and it will generate the file automatically. Ensure this file exists before invoking any Gradle commands outside the IDE.
 </Callout>
 
-## Platform Runtime Asset Initialization
+## Download Native Runtime Assets
 
-Asset initialization is required only for native target builds (Android, iOS, Desktop). Web-only builds do not require wasmtime min C-API assets.
+This step is required for Android, iOS, and Desktop builds. Web-only builds do
+not require the Wasmtime min C API assets.
 
 wasmtime min C-API headers and pre-built libraries must be present under `build/platforms/` before native target compilation proceeds. List the configured target ids, then download the exact targets and engines required by the build:
 
@@ -86,11 +89,18 @@ wasmtime min C-API headers and pre-built libraries must be present under `build/
 
 The command reads the pinned version from `versions.json` and requests that exact release. Downloads run concurrently; use `--jobs` to limit concurrency and `--proxy 127.0.0.1:7890` when an HTTP proxy is required.
 
-## Native Library Build
+## Build Native Libraries
 
-`./scripts/wasmline jni build` builds Android libraries with CMake and the NDK, builds JVM Desktop libraries with Zig, and deploys them to the selected engine modules' `jniLibs` and `resources` directories.
+`./scripts/wasmline jni build` uses CMake and the NDK for Android, uses Zig for
+JVM Desktop, and copies the libraries into the selected engine modules.
 
-Kotlin/Native uses a separate static bridge. Engine Gradle tasks call the internal backend for each available Native target and embed the selected `libwasmtime.a` into the published engine KLIB. To build one archive directly, run `./scripts/wasmline kotlin-native build --target linuxX64 --engine pulley`. Supported targets are `linuxArm64`, `linuxX64`, `mingwX64`, `macosArm64`, `macosX64`, `iosArm64`, and `iosSimulatorArm64`. Native consumers do not load JNI libraries.
+Kotlin/Native uses a separate static bridge. Engine Gradle tasks build one
+`libwasmtime.a` for each available Native target and embed it in the engine
+KLIB. Build one target directly with
+`./scripts/wasmline kotlin-native build --target linuxX64 --engine pulley`.
+Supported targets are `linuxArm64`, `linuxX64`, `mingwX64`, `macosArm64`,
+`macosX64`, `iosArm64`, and `iosSimulatorArm64`. Native consumers do not load
+JNI libraries.
 
 Apple targets are registered only when Gradle runs on macOS because their
 cinterop tasks require the Xcode SDK. Linux and Windows development builds omit
@@ -106,7 +116,7 @@ on macOS when Apple KLIBs are required.
 ./scripts/wasmline jni build --engine pulley
 ./scripts/wasmline jni build --engine cranelift
 
-# Build Kotlin/Native libraries for every target and engine supported by the current host.
+# Build Kotlin/Native libraries for every target supported by this host.
 ./scripts/wasmline kotlin-native build
 ```
 
@@ -116,7 +126,7 @@ Prerequisites:
 - Zig 0.16.0 is installed (JVM Desktop targets)
 - `MINGW_PATH` is set (Windows cross-compilation, optional)
 
-## Gradle Build Reference
+## Gradle Commands
 
 All operations are executed from `wasmline-multiplatform/`:
 
@@ -143,7 +153,9 @@ cd wasmline-multiplatform
 ./gradlew publishToMavenLocal
 ```
 
-The generator currently registers only `JvmBoxTestGenerated`. The diagnostic test scaffold is disabled, and there is no `testData/diagnostics/` suite or `JvmDiagnosticsTestGenerated` runner.
+The generator currently registers only `JvmBoxTestGenerated`. Diagnostic tests
+are disabled; there is no `testData/diagnostics/` suite or
+`JvmDiagnosticsTestGenerated` runner.
 
 The Kotlin sample is a separate Gradle build:
 
@@ -152,9 +164,10 @@ cd ../wasmline-samples/kotlin
 ./gradlew :sample-plugin:wasmlineAssembleDebug
 ```
 
-## Version Sync
+## Synchronize Versions
 
-Shared documentation and duplicated config version strings are synchronized from `versions.json`:
+Documentation and duplicated configuration versions are synchronized from
+`versions.json`:
 
 ```bash
 ./scripts/wasmline versions sync

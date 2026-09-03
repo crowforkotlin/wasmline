@@ -1,0 +1,193 @@
+---
+title: Gradle Plugin
+description: Configure AOT profiles, signing, packaging, and Component tools
+createdAt: 2026-08-15
+updatedAt: 2026-09-03
+---
+
+# Gradle Plugin
+
+The `crow.wasmline` plugin registers build tasks for Kotlin Multiplatform
+modules that declare a `wasmWasi` target. It uses the same AOT catalog,
+compiler resolver, signing code, and package writer as the CLI.
+
+## AOT Profile Selection
+
+Native AOT builds must select one set of catalog generations. The selection is
+independent of the artifact target: `targets` controls which files are written,
+while the selector controls which AOT profiles are compiled.
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    manifest {
+        pluginId = "com.example.plugin"
+        version = "1.0.0"
+        buildTimestamp = 0L
+        signingKey = file("keys/ed25519_private.key")
+    }
+    wasmtime {
+        aotCompatibility {
+            current()
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+Available selectors are mutually exclusive:
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            minimum()
+            // all()
+            // versionRanges {
+            //     include(from = "1.0.0", through = "1.20.0")
+            //     include(from = "1.50.0", through = "1.72.3")
+            // }
+            suppressCompatibilityWarning.set(false)
+        }
+    }
+}
+```
+
+| Selector | Result |
+|---|---|
+| `current()` | The generation used by the current Wasmline release |
+| `minimum()` | Every generation from the configured support minimum through the current release |
+| `all()` | Every generation in the local catalog |
+| `versionRanges {}` | Generations that overlap the listed inclusive `x.y.z` ranges |
+
+An empty or missing selector fails before compiler assets are downloaded. The
+repository root `aot-compatibility.json` is the only manually maintained AOT
+catalog. Run `./scripts/wasmline aot sync` after changing it; the command
+validates the entries and creates the packaged lock used by build tools. A
+generation number orders catalog entries. Native loading still matches the
+backend-specific profile ID reported by the linked engine.
+
+After a successful assemble, `wasmlineCheckAotCompatibility` compares the local
+selection with the latest stable catalog and writes
+`build/reports/wasmline/aot-compatibility-check.json`. The check has a five-
+second network deadline and logs a warning even when no generation is missing.
+Set `suppressCompatibilityWarning.set(true)` only after reviewing the report;
+it hides the warning but does not skip the check or change AOT files.
+
+`targets` controls generated files. Use `pulley32` or `pulley64` for PWASM and a
+platform target such as `x86_64-linux` for CWASM. iOS uses `pulley64` only.
+Compiler archives are resolved from the generated lock and cached under
+`~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/`. `autoDownload` only
+permits downloads whose digests are present in that lock.
+
+## Raw Export ABI
+
+`CORE_WASM + RAW_EXPORT` packages declare their numeric ABI with
+`manifest.rawAbi`. The signed contract is read by native and Web loaders.
+
+```kotlin
+import crow.wasmline.RawAbiMetadata
+import crow.wasmline.RawExport
+import crow.wasmline.RawExportKind
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineExecutionModel
+import crow.wasmline.WasmlineInvocationProtocol
+
+wasmline {
+    manifest {
+        executionModel = WasmlineExecutionModel.CORE_WASM
+        invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT
+        exportName = "add_i32"
+        rawAbi = RawAbiMetadata(
+            exports = listOf(
+                RawExport(
+                    name = "add_i32",
+                    kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+        )
+    }
+}
+```
+
+Do not put parameter or result types in `contractMetadata`. The AOT task
+canonicalizes `rawAbi` before it writes cache inputs and build records.
+
+## Build and Serve
+
+```bash
+./gradlew wasmlineAssembleDebug
+./gradlew wasmlineAssembleRelease
+./gradlew wasmlineServerDeploy
+```
+
+For a multi-module build, include the module path, for example
+`./gradlew :plugin:wasmlineAssembleRelease`.
+
+An assemble task writes one signed manifest for all selected profiles and
+targets. Core Web `.wasm` is stored once. The output paths are:
+
+```text
+build/wasmline/output/{pluginId}-{version}/
+build/wasmline/dist/{pluginId}-{version}.zip
+```
+
+```kotlin
+import crow.wasmline.gradle.WasmlineBuildVariant
+
+wasmline {
+    server {
+        host = "0.0.0.0"
+        port = 8080
+        deployVariant = WasmlineBuildVariant.RELEASE
+    }
+}
+```
+
+`deployVariant` defaults to `DEBUG`. The server serves the selected package
+until the task stops.
+
+## Registered Tasks
+
+| Task | Purpose |
+|---|---|
+| `wasmlineAotBuildDebug` | Build Debug AOT profiles for the configured targets |
+| `wasmlineAotBuildRelease` | Build Release AOT profiles for the configured targets |
+| `wasmlineCheckAotCompatibility` | Compare local AOT profiles with the latest catalog |
+| `wasmlineAssembleDebug` | Sign the Debug manifest and package files |
+| `wasmlineAssembleRelease` | Sign the Release manifest and package files |
+| `wasmlineServerDeploy` | Build and serve a package directory |
+| `generateWasmlineManifestKeyPairEd25519` | Generate an Ed25519 manifest key pair |
+| `wasmlineDownloadComponentTools` | Download locked `wit-bindgen`, `wasm-tools`, and the WASI adapter |
+| `wasmlineComponentizeDebug` | Create or validate the Debug Component input |
+| `wasmlineComponentizeRelease` | Create or validate the Release Component input |
+| `wasmlineGenerateWitBindings` | Generate guest bindings when no Component input is supplied |
+| `wasmlineGenerateHostWitBindings` | Generate host facades when host bindings are enabled |
+
+Raw Component Wasm is a build input. It is not published as a browser artifact.
+
+## Reproducible Output
+
+The complete AOT set is built before signing. A failed compile, digest check,
+signature, or ZIP replacement leaves the previous package directory and ZIP
+unchanged. Set `manifest.buildTimestamp`, commonly from `SOURCE_DATE_EPOCH`,
+when reproducible bytes are required.
+
+## API Documentation
+
+```bash
+./wasmline-multiplatform/gradlew -p wasmline-multiplatform dokkaGenerate
+```
+
+The generated API reference is written to
+`wasmline-multiplatform/build/dokka/html/`.

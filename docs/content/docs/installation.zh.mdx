@@ -1,26 +1,28 @@
 ---
 title: 安装
-description: 在使用方项目中通过 Gradle 引入 Wasmline — 插件应用与 Maven 依赖
+description: 应用 Gradle 插件，添加运行时模块和一个原生引擎
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-09-03
 ---
 
 # 安装
 
-Wasmline 以 Maven 构件形式分发，在使用方的 Gradle 项目中直接引入即可。如果你希望从源码构建框架本身或参与贡献，请参阅 [从源码编译](/zh/docs/building-from-source)。
+在 Gradle 项目中通过 Maven 构件使用 Wasmline。需要构建 Wasmline 仓库本身时，参阅
+[从源码编译](/zh/docs/building-from-source)。
 
 ## 环境要求
 
-- JDK / JBR **21**
+- JBR **21**
 - Kotlin **2.3.0-RC2** 或更高版本
 
 <Callout type="warn" title="Kotlin 版本要求">
-  最低需要 **Kotlin 2.3.0-RC2** 版本。低于该版本时，Kotlin/WasmWasi 编译器后端可能生成不完整的 Wasm 二进制，表现为插件加载失败，或在 `Session.invoke` 边界出现未定义行为。
-
-  ![Kotlin/Wasm 运行时支持矩阵](/images/kotlin_support.png)
+  最低需要 **Kotlin 2.3.0-RC2** 版本。更低版本可能生成不完整的 Kotlin/WasmWasi 二进制文件，不能
+  用于 Wasmline 插件。
 </Callout>
 
 ## 应用 Gradle 插件
+
+在使用生成的 `link<T>()` 或 `bind(impl)` 调用的编译单元中应用插件：
 
 ```kotlin
 // build.gradle.kts
@@ -29,49 +31,45 @@ plugins {
 }
 ```
 
-该插件会将 `wasmline-kotlin-plugin` IR 编译器插件应用到当前编译单元，在编译期重写 `link<T>()` 与 `bind(impl)` 调用点。未应用时，这些调用会在运行时抛出 `UnsupportedOperationException`。
+插件会应用 `wasmline-kotlin-plugin`。未应用时，公开的
+`Wasmline.callResult(action, bytes)` API 仍可使用，但 `link<T>()` 和 `bind(impl)`
+会在运行时抛出 `UnsupportedOperationException`。
 
-## 添加依赖
+## 添加运行时依赖
+
+使用 BOM 保证全部 Wasmline 模块使用同一版本。添加 `wasmline-loader` 和一个原生
+engine 模块。只有宿主需要下载远程 manifest 或缓存中不存在的产物时，才添加
+network 模块。
 
 ```kotlin
 dependencies {
     implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
-
-    // 核心加载器：manifest 校验、选择与模块加载
     implementation("crow.wasmline:wasmline-loader")
-
-    // 可选：远程缓存未命中时使用的 HTTP 客户端
-    implementation("crow.wasmline:wasmline-network-ktor")
-
-    // 只选择一个 native engine backend
     implementation("crow.wasmline:wasmline-engine-pulley")
+
+    // 仅在支持的原生目标执行远程加载时需要。
+    implementation("crow.wasmline:wasmline-network-ktor")
 }
 ```
 
-BOM 对 runtime、Loader、network adapter、compiler/Gradle plugin、CLI、
-plugin core 和两个 engine 模块施加 strict constraint。所有模块使用同一个
-Wasmline `x.y.z` 版本发布，不得单独升级 engine。Native 启动还会在反序列化
-任何 AOT artifact 前校验 Wasmline release identity 与 bridge ABI。
-
-| 构件 | 说明 |
+| 模块 | 用途 |
 |---|---|
-| `crow.wasmline:wasmline` | 核心运行时——执行、分发、序列化 SPI |
-| `crow.wasmline:wasmline-loader` | Load options、cache/network SPI、`.wlm` 解析与签名校验 |
-| `crow.wasmline:wasmline-network-ktor` | 远程加载使用的 Ktor adapter（JVM、Android、Apple、Linux、Windows Native） |
-| `crow.wasmline:wasmline-network-okhttp` | 基于 OkHttp 5.x 的 HTTP 网络客户端（JVM/Android） |
-| `crow.wasmline:wasmline-engine-pulley` | 仅 Pulley 解释器——仅支持 `.pwasm`，覆盖所有原生目标 |
-| `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley 运行时——优先 `.cwasm`，回退 `.pwasm` |
+| `wasmline` | 运行时 API、服务分发和序列化 SPI |
+| `wasmline-loader` | manifest 解析、签名校验、缓存访问和产物选择 |
+| `wasmline-network-ktor` | JVM、Android、Apple、Linux 和 Windows Native 的远程加载 |
+| `wasmline-network-okhttp` | 使用 OkHttp 的 JVM 和 Android 远程加载 |
+| `wasmline-engine-pulley` | 加载匹配的 `.pwasm` |
+| `wasmline-engine-cranelift` | 加载匹配的 `.cwasm`，也可加载匹配的 `.pwasm` |
 
-<Callout type="info" title="Network adapter 是可选依赖">
-  `wasmline-loader` 定义 network、cache 与 trust 抽象，但不指定 HTTP engine。本地产物与本地 manifest 不需要 network 模块。只有远程 manifest 缺失或过期，或所选 artifact 未命中缓存时，应用才需要选择 Ktor 或 OkHttp；fresh manifest 与对应 artifact 均已缓存时，不提供 network client 也能加载。浏览器 raw `.wasm` 使用 `WasmlineWeb.prefetch()`，不经过这两个 adapter。
-</Callout>
+BOM 保证 runtime、loader、插件、CLI、插件构建工具和 engine 模块使用同一
+Wasmline 版本。不要单独升级 engine 模块。
 
 ## Kotlin/Native 宿主
 
-Kotlin/Native 应用使用与 JVM、Android 宿主相同的 `WasmlineLoader` API。在 Native 源集添加一个引擎依赖后，已发布的 KMP 元数据会为 iOS、macOS、Linux 或 Windows 选择匹配的静态 Wasmtime bridge。
+在 Native source set 中添加相同的运行时模块。已发布的 Kotlin Multiplatform
+metadata 会为 iOS、macOS、Linux 或 Windows 选择匹配的静态 Wasmtime bridge。
 
 ```kotlin
-// build.gradle.kts
 val wasmlineVersion = "1.0.0"
 
 kotlin {
@@ -81,29 +79,35 @@ kotlin {
                 implementation("crow.wasmline:wasmline:$wasmlineVersion")
                 implementation("crow.wasmline:wasmline-loader:$wasmlineVersion")
                 implementation("crow.wasmline:wasmline-engine-pulley:$wasmlineVersion")
-                // 需要 .cwasm 时改用 wasmline-engine-cranelift。
             }
         }
     }
 }
 ```
 
-Pulley 在所有 Native 目标上接受 pointer width 匹配的 `.pwasm`。Cranelift
-会先按精确 profile、平台、pointer width 与 CPU feature 选择 `.cwasm`。
-只有不存在兼容 CWASM，并且 runtime 报告对应 Pulley profile 与 capability 时，
-才能使用 `.pwasm`。iOS 仍只使用 `pulley64`。Native 应用不加载 JNI 库，也不
-依赖源码目录路径。远程加载可使用 `wasmline-network-ktor`，它会根据 Native
-目标选择 Darwin、Curl 或 WinHTTP。
+`wasmline-engine-pulley` 加载匹配的 `pulley32` 或 `pulley64` `.pwasm`。
+`wasmline-engine-cranelift` 先查找 target 和 profile 完全匹配的 `.cwasm`；只有
+同时存在匹配的 Pulley profile 时才使用 `.pwasm`。iOS 只使用 `pulley64`
+`.pwasm`。
 
-当前 manifest 格式只接受 Ed25519。一个 package 使用一个签名 manifest 描述
-全部 AOT compatibility profile 与内容寻址 target。
-
-<Callout type="info" title="分发状态">
-  Wasmline 目前仍在开发中，尚未正式上线。构件通过 `mavenLocal()` 分发——在 `wasmline-multiplatform/` 下执行 `./gradlew publishToMavenLocal` 即可安装到本地仓库。Maven Central 发布正在筹备中。
+<Callout type="info" title="Network 模块是可选依赖">
+  本地 manifest 和本地产物不需要 Ktor 或 OkHttp。Loader 会在使用 network client
+  前检查缓存。浏览器加载 raw `.wasm` 使用 `WasmlineWeb.prefetch()`，不使用原生
+  network 模块。
 </Callout>
 
-## 下一步
+## 当前分发方式
 
-- [Gradle 插件](/zh/docs/gradle-plugin)—构建与提供构件、下载工具链并检查 Component 流水线任务。
-- [使用指南](/zh/docs/usage)——定义服务契约、实现插件并在宿主中调用。
-- [CLI 参考](/zh/docs/cli)——编译并打包用于分发的插件二进制。
+Wasmline 当前通过 `mavenLocal()` 分发。在本仓库执行下面命令后，其他本地项目可
+引用这些构件：
+
+```bash
+cd wasmline-multiplatform
+./gradlew publishToMavenLocal
+```
+
+## 后续页面
+
+- [使用](/zh/docs/usage)：定义和调用服务。
+- [Gradle 插件](/zh/docs/gradle-plugin)：构建签名 AOT package。
+- [AOT 兼容性](/zh/docs/wasmtime-download)：选择需要包含的 AOT profile。

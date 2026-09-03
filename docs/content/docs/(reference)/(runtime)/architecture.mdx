@@ -1,19 +1,22 @@
 ---
 title: Platform Architecture
-description: Per-platform execution stacks, module dependencies, and repository structure
+description: Execution models, module boundaries, and artifact selection by platform
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-09-03
 ---
 
 # Platform Architecture
 
-## Architecture Mind Map
+## Overview Diagram
 
 ![Wasmline Architecture Mind Map](/images/wasmline_mind_en.png)
 
 ## Execution Stacks
 
-Wasmline exposes a single API from `commonMain` / `hostMain` and selects an execution path per target platform. On native targets (Android, iOS, macOS, Linux, Windows), plugins execute through `wasmline-core` (C/C++, compiled with Zig 0.16.0) into the wasmtime C-API. On Web targets (Kotlin/JS, Kotlin/WasmJS), plugins execute through an inline JS runtime on the browser-native WebAssembly API — wasmtime is not involved.
+Wasmline exposes the same public API from `commonMain` and `hostMain`, then
+selects a backend for each target. Android, iOS, macOS, Linux, and Windows use
+`wasmline-core` (C/C++, built with Zig 0.16.0) and the Wasmtime C API. Kotlin/JS
+and Kotlin/WasmJS use the browser WebAssembly API; Wasmtime is not loaded.
 
 ### Native Target Stack — Android · iOS · macOS · Linux · Windows
 
@@ -29,10 +32,10 @@ Platform actual  (jniMain / nativeMain)
         │  Kotlin/Native C Interop (.def)     — iOS, macOS, Linux, Windows
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
-        │  Engine.cpp              — Wasmtime engine lifecycle and backend selection
-        │  Module.cpp/Component.cpp — deserialize-only Core and Component artifact caches
-        │  Session variants        — Wasmline Service, Raw Export, and Component calls
-        │  Api.cpp                 — JNI / C Interop surface (load, invoke, setOutbound, release)
+        │  Engine.cpp              — engine creation and backend selection
+        │  Module.cpp/Component.cpp — AOT deserialization and caches
+        │  Session variants        — service, Raw Export, and Component calls
+        │  Api.cpp                 — JNI / C Interop calls (load, invoke, setOutbound, release)
         ▼
 wasmtime C-API  v48.0.1
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
@@ -40,19 +43,18 @@ wasmtime C-API  v48.0.1
 Precompiled artifact  (.cwasm — Cranelift native AOT  |  .pwasm — Pulley bytecode; Core or Component is declared separately)
 ```
 
-The artifact and engine layers are separate capabilities. A Cranelift runtime
-loads CWASM only when its backend-specific profile and full target identity
-match. It may use PWASM only when no compatible CWASM exists and it reports a
-matching Pulley profile and PWASM capability. A Pulley runtime accepts PWASM
-only. iOS uses `pulley64` PWASM.
+The engine and artifact types are selected separately. A Cranelift runtime loads
+CWASM only when the profile and complete target identity match. It can use PWASM
+only when no matching CWASM exists and the runtime reports a matching Pulley
+profile. A Pulley runtime accepts PWASM only. iOS uses `pulley64` PWASM.
 
 ### Web Target Stack — Kotlin/JS · Kotlin/WasmJS
 
 ```text
 Host Application  (commonMain / hostMain)
         │
-        │  module.link<T>()      — IR-synthesized proxy (same IR pipeline as native)
-        │  module.bind(impl)     — dispatch registration (same IR pipeline as native)
+        │  module.link<T>()      — IR-generated proxy
+        │  module.bind(impl)     — IR-generated dispatch registration
         │
         ▼
 webMain / jsMain / wasmJsMain
@@ -78,13 +80,12 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
 Plugin binary  (raw .wasm — asynchronously prefetched with Fetch, then loaded from the byte cache)
 ```
 
-## Package and Selection Model
+## Manifest and Artifact Selection
 
-One signed manifest describes the logical plugin contract and the complete
-artifact matrix without repeating the contract for each file:
+One signed manifest describes the plugin contract and all available artifacts:
 
 ```text
-SignedManifestEnvelope
+SignedManifest
 └── exact signed payload bytes
     └── WasmlineManifest
         ├── runtimeContract
@@ -93,45 +94,58 @@ SignedManifestEnvelope
             └── variants (profile IDs, SHA-256, size)
 ```
 
-The envelope format and signature algorithm are fixed. The loader checks the
-format version, resolves the trusted key, verifies Ed25519 over the original
-payload bytes, and only then decodes and validates the manifest. Artifact paths
-are derived from digest and format:
+The manifest format and signature algorithm are fixed. The loader checks the
+format version, resolves a trusted key, verifies Ed25519 over the original
+payload bytes, and then decodes and validates the manifest. Artifact paths use
+the digest and extension:
 
 ```text
 artifacts/sha256/{digest-prefix}/{digest}.{extension}
 ```
 
-Native engine identity supplies supported formats, backend-specific AOT profile
-IDs, Wasmline release, bridge ABI, operating system, architecture, pointer
-width, and CPU feature profiles. Selection builds one profile-ID map and scans
-profiles, targets, and variants once. Its complexity is linear in manifest size;
-it does not scan package directories.
+The native engine reports supported formats, backend AOT profile IDs, Wasmline
+release, bridge ABI, operating system, architecture, pointer width, and CPU
+features. The loader builds one profile-ID map and scans the manifest entries
+once. It does not scan package directories.
 
-For a cold remote load, the loader requests `manifest.wlm`, selects one unique
-variant, and streams one artifact while checking its declared size and SHA-256.
-The complete offline ZIP is not part of this flow. A Core Web `.wasm` variant is
-profile-independent and stored once. Component raw Wasm remains a build input
-and is not published for the current Web runtime.
+For a remote load, the loader requests `manifest.wlm`, selects one variant, and
+streams that artifact while checking its declared size and SHA-256. It does not
+download the offline ZIP. A Core Web `.wasm` variant is independent of native
+profiles and is stored once. Raw Component Wasm remains a build input.
 
 ## Execution Models
 
-The runtime selects the backend from `WasmlineArtifactDescriptor`. File extensions do not select the execution model.
+The runtime selects the backend from `WasmlineArtifactDescriptor`. A file
+extension does not select the execution model.
 
 | Execution model | Invocation protocol | Runtime boundary | Core response frame |
 |---|---|---|---|
 | `CORE_WASM` | `WASMLINE_SERVICE` | `Session`, action router, and linear memory | Yes |
 | `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession`, exports, synchronous imports, and linear memory | No |
-| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` and the fixed `wasmline.wit` envelope | No |
+| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` and the fixed `wasmline.wit` request format | No |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` and Component Model values | No |
 
-`WASMLINE_SERVICE` selects the Wasmline service API. With `CORE_WASM`, its response bytes use the fixed `WLMF` magic marker and a one-byte `frameVersion` with the current value `1`. With `COMPONENT_MODEL`, it uses the fixed `wasmline:service@1.0.0` WIT envelope and Canonical ABI instead. The execution model therefore selects the transport; the protocol alone does not.
+`WASMLINE_SERVICE` selects the Wasmline service API. With `CORE_WASM`, response
+bytes use the fixed `WLMF` marker and one-byte `frameVersion` (`1`). With
+`COMPONENT_MODEL`, requests use the fixed `wasmline:service@1.0.0` WIT format and
+Canonical ABI. The execution model determines which representation is used.
 
 Raw Export calls use an explicitly declared numeric ABI. The current public raw value set is `i32`, `i64`, `f32`, and `f64`. Export signatures, synchronous imports, memory, and required features are stored in the signed `runtimeContract.rawAbi` model rather than encoded in free-form metadata. Raw calls do not allocate or parse a Core response frame.
 
-Component Model calls deserialize a precompiled Component `.cwasm` or `.pwasm` artifact through the Wasmtime Component Model API. They use Component Model typed values and do not require Core linear memory, `__wasmline_wasi_entry`, or the Core response frame. The runtime loader does not run `wit-bindgen`, `wasm-tools`, or `wasmtime compile`; the optional build pipeline in `wasmline-plugin-core`, the Gradle plugin, and the CLI completes that build work before loading. Optional `contractMetadata` records a call contract for validation and documentation; it is not compiler input.
+Component Model calls deserialize a precompiled Component `.cwasm` or `.pwasm`
+through the Wasmtime Component Model API. They use typed Component values and do
+not require Core linear memory, `__wasmline_wasi_entry`, or the Core response
+frame. The loader does not run `wit-bindgen`, `wasm-tools`, or `wasmtime compile`;
+the Gradle and CLI build tasks do that before loading. `contractMetadata` can
+record call information for validation and documentation, but is not compiler
+input.
 
-All three paths expose the same result semantics. A missing action binding returns `ACTION_NOT_BOUND` as a failure result. It is not encoded as an empty successful payload and does not require an exception. The Core path reports this through its response frame; Raw Export and Component Model report it through their typed result carrier. Exceptions remain for invalid programming contracts, unrecoverable runtime state, and failures that prevent construction of a result.
+All four combinations return the same success or failure shape. A missing
+service action binding returns `ACTION_NOT_BOUND`; it is not an empty successful
+payload. Core Service reports the failure in its response frame, while Raw
+Export and Component Model return a typed failure. Exceptions are reserved for
+invalid calls, unrecoverable runtime state, and failures that prevent a result
+from being created.
 
 The Web implementation supports both `CORE_WASM + WASMLINE_SERVICE` and
 `CORE_WASM + RAW_EXPORT` through the browser `WebAssembly.Module` and
@@ -156,7 +170,11 @@ wasmline-core (C/C++) ◄──── JNI / Native C Interop ─── wasmline
 wasmline-bom ── strict same-version constraints ──────► published Wasmline modules
 ```
 
-Network, cache, trusted-key, and load-request APIs belong to `wasmline-loader`. The Ktor and OkHttp artifacts implement the loader's suspend network SPI and depend toward the loader; the core `wasmline` runtime has no HTTP-engine dependency. Applications select an adapter only for remote cache misses. Ktor covers JVM, Android, Apple, Linux, and Windows Native through CIO, OkHttp, Darwin, Curl, and WinHTTP engines; OkHttp covers JVM and Android. Browser raw `.wasm` loading remains a separate `WasmlineWeb.prefetch()` flow.
+Network, cache, trusted-key, and load-request APIs belong to `wasmline-loader`.
+Ktor and OkHttp implement its suspend network SPI; the core runtime has no HTTP
+dependency. A host needs one of them only for a remote cache miss. Ktor covers
+JVM, Android, Apple, Linux, and Windows Native; OkHttp covers JVM and Android.
+Browser raw `.wasm` loading uses `WasmlineWeb.prefetch()`.
 
 ## Repository Structure
 

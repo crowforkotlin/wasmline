@@ -640,14 +640,26 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         FileSpec("README.md", readme_en),
         FileSpec("README_zh.md", readme_zh),
-        FileSpec("docs/content/docs/building-from-source.mdx", building_from_source_en),
-        FileSpec("docs/content/docs/building-from-source.zh.mdx", building_from_source_zh),
+        FileSpec(
+            "docs/content/docs/(reference)/(repository-development)/building-from-source.mdx",
+            building_from_source_en,
+        ),
+        FileSpec(
+            "docs/content/docs/(reference)/(repository-development)/building-from-source.zh.mdx",
+            building_from_source_zh,
+        ),
         FileSpec("docs/content/docs/installation.mdx", installation_en),
         FileSpec("docs/content/docs/installation.zh.mdx", installation_zh),
-        FileSpec("docs/content/docs/architecture.mdx", architecture_rules),
-        FileSpec("docs/content/docs/architecture.zh.mdx", architecture_rules),
-        FileSpec("docs/content/docs/testing.mdx", version_sync_docs_rules),
-        FileSpec("docs/content/docs/testing.zh.mdx", version_sync_docs_rules),
+        FileSpec("docs/content/docs/(reference)/(runtime)/architecture.mdx", architecture_rules),
+        FileSpec("docs/content/docs/(reference)/(runtime)/architecture.zh.mdx", architecture_rules),
+        FileSpec(
+            "docs/content/docs/(reference)/(repository-development)/testing.mdx",
+            version_sync_docs_rules,
+        ),
+        FileSpec(
+            "docs/content/docs/(reference)/(repository-development)/testing.zh.mdx",
+            version_sync_docs_rules,
+        ),
         FileSpec(
             "wasmline-multiplatform/docs/native-library-loading.md",
             (
@@ -891,7 +903,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "docs/content/docs/component-service.mdx",
+            "docs/content/docs/(reference)/(plugin-development)/component-service.mdx",
             (
                 Rule(
                     rf'(C\+\+ fixtures enforce `wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
@@ -904,7 +916,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "docs/content/docs/component-service.zh.mdx",
+            "docs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
             (
                 Rule(
                     rf'(CMake configure 阶段严格检查 `wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'

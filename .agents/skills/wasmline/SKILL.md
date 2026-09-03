@@ -19,7 +19,7 @@ Read only the documents required by the current task.
 | [`aot-compatibility.md`](./references/aot-compatibility.md) | AOT generation catalogs, selector DSL, compatibility checks, or release assets |
 | [`web-bindings-guide.md`](./references/web-bindings-guide.md) | `webMain`, `jsMain`, `wasmJsMain`, browser loading, or Web tests |
 | [Technical Mind Map](../../../wasmline-multiplatform/docs/design-mind.md) | Runtime architecture, execution models, invocation protocols, Component Model, or IR flow |
-| [Component Service Guide](../../../docs/content/docs/component-service.mdx) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
+| [Component Service Guide](<../../../docs/content/docs/(reference)/(plugin-development)/component-service.mdx>) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
 | [IR Test Documentation](../../../wasmline-multiplatform/docs/ir/index.md) | Compiler-plugin fixtures, generated runners, or IR snapshots |
 
 ## Hard Constraints

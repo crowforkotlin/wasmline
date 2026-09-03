@@ -1,19 +1,22 @@
 ---
 title: 平台架构
-description: 各平台执行栈、模块依赖关系与仓库目录结构
+description: 各平台的执行模型、模块边界与产物选择
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-09-03
 ---
 
 # 平台架构
 
-## 架构思维导图
+## 总览图
 
 ![Wasmline 架构思维导图](/images/wasmline_mind_zh.png)
 
 ## 执行栈
 
-Wasmline 从 `commonMain` / `hostMain` 暴露统一 API，并按目标平台选择执行路径：原生目标（Android、iOS、macOS、Linux、Windows）经 `wasmline-core`（C/C++，Zig 0.16.0 编译）调用 wasmtime C-API 执行插件；Web 目标（Kotlin/JS、Kotlin/WasmJS）经内联 JS 运行时调用浏览器原生 WebAssembly API 执行插件，不经过 wasmtime。
+Wasmline 从 `commonMain` 和 `hostMain` 暴露相同的公共 API，再按目标选择后端。
+Android、iOS、macOS、Linux 和 Windows 使用 `wasmline-core`（C/C++，由 Zig 0.16.0
+构建）调用 Wasmtime C API。Kotlin/JS 与 Kotlin/WasmJS 使用浏览器 WebAssembly API，
+不会加载 Wasmtime。
 
 ### 原生目标栈 — Android · iOS · macOS · Linux · Windows
 
@@ -29,10 +32,10 @@ Platform actual  (jniMain / nativeMain)
         │  Kotlin/Native C Interop (.def)     — iOS、macOS、Linux、Windows
         ▼
 wasmline-core  (C/C++ · Zig 0.16.0)
-        │  Engine.cpp               — Wasmtime engine 生命周期与 backend 选择
-        │  Module.cpp/Component.cpp — 仅反序列化 Core 与 Component 产物的缓存
-        │  Session variants         — Wasmline Service、Raw Export 与 Component 调用
-        │  Api.cpp                  — JNI / C Interop surface (load, invoke, setOutbound, release)
+        │  Engine.cpp               — 创建 engine 和选择 backend
+        │  Module.cpp/Component.cpp — 反序列化 AOT 产物并缓存
+        │  Session variants         — Service、Raw Export 与 Component 调用
+        │  Api.cpp                  — JNI / C Interop 调用（load、invoke、setOutbound、release）
         ▼
 wasmtime C-API  v48.0.1
         │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
@@ -40,18 +43,17 @@ wasmtime C-API  v48.0.1
 Precompiled artifact  (.cwasm — Cranelift 原生 AOT  |  .pwasm — Pulley 字节码；Core 或 Component 需独立声明)
 ```
 
-Artifact 层与 engine 层是两组独立能力。Cranelift runtime 只加载 backend-specific
-profile 与完整 target identity 均匹配的 CWASM。只有不存在兼容 CWASM，并且它报告
-匹配的 Pulley profile 与 PWASM capability 时，才能使用 PWASM。Pulley runtime
-只接受 PWASM。iOS 使用 `pulley64` PWASM。
+Engine 和产物格式分别选择。Cranelift runtime 只在 profile 与完整 target identity
+匹配时加载 CWASM。只有不存在匹配 CWASM，且 runtime 报告匹配 Pulley profile 时，
+才能使用 PWASM。Pulley runtime 只接受 PWASM。iOS 使用 `pulley64` PWASM。
 
 ### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
 
 ```text
 Host Application  (commonMain / hostMain)
         │
-        │  module.link<T>()      — IR-synthesized proxy (same IR pipeline as native)
-        │  module.bind(impl)     — dispatch registration (same IR pipeline as native)
+        │  module.link<T>()      — IR 生成的 proxy
+        │  module.bind(impl)     — IR 生成的分发注册
         │
         ▼
 webMain / jsMain / wasmJsMain
@@ -77,13 +79,12 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
 Plugin binary  (raw .wasm — 先通过 Fetch 异步预取，再从字节缓存同步加载)
 ```
 
-## Package 与选择模型
+## Manifest 与产物选择
 
-一个签名 manifest 描述逻辑插件 contract 与完整 artifact 矩阵，不为每个文件重复
-contract：
+一个签名 manifest 描述插件 contract 和全部可用产物：
 
 ```text
-SignedManifestEnvelope
+SignedManifest
 └── exact signed payload bytes
     └── WasmlineManifest
         ├── runtimeContract
@@ -92,42 +93,50 @@ SignedManifestEnvelope
             └── variants (profile IDs, SHA-256, size)
 ```
 
-Envelope format 与签名算法固定。Loader 先检查 format version、解析 trusted key，
-并对收到的原始 payload 字节执行 Ed25519 校验，然后才解码并验证 manifest。
-Artifact 路径只根据摘要与格式推导：
+Manifest 格式和签名算法固定。Loader 先检查 format version、解析 trusted key，
+对原始 payload 字节执行 Ed25519 校验，再解码和验证 manifest。产物路径使用摘要
+和扩展名：
 
 ```text
 artifacts/sha256/{digest-prefix}/{digest}.{extension}
 ```
 
-Native engine identity 提供支持的格式、backend-specific AOT profile ID、Wasmline
-release、bridge ABI、操作系统、架构、pointer width 与 CPU feature profile。
-选择器只构建一次 profile-ID map，并对 profile、target 和 variant 扫描一次，复杂度
-与 manifest 大小线性相关，不扫描 package 目录。
+Native engine 报告支持的格式、backend AOT profile ID、Wasmline release、bridge ABI、
+操作系统、架构、pointer width 和 CPU feature。Loader 只构建一次 profile-ID map，
+再扫描 manifest 条目，不扫描 package 目录。
 
-远程冷加载先请求 `manifest.wlm`，选择唯一 variant，再流式下载一个 artifact，
-同时校验声明的 size 和 SHA-256。完整离线 ZIP 不参与该流程。Core Web `.wasm`
-variant 与 profile 无关，只保存一次。Component raw Wasm 仍是构建输入，不为当前
-Web runtime 发布。
+远程加载先请求 `manifest.wlm`，选择一个 variant，再流式下载并校验声明的 size 和
+SHA-256。不会下载离线 ZIP。Core Web `.wasm` variant 与 native profile 无关，只
+保存一次。Component raw Wasm 仍是构建输入。
 
 ## 执行模型
 
-运行时根据 `WasmlineArtifactDescriptor` 选择后端。文件扩展名不用于选择执行模型。
+运行时根据 `WasmlineArtifactDescriptor` 选择后端。文件扩展名不会决定执行模型。
 
 | 执行模型 | 调用协议 | 运行时边界 | Core 响应帧 |
 |---|---|---|---|
 | `CORE_WASM` | `WASMLINE_SERVICE` | `Session`、action 路由和线性内存 | 使用 |
 | `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession`、exports、同步 imports 与线性内存 | 不使用 |
-| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` 和固定 `wasmline.wit` envelope | 不使用 |
+| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` 和固定 `wasmline.wit` 请求格式 | 不使用 |
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` 和 Component Model 值 | 不使用 |
 
-`WASMLINE_SERVICE` 选择 Wasmline 服务 API。与 `CORE_WASM` 组合时，响应字节使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`；与 `COMPONENT_MODEL` 组合时，则使用固定的 `wasmline:service@1.0.0` WIT envelope 和 Canonical ABI。因此真正决定 transport 的是执行模型，不能只看协议名。
+`WASMLINE_SERVICE` 选择 Wasmline 服务 API。与 `CORE_WASM` 组合时，响应字节使用固定
+的 `WLMF` 标记和一个字节的 `frameVersion`（当前为 `1`）；与 `COMPONENT_MODEL` 组合
+时，使用固定的 `wasmline:service@1.0.0` WIT 请求格式和 Canonical ABI。执行模型决定
+实际使用的表示方式。
 
 Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。Export signature、同步 import、memory 与所需 feature 保存在签名后的 `runtimeContract.rawAbi` 模型中，不编码到自由格式 metadata。该路径不分配或解析 Core 响应帧。
 
-Component Model 调用通过 Wasmtime Component Model API 反序列化预编译的 Component `.cwasm` 或 `.pwasm` 产物。该路径使用 Component Model typed value，不要求 Core 线性内存、`__wasmline_wasi_entry` 或 Core 响应帧。运行时 loader 不会执行 `wit-bindgen`、`wasm-tools` 或 `wasmtime compile`；可选的 `wasmline-plugin-core`、Gradle 插件与 CLI 构建流水线会在加载前完成构建工作。`contractMetadata` 用于记录调用契约、执行校验和生成文档，不是编译器输入。
+Component Model 调用通过 Wasmtime Component Model API 反序列化预编译的 Component
+`.cwasm` 或 `.pwasm`。该路径使用 typed Component value，不要求 Core 线性内存、
+`__wasmline_wasi_entry` 或 Core 响应帧。Loader 不会运行 `wit-bindgen`、`wasm-tools`
+或 `wasmtime compile`；Gradle 和 CLI 构建任务会在加载前完成这些步骤。
+`contractMetadata` 可以记录调用信息用于校验和文档，但不是编译器输入。
 
-三种路径共享相同的结果语义。未绑定 action 返回失败结果 `ACTION_NOT_BOUND`，不表示为空的成功 payload，也不要求抛出异常。Core 路径通过响应帧传递该结果；Raw Export 和 Component Model 通过 typed result carrier 传递该结果。违反编程契约、运行时状态不可恢复，或无法构造可靠结果时，才使用异常。
+四种组合都返回相同的成功或失败结构。未绑定的服务 action 返回
+`ACTION_NOT_BOUND`，不是空的成功 payload。Core Service 通过响应帧传递失败，Raw
+Export 和 Component Model 返回 typed failure。只有调用无效、运行时状态不可恢复或
+无法创建结果时才抛出异常。
 
 Web 实现同时支持 `CORE_WASM + WASMLINE_SERVICE` 与
 `CORE_WASM + RAW_EXPORT`，通过浏览器的 `WebAssembly.Module` 和
@@ -151,7 +160,10 @@ wasmline-core (C/C++) ◄──── JNI / Native C Interop ─── wasmline
 wasmline-bom ── strict same-version constraints ──────► published Wasmline modules
 ```
 
-network、cache、trusted key 与 load request API 都归 `wasmline-loader` 所有。Ktor 与 OkHttp 构件实现 loader 的 suspend network SPI，并单向依赖 loader；核心 `wasmline` runtime 不依赖任何 HTTP engine。应用只在远程缓存未命中时选择 adapter：Ktor 通过 CIO、OkHttp、Darwin、Curl 与 WinHTTP 覆盖 JVM、Android、Apple、Linux 与 Windows Native，OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 仍使用独立的 `WasmlineWeb.prefetch()` 流程。
+network、cache、trusted key 和 load request API 都属于 `wasmline-loader`。Ktor 与
+OkHttp 实现它的 suspend network SPI，核心 runtime 不依赖 HTTP engine。只有远程缓存
+未命中时才需要其中一个模块。Ktor 覆盖 JVM、Android、Apple、Linux 和 Windows Native；
+OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 使用 `WasmlineWeb.prefetch()`。
 
 ## 仓库目录结构
 

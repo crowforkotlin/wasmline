@@ -1,15 +1,16 @@
 ---
 title: 从源码编译
-description: 面向贡献者的工具链要求与构建工作流 — 适用于 fork 仓库并修改 Wasmline 本身的开发者
+description: 构建 Wasmline 仓库所需的工具与命令
 createdAt: 2026-07-18
-updatedAt: 2026-08-21
+updatedAt: 2026-09-03
 ---
 
 # 从源码编译
 
-本页面向希望构建 Wasmline 框架本身的开发者——例如 fork 仓库、修改运行时或编译器插件并提交 pull request。如果你只是想在自己的项目中**使用** Wasmline，请参阅 [安装](/zh/docs/installation)。
+本页面面向需要构建或修改 Wasmline 仓库的贡献者。如果只是在应用中使用
+Wasmline，请参阅[安装](/zh/docs/installation)。
 
-## 系统要求
+## 所需工具
 
 | 组件 | 要求版本 | 适用范围 |
 |---|---|---|
@@ -20,31 +21,30 @@ updatedAt: 2026-08-21
 | Python | **3.10+** | `./scripts/wasmline` 仓库命令 |
 | Bash | **3.2+** | 内部 JNI 与 Kotlin/Native 构建实现 |
 
-Kotlin/WasmWasi 编译器后端必须完整实现以下 WebAssembly 提案：
+Kotlin/WasmWasi 编译器后端必须支持以下 WebAssembly 提案：
 
 | 提案 | 要求 | 原因 |
 |---|---|---|
-| GC（垃圾回收） | 必需 | Kotlin 托管对象在 Wasm 线性内存中的分配 |
-| Function References | 必需 | 接口 vtable 分发与闭包表示 |
-| Exception Handling | 必需 | Kotlin 异常跨 Wasm 执行边界传播 |
-| Tail Call Optimization | 推荐 | 防止深层递归调用链中的栈溢出 |
+| GC（垃圾回收） | 必需 | Kotlin 对象在 Wasm 中分配 |
+| Function References | 必需 | 接口分发与闭包 |
+| Exception Handling | 必需 | Kotlin 异常在 Wasm 中传播 |
+| Tail Call Optimization | 推荐 | 减少深层递归的栈使用 |
 
 ## 环境变量
 
 构建项目前需配置以下环境变量：
 
 ```bash
-# Android SDK 路径（Gradle 编译必需）
+# Android SDK 路径
 export ANDROID_HOME="/home/<user>/Android/Sdk"
 
-# Android NDK 路径（构建 Android native 库必需）
+# Android NDK 路径
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638"
 
-# MinGW-w64 工具链路径（Zig 交叉编译 Windows 目标必需）
+# Windows 交叉编译使用的 MinGW-w64 路径
 export MINGW_PATH="/usr/x86_64-w64-mingw32"
 
-# macOS/Homebrew：使用 formula 根目录，build.zig 会自动解析 toolchain-x86_64/。
-# brew --prefix 路径不会因 formula 升级而失效。
+# macOS/Homebrew：使用 formula 根目录，build.zig 会自动解析 toolchain-x86_64。
 # export MINGW_PATH="$(brew --prefix mingw-w64)"
 ```
 
@@ -58,7 +58,7 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
   如果不需要构建 Windows 产物，可不设置 `MINGW_PATH`。交叉编译工具链不可用时，不要下载或选择 Windows 目标。
 </Callout>
 
-## 环境预检
+## 检查环境
 
 每个会话仅执行一次仓库预检，执行时机是修改 Wasmline 文件后首次进行必要验证之前。只读任务、Wasmline 之外的修改以及无需验证的文件修改均不执行预检：
 
@@ -66,15 +66,16 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 ./scripts/wasmline doctor
 ```
 
-该命令检查 JBR 21、Zig 0.16.0、已下载的 Wasmtime 文件、JNI 库以及 Kotlin/Native 库。
+该命令检查 JBR 21、Zig 0.16.0、Wasmtime 文件、JNI 库以及 Kotlin/Native 库。
 
 <Callout type="info" title="local.properties">
   手动执行项目构建或运行相关命令时，项目根目录下需要 `local.properties` 文件。在 Android Studio 中打开项目后会自动创建该文件。请确认此文件存在后再在 IDE 外执行 Gradle 命令。
 </Callout>
 
-## 平台运行时资产初始化
+## 下载原生运行时资产
 
-资产初始化仅对原生目标构建（Android、iOS、Desktop）必需。仅面向 Web 的构建不需要 wasmtime min C-API 资产。
+该步骤只对 Android、iOS 和 Desktop 构建必需。仅面向 Web 的构建不需要
+Wasmtime min C API 资产。
 
 在开始原生目标编译前，`build/platforms/` 下必须存在 wasmtime min C-API 头文件与预编译库。先查看目标编号，再下载构建所需的平台文件和引擎文件：
 
@@ -86,11 +87,16 @@ export MINGW_PATH="/usr/x86_64-w64-mingw32"
 
 该命令读取 `versions.json` 中固定的版本，并请求对应 release。下载默认全部并发；使用 `--jobs` 限制并发数，需要 HTTP 代理时使用 `--proxy 127.0.0.1:7890`。
 
-## 原生库构建
+## 构建原生库
 
-`./scripts/wasmline jni build` 使用 CMake 和 NDK 构建 Android 库，使用 Zig 构建 JVM Desktop 库，并把结果部署到所选引擎模块的 `jniLibs` 和 `resources` 目录。
+`./scripts/wasmline jni build` 使用 CMake 和 NDK 构建 Android 库，使用 Zig 构建
+JVM Desktop 库，并将结果复制到所选 engine 模块。
 
-Kotlin/Native 使用单独的静态桥接库。引擎模块的 Gradle 任务会为每个可用目标调用内部构建脚本，并把所选的 `libwasmtime.a` 写入发布的引擎 KLIB。构建单个静态库时，执行 `./scripts/wasmline kotlin-native build --target linuxX64 --engine pulley`。支持 `linuxArm64`、`linuxX64`、`mingwX64`、`macosArm64`、`macosX64`、`iosArm64` 和 `iosSimulatorArm64`。Kotlin/Native 使用方不加载 JNI 库。
+Kotlin/Native 使用单独的静态 bridge。engine 模块的 Gradle 任务会为每个可用
+Native target 构建 `libwasmtime.a`，并将其写入 engine KLIB。直接构建一个目标：
+`./scripts/wasmline kotlin-native build --target linuxX64 --engine pulley`。
+支持 `linuxArm64`、`linuxX64`、`mingwX64`、`macosArm64`、`macosX64`、`iosArm64`
+和 `iosSimulatorArm64`。Native 使用方不加载 JNI 库。
 
 Apple 目标仅在 Gradle 运行于 macOS 时注册，因为对应 cinterop 任务依赖
 Xcode SDK。Linux 与 Windows 开发环境会省略 iOS/macOS 的编译、元数据和发布
@@ -105,7 +111,7 @@ KLIB 时，应在 macOS 上执行发布。
 ./scripts/wasmline jni build --engine pulley
 ./scripts/wasmline jni build --engine cranelift
 
-# 构建当前主机支持的全部 Kotlin/Native 目标和引擎库。
+# 构建当前主机支持的全部 Kotlin/Native 目标和 engine 库。
 ./scripts/wasmline kotlin-native build
 ```
 
@@ -115,7 +121,7 @@ KLIB 时，应在 macOS 上执行发布。
 - 已安装 Zig 0.16.0（JVM Desktop 目标）
 - 已设置 `MINGW_PATH`（Windows 交叉编译，可选）
 
-## Gradle 构建参考
+## Gradle 命令
 
 所有操作都在 `wasmline-multiplatform/` 下执行：
 
@@ -142,7 +148,8 @@ cd wasmline-multiplatform
 ./gradlew publishToMavenLocal
 ```
 
-当前生成器只注册 `JvmBoxTestGenerated`。诊断测试框架尚未启用，仓库中没有 `testData/diagnostics/` 套件或 `JvmDiagnosticsTestGenerated` runner。
+当前生成器只注册 `JvmBoxTestGenerated`。诊断测试已禁用，仓库中没有
+`testData/diagnostics/` 套件或 `JvmDiagnosticsTestGenerated` runner。
 
 Kotlin 示例使用独立的 Gradle build：
 
@@ -151,9 +158,9 @@ cd ../wasmline-samples/kotlin
 ./gradlew :sample-plugin:wasmlineAssembleDebug
 ```
 
-## 版本同步
+## 同步版本
 
-文档和重复配置中的版本号统一由 `versions.json` 管理，并通过脚本同步：
+文档和重复配置中的版本号由 `versions.json` 管理，并通过脚本同步：
 
 ```bash
 ./scripts/wasmline versions sync

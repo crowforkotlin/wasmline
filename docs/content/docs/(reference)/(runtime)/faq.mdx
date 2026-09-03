@@ -1,0 +1,112 @@
+---
+title: Frequently Asked Questions
+description: Answers about dependencies, artifacts, invocation models, and plugin isolation
+createdAt: 2026-07-18
+updatedAt: 2026-09-03
+---
+
+# Frequently Asked Questions
+
+<Accordions>
+  <Accordion title="Does every application need a Wasmline network module?">
+    No. Local manifests and artifacts use `wasmline-loader` only. A remote
+    manifest needs `wasmline-network-ktor`, `wasmline-network-okhttp`, a custom
+    `WasmlineNetworkClient`, or a custom remote resolver when the manifest or
+    selected artifact is missing from the cache. The loader checks the cache
+    first, so a fully cached package can load without a network client.
+
+    The Ktor and OkHttp modules depend on `wasmline-loader`; the core
+    `wasmline` runtime does not depend on an HTTP implementation. Browser raw
+    `.wasm` loading uses `WasmlineWeb.prefetch()`.
+  </Accordion>
+
+  <Accordion title="How does the browser instantiate a plugin without Wasmtime?">
+    The `webMain`, `jsMain`, and `wasmJsMain` implementations call the browser
+    `WebAssembly.Module` and `WebAssembly.Instance` APIs. Kotlin `js()` interop
+    supplies the small runtime layer; no external JavaScript file is generated.
+
+    The layer provides the required `wasi_snapshot_preview1` functions
+    (`fd_write`, `random_get`, and `clock_time_get`) and the `env` imports used
+    by the Core Wasmline bridge. `WasmlineWeb.prefetch(url)` fetches raw
+    `.wasm` bytes. The host then passes a `WasmlineArtifactDescriptor` with the
+    same URL as `path` to `WasmlineLoader.loadCoreModule()` or
+    `WasmlineLoader.load()`. The descriptor prevents the URL from being treated
+    as a remote manifest. The browser does not accept `.cwasm` or `.pwasm`.
+  </Accordion>
+
+  <Accordion title="What is the difference between .wasm, .cwasm, and .pwasm?">
+    | Artifact | Created by | Runtime | Compatibility |
+    |---|---|---|---|
+    | `.wasm` | Kotlin/Wasm or another WebAssembly compiler | Browser WebAssembly API | Not tied to Wasmtime |
+    | `.cwasm` | `wasmtime compile` with Cranelift | Native machine code | Exact Cranelift profile and target |
+    | `.pwasm` | `wasmtime compile` with Pulley | Wasmtime Pulley interpreter | Exact Pulley profile and pointer width |
+
+    Native loading accepts only a matching `.cwasm` or `.pwasm`. The manifest
+    records the backend profile ID, target, size, and SHA-256 digest. A Wasmtime
+    update can introduce a new profile; an existing artifact remains usable
+    only when its profile is still reported by the engine.
+  </Accordion>
+
+  <Accordion title="Which engine module loads each artifact?">
+    - `wasmline-engine-cranelift` prefers a matching `.cwasm` and can use a
+      matching `.pwasm` when the runtime reports Pulley support.
+    - `wasmline-engine-pulley` accepts `.pwasm` only.
+    - iOS uses `pulley64` `.pwasm`.
+
+    The file extension does not choose the execution model. The signed
+    descriptor supplies the execution model, invocation protocol, profile, and
+    target information.
+  </Accordion>
+
+  <Accordion title="How do Core Wasm, Raw Export, and Component Model calls differ?">
+    `CORE_WASM + WASMLINE_SERVICE` uses the action and byte payload protocol.
+    `CORE_WASM + RAW_EXPORT` calls explicitly declared `i32`, `i64`, `f32`, or
+    `f64` exports and can register synchronous imports and checked memory
+    access. `COMPONENT_MODEL + COMPONENT_EXPORT` calls typed Component Model
+    values defined by WIT. `COMPONENT_MODEL + WASMLINE_SERVICE` uses the fixed
+    `wasmline:service@1.0.0` WIT request format.
+
+    Component construction and AOT compilation happen in the Gradle or CLI
+    build. The loader receives a finished Component artifact and does not run
+    `wit-bindgen`, `wasm-tools`, or `wasmtime compile`.
+  </Accordion>
+
+  <Accordion title="What happens when no action is bound?">
+    The call returns `WasmlineCallResult.Failure` with
+    `WasmlineErrorCode.ACTION_NOT_BOUND`. It is not an empty successful payload
+    and does not crash the host. Inspect `Failure.failure.code`; use
+    `throwOnFailure()` only when an exception-style API is explicitly needed.
+  </Accordion>
+
+  <Accordion title="What do WLMF and frameVersion mean?">
+    `WLMF` is the four-byte marker for the Core response-frame format. It is not
+    a signature or an authentication mechanism. `frameVersion` is the one-byte
+    response layout version; the current value is `1`. Neither value identifies
+    Wasmtime, Kotlin, or a business API. Raw Export and Component Model calls
+    do not use this Core frame.
+  </Accordion>
+
+  <Accordion title="Is the Kotlin IR compiler plugin required for host integration?">
+    No. `Wasmline.callResult(action, bytes)` is available for manual dispatch. The
+    IR plugin is required only for the generated `link<T>()` and `bind(impl)`
+    call sites. If it is not applied, those call sites throw
+    `UnsupportedOperationException` at runtime.
+  </Accordion>
+
+  <Accordion title="How are plugins isolated from the host?">
+    Each native plugin session has its own Wasm linear memory. A plugin cannot
+    read host process memory, files, or network resources unless the host
+    explicitly provides the corresponding Wasmtime capability. The browser
+    WebAssembly sandbox provides the equivalent memory boundary on Web targets.
+  </Accordion>
+</Accordions>
+
+## References
+
+<Cards>
+  <Card href="https://wuya.click/posts/55e66811/" title="Wasmtime on Android via JNI" description="JNI bridge integration reference" />
+  <Card href="https://wuya.click/posts/711a5ddb/" title="WebAssembly and WASI" description="Runtime and lifecycle reference" />
+  <Card href="https://docs.wasmtime.dev/" title="Wasmtime documentation" description="Official Wasmtime documentation" />
+  <Card href="https://webassembly.github.io/spec/" title="WebAssembly specification" description="Core WebAssembly specification" />
+  <Card href="https://github.com/WebAssembly/WASI" title="WASI specification" description="WebAssembly System Interface specification" />
+</Cards>

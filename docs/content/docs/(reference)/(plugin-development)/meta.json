@@ -1,0 +1,9 @@
+{
+  "title": "Plugin Development",
+  "pages": [
+    "component-service",
+    "gradle-plugin",
+    "cli",
+    "wasmtime-download"
+  ]
+}

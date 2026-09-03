@@ -74,7 +74,7 @@ import crow.wasmline.Wasmline
 import crow.wasmline.bind
 
 fun main() {
-    Wasmline.current.bind(object : EchoService {
+    Wasmline.get().bind(object : EchoService {
         override fun echo(message: String): String {
             return "Response from WASI plugin: $message"
         }
@@ -206,11 +206,11 @@ Wasmline supports four explicit host-side invocation paths:
 | `COMPONENT_MODEL` | `COMPONENT_EXPORT` | declared Component Model values | `WasmlineCallResult<WasmlineComponentCallResult>` |
 
 The runtime side of the Component Model path loads an already compiled component
-binary. The optional plugin build pipeline can generate bindings and create that
+binary. Optional plugin build steps can generate bindings and create that
 binary from WIT through `wasmline-plugin-core`, the Gradle plugin, or the CLI;
 the loader itself does not run those tools. `contractMetadata` describes the
 call contract when needed; it is not a WIT compiler input. See the
-[Wasmline Service guide](docs/content/docs/component-service.mdx).
+[Component Service Protocol](<docs/content/docs/(reference)/(plugin-development)/component-service.mdx>).
 
 The browser runtime supports both Core Service and Core Raw Export paths. Web
 uses raw `.wasm`, `WebAssembly.Module`/`WebAssembly.Instance`, synchronous
@@ -328,8 +328,8 @@ wasmline {
 ```
 
 The default is `DEBUG`, served at `http://localhost:8080`. Required AOT and
-Component pipeline tasks run automatically. See the
-[Gradle plugin task reference](docs/content/docs/gradle-plugin.mdx) for the
+Component build tasks run automatically. See the
+[Gradle plugin task reference](<docs/content/docs/(reference)/(plugin-development)/gradle-plugin.mdx>) for the
 current task set and registration conditions.
 
 ## Release Build

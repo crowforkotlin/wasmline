@@ -1,0 +1,120 @@
+---
+title: Testing
+description: Test targets, generated fixtures, and local verification commands
+createdAt: 2026-08-03
+updatedAt: 2026-09-03
+---
+
+# Testing
+
+Tests are grouped by the API or platform they exercise. After changing
+Wasmline files, run the repository preflight once before the first required
+validation:
+
+```bash
+./scripts/wasmline doctor
+```
+
+## Test Matrix
+
+| Area | Module | Coverage | Command |
+|---|---|---|---|
+| Common and host runtime | `wasmline` | Frames, descriptors, serialization, host API, and local bridge | `./gradlew :wasmline:jvmTest` |
+| Native Wasmtime | `wasmline` | JNI lifecycle, AOT loading, Raw Export, and Component export | `./gradlew :wasmline:nativeAotJvmTest` |
+| Kotlin/JS | `wasmline` | WebAssembly imports, values, memory, and exports | `./gradlew :wasmline:jsBrowserTest` |
+| Kotlin/WasmJS | `wasmline` | WebAssembly imports, values, memory, and exports | `./gradlew :wasmline:wasmJsBrowserTest` |
+| Kotlin/WasmWasi | `wasmline` | WASI guest runtime integration | `./gradlew :wasmline:wasmWasiNodeTest` |
+| Loader | `wasmline-loader` | Manifests, signatures, cache, and package resolution | `./gradlew :wasmline-loader:jvmTest` |
+| CLI | `wasmline-cli` | Platform detection and key generation | `./gradlew :wasmline-cli:test` |
+| IR box | `wasmline-kotlin-plugin` | Generated bridges, compiler checks, and FIR/IR snapshots | See [Compiler Plugin](/en/docs/compiler-plugin) |
+
+Run the JVM checks from `wasmline-multiplatform/`:
+
+```bash
+./gradlew :wasmline:jvmTest \
+  :wasmline-loader:jvmTest \
+  :wasmline-cli:test \
+  :wasmline-kotlin-plugin:generateTests \
+  :wasmline-kotlin-plugin:test
+```
+
+`jvmTest` uses JVM test doubles and raw WebAssembly inputs. It does not load
+serialized native AOT files. `nativeAotJvmTest` first runs
+`:wasmline-native-test-fixtures:assembleNativeTestFixtures`, passes its index to
+the test process, and then loads `.cwasm` or `.pwasm` through the native library.
+
+## Native AOT Fixtures
+
+Fixture source files are committed under
+`wasmline-native-test-fixtures/src/fixtures/`. The fixture module writes binary
+files only to its `build/` directory. Do not commit them or provide replacement
+paths through environment variables.
+
+Build the Cranelift JNI library and the fixture set before the Linux JVM test:
+
+```bash
+./scripts/wasmline jni build --engine cranelift
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
+```
+
+The generated index records the fixture ID, execution model, invocation
+protocol, format, backend, target, profile ID, path, size, and SHA-256. The JVM
+tests select an entry matching the linked engine and verify the file again
+before copying it to a temporary path.
+
+On macOS, iOS simulator tests use only `pulley64` PWASM:
+
+```bash
+./scripts/wasmline wasmtime download --target ios-simulator-arm64 --engine pulley
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:iosSimulatorArm64Test \
+  :wasmline-loader:iosSimulatorArm64Test \
+  -Pwasmline.native.fixtures.targets=pulley64 \
+  --no-daemon
+```
+
+The iOS tests fail when the index is missing or when the selected entry does not
+match `COMPONENT_MODEL`/`CORE_WASM`, the invocation protocol, Pulley backend,
+`pulley64`, `.pwasm`, file size, or linked profile. Rust resource fixtures also
+require the `wasm32-wasip2` target.
+
+## IR Test Rules
+
+Active IR sources are in `wasmline-kotlin-plugin/testData/box/`. Edit only the
+Kotlin source. Regenerate runners and snapshots, then run the generated runner:
+
+```bash
+./gradlew :wasmline-kotlin-plugin:generateTests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+```
+
+Do not edit `test-gen/`, `*.fir.txt`, or `*.fir.ir.txt`; these files are
+generated outputs. The diagnostic test scaffold is disabled and there is no
+active `testData/diagnostics/` suite.
+
+## Version Checks
+
+`versions.json` is the source for project, toolchain, and documentation versions.
+Use the synchronizer and its independent regression test:
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline versions check
+python3 scripts/tests/test_versions.py
+./scripts/wasmline versions check-ktlint
+```
+
+Use `./scripts/wasmline aot check` to verify the AOT catalog and generated lock.
+It is separate from `versions check` and does not change either manifest.
+
+## Kotlin Documentation Style
+
+Kotlin runtime and test declarations use KDoc (`/** ... */`) for API and test
+intent. Keep external test markers such as `// WITH_STDLIB` unchanged. Put a
+short KDoc on a class or test function instead of comments inside assertions.

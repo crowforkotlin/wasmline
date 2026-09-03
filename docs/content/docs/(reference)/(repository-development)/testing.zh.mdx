@@ -1,0 +1,114 @@
+---
+title: 测试
+description: 测试目标、生成 fixture 与本地校验命令
+createdAt: 2026-08-03
+updatedAt: 2026-09-03
+---
+
+# 测试
+
+测试按验证的 API 或平台分组。修改 Wasmline 文件后，在第一次必要校验前执行一次
+仓库预检：
+
+```bash
+./scripts/wasmline doctor
+```
+
+## 测试矩阵
+
+| 范围 | 模块 | 覆盖内容 | 命令 |
+|---|---|---|---|
+| Common 和 Host runtime | `wasmline` | 响应帧、descriptor、序列化、宿主 API 与本地 bridge | `./gradlew :wasmline:jvmTest` |
+| Native Wasmtime | `wasmline` | JNI 生命周期、AOT 加载、Raw Export 与 Component export | `./gradlew :wasmline:nativeAotJvmTest` |
+| Kotlin/JS | `wasmline` | WebAssembly import、值、内存与 export | `./gradlew :wasmline:jsBrowserTest` |
+| Kotlin/WasmJS | `wasmline` | WebAssembly import、值、内存与 export | `./gradlew :wasmline:wasmJsBrowserTest` |
+| Kotlin/WasmWasi | `wasmline` | WASI guest runtime 集成 | `./gradlew :wasmline:wasmWasiNodeTest` |
+| Loader | `wasmline-loader` | manifest、签名、缓存与 package 解析 | `./gradlew :wasmline-loader:jvmTest` |
+| CLI | `wasmline-cli` | 平台检测与密钥生成 | `./gradlew :wasmline-cli:test` |
+| IR box | `wasmline-kotlin-plugin` | 生成 bridge、编译器校验与 FIR/IR snapshot | 参见[编译器插件](/zh/docs/compiler-plugin) |
+
+在 `wasmline-multiplatform/` 下运行 JVM 检查：
+
+```bash
+./gradlew :wasmline:jvmTest \
+  :wasmline-loader:jvmTest \
+  :wasmline-cli:test \
+  :wasmline-kotlin-plugin:generateTests \
+  :wasmline-kotlin-plugin:test
+```
+
+`jvmTest` 使用 JVM 测试替身和 raw WebAssembly 输入，不加载序列化的 Native AOT
+文件。`nativeAotJvmTest` 先运行
+`:wasmline-native-test-fixtures:assembleNativeTestFixtures`，将 index 传给测试进程，
+再通过 native library 加载 `.cwasm` 或 `.pwasm`。
+
+## Native AOT Fixture
+
+Fixture 源文件位于 `wasmline-native-test-fixtures/src/fixtures/`。该模块只在自身
+的 `build/` 目录写入二进制文件。不要提交这些文件，也不要通过环境变量提供替代
+路径。
+
+Linux JVM 测试前先构建 Cranelift JNI library 和 fixture：
+
+```bash
+./scripts/wasmline jni build --engine cranelift
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 \
+  --no-daemon
+```
+
+生成的 index 记录 fixture ID、执行模型、调用协议、格式、backend、target、profile
+ID、路径、大小和 SHA-256。JVM 测试只选择与已链接 engine 匹配的条目，并在复制到
+临时路径前再次校验文件。
+
+在 macOS 上，iOS simulator 测试只使用 `pulley64` PWASM：
+
+```bash
+./scripts/wasmline wasmtime download --target ios-simulator-arm64 --engine pulley
+cd wasmline-multiplatform
+rustup target add wasm32-wasip2
+./gradlew :wasmline:iosSimulatorArm64Test \
+  :wasmline-loader:iosSimulatorArm64Test \
+  -Pwasmline.native.fixtures.targets=pulley64 \
+  --no-daemon
+```
+
+index 缺失，或所选条目与 `COMPONENT_MODEL`/`CORE_WASM`、调用协议、Pulley backend、
+`pulley64`、`.pwasm`、文件大小或已链接 profile 不匹配时，iOS 测试会失败。Rust
+resource fixture 还要求安装 `wasm32-wasip2` target。
+
+## IR 测试规则
+
+当前 IR 源文件位于 `wasmline-kotlin-plugin/testData/box/`。只编辑 Kotlin 源文件，
+然后重新生成 runner 和 snapshot 并执行：
+
+```bash
+./gradlew :wasmline-kotlin-plugin:generateTests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+```
+
+不要编辑 `test-gen/`、`*.fir.txt` 或 `*.fir.ir.txt`，它们是生成输出。diagnostic
+测试框架已禁用，当前没有可用的 `testData/diagnostics/` 套件。
+
+## 版本校验
+
+`versions.json` 是项目、工具链和文档版本的来源。使用同步器及独立回归测试：
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline versions check
+python3 scripts/tests/test_versions.py
+./scripts/wasmline versions check-ktlint
+```
+
+使用 `./scripts/wasmline aot check` 校验 AOT catalog 和生成的 lock。它与
+`versions check` 独立，且不会修改任一 manifest。
+
+## Kotlin 文档注释规范
+
+runtime 与 test 的 Kotlin 声明使用 KDoc（`/** ... */`）说明 API 和测试意图。外部
+测试标记（例如 `// WITH_STDLIB`）必须保留。class 或 test function 使用简短 KDoc，
+不要在断言内部添加逐行说明。

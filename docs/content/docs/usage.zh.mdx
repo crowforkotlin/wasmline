@@ -1,17 +1,20 @@
 ---
-title: 使用指南
-description: 服务契约定义、插件实现与宿主端模块加载
+title: 使用
+description: 定义服务、构建插件、加载插件并处理调用结果
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-09-03
 ---
 
-# 使用指南
+# 使用
 
-以下示例展示完整的集成流程：定义服务契约、在插件中实现契约、在宿主中加载插件并调用其服务。
+本页说明常用服务 API：在共享代码定义契约，在插件实现契约，在宿主加载插件并调用
+契约。固定的 Component Model 服务格式参见
+[组件服务协议](/zh/docs/component-service)。
 
-## 定义服务契约
+## 1. 定义服务契约
 
-服务契约是在共享源码（`commonMain`）中声明并继承 `WasmlineService` 的 Kotlin `interface`。该契约定义宿主与插件之间的二进制协议边界。每个方法使用 `<完全限定契约名>#<方法名>` 形式的 action；不支持同名重载方法。
+在共享源码中声明继承 `WasmlineService` 的 Kotlin `interface`。每个方法对应一个
+`<完全限定契约名>#<方法名>` 格式的 action。服务中不能声明同名重载方法。
 
 ```kotlin
 // shared/src/commonMain/kotlin/com/example/EchoService.kt
@@ -22,45 +25,42 @@ interface EchoService : WasmlineService {
 }
 ```
 
-## 实现插件（WASI 目标）
+## 2. 实现插件
 
-插件二进制通过 `Wasmline.current.bind(impl)` 注册服务实现。IR 编译器插件会在 IR 层将该调用点重写为把实现注册到生成的 `*_WasmlineBridge` 中：
+插件在 `wasmWasiMain` 入口中绑定实现。Kotlin IR 编译器插件会将 `bind(impl)` 替换为
+对生成 bridge 类的调用。
 
 ```kotlin
 // plugin/src/wasmWasiMain/kotlin/Main.kt
 import crow.wasmline.Wasmline
 import crow.wasmline.bind
 
-val wasmline = Wasmline.current
-
 fun main() {
-    wasmline.bind(object : EchoService {
-        override fun echo(message: String): String {
-            return "Response from WASI plugin: $message"
-        }
+    Wasmline.get().bind(object : EchoService {
+        override fun echo(message: String): String = "插件响应：$message"
     })
 }
 ```
 
-## 宿主端模块加载与服务调用
+## 3. 加载并调用插件
 
-宿主通过 suspend API `WasmlineLoader.load()` 加载插件。原生目标使用已验证的 manifest 或预编译 `.pwasm` / `.cwasm` 产物；raw `.wasm` 仅适用于浏览器的 Core Wasmline 路径。`http(s)://` source 按远程 manifest 解析并完成校验后再加载产物。加载后通过 `bind(impl)` 注册插件可访问的宿主侧服务实现，并通过 `link<T>()` 获取插件侧服务的类型安全代理：
+`WasmlineLoader.load()` 返回包含已加载 `Wasmline` 的
+`WasmlineLoadResult.Success`，或返回包含 `WasmlineLoadFailure` 的
+`WasmlineLoadResult.Failure`。下面示例加载一个签名后的远程 manifest。本地 manifest
+路径或本地产物不需要 network client。
 
 ```kotlin
-import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.bind
 import crow.wasmline.link
-import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineLoadOptions
+import crow.wasmline.loader.WasmlineLoader
 import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 
-suspend fun main() {
+suspend fun callPlugin() {
     val module = when (val result = WasmlineLoader.load(
         source = "https://example.com/plugin/manifest.wlm",
         options = WasmlineLoadOptions(
-            runtimeConfig = WasmlineConfig(),
             networkClient = KtorNetworkClient(),
             trustedKeys = WasmlineTrustedKeySet.Builder()
                 .addHex(
@@ -75,156 +75,60 @@ suspend fun main() {
         is WasmlineLoadResult.Failure -> error(result.failure.message)
     }
 
-    module.bind(object : HostNotificationService {
-        override fun notify(event: String) { /* host-side handler */ }
-    })
-
-    val response = module.link<EchoService>().echo("ping")
-    module.close()
-}
-```
-
-本地产物和本地 manifest 不需要 network 构件。加载远程 manifest 时，可选择 `wasmline-network-ktor`（JVM、Android、iOS）或 `wasmline-network-okhttp`（JVM、Android）。只有 fresh manifest 或 artifact 未命中缓存时才会调用 adapter；manifest 与所选 artifact 均已缓存时，即使没有 network client 也能继续加载。内置文件缓存会把 artifact body 流式写入原子发布的内容寻址文件，并在超过 `WasmlineLoadOptions.maxCacheBytes` 时淘汰旧条目；默认上限为 512 MiB。应用也可以自行实现 `WasmlineNetworkClient`、提供自定义缓存，或提供自定义远程 resolver。
-
-一个远程 manifest 可以包含多个 Wasmtime AOT profile 和平台 variant。Loader
-先校验 Ed25519 envelope，再把 manifest 与 native engine 实际报告的 backend-specific
-profile ID 和 target identity 比较，最后只请求一个内容寻址 artifact。冷加载通常
-只有一次 manifest 请求和一次 artifact 请求，不会下载完整离线 ZIP 或无关 variant。
-Core Web package 只选择一个与 profile 无关的 RAW_WASM variant。
-
-## 运行时生命周期与 API 职责
-
-`WasmlineLoader`、`WasmlineRuntime` 与已加载的 `Wasmline` 各自承担不同职责：
-
-| API | 职责 |
-|---|---|
-| `WasmlineLoader` | 解析来源、校验 package、选择兼容产物并加载 |
-| `WasmlineRuntime` | 管理进程级的平台链接、引擎预热、运行时信息与全局关闭 |
-| `Wasmline` | 表示一个已加载产物，并通过 `close()` 释放该句柄 |
-
-大多数应用应直接调用 `WasmlineLoader.load()`；原生链接与引擎创建会惰性完成。启动优化是可选操作：
-
-```kotlin
-import crow.wasmline.WasmlineEngineKind
-import crow.wasmline.WasmlineRuntime
-
-WasmlineRuntime.preload() // 只链接平台运行时，不创建引擎。
-WasmlineRuntime.warmUp(WasmlineEngineKind.PULLEY) // 提前创建指定引擎。
-```
-
-`WasmlineRuntime.nativeInfo()` 返回已链接原生运行时的身份信息及其 `supportedEngines`；浏览器中返回 `null`，也不提供原生引擎预热。对当前引擎重复调用 `warmUp()` 是安全的。只有所有已加载产物句柄都关闭后才能切换引擎；否则预热或冲突产物加载会失败，但不会使现有句柄失效。
-
-正常的产物所有权应使用 `Wasmline.close()`。`WasmlineRuntime.shutdown()` 会释放全部引擎、产物与 session，并使所有存活的 `Wasmline` 句柄失效，因此只应在进程或应用退出时使用。
-
-需要传递 metadata 或自定义 resolver 时，可直接使用公开的完整 request overload：
-
-```kotlin
-import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.loader.WasmlineLoadRequest
-import crow.wasmline.loader.WasmlineLoadOptions
-import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineRemotePackageResolver
-import crow.wasmline.loader.WasmlineSource
-import crow.wasmline.loader.WasmlineSourceResolvers
-
-suspend fun loadWithCustomResolver(
-    packageUrl: String,
-    loadOptions: WasmlineLoadOptions,
-    appPackageResolver: WasmlineRemotePackageResolver,
-): WasmlineLoadResult =
-    WasmlineLoader.load(
-        WasmlineLoadRequest(
-            source = WasmlineSource.RemoteManifestUrl(packageUrl),
-            options = loadOptions,
-            metadata = mapOf("channel" to "beta"),
-            resolvers = WasmlineSourceResolvers(remotePackage = appPackageResolver),
-        ),
-    )
-```
-
-<Callout type="info" title="IR 插件重写目标">
-  `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。IR 插件会将每个调用点替换为对生成的 `*_WasmlineBridge` 的直接调用。如果编译单元未应用 `wasmline-kotlin-plugin`，这些函数会在运行时抛出 `UnsupportedOperationException`。
-</Callout>
-
-## 选择调用路径
-
-当产物不是默认的 Core Wasmline 模块时，使用 `WasmlineArtifactDescriptor`。执行模型与调用协议必须成对声明，加载器会验证二者的组合：
-
-```kotlin
-import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineComponentValue
-import crow.wasmline.WasmlineEngineKind
-import crow.wasmline.WasmlineExecutionModel
-import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.WasmlineLoadResult
-import crow.wasmline.WasmlineRuntime
-import crow.wasmline.invokeComponentResult
-import crow.wasmline.invocation.WasmlineCallResult
-import crow.wasmline.loader.WasmlineLoader
-
-val runtime = requireNotNull(WasmlineRuntime.nativeInfo())
-val pulleyProfileId = requireNotNull(
-    runtime.aotCompatibilityProfileIdsByBackend[WasmlineEngineKind.PULLEY],
-).single()
-val result = WasmlineLoader.load(
-    WasmlineArtifactDescriptor(
-        path = "component.pwasm",
-        artifactFormat = WasmlineArtifactFormat.PWASM,
-        architecture = "pulley${runtime.pointerWidth}",
-        pointerWidth = runtime.pointerWidth,
-        aotCompatibilityProfileId = pulleyProfileId,
-        executionModel = WasmlineExecutionModel.COMPONENT_MODEL,
-        invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT,
-        exportName = "wasmline:sample-component-export/calculator@1.0.0#add",
-        contractMetadata = mapOf("params" to "s32,s32", "result" to "s32"),
-    ),
-)
-
-when (result) {
-    is WasmlineLoadResult.Success -> when (
-        val call = result.wasmline.invokeComponentResult(
-            exportName = "add",
-            arguments = listOf(WasmlineComponentValue.S32(1), WasmlineComponentValue.S32(2)),
-        ),
-    ) {
-        is WasmlineCallResult.Success -> useValues(call.value.values)
-        is WasmlineCallResult.Failure -> log(call.failure.message)
+    try {
+        val reply = module.link<EchoService>().echo("ping")
+        println(reply)
+    } finally {
+        module.close()
     }
-
-        is WasmlineLoadResult.Failure -> log(result.failure.message)
 }
 ```
 
-这种显式 descriptor 用于已知的本地 artifact。加载 package manifest 时，只需传入
-路径或 URL，由共享 selector 选择 CWASM、PWASM 或 Web WASM。不要根据
-`wasmtimeVersion` 推导 AOT profile。
+Loader 会在选择产物前校验 manifest 签名。远程 package 只请求 manifest 和一个已选择
+的产物，不会下载离线 ZIP 或其他平台的文件。
 
-`WASMLINE_SERVICE` 是服务协议。`CORE_WASM` 可以使用 Service bridge，也可以使用
-`RAW_EXPORT`。Raw Export 通过 `CoreWasmModule` 和 `CoreWasmSession` 使用 `RawValue`
-（`i32`、`i64`、`f32`、`f64`）、多返回值、同步 `RawImport` 回调与有边界检查的
-`RawMemory`，不使用 action/payload 帧。Web 端在加载前通过 `WasmlineWeb.registerBytes()`
-注册字节，或先完成 prefetch，并在 `instantiate()` 前注册所有 imports；JavaScript 边界的
-`i64` 使用 `BigInt`，import 不能等待异步 API。native Raw Export 通过 Wasmtime 加载匹配的
-`.cwasm` 或 `.pwasm`。Component Model 仍是独立的 typed WIT 边界。运行时不会在加载过程中执行
-WIT-to-Wasm 或 binding 工具；可选的 Gradle/CLI Component 流水线会提前完成这些构建步骤。
-Service envelope 与回调流程参见 [Wasmline Service 指南](/zh/docs/component-service)。
+## 加载来源与资源释放
 
-对于直接 Core Wasm 模块，应把加载和实例化分开，以便在创建
-WebAssembly instance 前注册全部宿主 import：
+| 来源 | 可用平台 | 要求 |
+|---|---|---|
+| 本地 manifest | Native 和 Web，前提是存在匹配平台的 variant | 将路径传给 `WasmlineLoader.load()` |
+| 远程 manifest URL | Native 和 Web，前提是存在匹配平台的 variant | 提供 trusted key；缓存未命中时提供 network client |
+| 本地 `.cwasm` 或 `.pwasm` descriptor | 仅 Native | 声明执行模型、调用协议和匹配的 profile |
+| Raw `.wasm` descriptor | 仅 Web Core Wasm | 加载前注册或预取字节 |
+
+每个成功加载的模块都要调用 `Wasmline.close()`。`WasmlineRuntime.shutdown()` 会关闭
+全部存活的 Wasmline module 和 session，只应在应用或进程退出时调用。
+
+## 选择调用 API
+
+| 执行模型和协议 | 主要 API | 可用平台 |
+|---|---|---|
+| `CORE_WASM + WASMLINE_SERVICE` | `link<T>()`、`bind(impl)` 或 `callResult()` | Native 和 Web |
+| `CORE_WASM + RAW_EXPORT` | `CoreWasmModule`、`CoreWasmSession` 和 `RawValue` | Native 和 Web |
+| `COMPONENT_MODEL + WASMLINE_SERVICE` | `link<T>()` 和 `bind(impl)` | 仅 Native |
+| `COMPONENT_MODEL + COMPONENT_EXPORT` | `invokeComponentResult()` | 仅 Native |
+
+文件扩展名不会决定 API。签名后的 manifest 或显式
+`WasmlineArtifactDescriptor` 会声明执行模型和调用协议。
+
+## 调用 Raw Export
+
+Raw Export 不使用服务 action 字节。它调用已声明的数值 export，并返回 `RawValue`。
+Web API 要求先注册字节，并在实例化前注册全部 import。Web 的 `i64` 在 JavaScript
+边界使用 `BigInt`；import 回调必须同步返回。
 
 ```kotlin
 import crow.wasmline.CoreWasmSessionOptions
 import crow.wasmline.RawAbiMetadata
 import crow.wasmline.RawExport
 import crow.wasmline.RawExportKind
-import crow.wasmline.WasmlineArtifactDescriptor
-import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.RawFunctionSignature
 import crow.wasmline.RawImport
 import crow.wasmline.RawImportDeclaration
 import crow.wasmline.RawValue
 import crow.wasmline.RawValueType
+import crow.wasmline.WasmlineArtifactDescriptor
+import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineCoreLoadResult
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -264,7 +168,7 @@ val module = when (val loaded = WasmlineLoader.loadCoreModule(
     ),
 )) {
     is WasmlineCoreLoadResult.Success -> loaded.module
-    is WasmlineCoreLoadResult.Failure -> error("${loaded.failure.code}: ${loaded.failure.message}")
+    is WasmlineCoreLoadResult.Failure -> error(loaded.failure.message)
 }
 
 val session = module.instantiate(
@@ -278,87 +182,39 @@ val session = module.instantiate(
                     results = listOf(RawValueType.I32),
                 ),
             ) { _, values ->
-                WasmlineCallResult.Success(
-                    listOf(RawValue.I32((values[0] as RawValue.I32).value + (values[1] as RawValue.I32).value)),
-                )
+                val left = (values[0] as RawValue.I32).value
+                val right = (values[1] as RawValue.I32).value
+                WasmlineCallResult.Success(listOf(RawValue.I32(left + right)))
             },
         ),
     ),
 ).getOrThrow()
 
-val values = session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow()
-session.memory?.write(0, byteArrayOf(1, 2, 3))?.getOrThrow()
-session.close()
-module.close()
+try {
+    val values = session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow()
+    check(values == listOf(RawValue.I32(5)))
+} finally {
+    session.close()
+    module.close()
+}
 ```
 
-规范错误类型分为：结果值中的 `WasmlineFailure`、显式抛出适配器使用的
-`WasmlineException`，以及模块尚未创建时的 `WasmlineLoadFailure`。
-结果 API 只通过 `failure`、`failure.code` 和 `failure.message` 表达失败。
+Native Raw Export 使用匹配的 `.cwasm` 或 `.pwasm` descriptor，而不是
+`RAW_WASM`。session API、标量值、import 和有边界检查的内存 API 保持一致。
 
-## 结果与异常边界
+## 处理结果和错误
 
-当普通调用错误需要作为数据处理时，使用 `callResult`、`invokeRawResult` 和 Core session API。
-结果只有 `Success(value)` 或 `Failure(failure)` 两种状态；分支判断应使用 `failure.code`，不应解析错误消息。
+普通调用错误需要作为数据处理时，使用 `callResult()`、`invokeRawResult()`、
+`invokeComponentResult()` 或 Core session 的结果 API。结果只有 `Success(value)` 与
+`Failure(failure)` 两种状态。应根据 `failure.code` 分支，不要解析
+`failure.message` 文本。
 
-没有绑定 handler 的 action 返回 `ACTION_NOT_BOUND`。它不表示为空 payload，也不会导致宿主崩溃。未知 action、无效 payload、handler 失败、trap、传输失败和响应帧格式错误，在运行时能够构造结果时都返回失败结果。
+例如，没有绑定 handler 的 action 返回 `ACTION_NOT_BOUND`。
+`throwOnFailure()` 只在调用方明确要求异常时才把失败转换为
+`WasmlineException`。Core 响应帧字段和产物规则参见 [常见问题](/zh/docs/faq)。
 
-`getOrNull()` 与 `failureOrNull()` 用于无异常读取。`throwOnFailure()` 只在明确需要时将
-`WasmlineFailure` 适配为 `WasmlineException`，不属于默认结果路径。
+## 后续页面
 
-Core 响应帧使用固定的 `WLMF` magic 标记和一个字节的 `frameVersion`，当前值为 `1`。magic 用于识别帧格式，不提供身份认证。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不会增加该 Core 响应帧。
-
-## 稳定错误码
-
-错误码是稳定标识符。应用程序应根据错误码分支，错误消息只用于诊断。
-
-| 错误码 | 数值 | 含义 |
-|---|---:|---|
-| `ACTION_NOT_BOUND` | `1001` | 当前 action 作用域没有绑定 handler。 |
-| `UNKNOWN_ACTION` | `1002` | action 名称未注册。 |
-| `INVALID_PAYLOAD` | `1003` | payload 或 typed 参数无效。 |
-| `HANDLER_FAILED` | `1004` | handler 执行失败。 |
-| `SERIALIZATION_FAILED` | `1005` | 业务数据无法序列化。 |
-| `ENGINE_NOT_INITIALIZED` | `2001` | Wasmtime engine 未初始化。 |
-| `CORE_TRAP` | `2002` | Core Wasm 执行发生 trap。 |
-| `CORE_EXPORT_NOT_FOUND` | `2003` | Core export 不存在。 |
-| `INVOCATION_PROTOCOL_MISMATCH` | `2004` | 描述对象与调用 API 不匹配。 |
-| `MODULE_FORMAT_INVALID` | `2201` | raw 或 AOT 模块格式无效。 |
-| `WASM_FEATURE_UNSUPPORTED` | `2202` | 所需 WebAssembly feature 不可用。 |
-| `IMPORT_MISSING` | `2203` | 声明的宿主 import 未注册。 |
-| `IMPORT_SIGNATURE_MISMATCH` | `2204` | import 签名与模块不匹配。 |
-| `INSTANTIATION_FAILED` | `2205` | 模块实例化失败。 |
-| `EXPORT_KIND_MISMATCH` | `2206` | export 存在但种类不正确。 |
-| `ARGUMENT_COUNT_MISMATCH` | `2207` | 参数数量不正确。 |
-| `ARGUMENT_TYPE_MISMATCH` | `2208` | 参数类型不正确。 |
-| `RESULT_TYPE_UNSUPPORTED` | `2209` | 返回类型不在标量 ABI 范围内。 |
-| `MEMORY_OUT_OF_BOUNDS` | `2210` | 线性内存范围无效。 |
-| `IMPORT_HANDLER_FAILED` | `2211` | 同步宿主 import 失败。 |
-| `SESSION_CLOSED` | `2212` | 使用了已关闭的 module 或 session。 |
-| `CONCURRENT_ACCESS` | `2213` | session 已有进行中的操作。 |
-| `REENTRANT_CALL` | `2214` | import 回调重新进入同一 session。 |
-| `UNSUPPORTED_EXPORT_KIND` | `2215` | backend 不支持请求的 export 类型。 |
-| `WASM_TRAP` | `2216` | Core Wasm 执行发生 trap。 |
-| `EXPORT_SIGNATURE_MISSING` | `2217` | Web 调用缺少签名 metadata。 |
-| `EXPORT_NOT_FOUND` | `2218` | 请求的 raw export 不存在。 |
-| `COMPONENT_TRAP` | `2101` | Component Model 执行发生 trap。 |
-| `COMPONENT_EXPORT_NOT_FOUND` | `2102` | Component export 不存在。 |
-| `COMPONENT_CALL_FAILED` | `2103` | Component 调用未成功返回。 |
-| `RESPONSE_MALFORMED` | `3001` | 响应帧格式无效。 |
-| `RESPONSE_MISSING` | `3002` | 没有返回响应。 |
-| `TRANSPORT_FAILURE` | `3003` | 平台 bridge 失败。 |
-| `RESPONSE_UNSUPPORTED_VERSION` | `3004` | Core 响应帧版本不受支持。 |
-
-## 示例应用
-
-参考实现位于 `wasmline-samples/kotlin/`：
-
-| 模块 | 说明 |
-|---|---|
-| `sample-common` | 共享服务契约接口定义：`EchoService`、`TimeSyncService`、`WebBridgeService` |
-| `sample-plugin` | Kotlin/WasmWasi 插件——通过 `bind()` 注册实现，通过 `link()` 调用宿主服务 |
-| `sample-component-plugin` | Kotlin/WasmWasi `wasmline:service@1.0.0` Component，包含生成的宿主回调 |
-| `sample-apps/android` | Android 宿主——加载 `.pwasm` 产物，注册宿主回调，并调用插件服务 |
-| `sample-apps/application` | JVM 无界面桌面宿主 |
-| `sample-apps/multiplatform` | Compose Multiplatform 应用——Android 与 Desktop |
-| `sample-apps/multiplatform/webApp` | Web 宿主——Kotlin/JS 与 Kotlin/WasmJS 目标 |
+- [组件服务协议](/zh/docs/component-service)：固定 WIT 请求和宿主回调。
+- [Gradle 插件](/zh/docs/gradle-plugin)：创建签名 package 和 AOT 产物。
+- [平台架构](/zh/docs/architecture)：执行模型和模块职责。

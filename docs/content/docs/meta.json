@@ -1,4 +1,4 @@
 {
   "title": "Docs",
-  "pages": ["index", "installation", "gradle-plugin", "wasmtime-download", "building-from-source", "usage", "testing", "cli", "architecture", "compiler-plugin", "faq", "mdx-compponent"]
+  "pages": ["index", "installation", "usage", "(reference)"]
 }

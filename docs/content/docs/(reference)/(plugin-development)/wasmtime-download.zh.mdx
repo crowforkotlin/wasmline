@@ -1,0 +1,158 @@
+---
+title: Wasmtime AOT 兼容性
+description: 选择兼容的 Wasmtime profile 与经过校验的 compiler asset
+createdAt: 2026-08-15
+updatedAt: 2026-09-03
+---
+
+# Wasmtime AOT 兼容性
+
+Native Wasmtime 不能反序列化所有 AOT 文件。每当 engine 的序列化产物契约发生
+变化，Wasmline 就记录一个不可变的 AOT generation。一个 generation 对应一个
+fork distribution，以及一组 Cranelift/Pulley profile。
+
+Profile 描述包含 fork 的 Wasmtime `x.y.z`、source revision、产物格式、编译器
+设置、engine 设置和 backend。规范化后的 JSON 会计算为
+`sha256:<digest>` profile ID。即使使用同一个 fork release，Cranelift 和 Pulley
+也有不同的 ID。
+
+## 版本名称
+
+上游 Wasmtime 使用 `x.y.z` 版本。fork distribution 使用四段版本 `x.y.z.v`。
+例如，`major.minor.patch.fork` 表示基于 `major.minor.patch` 的 fork distribution。
+fork 发布新 distribution 时会增加第四段；该数字本身不能证明 AOT 兼容。
+
+插件作者使用 `current()`、`minimum()`、`all()` 或 `versionRanges {}` 选择要覆盖的
+Wasmline release，不填写 Wasmtime distribution 版本。catalog 会把选中的 Wasmline
+release 解析为所需的 profile ID 和 compiler asset。
+
+## 配置构建
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            current()
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+只能选择一个 selector：
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            minimum()
+            // all()
+            // versionRanges {
+            //     include(from = "1.0.0", through = "1.20.0")
+            //     include(from = "1.50.0", through = "1.72.3")
+            // }
+            suppressCompatibilityWarning.set(false)
+        }
+    }
+}
+```
+
+| Selector | 选择内容 |
+|---|---|
+| `current()` | 当前 Wasmline 发行版使用的 generation |
+| `minimum()` | 从配置的最小支持版本到当前发行版的全部 generation |
+| `all()` | 本地 catalog 保留的全部 generation |
+| `versionRanges {}` | 与列出的闭区间 `x.y.z` 相交的 generation |
+
+未设置 selector 或范围没有选中条目时，Native AOT 会在下载 compiler 文件前失败。
+仓库根目录的 `aot-compatibility.json` 是唯一人工维护的 catalog。修改后执行
+`./scripts/wasmline aot sync`；该命令会校验条目并生成构建工具使用的 packaged
+lock。generation 只是目录中的顺序编号，不是运行时凭据。加载仍要求与已链接
+engine 报告的 profile ID 完全匹配。
+
+## 已发布范围
+
+下表由 catalog 生成。每行从列出的 Wasmline 版本开始，到下一行开始前结束；最后
+一行延伸到当前发行版。
+
+<AotCompatibilityTable
+  labels={{
+    fromVersion: '起始 Wasmline 版本',
+    throughVersion: '结束 Wasmline 版本',
+    generation: 'AOT generation',
+    wasmtimeDistribution: 'Wasmtime fork distribution',
+    changedBackends: '发生变化的 backend',
+    current: '当前发行版',
+    before: '早于',
+  }}
+/>
+
+## Compiler Asset 缓存
+
+`versions.json` 保存项目和工具链的标量版本；AOT 历史只保存在
+`aot-compatibility.json`。`aot sync` 会生成
+`META-INF/wasmline/aot/aot-compatibility-lock.json` 以及供构建工具使用的相同
+公共资源。
+
+Compiler archive 按执行构建的机器选择。每个 archive 和解压后的 executable 都
+锁定 SHA-256。共享缓存位置为：
+
+```text
+~/.wasmline/toolchains/wasmtime/compiler-assets/
+└── sha256/{prefix}/{archiveDigest}/{buildHost}/
+```
+
+同一个 archive 可以服务两个 backend，并且只下载一次。设置
+`autoDownload = false` 后，所有所需文件必须已存在并通过摘要校验。不接受任意
+compiler executable 或目录。
+
+使用以下命令查看 catalog：
+
+```bash
+./wasmline-cli/cli.sh aot-profiles list
+./wasmline-cli/cli.sh aot-profiles describe sha256:<digest>
+```
+
+## Target 规则
+
+`pulley32` 生成 32 位 PWASM，`pulley64` 生成 64 位 PWASM。PWASM 不是 raw
+WebAssembly，pointer width 必须匹配。iOS 使用 `pulley64`。
+
+CWASM 必须同时匹配 engine 的 Cranelift profile、操作系统、架构、pointer width
+和 CPU feature profile。只有不存在匹配 CWASM，且 runtime 报告匹配的 Pulley
+profile 与 capability 时，Cranelift runtime 才能使用 PWASM。CWASM 下载失败、摘要
+错误、大小错误或反序列化失败时，不会静默改用 PWASM。
+
+Web 不使用 Wasmtime profile。无论 native profile 有多少，Core package 只保存一份
+供浏览器使用的 raw `.wasm` variant。
+
+## 兼容性警告
+
+`wasmlineCheckAotCompatibility` 在 Debug 或 Release assemble 成功后运行。它在
+五秒网络等待上限内，将本地 catalog 与 GitHub 最新稳定 catalog 比较，并把 JSON
+报告写入 `build/reports/wasmline/`。generation 不足和 generation 相同都会有明确
+日志。确认报告后才应设置 `suppressCompatibilityWarning.set(true)`；该设置只改变
+日志，不改变构建结果。
+
+## 增加 Generation
+
+只有 Wasmline engine release 改变 AOT contract 时，维护者才增加 generation。在
+`versions.json` 更新 Wasmtime 标量版本，在 `aot-compatibility.json` 追加新的范围，
+然后执行：
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline aot sync
+./scripts/wasmline aot check
+```
+
+新增 fork distribution 时，`aot sync` 会解析准确的
+`crowforkotlin/wasmtime` release 和 source revision，校验 `SHA256SUMS`，并临时
+下载所需 CLI archive 记录 compiler 摘要。已有 distribution 保持离线。不要手动
+编辑生成的 lock。

@@ -1,0 +1,104 @@
+---
+title: 常见问题
+description: 依赖、产物、调用模型与插件隔离的常见问题
+createdAt: 2026-07-18
+updatedAt: 2026-09-03
+---
+
+# 常见问题
+
+<Accordions>
+  <Accordion title="每个应用都需要 Wasmline network 模块吗？">
+    不需要。本地 manifest 和产物只使用 `wasmline-loader`。只有在远程
+    manifest 或所选产物不在缓存中时，才需要引入
+    `wasmline-network-ktor`、`wasmline-network-okhttp`，或实现
+    `WasmlineNetworkClient`、远程 resolver。Loader 会先检查缓存；完整 package
+    已缓存时，不提供 network client 也能加载。
+
+    Ktor 与 OkHttp 模块依赖 `wasmline-loader`，核心 `wasmline` runtime 不依赖
+    HTTP 实现。浏览器加载 raw `.wasm` 使用 `WasmlineWeb.prefetch()`。
+  </Accordion>
+
+  <Accordion title="浏览器没有 Wasmtime 时如何实例化插件？">
+    `webMain`、`jsMain` 和 `wasmJsMain` 实现直接调用浏览器的
+    `WebAssembly.Module` 与 `WebAssembly.Instance` API。Kotlin `js()` interop
+    提供必要的运行时代码，不会生成外部 JavaScript 文件。
+
+    该运行时代码提供 `wasi_snapshot_preview1` 所需的
+    `fd_write`、`random_get`、`clock_time_get`，以及 Core Wasmline bridge 使用的
+    `env` import。`WasmlineWeb.prefetch(url)` 先通过 Fetch 获取 raw `.wasm` 字节，
+    宿主再将同一个 URL 放入 `WasmlineArtifactDescriptor.path`，调用
+    `WasmlineLoader.loadCoreModule()` 或 `WasmlineLoader.load()`。显式 descriptor
+    可以避免把该 URL 识别为远程 manifest。浏览器不接受 `.cwasm` 或 `.pwasm`。
+  </Accordion>
+
+  <Accordion title=".wasm、.cwasm 和 .pwasm 有什么区别？">
+    | 产物 | 生成方式 | 运行时 | 兼容条件 |
+    |---|---|---|---|
+    | `.wasm` | Kotlin/Wasm 或其他 WebAssembly 编译器 | 浏览器 WebAssembly API | 不绑定 Wasmtime |
+    | `.cwasm` | `wasmtime compile` 使用 Cranelift | 原生机器码 | 精确匹配 Cranelift profile 与 target |
+    | `.pwasm` | `wasmtime compile` 使用 Pulley | Wasmtime Pulley 解释器 | 精确匹配 Pulley profile 与 pointer width |
+
+    Native 只接受匹配的 `.cwasm` 或 `.pwasm`。manifest 记录 backend profile ID、
+    target、文件大小和 SHA-256。Wasmtime 更新可能产生新的 profile；旧产物只有在
+    engine 仍报告其 profile 时才能继续使用。
+  </Accordion>
+
+  <Accordion title="不同产物应由哪个 engine 模块加载？">
+    - `wasmline-engine-cranelift` 优先加载匹配的 `.cwasm`；runtime 报告支持 Pulley
+      且存在匹配产物时，可使用 `.pwasm`。
+    - `wasmline-engine-pulley` 只接受 `.pwasm`。
+    - iOS 使用 `pulley64` `.pwasm`。
+
+    文件扩展名不会决定执行模型。签名 descriptor 提供执行模型、调用协议、profile
+    与 target 信息。
+  </Accordion>
+
+  <Accordion title="Core Wasm、Raw Export 与 Component Model 调用有什么区别？">
+    `CORE_WASM + WASMLINE_SERVICE` 使用 action 和字节 payload 协议。
+    `CORE_WASM + RAW_EXPORT` 调用显式声明的 `i32`、`i64`、`f32` 或 `f64` export，
+    并可注册同步 import 和有边界检查的内存访问。
+    `COMPONENT_MODEL + COMPONENT_EXPORT` 调用 WIT 定义的 Component Model typed
+    value。`COMPONENT_MODEL + WASMLINE_SERVICE` 使用固定的
+    `wasmline:service@1.0.0` WIT 请求格式。
+
+    Component 构建和 AOT 编译由 Gradle 或 CLI 完成。Loader 接收完成的 Component
+    产物，加载时不会运行 `wit-bindgen`、`wasm-tools` 或 `wasmtime compile`。
+  </Accordion>
+
+  <Accordion title="没有绑定 action 时会发生什么？">
+    调用返回 `WasmlineCallResult.Failure`，错误码为
+    `WasmlineErrorCode.ACTION_NOT_BOUND`。它不是空的成功 payload，也不会导致宿主
+    崩溃。请读取 `Failure.failure.code`；只有明确需要异常风格时才使用
+    `throwOnFailure()`。
+  </Accordion>
+
+  <Accordion title="WLMF 和 frameVersion 表示什么？">
+    `WLMF` 是 Core 响应帧格式的四字节标记，不是签名或身份认证机制。
+    `frameVersion` 是一个字节的响应布局版本，当前值为 `1`。二者都不表示
+    Wasmtime、Kotlin 或业务 API 版本。Raw Export 和 Component Model 调用不使用
+    该 Core 响应帧。
+  </Accordion>
+
+  <Accordion title="宿主集成必须使用 Kotlin IR 编译器插件吗？">
+    不必须。`Wasmline.callResult(action, bytes)` 始终可用于手动分发。只有使用生成的
+    `link<T>()` 与 `bind(impl)` 调用点时才需要 IR 插件；未应用插件时，这些调用点
+    会在运行时抛出 `UnsupportedOperationException`。
+  </Accordion>
+
+  <Accordion title="插件如何与宿主隔离？">
+    每个 Native 插件 session 都拥有独立的 Wasm 线性内存。除非宿主明确提供相应的
+    Wasmtime capability，插件不能读取宿主进程内存、文件或网络资源。Web 目标由
+    浏览器的 WebAssembly sandbox 提供同等的内存边界。
+  </Accordion>
+</Accordions>
+
+## 参考资料
+
+<Cards>
+  <Card href="https://wuya.click/posts/55e66811/" title="通过 JNI 在 Android 上使用 Wasmtime" description="JNI bridge 集成参考" />
+  <Card href="https://wuya.click/posts/711a5ddb/" title="WebAssembly 与 WASI" description="运行时与生命周期参考" />
+  <Card href="https://docs.wasmtime.dev/" title="Wasmtime 文档" description="Wasmtime 官方文档" />
+  <Card href="https://webassembly.github.io/spec/" title="WebAssembly 规范" description="WebAssembly 核心规范" />
+  <Card href="https://github.com/WebAssembly/WASI" title="WASI 规范" description="WebAssembly System Interface 规范" />
+</Cards>

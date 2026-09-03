@@ -1,0 +1,98 @@
+---
+title: Compiler Plugin
+description: IR transformations, service contract checks, action names, and tests
+createdAt: 2026-07-18
+updatedAt: 2026-09-03
+---
+
+# Compiler Plugin
+
+## IR Transformation Steps
+
+The `wasmline-kotlin-plugin` runs during the **Kotlin IR compilation phase**. It
+does not use KSP or generate source files. Compiler options choose the final
+guest export or initialization hook.
+
+| Step | Class | Operation |
+|---|---|---|
+| 1 — Discovery | `WasmlineIrGenerationExtension` | Finds `IrClass` declarations whose supertype hierarchy contains `WasmlineService` |
+| 2 — Validation | `WasmlineServiceContractValidator` | Checks each contract and reports unsupported declarations as compiler errors |
+| 3 — Bridge generation | `WasmlineBridgeGenerator` | Adds one `internal {Contract}_WasmlineBridge` class for each valid contract |
+| 4 — Call-site rewrite | `WasmlineTypedEntryPointRewriter` | Replaces `link<T>()`, `bind(contract, impl)`, and `bind(impl)` with direct bridge expressions |
+| 5 — Guest hook | `WasmlineWasiEntryExportGenerator` or `WasmlineComponentServiceInitGenerator` | Adds Core WASI exports or the Component Service initialization hook |
+
+## Static Contract Constraints
+
+The following constraints are checked at compile time. A violation is a
+**compiler error** and stops IR generation:
+
+| Constraint | Requirement |
+|---|---|
+| Declaration kind | A contract must be an `interface` that directly or indirectly extends `WasmlineService` |
+| Properties | Service properties are not supported; declare functions instead |
+| Member visibility | All functions must be declared `public` |
+| Suspendability | `suspend` modifier is not permitted on any contract function |
+| Generic type parameters | Not permitted on the contract or its functions |
+| Method name uniqueness | Overloaded method names within a single contract are not supported |
+| `vararg` parameters | Not permitted |
+| Default parameter values | Not permitted |
+| Extension receivers | Extension functions and properties are not supported as contract members |
+| Service-typed values | Service contracts cannot be used as parameter or return types |
+
+Functions may have multiple regular parameters. The generated bridge creates a
+serializer entry and parameter descriptor for each parameter.
+
+## Action Identifier
+
+Each service method uses this action string:
+
+```text
+com.example.EchoService#echo
+```
+
+The generated caller, binder, and dispatcher use the same value. Because method
+overloads are not allowed, the contract and method names are sufficient.
+Changing either name changes the action. Changing parameter types keeps the
+action string but changes the serialized payload contract.
+
+## IR Box Test Workflow
+
+Box fixtures reside in `wasmline-kotlin-plugin/testData/box/`. Each source file
+has a `fun box(): String` entry point that returns `"OK"` when the check passes:
+
+```bash
+cd wasmline-multiplatform
+
+# 1. Add or modify testData/box/{name}.kt
+# 2. Regenerate the runner
+./gradlew :wasmline-kotlin-plugin:generateTests
+
+# 3. Run the box tests; the first run creates FIR and IR snapshots
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+
+# 4. Review the generated snapshots before committing
+```
+
+<Callout type="warn" title="Auto-generated build artifacts">
+  The following files are **generated build outputs** and must not be edited:
+  `test-gen/**`, `testData/box/*.fir.txt`, and `testData/box/*.fir.ir.txt`. They
+  are recreated by the next generation or test run.
+</Callout>
+
+## Related Gradle Tasks
+
+```bash
+cd wasmline-multiplatform
+
+# Regenerate the test runners
+./gradlew :wasmline-kotlin-plugin:generateTests
+
+# Box tests
+./gradlew :wasmline-kotlin-plugin:test \
+  --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
+```
+
+The repository retains an `AbstractJvmDiagnosticTest` scaffold, but its
+generator is disabled. There is no active `testData/diagnostics/` directory or
+`JvmDiagnosticsTestGenerated` runner.

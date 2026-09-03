@@ -1,0 +1,147 @@
+---
+title: CLI Reference
+description: Build, sign, inspect, and package Wasmline plugins
+createdAt: 2026-07-18
+updatedAt: 2026-09-03
+---
+
+# CLI Reference
+
+Run the CLI from `wasmline-multiplatform/`. The repository launcher builds the
+CLI distribution and forwards its arguments:
+
+```bash
+./wasmline-cli/cli.sh <command> [options]
+```
+
+## Commands
+
+| Command | Result |
+|---|---|
+| `build` | Compile the selected AOT profiles, sign one manifest, and create an offline ZIP |
+| `compile` | Compile the selected AOT profiles and write `aot-build-record.json` |
+| `manifest` | Sign an existing build record |
+| `generate-key-pair` | Generate the Ed25519 key pair accepted by the manifest format |
+| `aot-profiles list` | List catalog profiles and their IDs |
+| `aot-profiles describe <id>` | Show one profile descriptor and its build hosts |
+| `componentize` | Create or inspect the raw Component used as AOT input |
+| `tools download` | Download locked Component tools |
+| `wit generate` | Generate WIT bindings |
+| `component validate` | Validate a Component |
+| `component inspect` | Print a Component's WIT |
+
+The CLI does not accept the removed `download` command, a `--wasmtime` directory,
+or an arbitrary compiler executable. AOT compilers come from the digest-locked
+catalog.
+
+## Build a Package
+
+```bash
+./wasmline-cli/cli.sh generate-key-pair --save
+
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --aot-compatibility current \
+  --target pulley64 \
+  --target x86_64-linux \
+  --auto-download \
+  --plugin-id com.example.plugin \
+  --version 1.0.0 \
+  --build-timestamp 0 \
+  --key build/wasmline/keys/ed25519_private.key
+```
+
+Native AOT requires one selector. Select the current generation, the configured
+minimum, every catalog generation, or explicit inclusive ranges:
+
+```bash
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility minimum \
+  --target pulley64
+
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility versionRanges \
+  --aot-version-range 1.0.0..1.20.0 \
+  --aot-version-range 1.50.0..1.72.3 \
+  --target x86_64-linux
+```
+
+Ranges are closed and use stable `x.y.z` Wasmline versions. The CLI resolves
+them through its local catalog and then uses exact backend profile IDs. It does
+not accept a free-form Wasmtime version or profile ID.
+
+## Raw Export ABI
+
+For `CORE_WASM + RAW_EXPORT`, pass a JSON file with the same schema as the
+Gradle `RawAbiMetadata` value:
+
+```json
+{
+  "version": 1,
+  "exports": [
+    {
+      "name": "add_i32",
+      "kind": "FUNCTION",
+      "signature": {
+        "parameters": ["I32", "I32"],
+        "results": ["I32"]
+      }
+    }
+  ],
+  "imports": [],
+  "memoryExport": "memory",
+  "requiredFeatures": []
+}
+```
+
+```bash
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --execution-model CORE_WASM \
+  --invocation-protocol RAW_EXPORT \
+  --export-name add_i32 \
+  --raw-abi-metadata raw-abi.json \
+  --target pulley64 \
+  --key build/wasmline/keys/ed25519_private.key
+```
+
+The plugin-core codec rejects unknown fields and invalid types, then sorts the
+export, import, and feature lists before creating the build record.
+`contractMetadata` is for other annotations and does not replace the raw ABI.
+
+## Output Layout
+
+```text
+build/wasmline/
+├── output/com.example.plugin-1.0.0/
+│   ├── manifest.wlm
+│   ├── artifacts/sha256/
+│   │   ├── 4f/4f13c7...a920.cwasm
+│   │   ├── 91/91aa42...c810.wasm
+│   │   └── b8/b8072d...0f31.pwasm
+│   └── debug/
+│       ├── manifest.json
+│       ├── aot-build-record.json
+│       └── artifact-index.json
+├── dist/com.example.plugin-1.0.0.zip
+└── keys/
+    ├── ed25519_private.key
+    └── ed25519_public.key
+```
+
+One signed manifest describes all selected profiles. A Core package stores its
+Web `.wasm` once, outside the native profile list. A Component's raw Wasm is
+only a build input. Identical bytes share one content-addressed file.
+
+The offline ZIP contains the complete artifact set. A remote loader verifies the
+manifest, chooses one variant, and downloads only that file; it does not fetch
+the ZIP.
+
+Compilation and signing use staging directories. A failed compile, signature,
+or ZIP replacement leaves the previous package directory and ZIP unchanged.
+
+The Gradle-only `wasmlineCheckAotCompatibility` task compares the local catalog
+with the latest stable release. CLI compilation stays offline and reads only its
+packaged catalog.

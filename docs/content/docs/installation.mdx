@@ -1,26 +1,29 @@
 ---
 title: Installation
-description: Add Wasmline to your project with Gradle — plugin application and Maven dependencies
+description: Add the Gradle plugin, runtime modules, and one native engine
 createdAt: 2026-07-18
-updatedAt: 2026-08-28
+updatedAt: 2026-09-03
 ---
 
 # Installation
 
-Wasmline is consumed as Maven artifacts in your own Gradle project. If you want to build the framework itself from source or contribute to it, see [Building from Source](/en/docs/building-from-source).
+Use Wasmline as Maven artifacts in a Gradle project. To build the Wasmline
+repository itself, see [Building from Source](/en/docs/building-from-source).
 
 ## Requirements
 
-- JDK / JBR **21**
+- JBR **21**
 - Kotlin **2.3.0-RC2** or later
 
-<Callout type="warn" title="Kotlin version requirement">
-  The minimum required Kotlin version is **2.3.0-RC2**. Below this version, the Kotlin/WasmWasi compiler backend may produce incomplete Wasm binaries, manifesting as plugin load failures or undefined behavior at the `Session.invoke` boundary.
-
-  ![Kotlin/Wasm runtime support matrix](/images/kotlin_support.png)
+<Callout type="warn" title="Kotlin requirement">
+  The minimum required Kotlin version is **2.3.0-RC2**. Earlier versions can produce incomplete Kotlin/WasmWasi
+  binaries. Do not use them for Wasmline plugins.
 </Callout>
 
 ## Apply the Gradle Plugin
+
+Apply the plugin to each compilation that uses generated `link<T>()` or
+`bind(impl)` calls:
 
 ```kotlin
 // build.gradle.kts
@@ -29,50 +32,46 @@ plugins {
 }
 ```
 
-The plugin applies the `wasmline-kotlin-plugin` IR compiler plugin to the current compilation unit, rewriting `link<T>()` and `bind(impl)` call sites at compile time. Without it, those calls throw `UnsupportedOperationException` at runtime.
+The plugin applies `wasmline-kotlin-plugin`. Without it, the public
+`Wasmline.callResult(action, bytes)` API remains available, but `link<T>()` and
+`bind(impl)` throw `UnsupportedOperationException` at runtime.
 
-## Add Dependencies
+## Add Runtime Dependencies
+
+Use the BOM so all Wasmline modules use one version. Add `wasmline-loader` and
+exactly one native engine module. Add a network module only when a host must
+download a remote manifest or an artifact that is not cached.
 
 ```kotlin
 dependencies {
     implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
-
-    // Core loader: manifest verification, selection, and module loading
     implementation("crow.wasmline:wasmline-loader")
-
-    // Optional HTTP client for remote cache misses
-    implementation("crow.wasmline:wasmline-network-ktor")
-
-    // Select exactly one native engine backend
     implementation("crow.wasmline:wasmline-engine-pulley")
+
+    // Required only for remote loading on supported native targets.
+    implementation("crow.wasmline:wasmline-network-ktor")
 }
 ```
 
-The BOM applies strict constraints to the runtime, loader, network adapters,
-compiler and Gradle plugins, CLI, plugin core, and both engine modules. All of
-these artifacts are published with one Wasmline `x.y.z` version. Do not upgrade
-an engine independently. Native startup also checks the Wasmline release
-identity and bridge ABI before any AOT artifact is deserialized.
-
-| Artifact | Description |
+| Module | Use it for |
 |---|---|
-| `crow.wasmline:wasmline` | Core runtime — execution, dispatch, serialization SPI |
-| `crow.wasmline:wasmline-loader` | Load options, cache/network SPI, `.wlm` parsing and signature verification |
-| `crow.wasmline:wasmline-network-ktor` | Ktor adapter for remote loading (JVM, Android, Apple, Linux, Windows Native) |
-| `crow.wasmline:wasmline-network-okhttp` | HTTP network client backed by OkHttp 5.x (JVM/Android) |
-| `crow.wasmline:wasmline-engine-pulley` | Pulley-only interpreter — `.pwasm` only, all native targets |
-| `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime — `.cwasm` first, `.pwasm` fallback |
+| `wasmline` | Runtime APIs, service dispatch, and serialization SPI |
+| `wasmline-loader` | Manifest parsing, signature checks, cache access, and artifact selection |
+| `wasmline-network-ktor` | Remote loading on JVM, Android, Apple, Linux, and Windows Native |
+| `wasmline-network-okhttp` | Remote loading on JVM and Android with OkHttp |
+| `wasmline-engine-pulley` | Loading matching `.pwasm` artifacts |
+| `wasmline-engine-cranelift` | Loading matching `.cwasm`; it can also load matching `.pwasm` |
 
-<Callout type="info" title="Network adapters are optional">
-  `wasmline-loader` defines the network, cache, and trust abstractions but does not select an HTTP engine. Local artifacts and local manifests need no network module. For a remote manifest, choose Ktor or OkHttp only when the application must fetch a missing or expired manifest or a missing artifact. A fresh manifest and its selected artifact can be loaded from cache without a network client. Browser raw `.wasm` loading uses `WasmlineWeb.prefetch()` instead of either adapter.
-</Callout>
+The BOM keeps the runtime, loader, plugins, CLI, plugin build tools, and engine
+modules on the same Wasmline version. Do not upgrade an engine module by itself.
 
-## Kotlin/Native Host
+## Kotlin/Native Hosts
 
-Kotlin/Native applications use the same `WasmlineLoader` API as JVM and Android hosts. Add one engine dependency to the Native source set; the published KMP metadata selects the matching static Wasmtime bridge for iOS, macOS, Linux, or Windows.
+Add the same runtime modules to the Native source set. Published Kotlin
+Multiplatform metadata selects the matching static Wasmtime bridge for iOS,
+macOS, Linux, or Windows.
 
 ```kotlin
-// build.gradle.kts
 val wasmlineVersion = "1.0.0"
 
 kotlin {
@@ -82,30 +81,36 @@ kotlin {
                 implementation("crow.wasmline:wasmline:$wasmlineVersion")
                 implementation("crow.wasmline:wasmline-loader:$wasmlineVersion")
                 implementation("crow.wasmline:wasmline-engine-pulley:$wasmlineVersion")
-                // Use wasmline-engine-cranelift when .cwasm is required.
             }
         }
     }
 }
 ```
 
-Pulley accepts portable `.pwasm` artifacts with the matching pointer width on
-every Native target. Cranelift first selects an exact profile, platform, pointer
-width, and CPU-feature match for `.cwasm`. It can use `.pwasm` only when no
-compatible CWASM exists and the runtime reports the corresponding Pulley profile
-and capability. iOS remains `pulley64` only. Native applications do not load JNI
-libraries or call a source-checkout path. Remote loading can use
-`wasmline-network-ktor`, which selects Darwin, Curl, or WinHTTP for the target.
+`wasmline-engine-pulley` loads a matching `pulley32` or `pulley64` `.pwasm`.
+`wasmline-engine-cranelift` first looks for an exact `.cwasm` target and profile
+match. It uses `.pwasm` only when a matching Pulley profile is also available.
+iOS uses `pulley64` `.pwasm` only.
 
-The current manifest format accepts Ed25519 only. A package contains one signed
-manifest for all AOT compatibility profiles and content-addressed targets.
-
-<Callout type="info" title="Distribution status">
-  Wasmline is under active development and is not released yet. Artifacts are currently distributed through `mavenLocal()` — run `./gradlew publishToMavenLocal` in `wasmline-multiplatform/` to install them locally. Maven Central publishing is in progress.
+<Callout type="info" title="Network modules are optional">
+  Local manifests and local artifacts do not need Ktor or OkHttp. The loader
+  checks its cache before using a network client. Browser raw `.wasm` loading
+  uses `WasmlineWeb.prefetch()` instead of either native network module.
 </Callout>
 
-## Next Steps
+## Current Distribution
 
-- [Gradle Plugin](/en/docs/gradle-plugin) — build, serve, download toolchains, and inspect Component pipeline tasks.
-- [Usage Guide](/en/docs/usage) — define a service contract, implement a plugin, and invoke it from the host.
-- [CLI Reference](/en/docs/cli) — compile and package plugin binaries for distribution.
+Wasmline is currently distributed through `mavenLocal()`. From this repository,
+run the following command before consuming the artifacts from another local
+project:
+
+```bash
+cd wasmline-multiplatform
+./gradlew publishToMavenLocal
+```
+
+## Next Pages
+
+- [Usage](/en/docs/usage): define and call a service.
+- [Gradle Plugin](/en/docs/gradle-plugin): build signed AOT packages.
+- [AOT Compatibility](/en/docs/wasmtime-download): choose the AOT profiles to include.

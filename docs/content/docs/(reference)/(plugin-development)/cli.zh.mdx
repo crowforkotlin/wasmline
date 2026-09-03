@@ -1,0 +1,141 @@
+---
+title: CLI 参考
+description: 使用 CLI 构建、签名、检查和打包 Wasmline 插件
+createdAt: 2026-07-18
+updatedAt: 2026-09-03
+---
+
+# CLI 参考
+
+在 `wasmline-multiplatform/` 下运行 CLI。仓库启动脚本会构建 CLI distribution，
+并转发全部参数：
+
+```bash
+./wasmline-cli/cli.sh <command> [options]
+```
+
+## 命令
+
+| 命令 | 结果 |
+|---|---|
+| `build` | 编译选中的 AOT profile、签名一个 manifest，并创建离线 ZIP |
+| `compile` | 编译选中的 AOT profile，并写入 `aot-build-record.json` |
+| `manifest` | 为已有 build record 签名 |
+| `generate-key-pair` | 生成 manifest 格式接受的 Ed25519 密钥对 |
+| `aot-profiles list` | 列出 catalog profile 及其 ID |
+| `aot-profiles describe <id>` | 显示一个 profile 的描述和构建宿主 |
+| `componentize` | 创建或检查作为 AOT 输入的 raw Component |
+| `tools download` | 下载锁定的 Component 工具 |
+| `wit generate` | 生成 WIT binding |
+| `component validate` | 校验 Component |
+| `component inspect` | 输出 Component 的 WIT |
+
+CLI 不接受已删除的 `download` 命令、`--wasmtime` 目录或任意 compiler
+executable。AOT compiler 必须来自摘要锁定的 catalog。
+
+## 构建 Package
+
+```bash
+./wasmline-cli/cli.sh generate-key-pair --save
+
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --aot-compatibility current \
+  --target pulley64 \
+  --target x86_64-linux \
+  --auto-download \
+  --plugin-id com.example.plugin \
+  --version 1.0.0 \
+  --build-timestamp 0 \
+  --key build/wasmline/keys/ed25519_private.key
+```
+
+Native AOT 必须设置一个 selector。可以选择当前 generation、配置的最小版本、
+catalog 中全部 generation 或明确的闭区间：
+
+```bash
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility minimum \
+  --target pulley64
+
+./wasmline-cli/cli.sh compile \
+  --input plugin.wasm \
+  --aot-compatibility versionRanges \
+  --aot-version-range 1.0.0..1.20.0 \
+  --aot-version-range 1.50.0..1.72.3 \
+  --target x86_64-linux
+```
+
+范围为闭区间，使用稳定的 Wasmline `x.y.z` 版本。CLI 先从本地 catalog 解析范围，
+再使用精确的 backend profile ID。不接受任意 Wasmtime 版本或 profile ID。
+
+## Raw Export ABI
+
+对于 `CORE_WASM + RAW_EXPORT`，使用与 Gradle `RawAbiMetadata` 相同的 JSON 格式：
+
+```json
+{
+  "version": 1,
+  "exports": [
+    {
+      "name": "add_i32",
+      "kind": "FUNCTION",
+      "signature": {
+        "parameters": ["I32", "I32"],
+        "results": ["I32"]
+      }
+    }
+  ],
+  "imports": [],
+  "memoryExport": "memory",
+  "requiredFeatures": []
+}
+```
+
+```bash
+./wasmline-cli/cli.sh build \
+  --input plugin.wasm \
+  --execution-model CORE_WASM \
+  --invocation-protocol RAW_EXPORT \
+  --export-name add_i32 \
+  --raw-abi-metadata raw-abi.json \
+  --target pulley64 \
+  --key build/wasmline/keys/ed25519_private.key
+```
+
+plugin-core codec 会拒绝未知字段和无效类型，并在创建 build record 前对 export、
+import 与 feature 列表排序。`contractMetadata` 只用于其他注记，不能替代 raw ABI。
+
+## 输出结构
+
+```text
+build/wasmline/
+├── output/com.example.plugin-1.0.0/
+│   ├── manifest.wlm
+│   ├── artifacts/sha256/
+│   │   ├── 4f/4f13c7...a920.cwasm
+│   │   ├── 91/91aa42...c810.wasm
+│   │   └── b8/b8072d...0f31.pwasm
+│   └── debug/
+│       ├── manifest.json
+│       ├── aot-build-record.json
+│       └── artifact-index.json
+├── dist/com.example.plugin-1.0.0.zip
+└── keys/
+    ├── ed25519_private.key
+    └── ed25519_public.key
+```
+
+一个签名 manifest 描述全部选中的 profile。Core package 的 Web `.wasm` 在 Native
+profile 列表之外只保存一份。Component raw Wasm 仅是构建输入，相同字节共用一个
+内容寻址文件。
+
+离线 ZIP 包含全部产物。远程 Loader 校验 manifest，选择一个 variant，只下载该文件，
+不会下载 ZIP。
+
+编译和签名使用 staging 目录。编译、签名或 ZIP 替换失败时，上一次 package 目录和
+ZIP 保持不变。
+
+只有 Gradle 提供 `wasmlineCheckAotCompatibility`，用于比较本地 catalog 与最新稳定
+发行版。CLI 编译保持离线，只读取随 CLI 打包的 catalog。

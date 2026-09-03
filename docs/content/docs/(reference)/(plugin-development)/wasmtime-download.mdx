@@ -1,0 +1,156 @@
+---
+title: Wasmtime AOT Compatibility
+description: Select compatible Wasmtime profiles and verified compiler assets
+createdAt: 2026-08-15
+updatedAt: 2026-09-03
+---
+
+# Wasmtime AOT Compatibility
+
+Native Wasmtime cannot deserialize every AOT file. Wasmline therefore records
+an immutable AOT generation whenever the engine's serialized-artifact contract
+changes. A generation identifies one fork distribution and one Cranelift/Pulley
+profile pair.
+
+The profile descriptor includes the fork's Wasmtime `x.y.z` version, source
+revision, artifact format, compiler settings, engine settings, and backend. Its
+canonical JSON is hashed to a `sha256:<digest>` profile ID. Cranelift and Pulley
+have different IDs even when they use the same fork release.
+
+## Version Names
+
+The upstream Wasmtime version uses `x.y.z`. The fork distribution adds a fourth
+segment: `x.y.z.v`. For example, `major.minor.patch.fork` identifies a fork
+distribution based on `major.minor.patch`. The fourth segment changes when the
+fork publishes a new distribution; it does not by itself prove AOT compatibility.
+
+Plugin authors select Wasmline release coverage with `current()`, `minimum()`,
+`all()`, or `versionRanges {}`. They do not enter a Wasmtime distribution
+version. The catalog resolves the selected Wasmline releases to the required
+profile IDs and compiler assets.
+
+## Configure a Build
+
+```kotlin
+import crow.wasmline.gradle.WasmtimeTarget
+
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            current()
+        }
+        targets = listOf(
+            WasmtimeTarget.PULLEY_64,
+            WasmtimeTarget.X86_64_LINUX,
+        )
+        autoDownload.set(true)
+    }
+}
+```
+
+Choose exactly one selector:
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            minimum()
+            // all()
+            // versionRanges {
+            //     include(from = "1.0.0", through = "1.20.0")
+            //     include(from = "1.50.0", through = "1.72.3")
+            // }
+            suppressCompatibilityWarning.set(false)
+        }
+    }
+}
+```
+
+| Selector | Selects |
+|---|---|
+| `current()` | The generation used by the current Wasmline release |
+| `minimum()` | Every generation from the configured minimum through the current release |
+| `all()` | Every generation retained in the local catalog |
+| `versionRanges {}` | Generations overlapping the listed inclusive `x.y.z` ranges |
+
+Native AOT fails before downloading compiler files when no selector is set or
+when a range selects nothing. The root `aot-compatibility.json` is the only
+manually maintained catalog. Run `./scripts/wasmline aot sync` after editing it;
+the command validates entries and generates the packaged lock. A generation is
+an ordering label, not a runtime credential. Loading still requires the exact
+profile ID reported by the linked engine.
+
+## Published Ranges
+
+The table is generated from the catalog. Each row starts at the listed Wasmline
+version and ends immediately before the next row; the last row continues to the
+current release.
+
+<AotCompatibilityTable />
+
+## Compiler Asset Cache
+
+`versions.json` stores scalar project and tool versions. AOT history belongs only
+in `aot-compatibility.json`. `aot sync` creates
+`META-INF/wasmline/aot/aot-compatibility-lock.json` and the matching public
+resource used by build tools.
+
+Compiler archives are selected for the machine running the build. Every archive
+and extracted executable has a locked SHA-256. The shared cache is:
+
+```text
+~/.wasmline/toolchains/wasmtime/compiler-assets/
+└── sha256/{prefix}/{archiveDigest}/{buildHost}/
+```
+
+The same archive can serve both backend profiles and is downloaded once. With
+`autoDownload = false`, all required files must already exist and pass their
+checksums. Arbitrary compiler executables and directories are not accepted.
+
+Inspect the catalog with:
+
+```bash
+./wasmline-cli/cli.sh aot-profiles list
+./wasmline-cli/cli.sh aot-profiles describe sha256:<digest>
+```
+
+## Target Rules
+
+`pulley32` creates 32-bit PWASM and `pulley64` creates 64-bit PWASM. PWASM is
+not raw WebAssembly; the pointer width must match. iOS uses `pulley64`.
+
+CWASM must match the engine's Cranelift profile, operating system, architecture,
+pointer width, and CPU feature profile. A Cranelift runtime may use PWASM only
+when no matching CWASM exists and it reports a matching Pulley profile and
+capability. A failed CWASM download, checksum, size check, or deserialization
+does not silently switch to PWASM.
+
+Web targets do not use a Wasmtime profile. A Core package stores one raw `.wasm`
+variant for the browser, regardless of the number of native profiles.
+
+## Compatibility Warning
+
+`wasmlineCheckAotCompatibility` runs after a successful Debug or Release
+assemble. It compares the local catalog with the latest stable catalog on
+GitHub, using a five-second network deadline, and writes a JSON report under
+`build/reports/wasmline/`. The task reports a warning for a generation gap and
+also reports when the gap is zero. Set
+`suppressCompatibilityWarning.set(true)` only after reviewing the report; this
+changes logging only.
+
+## Add a New Generation
+
+Maintainers add a generation only when a Wasmline engine release changes the
+AOT contract. Update the scalar Wasmtime values in `versions.json`, append the
+new range in `aot-compatibility.json`, then run:
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline aot sync
+./scripts/wasmline aot check
+```
+
+For a new fork distribution, `aot sync` resolves the exact
+`crowforkotlin/wasmtime` release and source revision, verifies `SHA256SUMS`, and
+temporarily downloads the required CLI archives to record compiler digests.
+Existing distributions remain offline. Do not edit the generated lock.
