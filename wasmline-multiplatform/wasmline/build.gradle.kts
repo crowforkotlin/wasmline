@@ -228,7 +228,9 @@ if (HostManager.hostIsMac) {
         if (name == "iosSimulatorArm64Test") {
             dependsOn(nativeAotFixtureTask)
             inputs.file(nativeAotFixtureIndex)
-            environment("WASMLINE_NATIVE_FIXTURE_INDEX", nativeAotFixtureIndex.get().asFile.absolutePath)
+            val fixtureIndexPath = nativeAotFixtureIndex.get().asFile.absolutePath
+            environment("WASMLINE_NATIVE_FIXTURE_INDEX", fixtureIndexPath)
+            environment("SIMCTL_CHILD_WASMLINE_NATIVE_FIXTURE_INDEX", fixtureIndexPath)
         }
     }
 }
