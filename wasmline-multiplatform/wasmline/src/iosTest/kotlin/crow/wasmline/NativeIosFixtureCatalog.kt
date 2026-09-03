@@ -100,7 +100,7 @@ internal object NativeIosFixtureCatalog {
 
     /** Computes the SHA-256 digest of an iOS fixture artifact. */
     private fun sha256Hex(path: String): String {
-        val data = requireNotNull(NSData.dataWithContentsOfFile(path)) {
+        val data = requireNotNull(NSData.create<NSData>(contentsOfFile = path)) {
             "Unable to read native fixture artifact: $path"
         }
         require(data.length <= UInt.MAX_VALUE.toULong()) {
