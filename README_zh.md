@@ -5,7 +5,7 @@
 
 # wasmline
 
-**Kotlin Multiplatform WebAssembly Plugin Framework · Cross-Platform WASI Execution Runtime**
+**用于加载和调用 WASI WebAssembly 插件的 Kotlin Multiplatform API**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
@@ -20,7 +20,7 @@
 
 ---
 
-Wasmline 是一个 Kotlin Multiplatform 框架，用于在 Android、iOS、Desktop 与 Web 应用中加载并调用符合 WASI 规范的 WebAssembly 插件。Native 执行由 Wasmline 分发的 Wasmtime fork 驱动；浏览器执行使用平台提供的 WebAssembly API。
+Wasmline 是一个 Kotlin Multiplatform 库，用于在 Android、iOS、Desktop 与 Web 应用中加载并调用符合 WASI 规范的 WebAssembly 插件。Native 执行使用 Wasmline 分发的 Wasmtime fork；浏览器执行使用平台提供的 WebAssembly API。
 
 <table>
   <tr>
@@ -118,11 +118,11 @@ suspend fun main() {
 }
 ```
 
-远程 artifact 使用流式写入、原子发布的内容寻址文件缓存。可通过 `WasmlineLoadOptions.maxCacheBytes` 调整默认的 512 MiB 容量上限。
+下载远程 artifact 时，Loader 将字节流式写入缓存，校验 SHA-256 摘要后再发布到该摘要对应的路径。可通过 `WasmlineLoadOptions.maxCacheBytes` 调整默认的 512 MiB 容量上限。
 
 `WasmlineLoader.load` 是 suspend API。本地产物与本地 manifest 不需要 network adapter。远程 manifest 只有在 fresh manifest 或所选 artifact 未命中缓存时，才需要 `wasmline-network-ktor`、`wasmline-network-okhttp` 或自定义 resolver；runtime 不会写死任何 HTTP engine。
 
-API 职责是明确分开的：`WasmlineLoader` 负责解析、校验、选择并加载产物；`WasmlineRuntime` 负责进程级的预加载、引擎预热、运行时信息和全局关闭；每个已加载的 `Wasmline` 都是可独立关闭的产物句柄。加载采用惰性初始化，因此调用 `WasmlineLoader.load()` 前不需要显式初始化运行时。
+各 API 的职责如下：`WasmlineLoader` 负责解析、校验、选择并加载产物；`WasmlineRuntime` 提供进程级的预加载、引擎预热、运行时信息和全局关闭；每个已加载的 `Wasmline` 都是可独立关闭的产物句柄。加载采用惰性初始化，因此调用 `WasmlineLoader.load()` 前不需要显式初始化运行时。
 
 > [!NOTE]
 > `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。编译单元未应用 `wasmline-kotlin-plugin` 时，这些调用会在运行时抛出 `UnsupportedOperationException`。
@@ -176,12 +176,12 @@ Package 按 SHA-256 保存 artifact：
 ```
 
 Core Web `.wasm` 只生成和保存一次，不随 Wasmtime 版本重复。Native CWASM
-与 PWASM 只针对 backend 相同的 profile 编译。离线 ZIP 包含完整矩阵；远程
-加载只获取 manifest 和一个已选择 artifact，不下载 ZIP 或无关 target。
+与 PWASM 只针对 backend 相同的 profile 编译。离线 ZIP 包含该 Package 选择的全部
+artifact；远程加载只获取 manifest 和一个已选择 artifact，不下载 ZIP 或无关 target。
 
 Pulley 按 pointer width 选择 `pulley32` 或 `pulley64`。Cranelift 要求 profile、
 操作系统、架构、pointer width 与 CPU feature 精确匹配。只有不存在兼容 CWASM，
-且 runtime 报告匹配的 Pulley profile 与 PWASM capability 时，才能使用 PWASM。
+且 runtime 报告匹配的 Pulley profile 并支持 PWASM 时，才能使用 PWASM。
 Artifact 下载或摘要失败不会触发回退。
 
 Compiler archive 由 catalog 锁定，并按摘要缓存在
@@ -231,13 +231,13 @@ when (val result = module.callResult("echo", payload)) {
 
 未绑定 action 返回 `ACTION_NOT_BOUND`，不返回空 payload，也不会使宿主崩溃。未知 action、无效 payload、执行 trap 和 handler 失败也遵循结果优先规则。`throwOnFailure()` 只为明确选择异常风格的调用方提供适配，不是结果 API 的默认行为。
 
-`WasmlineFailure` 是规范的非抛出失败值，`WasmlineException` 只用于显式
-抛出适配器，`WasmlineLoadFailure` 描述模块创建前的失败。所有结果 API
-都以 `failure` 属性作为唯一权威失败载荷。
+结果 API 对非抛出失败返回 `WasmlineFailure`，`WasmlineException` 只用于显式
+抛出适配器，`WasmlineLoadFailure` 描述模块创建前的失败。结果 API 的失败详情
+只存放在 `failure` 属性中。
 
 `WASMLINE_SERVICE` 响应帧以四字节 `WLMF` magic 标记开始，并使用一个字节的 `frameVersion`，当前值为 `1`。magic 只用于识别帧格式，不提供安全校验。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
 
-加载 `manifest.wlm` 是标准路径。Loader 会校验 package，并将 execution model、
+有可用 Package 时，通过 `manifest.wlm` 加载。Loader 会校验 package，并将 execution model、
 invocation protocol、target identity、artifact format 与 AOT compatibility
 profile 写入所选 descriptor。直接加载调用方信任的 AOT artifact 时，必须显式提供
 全部字段；仅提供 `component.cwasm` 路径不能证明兼容性。
@@ -260,7 +260,7 @@ Native 选择使用已链接 engine 实际报告的 AOT compatibility profile ID
 ## 安装
 
 > [!NOTE]
-> Wasmline 目前处于开发中，尚未正式上线。详细的安装与集成文档将发布于 [wuya.click/wasmline](https://wuya.click/wasmline)。
+> Wasmline 当前通过 `mavenLocal()` 分发，尚未发布到 Maven Central。请参阅[安装说明](docs/content/docs/installation.zh.mdx)。
 
 > [!WARNING]
 > 最低需要 **Kotlin 2.3.0-RC2** 版本。
@@ -310,8 +310,8 @@ wasmline {
 }
 ```
 
-默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。所需 AOT 与 Component
-构建任务会自动执行。[Gradle 插件任务参考](<docs/content/docs/(reference)/(plugin-development)/gradle-plugin.zh.mdx>)
+默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。
+`wasmlineServerDeploy` 会构建并提供所选变体的 package。[Gradle 插件任务参考](<docs/content/docs/(reference)/(plugin-development)/gradle-plugin.zh.mdx>)
 列出当前任务及其注册条件。
 
 ## Release 构建
@@ -339,14 +339,14 @@ wasmline {
 (cd wasmline-samples/kotlin && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
 ```
 
-仓库 release workflow 会构建可发布的 Wasmline 模块、校验 AOT catalog，并上传
-`aot-compatibility.json` 及其 SHA-256 摘要。该流程只响应
+GitHub Actions 的发布任务会构建可发布的 Wasmline 模块、校验 AOT catalog，并上传
+`aot-compatibility.json` 及其 SHA-256 摘要。该发布任务只响应
 `release-x.y.z.v` 格式的 tag；推送到 `main` 不会发布。`x.y.z` 是 Wasmline
 Maven 版本，`v` 是 Wasmtime runtime 版本的固定数字编码。
 
-## 架构思维导图
+## 架构图
 
-![Wasmline 架构思维导图](docs/public/images/wasmline_mind_zh.png)
+![Wasmline 架构图](docs/public/images/wasmline_mind_zh.png)
 
 ## 许可证
 

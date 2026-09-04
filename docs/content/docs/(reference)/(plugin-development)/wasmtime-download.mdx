@@ -2,7 +2,7 @@
 title: Wasmtime AOT Compatibility
 description: Select compatible Wasmtime profiles and verified compiler assets
 createdAt: 2026-08-15
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Wasmtime AOT Compatibility
@@ -14,7 +14,7 @@ profile pair.
 
 The profile descriptor includes the fork's Wasmtime `x.y.z` version, source
 revision, artifact format, compiler settings, engine settings, and backend. Its
-canonical JSON is hashed to a `sha256:<digest>` profile ID. Cranelift and Pulley
+normalized JSON representation is hashed to a `sha256:<digest>` profile ID. Cranelift and Pulley
 have different IDs even when they use the same fork release.
 
 ## Version Names
@@ -122,7 +122,7 @@ not raw WebAssembly; the pointer width must match. iOS uses `pulley64`.
 CWASM must match the engine's Cranelift profile, operating system, architecture,
 pointer width, and CPU feature profile. A Cranelift runtime may use PWASM
 when no matching CWASM exists and it reports a matching Pulley profile and
-capability. A failed CWASM download, checksum, size check, or deserialization
+support for PWASM. A failed CWASM download, checksum, size check, or deserialization
 does not silently switch to PWASM.
 
 Web targets do not use a Wasmtime profile. A Core package stores one raw `.wasm`

@@ -2,7 +2,7 @@
 title: Platform Architecture
 description: Execution models, module boundaries, and artifact selection by platform
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Platform Architecture
@@ -195,14 +195,14 @@ wasmline/
 │   ├── wasmline-plugin-core/           # Shared Core/Component build, signing, packaging, and toolchain logic
 │   ├── wasmline-cli/                   # CLI adapters for plugin-core and loader operations
 │   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
-│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — bridge synthesis, call-site rewriting
-│   ├── wasmline-gradle-plugin/         # Consumer DSL and tasks built on compiler plugin and plugin-core
+│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — generated bridge classes and call-site rewriting
+│   ├── wasmline-gradle-plugin/         # Gradle configuration DSL and tasks using compiler plugin and plugin-core
 │   ├── wasmline-engine-cranelift/      # Cranelift runtime distribution and platform variants
 │   ├── wasmline-engine-pulley/         # Pulley runtime distribution and platform variants
 │   ├── wasmline-network-ktor/          # Ktor loader network adapter
 │   ├── wasmline-network-okhttp/        # OkHttp loader network adapter
-│   ├── wasmline-bom/                   # Strict same-version Maven platform constraints
-│   ├── wasmline-plugin-test/           # End-to-end plugin and native integration tests
+│   ├── wasmline-bom/                   # Forces all published Maven modules to use one version
+│   ├── wasmline-plugin-test/           # Plugin and native integration tests
 │   └── wasmline-build-logic/           # Shared Gradle convention plugins
 ├── wasmline-samples/
 │   ├── kotlin/                         # Kotlin plugins, Component fixtures, and host applications

@@ -2,7 +2,7 @@
 title: 组件服务协议
 description: 固定 WIT 请求格式、Component 构建步骤与宿主回调
 createdAt: 2026-08-05
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # 组件服务协议
@@ -56,7 +56,7 @@ Rust 可以使用 `wasm32-wasip2` 直接生成 Component。fixture 位于
 C 和 C++ 通过已验证的 WASI SDK 33 编译到 `wasm32-wasip1`。对应 fixture 位于
 `wasmline-samples/c/sample-component-plugin` 和
 `wasmline-samples/cpp/sample-component-plugin`。它们读取
-`wasmline-plugin-core` 内的 canonical WIT world，在 CMake build 目录生成
+`wasmline-plugin-core` 内的固定 WIT world，在 CMake build 目录生成
 binding，链接 Component type object，再执行 `wasm-tools component new`。
 如果所选 SDK 在 Core Wasm 中保留 Preview 1 import，可以传入 Preview 1 reactor
 adapter。
@@ -64,7 +64,7 @@ adapter。
 ## 多语言 Binding
 
 每种 guest 都实现生成的 export，并调用生成的 import。该步骤不修改 Wasmtime、
-`wit-bindgen` 或 canonical WIT 源码。
+`wit-bindgen` 或共享的 WIT 源码。
 
 | 语言 | Binding 生成方式 | 插件 export 实现 | 宿主回调 API |
 |---|---|---|---|
@@ -75,9 +75,8 @@ adapter。
 
 生成源码和 Component type object 都只属于 build 输出。CMake configure 阶段严格检查 `wit-bindgen 0.57.1` 和 `wasm-tools 1.256.0`，所需的 WASI SDK 命令见各自 README。
 C++ 0.57.1 generator 会对 move-only WIT error 生成一次
-`std::expected::value()` 调用。fixture 使用 fail-closed 的生成源码兼容步骤，在
-`has_value()` 之后将它切换为 `operator*`；该流程不修改 `wit-bindgen` 源码，也不
-提交生成代码。
+`std::expected::value()` 调用。fixture 在 `has_value()` 检查之后将该调用替换为
+`operator*`；这个替换不修改 `wit-bindgen` 源码，也不提交生成代码。
 
 仓库使用生成的 AOT fixture 验证 native Component Service runtime。测试从 fixture
 构建任务取得 index，不通过环境变量接收手工提供的产物：
@@ -98,7 +97,7 @@ Gradle 或 CLI 任务编译和打包，并从配置的 AOT catalog 选择 `.cwas
 
 ## Codec Profile
 
-WIT 请求格式不会让任意业务字节自动具备解码能力。`codec` 字符串属于 request
+WIT 请求格式不会自动解码任意业务字节。`codec` 字符串属于 request
 的一部分，并由宿主 runtime 检查。
 
 | Profile | Codec ID | Payload 规则 | 参考实现 |

@@ -2,7 +2,7 @@
 title: Gradle Plugin
 description: Configure AOT profiles, signing, packaging, and Component tools
 createdAt: 2026-08-15
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Gradle Plugin
@@ -121,7 +121,7 @@ wasmline {
 ```
 
 Do not put parameter or result types in `contractMetadata`. The AOT task
-canonicalizes `rawAbi` before it writes cache inputs and build records.
+sorts and normalizes `rawAbi` before it writes cache inputs and build records.
 
 ## Build and Serve
 
@@ -178,7 +178,8 @@ Raw Component Wasm is a build input. It is not published as a browser artifact.
 
 ## Reproducible Output
 
-The complete AOT set is built before signing. A failed compile, digest check,
+Before signing, Gradle builds every AOT artifact selected by the configured
+profiles and targets. A failed compile, digest check,
 signature, or ZIP replacement leaves the previous package directory and ZIP
 unchanged. Set `manifest.buildTimestamp`, commonly from `SOURCE_DATE_EPOCH`,
 when reproducible bytes are required.

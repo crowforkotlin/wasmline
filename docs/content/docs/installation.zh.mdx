@@ -2,7 +2,7 @@
 title: 安装
 description: 应用 Gradle 插件，添加运行时模块和一个原生引擎
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # 安装
@@ -37,7 +37,7 @@ plugins {
 
 ## 添加运行时依赖
 
-使用 BOM 保证全部 Wasmline 模块使用同一版本。添加 `wasmline-loader` 和一个原生
+使用 BOM，让全部 Wasmline 模块使用同一版本。添加 `wasmline-loader` 和一个原生
 engine 模块。只有宿主需要下载远程 manifest 或缓存中不存在的产物时，才添加
 network 模块。
 
@@ -61,7 +61,7 @@ dependencies {
 | `wasmline-engine-pulley` | 加载匹配的 `.pwasm` |
 | `wasmline-engine-cranelift` | 加载匹配的 `.cwasm`，也可加载匹配的 `.pwasm` |
 
-BOM 保证 runtime、loader、插件、CLI、插件构建工具和 engine 模块使用同一
+BOM 让 runtime、loader、插件、CLI、插件构建工具和 engine 模块使用同一
 Wasmline 版本。不要单独升级 engine 模块。
 
 ## Kotlin/Native 宿主

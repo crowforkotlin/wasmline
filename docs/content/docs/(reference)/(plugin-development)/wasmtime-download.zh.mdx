@@ -2,7 +2,7 @@
 title: Wasmtime AOT 兼容性
 description: 选择兼容的 Wasmtime profile 与经过校验的 compiler asset
 createdAt: 2026-08-15
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Wasmtime AOT 兼容性
@@ -126,7 +126,7 @@ WebAssembly，pointer width 必须匹配。iOS 使用 `pulley64`。
 
 CWASM 必须同时匹配 engine 的 Cranelift profile、操作系统、架构、pointer width
 和 CPU feature profile。只有不存在匹配 CWASM，且 runtime 报告匹配的 Pulley
-profile 与 capability 时，Cranelift runtime 才能使用 PWASM。CWASM 下载失败、摘要
+profile 并支持 PWASM 时，Cranelift runtime 才能使用 PWASM。CWASM 下载失败、摘要
 错误、大小错误或反序列化失败时，不会静默改用 PWASM。
 
 Web 不使用 Wasmtime profile。无论 native profile 有多少，Core package 只保存一份

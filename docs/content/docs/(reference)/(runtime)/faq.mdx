@@ -2,7 +2,7 @@
 title: Frequently Asked Questions
 description: Answers about dependencies, artifacts, invocation models, and plugin isolation
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Frequently Asked Questions
@@ -96,7 +96,7 @@ updatedAt: 2026-09-03
   <Accordion title="How are plugins isolated from the host?">
     Each native plugin session has its own Wasm linear memory. A plugin cannot
     read host process memory, files, or network resources unless the host
-    explicitly provides the corresponding Wasmtime capability. The browser
+    explicitly provides those resources through Wasmtime. The browser
     WebAssembly sandbox provides the equivalent memory boundary on Web targets.
   </Accordion>
 </Accordions>

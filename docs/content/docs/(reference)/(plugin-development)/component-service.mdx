@@ -2,7 +2,7 @@
 title: Component Service Protocol
 description: Fixed WIT request format, Component build steps, and host callbacks
 createdAt: 2026-08-05
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Component Service Protocol
@@ -57,7 +57,7 @@ Rust can target `wasm32-wasip2` and produce a Component directly. The fixture at
 
 C and C++ target `wasm32-wasip1` through the verified WASI SDK 33 baseline. Their
 fixtures are `wasmline-samples/c/sample-component-plugin` and
-`wasmline-samples/cpp/sample-component-plugin`. Each reads the canonical WIT
+`wasmline-samples/cpp/sample-component-plugin`. Each reads the fixed WIT
 world from `wasmline-plugin-core`, generates bindings in the CMake build
 directory, links the Component type object, and runs `wasm-tools component new`.
 Pass a Preview 1 reactor adapter when the selected SDK leaves Preview 1 imports
@@ -66,7 +66,7 @@ in the Core Wasm.
 ## Language Bindings
 
 Each guest implements the generated export and calls the generated import. These
-steps do not modify Wasmtime, `wit-bindgen`, or the canonical WIT source.
+steps do not modify Wasmtime, `wit-bindgen`, or the shared WIT source.
 
 | Language | Binding generation | Plugin export implementation | Host callback API |
 |---|---|---|---|

@@ -41,7 +41,7 @@ const homeContent = {
       'All bridge code is generated at compile time by a Kotlin IR compiler plugin — no reflection, no annotation processing. Native targets are powered by wasmtime; Web targets run inside the browser sandbox.',
     getStarted: 'Get Started',
     features: {
-      bridge: 'Compile-time bridge synthesis',
+      bridge: 'Bridge code generated at compile time',
       platforms: 'Android · iOS · Desktop · Web',
       sandbox: 'Sandboxed by wasmtime and the browser',
     },

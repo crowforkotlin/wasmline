@@ -2,7 +2,7 @@
 title: Compiler Plugin
 description: IR transformations, service contract checks, action names, and tests
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Compiler Plugin
@@ -55,7 +55,7 @@ overloads are not allowed, the contract and method names are sufficient.
 Changing either name changes the action. Changing parameter types keeps the
 action string but changes the serialized payload contract.
 
-## IR Box Test Workflow
+## IR Box Tests
 
 Box fixtures reside in `wasmline-kotlin-plugin/testData/box/`. Each source file
 has a `fun box(): String` entry point that returns `"OK"` when the check passes:

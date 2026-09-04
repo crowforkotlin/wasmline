@@ -5,7 +5,7 @@
 
 # wasmline
 
-**Kotlin Multiplatform WebAssembly Plugin Framework · Cross-Platform WASI Execution Runtime**
+**Kotlin Multiplatform APIs for loading and calling WASI WebAssembly plugins**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
@@ -20,7 +20,7 @@
 
 ---
 
-Wasmline is a Kotlin Multiplatform framework for loading and calling WASI-compliant WebAssembly plugins in Android, iOS, Desktop, and Web applications. Native execution is powered by the Wasmtime fork distributed by Wasmline; browser execution uses the platform WebAssembly API.
+Wasmline is a Kotlin Multiplatform library for loading and calling WASI-compliant WebAssembly plugins in Android, iOS, Desktop, and Web applications. Native execution uses the Wasmtime fork distributed by Wasmline; browser execution uses the platform WebAssembly API.
 
 <table>
   <tr>
@@ -118,11 +118,11 @@ suspend fun main() {
 }
 ```
 
-Remote artifacts use a streaming, atomically published content-addressed file cache. Set `WasmlineLoadOptions.maxCacheBytes` to change its 512 MiB default capacity.
+For a remote artifact, the loader streams bytes into the cache, verifies the SHA-256 digest, then publishes the file at its digest path. Set `WasmlineLoadOptions.maxCacheBytes` to change the default capacity of 512 MiB.
 
 `WasmlineLoader.load` is a suspending API. Local artifacts and local manifests do not require a network adapter. A remote manifest needs `wasmline-network-ktor`, `wasmline-network-okhttp`, or a custom resolver only when its fresh manifest or selected artifact is missing from the configured cache. The runtime never hardcodes an HTTP engine.
 
-API ownership is explicit: `WasmlineLoader` resolves, verifies, selects, and loads artifacts; `WasmlineRuntime` owns process-wide preload, engine warm-up, runtime information, and shutdown; each loaded `Wasmline` is an independently closeable artifact handle. Loading is lazy, so applications do not need an explicit runtime initialization call before `WasmlineLoader.load()`.
+Each API has a separate role: `WasmlineLoader` resolves, verifies, selects, and loads artifacts; `WasmlineRuntime` provides process-wide preload, engine warm-up, runtime information, and shutdown; each loaded `Wasmline` is an independently closeable artifact handle. Loading is lazy, so applications do not need an explicit runtime initialization call before `WasmlineLoader.load()`.
 
 > [!NOTE]
 > `link<T>()` and `bind(impl)` are rewrite targets of the Kotlin IR compiler plugin. If `wasmline-kotlin-plugin` is not applied to the compilation unit, these calls throw `UnsupportedOperationException` at runtime.
@@ -180,14 +180,14 @@ The package stores artifacts by SHA-256:
 
 Core Web `.wasm` is generated and stored once; it is not repeated for every
 Wasmtime version. Native CWASM and PWASM variants are compiled only for profiles
-with the same backend. The offline ZIP contains the complete matrix. Remote
-loading fetches the manifest and one selected artifact, not the ZIP or unrelated
-targets.
+with the same backend. The offline ZIP contains every artifact selected for the
+package. Remote loading fetches the manifest and one selected artifact, not the
+ZIP or unrelated targets.
 
 Pulley selects `pulley32` or `pulley64` by pointer width. Cranelift requires an
 exact profile, operating system, architecture, pointer width, and CPU feature
 match. It may use PWASM when no compatible CWASM exists and the runtime
-reports a matching Pulley profile and PWASM capability. Artifact download or
+reports a matching Pulley profile and support for PWASM. Artifact download or
 digest failure does not trigger fallback.
 
 Compiler archives are catalog-locked and cached by digest under
@@ -244,15 +244,15 @@ when (val result = module.callResult("echo", payload)) {
 
 An unbound action returns `ACTION_NOT_BOUND`. It does not return an empty payload and does not crash the host. The same result-first rule applies to unknown actions, invalid payloads, traps, and handler failures. `throwOnFailure()` is an explicit adapter for code that chooses exception-style handling; it is not used by the result API by default.
 
-`WasmlineFailure` is the canonical non-throwing failure value,
+`WasmlineFailure` is returned by result-based APIs for non-throwing failures,
 `WasmlineException` is reserved for explicit throwing adapters, and
 `WasmlineLoadFailure` describes failures before module creation. The
-`failure` property is the single authoritative failure payload across result
+`failure` property is the only field that contains failure details in result
 APIs.
 
 The `WASMLINE_SERVICE` response frame starts with the four-byte `WLMF` magic marker and a one-byte `frameVersion` whose current value is `1`. The magic marker identifies the frame format; it is not a security check. `frameVersion` identifies the response byte layout; it is not a Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not use this Core response frame.
 
-Loading `manifest.wlm` is the standard path. The Loader verifies the package and
+Load through `manifest.wlm` when the package is available. The Loader verifies the package and
 copies its execution model, invocation protocol, target identity, artifact
 format, and AOT compatibility profile into the selected descriptor. A direct,
 caller-trusted AOT descriptor must provide all of those fields explicitly; a
@@ -276,7 +276,8 @@ engine. It does not infer compatibility from a Maven version or filename.
 ## Installation
 
 > [!NOTE]
-> Wasmline is under active development. Detailed installation and integration documentation will be available at [wuya.click/wasmline](https://wuya.click/wasmline).
+> Wasmline is currently distributed through `mavenLocal()` and is not yet
+> available from Maven Central. See [Installation](docs/content/docs/installation.mdx).
 
 > [!WARNING]
 > The minimum required Kotlin version is **2.3.0-RC2**.
@@ -327,8 +328,9 @@ wasmline {
 }
 ```
 
-The default is `DEBUG`, served at `http://localhost:8080`. Required AOT and
-Component build tasks run automatically. See the
+The default is `DEBUG`, served at `http://localhost:8080`.
+`wasmlineServerDeploy` builds and serves the package directory for the selected
+variant. See the
 [Gradle plugin task reference](<docs/content/docs/(reference)/(plugin-development)/gradle-plugin.mdx>) for the
 current task set and registration conditions.
 
@@ -358,15 +360,15 @@ wrapper belonging to the project that it builds:
 (cd wasmline-samples/kotlin && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
 ```
 
-The repository release workflow builds the publishable Wasmline modules,
+The GitHub Actions release job builds the publishable Wasmline modules,
 validates the AOT catalog, and uploads `aot-compatibility.json` with its
 SHA-256 checksum. It runs only for a tag named `release-x.y.z.v`; pushes to
 `main` never publish a release. Here `x.y.z` is the Wasmline Maven version and
 `v` is the fixed numeric encoding of the Wasmtime runtime version.
 
-## Architecture Mind Map
+## Architecture Diagram
 
-![Wasmline Architecture Mind Map](docs/public/images/wasmline_mind_en.png)
+![Wasmline Architecture Diagram](docs/public/images/wasmline_mind_en.png)
 
 ## License
 

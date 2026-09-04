@@ -2,7 +2,7 @@
 title: 常见问题
 description: 依赖、产物、调用模型与插件隔离的常见问题
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # 常见问题
@@ -88,7 +88,7 @@ updatedAt: 2026-09-03
 
   <Accordion title="插件如何与宿主隔离？">
     每个 Native 插件 session 都拥有独立的 Wasm 线性内存。除非宿主明确提供相应的
-    Wasmtime capability，插件不能读取宿主进程内存、文件或网络资源。Web 目标由
+    除非宿主通过 Wasmtime 明确提供对应的文件或网络资源，否则插件不能读取宿主进程内存、文件或网络资源。Web 目标由
     浏览器的 WebAssembly sandbox 提供同等的内存边界。
   </Accordion>
 </Accordions>

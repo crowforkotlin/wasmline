@@ -34,7 +34,7 @@ from your browser settings. You can also open a language directly:
 | --- | --- |
 | `content/docs/` | Localized documentation pages and route-group metadata. |
 | `content/docs/meta.json` | English sidebar order for the direct pages and the `Reference` folder. |
-| `content/docs/meta.zh.json` | Chinese sidebar order for the direct pages and the `参考` folder. |
+| `content/docs/meta.zh.json` | Chinese sidebar order for the direct pages and the reference folder. |
 | `content/site.zh.json` | Chinese text used outside the MDX pages. |
 | `src/app/` | Pages, layouts, search data, and image routes. |
 | `src/lib/` | Fumadocs source, language, and layout settings. |
@@ -102,8 +102,8 @@ page chooses the language in the browser.
 
 ## API reference deployment
 
-The GitHub Pages workflow generates the public Dokka API reference before it
-builds Fumadocs. It copies the complete Dokka output into
+The GitHub Pages job generates the public Dokka API reference before it
+builds Fumadocs. It copies the generated Dokka files into
 `out/api-docs/`, which is published at `/wasmline/api-docs/` with the rest of
 the site. The generated directory must not be edited manually.
 

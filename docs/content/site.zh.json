@@ -20,9 +20,9 @@
     "badge": "Kotlin Multiplatform · WASI 插件框架",
     "subtitle": "在 Android、iOS、Desktop、Web 应用中加载并运行 WebAssembly 插件",
     "description": "全部桥接代码由 Kotlin IR 编译器插件在编译期生成——无反射、无注解处理；原生端由 wasmtime 驱动，Web 端运行于浏览器沙箱。",
-    "getStarted": "快速开始",
+    "getStarted": "开始使用",
     "features": {
-      "bridge": "编译期桥接生成",
+      "bridge": "在编译期生成桥接代码",
       "platforms": "Android · iOS · Desktop · Web",
       "sandbox": "wasmtime 与浏览器沙箱隔离"
     },

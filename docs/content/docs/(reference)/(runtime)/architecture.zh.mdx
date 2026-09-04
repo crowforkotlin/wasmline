@@ -2,7 +2,7 @@
 title: 平台架构
 description: 各平台的执行模型、模块边界与产物选择
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # 平台架构
@@ -184,14 +184,14 @@ wasmline/
 │   ├── wasmline-plugin-core/           # 共享 Core/Component 构建、签名、打包与工具链逻辑
 │   ├── wasmline-cli/                   # plugin-core 与 loader 操作的 CLI adapter
 │   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
-│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — bridge synthesis, call-site rewriting
-│   ├── wasmline-gradle-plugin/         # 基于 compiler plugin 与 plugin-core 的消费端 DSL 和任务
+│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — 生成 bridge 类和重写调用点
+│   ├── wasmline-gradle-plugin/         # Gradle 配置 DSL 与任务，使用 compiler plugin 和 plugin-core
 │   ├── wasmline-engine-cranelift/      # Cranelift runtime distribution 与平台变体
 │   ├── wasmline-engine-pulley/         # Pulley runtime distribution 与平台变体
 │   ├── wasmline-network-ktor/          # Ktor loader 网络 adapter
 │   ├── wasmline-network-okhttp/        # OkHttp loader 网络 adapter
-│   ├── wasmline-bom/                   # Maven 模块同版本 strict constraint
-│   ├── wasmline-plugin-test/           # 端到端 plugin 与 native 集成测试
+│   ├── wasmline-bom/                   # 强制所有 Maven 模块使用同一版本
+│   ├── wasmline-plugin-test/           # plugin 与 native 集成测试
 │   └── wasmline-build-logic/           # Shared Gradle convention plugins
 ├── wasmline-samples/
 │   ├── kotlin/                         # Kotlin plugin、Component fixture 与 host app

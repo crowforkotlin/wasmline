@@ -2,7 +2,7 @@
 title: Gradle 插件
 description: 配置 AOT profile、签名、打包与 Component 工具
 createdAt: 2026-08-15
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # Gradle 插件
@@ -172,7 +172,7 @@ Raw Component Wasm 是构建输入，不作为浏览器 artifact 发布。
 
 ## 构建替换与可复现性
 
-签名开始前必须完成全部 AOT 构建。编译、摘要校验、签名或 ZIP 替换失败时，上一
+签名前，Gradle 会构建已配置的 profile 和 target 所选择的每个 AOT artifact。编译、摘要校验、签名或 ZIP 替换失败时，上一
 个 package 目录和 ZIP 保持不变。需要可复现字节时，设置
 `manifest.buildTimestamp`，通常取自 `SOURCE_DATE_EPOCH`。
 

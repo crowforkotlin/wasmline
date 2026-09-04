@@ -2,7 +2,7 @@
 title: 编译器插件
 description: IR 变换、服务契约校验、Action 名称与测试
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-09-04
 ---
 
 # 编译器插件
@@ -29,7 +29,7 @@ updatedAt: 2026-09-03
 | 声明种类 | 契约必须是直接或间接继承 `WasmlineService` 的 `interface` |
 | 属性 | 不支持服务属性，应改用函数 |
 | 成员可见性 | 所有函数都必须声明为 `public` |
-| suspend 能力 | 任何契约函数都不允许使用 `suspend` 修饰符 |
+| `suspend` 修饰符 | 任何契约函数都不允许使用 `suspend` 修饰符 |
 | 泛型类型参数 | 契约及其函数均不允许使用泛型类型参数 |
 | 方法名唯一性 | 单个契约内不支持同名重载方法 |
 | `vararg` 参数 | 不允许 |
@@ -51,7 +51,7 @@ com.example.EchoService#echo
 足以唯一标识方法。修改契约包名、契约名或方法名会改变 action；修改参数类型不会改变
 action 字符串，但会改变序列化 payload 契约。
 
-## IR Box 测试工作流
+## IR Box 测试
 
 Box 夹具位于 `wasmline-kotlin-plugin/testData/box/`。每个源码文件包含
 `fun box(): String` 入口，并在检查通过时返回 `"OK"`：
