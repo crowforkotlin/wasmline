@@ -186,7 +186,7 @@ targets.
 
 Pulley selects `pulley32` or `pulley64` by pointer width. Cranelift requires an
 exact profile, operating system, architecture, pointer width, and CPU feature
-match. It may use PWASM only when no compatible CWASM exists and the runtime
+match. It may use PWASM when no compatible CWASM exists and the runtime
 reports a matching Pulley profile and PWASM capability. Artifact download or
 digest failure does not trigger fallback.
 
@@ -198,12 +198,12 @@ an arbitrary local compiler executable.
 
 Wasmline supports four explicit host-side invocation paths:
 
-| Execution model | Invocation protocol | Input | Result |
-|---|---|---|---|
-| `CORE_WASM` | `WASMLINE_SERVICE` | action name and byte payload | `WasmlineCallResult<ByteArray>` |
-| `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession` numeric values, synchronous imports, and linear memory | `WasmlineCallResult<List<RawValue>>` |
-| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | action name and byte payload through `wasmline.wit` | `WasmlineCallResult<ByteArray>` |
-| `COMPONENT_MODEL` | `COMPONENT_EXPORT` | declared Component Model values | `WasmlineCallResult<WasmlineComponentCallResult>` |
+| Execution model   | Invocation protocol | Input                                                                                     | Result                                            |
+| ----------------- | ------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `CORE_WASM`       | `WASMLINE_SERVICE`  | action name and byte payload                                                              | `WasmlineCallResult<ByteArray>`                   |
+| `CORE_WASM`       | `RAW_EXPORT`        | `CoreWasmModule`/`CoreWasmSession` numeric values, synchronous imports, and linear memory | `WasmlineCallResult<List<RawValue>>`              |
+| `COMPONENT_MODEL` | `WASMLINE_SERVICE`  | action name and byte payload through `wasmline.wit`                                       | `WasmlineCallResult<ByteArray>`                   |
+| `COMPONENT_MODEL` | `COMPONENT_EXPORT`  | declared Component Model values                                                           | `WasmlineCallResult<WasmlineComponentCallResult>` |
 
 The runtime side of the Component Model path loads an already compiled component
 binary. Optional plugin build steps can generate bindings and create that
@@ -260,15 +260,15 @@ path such as `component.cwasm` is not enough to prove compatibility.
 
 ## Platform Support
 
-| Platform | Architecture | Artifact Support | Loading |
-|----------|--------------|------------------|---------|
-| Android  | v8a, x86_64  | `.cwasm` / `.pwasm` | wasmtime |
-| Android  | v7a, x86     | `.pwasm` only    | wasmtime |
-| iOS      | arm64        | `.pwasm`         | wasmtime |
-| macOS    | arm64        | `.cwasm` / `.pwasm` | wasmtime |
-| Linux    | x86_64       | `.cwasm` / `.pwasm` | wasmtime |
-| Windows  | x86_64       | `.cwasm` / `.pwasm` | wasmtime |
-| Web (Kotlin/JS · Kotlin/WasmJS) | Browser JS engine | Raw `.wasm` only | web |
+| Platform                        | Architecture      | Artifact Support    | Loading  |
+| ------------------------------- | ----------------- | ------------------- | -------- |
+| Android                         | v8a, x86_64       | `.cwasm` / `.pwasm` | wasmtime |
+| Android                         | v7a, x86          | `.pwasm`            | wasmtime |
+| iOS                             | arm64             | `.pwasm`            | wasmtime |
+| macOS                           | arm64             | `.cwasm` / `.pwasm` | wasmtime |
+| Linux                           | x86_64            | `.cwasm` / `.pwasm` | wasmtime |
+| Windows                         | x86_64            | `.cwasm` / `.pwasm` | wasmtime |
+| Web (Kotlin/JS · Kotlin/WasmJS) | Browser JS engine | `.wasm`             | web      |
 
 Native selection uses the AOT compatibility profile IDs reported by the linked
 engine. It does not infer compatibility from a Maven version or filename.

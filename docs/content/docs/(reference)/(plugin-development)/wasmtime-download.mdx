@@ -66,12 +66,12 @@ wasmline {
 }
 ```
 
-| Selector | Selects |
-|---|---|
-| `current()` | The generation used by the current Wasmline release |
-| `minimum()` | Every generation from the configured minimum through the current release |
-| `all()` | Every generation retained in the local catalog |
-| `versionRanges {}` | Generations overlapping the listed inclusive `x.y.z` ranges |
+| Selector           | Selects                                                                  |
+| ------------------ | ------------------------------------------------------------------------ |
+| `current()`        | The generation used by the current Wasmline release                      |
+| `minimum()`        | Every generation from the configured minimum through the current release |
+| `all()`            | Every generation retained in the local catalog                           |
+| `versionRanges {}` | Generations overlapping the listed inclusive `x.y.z` ranges              |
 
 Native AOT fails before downloading compiler files when no selector is set or
 when a range selects nothing. The root `aot-compatibility.json` is the only
@@ -120,7 +120,7 @@ Inspect the catalog with:
 not raw WebAssembly; the pointer width must match. iOS uses `pulley64`.
 
 CWASM must match the engine's Cranelift profile, operating system, architecture,
-pointer width, and CPU feature profile. A Cranelift runtime may use PWASM only
+pointer width, and CPU feature profile. A Cranelift runtime may use PWASM
 when no matching CWASM exists and it reports a matching Pulley profile and
 capability. A failed CWASM download, checksum, size check, or deserialization
 does not silently switch to PWASM.

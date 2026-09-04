@@ -46,7 +46,7 @@ Precompiled artifact  (.cwasm — Cranelift native AOT  |  .pwasm — Pulley byt
 The engine and artifact types are selected separately. A Cranelift runtime loads
 CWASM only when the profile and complete target identity match. It can use PWASM
 only when no matching CWASM exists and the runtime reports a matching Pulley
-profile. A Pulley runtime accepts PWASM only. iOS uses `pulley64` PWASM.
+profile. A Pulley runtime accepts PWASM. iOS uses `pulley64` PWASM.
 
 ### Web Target Stack — Kotlin/JS · Kotlin/WasmJS
 
@@ -118,12 +118,12 @@ profiles and is stored once. Raw Component Wasm remains a build input.
 The runtime selects the backend from `WasmlineArtifactDescriptor`. A file
 extension does not select the execution model.
 
-| Execution model | Invocation protocol | Runtime boundary | Core response frame |
-|---|---|---|---|
-| `CORE_WASM` | `WASMLINE_SERVICE` | `Session`, action router, and linear memory | Yes |
-| `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession`, exports, synchronous imports, and linear memory | No |
-| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` and the fixed `wasmline.wit` request format | No |
-| `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` and Component Model values | No |
+| Execution model   | Invocation protocol | Runtime boundary                                                                    | Core response frame |
+| ----------------- | ------------------- | ----------------------------------------------------------------------------------- | ------------------- |
+| `CORE_WASM`       | `WASMLINE_SERVICE`  | `Session`, action router, and linear memory                                         | Yes                 |
+| `CORE_WASM`       | `RAW_EXPORT`        | `CoreWasmModule`/`CoreWasmSession`, exports, synchronous imports, and linear memory | No                  |
+| `COMPONENT_MODEL` | `WASMLINE_SERVICE`  | `ComponentSession` and the fixed `wasmline.wit` request format                      | No                  |
+| `COMPONENT_MODEL` | `COMPONENT_EXPORT`  | `ComponentSession` and Component Model values                                       | No                  |
 
 `WASMLINE_SERVICE` selects the Wasmline service API. With `CORE_WASM`, response
 bytes use the fixed `WLMF` marker and one-byte `frameVersion` (`1`). With
