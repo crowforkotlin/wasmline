@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- Logo asset: replace src with actual path -->
-<!-- <img src="docs/public/images/logo.png" alt="wasmline" width="96" /> -->
+<!-- <img src="fumadocs/public/images/logo.png" alt="wasmline" width="96" /> -->
 
 # wasmline
 
@@ -29,11 +29,11 @@ Wasmline 是一个 Kotlin Multiplatform 库，用于在 Android、iOS、Desktop 
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/public/images/wasmline_mac_apps.png" alt="macOS sample apps" width="100%" />
+      <img src="fumadocs/public/images/wasmline_mac_apps.png" alt="macOS sample apps" width="100%" />
       <br><em>Desktop · iOS · Android · 终端 · Web (Wasm)</em>
     </td>
     <td align="center">
-      <img src="docs/public/images/wasmline_archlinux_apps.png" alt="Arch Linux sample apps" width="100%" />
+      <img src="fumadocs/public/images/wasmline_archlinux_apps.png" alt="Arch Linux sample apps" width="100%" />
       <br><em>Desktop · Android · 终端 · Web (JS)</em>
     </td>
   </tr>
@@ -43,11 +43,11 @@ Wasmline 是一个 Kotlin Multiplatform 库，用于在 Android、iOS、Desktop 
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/public/images/wasmline_mac_temrinal.png" alt="macOS build terminals" width="100%" />
+      <img src="fumadocs/public/images/wasmline_mac_temrinal.png" alt="macOS build terminals" width="100%" />
       <br><em>构建命令：Desktop · iOS · Android · Web (Wasm)</em>
     </td>
     <td align="center">
-      <img src="docs/public/images/wasmline_archlinux_temrinals.png" alt="Arch Linux build terminals" width="100%" />
+      <img src="fumadocs/public/images/wasmline_archlinux_temrinals.png" alt="Arch Linux build terminals" width="100%" />
       <br><em>构建命令：Desktop · Android · Web (JS)</em>
     </td>
   </tr>
@@ -260,12 +260,12 @@ Native 选择使用已链接 engine 实际报告的 AOT compatibility profile ID
 ## 安装
 
 > [!NOTE]
-> Wasmline 当前通过 `mavenLocal()` 分发，尚未发布到 Maven Central。请参阅[安装说明](docs/content/docs/installation.zh.mdx)。
+> Wasmline 当前通过 `mavenLocal()` 分发，尚未发布到 Maven Central。请参阅[安装说明](fumadocs/content/docs/installation.zh.mdx)。
 
 > [!WARNING]
 > 最低需要 **Kotlin 2.3.0-RC2** 版本。
 >
-> ![Kotlin/Wasm 运行时支持矩阵](docs/public/images/kotlin_support.png)
+> ![Kotlin/Wasm 运行时支持矩阵](fumadocs/public/images/kotlin_support.png)
 
 JVM 与 Android 使用 BOM，使 runtime、Loader、network adapter 与 engine
 解析为同一个 strict Wasmline 版本：
@@ -311,7 +311,7 @@ wasmline {
 ```
 
 默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。
-`wasmlineServerDeploy` 会构建并提供所选变体的 package。[Gradle 插件任务参考](<docs/content/docs/(reference)/(plugin-development)/gradle-plugin.zh.mdx>)
+`wasmlineServerDeploy` 会构建并提供所选变体的 package。[Gradle 插件任务参考](<fumadocs/content/docs/(reference)/(plugin-development)/gradle-plugin.zh.mdx>)
 列出当前任务及其注册条件。
 
 ## Release 构建
@@ -320,23 +320,23 @@ wasmline {
 
 ```bash
 # Wasmline 模块与 Android AAR
-(cd wasmline-multiplatform && ./gradlew assemble)
-(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleDebug)
-(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleRelease)
+(cd . && ./gradlew assemble)
+(cd . && ./gradlew :wasmline-android:assembleDebug)
+(cd . && ./gradlew :wasmline-android:assembleRelease)
 
 # JVM 校验与 Gradle plugin 集成测试
-(cd wasmline-multiplatform && ./gradlew :wasmline:jvmTest)
-(cd wasmline-multiplatform/wasmline-plugin-test && ./gradlew jvmTest)
+(cd . && ./gradlew :wasmline:jvmTest)
+(cd wasmline-plugin-test && ./gradlew jvmTest)
 
 # Web production distribution
-(cd wasmline-multiplatform && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
-(cd wasmline-multiplatform && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
+(cd . && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
+(cd . && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
 
 # Apple binary（需要 macOS）
-(cd wasmline-multiplatform && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
+(cd . && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
 
 # 当前操作系统的 Desktop 分发包
-(cd wasmline-samples/kotlin && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
+(cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
 ```
 
 GitHub Actions 的发布任务会构建可发布的 Wasmline 模块、校验 AOT catalog，并上传
@@ -346,7 +346,7 @@ Maven 版本，`v` 是 Wasmtime runtime 版本的固定数字编码。
 
 ## 架构图
 
-![Wasmline 架构图](docs/public/images/wasmline_mind_zh.png)
+![Wasmline 架构图](fumadocs/public/images/wasmline_mind_zh.png)
 
 ## 许可证
 

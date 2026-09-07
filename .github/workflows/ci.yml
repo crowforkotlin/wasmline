@@ -4,10 +4,10 @@ name: CI
 on:
   push:
     branches: ["main"]
-    paths-ignore: ["docs/**", "*.md", ".agents/**"]
+    paths-ignore: ["fumadocs/**", "*.md", ".agents/**"]
   pull_request:
     branches: ["main"]
-    paths-ignore: ["docs/**", "*.md", ".agents/**"]
+    paths-ignore: ["fumadocs/**", "*.md", ".agents/**"]
   workflow_dispatch:
 
 concurrency:
@@ -141,7 +141,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jni-cranelift-linux-x64
-          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+          path: wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
@@ -253,12 +253,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: jni-cranelift-linux-x64
-          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
+          path: wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
 
       - name: Run JVM tests
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
-          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: |
           ./gradlew :wasmline-kotlin-plugin:generateTests \
                     :wasmline-kotlin-plugin:test \
@@ -308,19 +308,19 @@ jobs:
             ~/.wasmline/toolchains/wasmtime/compiler-assets
             ~/.cargo/registry
             ~/.cargo/git
-          key: native-fixtures-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-multiplatform/wasmline-native-test-fixtures/src/**') }}
+          key: native-fixtures-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-native-test-fixtures/src/**') }}
 
       - name: Download Cranelift JNI library
         uses: actions/download-artifact@v4
         with:
           name: jni-cranelift-linux-x64
-          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
+          path: wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
 
       - name: Run native AOT JVM tests
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: >-
           ./gradlew :wasmline:nativeAotJvmTest
           -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64
@@ -375,7 +375,7 @@ jobs:
           --engine pulley
 
       - name: Run Kotlin/Native sample
-        working-directory: wasmline-samples/kotlin
+        working-directory: samples/multiplatform-app
         run: ./gradlew :sample-apps:native:verifyKotlinNativeSample --no-daemon
 
   # ───────────────────────────────────────────────────────────────
@@ -411,7 +411,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run browser tests (wasmJs / js)
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
           CHROME_BIN: /usr/bin/google-chrome
         run: |
@@ -455,7 +455,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run wasmWasi Node.js tests
-        working-directory: wasmline-multiplatform
+        working-directory: .
         run: ./gradlew :wasmline:wasmWasiNodeTest --no-daemon
 
   # ───────────────────────────────────────────────────────────────
@@ -509,7 +509,7 @@ jobs:
             ~/.wasmline/toolchains/wasmtime/compiler-assets
             ~/.cargo/registry
             ~/.cargo/git
-          key: native-fixtures-ios-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-multiplatform/wasmline-native-test-fixtures/src/**') }}
+          key: native-fixtures-ios-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-native-test-fixtures/src/**') }}
 
       - name: Initialize Wasmtime iOS simulator assets
         if: steps.cache-wasmtime-ios.outputs.cache-hit != 'true'
@@ -521,7 +521,7 @@ jobs:
           --engine pulley
 
       - name: Run iOS simulator tests
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -568,16 +568,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: jni-cranelift-linux-x64
-          path: wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
+          path: wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
 
       - name: Cache plugin Wasmtime binary
         uses: actions/cache@v5
         with:
-          path: wasmline-multiplatform/wasmline-plugin-test/build/wasmline/wasmtime/
-          key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json', 'wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts') }}
+          path: wasmline-plugin-test/build/wasmline/wasmtime/
+          key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json', 'wasmline-plugin-test/build.gradle.kts') }}
 
       - name: Run plugin integration tests
-        working-directory: wasmline-multiplatform/wasmline-plugin-test
+        working-directory: wasmline-plugin-test
         env:
-          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: ./gradlew jvmTest --no-daemon -Pgithub.token="${{ github.token }}"

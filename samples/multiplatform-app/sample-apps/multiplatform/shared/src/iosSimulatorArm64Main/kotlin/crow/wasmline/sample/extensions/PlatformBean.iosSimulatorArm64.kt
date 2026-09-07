@@ -1,0 +1,11 @@
+package crow.wasmline.sample.extensions
+
+import crow.wasmline.sample.bean.PlatformBean
+import kotlin.time.Clock
+
+actual fun getPlatformBean(): PlatformBean = PlatformBean(
+    platform = "IOS",
+    content = "Hello from ios",
+    timeStr = Clock.System.now().toString(),
+    timeMs = Clock.System.now().toEpochMilliseconds(),
+)

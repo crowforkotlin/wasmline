@@ -15,7 +15,7 @@ case "${ENGINE}" in
   *) wasmline_die "Unknown engine '${ENGINE}'. Expected pulley, cranelift, or all." 2 ;;
 esac
 
-MULTIPLATFORM_ROOT="${WASMLINE_PROJECT_ROOT}/wasmline-multiplatform"
+MULTIPLATFORM_ROOT="${WASMLINE_PROJECT_ROOT}"
 WASMTIME_RELEASE_VERSION="$(wasmline_version wasmtime_release_version)"
 WASMTIME_TAG="v${WASMTIME_RELEASE_VERSION}"
 
@@ -34,7 +34,7 @@ detect_ndk() {
       return
     fi
   fi
-  wasmline_die "Set ANDROID_NDK_HOME or ndk.dir in wasmline-multiplatform/local.properties."
+  wasmline_die "Set ANDROID_NDK_HOME or ndk.dir in local.properties."
 }
 
 build_android() {

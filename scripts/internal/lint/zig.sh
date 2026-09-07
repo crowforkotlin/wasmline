@@ -17,10 +17,10 @@ EOF
 is_zig_source() {
   local file="$1"
   case "$file" in
-  wasmline-multiplatform/wasmline/zig-pkg/* | */build/* | */.zig-cache/* | */zig-out/*)
+  wasmline/zig-pkg/* | */build/* | */.zig-cache/* | */zig-out/*)
     return 1
     ;;
-  wasmline-multiplatform/wasmline/*.zig | wasmline-multiplatform/wasmline/*.zon | wasmline-multiplatform/wasmline/*/*.zig | wasmline-multiplatform/wasmline/*/*.zon)
+  wasmline/*.zig | wasmline/*.zon | wasmline/*/*.zig | wasmline/*/*.zon)
     [[ "$file" == *.zig || "$file" == *.zon ]]
     ;;
   *)
@@ -35,7 +35,7 @@ collect_all_files() {
   while IFS= read -r -d '' file; do
     WASMLINE_LINT_FILES+=("${file#"${WASMLINE_PROJECT_ROOT}/"}")
   done < <(
-    find "${WASMLINE_PROJECT_ROOT}/wasmline-multiplatform/wasmline" \
+    find "${WASMLINE_PROJECT_ROOT}/wasmline" \
       -type d \( -name build -o -name .zig-cache -o -name zig-out -o -name zig-pkg \) -prune -o \
       -type f \( -name '*.zig' -o -name '*.zon' \) -print0
   )

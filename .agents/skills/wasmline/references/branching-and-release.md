@@ -2,6 +2,10 @@
 
 This document records the repository's current branch, version, tag, and publication model. It does not authorize pushing, tagging, or publishing.
 
+Local synchronization, verification, build, and test procedures also require
+explicit user authorization under the repository Execution Policy. Otherwise
+provide the commands for manual execution and report those steps as not run.
+
 ## Contents
 
 - [Branch Model](#branch-model)
@@ -44,7 +48,7 @@ See [`version-sync.md`](./version-sync.md) for the complete procedure.
 
 ## Maven Version Model
 
-The root `wasmline-multiplatform/build.gradle.kts` assigns `wasmline.version` to all projects. Runtime, loader, compiler plugin, Gradle plugin, network adapters, plugin core, and engine modules therefore share one `x.y.z` Maven version.
+The root `build.gradle.kts` assigns `wasmline.version` to all projects. Runtime, loader, compiler plugin, Gradle plugin, network adapters, plugin core, and engine modules therefore share one `x.y.z` Maven version.
 
 Engine modules do **not** use `x.y.z.v` Maven versions. JVM native libraries are published as platform classifiers and advertised as variants in Gradle module metadata. Android and other KMP variants use the same project version.
 

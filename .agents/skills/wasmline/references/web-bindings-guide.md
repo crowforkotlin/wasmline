@@ -1,8 +1,12 @@
 # Web Bindings Guide
 
-Reference for the Kotlin/JS and Kotlin/WasmJS host runtime. Read it before changing `webMain`, `jsMain`, `wasmJsMain`, or `webTest` under `wasmline-multiplatform/wasmline/`.
+Apply the repository Execution Policy: do not automatically run compilation,
+type checks, lint, Node/browser tests, or other verification. Provide relevant
+manual commands unless the user explicitly requests their execution.
 
-Paths below are relative to `wasmline-multiplatform/`.
+Reference for the Kotlin/JS and Kotlin/WasmJS host runtime. Read it before changing `webMain`, `jsMain`, `wasmJsMain`, or `webTest` under `wasmline/`.
+
+Paths below are relative to ``.
 
 ## Contents
 
@@ -223,7 +227,7 @@ Runtime Web tests are under `wasmline/src/webTest/kotlin/crow/wasmline/`:
 Run only with explicit user instruction:
 
 ```bash
-cd wasmline-multiplatform
+cd .
 ./gradlew :wasmline:jsBrowserTest :wasmline:wasmJsBrowserTest
 ```
 

@@ -63,10 +63,25 @@
 **/*.tar.xz
 **/*.log
 
-!wasmline-multiplatform/wasmline/src/jvmTest/resources/fixtures/component-export.wasm
+!wasmline/src/jvmTest/resources/fixtures/component-export.wasm
 
 /AGENTS.md
 /build/platforms/
 /.cache/
 /commit_message.txt
 /.java-version
+
+# Gradle and repository-local generated files from the former multiplatform build.
+/references/
+/CLAUDE.md
+/wasmline-cli/build.md
+/wasmline-cli/keys.md
+/wasmline-cli/manifest.md
+/wasmline-cli/download.md
+/wasmline-cli/compile.md
+wasmline-engine-pulley/src/androidMain/jniLibs/**/*.so
+wasmline-engine-pulley/src/jvmMain/resources/jni/**
+wasmline-engine-cranelift/src/androidMain/jniLibs/**/*.so
+wasmline-engine-cranelift/src/jvmMain/resources/jni/**
+!wasmline-engine-*/src/**/jniLibs/**/.gitkeep
+!wasmline-engine-*/src/**/resources/jni/**/.gitkeep

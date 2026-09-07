@@ -114,22 +114,22 @@ jobs:
             ~/.wasmline/toolchains/wasmtime/compiler-assets
             ~/.cargo/registry
             ~/.cargo/git
-          key: native-fixtures-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-multiplatform/wasmline-native-test-fixtures/src/**') }}
+          key: native-fixtures-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-native-test-fixtures/src/**') }}
 
       - name: Run native AOT JVM gate
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: >-
           ./gradlew :wasmline:nativeAotJvmTest
           -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64
           --no-daemon
 
       - name: Run JVM verification tests
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
-          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: >-
           ./gradlew :wasmline:jvmTest
           :wasmline-loader:jvmTest
@@ -139,13 +139,13 @@ jobs:
           --no-daemon
 
       - name: Run dynamic plugin verification tests
-        working-directory: wasmline-multiplatform/wasmline-plugin-test
+        working-directory: wasmline-plugin-test
         env:
-          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-multiplatform/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
+          WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: ./gradlew jvmTest --no-daemon -Pgithub.token="${{ github.token }}"
 
       - name: Publish Maven artifacts
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
@@ -217,7 +217,7 @@ jobs:
             ~/.wasmline/toolchains/wasmtime/compiler-assets
             ~/.cargo/registry
             ~/.cargo/git
-          key: native-fixtures-ios-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-multiplatform/wasmline-native-test-fixtures/src/**') }}
+          key: native-fixtures-ios-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('versions.json', 'aot-compatibility.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json', 'wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json', 'wasmline-native-test-fixtures/src/**') }}
 
       - name: Download locked iOS Pulley assets
         env:
@@ -228,7 +228,7 @@ jobs:
           --engine pulley
 
       - name: Run iOS Pulley native AOT gate
-        working-directory: wasmline-multiplatform
+        working-directory: .
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: >-

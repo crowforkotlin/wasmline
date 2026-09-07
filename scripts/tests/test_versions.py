@@ -203,20 +203,20 @@ class SyncVersionTest(unittest.TestCase):
         }
 
         expected_paths = {
-            "wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts",
-            "wasmline-multiplatform/gradle/gradle-daemon-jvm.properties",
-            "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            "wasmline-multiplatform/gradle/libs.versions.toml",
-            "docs/content/docs/installation.mdx",
-            "docs/content/docs/installation.zh.mdx",
-            "docs/content/docs/(reference)/(repository-development)/building-from-source.mdx",
-            "docs/content/docs/(reference)/(repository-development)/building-from-source.zh.mdx",
-            "docs/content/docs/(reference)/(runtime)/architecture.mdx",
-            "docs/content/docs/(reference)/(runtime)/architecture.zh.mdx",
-            "docs/content/docs/(reference)/(plugin-development)/component-service.mdx",
-            "docs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
-            "wasmline-samples/kotlin/run-ios.sh",
-            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
+            "wasmline-plugin-test/build.gradle.kts",
+            "gradle/gradle-daemon-jvm.properties",
+            "samples/multiplatform-app/plugins/kotlin-service/build.gradle.kts",
+            "gradle/libs.versions.toml",
+            "fumadocs/content/docs/installation.mdx",
+            "fumadocs/content/docs/installation.zh.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/building-from-source.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/building-from-source.zh.mdx",
+            "fumadocs/content/docs/(reference)/(runtime)/architecture.mdx",
+            "fumadocs/content/docs/(reference)/(runtime)/architecture.zh.mdx",
+            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx",
+            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
+            "samples/multiplatform-app/run-ios.sh",
+            "wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
             ".github/workflows/release.yml",
         }
         self.assertTrue(expected_paths.issubset(rendered_paths))
@@ -246,24 +246,24 @@ class SyncVersionTest(unittest.TestCase):
         }
 
         expected_fragments = {
-            "wasmline-multiplatform/gradle/libs.versions.toml": 'dokka = "8.8.8"',
+            "gradle/libs.versions.toml": 'dokka = "8.8.8"',
             ".agents/skills/wasmline/references/development-guide.md": "The pre-check also reports Zig 9.9.9",
-            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts":
+            "wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts":
                 "JavaLanguageVersion.of(99)",
-            "wasmline-samples/kotlin/run-ios.sh": "v99.8.7.6",
-            "wasmline-multiplatform/gradle/gradle-daemon-jvm.properties": "toolchainVersion=99",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts":
+            "samples/multiplatform-app/run-ios.sh": "v99.8.7.6",
+            "gradle/gradle-daemon-jvm.properties": "toolchainVersion=99",
+            "samples/multiplatform-app/sample-apps/multiplatform/desktopApp/build.gradle.kts":
                 "JavaLanguageVersion.of(99)",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/shared/src/desktopMain/Requirement.md":
+            "samples/multiplatform-app/sample-apps/multiplatform/shared/src/desktopMain/Requirement.md":
                 "JBR 99",
-            "wasmline-multiplatform/wasmline/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativeWasmtimeIntegrationTest.kt":
+            "wasmline/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativeWasmtimeIntegrationTest.kt":
                 'assertEquals("99.8.7", capabilities.wasmtimeVersion)',
-            "wasmline-multiplatform/wasmline-cli/src/test/kotlin/crow/wasmline/cli/ComponentCliIntegrationTest.kt":
+            "wasmline-cli/src/test/kotlin/crow/wasmline/cli/ComponentCliIntegrationTest.kt":
                 'File(compileRoot, "cli-compile-6.5.4")',
-            "wasmline-samples/kotlin/sample-component-fixture/README.md":
+            "samples/multiplatform-app/plugins/component-package/README.md":
                 "wasmline/output/crow.wasmline.component.fixture-6.5.4/",
-            "ROADMAP.md": "Wasmtime C-API integration (v99.8.7)",
-            "ROADMAP_zh.md": "Wasmtime C-API 集成（v99.8.7）",
+            "ROADMAP.md": "Wasmtime C-API integration (Wasmline Wasmtime 99.8.7)",
+            "ROADMAP_zh.md": "Wasmtime C-API 集成（Wasmline Wasmtime 99.8.7）",
         }
 
         rendered = self.render_managed_files(versions)
@@ -290,24 +290,24 @@ class SyncVersionTest(unittest.TestCase):
         rendered = self.render_managed_files(versions)
 
         manifest_paths = (
-            "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-component-export-plugin/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-component-fixture/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-service/build.gradle.kts",
+            "samples/multiplatform-app/plugins/raw-export/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-component-service/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-component-export/build.gradle.kts",
+            "samples/multiplatform-app/plugins/component-package/build.gradle.kts",
         )
         for path in manifest_paths:
             self.assertIn('version = "6.5.4"', rendered[path], msg=path)
 
         output_paths = (
-            "wasmline-samples/kotlin/sample-apps/android/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-apps/application/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/androidApp/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/webApp/build.gradle.kts",
-            "wasmline-samples/kotlin/README.md",
-            "wasmline-samples/kotlin/sample-apps/README.md",
-            "wasmline-samples/kotlin/sample-component-fixture/README.md",
+            "samples/multiplatform-app/sample-apps/android/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/application/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/androidApp/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/desktopApp/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/webApp/build.gradle.kts",
+            "samples/multiplatform-app/README.md",
+            "samples/multiplatform-app/sample-apps/README.md",
+            "samples/multiplatform-app/plugins/component-package/README.md",
         )
         for path in output_paths:
             self.assertIn("wasmline/output/", rendered[path], msg=path)
@@ -332,16 +332,16 @@ class SyncVersionTest(unittest.TestCase):
         }
         rendered = self.render_managed_files(versions)
 
-        plugin_test = rendered["wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts"]
+        plugin_test = rendered["wasmline-plugin-test/build.gradle.kts"]
         self.assertIn("JavaLanguageVersion.of(99)", plugin_test)
         self.assertIn('val testPluginVersion = "6.5.4"', plugin_test)
         self.assertIn(
             'version = "6.5.4"',
-            rendered["wasmline-samples/kotlin/sample-plugin/build.gradle.kts"],
+            rendered["samples/multiplatform-app/plugins/kotlin-service/build.gradle.kts"],
         )
         self.assertIn(
             "wasmline-engine-pulley-jvm-9.8.7.jar",
-            rendered["wasmline-multiplatform/docs/native-library-loading.md"],
+            rendered["docs/native-library-loading.md"],
         )
 
     def test_toolchain_versions_update_external_component_tooling(self) -> None:
@@ -364,8 +364,8 @@ class SyncVersionTest(unittest.TestCase):
         rendered = self.render_managed_files(versions)
 
         for path in (
-            "wasmline-samples/c/sample-component-plugin/CMakeLists.txt",
-            "wasmline-samples/cpp/sample-component-plugin/CMakeLists.txt",
+            "samples/multiplatform-app/plugins/c-component-service/CMakeLists.txt",
+            "samples/multiplatform-app/plugins/cpp-component-service/CMakeLists.txt",
         ):
             self.assertIn("wit-bindgen-cli 7.6.5", rendered[path], msg=path)
             self.assertIn("wasm-tools 8.7.6", rendered[path], msg=path)
@@ -762,7 +762,7 @@ class SyncVersionTest(unittest.TestCase):
         """Repository synchronization and the AOT compiler use one profile descriptor."""
         kotlin_path = (
             PROJECT_ROOT
-            / "wasmline-multiplatform/wasmline-plugin-core/src/main/kotlin"
+            / "wasmline-plugin-core/src/main/kotlin"
             / "crow/wasmline/plugin/core/aot/WasmlineAotCompileOptions.kt"
         )
         kotlin = kotlin_path.read_text(encoding="utf-8")

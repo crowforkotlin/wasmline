@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- Logo asset: replace src with actual path -->
-<!-- <img src="docs/public/images/logo.png" alt="wasmline" width="96" /> -->
+<!-- <img src="fumadocs/public/images/logo.png" alt="wasmline" width="96" /> -->
 
 # wasmline
 
@@ -29,11 +29,11 @@ Wasmline is a Kotlin Multiplatform library for loading and calling WASI-complian
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/public/images/wasmline_mac_apps.png" alt="macOS sample apps" width="100%" />
+      <img src="fumadocs/public/images/wasmline_mac_apps.png" alt="macOS sample apps" width="100%" />
       <br><em>Desktop · iOS · Android · Terminal · Web (Wasm)</em>
     </td>
     <td align="center">
-      <img src="docs/public/images/wasmline_archlinux_apps.png" alt="Arch Linux sample apps" width="100%" />
+      <img src="fumadocs/public/images/wasmline_archlinux_apps.png" alt="Arch Linux sample apps" width="100%" />
       <br><em>Desktop · Android · Terminal · Web (JS)</em>
     </td>
   </tr>
@@ -43,11 +43,11 @@ Wasmline is a Kotlin Multiplatform library for loading and calling WASI-complian
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/public/images/wasmline_mac_temrinal.png" alt="macOS build terminals" width="100%" />
+      <img src="fumadocs/public/images/wasmline_mac_temrinal.png" alt="macOS build terminals" width="100%" />
       <br><em>Build commands: Desktop · iOS · Android · Web (Wasm)</em>
     </td>
     <td align="center">
-      <img src="docs/public/images/wasmline_archlinux_temrinals.png" alt="Arch Linux build terminals" width="100%" />
+      <img src="fumadocs/public/images/wasmline_archlinux_temrinals.png" alt="Arch Linux build terminals" width="100%" />
       <br><em>Build commands: Desktop · Android · Web (JS)</em>
     </td>
   </tr>
@@ -210,7 +210,7 @@ binary. Optional plugin build steps can generate bindings and create that
 binary from WIT through `wasmline-plugin-core`, the Gradle plugin, or the CLI;
 the loader itself does not run those tools. `contractMetadata` describes the
 call contract when needed; it is not a WIT compiler input. See the
-[Component Service Protocol](<docs/content/docs/(reference)/(plugin-development)/component-service.mdx>).
+[Component Service Protocol](<fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>).
 
 The browser runtime supports both Core Service and Core Raw Export paths. Web
 uses raw `.wasm`, `WebAssembly.Module`/`WebAssembly.Instance`, synchronous
@@ -277,12 +277,12 @@ engine. It does not infer compatibility from a Maven version or filename.
 
 > [!NOTE]
 > Wasmline is currently distributed through `mavenLocal()` and is not yet
-> available from Maven Central. See [Installation](docs/content/docs/installation.mdx).
+> available from Maven Central. See [Installation](fumadocs/content/docs/installation.mdx).
 
 > [!WARNING]
 > The minimum required Kotlin version is **2.3.0-RC2**.
 >
-> ![Kotlin/Wasm runtime support matrix](docs/public/images/kotlin_support.png)
+> ![Kotlin/Wasm runtime support matrix](fumadocs/public/images/kotlin_support.png)
 
 Use the BOM on JVM and Android so the runtime, Loader, network adapter, and
 engine resolve to one strict Wasmline version:
@@ -331,7 +331,7 @@ wasmline {
 The default is `DEBUG`, served at `http://localhost:8080`.
 `wasmlineServerDeploy` builds and serves the package directory for the selected
 variant. See the
-[Gradle plugin task reference](<docs/content/docs/(reference)/(plugin-development)/gradle-plugin.mdx>) for the
+[Gradle plugin task reference](<fumadocs/content/docs/(reference)/(plugin-development)/gradle-plugin.mdx>) for the
 current task set and registration conditions.
 
 ## Release Build
@@ -341,23 +341,23 @@ wrapper belonging to the project that it builds:
 
 ```bash
 # Wasmline modules and Android AARs
-(cd wasmline-multiplatform && ./gradlew assemble)
-(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleDebug)
-(cd wasmline-multiplatform && ./gradlew :wasmline-android:assembleRelease)
+(cd . && ./gradlew assemble)
+(cd . && ./gradlew :wasmline-android:assembleDebug)
+(cd . && ./gradlew :wasmline-android:assembleRelease)
 
 # JVM verification and Gradle plugin integration tests
-(cd wasmline-multiplatform && ./gradlew :wasmline:jvmTest)
-(cd wasmline-multiplatform/wasmline-plugin-test && ./gradlew jvmTest)
+(cd . && ./gradlew :wasmline:jvmTest)
+(cd wasmline-plugin-test && ./gradlew jvmTest)
 
 # Web production distributions
-(cd wasmline-multiplatform && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
-(cd wasmline-multiplatform && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
+(cd . && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
+(cd . && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
 
 # Apple binaries (macOS host)
-(cd wasmline-multiplatform && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
+(cd . && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
 
 # Desktop distribution for the current operating system
-(cd wasmline-samples/kotlin && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
+(cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
 ```
 
 The GitHub Actions release job builds the publishable Wasmline modules,
@@ -368,7 +368,7 @@ SHA-256 checksum. It runs only for a tag named `release-x.y.z.v`; pushes to
 
 ## Architecture Diagram
 
-![Wasmline Architecture Diagram](docs/public/images/wasmline_mind_en.png)
+![Wasmline Architecture Diagram](fumadocs/public/images/wasmline_mind_en.png)
 
 ## License
 

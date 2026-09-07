@@ -7,6 +7,36 @@ description: Apply repository-level workflow, architecture, versioning, release,
 
 Use this skill for work in the `wasmline` repository. Paths in the referenced documents are relative to the repository root unless stated otherwise.
 
+## Execution Policy
+
+Default to implementation only. A request to implement, fix, refactor, or execute
+a plan is not authorization to run its validation steps. Only an explicit user
+request to run a command or a defined build/validation scope permits execution;
+stay within that scope without requesting approval for every routine step.
+
+This applies to Wasmline, Wasmtime, Fumadocs, samples, scripts, and every language:
+Gradle configuration/tasks, lint/check/test/build, Kotlin/Java compilers,
+Zig/CMake, Cargo/Rust, Python pytest/unittest/compileall/py_compile, Shell
+`bash -n`/ShellCheck, JavaScript/TypeScript package scripts, browser tests,
+environment doctor commands, `git diff --check`, and custom validation scripts.
+Do not substitute a "lightweight", "static", or read-only check for authorization.
+
+Reading files, locating relevant source, and reading Git status/diffs to implement
+the request are allowed; they are not permission to execute checks. Treat every
+validation procedure in referenced documents as manual instructions unless
+explicitly authorized. General communication or skill-authoring guidance that
+recommends automatic validation does not override this project rule.
+
+Generators or synchronization commands that compile, test, or validate also
+require explicit authorization. Otherwise edit their source inputs, preserve
+generated-file boundaries, and report the pending generation command.
+Do not alter CI behavior merely to enforce this rule on the assistant.
+
+In the final response, separate implementation status from validation status.
+State "not run" when applicable and provide relevant commands with their working
+directory and prerequisites for the user to run manually. Do not claim success
+from reading code or from checks performed before the current edits.
+
 ## Reference Routing
 
 Read only the documents required by the current task.
@@ -18,17 +48,17 @@ Read only the documents required by the current task.
 | [`branching-and-release.md`](./references/branching-and-release.md) | Branches, tags, Maven publication, releases, or hotfixes |
 | [`aot-compatibility.md`](./references/aot-compatibility.md) | AOT generation catalogs, selector DSL, compatibility checks, or release assets |
 | [`web-bindings-guide.md`](./references/web-bindings-guide.md) | `webMain`, `jsMain`, `wasmJsMain`, browser loading, or Web tests |
-| [Technical Mind Map](../../../wasmline-multiplatform/docs/design-mind.md) | Runtime architecture, execution models, invocation protocols, Component Model, or IR flow |
-| [Component Service Guide](<../../../docs/content/docs/(reference)/(plugin-development)/component-service.mdx>) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
-| [IR Test Documentation](../../../wasmline-multiplatform/docs/ir/index.md) | Compiler-plugin fixtures, generated runners, or IR snapshots |
+| [Technical Mind Map](../../../docs/design-mind.md) | Runtime architecture, execution models, invocation protocols, Component Model, or IR flow |
+| [Component Service Guide](<../../../fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
+| [IR Test Documentation](../../../docs/ir/index.md) | Compiler-plugin fixtures, generated runners, or IR snapshots |
 
 ## Hard Constraints
 
-1. **Conditional pre-check, once per session.** Run `./scripts/wasmline doctor` immediately before the first validation of changes to files in this repository. Do not run it for read-only work, tasks unrelated to Wasmline, or changes that require no validation. If a later turn first introduces a change that must be validated, run the command then. Never rerun it in the same session.
-2. **Compilation and tests require explicit instruction.** Do not run Gradle, Zig, CMake, native builds, or test suites unless the user explicitly requests the relevant build, test, or verification.
+1. **Never validate or build by default.** Do not run `./scripts/wasmline doctor`, Gradle, `gradlew`, Zig, CMake, native builds, lint, check, test suites, Python test suites, package-manager checks, documentation builds, or other verification commands unless the user explicitly authorizes the exact validation. This prohibition applies to all repository languages and tools.
+2. **Provide commands for manual validation.** After implementation, list the recommended validation commands in the final response and state that the user must run them. Listing a command does not authorize running it.
 3. **Generated files are not edited manually.** This includes `test-gen/`, `*.fir.txt`, `*.fir.ir.txt`, `**/build/`, `build/platforms/`, `.zig-cache/`, and `zig-out/`.
 4. **Select the owning module first.** Confirm the module and source set before changing code.
-5. **Scalar versions come from one root manifest.** Root `versions.json` contains only duplicated project and toolchain versions. Edit it and run `./scripts/wasmline versions sync`, or use `versions sync --set key=value` for the same operation. Native AOT compatibility history is maintained separately in root `aot-compatibility.json` and synchronized with `./scripts/wasmline aot sync`.
+5. **Scalar versions come from one root manifest.** Root `versions.json` contains only duplicated project and toolchain versions. Edit the source manifest and provide `./scripts/wasmline versions sync` for manual execution unless synchronization is explicitly authorized. Native AOT compatibility history is maintained separately in root `aot-compatibility.json`; the same execution policy applies to `./scripts/wasmline aot sync`.
 6. **Tags and Maven releases remain paired.** The release tag format is `release-x.y.z.v`. Do not create a release tag without its Maven release, and do not publish a Maven release without its tag.
 7. **Maven modules use one project version.** All published modules, including engine modules, use `wasmline.version` in `x.y.z` form. Do not introduce four-segment engine Maven versions.
 8. **Use `main` and temporary sub-branches.** Do not create long-lived release or Wasmtime-version branches.
@@ -54,10 +84,10 @@ Read only the documents required by the current task.
 
 ## Workflow
 
-1. Classify the task and apply the conditional `doctor` rule.
+1. Classify the task and determine the owning module and source set.
 2. Read the matching reference and identify the owning module and source set.
 3. Verify current paths, APIs, and generated-file boundaries in the repository.
 4. Make the requested change.
-5. Run only the validation authorized for the task, then inspect the final diff.
+5. Inspect the final diff and report validation as not run unless the user explicitly authorized it.
 
 For AOT and release changes, read [`aot-compatibility.md`](./references/aot-compatibility.md) and [`branching-and-release.md`](./references/branching-and-release.md) before editing.

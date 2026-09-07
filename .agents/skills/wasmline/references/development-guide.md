@@ -16,7 +16,9 @@ Operational reference for the Wasmline repository. All paths are relative to the
 
 ## Environment Pre-check
 
-Gradle work requires **JBR 21**. Run the pre-check once per session, immediately before the first validation of changes to files in this repository:
+Gradle work requires **JBR 21**. The following pre-check is for manual execution.
+Do not run it automatically; an explicit request for the relevant environment
+check or build/validation scope is required:
 
 ```bash
 ./scripts/wasmline doctor
@@ -24,10 +26,10 @@ Gradle work requires **JBR 21**. Run the pre-check once per session, immediately
 
 Rules:
 
-- Do not run it for read-only work, tasks unrelated to Wasmline, or changes that require no validation.
-- Creating a goal or requesting edits does not trigger it by itself. Validation of the resulting repository changes is the trigger.
-- If a later turn first introduces a change that must be validated, run it then.
-- Never run it again in the same session.
+- Implementation requests do not authorize doctor, compilation, tests, lint,
+  syntax checks, or script validation in any language.
+- All execution procedures below are manual instructions unless explicitly
+  authorized under the repository skill's Execution Policy.
 - A failed JBR 21 check blocks Gradle commands. Other failed checks matter only when the requested command uses the reported tool or files.
 - Do not write local JBR paths into repository files.
 
@@ -51,22 +53,22 @@ Do not initialize assets merely because the directory exists or is absent. Confi
 | Path | Responsibility |
 | --- | --- |
 | `wasmline-core/` | Native C/C++ Wasmtime bridge for Core Wasm and Component Model execution |
-| `wasmline-multiplatform/wasmline/` | Kotlin runtime API, host runtime, platform actuals, browser runtime, and guest runtime |
-| `wasmline-multiplatform/wasmline-loader/` | Local and remote manifests, signatures, artifact selection, and network-neutral loading |
-| `wasmline-multiplatform/wasmline-engine-cranelift/` | Cranelift native runtime distribution |
-| `wasmline-multiplatform/wasmline-engine-pulley/` | Pulley native runtime distribution |
-| `wasmline-multiplatform/wasmline-android/` | Android native build integration |
-| `wasmline-multiplatform/wasmline-kotlin-plugin/` | Kotlin IR validation, bridge generation, entry-point rewriting, and WASI/Component hooks |
-| `wasmline-multiplatform/wasmline-plugin-core/` | Shared plugin build pipeline, Component tooling, manifest signing, packaging, and host WIT generation |
-| `wasmline-multiplatform/wasmline-gradle-plugin/` | Consumer DSL and Gradle tasks built on the compiler plugin and plugin core |
-| `wasmline-multiplatform/wasmline-cli/` | CLI adapters for catalog-backed AOT builds, Component tools, manifests, and packaging |
-| `wasmline-multiplatform/wasmline-network-ktor/` | Ktor network adapter for the loader |
-| `wasmline-multiplatform/wasmline-network-okhttp/` | OkHttp network adapter for the loader |
-| `wasmline-multiplatform/wasmline-plugin-test/` | End-to-end Gradle-plugin and native-plugin integration tests |
-| `wasmline-multiplatform/wasmline-native-test-fixtures/` | Internal native AOT fixture sources, generation task, and fixture index model |
-| `wasmline-samples/` | Kotlin, Rust, C, and C++ examples and fixtures |
+| `wasmline/` | Kotlin runtime API, host runtime, platform actuals, browser runtime, and guest runtime |
+| `wasmline-loader/` | Local and remote manifests, signatures, artifact selection, and network-neutral loading |
+| `wasmline-engine-cranelift/` | Cranelift native runtime distribution |
+| `wasmline-engine-pulley/` | Pulley native runtime distribution |
+| `wasmline-android/` | Android native build integration |
+| `wasmline-kotlin-plugin/` | Kotlin IR validation, bridge generation, entry-point rewriting, and WASI/Component hooks |
+| `wasmline-plugin-core/` | Shared plugin build pipeline, Component tooling, manifest signing, packaging, and host WIT generation |
+| `wasmline-gradle-plugin/` | Consumer DSL and Gradle tasks built on the compiler plugin and plugin core |
+| `wasmline-cli/` | CLI adapters for catalog-backed AOT builds, Component tools, manifests, and packaging |
+| `wasmline-network-ktor/` | Ktor network adapter for the loader |
+| `wasmline-network-okhttp/` | OkHttp network adapter for the loader |
+| `wasmline-plugin-test/` | End-to-end Gradle-plugin and native-plugin integration tests |
+| `wasmline-native-test-fixtures/` | Internal native AOT fixture sources, generation task, and fixture index model |
+| `samples/` | Kotlin, Rust, C, and C++ examples and fixtures |
 | `scripts/` | Repository automation, environment checks, lint, assets, and version synchronization |
-| `docs/` | Documentation site |
+| `fumadocs/` | Documentation site |
 
 ## Key Source Maps
 
@@ -80,7 +82,7 @@ Do not initialize assets merely because the directory exists or is absent. Confi
 - Engine and artifacts: `wasmline-core/src/runtime/Engine.cpp`, `Module.cpp`, `Component.cpp`
 - Invocation sessions: `Session.cpp`, `RawModuleSession.cpp`, `ComponentSession.cpp`
 - Typed Component values: `wasmline-core/src/value/ComponentValue.cpp`
-- Kotlin JNI/iOS bridges: `wasmline-multiplatform/wasmline/src/jniMain/` and `iosMain/`
+- Kotlin JNI/iOS bridges: `wasmline/src/jniMain/` and `iosMain/`
 
 ### Kotlin Runtime
 
@@ -108,7 +110,7 @@ result types into an internal package. Platform `actual` implementations may
 depend on internal types through explicit imports, but public callers must only
 need `crow.wasmline` imports.
 
-The `wasmline/` paths in this section are relative to `wasmline-multiplatform/`.
+The `wasmline/` paths in this section are relative to ``.
 
 ### Kotlin Compiler Plugin
 
@@ -130,7 +132,7 @@ Read [`web-bindings-guide.md`](./web-bindings-guide.md) before changing `webMain
 
 ### Component Model
 
-Read the [Component Service Guide](<../../../../docs/content/docs/(reference)/(plugin-development)/component-service.mdx>) before changing WIT, Component build stages, generated host bindings, or cross-language fixtures.
+Read the [Component Service Guide](<../../../../fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>) before changing WIT, Component build stages, generated host bindings, or cross-language fixtures.
 
 ## Generated Artifact Rules
 
@@ -151,7 +153,9 @@ artifacts and its index below that module's `build/` directory. Do not commit
 those generated files or add environment variables that point tests at
 hand-built artifacts.
 
-For an IR fixture change:
+For an IR fixture change, edit the source fixture. The remaining generation and
+test steps below require explicit authorization; otherwise provide them as
+manual commands and report generated output as pending:
 
 1. Edit the `.kt` fixture under `testData/box/`.
 2. Generate the runner through the Gradle task.
@@ -162,10 +166,11 @@ The repository currently generates only `JvmBoxTestGenerated`. Diagnostic runner
 
 ## Commands
 
-Compilation and test commands below require explicit user instruction.
+All commands below are manual examples, not instructions to execute them
+automatically. This includes Python, lint, doctor, synchronization, and generators.
 
 ```bash
-# Conditional environment pre-check; see the rules above
+# Manual environment pre-check; see the execution policy above
 ./scripts/wasmline doctor
 
 # Version synchronization checks
@@ -195,7 +200,7 @@ python3 scripts/tests/test_wasmtime.py
 ./scripts/wasmline kotlin-native build --target <target> [--engine <pulley|cranelift|all>]
 
 # IR runner generation and box tests
-cd wasmline-multiplatform
+cd .
 ./gradlew :wasmline-kotlin-plugin:generateTests
 ./gradlew :wasmline-kotlin-plugin:test \
   --tests 'crow.wasmline.kotlin.runners.JvmBoxTestGenerated'
@@ -226,9 +231,9 @@ rustup target add wasm32-wasip2
 
 | Language | Tool | Repository scope |
 | --- | --- | --- |
-| Kotlin | ktlint | Supported Kotlin files under `wasmline-multiplatform/`, excluding generated and platform-specific exclusions defined by the script |
+| Kotlin | ktlint | Supported Kotlin files under ``, excluding generated and platform-specific exclusions defined by the script |
 | C/C++ | clang-format | Supported sources under `wasmline-core/` |
-| Zig/ZON | `zig fmt` | Zig build files under `wasmline-multiplatform/wasmline/` |
+| Zig/ZON | `zig fmt` | Zig build files under `wasmline/` |
 
 Use `./scripts/wasmline lint`; language-specific scripts under `scripts/internal/lint/` are implementation details.
 
@@ -239,7 +244,7 @@ Workflow: `.github/workflows/ci.yml`
 The separate `.github/workflows/check-ktlint-update.yml` workflow checks the
 latest stable ktlint release weekly and opens or updates a reviewable PR.
 
-Pushes and pull requests targeting `main` ignore `docs/**`, root `*.md`, and `.agents/**`. Manual `workflow_dispatch` runs the same jobs.
+Pushes and pull requests targeting `main` ignore `fumadocs/**`, root `*.md`, and `.agents/**`. Manual `workflow_dispatch` runs the same jobs.
 
 | Job | Role | Dependency |
 | --- | --- | --- |

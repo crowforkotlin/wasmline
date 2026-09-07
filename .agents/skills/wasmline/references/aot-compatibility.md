@@ -1,5 +1,11 @@
 # AOT Compatibility and Release Catalog
 
+The repository Execution Policy applies to all local procedures below,
+including Wasmtime asset checks, synchronization, generation, compilation,
+release verification, and tests. Without explicit authorization, implement the
+source changes and provide pending commands for manual execution. Descriptions
+of CI or runtime checks do not authorize the assistant to run them.
+
 This reference defines the native AOT compatibility policy implemented by the
 Wasmline repository. It applies to `.cwasm` and `.pwasm` artifacts only. A raw
 Web `.wasm` artifact does not use a Wasmtime AOT profile and is outside the
@@ -23,14 +29,14 @@ The scalar project and toolchain versions remain in `versions.json`.
 `./scripts/wasmline aot sync` validates the source and generates the internal
 lock plus the packaged public resource:
 
-- `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json`;
-- `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility.json`.
+- `wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json`;
+- `wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility.json`.
 
 The same command also generates the runtime identity constants used by both
 sides of the native bridge:
 
 - `wasmline-core/include/wasmline/internal/runtime/NativeBuildIdentity.h`;
-- `wasmline-multiplatform/wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineReleaseIdentity.kt`.
+- `wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineReleaseIdentity.kt`.
 
 The root `aot-compatibility.json` is edited by maintainers when a release range
 or generation changes. The synchronizer never overwrites that source file.

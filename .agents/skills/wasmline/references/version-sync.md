@@ -1,5 +1,10 @@
 # Version Synchronization Guide
 
+All command procedures below follow the repository Execution Policy. Do not
+automatically run synchronization, generation, checks, upstream verification,
+or Python tests. Without explicit authorization, edit source inputs and provide
+the pending commands for manual execution; never hand-edit generated locks.
+
 ## Contents
 
 - [Source of Truth](#source-of-truth)
@@ -123,7 +128,7 @@ Kotlin code obtains Component CLI tool versions from `ToolchainCatalog`. Do not 
 
 ## Generated Locks
 
-The packaged lock at `wasmline-multiplatform/wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` is derived from `versions.json`. It records the GitHub release, asset ID, size, URL, and SHA-256 for every supported Component tool platform.
+The packaged lock at `wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` is derived from `versions.json`. It records the GitHub release, asset ID, size, URL, and SHA-256 for every supported Component tool platform.
 
 The separate packaged AOT lock at
 `META-INF/wasmline/aot/aot-compatibility-lock.json` contains immutable
@@ -143,7 +148,7 @@ the generated lock, and the packaged resource. `--verify-upstream` performs the
 separate network check and fails if current GitHub release metadata differs from
 the checked-in toolchain lock.
 
-## Required Verification
+## Manual Verification
 
 ```bash
 ./scripts/wasmline versions check

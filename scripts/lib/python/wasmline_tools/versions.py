@@ -448,29 +448,29 @@ def file_specs() -> tuple[FileSpec, ...]:
             jbr_toolchain_rules,
         )
         for path in (
-            "wasmline-multiplatform/gradle/gradle-daemon-jvm.properties",
-            "wasmline-multiplatform/wasmline/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.android.gradle.kts",
-            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.multiplatform.library.gradle.kts",
-            "wasmline-multiplatform/wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
-            "wasmline-multiplatform/wasmline-gradle-plugin/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-kotlin-plugin/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-loader/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-network-ktor/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-network-okhttp/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-plugin-core/build.gradle.kts",
-            "wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts",
-            "wasmline-samples/kotlin/gradle/gradle-daemon-jvm.properties",
-            "wasmline-samples/kotlin/sample-apps/application/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/shared/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-apps/multiplatform/webApp/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-common/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-component-export-plugin/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-component-fixture/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-plugin/build.gradle.kts",
-            "wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts",
+            "gradle/gradle-daemon-jvm.properties",
+            "wasmline/build.gradle.kts",
+            "wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.android.gradle.kts",
+            "wasmline-build-logic/app/src/main/kotlin/gradle/base/app.base.multiplatform.library.gradle.kts",
+            "wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
+            "wasmline-gradle-plugin/build.gradle.kts",
+            "wasmline-kotlin-plugin/build.gradle.kts",
+            "wasmline-loader/build.gradle.kts",
+            "wasmline-network-ktor/build.gradle.kts",
+            "wasmline-network-okhttp/build.gradle.kts",
+            "wasmline-plugin-core/build.gradle.kts",
+            "wasmline-plugin-test/build.gradle.kts",
+            "samples/multiplatform-app/gradle/gradle-daemon-jvm.properties",
+            "samples/multiplatform-app/sample-apps/application/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/desktopApp/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/shared/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/webApp/build.gradle.kts",
+            "samples/multiplatform-app/sample-common/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-component-export/build.gradle.kts",
+            "samples/multiplatform-app/plugins/component-package/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-component-service/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-service/build.gradle.kts",
+            "samples/multiplatform-app/plugins/raw-export/build.gradle.kts",
         )
     )
 
@@ -506,7 +506,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             development_guide_rules,
         ),
         FileSpec(
-            "wasmline-multiplatform/gradle.properties",
+            "gradle.properties",
             (
                 Rule(
                     r"(?m)^wasmline\.version=.*$",
@@ -523,7 +523,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/kotlin/gradle.properties",
+            "samples/multiplatform-app/gradle.properties",
             (
                 Rule(
                     r"(?m)^wasmline\.version=.*$",
@@ -539,22 +539,22 @@ def file_specs() -> tuple[FileSpec, ...]:
                 ),
             ),
         ),
-        FileSpec("wasmline-samples/kotlin/sample-plugin/build.gradle.kts", sample_manifest_rules),
-        FileSpec("wasmline-samples/kotlin/sample-raw-export-plugin/build.gradle.kts", sample_manifest_rules),
+        FileSpec("samples/multiplatform-app/plugins/kotlin-service/build.gradle.kts", sample_manifest_rules),
+        FileSpec("samples/multiplatform-app/plugins/raw-export/build.gradle.kts", sample_manifest_rules),
         FileSpec(
-            "wasmline-samples/kotlin/sample-component-plugin/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-component-service/build.gradle.kts",
             sample_manifest_rules,
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-component-export-plugin/build.gradle.kts",
+            "samples/multiplatform-app/plugins/kotlin-component-export/build.gradle.kts",
             sample_manifest_rules,
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-component-fixture/build.gradle.kts",
+            "samples/multiplatform-app/plugins/component-package/build.gradle.kts",
             sample_manifest_rules,
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-plugin-test/build.gradle.kts",
+            "wasmline-plugin-test/build.gradle.kts",
             (
                 Rule(
                     r'(?m)^val testPluginVersion = "[0-9A-Za-z.\-]+"$',
@@ -563,7 +563,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/multiplatform/desktopApp/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/desktopApp/build.gradle.kts",
             sample_output_rules
             + (
                 Rule(
@@ -576,32 +576,32 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/android/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/android/build.gradle.kts",
             sample_output_rules,
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/application/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/application/build.gradle.kts",
             sample_output_rules,
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/multiplatform/androidApp/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/androidApp/build.gradle.kts",
             sample_output_rules,
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/multiplatform/webApp/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/multiplatform/webApp/build.gradle.kts",
             sample_output_rules,
         ),
-        FileSpec("wasmline-samples/kotlin/README.md", sample_output_rules),
+        FileSpec("samples/multiplatform-app/README.md", sample_output_rules),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/README.md",
-            sample_output_rules,
-        ),
-        FileSpec(
-            "wasmline-samples/kotlin/sample-component-fixture/README.md",
+            "samples/multiplatform-app/sample-apps/README.md",
             sample_output_rules,
         ),
         FileSpec(
-            "wasmline-samples/kotlin/run-ios.sh",
+            "samples/multiplatform-app/plugins/component-package/README.md",
+            sample_output_rules,
+        ),
+        FileSpec(
+            "samples/multiplatform-app/run-ios.sh",
             (
                 Rule(
                     r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
@@ -610,7 +610,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/gradle/libs.versions.toml",
+            "gradle/libs.versions.toml",
             (
                 Rule(
                     r'(?m)^agp = ".*"$',
@@ -635,33 +635,33 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/docs/ir/box-ir.md",
+            "docs/ir/box-ir.md",
             readme_en,
         ),
         FileSpec("README.md", readme_en),
         FileSpec("README_zh.md", readme_zh),
         FileSpec(
-            "docs/content/docs/(reference)/(repository-development)/building-from-source.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/building-from-source.mdx",
             building_from_source_en,
         ),
         FileSpec(
-            "docs/content/docs/(reference)/(repository-development)/building-from-source.zh.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/building-from-source.zh.mdx",
             building_from_source_zh,
         ),
-        FileSpec("docs/content/docs/installation.mdx", installation_en),
-        FileSpec("docs/content/docs/installation.zh.mdx", installation_zh),
-        FileSpec("docs/content/docs/(reference)/(runtime)/architecture.mdx", architecture_rules),
-        FileSpec("docs/content/docs/(reference)/(runtime)/architecture.zh.mdx", architecture_rules),
+        FileSpec("fumadocs/content/docs/installation.mdx", installation_en),
+        FileSpec("fumadocs/content/docs/installation.zh.mdx", installation_zh),
+        FileSpec("fumadocs/content/docs/(reference)/(runtime)/architecture.mdx", architecture_rules),
+        FileSpec("fumadocs/content/docs/(reference)/(runtime)/architecture.zh.mdx", architecture_rules),
         FileSpec(
-            "docs/content/docs/(reference)/(repository-development)/testing.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/testing.mdx",
             version_sync_docs_rules,
         ),
         FileSpec(
-            "docs/content/docs/(reference)/(repository-development)/testing.zh.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/testing.zh.mdx",
             version_sync_docs_rules,
         ),
         FileSpec(
-            "wasmline-multiplatform/docs/native-library-loading.md",
+            "docs/native-library-loading.md",
             (
                 Rule(
                     r"(?<![0-9.])[0-9]+\.[0-9]+\.[0-9]+(?![0-9])",
@@ -710,7 +710,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/android/build.gradle.kts",
+            "samples/multiplatform-app/sample-apps/android/build.gradle.kts",
             (
                 Rule(
                     r'(?m)^        versionName = "[0-9A-Za-z.\-]+"',
@@ -719,7 +719,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/docs/zig-build.md",
+            "docs/zig-build.md",
             (
                 Rule(
                     r"Zig Version : [0-9]+\.[0-9]+\.[0-9]+",
@@ -728,7 +728,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/docs/design-mind.md",
+            "docs/design-mind.md",
             (
                 Rule(
                     r"Zig [0-9]+\.[0-9]+\.[0-9]+",
@@ -737,7 +737,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-android/src/androidMain/CMakeLists.txt",
+            "wasmline-android/src/androidMain/CMakeLists.txt",
             (
                 Rule(
                     r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
@@ -746,7 +746,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline/build.zig",
+            "wasmline/build.zig",
             (
                 Rule(
                     r"(?:release-)?v[0-9]+(?:\.[0-9]+){2,3}",
@@ -755,7 +755,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Build.kt",
+            "wasmline-cli/src/main/kotlin/crow/wasmline/cli/Build.kt",
             (
                 Rule(
                     r'(?m)^    private val version by option\("-v", "--version"\)\.default\("[0-9A-Za-z.\-]+"\)$',
@@ -764,7 +764,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Compile.kt",
+            "wasmline-cli/src/main/kotlin/crow/wasmline/cli/Compile.kt",
             (
                 Rule(
                     r'(?m)^    private val version by option\("-v", "--version"\)\.default\("[0-9A-Za-z.\-]+"\)$',
@@ -773,7 +773,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-cli/src/main/kotlin/crow/wasmline/cli/Manifest.kt",
+            "wasmline-cli/src/main/kotlin/crow/wasmline/cli/Manifest.kt",
             (
                 Rule(
                     r'(?m)^    private val version by option\("--version"\)\.default\("[0-9A-Za-z.\-]+"\)$',
@@ -782,7 +782,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-cli/src/test/kotlin/crow/wasmline/cli/ComponentCliIntegrationTest.kt",
+            "wasmline-cli/src/test/kotlin/crow/wasmline/cli/ComponentCliIntegrationTest.kt",
             (
                 Rule(
                     r'(File\(compileRoot, "cli-compile-)[0-9A-Za-z.\-]+("\))',
@@ -791,7 +791,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/WasmlinePlugin.kt",
+            "wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/WasmlinePlugin.kt",
             (
                 Rule(
                     r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
@@ -800,7 +800,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/ManifestExtension.kt",
+            "wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/ManifestExtension.kt",
             (
                 Rule(
                     r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
@@ -825,7 +825,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/WasmlineExtension.kt",
+            "wasmline-gradle-plugin/src/main/kotlin/crow/wasmline/gradle/extensions/WasmlineExtension.kt",
             (
                 Rule(
                     r'(?m)(^ \*         pluginId = "[^"]+"\n^ \*         version = ")[0-9A-Za-z.\-]+("$)',
@@ -834,7 +834,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/c/sample-component-plugin/CMakeLists.txt",
+            "samples/multiplatform-app/plugins/c-component-service/CMakeLists.txt",
             (
                 Rule(
                     rf'("wit-bindgen-cli ){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
@@ -847,7 +847,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/cpp/sample-component-plugin/CMakeLists.txt",
+            "samples/multiplatform-app/plugins/cpp-component-service/CMakeLists.txt",
             (
                 Rule(
                     rf'("wit-bindgen-cli ){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
@@ -860,7 +860,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/c/sample-component-plugin/README.md",
+            "samples/multiplatform-app/plugins/c-component-service/README.md",
             (
                 Rule(
                     rf'(`wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}(`)',
@@ -873,7 +873,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/cpp/sample-component-plugin/README.md",
+            "samples/multiplatform-app/plugins/cpp-component-service/README.md",
             (
                 Rule(
                     rf'(`wit-bindgen cpp` ){SEMANTIC_VERSION_TOKEN_PATTERN}',
@@ -890,7 +890,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-component-plugin/README.md",
+            "samples/multiplatform-app/plugins/kotlin-component-service/README.md",
             (
                 Rule(
                     rf'(`wit-bindgen` ){SEMANTIC_VERSION_TOKEN_PATTERN}',
@@ -903,7 +903,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "docs/content/docs/(reference)/(plugin-development)/component-service.mdx",
+            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx",
             (
                 Rule(
                     rf'(C\+\+ fixtures enforce `wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
@@ -916,7 +916,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "docs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
+            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
             (
                 Rule(
                     rf'(CMake configure 阶段严格检查 `wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
@@ -929,7 +929,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-multiplatform/wasmline/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativeWasmtimeIntegrationTest.kt",
+            "wasmline/src/jvmTest/kotlin/crow/wasmline/test/wasmtime/NativeWasmtimeIntegrationTest.kt",
             (
                 Rule(
                     r'(?m)^        assertEquals\("[0-9A-Za-z.\-]+", capabilities\.wasmtimeVersion\)$',
@@ -941,7 +941,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "wasmline-samples/kotlin/sample-apps/multiplatform/shared/src/desktopMain/Requirement.md",
+            "samples/multiplatform-app/sample-apps/multiplatform/shared/src/desktopMain/Requirement.md",
             (
                 Rule(r"JBR [0-9]+", lambda v: f"JBR {v['jbr_version']}"),
             ),
@@ -950,7 +950,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             "ROADMAP.md",
             (
                 Rule(
-                    r'(Wasmtime C-API integration \(v)[0-9A-Za-z.\-]+(\))',
+                    r'(Wasmtime C-API integration \(Wasmline Wasmtime )[0-9A-Za-z.\-]+(\))',
                     lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
                 ),
             ),
@@ -959,7 +959,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             "ROADMAP_zh.md",
             (
                 Rule(
-                    r'(Wasmtime C-API 集成（v)[0-9A-Za-z.\-]+(）)',
+                    r'(Wasmtime C-API 集成（Wasmline Wasmtime )[0-9A-Za-z.\-]+(）)',
                     lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
                 ),
             ),

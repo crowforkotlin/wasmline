@@ -88,7 +88,7 @@ Wasmtime files must be present before building engine libraries.
 JNI builds use Android CMake and the NDK for Android libraries, and Zig for JVM
 desktop libraries. Kotlin/Native builds use the target toolchains downloaded by
 Kotlin/Native and write `libwasmline_native.a` under
-`wasmline-multiplatform/wasmline/build/native/`.
+`wasmline/build/native/`.
 
 ## Formatting
 

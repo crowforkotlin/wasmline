@@ -20,7 +20,7 @@ GENERATOR = "scripts/wasmline versions sync"
 SOURCE_MANIFEST = "versions.json"
 LOCK_PATH = (
     PROJECT_ROOT
-    / "wasmline-multiplatform/wasmline-plugin-core/src/main/resources"
+    / "wasmline-plugin-core/src/main/resources"
     / "META-INF/wasmline/toolchain/toolchain-lock.json"
 )
 

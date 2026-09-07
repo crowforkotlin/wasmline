@@ -1,0 +1,204 @@
+---
+title: 平台架构
+description: 各平台的执行模型、模块边界与产物选择
+createdAt: 2026-07-18
+updatedAt: 2026-09-04
+---
+
+# 平台架构
+
+## 总览图
+
+![Wasmline 架构思维导图](/images/wasmline_mind_zh.png)
+
+## 执行栈
+
+Wasmline 从 `commonMain` 和 `hostMain` 暴露相同的公共 API，再按目标选择后端。
+Android、iOS、macOS、Linux 和 Windows 使用 `wasmline-core`（C/C++，由 Zig 0.16.0
+构建）调用 Wasmtime C API。Kotlin/JS 与 Kotlin/WasmJS 使用浏览器 WebAssembly API，
+不会加载 Wasmtime。
+
+### 原生目标栈 — Android · iOS · macOS · Linux · Windows
+
+```text
+Host Application  (commonMain / hostMain)
+        │
+        │  module.link<T>()      — IR-synthesized typed outbound proxy
+        │  module.bind(impl)     — IR-synthesized inbound dispatch registration
+        │
+        ▼
+Platform actual  (jniMain / nativeMain)
+        │  JNI external declarations          — JVM / Android
+        │  Kotlin/Native C Interop (.def)     — iOS、macOS、Linux、Windows
+        ▼
+wasmline-core  (C/C++ · Zig 0.16.0)
+        │  Engine.cpp               — 创建 engine 和选择 backend
+        │  Module.cpp/Component.cpp — 反序列化 AOT 产物并缓存
+        │  Session variants         — Service、Raw Export 与 Component 调用
+        │  Api.cpp                  — JNI / C Interop 调用（load、invoke、setOutbound、release）
+        ▼
+wasmtime C-API  v48.0.1
+        │  Sandboxed execution; hardware-accelerated AOT; per-session memory isolation
+        ▼
+Precompiled artifact  (.cwasm — Cranelift 原生 AOT  |  .pwasm — Pulley 字节码；Core 或 Component 需独立声明)
+```
+
+Engine 和产物格式分别选择。Cranelift runtime 只在 profile 与完整 target identity
+匹配时加载 CWASM。只有不存在匹配 CWASM，且 runtime 报告匹配 Pulley profile 时，
+才能使用 PWASM。Pulley runtime 只接受 PWASM。iOS 使用 `pulley64` PWASM。
+
+### Web 目标栈 — Kotlin/JS · Kotlin/WasmJS
+
+```text
+Host Application  (commonMain / hostMain)
+        │
+        │  module.link<T>()      — IR 生成的 proxy
+        │  module.bind(impl)     — IR 生成的分发注册
+        │
+        ▼
+webMain / jsMain / wasmJsMain
+        │  WasmlineWeb · WebWasmArtifacts · WebWasmPlugin
+        ▼
+Inline JS runtime  (Kotlin js() interop — no external .js files emitted)
+        │
+        ▼
+Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
+        │
+        ├── Import namespace: wasi_snapshot_preview1
+        │     fd_write         — UTF-8 stdout/stderr 经 WasmlineLog 或 println 输出
+        │     random_get       — Kotlin Random.nextBytes
+        │     clock_time_get   — 将 Date.now() 的毫秒值转换为纳秒值
+        │
+        └── Import namespace: env  (Wasmline bridge protocol)
+              bridge_inbound_copy_params     — write action + payload into Wasm linear memory
+              bridge_inbound_set_response    — extract response bytes from Wasm linear memory
+              bridge_outbound_call_host      — synchronous plugin-to-host dispatch callback
+              bridge_outbound_get_response   — copy oversized outbound response to caller buffer
+        │
+        ▼
+Plugin binary  (raw .wasm — 先通过 Fetch 异步预取，再从字节缓存同步加载)
+```
+
+## Manifest 与产物选择
+
+一个签名 manifest 描述插件 contract 和全部可用产物：
+
+```text
+SignedManifest
+└── exact signed payload bytes
+    └── WasmlineManifest
+        ├── runtimeContract
+        ├── aotCompatibilityProfiles
+        └── artifactTargets
+            └── variants (profile IDs, SHA-256, size)
+```
+
+Manifest 格式和签名算法固定。Loader 先检查 format version、解析 trusted key，
+对原始 payload 字节执行 Ed25519 校验，再解码和验证 manifest。产物路径使用摘要
+和扩展名：
+
+```text
+artifacts/sha256/{digest-prefix}/{digest}.{extension}
+```
+
+Native engine 报告支持的格式、backend AOT profile ID、Wasmline release、bridge ABI、
+操作系统、架构、pointer width 和 CPU feature。Loader 只构建一次 profile-ID map，
+再扫描 manifest 条目，不扫描 package 目录。
+
+远程加载先请求 `manifest.wlm`，选择一个 variant，再流式下载并校验声明的 size 和
+SHA-256。不会下载离线 ZIP。Core Web `.wasm` variant 与 native profile 无关，只
+保存一次。Component raw Wasm 仍是构建输入。
+
+## 执行模型
+
+运行时根据 `WasmlineArtifactDescriptor` 选择后端。文件扩展名不会决定执行模型。
+
+| 执行模型 | 调用协议 | 运行时边界 | Core 响应帧 |
+|---|---|---|---|
+| `CORE_WASM` | `WASMLINE_SERVICE` | `Session`、action 路由和线性内存 | 使用 |
+| `CORE_WASM` | `RAW_EXPORT` | `CoreWasmModule`/`CoreWasmSession`、exports、同步 imports 与线性内存 | 不使用 |
+| `COMPONENT_MODEL` | `WASMLINE_SERVICE` | `ComponentSession` 和固定 `wasmline.wit` 请求格式 | 不使用 |
+| `COMPONENT_MODEL` | `COMPONENT_EXPORT` | `ComponentSession` 和 Component Model 值 | 不使用 |
+
+`WASMLINE_SERVICE` 选择 Wasmline 服务 API。与 `CORE_WASM` 组合时，响应字节使用固定
+的 `WLMF` 标记和一个字节的 `frameVersion`（当前为 `1`）；与 `COMPONENT_MODEL` 组合
+时，使用固定的 `wasmline:service@1.0.0` WIT 请求格式和 Canonical ABI。执行模型决定
+实际使用的表示方式。
+
+Raw Export 使用显式声明的数值 ABI。当前公共 raw 值包括 `i32`、`i64`、`f32` 和 `f64`。Export signature、同步 import、memory 与所需 feature 保存在签名后的 `runtimeContract.rawAbi` 模型中，不编码到自由格式 metadata。该路径不分配或解析 Core 响应帧。
+
+Component Model 调用通过 Wasmtime Component Model API 反序列化预编译的 Component
+`.cwasm` 或 `.pwasm`。该路径使用 typed Component value，不要求 Core 线性内存、
+`__wasmline_wasi_entry` 或 Core 响应帧。Loader 不会运行 `wit-bindgen`、`wasm-tools`
+或 `wasmtime compile`；Gradle 和 CLI 构建任务会在加载前完成这些步骤。
+`contractMetadata` 可以记录调用信息用于校验和文档，但不是编译器输入。
+
+四种组合都返回相同的成功或失败结构。未绑定的服务 action 返回
+`ACTION_NOT_BOUND`，不是空的成功 payload。Core Service 通过响应帧传递失败，Raw
+Export 和 Component Model 返回 typed failure。只有调用无效、运行时状态不可恢复或
+无法创建结果时才抛出异常。
+
+Web 实现同时支持 `CORE_WASM + WASMLINE_SERVICE` 与
+`CORE_WASM + RAW_EXPORT`，通过浏览器的 `WebAssembly.Module` 和
+`WebAssembly.Instance` API 执行。Raw session 直接调用数值 export，在实例化前注册同步
+import，并提供有边界检查的线性内存访问；它不使用 Service 响应帧。Component Model
+typed 调用仍仅由 native 提供。Web 与 native 共用 Core ABI 契约，但保留不同后端：Web
+使用 JS/WasmJS binding 和 raw `.wasm`，native 使用 Wasmtime bridge 与
+`.cwasm`/`.pwasm` AOT 产物。
+
+## 模块依赖关系图
+
+```text
+wasmline-cli ───────────► wasmline-plugin-core ───────► wasmline-loader ──► wasmline
+wasmline-gradle-plugin ─► wasmline-plugin-core
+        │
+        └───────────────► wasmline-kotlin-plugin  (编译期 IR 变换)
+
+wasmline ◄──── native runtime assets ──── wasmline-engine-cranelift / wasmline-engine-pulley
+wasmline-network-ktor / wasmline-network-okhttp ──────► wasmline-loader
+wasmline-core (C/C++) ◄──── JNI / Native C Interop ─── wasmline
+wasmline-bom ── strict same-version constraints ──────► published Wasmline modules
+```
+
+network、cache、trusted key 和 load request API 都属于 `wasmline-loader`。Ktor 与
+OkHttp 实现它的 suspend network SPI，核心 runtime 不依赖 HTTP engine。只有远程缓存
+未命中时才需要其中一个模块。Ktor 覆盖 JVM、Android、Apple、Linux 和 Windows Native；
+OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 使用 `WasmlineWeb.prefetch()`。
+
+## 仓库目录结构
+
+```text
+wasmline/
+├── wasmline-core/                      # C/C++ wasmtime bridge (Engine, Module, Session, Api)
+├── wasmline/
+│   ├── wasmline/                       # Core Kotlin runtime — execution, dispatch, serialization SPI
+│   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
+│   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
+│   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
+│   │   ├── nativeMain/                 # Kotlin/Native actual 与 C Interop
+│   │   ├── webMain/                    # 共享 Web host runtime 与 expect binding contract
+│   │   ├── jsMain/                     # Kotlin/JS binding actual
+│   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actual
+│   │   └── wasmWasiMain/               # Core 与 Component Service guest hook
+│   ├── wasmline-loader/                # Load request/options、cache/network SPI 与 .wlm 校验
+│   ├── wasmline-plugin-core/           # 共享 Core/Component 构建、签名、打包与工具链逻辑
+│   ├── wasmline-cli/                   # plugin-core 与 loader 操作的 CLI adapter
+│   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
+│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — 生成 bridge 类和重写调用点
+│   ├── wasmline-gradle-plugin/         # Gradle 配置 DSL 与任务，使用 compiler plugin 和 plugin-core
+│   ├── wasmline-engine-cranelift/      # Cranelift runtime distribution 与平台变体
+│   ├── wasmline-engine-pulley/         # Pulley runtime distribution 与平台变体
+│   ├── wasmline-network-ktor/          # Ktor loader 网络 adapter
+│   ├── wasmline-network-okhttp/        # OkHttp loader 网络 adapter
+│   ├── wasmline-bom/                   # 强制所有 Maven 模块使用同一版本
+│   ├── wasmline-plugin-test/           # plugin 与 native 集成测试
+│   └── wasmline-build-logic/           # Shared Gradle convention plugins
+├── samples/
+│   ├── kotlin/                         # Kotlin plugin、Component fixture 与 host app
+│   ├── rust/                           # Rust Component fixture
+│   ├── c/                              # C Component fixture
+│   └── cpp/                            # C++ Component fixture
+├── scripts/                            # 环境、资产、lint 与版本同步
+├── build/                              # Root build outputs, including build/platforms/ wasmtime min C-API assets
+└── docs/                               # Documentation site (Next.js + Fumadocs)
+```

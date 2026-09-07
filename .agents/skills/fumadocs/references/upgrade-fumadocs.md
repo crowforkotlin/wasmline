@@ -3,9 +3,13 @@
 Use this workflow only when the user asks to change Fumadocs versions or adapt
 the site to a new Fumadocs API.
 
+The repository Execution Policy applies throughout: checks, type generation,
+static builds, and browser validation below are manual steps unless explicitly
+requested. An upgrade request alone does not authorize these verification steps.
+
 ## Check the update
 
-Run from `docs/`:
+Manual dependency check from `fumadocs/` (do not run automatically):
 
 ```bash
 pnpm outdated fumadocs-core fumadocs-mdx fumadocs-ui
@@ -30,7 +34,7 @@ a different release line from `fumadocs-core` and `fumadocs-ui`.
 Review `package.json` and `pnpm-lock.yaml` before changing application code.
 Confirm that unrelated packages did not receive an unplanned major update.
 
-## Adapt and verify
+## Adapt and manual verification
 
 1. Regenerate Fumadocs and Next.js types.
 2. Fix imports and API calls against the newly installed package types.
@@ -39,7 +43,7 @@ Confirm that unrelated packages did not receive an unplanned major update.
    route, and share images.
 5. Review the final package and source diff together.
 
-Use these commands when the repository command rules permit them:
+Provide these commands for manual execution unless explicitly authorized:
 
 ```bash
 pnpm types:check

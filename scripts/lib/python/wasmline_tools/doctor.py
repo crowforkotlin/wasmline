@@ -131,7 +131,7 @@ def _check_wasmtime(release_version: str, targets: tuple[Target, ...]) -> CheckR
 def _jni_output(target: Target, engine: str) -> Path | None:
     if target.jni is None:
         return None
-    module = PROJECT_ROOT / "wasmline-multiplatform" / f"wasmline-engine-{engine}" / "src"
+    module = PROJECT_ROOT / f"wasmline-engine-{engine}" / "src"
     if target.jni["kind"] == "android":
         return module / "androidMain" / "jniLibs" / target.jni["abi"] / "libwasmline.so"
     return (
@@ -174,7 +174,6 @@ def _check_kotlin_native(targets: tuple[Target, ...]) -> CheckResult:
         for engine in target.engines:
             outputs.append(
                 PROJECT_ROOT
-                / "wasmline-multiplatform"
                 / "wasmline"
                 / "build"
                 / "native"

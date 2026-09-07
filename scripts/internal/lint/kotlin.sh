@@ -9,7 +9,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/wasmline lint [--changed|--all] [--format] kotlin
 
-Checks Kotlin sources managed by wasmline-multiplatform/.editorconfig.
+Checks Kotlin sources managed by .editorconfig.
 The default scope is changed and untracked Kotlin files.
 EOF
 }
@@ -17,10 +17,10 @@ EOF
 is_kotlin_source() {
   local file="$1"
   case "$file" in
-  wasmline-multiplatform/wasmline-build-logic/* | */build/* | */test-gen/*)
+  wasmline-build-logic/* | */build/* | */test-gen/*)
     return 1
     ;;
-  wasmline-multiplatform/*)
+  *)
     case "$file" in
     *.kt | *.kts) return 0 ;;
     esac
@@ -86,7 +86,7 @@ resolve_ktlint() {
 
 collect_all_files() {
   WASMLINE_LINT_FILES=()
-  local roots=("${WASMLINE_PROJECT_ROOT}/wasmline-multiplatform")
+  local roots=("${WASMLINE_PROJECT_ROOT}/")
   local root file
   for root in "${roots[@]}"; do
     [[ -d "$root" ]] || continue
@@ -125,7 +125,7 @@ wasmline_status INFO "ktlint" "Using ${KTLINT_VERSION} from ${KTLINT_BINARY}."
 wasmline_status INFO "Kotlin" "$(wasmline_lint_action) ${#WASMLINE_LINT_FILES[@]} file(s)."
 
 cd "$WASMLINE_PROJECT_ROOT"
-KTLINT_ARGS=(--relative --editorconfig "wasmline-multiplatform/.editorconfig")
+KTLINT_ARGS=(--relative --editorconfig ".editorconfig")
 if [[ "$WASMLINE_LINT_MODE" == format ]]; then
   KTLINT_ARGS+=(--format)
 fi

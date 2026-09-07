@@ -18,7 +18,6 @@ from .paths import MANIFEST_PATH, PROJECT_ROOT
 
 AOT_LOCK_PATH = (
     PROJECT_ROOT
-    / "wasmline-multiplatform"
     / "wasmline-plugin-core"
     / "src"
     / "main"
@@ -31,7 +30,6 @@ AOT_LOCK_PATH = (
 PUBLIC_CATALOG_PATH = PROJECT_ROOT / "aot-compatibility.json"
 PACKAGED_PUBLIC_CATALOG_PATH = (
     PROJECT_ROOT
-    / "wasmline-multiplatform"
     / "wasmline-plugin-core"
     / "src"
     / "main"
@@ -52,7 +50,6 @@ NATIVE_BUILD_IDENTITY_PATH = (
 )
 KOTLIN_RELEASE_IDENTITY_PATH = (
     PROJECT_ROOT
-    / "wasmline-multiplatform"
     / "wasmline"
     / "src"
     / "commonMain"
