@@ -21,9 +21,6 @@ ktlint_function_naming_ignore_when_annotated_with = Composable
 [samples/minimal-*/**/*.kt]
 ktlint_function_naming_ignore_when_annotated_with = Composable
 
-[sample-support/minimal/**/*.kt]
-ktlint_function_naming_ignore_when_annotated_with = Composable
-
 [*.md]
 trim_trailing_whitespace = false
 

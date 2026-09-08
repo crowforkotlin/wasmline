@@ -16,7 +16,7 @@ The host calls `add_i32(19, 23)` and displays `19 + 23 = 42`.
 - `desktopApp/`, `androidApp/`, `webApp/`: small platform entry points and packaging.
 - `plugin/`: the guest and its signed package.
 - `keys/private.key`: public demonstration key, never for production.
-- [minimal support](../../sample-support/minimal/README.md): UI components,
+- [minimal support](../minimal-support/README.md): UI components,
   execution state, logging, cancellation, runtime ownership, and platform loading;
   reused by both minimal examples as the `:minimal-support` project.
 

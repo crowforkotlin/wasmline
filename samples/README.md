@@ -1,6 +1,6 @@
 # Samples
 
-Each direct child directory represents a use case, not a programming language.
+Runnable samples are organized by use case:
 
 - [minimal-raw-export](minimal-raw-export/README.md): one button invoking a raw
   integer addition export, with the result on screen and in the console.
@@ -14,5 +14,5 @@ Guest implementations and their build helpers belong to the example's
 `wasmline-native-test-fixtures/src/fixtures/`, outside the samples tree.
 
 Both minimal examples target Android, Desktop, JS, and WasmJS, excluding iOS.
-They reuse [minimal support](../sample-support/minimal/README.md) for UI,
+They reuse [minimal support](minimal-support/README.md) for UI,
 execution state, and platform loading; only their guest contracts differ.

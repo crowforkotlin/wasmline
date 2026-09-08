@@ -17,7 +17,7 @@ The host calls `GreetingService.greet("Wasmline")` and displays `Hello, Wasmline
 - `plugin/`: the guest and its signed package.
 - `contract/`: one service interface shared by all hosts and the WASI guest.
 - `keys/private.key`: public demonstration key, never for production.
-- [minimal support](../../sample-support/minimal/README.md): UI components,
+- [minimal support](../minimal-support/README.md): UI components,
   execution state, logging, cancellation, runtime ownership, and platform loading;
   reused by both minimal examples as the `:minimal-support` project.
 

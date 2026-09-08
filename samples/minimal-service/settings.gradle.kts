@@ -19,5 +19,5 @@ dependencyResolutionManagement {
 rootProject.name = "minimal-service"
 include(":plugin")
 include(":shared", ":desktopApp", ":androidApp", ":webApp", ":minimal-support")
-project(":minimal-support").projectDir = file("../../sample-support/minimal")
+project(":minimal-support").projectDir = file("../minimal-support")
 include(":contract")

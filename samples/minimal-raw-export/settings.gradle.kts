@@ -19,4 +19,4 @@ dependencyResolutionManagement {
 rootProject.name = "minimal-raw-export"
 include(":plugin")
 include(":shared", ":desktopApp", ":androidApp", ":webApp", ":minimal-support")
-project(":minimal-support").projectDir = file("../../sample-support/minimal")
+project(":minimal-support").projectDir = file("../minimal-support")
