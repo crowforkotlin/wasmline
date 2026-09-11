@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.jetbrains.compose.compiler)
+    alias(libs.plugins.wasmline)
 }
 
 val jbrVersion = rootProject.extra["jbrVersion"] as Int
@@ -16,17 +17,17 @@ java {
     }
 }
 compose.desktop {
-    application { mainClass = "crow.wasmline.minimal.MainKt" }
+    application { mainClass = "crow.wasmline.samples.minimal.service.MainKt" }
 }
 dependencies {
-    implementation(project(":shared"))
+    implementation(projects.common)
     implementation(compose.desktop.currentOs)
 }
 
 @Suppress("UNCHECKED_CAST")
 val pluginPackage = rootProject.extra["pluginPackage"] as Provider<Directory>
 tasks.withType<JavaExec>().matching { it.name == "run" }.configureEach {
-    dependsOn(":plugin:wasmlineAssembleDebug")
+    dependsOn(project(projects.plugin.path).tasks.named("wasmlineAssembleDebug"))
     systemProperty("wasmline.sample.manifest", pluginPackage.get().file("manifest.wlm").asFile.absolutePath)
     javaLauncher.set(
         javaToolchains.launcherFor {

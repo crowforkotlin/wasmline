@@ -12,13 +12,13 @@ The host calls `add_i32(19, 23)` and displays `19 + 23 = 42`.
 
 ## Architecture
 
-- `shared/`: the example's initial text, accent color, and typed invocation.
+- `common/`: the example's initial text, accent color, and raw invocation.
 - `desktopApp/`, `androidApp/`, `webApp/`: small platform entry points and packaging.
 - `plugin/`: the guest and its signed package.
 - `keys/private.key`: public demonstration key, never for production.
-- [minimal support](../minimal-support/README.md): UI components,
+- [minimal library](../minimal-library/README.md): UI components,
   execution state, logging, cancellation, runtime ownership, and platform loading;
-  reused by both minimal examples as the `:minimal-support` project.
+  reused by both minimal examples as the `:minimal-library` project.
 
 The stateless screen receives state and an event callback. `RunController` owns
 idle/running/success/failure transitions and rejects concurrent execution.
@@ -50,19 +50,18 @@ toolchain. Build the Pulley JNI assets if missing:
 Desktop on Linux x86-64:
 
 ```bash
-WASMLINE_NATIVE_LIBRARY_PATH="$PWD/wasmline-engine-pulley/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so" \
-  ./gradlew -p samples/minimal-raw-export run
+./gradlew -p samples/minimal-raw-export desktopRun
 ```
 
-On macOS/Windows use the corresponding JNI library. Source-composite engine JARs
-exclude JNI resources. Desktop packaging is not configured.
+The `crow.wasmline` plugin selects the matching JNI engine variant on Linux,
+macOS, and Windows. Desktop packaging is not configured.
 
 Android:
 
 ```bash
 ./gradlew -p samples/minimal-raw-export :androidApp:assembleDebug
 ./gradlew -p samples/minimal-raw-export :androidApp:installDebug
-adb shell am start -n crow.wasmline.minimal.rawexport/crow.wasmline.minimal.MainActivity
+adb shell am start -n crow.wasmline.samples.minimal.rawexport/crow.wasmline.samples.minimal.rawexport.MainActivity
 ```
 
 Web, choose one target at a time:

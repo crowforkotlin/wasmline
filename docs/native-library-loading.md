@@ -132,6 +132,13 @@ wasmline-engine-pulley/
 
 The main JVM JAR excludes native library resources. This keeps the base JAR small and ensures native libraries come only from platform-specific JARs.
 
+When the repository is consumed through a Gradle composite build, the engine
+projects expose the current host's JNI artifact through the composite default
+configuration, as well as equivalent OS/architecture-aware JVM runtime variants
+backed by the same platform JAR tasks. This keeps source dependencies consistent
+with the published module metadata; the neutral JVM JAR is not selected for
+desktop runtime classpaths.
+
 ```kotlin
 // In the shared engine Gradle configuration
 tasks.named<Jar>("jvmJar") {
@@ -212,9 +219,7 @@ tasks.withType<GenerateModuleMetadata>().configureEach {
                 "org.gradle.libraryelements" to "jar",
                 "org.jetbrains.kotlin.platform.type" to "jvm",
                 "org.gradle.native.operating-system" to "linux",
-                "org.gradle.native.architecture" to "x86-64",
-                "crow.wasmline.os" to "linux",
-                "crow.wasmline.arch" to "x86_64"
+                "org.gradle.native.architecture" to "x86-64"
             ),
             "files" to listOf(mapOf(
                 "name" to "wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar",
@@ -225,11 +230,11 @@ tasks.withType<GenerateModuleMetadata>().configureEach {
 }
 ```
 
-The attributes serve three purposes:
+The attributes serve two purposes:
 
 - **Standard JVM attributes** (first five) — tell Gradle this is a standard JVM library.
-- **Native attributes** (next two) — standard Gradle OS/arch attributes for backward compatibility.
-- **Custom wasmline attributes** (last two) — `crow.wasmline.os` and `crow.wasmline.arch` used by the `crow.wasmline` Gradle plugin for automatic variant-aware resolution.
+- **OS/architecture attributes** (last two) — standard Gradle attributes used by
+  the `crow.wasmline` Gradle plugin for automatic variant-aware resolution.
 
 ---
 
@@ -250,6 +255,9 @@ The main JVM JAR (`wasmline-engine-pulley-jvm-1.0.0.jar`) contains no native lib
 
 With the `crow.wasmline` Gradle plugin applied, consumers only need a single dependency declaration. The plugin automatically configures JVM runtime configurations with OS/architecture attributes, enabling Gradle's variant-aware resolution to select the correct platform-specific native JAR:
 
+The JVM host resolver is included in `crow.wasmline`; no separate runtime-only
+plugin is needed.
+
 ```kotlin
 val desktopMain by getting {
     dependencies {
@@ -261,9 +269,8 @@ val desktopMain by getting {
 
 The `crow.wasmline` Gradle plugin:
 1. Detects the current build machine's OS and architecture.
-2. Sets `crow.wasmline.os` and `crow.wasmline.arch` attributes on JVM runtime classpath configurations.
-3. Registers compatibility rules so non-wasmline dependencies (which lack these attributes) remain compatible.
-4. Registers disambiguation rules to pick the correct variant when multiple are available.
+2. Sets the standard Gradle OS and architecture attributes on JVM runtime classpath configurations.
+3. Uses Gradle's built-in attribute matching to select the exact platform variant while keeping dependencies without these attributes compatible.
 
 Gradle then automatically resolves the matching native JAR from the module metadata — no manual classifier configuration required.
 
@@ -395,7 +402,7 @@ Resolution time:
        ↓
   implementation(libs.crow.wasmline.engine.pulley)
        ↓
-  `crow.wasmline` plugin sets crow.wasmline.os/arch attributes
+  `crow.wasmline` plugin sets Gradle OS/architecture attributes
        ↓
   Gradle variant-aware resolution selects matching native JAR
        ↓

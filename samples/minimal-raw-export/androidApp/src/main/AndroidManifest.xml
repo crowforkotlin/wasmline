@@ -6,7 +6,7 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
-            android:name="crow.wasmline.minimal.MainActivity"
+            android:name="crow.wasmline.samples.minimal.rawexport.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

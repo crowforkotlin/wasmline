@@ -16,10 +16,10 @@ plugins {
 }
 
 android {
-    namespace = "crow.wasmline.minimal.service"
+    namespace = "crow.wasmline.samples.minimal.service"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
-        applicationId = "crow.wasmline.minimal.service"
+        applicationId = "crow.wasmline.samples.minimal.service"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -56,7 +56,7 @@ abstract class PluginAssetsTask @Inject constructor(private val fileSystemOperat
 @Suppress("UNCHECKED_CAST")
 val pluginPackage = rootProject.extra["pluginPackage"] as Provider<Directory>
 val syncPluginAssets = tasks.register<PluginAssetsTask>("syncPluginAssets") {
-    dependsOn(":plugin:wasmlineAssembleDebug")
+    dependsOn(project(projects.plugin.path).tasks.named("wasmlineAssembleDebug"))
     packageDirectory.set(pluginPackage)
     outputDirectory.set(layout.buildDirectory.dir("generated/plugin-assets"))
 }
@@ -67,6 +67,6 @@ androidComponents {
 }
 
 dependencies {
-    implementation(project(":shared"))
+    implementation(projects.common)
     implementation(libs.androidx.activity.compose)
 }

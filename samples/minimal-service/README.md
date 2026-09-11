@@ -12,14 +12,14 @@ The host calls `GreetingService.greet("Wasmline")` and displays `Hello, Wasmline
 
 ## Architecture
 
-- `shared/`: the example's initial text, accent color, and typed invocation.
+- `common/`: the example's initial text, accent color, and typed invocation.
 - `desktopApp/`, `androidApp/`, `webApp/`: small platform entry points and packaging.
 - `plugin/`: the guest and its signed package.
-- `contract/`: one service interface shared by all hosts and the WASI guest.
+- `commonService/`: one service interface shared by all hosts and the WASI guest.
 - `keys/private.key`: public demonstration key, never for production.
-- [minimal support](../minimal-support/README.md): UI components,
+- [minimal library](../minimal-library/README.md): UI components,
   execution state, logging, cancellation, runtime ownership, and platform loading;
-  reused by both minimal examples as the `:minimal-support` project.
+  reused by both minimal examples as the `:minimal-library` project.
 
 The stateless screen receives state and an event callback. `RunController` owns
 idle/running/success/failure transitions and rejects concurrent execution.
@@ -51,19 +51,18 @@ toolchain. Build the Pulley JNI assets if missing:
 Desktop on Linux x86-64:
 
 ```bash
-WASMLINE_NATIVE_LIBRARY_PATH="$PWD/wasmline-engine-pulley/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so" \
-  ./gradlew -p samples/minimal-service run
+./gradlew -p samples/minimal-service desktopRun
 ```
 
-On macOS/Windows use the corresponding JNI library. Source-composite engine JARs
-exclude JNI resources. Desktop packaging is not configured.
+The `crow.wasmline` plugin selects the matching JNI engine variant on Linux,
+macOS, and Windows. Desktop packaging is not configured.
 
 Android:
 
 ```bash
 ./gradlew -p samples/minimal-service :androidApp:assembleDebug
 ./gradlew -p samples/minimal-service :androidApp:installDebug
-adb shell am start -n crow.wasmline.minimal.service/crow.wasmline.minimal.MainActivity
+adb shell am start -n crow.wasmline.samples.minimal.service/crow.wasmline.samples.minimal.service.MainActivity
 ```
 
 Web, choose one target at a time:

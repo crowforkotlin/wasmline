@@ -11,7 +11,7 @@ import crow.wasmline.gradle.WasmtimeTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    id("crow.wasmline")
+    alias(libs.plugins.wasmline)
 }
 
 kotlin {

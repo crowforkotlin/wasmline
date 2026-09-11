@@ -23,7 +23,7 @@ kotlin {
     }
     applyDefaultHierarchyTemplate()
     sourceSets {
-        commonMain.dependencies { implementation(project(":shared")) }
+        commonMain.dependencies { implementation(projects.common) }
         webMain.dependencies { implementation(libs.jetbrains.browser) }
     }
 }
@@ -31,7 +31,7 @@ kotlin {
 @Suppress("UNCHECKED_CAST")
 val pluginPackage = rootProject.extra["pluginPackage"] as Provider<Directory>
 val syncWebPlugin = tasks.register<Sync>("syncWebPlugin") {
-    dependsOn(":plugin:wasmlineAssembleDebug")
+    dependsOn(project(projects.plugin.path).tasks.named("wasmlineAssembleDebug"))
     from(pluginPackage) {
         include("manifest.wlm", "artifacts/**")
         into("plugin")

@@ -6,7 +6,7 @@ import crow.wasmline.gradle.WasmtimeTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    id("crow.wasmline")
+    alias(libs.plugins.wasmline)
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -18,7 +18,7 @@ kotlin {
     }
     sourceSets {
         wasmWasiMain.dependencies {
-            implementation(project(":contract"))
+            implementation(projects.commonService)
         }
     }
 }

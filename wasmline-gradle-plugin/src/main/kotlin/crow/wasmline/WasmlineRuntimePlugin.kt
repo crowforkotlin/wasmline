@@ -9,7 +9,8 @@ import org.gradle.nativeplatform.OperatingSystemFamily
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 /**
- * Selects the native Wasmline engine artifact for the current JVM host.
+ * Internal host-attribute resolver applied by [WasmlinePlugin]. Selects the
+ * native Wasmline engine artifact for the current JVM host.
  *
  * Date: 2026-08-26
  * Author: crowforkotlin

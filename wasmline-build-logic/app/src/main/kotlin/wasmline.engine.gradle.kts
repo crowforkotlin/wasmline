@@ -1,4 +1,4 @@
-@file:Suppress("OPT_IN_USAGE", "UnstableApiUsage", "unused")
+@file:Suppress("OPT_IN_USAGE", "UnstableApiUsage", "unused", "UNCHECKED_CAST")
 
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
@@ -6,6 +6,10 @@ import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.attributes.Category
+import org.gradle.api.attributes.LibraryElements
+import org.gradle.api.attributes.Usage
+import org.gradle.api.attributes.java.TargetJvmEnvironment
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -17,7 +21,10 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
+import org.gradle.nativeplatform.MachineArchitecture
+import org.gradle.nativeplatform.OperatingSystemFamily
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.konan.target.HostManager
 
@@ -240,8 +247,65 @@ platformMap.forEach { (platform, archs) ->
             from(jniDir)
             into("jni/$platform/$archDir")
         }
+        // Project consumers that perform variant-aware resolution need the same
+        // platform artifact that is injected into the published .module file.
+        configurations.create(taskName + "Elements") {
+            description = "Wasmline $engineName JNI runtime for $platform/$archDir"
+            isCanBeConsumed = true
+            isCanBeResolved = false
+            isCanBeDeclared = false
+            attributes {
+                attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category::class.java, Category.LIBRARY))
+                attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
+                attribute(
+                    TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                    objects.named(TargetJvmEnvironment::class.java, TargetJvmEnvironment.STANDARD_JVM),
+                )
+                attribute(
+                    LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                    objects.named(LibraryElements::class.java, LibraryElements.JAR),
+                )
+                attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+                attribute(
+                    OperatingSystemFamily.OPERATING_SYSTEM_ATTRIBUTE,
+                    objects.named(OperatingSystemFamily::class.java, gradleOs),
+                )
+                attribute(
+                    MachineArchitecture.ARCHITECTURE_ATTRIBUTE,
+                    objects.named(MachineArchitecture::class.java, gradleArch),
+                )
+            }
+            outgoing.artifact(jarTask)
+        }
         nativeVariants.add(NativeVariant(platform, archDir, gradleOs, gradleArch, taskName, jarTask))
     }
+}
+
+// Gradle's automatic composite-build substitution targets the producer's
+// `default` configuration instead of reading published module metadata. Add
+// the current host's JNI artifact to that configuration for included builds;
+// repository publications continue to use the platform variants above.
+if (gradle.parent != null) {
+    val hostOsName = System.getProperty("os.name").orEmpty().lowercase()
+    val hostPlatform = when {
+        hostOsName.contains("linux") -> "linux"
+        hostOsName.contains("mac") || hostOsName.contains("darwin") -> "darwin"
+        hostOsName.contains("windows") -> "windows"
+        else -> null
+    }
+    val hostArchitecture = when (System.getProperty("os.arch").orEmpty().lowercase()) {
+        "amd64", "x86_64", "x64" -> "x86_64"
+        "aarch64", "arm64" -> "aarch64"
+        else -> null
+    }
+    nativeVariants
+        .firstOrNull { it.platform == hostPlatform && it.archDir == hostArchitecture }
+        ?.let { hostVariant ->
+            configurations.maybeCreate("default").apply {
+                isCanBeConsumed = true
+                outgoing.artifact(hostVariant.jarTask)
+            }
+        }
 }
 
 val androidAbis = if (engineName == "pulley") {
@@ -356,15 +420,12 @@ tasks.withType<GenerateModuleMetadata>().configureEach {
         val moduleFile = outputFile.get().asFile
         if (!moduleFile.exists()) return@doLast
 
-        @Suppress("UNCHECKED_CAST")
         val json = JsonSlurper().parse(moduleFile) as MutableMap<String, Any>
-        @Suppress("UNCHECKED_CAST")
         val component = json["component"] as? Map<String, Any> ?: return@doLast
         val group = component["group"] as? String ?: return@doLast
         val module = component["module"] as? String ?: return@doLast
         val version = component["version"] as? String ?: return@doLast
         val publicationModule = "$module$publicationSuffix"
-        @Suppress("UNCHECKED_CAST")
         val variants = json["variants"] as? MutableList<Any> ?: return@doLast
         val componentCapability = mapOf(
             "group" to group,
@@ -378,7 +439,6 @@ tasks.withType<GenerateModuleMetadata>().configureEach {
         )
         var changed = false
         variants.filterIsInstance<MutableMap<String, Any>>().forEach { variant ->
-            @Suppress("UNCHECKED_CAST")
             val capabilities = variant["capabilities"] as? MutableList<Any> ?: return@forEach
             if (publicationSuffix.isNotEmpty()) {
                 if (capabilities != mutableListOf(publicationCapability)) {

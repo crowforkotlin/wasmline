@@ -1,3 +1,7 @@
+@file:Suppress("UnstableApiUsage")
+
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     includeBuild("../../")
     repositories {
@@ -18,6 +22,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "minimal-service"
 include(":plugin")
-include(":shared", ":desktopApp", ":androidApp", ":webApp", ":minimal-support")
-project(":minimal-support").projectDir = file("../minimal-support")
-include(":contract")
+include(":common", ":desktopApp", ":androidApp", ":webApp", ":minimal-library")
+project(":minimal-library").projectDir = file("../minimal-library")
+include(":commonService")
