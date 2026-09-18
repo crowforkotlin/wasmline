@@ -68,6 +68,7 @@ internal class Build : CliktCommand(name = "build") {
     private val rawAbiMetadata by option("--raw-abi-metadata")
         .file(mustExist = true, canBeFile = true, canBeDir = false)
     private val key by option("-k", "--key").required().help("Ed25519 private key: file path or hex string")
+    private val publicKeyId by option("--public-key-id").help("Identifier of the public key that verifies this signature")
     private val witPath by option("--wit").file(mustExist = true, canBeFile = true, canBeDir = true)
     private val world by option("--world")
     private val adapterPath by option("--adapter").file(mustExist = true, canBeFile = true, canBeDir = false)
@@ -131,6 +132,7 @@ internal class Build : CliktCommand(name = "build") {
                         minSdkVersion = minSdkVersion,
                         buildTimestamp = buildTimestamp,
                         signingKey = key,
+                        publicKeyId = publicKeyId,
                         outputDirectory = transaction.stagingDirectory,
                         displayName = displayName,
                         author = author,

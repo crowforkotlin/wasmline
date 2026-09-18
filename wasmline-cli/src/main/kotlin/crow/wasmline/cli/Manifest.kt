@@ -37,6 +37,7 @@ internal class Manifest : CliktCommand(name = "manifest") {
     private val homeUrl by option("--home-url")
     private val metadata by option("--metadata").multiple().unique()
     private val key by option("-k", "--key").required().help("Ed25519 private key: file path or hex string")
+    private val publicKeyId by option("--public-key-id").help("Identifier of the public key that verifies this signature")
 
     override fun run() {
         try {
@@ -51,6 +52,7 @@ internal class Manifest : CliktCommand(name = "manifest") {
                     minSdkVersion = minSdkVersion,
                     buildTimestamp = buildTimestamp,
                     signingKey = key,
+                    publicKeyId = publicKeyId,
                     outputDirectory = directory,
                     displayName = displayName,
                     author = author,

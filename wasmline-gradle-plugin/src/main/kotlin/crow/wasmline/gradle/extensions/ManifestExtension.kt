@@ -25,7 +25,8 @@ import javax.inject.Inject
  *         displayName = "Demo Plugin"
  *         author = "crow"
  *         description = "A sample wasmline plugin"
- *         signingKey = file("../keys/private.key")
+ *         privateKeyFile = file("../keys/private.key")
+ *         publicKeyId = "package-2026"
  *     }
  * }
  * ```
@@ -71,9 +72,30 @@ public abstract class ManifestExtension @Inject constructor(objects: ObjectFacto
      * at task execution time, so it does not need to exist during Gradle
      * configuration.
      *
-     * Usage: `signingKey = file("../keys/private.key")`
+     * Usage: `privateKeyFile = file("../keys/private.key")`
      */
-    public val signingKey: RegularFileProperty = objects.fileProperty()
+    public val privateKeyFile: RegularFileProperty = objects.fileProperty()
+
+    /**
+     * Legacy name for [privateKeyFile].
+     *
+     * The value is a private signing key and is only consumed by package assembly.
+     * It is never included in generated Host source or resources.
+     */
+    @Deprecated(
+        message = "Use privateKeyFile to make the private-key role explicit.",
+        replaceWith = ReplaceWith("privateKeyFile"),
+    )
+    public val signingKey: RegularFileProperty = privateKeyFile
+
+    /**
+     * Optional identifier of the public key that verifies this package signature.
+     *
+     * When set, this value selects the matching `keyId` from the Host's trusted
+     * public keys. Leave both unset when the trust set contains a single
+     * unlabelled key.
+     */
+    public val publicKeyId: Property<String> = objects.property(String::class.java)
 
     /** Arbitrary metadata key-value pairs included in the manifest. */
     public val metadata: MapProperty<String, String> = objects.mapProperty(String::class.java, String::class.java)

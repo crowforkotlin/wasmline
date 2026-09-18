@@ -27,7 +27,7 @@ wasmline {
     manifest {
         pluginId = "crow.wasmline.minimal.service"
         version = rootProject.extra["sampleVersion"] as String
-        signingKey = rootProject.file("keys/private.key")
+        privateKeyFile = rootProject.file("keys/private.key")
         executionModel = WasmlineExecutionModel.CORE_WASM
         invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE
     }

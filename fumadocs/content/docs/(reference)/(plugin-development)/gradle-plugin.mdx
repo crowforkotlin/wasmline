@@ -2,7 +2,7 @@
 title: Gradle Plugin
 description: Configure AOT profiles, signing, packaging, and Component tools
 createdAt: 2026-08-15
-updatedAt: 2026-09-04
+updatedAt: 2026-09-18
 ---
 
 # Gradle Plugin
@@ -10,6 +10,61 @@ updatedAt: 2026-09-04
 The `crow.wasmline` plugin registers build tasks for Kotlin Multiplatform
 modules that declare a `wasmWasi` target. It uses the same AOT catalog,
 compiler resolver, signing code, and package writer as the CLI.
+
+## Signing and Host Trust
+
+`manifest.privateKeyFile` is the package owner's Ed25519 private key. It is
+read only by the assembly task to sign `manifest.wlm`; it is never generated
+into a Host application. Keep it in a CI secret or an untracked file.
+
+The Host has the opposite responsibility: configure the public keys it trusts
+through `trust`. The plugin generates
+`crow.wasmline.generated.WasmlineHostTrust` in `commonMain` for a Kotlin
+Multiplatform project, or in `main` for a Kotlin JVM project. The generated
+object implements `WasmlineTrustedKeys`, so application code does not contain a
+public-key hex value or construct a key set.
+
+```kotlin
+wasmline {
+    manifest {
+        privateKeyFile = file("keys/package-2026.private")
+        publicKeyId = "package-2026"
+    }
+    trust {
+        publicKey(
+            algorithm = "Ed25519",
+            keyId = "package-2026",
+            publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+        )
+        // A UTF-8 file containing the same hexadecimal public key also works.
+        // publicKeyFile(file("keys/package-2026.public"), keyId = "package-2026")
+    }
+}
+```
+
+Use the generated object for signed package loads:
+
+```kotlin
+import crow.wasmline.generated.WasmlineHostTrust
+import crow.wasmline.loader.WasmlineLoadOptions
+
+val options = WasmlineLoadOptions(trustedKeys = WasmlineHostTrust)
+```
+
+The Loader's `WasmlineLoadOptions` remains explicit so an application can use
+different trust sets for different loads. Set `trust.sourceSet`,
+`trust.kotlinPackage`, `trust.objectName`, or `trust.generatedSourcesDirectory`
+when the defaults do not match the Host project. Declare several `publicKey` or
+`publicKeyFile` entries with distinct `keyId` values to rotate keys. When a
+`keyId` is used, the package owner must set the same value through
+`manifest.publicKeyId` so the Loader can select that key. An unlabelled Host key
+remains a compatibility fallback; for one unlabelled key, leave both values
+unset.
+
+`signingKey` remains a deprecated alias for `privateKeyFile` for source
+compatibility. The plugin intentionally does not accept a private-key string in
+the DSL: it would be easy to expose through source control, a build scan, or
+Gradle state. Public-key Hex is non-sensitive and is supported directly.
 
 ## AOT Profile Selection
 
@@ -25,7 +80,7 @@ wasmline {
         pluginId = "com.example.plugin"
         version = "1.0.0"
         buildTimestamp = 0L
-        signingKey = file("keys/ed25519_private.key")
+        privateKeyFile = file("keys/ed25519_private.key")
     }
     wasmtime {
         aotCompatibility {
@@ -173,6 +228,7 @@ until the task stops.
 | `wasmlineComponentizeRelease` | Create or validate the Release Component input |
 | `wasmlineGenerateWitBindings` | Generate guest bindings when no Component input is supplied |
 | `wasmlineGenerateHostWitBindings` | Generate host facades when host bindings are enabled |
+| `wasmlineGenerateTrustedKeys` | Generate the configured Host public-key trust object |
 
 Raw Component Wasm is a build input. It is not published as a browser artifact.
 

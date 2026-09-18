@@ -29,6 +29,7 @@ object ManifestSigningMain {
                 minSdkVersion = request.required(MIN_SDK_VERSION),
                 buildTimestamp = request.required(BUILD_TIMESTAMP).toLong(),
                 signingKey = request.required(SIGNING_KEY),
+                publicKeyId = request.getProperty(PUBLIC_KEY_ID),
                 outputDirectory = File(request.required(OUTPUT_DIRECTORY)),
                 displayName = request.getProperty(DISPLAY_NAME),
                 author = request.getProperty(AUTHOR),
@@ -57,6 +58,7 @@ object ManifestSigningMain {
     const val MIN_SDK_VERSION: String = "minSdkVersion"
     const val BUILD_TIMESTAMP: String = "buildTimestamp"
     const val SIGNING_KEY: String = "signingKey"
+    const val PUBLIC_KEY_ID: String = "publicKeyId"
     const val DISPLAY_NAME: String = "displayName"
     const val AUTHOR: String = "author"
     const val DESCRIPTION: String = "description"

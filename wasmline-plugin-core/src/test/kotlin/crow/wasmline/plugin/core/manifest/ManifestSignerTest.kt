@@ -1,9 +1,12 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package crow.wasmline.plugin.core.manifest
 
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineArtifactVariant
 import crow.wasmline.loader.model.WasmlineRuntimeContract
 import crow.wasmline.plugin.core.aot.AotCompatibilityProfileSpec
@@ -12,9 +15,11 @@ import crow.wasmline.plugin.core.aot.WasmlineAotCompileOptions
 import crow.wasmline.plugin.core.aot.WasmlineAotCompilerProvenance
 import crow.wasmline.plugin.core.aot.WasmlineCompiledArtifact
 import crow.wasmline.plugin.core.aot.aggregateWasmlineArtifactTargets
+import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -26,6 +31,45 @@ import kotlin.test.assertTrue
  * Author: crowforkotlin
  */
 class ManifestSignerTest {
+    @Test
+    fun writesConfiguredPublicKeyIdToTheSignedEnvelope() = withSigningDirectory { directory ->
+        val selectedProfile = profile(FIRST_PROFILE_ID, "12.3.4")
+        val outputs = listOf(aotOutput(selectedProfile.id), rawOutput())
+        val record = record(
+            profiles = listOf(selectedProfile),
+            outputs = outputs,
+            artifactTargets = aggregateWasmlineArtifactTargets(outputs),
+        )
+        writeContentObjects(record, directory)
+
+        val manifest = ManifestSigner().createSignedManifest(
+            signingRequest(record, directory).copy(
+                signingKey = "00".repeat(32),
+                publicKeyId = "package-2026",
+            ),
+        )
+
+        val envelope = ProtoBuf.decodeFromByteArray(SignedManifestEnvelope.serializer(), manifest.readBytes())
+        assertEquals("package-2026", envelope.publicKeyId)
+    }
+
+    @Test
+    fun rejectsBlankPublicKeyId() = withSigningDirectory { directory ->
+        val selectedProfile = profile(FIRST_PROFILE_ID, "12.3.4")
+        val outputs = listOf(aotOutput(selectedProfile.id), rawOutput())
+        val record = record(
+            profiles = listOf(selectedProfile),
+            outputs = outputs,
+            artifactTargets = aggregateWasmlineArtifactTargets(outputs),
+        )
+
+        val failure = assertFailsWith<IllegalArgumentException> {
+            ManifestSigner().createSignedManifest(signingRequest(record, directory).copy(publicKeyId = " "))
+        }
+
+        assertTrue(failure.message.orEmpty().contains("publicKeyId"))
+    }
+
     @Test
     fun rejectsIncompleteProfileTargetMatrixBeforeWritingManifest() = withSigningDirectory { directory ->
         val firstProfile = profile(FIRST_PROFILE_ID, "12.3.4")
@@ -159,6 +203,16 @@ private fun signingRequest(record: WasmlineAotBuildRecord, directory: File): Was
         outputDirectory = directory,
     )
 
+/** Writes the immutable content objects required by a valid signing fixture. */
+private fun writeContentObjects(record: WasmlineAotBuildRecord, directory: File) {
+    record.compiledOutputs.forEach { output ->
+        File(directory, output.contentRelativePath).apply {
+            parentFile.mkdirs()
+            writeText("abc")
+        }
+    }
+}
+
 /** Runs one test with an isolated output directory. */
 private inline fun withSigningDirectory(block: (File) -> Unit) {
     val directory = createTempDirectory("wasmline-manifest-signer-test").toFile()
@@ -171,5 +225,5 @@ private inline fun withSigningDirectory(block: (File) -> Unit) {
 
 private const val FIRST_PROFILE_ID = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
 private const val SECOND_PROFILE_ID = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-private const val AOT_DIGEST = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-private const val RAW_DIGEST = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+private const val AOT_DIGEST = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+private const val RAW_DIGEST = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"

@@ -2,7 +2,7 @@
 title: Gradle 插件
 description: 配置 AOT profile、签名、打包与 Component 工具
 createdAt: 2026-08-15
-updatedAt: 2026-09-04
+updatedAt: 2026-09-18
 ---
 
 # Gradle 插件
@@ -10,6 +10,55 @@ updatedAt: 2026-09-04
 `crow.wasmline` 插件会为声明 `wasmWasi` 目标的 Kotlin Multiplatform 模块注册
 构建任务。它与 CLI 使用相同的 AOT catalog、compiler resolver、签名代码和
 package 写入代码。
+
+## 签名与宿主信任公钥
+
+`manifest.privateKeyFile` 是 package 所有者持有的 Ed25519 私钥。它只由
+assemble task 读取来签名 `manifest.wlm`，不会生成到宿主应用中；应由 CI 密钥或
+未纳入版本控制的文件提供。
+
+宿主的职责相反：通过 `trust` 配置它信任的公钥。Kotlin Multiplatform 项目默认会在
+`commonMain` 生成 `crow.wasmline.generated.WasmlineHostTrust`；Kotlin JVM 项目则在
+`main` 生成。该对象实现 `WasmlineTrustedKeys`，业务代码不再保存公钥 Hex 或构造
+key set。
+
+```kotlin
+wasmline {
+    manifest {
+        privateKeyFile = file("keys/package-2026.private")
+        publicKeyId = "package-2026"
+    }
+    trust {
+        publicKey(
+            algorithm = "Ed25519",
+            keyId = "package-2026",
+            publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+        )
+        // 也可以使用包含相同 Hex 公钥的 UTF-8 文件。
+        // publicKeyFile(file("keys/package-2026.public"), keyId = "package-2026")
+    }
+}
+```
+
+加载签名 package 时使用生成对象：
+
+```kotlin
+import crow.wasmline.generated.WasmlineHostTrust
+import crow.wasmline.loader.WasmlineLoadOptions
+
+val options = WasmlineLoadOptions(trustedKeys = WasmlineHostTrust)
+```
+
+`WasmlineLoadOptions` 仍显式传入，以便同一应用能为不同加载操作使用不同信任集合。
+默认值不适合宿主项目时，可设置 `trust.sourceSet`、`trust.kotlinPackage`、
+`trust.objectName` 或 `trust.generatedSourcesDirectory`。为不同的 `keyId` 声明多个
+`publicKey` 或 `publicKeyFile`，即可支持密钥轮换。使用非空 `keyId` 时，package
+所有者必须在 `manifest.publicKeyId` 中设置同一个值，Loader 才能选择对应的公钥。
+未标识的宿主公钥仍会作为兼容性回退；只有一个未标识公钥时，两侧都应保持未设置。
+
+为兼容现有脚本，`signingKey` 仍是已弃用的 `privateKeyFile` 别名。插件刻意不支持
+在 DSL 中直接填写私钥字符串，避免私钥进入源码、build scan 或 Gradle 状态；公钥 Hex
+不敏感，因此可直接配置。
 
 ## AOT Profile 选择
 
@@ -24,7 +73,7 @@ wasmline {
         pluginId = "com.example.plugin"
         version = "1.0.0"
         buildTimestamp = 0L
-        signingKey = file("keys/ed25519_private.key")
+        privateKeyFile = file("keys/ed25519_private.key")
     }
     wasmtime {
         aotCompatibility {
@@ -167,6 +216,7 @@ wasmline {
 | `wasmlineComponentizeRelease` | 创建或校验 Release Component 输入 |
 | `wasmlineGenerateWitBindings` | 未提供 Component 输入时生成 guest binding |
 | `wasmlineGenerateHostWitBindings` | 启用 host binding 时生成 host facade |
+| `wasmlineGenerateTrustedKeys` | 生成已配置的宿主信任公钥对象 |
 
 Raw Component Wasm 是构建输入，不作为浏览器 artifact 发布。
 

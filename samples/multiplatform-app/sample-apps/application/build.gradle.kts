@@ -47,6 +47,17 @@ tasks.test {
 val samplePluginOutput = project(":sample-plugin").layout.buildDirectory.dir(
     "wasmline/output/crow.wasmline.demo-1.0.0",
 )
+
+wasmline {
+    trust {
+        publicKey(
+            algorithm = "Ed25519",
+            keyId = null,
+            publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+        )
+    }
+}
+
 val syncSamplePluginArtifact = tasks.register<Sync>("syncWasmlineSamplePlugin") {
     group = "wasmline"
     description = "Build and expose the signed sample plugin package to the application"

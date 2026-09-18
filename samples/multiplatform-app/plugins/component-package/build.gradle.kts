@@ -26,7 +26,7 @@ wasmline {
     manifest {
         pluginId = "crow.wasmline.component.fixture"
         version = "1.0.0"
-        signingKey = rootProject.file("keys/private.key")
+        privateKeyFile = rootProject.file("keys/private.key")
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL
         invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE
         exportName = "plugin/invoke"

@@ -10,14 +10,18 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
 import java.io.File
@@ -70,8 +74,13 @@ internal abstract class WasmlineAssembleTask @Inject constructor(private val exe
     @get:Optional
     abstract val homePageUrl: Property<String>
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val privateKeyFile: RegularFileProperty
+
     @get:Input
-    abstract val signingKey: Property<String>
+    @get:Optional
+    abstract val publicKeyId: Property<String>
 
     @get:Input
     abstract val metadata: MapProperty<String, String>
@@ -154,7 +163,8 @@ internal abstract class WasmlineAssembleTask @Inject constructor(private val exe
             setProperty(ManifestSigningMain.VERSION_CODE, versionCode.get().toString())
             setProperty(ManifestSigningMain.MIN_SDK_VERSION, minSdkVersion.get())
             setProperty(ManifestSigningMain.BUILD_TIMESTAMP, buildTimestamp.get().toString())
-            setProperty(ManifestSigningMain.SIGNING_KEY, signingKey.get())
+            setProperty(ManifestSigningMain.SIGNING_KEY, privateKeyFile.get().asFile.absolutePath)
+            setOptional(ManifestSigningMain.PUBLIC_KEY_ID, publicKeyId.orNull)
             setOptional(ManifestSigningMain.DISPLAY_NAME, displayName.orNull)
             setOptional(ManifestSigningMain.AUTHOR, author.orNull)
             setOptional(ManifestSigningMain.DESCRIPTION, pluginDescription.orNull)

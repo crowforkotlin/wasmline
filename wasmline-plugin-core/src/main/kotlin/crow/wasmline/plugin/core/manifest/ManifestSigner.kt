@@ -46,6 +46,7 @@ data class WasmlineManifestSigningRequest(
     val buildTimestamp: Long,
     val signingKey: String,
     val outputDirectory: File,
+    val publicKeyId: String? = null,
     val displayName: String? = null,
     val author: String? = null,
     val description: String? = null,
@@ -142,6 +143,7 @@ class ManifestSigner {
         val envelope = SignedManifestEnvelope(
             signature = signature,
             algorithm = WasmlineManifestWireFormat.SIGNATURE_ALGORITHM,
+            publicKeyId = request.publicKeyId,
             formatVersion = formatVersion,
             payload = payload,
         )
@@ -159,6 +161,9 @@ class ManifestSigner {
         require(request.versionCode >= 0) { "Manifest versionCode must be non-negative." }
         require(request.minSdkVersion.isNotBlank()) { "Manifest minSdkVersion must not be blank." }
         require(request.buildTimestamp >= 0) { "Manifest buildTimestamp must be non-negative." }
+        require(request.publicKeyId == null || request.publicKeyId.isNotBlank()) {
+            "Manifest publicKeyId must not be blank when specified."
+        }
     }
 
     private fun validateBuildRecord(record: WasmlineAotBuildRecord) {

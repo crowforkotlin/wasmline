@@ -54,7 +54,7 @@ wasmline {
     manifest {
         pluginId = testPluginId
         version = testPluginVersion
-        signingKey = file("keys/private.key")
+        privateKeyFile = file("keys/private.key")
     }
     wasmtime {
         aotCompatibility {

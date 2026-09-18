@@ -26,7 +26,7 @@ wasmline {
     manifest {
         pluginId = "crow.wasmline.minimal.raw-export"
         version = rootProject.extra["sampleVersion"] as String
-        signingKey = rootProject.file("keys/private.key")
+        privateKeyFile = rootProject.file("keys/private.key")
         executionModel = WasmlineExecutionModel.CORE_WASM
         invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT
         exportName = "add_i32"

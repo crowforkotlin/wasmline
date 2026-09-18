@@ -6,10 +6,10 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
+import crow.wasmline.generated.WasmlineHostTrust
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.loader.model.SignedManifestEnvelope
 import crow.wasmline.loader.model.WasmlineManifest
 import crow.wasmline.loader.model.WasmlineManifestProtocol
@@ -30,14 +30,6 @@ private const val MANIFEST_URL_PROPERTY = "wasmline.manifest.url"
 private const val MANIFEST_URL_ENVIRONMENT = "WASMLINE_MANIFEST_URL"
 private const val BUNDLED_PACKAGE_ROOT = "wasmline-package"
 
-private val sampleTrustedKeys = WasmlineTrustedKeySet.Builder()
-    .addHex(
-        algorithm = "Ed25519",
-        keyId = null,
-        publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
-    )
-    .build()
-
 internal suspend fun runApplicationSample() {
     val source = resolveRemoteManifestUrl() ?: extractBundledPackage().absolutePath
     println("[Application] Loading Wasmline package: $source")
@@ -49,7 +41,7 @@ internal suspend fun runApplicationSample() {
                     serialization = WasmlineSerializationConfig.protobuf(),
                 ),
                 networkClient = KtorNetworkClient(),
-                trustedKeys = sampleTrustedKeys,
+                trustedKeys = WasmlineHostTrust,
             ),
         )
         when (result) {

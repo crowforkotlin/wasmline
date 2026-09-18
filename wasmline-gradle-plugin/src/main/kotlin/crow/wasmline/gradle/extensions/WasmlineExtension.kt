@@ -13,7 +13,7 @@ import javax.inject.Inject
  *     manifest {
  *         pluginId = "crow.wasmline.demo"
  *         version = "1.0.0"
- *         signingKey = file("../keys/private.key")
+ *         privateKeyFile = file("../keys/private.key")
  *     }
  *     wasmtime {
  *         aotCompatibility {
@@ -40,6 +40,9 @@ public open class WasmlineExtension @Inject constructor(project: Project) {
     /** Manifest metadata configuration. */
     public val manifest: ManifestExtension = objects.newInstance(ManifestExtension::class.java)
 
+    /** Host public-key trust configuration for signed package verification. */
+    public val trust: TrustExtension = objects.newInstance(TrustExtension::class.java, project)
+
     /** Wasmtime AOT compiler configuration. */
     public val wasmtime: WasmtimeExtension = objects.newInstance(WasmtimeExtension::class.java)
 
@@ -52,6 +55,11 @@ public open class WasmlineExtension @Inject constructor(project: Project) {
     /** Configure the [manifest] block. */
     public fun manifest(action: ManifestExtension.() -> Unit) {
         manifest.action()
+    }
+
+    /** Configure public keys trusted by this Host application. */
+    public fun trust(action: TrustExtension.() -> Unit) {
+        trust.action()
     }
 
     /** Configure the [wasmtime] block. */

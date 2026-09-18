@@ -13,6 +13,7 @@ import crow.wasmline.gradle.tasks.WasmlineAssembleTask
 import crow.wasmline.gradle.tasks.WasmlineCheckAotCompatibilityTask
 import crow.wasmline.gradle.tasks.WasmlineComponentizeTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateHostWitBindingsTask
+import crow.wasmline.gradle.tasks.WasmlineGenerateTrustedKeysTask
 import crow.wasmline.gradle.tasks.WasmlineGenerateWitBindingsTask
 import crow.wasmline.gradle.tasks.WasmlineMarkAssembleAttemptTask
 import crow.wasmline.gradle.tasks.WasmlineServerDeployTask
@@ -66,7 +67,7 @@ import kotlin.jvm.java
  *     manifest {
  *         pluginId = "crow.wasmline.demo"
  *         version = "1.0.0"
- *         signingKey = file("../keys/private.key")
+ *         privateKeyFile = file("../keys/private.key")
  *     }
  *     wasmtime {
  *         aotCompatibility { current() }
@@ -134,6 +135,7 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
 
         target.afterEvaluate {
             configureHostBindings(target, extension, kotlinExtension, kotlinJvmExtension)
+            configureHostTrust(target, extension, kotlinExtension, kotlinJvmExtension)
         }
         if (kotlinExtension == null) return
 
@@ -379,6 +381,55 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
         }
     }
 
+    internal fun configureHostTrust(
+        project: Project,
+        ext: WasmlineExtension,
+        kotlinExtension: KotlinMultiplatformExtension?,
+        kotlinJvmExtension: KotlinJvmProjectExtension?,
+    ) {
+        val trust = ext.trust
+        if (!trust.hasPublicKeys()) return
+
+        val sourceSetName = trust.sourceSet.orNull ?: if (kotlinExtension != null) "commonMain" else "main"
+        val task = project.tasks.register(
+            "wasmlineGenerateTrustedKeys",
+            WasmlineGenerateTrustedKeysTask::class.java,
+        ) { generation ->
+            generation.group = "wasmline"
+            generation.description = "Generate Kotlin Host trusted public keys"
+            generation.inlinePublicKeySpecs.set(trust.inlinePublicKeySpecs())
+            generation.publicKeyFileSpecs.set(trust.filePublicKeySpecs())
+            generation.publicKeyFiles.from(trust.publicKeyFiles())
+            generation.kotlinPackage.set(trust.kotlinPackage)
+            generation.objectName.set(trust.objectName)
+            generation.outputDirectory.set(trust.generatedSourcesDirectory)
+        }
+
+        if (kotlinExtension != null) {
+            val sourceSet = kotlinExtension.sourceSets.findByName(sourceSetName)
+                ?: throw GradleException(
+                    "Wasmline trust source set '$sourceSetName' does not exist. " +
+                        "Set trust.sourceSet to a Host Kotlin source set.",
+                )
+            sourceSet.kotlin.srcDir(task.flatMap { it.outputDirectory })
+            project.tasks.matching { compilationTask ->
+                compilationTask.name.startsWith("compile", ignoreCase = true) &&
+                    (
+                        sourceSetName == "commonMain" ||
+                            compilationTask.name.contains(sourceSetName.removeSuffix("Main"), ignoreCase = true)
+                        )
+            }.configureEach { it.dependsOn(task) }
+        } else if (kotlinJvmExtension != null) {
+            require(sourceSetName == "main") {
+                "Wasmline trust sourceSet for a Kotlin JVM project must be 'main', but was '$sourceSetName'."
+            }
+            kotlinJvmExtension.sourceSets.getByName("main").kotlin.srcDir(task.flatMap { it.outputDirectory })
+            project.tasks.matching { it.name == "compileKotlin" }.configureEach { it.dependsOn(task) }
+        } else {
+            throw GradleException("Wasmline trust generation requires a Kotlin JVM or Kotlin Multiplatform project.")
+        }
+    }
+
     internal fun configureAssembleTaskGraph(project: Project, ext: WasmlineExtension) {
         val componentBuild = ext.manifest.executionModel.get() == WasmlineExecutionModel.COMPONENT_MODEL
         val directComponent = ext.component.componentInput.isPresent
@@ -583,7 +634,8 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
         task.pluginDescription.set(manifestExt.description)
         task.iconUrl.set(manifestExt.iconUrl)
         task.homePageUrl.set(manifestExt.homePageUrl)
-        task.signingKey.set(manifestExt.signingKey.map { it.asFile.readText().trim() })
+        task.privateKeyFile.set(manifestExt.privateKeyFile)
+        task.publicKeyId.set(manifestExt.publicKeyId)
         task.metadata.set(manifestExt.metadata)
         task.manifestToolClasspath.from(
             project.provider {

@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.konan.target.KonanTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.wasmline)
 }
 
 val wasmlineEngine = providers.gradleProperty("wasmline.engine")
@@ -15,6 +16,16 @@ val wasmlineEngine = providers.gradleProperty("wasmline.engine")
     .get()
 require(wasmlineEngine in setOf("pulley", "cranelift")) {
     "Unsupported wasmline.engine '$wasmlineEngine'. Expected pulley or cranelift."
+}
+
+wasmline {
+    trust {
+        publicKey(
+            algorithm = "Ed25519",
+            keyId = null,
+            publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
+        )
+    }
 }
 
 val hostTarget = when (HostManager.host) {

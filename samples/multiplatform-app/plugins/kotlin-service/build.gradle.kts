@@ -39,7 +39,7 @@ wasmline {
     manifest {
         pluginId = "crow.wasmline.demo"
         version = "1.0.0"
-        signingKey = rootProject.file("keys/private.key")
+        privateKeyFile = rootProject.file("keys/private.key")
     }
     wasmtime {
         aotCompatibility {

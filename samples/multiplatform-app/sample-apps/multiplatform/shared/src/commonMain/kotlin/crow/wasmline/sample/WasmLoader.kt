@@ -16,13 +16,13 @@ import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
 import crow.wasmline.callResult
+import crow.wasmline.generated.WasmlineHostTrust
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invokeComponentResult
 import crow.wasmline.invokeRawResult
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.network.ktor.KtorNetworkClient
 import crow.wasmline.sample.bean.PlatformBean
 import crow.wasmline.sample.component.ComponentEchoRequest
@@ -34,14 +34,6 @@ import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
 import crow.wasmline.serialization.WasmlineSerializationConfig
 import kotlin.time.TimeSource
-
-private val samplePackageTrustedKeys = WasmlineTrustedKeySet.Builder()
-    .addHex(
-        algorithm = "Ed25519",
-        keyId = null,
-        publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
-    )
-    .build()
 
 enum class WasmSampleMode(
     val title: String,
@@ -369,7 +361,7 @@ internal class WasmSampleRunner(private val assetRefresher: AssetRefresher) {
             runtimeConfig = WasmlineConfig(
                 serialization = WasmlineSerializationConfig.protobuf(),
             ),
-            trustedKeys = samplePackageTrustedKeys,
+            trustedKeys = WasmlineHostTrust,
             networkClient = KtorNetworkClient(),
         )
         require(mode != WasmSampleMode.COMPONENT_FIXTURE || path.endsWith(".wlm", ignoreCase = true)) {

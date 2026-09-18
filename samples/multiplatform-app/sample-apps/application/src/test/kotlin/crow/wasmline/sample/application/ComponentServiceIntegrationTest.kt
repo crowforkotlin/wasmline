@@ -5,10 +5,10 @@ import crow.wasmline.WasmlineConfig
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRuntime
 import crow.wasmline.bind
+import crow.wasmline.generated.WasmlineHostTrust
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineTrustedKeySet
 import crow.wasmline.sample.component.ComponentEchoRequest
 import crow.wasmline.sample.component.ComponentHostService
 import crow.wasmline.sample.component.ComponentPluginService
@@ -86,7 +86,7 @@ class ComponentServiceIntegrationTest {
             source = manifest.absolutePath,
             options = WasmlineLoadOptions(
                 runtimeConfig = WasmlineConfig(serialization = WasmlineSerializationConfig.protobuf()),
-                trustedKeys = trustedKeys,
+                trustedKeys = WasmlineHostTrust,
             ),
         )
         return (result as? WasmlineLoadResult.Success)?.wasmline
@@ -97,12 +97,5 @@ class ComponentServiceIntegrationTest {
 
     private companion object {
         const val MANIFEST_PROPERTY = "wasmline.test.componentService.manifest"
-        val trustedKeys = WasmlineTrustedKeySet.Builder()
-            .addHex(
-                algorithm = "Ed25519",
-                keyId = null,
-                publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
-            )
-            .build()
     }
 }

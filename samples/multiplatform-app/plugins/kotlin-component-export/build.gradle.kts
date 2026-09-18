@@ -31,7 +31,7 @@ wasmline {
     manifest {
         pluginId = "crow.wasmline.sample.component-export"
         version = "1.0.0"
-        signingKey = rootProject.file("keys/private.key")
+        privateKeyFile = rootProject.file("keys/private.key")
         executionModel = WasmlineExecutionModel.COMPONENT_MODEL
         invocationProtocol = WasmlineInvocationProtocol.COMPONENT_EXPORT
         exportName = "wasmline:sample-component-export/calculator@1.0.0#add"

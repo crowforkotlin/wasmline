@@ -3,20 +3,12 @@ package crow.wasmline.sample.native
 import crow.wasmline.RawValue
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineRuntime
+import crow.wasmline.generated.WasmlineHostTrust
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invokeRawResult
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoader
-import crow.wasmline.loader.WasmlineTrustedKeySet
 import kotlinx.coroutines.runBlocking
-
-private val sampleTrustedKeys = WasmlineTrustedKeySet.Builder()
-    .addHex(
-        algorithm = "Ed25519",
-        keyId = null,
-        publicKeyHex = "5a778289bee0c57b05a1c48c8ef312da6ce8e4e4f13fc1a2e8e5aa4cde7ae0db",
-    )
-    .build()
 
 fun main(args: Array<String>) = runBlocking {
     val manifestPath = requireNotNull(args.firstOrNull()?.takeIf(String::isNotBlank)) {
@@ -45,7 +37,7 @@ fun main(args: Array<String>) = runBlocking {
     try {
         val loaded = WasmlineLoader.load(
             source = manifestPath,
-            options = WasmlineLoadOptions(trustedKeys = sampleTrustedKeys),
+            options = WasmlineLoadOptions(trustedKeys = WasmlineHostTrust),
         )
         val wasmline = when (loaded) {
             is WasmlineLoadResult.Failure -> error("Failed to load the sample package: ${loaded.failure.message}")
