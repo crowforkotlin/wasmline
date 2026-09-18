@@ -45,6 +45,7 @@ REQUIRED_KEYS = (
     "dokka_version",
     "kotlin_min_version",
     "agp_version",
+    "gradle_version",
     "zig_version",
     "jbr_version",
 )
@@ -420,6 +421,28 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: rf'\g<1>{v["sample_plugin_version"]}',
         ),
     )
+    gradle_wrapper_rules = (
+        Rule(
+            r"(?m)^distributionUrl=https\\://services\.gradle\.org/distributions/gradle-[0-9A-Za-z.+-]+-bin\.zip$",
+            lambda v: (
+                "distributionUrl=https\\://services.gradle.org/distributions/gradle-"
+                f"{v['gradle_version']}-bin.zip"
+            ),
+        ),
+    )
+    gradle_wrapper_files = tuple(
+        FileSpec(
+            path,
+            gradle_wrapper_rules,
+        )
+        for path in (
+            "gradle/wrapper/gradle-wrapper.properties",
+            "wasmline-plugin-test/gradle/wrapper/gradle-wrapper.properties",
+            "samples/multiplatform-app/gradle/wrapper/gradle-wrapper.properties",
+            "samples/minimal-raw-export/gradle/wrapper/gradle-wrapper.properties",
+            "samples/minimal-service/gradle/wrapper/gradle-wrapper.properties",
+        )
+    )
     jbr_toolchain_rules = (
         Rule(
             r"JavaLanguageVersion\.of\([0-9]+\)",
@@ -474,7 +497,7 @@ def file_specs() -> tuple[FileSpec, ...]:
         )
     )
 
-    return jbr_toolchain_files + (
+    return gradle_wrapper_files + jbr_toolchain_files + (
         FileSpec(
             ".agents/skills/wasmline/SKILL.md",
             (

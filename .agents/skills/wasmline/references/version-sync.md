@@ -35,6 +35,7 @@ command.
 | `dokka_version` | Dokka Gradle plugin and API documentation generation |
 | `kotlin_min_version` | Minimum supported Kotlin version in documentation |
 | `agp_version` | Android Gradle Plugin and documentation references |
+| `gradle_version` | Gradle Wrapper distributions used by repository builds |
 | `zig_version` | Native build tooling and documentation references |
 | `jbr_version` | Gradle daemon and Java toolchain references |
 

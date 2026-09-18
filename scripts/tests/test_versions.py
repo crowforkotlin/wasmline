@@ -191,6 +191,7 @@ class SyncVersionTest(unittest.TestCase):
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
+            "gradle_version": "8.8.8",
             "zig_version": "9.9.9",
             "jbr_version": "99",
         }
@@ -241,12 +242,18 @@ class SyncVersionTest(unittest.TestCase):
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
+            "gradle_version": "8.8.8",
             "zig_version": "9.9.9",
             "jbr_version": "99",
         }
 
         expected_fragments = {
             "gradle/libs.versions.toml": 'dokka = "8.8.8"',
+            "gradle/wrapper/gradle-wrapper.properties": "gradle-8.8.8-bin.zip",
+            "samples/minimal-raw-export/gradle/wrapper/gradle-wrapper.properties":
+                "gradle-8.8.8-bin.zip",
+            "samples/minimal-service/gradle/wrapper/gradle-wrapper.properties":
+                "gradle-8.8.8-bin.zip",
             ".agents/skills/wasmline/references/development-guide.md": "The pre-check also reports Zig 9.9.9",
             "wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts":
                 "JavaLanguageVersion.of(99)",
@@ -284,6 +291,7 @@ class SyncVersionTest(unittest.TestCase):
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
+            "gradle_version": "8.8.8",
             "zig_version": "9.9.9",
             "jbr_version": "99",
         }
@@ -327,6 +335,7 @@ class SyncVersionTest(unittest.TestCase):
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
+            "gradle_version": "8.8.8",
             "zig_version": "9.9.9",
             "jbr_version": "99",
         }
@@ -358,6 +367,7 @@ class SyncVersionTest(unittest.TestCase):
             "dokka_version": "8.8.8",
             "kotlin_min_version": "9.8.0-RC1",
             "agp_version": "9.9.9",
+            "gradle_version": "8.8.8",
             "zig_version": "9.9.9",
             "jbr_version": "99",
         }

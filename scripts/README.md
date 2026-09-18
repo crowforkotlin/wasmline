@@ -29,9 +29,10 @@ Gradle calls the Kotlin/Native build backend directly as part of its task graph.
 ./scripts/wasmline doctor
 ```
 
-Doctor checks JBR 21, Zig 0.16.0, the downloaded Wasmtime files, the JVM and
-Android JNI libraries, and the current host's Kotlin/Native libraries. The
-required JBR, Zig, and Wasmtime versions come from `versions.json`.
+Doctor checks the configured JBR and Zig versions, the downloaded Wasmtime files,
+the JVM and Android JNI libraries, and the current host's Kotlin/Native libraries.
+The required JBR, Gradle Wrapper, Zig, and Wasmtime versions come from
+`versions.json`; the version synchronizer keeps every Wrapper distribution URL aligned.
 
 ## Wasmtime Files
 

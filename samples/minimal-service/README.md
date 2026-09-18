@@ -40,6 +40,10 @@ disabled busy state, and accessibility live-region updates are shared.
 
 ## Manual Commands
 
+This sample includes its own Gradle Wrapper for direct Android Studio import and
+standalone command-line use. From the repository root, the commands below can
+also be run through the root Wrapper with `-p samples/minimal-service`.
+
 Run from the repository root with JBR 21. Android also requires the repository's
 configured Android SDK; native bridge preparation requires the configured native
 toolchain. Build the Pulley JNI assets if missing:
