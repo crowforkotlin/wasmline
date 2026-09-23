@@ -3,8 +3,8 @@
 @import 'fumadocs-ui/css/preset.css';
 
 .wasmline-docs {
-  --font-sans: var(--font-maple-mono), ui-monospace, SFMono-Regular, Consolas, monospace;
-  --font-mono: var(--font-maple-mono), ui-monospace, SFMono-Regular, Consolas, monospace;
+  --font-sans: var(--font-chill-round), ui-sans-serif, system-ui, 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: var(--font-chill-round), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-weight-normal: 600;
   --font-weight-medium: 600;
   --font-weight-semibold: 600;

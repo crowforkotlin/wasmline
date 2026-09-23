@@ -1,4 +1,8 @@
-Copyright 2022 The Maple Mono Project Authors (https://github.com/subframe7536/maple-font)
+Copyright 2021 The Zen Maru Gothic Authors (https://github.com/googlefonts/zen-marugothic)
+
+ChillRoundM (寒蝉半圆体) is a rounded modification of Zen Maru Gothic by
+CTBY / Warren2060 (https://github.com/Warren2060), distributed under the same
+license.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

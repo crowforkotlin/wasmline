@@ -2,22 +2,28 @@ import './global.css';
 import type { ReactNode } from 'react';
 import localFont from 'next/font/local';
 
-const mapleMono = localFont({
+// ChillRound ships a single static weight, so it is declared over the full
+// 400-700 range: every weight request resolves to this face instead of
+// triggering browser faux-bold synthesis.
+const chillRound = localFont({
   src: [
     {
-      path: '../../assets/fonts/MapleMono-NF-CN-SemiBold.woff2',
-      weight: '600',
-      style: 'normal',
-    },
-    {
-      path: '../../assets/fonts/MapleMono-NF-CN-Bold.woff2',
-      weight: '700',
+      path: '../../assets/fonts/ChillRoundM-SemiBold.woff2',
+      weight: '400 700',
       style: 'normal',
     },
   ],
   display: 'swap',
-  variable: '--font-maple-mono',
-  fallback: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
+  variable: '--font-chill-round',
+  fallback: [
+    'ui-sans-serif',
+    'system-ui',
+    'Noto Sans SC',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    'sans-serif',
+  ],
   adjustFontFallback: false,
 });
 
@@ -31,7 +37,7 @@ export default async function RootLayout({
   const { lang } = await params;
   return (
     <html lang={lang ?? 'en'} suppressHydrationWarning>
-      <body className={`${mapleMono.variable} wasmline-docs`}>
+      <body className={`${chillRound.variable} wasmline-docs`}>
         {children}
       </body>
     </html>
