@@ -1,21 +1,13 @@
 @font-face {
-    font-family: "Maple Mono NF CN";
+    font-family: "ChillRoundM";
     font-style: normal;
-    font-weight: 600;
+    font-weight: 400 700;
     font-display: swap;
-    src: url("../images/MapleMono-NF-CN-SemiBold.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "Maple Mono NF CN";
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-    src: url("../images/MapleMono-NF-CN-Bold.woff2") format("woff2");
+    src: url("../images/ChillRoundM-SemiBold.woff2") format("woff2");
 }
 
 :root {
-    --wasmline-font: "Maple Mono NF CN", ui-monospace, SFMono-Regular, Consolas, monospace;
+    --wasmline-font: "ChillRoundM", ui-monospace, SFMono-Regular, Consolas, monospace;
     --default-font-family: var(--wasmline-font);
     --default-monospace-font-family: var(--wasmline-font);
     --font-family-default: var(--wasmline-font);

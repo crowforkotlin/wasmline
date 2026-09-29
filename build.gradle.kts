@@ -53,8 +53,7 @@ allprojects {
             pluginsConfiguration.withType(DokkaHtmlPluginParameters::class.java).configureEach {
                 customStyleSheets.from(rootProject.file("dokka/wasmline.css"))
                 customAssets.from(
-                    rootProject.file("fumadocs/assets/fonts/MapleMono-NF-CN-SemiBold.woff2"),
-                    rootProject.file("fumadocs/assets/fonts/MapleMono-NF-CN-Bold.woff2"),
+                    rootProject.file("fumadocs/assets/fonts/ChillRoundM-SemiBold.woff2"),
                     rootProject.file("fumadocs/assets/fonts/OFL.txt"),
                 )
                 footerMessage.set("Wasmline API documentation")
