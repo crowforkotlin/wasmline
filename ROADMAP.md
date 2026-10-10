@@ -104,15 +104,15 @@ vararg parameters, properties, extension receivers, and non-public methods.
 
 ## Partially Complete and Release Hardening
 
-| Area | Current state | Remaining work |
-| --- | --- | --- |
-| Native concurrency | Multiple native sessions and concurrent Core Service calls have coverage; individual Raw/Component sessions still serialize or reject overlapping operations | Define and test the supported concurrent invocation contract across all protocols and platforms |
-| Incremental builds and cache | Compiler/tool caches and several `@CacheableTask` tasks exist | Validate full Gradle build-cache behavior and add compilation-unit-level reuse if required |
-| Large-payload transfer | Remote artifact download is streaming | Service invocation still uses `ByteArray` or WIT `list<u8>`; invocation streaming is not implemented |
-| Platform support | Android armv7 and x86_64 targets exist; native asset builds cover more targets than runtime CI | Run Android x86_64/device validation and document each target's build output, runtime path, and CI status |
-| Performance | Invocation benchmark code exists | Establish a repeatable benchmark suite, baselines, and regression thresholds |
-| Compatibility | AOT catalog, profile selection, and compatibility reports exist | Add runtime tests that execute the same package across supported Wasmtime profiles |
-| Maven release | Publication configuration and CI workflow exist | Execute and verify the first public release; keep the release tag and Maven release paired |
+| Area                         | Current state                                                                                                                                                | Remaining work                                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Native concurrency           | Multiple native sessions and concurrent Core Service calls have coverage; individual Raw/Component sessions still serialize or reject overlapping operations | Define and test the supported concurrent invocation contract across all protocols and platforms           |
+| Incremental builds and cache | Compiler/tool caches and several `@CacheableTask` tasks exist                                                                                                | Validate full Gradle build-cache behavior and add compilation-unit-level reuse if required                |
+| Large-payload transfer       | Remote artifact download is streaming                                                                                                                        | Service invocation still uses `ByteArray` or WIT `list<u8>`; invocation streaming is not implemented      |
+| Platform support             | Android armv7 and x86_64 targets exist; native asset builds cover more targets than runtime CI                                                               | Run Android x86_64/device validation and document each target's build output, runtime path, and CI status |
+| Performance                  | Invocation benchmark code exists                                                                                                                             | Establish a repeatable benchmark suite, baselines, and regression thresholds                              |
+| Compatibility                | AOT catalog, profile selection, and compatibility reports exist                                                                                              | Add runtime tests that execute the same package across supported Wasmtime profiles                        |
+| Maven release                | Publication configuration and CI workflow exist                                                                                                              | Execute and verify the first public release; keep the release tag and Maven release paired                |
 
 ## Remaining Features
 
@@ -150,7 +150,6 @@ vararg parameters, properties, extension receivers, and non-public methods.
 - [ ] Complete Android x86_64 CI/device validation
 - [ ] Web SharedArrayBuffer-based asynchronous execution
 - [ ] Web Service Worker off-thread execution
-- [ ] RISC-V support
 
 ### Network and Protocol
 
@@ -182,11 +181,11 @@ vararg parameters, properties, extension receivers, and non-public methods.
 
 ## Version Plan
 
-| Phase | Version | Focus |
-| --- | --- | --- |
-| Current | 1.0.0 | Release hardening, support boundaries, CI, publication, and documentation verification |
-| Post-1.0 | 1.x | Optional runtime, compiler, security, protocol, and platform expansions |
+| Phase    | Version | Focus                                                                                  |
+| -------- | ------- | -------------------------------------------------------------------------------------- |
+| Current  | 1.0.0   | Release hardening, support boundaries, CI, publication, and documentation verification |
+| Post-1.0 | 1.x     | Optional runtime, compiler, security, protocol, and platform expansions                |
 
 ---
 
-*Last updated: 2026-09-04*
+_Last updated: 2026-09-04_
