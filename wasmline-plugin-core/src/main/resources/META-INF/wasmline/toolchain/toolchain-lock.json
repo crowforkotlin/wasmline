@@ -53,18 +53,6 @@
           "executable": true
         },
         {
-          "platform": "riscv64gc-linux",
-          "assetId": 502063417,
-          "size": 6201514,
-          "updatedAt": "2026-08-05T02:26:29Z",
-          "archiveName": "wit-bindgen-0.57.1-riscv64gc-linux.tar.gz",
-          "downloadUrl": "https://github.com/crowforkotlin/wit-bindgen/releases/download/v0.57.1/wit-bindgen-0.57.1-riscv64gc-linux.tar.gz",
-          "sha256": "38b000ddbaf25fc4079fedf32b3e722a2b1af5ee0466261e73c2432e9abb6cea",
-          "distribution": "TAR_GZ",
-          "entryFileName": "wit-bindgen",
-          "executable": true
-        },
-        {
           "platform": "x86_64-linux",
           "assetId": 502063416,
           "size": 5725783,
@@ -156,18 +144,6 @@
           "sha256": "52ccb633ff026fe0377d95b1923333a63e0166cd8ebf374a9b4541d2f62d0693",
           "distribution": "ZIP",
           "entryFileName": "wasm-tools.exe",
-          "executable": true
-        },
-        {
-          "platform": "riscv64-linux",
-          "assetId": 508962497,
-          "size": 6411090,
-          "updatedAt": "2026-08-10T16:07:45Z",
-          "archiveName": "wasm-tools-1.256.0-riscv64-linux.tar.gz",
-          "downloadUrl": "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.256.0/wasm-tools-1.256.0-riscv64-linux.tar.gz",
-          "sha256": "f4cd98218c3c4c6f27e12a282a0965460f19d07516b4df34144a4aeac2582308",
-          "distribution": "TAR_GZ",
-          "entryFileName": "wasm-tools",
           "executable": true
         },
         {

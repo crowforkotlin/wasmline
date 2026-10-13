@@ -96,11 +96,11 @@ object WasmlineArtifactTargetFactory {
 
     private fun pointerWidth(architecture: String): Int = when (architecture) {
         "x86" -> 32
-        "aarch64", "x86_64", "riscv64" -> 64
+        "aarch64", "x86_64" -> 64
         else -> error("Unsupported AOT target architecture '$architecture'.")
     }
 
     private const val BASELINE_CPU_FEATURE_PROFILE: String = "baseline-v1"
     private val SAFE_TARGET: Regex = Regex("[A-Za-z0-9._-]+")
-    private val SUPPORTED_ARCHITECTURES: Set<String> = setOf("aarch64", "x86", "x86_64", "riscv64")
+    private val SUPPORTED_ARCHITECTURES: Set<String> = setOf("aarch64", "x86", "x86_64")
 }

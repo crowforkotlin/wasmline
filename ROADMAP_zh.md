@@ -1,6 +1,6 @@
 # Wasmline 路线图
 
-状态截至 2026-09-04。Wasmline 1.0.0 当前进入发布收尾阶段：核心运行时、插件工具链、Component Model 路径、包格式和文档系统已经实现。下面列出的内容是明确的范围决策或发布质量工作。
+状态截至 2026-10-13。Wasmline 1.0.0 当前进入发布收尾阶段：核心运行时、插件工具链、Component Model 路径、包格式和文档系统已经实现。下面列出的内容是明确的范围决策或发布质量工作。
 
 ## 已完成功能
 
@@ -36,7 +36,6 @@
 - [x] `WasmlineService` 合约发现
 - [x] `*_WasmlineBridge` 类合成
 - [x] `link<T>()` 和 `bind(impl)` 重写
-- [x] SHA-256 action 标识符
 - [x] 对无效合约报告编译器诊断
 - [x] IR box 测试基础设施
 - [x] 单参数和多参数服务方法
@@ -100,11 +99,11 @@
 
 | 领域           | 当前状态                                                                                                  | 剩余工作                                                                 |
 | -------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Native 并发    | 多个 Native Session 和并发 Core Service 调用已有覆盖；单个 Raw/Component Session 仍会串行化或拒绝重叠操作 | 明确定义并测试所有协议和平台的并发调用契约                               |
+| Native 并发    | `supportConcurrent` 已在 Native 运行时生效；Raw/Component Session 仍以 `CONCURRENT_ACCESS` 拒绝重叠操作，浏览器直接拒绝并发 | 明确定义并测试所有协议和平台的并发调用契约                               |
 | 增量构建和缓存 | 已有 Compiler/Tool Cache 以及多个 `@CacheableTask`                                                        | 验证完整 Gradle Build Cache 行为；如有需要再增加编译单元级复用           |
 | 大数据传输     | 远程 Artifact 下载支持流式处理                                                                            | Service 调用仍使用 `ByteArray` 或 WIT `list<u8>`，尚未实现调用级流式传输 |
-| 平台支持       | Android armv7 和 x86_64 目标已存在；Native 产物构建覆盖面大于运行时 CI                                    | 完成 Android x86_64/设备验证，并记录各目标的构建产物、运行方式和 CI 状态 |
-| 性能           | 已有调用基准代码                                                                                          | 建立可重复的基准测试套件、基线和回归阈值                                 |
+| 平台支持       | Android armv7 和 x86_64 目标已存在；Native 产物构建覆盖面大于运行时 CI，且尚无 `androidTest` 源集或 instrumented 任务 | 建立 Android instrumented 测试基础设施并在设备上验证 x86_64，并记录各目标的构建产物、运行方式和 CI 状态 |
+| 性能           | 已有 `wasmlineBenchmark` Gradle 任务，包含 warm 和 cold-load 模式与 VmHWM 采样                            | 建立基线、回归阈值和 CI 接入                                              |
 | 兼容性         | 已有 AOT Catalog、Profile 选择和兼容性报告                                                                | 增加同一 Package 在多个 Wasmtime Profile 上实际运行的测试                |
 | Maven 发布     | 已有发布配置和 CI 流程                                                                                    | 执行并确认首次公开发布；保持 Release Tag 与 Maven Release 配对           |
 
@@ -113,7 +112,7 @@
 ### 运行时增强
 
 - [ ] 热重载：无需重启 Host 即可原子替换已加载 Module
-- [ ] 完整定义多 Plugin 并发加载和调用语义
+- [ ] （部分）完整定义多 Plugin 并发加载和调用语义 —— `supportConcurrent` 已控制 Native 互斥加载，但会话级重叠仍被拒绝，浏览器直接拒绝并发
 - [ ] 每个 Session 的资源限制，包括内存、Fuel/CPU 预算和超时策略
 - [ ] 大 Payload 的 Service 调用流式或分块传输
 
@@ -130,37 +129,31 @@
 
 - [ ] 编译单元级增量编译
 - [ ] Plugin 依赖解析和依赖打包
-- [ ] 对 Wasmline 的全部 Gradle Task 进行 Build Cache 验证
+- [ ] （部分）对 Wasmline 的全部 Gradle Task 进行 Build Cache 验证 —— 已有 4 个 `@CacheableTask` 和 2 个 `@DisableCachingByDefault` 任务
 
 ### 安全和沙箱
 
 - [ ] 基于 Manifest 的权限声明
 - [ ] 运行时权限强制
-- [ ] 可配置的 Plugin 沙箱策略
 - [ ] 第三方 Plugin 签名的证书链校验
 
 ### 平台覆盖
 
-- [x] 完成 Android x86_64 CI/设备验证
-- [ ] Web SharedArrayBuffer 异步执行
-- [ ] Web Service Worker 后台线程执行
+- [ ] 完成 Android x86_64 CI/设备验证
 
 ### 网络和协议
 
 - [ ] WASI Preview 2 HTTP 集成
-- [ ] gRPC-over-Wasm 服务发现桥接
-- [ ] Plugin Marketplace 发现协议
 
 ### 开发者体验
 
 - [ ] 主要版本迁移指南
-- [ ] 社区 Plugin Registry
 - [ ] 用于热重载调试的 IntelliJ/IDE Plugin
 
 ### 测试和质量
 
 - [ ] 序列化模糊测试
-- [ ] 生产级性能基准测试套件
+- [ ] （部分）生产级性能基准测试套件 —— 已有 `wasmlineBenchmark` Gradle 任务，缺基线、阈值和 CI 接入
 - [ ] 跨版本运行时兼容性测试矩阵
 - [ ] 内存泄漏检测工具
 
@@ -182,4 +175,4 @@
 
 ---
 
-_最后更新：2026-09-04_
+_最后更新：2026-10-13_

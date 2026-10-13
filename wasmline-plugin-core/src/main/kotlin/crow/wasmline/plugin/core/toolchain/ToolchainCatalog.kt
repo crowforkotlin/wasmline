@@ -117,11 +117,7 @@ object ToolchainCatalog {
 
     private fun normalizePlatform(tool: WasmlineTool, platform: String): String {
         if (tool == WasmlineTool.WASI_PREVIEW1_REACTOR_ADAPTER) return UNIVERSAL_PLATFORM
-        return when {
-            tool == WasmlineTool.WIT_BINDGEN && platform == "riscv64-linux" -> "riscv64gc-linux"
-            tool == WasmlineTool.WASM_TOOLS && platform == "riscv64gc-linux" -> "riscv64-linux"
-            else -> platform
-        }
+        return platform
     }
 
     private fun loadLock(): LockedToolchain {
@@ -253,7 +249,6 @@ private fun lockPolicies(versions: LockedToolchainVersions): Map<String, LockedT
             "aarch64-linux",
             "aarch64-macos",
             "aarch64-windows",
-            "riscv64gc-linux",
             "x86_64-linux",
             "x86_64-macos",
             "x86_64-windows",
@@ -268,7 +263,6 @@ private fun lockPolicies(versions: LockedToolchainVersions): Map<String, LockedT
             "aarch64-macos",
             "aarch64-musl",
             "aarch64-windows",
-            "riscv64-linux",
             "wasm32-wasip1",
             "x86_64-linux",
             "x86_64-macos",

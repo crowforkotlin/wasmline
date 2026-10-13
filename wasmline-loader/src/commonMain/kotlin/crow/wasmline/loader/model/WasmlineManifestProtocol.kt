@@ -542,12 +542,12 @@ object WasmlineManifestProtocol {
 
     private fun expectedPointerWidth(architecture: String?): Int? = when (architecture) {
         "x86", "pulley32", "wasm32" -> 32
-        "aarch64", "x86_64", "riscv64", "pulley64" -> 64
+        "aarch64", "x86_64", "pulley64" -> 64
         else -> null
     }
 
     private val NATIVE_OPERATING_SYSTEMS: Set<String> = setOf("android", "ios", "linux", "macos", "windows")
-    private val NATIVE_ARCHITECTURES: Set<String> = setOf("aarch64", "x86", "x86_64", "riscv64")
+    private val NATIVE_ARCHITECTURES: Set<String> = setOf("aarch64", "x86", "x86_64")
     private val SHA256_PATTERN: Regex = Regex("^[0-9a-f]{64}$")
     private val PROFILE_ID_PATTERN: Regex = Regex("^sha256:[0-9a-f]{64}$")
     private val SEMANTIC_VERSION_PATTERN: Regex = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+$")

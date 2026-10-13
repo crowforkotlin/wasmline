@@ -1,6 +1,6 @@
 # Wasmline Roadmap
 
-Status as of 2026-09-04. Wasmline 1.0.0 is in the release-hardening phase:
+Status as of 2026-10-13. Wasmline 1.0.0 is in the release-hardening phase:
 the core runtime, plugin toolchain, Component Model path, package format, and
 documentation system are implemented. The remaining items below are explicit
 scope decisions or release-quality work.
@@ -40,7 +40,6 @@ remaining platform-validation gaps are listed under Release Hardening.
 - [x] `WasmlineService` contract discovery
 - [x] `*_WasmlineBridge` class synthesis
 - [x] `link<T>()` and `bind(impl)` rewriting
-- [x] SHA-256 action identifiers
 - [x] Compiler diagnostics for invalid contracts
 - [x] IR box test infrastructure
 - [x] Single- and multi-parameter service methods
@@ -106,11 +105,11 @@ vararg parameters, properties, extension receivers, and non-public methods.
 
 | Area                         | Current state                                                                                                                                                | Remaining work                                                                                            |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| Native concurrency           | Multiple native sessions and concurrent Core Service calls have coverage; individual Raw/Component sessions still serialize or reject overlapping operations | Define and test the supported concurrent invocation contract across all protocols and platforms           |
+| Native concurrency           | `supportConcurrent` is wired across native runtimes; Raw/Component sessions still reject overlapping operations with `CONCURRENT_ACCESS`, and the browser refuses concurrency | Define and test the supported concurrent invocation contract across all protocols and platforms           |
 | Incremental builds and cache | Compiler/tool caches and several `@CacheableTask` tasks exist                                                                                                | Validate full Gradle build-cache behavior and add compilation-unit-level reuse if required                |
 | Large-payload transfer       | Remote artifact download is streaming                                                                                                                        | Service invocation still uses `ByteArray` or WIT `list<u8>`; invocation streaming is not implemented      |
-| Platform support             | Android armv7 and x86_64 targets exist; native asset builds cover more targets than runtime CI                                                               | Run Android x86_64/device validation and document each target's build output, runtime path, and CI status |
-| Performance                  | Invocation benchmark code exists                                                                                                                             | Establish a repeatable benchmark suite, baselines, and regression thresholds                              |
+| Platform support             | Android armv7 and x86_64 targets exist; native asset builds cover more targets than runtime CI, and no `androidTest` source set or instrumented task exists yet | Stand up Android instrumented test infrastructure and validate x86_64 on device; document each target's build output, runtime path, and CI status |
+| Performance                  | The `wasmlineBenchmark` Gradle task exists with warm and cold-load modes and VmHWM sampling                                   | Establish baselines, regression thresholds, and CI integration                                            |
 | Compatibility                | AOT catalog, profile selection, and compatibility reports exist                                                                                              | Add runtime tests that execute the same package across supported Wasmtime profiles                        |
 | Maven release                | Publication configuration and CI workflow exist                                                                                                              | Execute and verify the first public release; keep the release tag and Maven release paired                |
 
@@ -119,7 +118,7 @@ vararg parameters, properties, extension receivers, and non-public methods.
 ### Runtime Enhancements
 
 - [ ] Hot reload: replace a loaded module atomically without restarting the host
-- [ ] Fully specified concurrent multi-plugin loading and invocation semantics
+- [ ] (partial) Fully specified concurrent multi-plugin loading and invocation semantics — `supportConcurrent` already gates native mutex loading, but session-level overlap is rejected and the browser refuses concurrency
 - [ ] Per-session resource limits, including memory, fuel/CPU budget, and timeout policy
 - [ ] Streaming or chunked service invocation for large payloads
 
@@ -136,37 +135,31 @@ vararg parameters, properties, extension receivers, and non-public methods.
 
 - [ ] Compilation-unit-level incremental compilation
 - [ ] Plugin dependency resolution and dependency bundling
-- [ ] Full Gradle build-cache validation for all Wasmline tasks
+- [ ] (partial) Full Gradle build-cache validation for all Wasmline tasks — four `@CacheableTask` and two `@DisableCachingByDefault` tasks exist
 
 ### Security and Sandboxing
 
 - [ ] Manifest-based permission declarations
 - [ ] Runtime permission enforcement
-- [ ] Configurable plugin sandbox policies
 - [ ] Certificate-chain validation for third-party plugin signing
 
 ### Platform Coverage
 
 - [ ] Complete Android x86_64 CI/device validation
-- [ ] Web SharedArrayBuffer-based asynchronous execution
-- [ ] Web Service Worker off-thread execution
 
 ### Network and Protocol
 
 - [ ] WASI Preview 2 HTTP integration
-- [ ] gRPC-over-Wasm service discovery bridge
-- [ ] Plugin marketplace discovery protocol
 
 ### Developer Experience
 
 - [ ] Migration guides between major versions
-- [ ] Community plugin registry
 - [ ] IntelliJ/IDE plugin for hot-reload debugging
 
 ### Testing and Quality
 
 - [ ] Serialization fuzzing tests
-- [ ] Production performance benchmark suite
+- [ ] (partial) Production performance benchmark suite — the `wasmlineBenchmark` Gradle task exists; baselines, thresholds, and CI integration are missing
 - [ ] Cross-version runtime compatibility test matrix
 - [ ] Memory-leak detection tooling
 
@@ -188,4 +181,4 @@ vararg parameters, properties, extension receivers, and non-public methods.
 
 ---
 
-_Last updated: 2026-09-04_
+_Last updated: 2026-10-13_

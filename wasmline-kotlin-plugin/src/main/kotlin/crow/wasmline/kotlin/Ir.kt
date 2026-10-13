@@ -116,10 +116,6 @@ internal val IrSimpleFunction.signature: String
         }
     }
 
-/** Returns a string as specified by Wasmline.id. */
-internal val IrSimpleFunction.id: String
-    get() = signature.signatureHash()
-
 /** Thrown on invalid or unexpected input code. */
 internal class WasmlineCompilationException(
     override val message: String,
