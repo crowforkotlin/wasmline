@@ -6,7 +6,7 @@
 
 ### 核心运行时
 
-- [x] Wasmtime C-API 集成（Wasmline Wasmtime 48.0.1）
+- [x] Wasmtime C-API 集成（Wasmline Wasmtime 50.0.0）
 - [x] Core Wasm 和 Component Model 执行路径
 - [x] Native 和浏览器运行时实现
 - [x] Session 隔离的执行状态和生命周期管理

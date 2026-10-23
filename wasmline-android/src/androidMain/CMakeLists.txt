@@ -16,7 +16,7 @@ add_link_options(
 
 # Downstream Wasmtime release tag and engine variant (passed from Gradle or use defaults)
 if(NOT DEFINED WASMTIME_VERSION)
-    set(WASMTIME_VERSION "v48.0.1.1")
+    set(WASMTIME_VERSION "v50.0.0.2")
 endif()
 if(NOT DEFINED WASMTIME_VARIANT)
     set(WASMTIME_VARIANT "pulley")

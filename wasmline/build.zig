@@ -52,7 +52,7 @@ pub fn build(b: *std.Build) !void {
 
     // 2. Locate dependencies (Inputs)
     const platform_subdir = try getPlatformSubdir(b, target);
-    const wasmtime_version = b.option([]const u8, "wasmtime-version", "Downstream Wasmtime release tag (e.g. v48.0.1.1)") orelse
+    const wasmtime_version = b.option([]const u8, "wasmtime-version", "Downstream Wasmtime release tag (e.g. v50.0.0.2)") orelse
         try readWasmtimeReleaseVersion(b, repo_root);
     const wasmtime_variant = b.option([]const u8, "wasmtime-variant", "Engine variant (pulley or cranelift)") orelse "pulley";
     const wasmtime_dir = b.pathJoin(&.{ repo_root, "build", "platforms", wasmtime_version, wasmtime_variant, platform_subdir });
@@ -316,7 +316,7 @@ fn readWasmtimeReleaseVersion(b: *std.Build, repo_root: []const u8) ![]const u8 
     const versions_path = b.pathJoin(&.{ repo_root, "versions.json" });
     const content = std.Io.Dir.cwd().readFileAlloc(b.graph.io, versions_path, b.allocator, .limited(1024 * 1024)) catch {
         std.debug.print("[Warn] Could not open {s}, using default version\n", .{versions_path});
-        return "v48.0.1.1";
+        return "v50.0.0.2";
     };
     defer b.allocator.free(content);
     // Simple JSON parsing: find "wasmtime_release_version": "X.Y.Z.REVISION"
@@ -332,7 +332,7 @@ fn readWasmtimeReleaseVersion(b: *std.Build, repo_root: []const u8) ![]const u8 
             }
         }
     }
-    return "v48.0.1.1";
+    return "v50.0.0.2";
 }
 
 fn installArtifacts(b: *std.Build, lib: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) !void {

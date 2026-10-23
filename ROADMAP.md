@@ -9,7 +9,7 @@ scope decisions or release-quality work.
 
 ### Core Runtime
 
-- [x] Wasmtime C-API integration (Wasmline Wasmtime 48.0.1)
+- [x] Wasmtime C-API integration (Wasmline Wasmtime 50.0.0)
 - [x] Core Wasm and Component Model execution paths
 - [x] Native and browser runtime implementations
 - [x] Session-isolated execution state and lifecycle management
