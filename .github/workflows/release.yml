@@ -42,9 +42,9 @@ jobs:
           git fetch origin main --no-tags
           git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"
 
-  publish:
-    name: publish-maven
-    needs: [validate, native-aot-ios]
+  native-aot-jvm:
+    name: validate-native-aot-jvm
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -135,6 +135,7 @@ jobs:
           :wasmline-loader:jvmTest
           :wasmline-plugin-core:test
           :wasmline-gradle-plugin:test
+          :wasmline-kotlin-plugin:test
           :wasmline-cli:test
           --no-daemon
 
@@ -143,6 +144,115 @@ jobs:
         env:
           WASMLINE_NATIVE_LIBRARY_PATH: ${{ github.workspace }}/wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64/libwasmline.so
         run: ./gradlew jvmTest --no-daemon -Pgithub.token="${{ github.token }}"
+
+
+      - name: Upload verified JVM and Android engine assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasmline-jni-assets
+          path: |
+            wasmline-engine-pulley/src/jvmMain/resources/jni
+            wasmline-engine-pulley/src/androidMain/jniLibs
+            wasmline-engine-cranelift/src/jvmMain/resources/jni
+            wasmline-engine-cranelift/src/androidMain/jniLibs
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: publish-maven
+    needs: [validate, native-aot-jvm, native-aot-ios]
+    # Apple targets are declared only on macOS. One publisher produces the root
+    # metadata and every target publication, without overwriting Maven versions.
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read toolchain versions
+        id: versions
+        run: |
+          jq -er '.versions.jbr_version' versions.json | sed 's/^/jbr_version=/' >> "$GITHUB_OUTPUT"
+
+      - name: Cache JBR 21
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.tool_cache }}/Java_JetBrains_jdk
+          key: jbr-${{ steps.versions.outputs.jbr_version }}-${{ runner.os }}-${{ runner.arch }}
+          fail-on-cache-miss: false
+
+      - name: Setup JBR 21
+        uses: actions/setup-java@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          distribution: jetbrains
+          java-version: ${{ steps.versions.outputs.jbr_version }}.x
+          token: ${{ github.token }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install configured Android platform
+        run: |
+          compile_sdk="$(python3 -c 'import tomllib; print(tomllib.load(open("gradle/libs.versions.toml", "rb"))["versions"]["android-compileSdk"])')"
+          sdkmanager "platforms;${compile_sdk}"
+
+      - name: Download verified JVM and Android engine assets
+        uses: actions/download-artifact@v4
+        with:
+          name: wasmline-jni-assets
+          path: .
+
+      - name: Cache Wasmtime platform assets
+        uses: actions/cache@v5
+        with:
+          path: build/platforms
+          key: wasmtime-platforms-release-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json') }}
+
+      - name: Download locked Wasmtime assets
+        run: ./scripts/wasmline wasmtime download --engine all --jobs 4
+
+      - name: Prepare Kotlin Native cross toolchains
+        run: >-
+          ./gradlew :wasmline:cinteropWasmlineLinuxX64
+          :wasmline:cinteropWasmlineLinuxArm64
+          :wasmline:cinteropWasmlineMingwX64
+          --no-daemon
+
+      - name: Generate all multiplatform publication metadata
+        run: >-
+          ./gradlew :wasmline:generateMetadataFileForKotlinMultiplatformPublication
+          :wasmline-loader:generateMetadataFileForKotlinMultiplatformPublication
+          :wasmline-network-ktor:generateMetadataFileForKotlinMultiplatformPublication
+          :wasmline-engine-pulley:generateMetadataFileForKotlinMultiplatformPublication
+          :wasmline-engine-cranelift:generateMetadataFileForKotlinMultiplatformPublication
+          --no-daemon
+
+      - name: Verify Apple publication variants
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = {
+              "wasmline": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
+              "wasmline-loader": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
+              "wasmline-network-ktor": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
+              "wasmline-engine-pulley": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
+              "wasmline-engine-cranelift": {"macos_arm64"},
+          }
+          for module, targets in expected.items():
+              metadata = json.loads(Path(module, "build/publications/kotlinMultiplatform/module.json").read_text())
+              actual = {variant.get("attributes", {}).get("org.jetbrains.kotlin.native.target")
+                        for variant in metadata["variants"] if "available-at" in variant}
+              missing = targets - actual
+              if missing:
+                  raise SystemExit(f"{module}: missing Apple Maven variants {sorted(missing)}")
+              print(f"{module}: Apple Maven variants {sorted(targets)}")
+          PY
 
       - name: Publish Maven artifacts
         working-directory: .
@@ -169,7 +279,6 @@ jobs:
             build/release-notes.md
           if-no-files-found: error
           retention-days: 1
-
   native-aot-ios:
     name: validate-native-aot-ios
     runs-on: macos-latest

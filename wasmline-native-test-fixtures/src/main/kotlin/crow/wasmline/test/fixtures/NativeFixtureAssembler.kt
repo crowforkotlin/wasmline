@@ -1,7 +1,6 @@
 package crow.wasmline.test.fixtures
 
 import crow.wasmline.WasmlineComponentServiceContract
-import crow.wasmline.loader.model.WasmlineRuntimeContract
 import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
 import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRequest

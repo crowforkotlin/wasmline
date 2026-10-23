@@ -56,6 +56,12 @@ public class JvmBoxTestGenerated extends AbstractJvmBoxTest {
   }
 
   @Test
+  @TestMetadata("07_inheritedService.kt")
+  public void test07_inheritedService() {
+    run("07_inheritedService.kt");
+  }
+
+  @Test
   public void testAllFilesPresentInBox() {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("/home/crowf/develop/github/wasmline/wasmline-kotlin-plugin/testData/box"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }

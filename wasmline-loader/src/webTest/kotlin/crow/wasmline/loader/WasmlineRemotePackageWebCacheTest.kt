@@ -44,6 +44,29 @@ class WasmlineRemotePackageWebCacheTest {
     private val publicKey = Keys.PUBLIC_KEY_1.decodeHex()
 
     @Test
+    fun treatsRecentlyCachedManifestAsFreshOnTheBrowserClock() = runTest {
+        val manifestUrl = "https://example.com/web-clock/manifest.wlm"
+        val artifactBytes = byteArrayOf(5, 6, 7, 8)
+        val digest = artifactBytes.toByteString().sha256().hex()
+        val artifactUrl = artifactUrl(manifestUrl, digest)
+        val envelopeBytes = signAndEncode(manifest(digest, artifactBytes.size.toLong()))
+        val manifestCacheKey = "manifest_" + manifestUrl.encodeToByteArray().toByteString().sha256().hex()
+        val cache = TestMemoryCache().apply {
+            put(manifestCacheKey, envelopeBytes)
+            put("$manifestCacheKey.timestamp", currentEpochMs().toString().encodeToByteArray())
+        }
+        val requests = mutableListOf<String>()
+        val client = networkClient(requests, manifestUrl, envelopeBytes, artifactUrl, artifactBytes)
+
+        try {
+            assertIs<WasmlineSourceResolution.ContinueWith>(resolve(manifestUrl, client, cache))
+            assertEquals(listOf(artifactUrl), requests)
+        } finally {
+            WasmlineWeb.invalidate(artifactUrl)
+        }
+    }
+
+    @Test
     fun reusesVerifiedBytesAndDownloadsAgainAfterInvalidation() = runTest {
         val manifestUrl = "https://example.com/web-cache/manifest.wlm"
         val artifactBytes = byteArrayOf(1, 2, 3, 4)
@@ -207,6 +230,8 @@ class WasmlineRemotePackageWebCacheTest {
         supportedArtifactFormats = setOf(WasmlineArtifactFormat.RAW_WASM),
     )
 
+    private fun currentEpochMs(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
+
     private fun artifactUrl(manifestUrl: String, digest: String): String = manifestUrl.substringBeforeLast('/') + "/" +
         WasmlineManifestProtocol.artifactRelativePath(digest, WasmlineArtifactFormat.RAW_WASM)
 }
@@ -225,8 +250,6 @@ private class TestMemoryCache : WasmlineCache {
     override fun put(key: String, bytes: ByteArray) {
         entries[key] = bytes.copyOf()
     }
-
-    override fun exists(key: String): Boolean = key in entries
 
     /** Removes one test cache entry. */
     fun remove(key: String) {

@@ -12,7 +12,7 @@ plugins {
 kotlin {
     jvmToolchain(rootProject.extra["jbrVersion"] as Int)
     android {
-        namespace = "crow.wasmline.samples.minimal.rawexport"
+        namespace = "crow.wasmline.samples.minimal.rawexport.app"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
     }

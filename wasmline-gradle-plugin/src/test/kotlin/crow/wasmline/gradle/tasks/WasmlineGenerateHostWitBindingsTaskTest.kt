@@ -1,16 +1,14 @@
 package crow.wasmline.gradle.tasks
 
-import org.gradle.api.tasks.CacheableTask
 import org.gradle.testfixtures.ProjectBuilder
 import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class WasmlineGenerateHostWitBindingsTaskTest {
     @Test
-    fun generatesHostFacadeAsIndependentCacheableOutput() = withTaskDirectory { root ->
+    fun generatesHostFacadeFromWitWorld() = withTaskDirectory { root ->
         val wit = File(root, "wit").apply { mkdirs() }
         File(wit, "world.wit").writeText(
             """
@@ -34,8 +32,6 @@ class WasmlineGenerateHostWitBindingsTaskTest {
         val generated = File(output, "generated/host/PluginWorld.kt")
         assertTrue(generated.isFile)
         assertTrue(generated.readText().contains("interface EchoClient"))
-        assertEquals("1", task.generatorVersion)
-        assertTrue(WasmlineGenerateHostWitBindingsTask::class.java.isAnnotationPresent(CacheableTask::class.java))
     }
 }
 

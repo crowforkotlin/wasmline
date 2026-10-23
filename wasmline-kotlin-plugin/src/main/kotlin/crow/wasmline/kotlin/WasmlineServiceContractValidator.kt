@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrNull
+import org.jetbrains.kotlin.ir.util.collectRealOverrides
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 
 /**
@@ -58,9 +59,7 @@ internal class WasmlineServiceContractValidator(private val messageCollector: Me
             reportError(messageCollector, file, property, "Wasmline service properties are not supported yet. Use functions instead.")
         }
 
-        val functions = contract.declarations.filterIsInstance<IrSimpleFunction>()
-            .filterNot { it.name.isSpecial }
-            .filterNot { it.isFakeOverride }
+        val functions = contract.wasmlineServiceFunctions()
 
         functions.groupBy { it.name }
             .filterValues { it.size > 1 }
@@ -148,6 +147,16 @@ internal class WasmlineServiceContractValidator(private val messageCollector: Me
         const val WASMLINE_SERVICE_FQ_NAME = "crow.wasmline.WasmlineService"
     }
 }
+
+/** Includes inherited contract methods without transporting implicit `kotlin.Any` members. */
+internal fun IrClass.wasmlineServiceFunctions(): List<IrSimpleFunction> = declarations
+    .filterIsInstance<IrSimpleFunction>()
+    .filterNot { it.name.isSpecial }
+    .filterNot { function ->
+        function.isFakeOverride && function.collectRealOverrides().all { overridden ->
+            (overridden.parent as? IrClass)?.fqNameWhenAvailable?.asString() == "kotlin.Any"
+        }
+    }
 
 /** Returns this class only when it is a concrete Wasmline service contract interface. */
 internal fun IrClass.asWasmlineServiceContract(): IrClass? {

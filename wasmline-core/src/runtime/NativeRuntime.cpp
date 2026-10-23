@@ -252,7 +252,7 @@ namespace wasmline {
         return componentSessions_.invokeInstance(instanceKey, exportName, arguments);
     }
 
-    bool NativeRuntime::dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference) {
+    ResourceDropOutcome NativeRuntime::dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference) {
         return componentSessions_.dropResource(instanceKey, reference);
     }
 

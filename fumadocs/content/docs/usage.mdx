@@ -219,6 +219,16 @@ session result APIs when a failure must be handled as data. Each result is
 of `failure.message`.
 
 For example, an action without a bound handler returns `ACTION_NOT_BOUND`.
+Native Core Service calls reject synchronous reentry into any active Service
+session with `REENTRANT_CALL`, including a callback chain that returns to an
+earlier session. Calls to a different inactive session remain allowed.
+Guest-provided memory ranges outside linear memory or negative bridge lengths
+return `CORE_TRAP` without reading or writing host memory outside that range.
+For browser Raw Export calls, a result count that does not match the declared
+signature returns `ARGUMENT_COUNT_MISMATCH`; a result type mismatch returns
+`ARGUMENT_TYPE_MISMATCH`, matching the native Core session result API. An actual
+WebAssembly trap returns `WASM_TRAP`.
+
 `throwOnFailure()` converts a failure into `WasmlineException` only when the
 caller explicitly requests exceptions. See [FAQ](/en/docs/faq) for the Core
 response-frame fields and artifact rules.

@@ -56,9 +56,8 @@ val options = WasmlineLoadOptions(trustedKeys = WasmlineHostTrust)
 所有者必须在 `manifest.publicKeyId` 中设置同一个值，Loader 才能选择对应的公钥。
 未标识的宿主公钥仍会作为兼容性回退；只有一个未标识公钥时，两侧都应保持未设置。
 
-为兼容现有脚本，`signingKey` 仍是已弃用的 `privateKeyFile` 别名。插件刻意不支持
-在 DSL 中直接填写私钥字符串，避免私钥进入源码、build scan 或 Gradle 状态；公钥 Hex
-不敏感，因此可直接配置。
+私有签名密钥仅通过 `manifest.privateKeyFile` 配置。插件刻意不支持在 DSL 中直接填写
+私钥字符串，避免私钥进入源码、build scan 或 Gradle 状态；公钥 Hex 不敏感，因此可直接配置。
 
 ## AOT Profile 选择
 

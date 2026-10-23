@@ -4,15 +4,21 @@ import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentBindings
 import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.component.WasmlineComponentResourceDropResult
 import crow.wasmline.internal.core.CoreWasmBackendModule
+import crow.wasmline.internal.runtime.WasmlineHandleState
 import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
+import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 
 actual class Wasmline internal actual constructor(
     moduleKey: String,
     actual val config: WasmlineConfig,
     actual val descriptor: WasmlineArtifactDescriptor,
 ) {
+    private val lifecycle = WasmlineHandleState(this)
+
     internal actual val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
     internal actual val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
     private val delegate = BrowserWasmline(moduleKey)
@@ -23,6 +29,7 @@ actual class Wasmline internal actual constructor(
         WasmlineComponentBindings.bindService(this, handler)
 
     internal actual fun setOutbound(dispatcher: WasmlineHostDispatcher) {
+        check(!lifecycle.isClosed) { "Wasmline handle is closed." }
         delegate.setOutbound(dispatcher)
     }
 
@@ -50,7 +57,12 @@ actual class Wasmline internal actual constructor(
 
     internal actual fun releaseComponentInstance(instanceKey: String) = Unit
 
-    internal actual fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean = false
+    internal actual fun dropComponentResource(
+        instanceKey: String,
+        reference: WasmlineComponentValue.ResourceValue,
+    ): WasmlineComponentResourceDropResult = WasmlineComponentResourceDropResult.Rejected(
+        WasmlineFailure(WasmlineErrorCode.ENGINE_NOT_INITIALIZED, "Browser host does not support Component Model resources."),
+    )
 
     internal actual fun createComponentHostResource(
         instanceKey: String,
@@ -63,9 +75,11 @@ actual class Wasmline internal actual constructor(
 
     internal actual fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> = delegate.createCoreWasmBackend()
 
-    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = createCoreWasmModule(this)
+    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = lifecycle.coreModule()
 
     actual fun close() {
+        if (!lifecycle.beginClose()) return
+        lifecycle.closeCoreModule()
         componentModuleState.close()
         hostServiceRegistry.clear()
         delegate.close()

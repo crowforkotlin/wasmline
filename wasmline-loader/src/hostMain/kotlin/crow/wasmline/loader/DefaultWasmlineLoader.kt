@@ -46,8 +46,6 @@ internal object DefaultWasmlineLoader {
                 loadLocalArtifact(descriptor, request)
             }
 
-            is VerifiedPackageArtifact -> loadLocalArtifact(source.descriptor, request)
-
             is WasmlineSource.LocalManifestPath -> {
                 val resolution = request.resolvers.localPackage?.resolve(source, request)
                     ?: WasmlineLocalPackageResolution.resolve(source, request)

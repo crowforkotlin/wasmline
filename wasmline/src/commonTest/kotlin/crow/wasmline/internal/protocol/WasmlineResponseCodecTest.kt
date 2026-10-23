@@ -192,6 +192,65 @@ class WasmlineResponseCodecTest {
     }
 
     @Test
+    fun distinguishesShortPayloadsFromTruncatedFrames() {
+        val magic = byteArrayOf(0x57, 0x4C, 0x4D, 0x46)
+        for (length in 1 until magic.size) {
+            val payload = magic.copyOf(length)
+            val result = assertIs<WasmlineCallResult.Success<ByteArray>>(
+                WasmlineResponseCodec.decodeLegacyCompatible(payload),
+            )
+            assertContentEquals(payload, result.value)
+        }
+        val failure = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decodeLegacyCompatible(magic))
+        assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, failure.failure.code)
+    }
+
+    @Test
+    fun enforcesUtf8SurrogateBoundary() {
+        listOf(
+            byteArrayOf(0xED.toByte(), 0xA0.toByte(), 0x80.toByte()),
+            byteArrayOf(0xED.toByte(), 0xBF.toByte(), 0xBF.toByte()),
+        ).forEach { message ->
+            val failure = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(messageFrame(message)))
+            assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, failure.failure.code)
+        }
+        listOf("\uD7FF", "\uE000").forEach { message ->
+            val failure = assertIs<WasmlineCallResult.Failure>(
+                WasmlineResponseCodec.decode(messageFrame(message.encodeToByteArray())),
+            )
+            assertEquals(WasmlineErrorCode.ACTION_NOT_BOUND, failure.failure.code)
+            assertEquals(message, failure.failure.message)
+        }
+    }
+
+    @Test
+    fun rejectsTruncatedMultiByteMessage() {
+        listOf(
+            byteArrayOf(0xE0.toByte(), 0xBF.toByte()),
+            byteArrayOf(0xF0.toByte(), 0x9F.toByte()),
+            byteArrayOf(0xF0.toByte(), 0x9F.toByte(), 0x98.toByte()),
+            byteArrayOf(0xF4.toByte(), 0x8F.toByte()),
+        ).forEach { message ->
+            val frame = messageFrame(message)
+
+            val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decode(frame))
+            assertEquals(WasmlineErrorCode.RESPONSE_MALFORMED, result.failure.code)
+        }
+    }
+
+    private fun messageFrame(message: ByteArray): ByteArray {
+        val frame = ByteArray(18 + message.size)
+        byteArrayOf(0x57, 0x4C, 0x4D, 0x46).copyInto(frame, 0)
+        frame[4] = 1
+        frame[5] = 1
+        frame[6] = 0xE9.toByte()
+        frame[7] = 0x03
+        frame[10] = message.size.toByte()
+        message.copyInto(frame, 18)
+        return frame
+    }
+
+    @Test
     fun mapsEveryStableErrorCode() {
         val expected = mapOf(
             1001 to WasmlineErrorCode.ACTION_NOT_BOUND,

@@ -13,6 +13,8 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class WasmlineFileCacheTest {
@@ -127,8 +129,8 @@ class WasmlineFileCacheTest {
             cache.put("old", ByteArray(8) { 1 })
             cache.put("new", ByteArray(8) { 2 })
 
-            assertFalse(cache.exists("old"))
-            assertTrue(cache.exists("new"))
+            assertNull(cache.get("old"))
+            assertNotNull(cache.get("new"))
             assertEquals(8L, directory.listFiles().orEmpty().sumOf(File::length))
         } finally {
             directory.deleteRecursively()

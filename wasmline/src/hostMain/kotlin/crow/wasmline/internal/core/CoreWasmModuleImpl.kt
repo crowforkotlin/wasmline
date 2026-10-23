@@ -24,7 +24,7 @@ import crow.wasmline.invocation.WasmlineFailure
  */
 internal class CoreWasmModuleImpl(private val owner: Wasmline, private val backend: CoreWasmBackendModule) : CoreWasmModule {
     private val lock = WasmlineRuntimeLock()
-    private val sessions = mutableListOf<CoreWasmSessionImpl>()
+    private val sessions = mutableSetOf<CoreWasmSessionImpl>()
     private var closed = false
 
     override val descriptor: WasmlineArtifactDescriptor = owner.descriptor
@@ -58,6 +58,7 @@ internal class CoreWasmModuleImpl(private val owner: Wasmline, private val backe
             module = this,
             options = options.withAbiDefaults(descriptor.rawAbi),
             lock = WasmlineRuntimeLock(),
+            onClosed = { closedSession -> lock.withLock { sessions.remove(closedSession) } },
         )
         val sessionKey = CoreWasmSessionIds.next(descriptor.path)
         val created = try {

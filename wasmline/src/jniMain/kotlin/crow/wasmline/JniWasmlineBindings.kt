@@ -98,7 +98,7 @@ internal object JniWasmlineBindings {
     private external fun nativeReleaseComponentInstance(instanceKey: String)
 
     @JvmStatic
-    private external fun nativeDropComponentResource(instanceKey: String, resource: ByteArray): Boolean
+    private external fun nativeDropComponentResource(instanceKey: String, resource: ByteArray): ByteArray?
 
     @JvmStatic
     private external fun nativeCreateComponentHostResource(
@@ -191,7 +191,7 @@ internal object JniWasmlineBindings {
 
     fun releaseComponentInstance(instanceKey: String) = nativeReleaseComponentInstance(instanceKey)
 
-    fun dropComponentResource(instanceKey: String, resource: ByteArray): Boolean = nativeDropComponentResource(instanceKey, resource)
+    fun dropComponentResource(instanceKey: String, resource: ByteArray): ByteArray? = nativeDropComponentResource(instanceKey, resource)
 
     fun createComponentHostResource(instanceKey: String, interfaceId: String, resourceName: String, representation: Int): ByteArray? =
         nativeCreateComponentHostResource(instanceKey, interfaceId, resourceName, representation)

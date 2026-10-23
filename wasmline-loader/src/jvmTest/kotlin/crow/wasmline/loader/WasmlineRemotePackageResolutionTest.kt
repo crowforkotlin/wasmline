@@ -38,6 +38,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -93,8 +94,9 @@ class WasmlineRemotePackageResolutionTest {
             )
 
             val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
-            val artifact = assertIs<VerifiedPackageArtifact>(continuation.source)
-            assertEquals(WasmlineArtifactFormat.RAW_WASM, artifact.descriptor.artifactFormat)
+            val artifact = assertIs<WasmlineSource.LocalArtifactPath>(continuation.source)
+            val descriptor = assertNotNull(artifact.descriptor)
+            assertEquals(WasmlineArtifactFormat.RAW_WASM, descriptor.artifactFormat)
             assertEquals(listOf(MANIFEST_URL, expectedArtifactUrl), requested)
             assertFalse(wholeArtifactFetchCalled)
         }
@@ -193,8 +195,6 @@ class WasmlineRemotePackageResolutionTest {
             override fun put(key: String, bytes: ByteArray) {
                 entries[key] = bytes.copyOf()
             }
-
-            override fun exists(key: String): Boolean = key in entries
         }
         val source = WasmlineSource.RemoteManifestUrl(MANIFEST_URL)
 
@@ -211,9 +211,10 @@ class WasmlineRemotePackageResolutionTest {
         )
 
         val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
-        val artifact = assertIs<VerifiedPackageArtifact>(continuation.source)
-        assertTrue(File(artifact.descriptor.path).isFile)
-        assertEquals(WasmlineArtifactFormat.RAW_WASM, artifact.descriptor.artifactFormat)
+        val artifact = assertIs<WasmlineSource.LocalArtifactPath>(continuation.source)
+        val descriptor = assertNotNull(artifact.descriptor)
+        assertTrue(File(descriptor.path).isFile)
+        assertEquals(WasmlineArtifactFormat.RAW_WASM, descriptor.artifactFormat)
     }
 
     @Test

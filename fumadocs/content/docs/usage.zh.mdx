@@ -210,6 +210,14 @@ Native Raw Export 使用匹配的 `.cwasm` 或 `.pwasm` descriptor，而不是
 `failure.message` 文本。
 
 例如，没有绑定 handler 的 action 返回 `ACTION_NOT_BOUND`。
+Native Core Service 会以 `REENTRANT_CALL` 拒绝同步重入任意正在调用的 Service
+session，包括经其他 session 的 callback 返回先前 session 的情况；调用另一个未处于
+调用中的 session 仍然允许。guest 提供的内存范围超出线性内存或 bridge 长度为负数时，
+返回 `CORE_TRAP`，不会在该范围之外读写宿主内存。
+浏览器 Raw Export 的实际返回值数量与声明的签名不匹配时返回
+`ARGUMENT_COUNT_MISMATCH`，返回值类型不匹配时返回 `ARGUMENT_TYPE_MISMATCH`，
+与 Native Core session 的结果 API 保持一致；真正的 WebAssembly trap 返回 `WASM_TRAP`。
+
 `throwOnFailure()` 只在调用方明确要求异常时才把失败转换为
 `WasmlineException`。Core 响应帧字段和产物规则参见 [常见问题](/zh/docs/faq)。
 

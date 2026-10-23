@@ -18,6 +18,7 @@
 #include "wasmline/invocation/RawWasmTypes.h"
 #include "wasmline/api/NativeRuntimeIdentity.h"
 #include "wasmline/runtime/ArtifactLoadResult.h"
+#include "wasmline/runtime/ComponentResourceDrop.h"
 #include "wasmline/runtime/WasmlineArtifactFormat.h"
 
 namespace wasmline {
@@ -107,7 +108,7 @@ namespace wasmline {
                                                         const std::vector<ComponentValue>& arguments);
 
         /** Drops one owned Component resource associated with an instance. */
-        static bool dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference);
+        static ResourceDropOutcome dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference);
 
         /** Creates one owned imported Host resource for a Component instance. */
         static bool createComponentHostResource(const std::string& instanceKey, std::string_view interfaceName,

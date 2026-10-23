@@ -74,10 +74,7 @@ internal fun generateBridge(
     val bridgeName = runtimeSymbols.bridgeClassName(contract)
     file.declarations.filterIsInstance<IrClass>().firstOrNull { it.name == bridgeName }?.let { return it }
 
-    val contractFunctions = contract.declarations
-        .filterIsInstance<IrSimpleFunction>()
-        .filterNot { it.name.isSpecial }
-        .filterNot { it.isFakeOverride }
+    val contractFunctions = contract.wasmlineServiceFunctions()
     val fqName = contract.fqNameWhenAvailable?.asString() ?: contract.name.asString()
     val bridgeClass = pluginContext.irFactory.buildClass {
         initDefaults(contract)

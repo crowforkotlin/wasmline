@@ -8,7 +8,6 @@ import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.extensions.Keys
 import crow.wasmline.invocation.WasmlineErrorCode
-import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
@@ -32,6 +31,7 @@ import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -69,9 +69,10 @@ class WasmlineLocalPackageResolutionTest {
         )
 
         val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
-        val selected = assertIs<VerifiedPackageArtifact>(continuation.source)
-        assertEquals(artifact.canonicalPath, File(selected.descriptor.path).canonicalPath)
-        assertEquals(WasmlineArtifactFormat.RAW_WASM, selected.descriptor.artifactFormat)
+        val selected = assertIs<WasmlineSource.LocalArtifactPath>(continuation.source)
+        val selectedDescriptor = assertNotNull(selected.descriptor)
+        assertEquals(artifact.canonicalPath, File(selectedDescriptor.path).canonicalPath)
+        assertEquals(WasmlineArtifactFormat.RAW_WASM, selectedDescriptor.artifactFormat)
     }
 
     @Test

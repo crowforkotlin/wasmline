@@ -2,7 +2,6 @@ package crow.wasmline.test.wasmtime
 
 import crow.wasmline.RawValue
 import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentValue
 import crow.wasmline.WasmlineConfig

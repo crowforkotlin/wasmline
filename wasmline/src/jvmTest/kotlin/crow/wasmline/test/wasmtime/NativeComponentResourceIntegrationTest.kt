@@ -1,7 +1,6 @@
 package crow.wasmline.test.wasmtime
 
 import crow.wasmline.Wasmline
-import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentCallResult
 import crow.wasmline.WasmlineComponentExport
@@ -22,6 +21,7 @@ import crow.wasmline.WasmlineRuntime
 import crow.wasmline.component
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineException
 import crow.wasmline.platformWasmlineLoadArtifact
 import crow.wasmline.platformWasmlineRuntimeCapabilities
 import java.io.File
@@ -139,6 +139,37 @@ class NativeComponentResourceIntegrationTest {
     }
 
     @Test
+    fun hostDestructorFailureConsumesWrapperAndKeepsNonterminalRejection() = withResourceModule { module ->
+        val instance = module.component().instantiate { bindImports(throwingCallbackRegistry()) }
+        try {
+            val callback = instance.createCallback(CallbackImplementation(1u))
+            val cleanupFailure = assertFailsWith<WasmlineException> { callback.close() }
+            assertEquals(WasmlineErrorCode.HANDLER_FAILED, cleanupFailure.failure.code)
+            assertTrue(cleanupFailure.failure.message.isNotBlank())
+            assertTrue(callback.isClosed, "A consumed resource must reach its terminal wrapper state.")
+            assertEquals(0, instance.resourceDiagnostics().activeHostResources)
+
+            callback.close()
+            assertTrue(callback.isClosed)
+            assertFailsWith<IllegalStateException> { callback.toComponentValue() }
+
+            val counter = instance.createCounter(31u)
+            val reference = counter.toComponentValue()
+            val stale = GuestCounter(instance, reference.withGeneration(reference.generation + 1u))
+            assertFailsWith<IllegalStateException> { stale.close() }
+            assertTrue(!stale.isClosed, "A rejected drop must leave the wrapper usable.")
+            assertEquals(31u, counter.get())
+            counter.close()
+
+            val borrowed = BorrowedCounter(instance, reference.withOwnership(WasmlineComponentResourceOwnership.BORROW))
+            assertFailsWith<IllegalStateException> { borrowed.close() }
+            assertTrue(!borrowed.isClosed)
+        } finally {
+            instance.close()
+        }
+    }
+
+    @Test
     fun instanceCloseDropsGuestAndHostResourcesStillOwnedByTheHost() = withResourceModule { module ->
         val dropped = mutableListOf<CallbackImplementation>()
         val instance = module.component().instantiate { bindImports(callbackRegistry(dropped)) }
@@ -220,6 +251,22 @@ class NativeComponentResourceIntegrationTest {
                 ),
             )
             .build()
+
+    private fun throwingCallbackRegistry(): WasmlineComponentHostRegistry = WasmlineComponentHostRegistry.builder()
+        .registerResource(
+            CALLBACK_RESOURCE,
+            WasmlineComponentHostResourceBinding(
+                methods = mapOf(
+                    "call" to { implementation, arguments ->
+                        val callback = implementation as CallbackImplementation
+                        val value = assertIs<WasmlineComponentValue.U32>(arguments.single()).value
+                        WasmlineCallResult.Success(listOf(WasmlineComponentValue.U32(value * callback.multiplier)))
+                    },
+                ),
+                drop = { error("Host destructor rejected the callback.") },
+            ),
+        )
+        .build()
 
     private fun successful(result: WasmlineCallResult<WasmlineComponentCallResult>): WasmlineComponentCallResult = when (result) {
         is WasmlineCallResult.Success -> result.value

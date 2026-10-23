@@ -2,7 +2,7 @@
 title: 平台架构
 description: 各平台的执行模型、模块边界与产物选择
 createdAt: 2026-07-18
-updatedAt: 2026-09-04
+updatedAt: 2026-10-22
 ---
 
 # 平台架构
@@ -109,6 +109,13 @@ Native engine 报告支持的格式、backend AOT profile ID、Wasmline release�
 SHA-256。不会下载离线 ZIP。Core Web `.wasm` variant 与 native profile 无关，只
 保存一次。Component raw Wasm 仍是构建输入。
 
+缓存的 manifest 字节在每次加载时都会重新验签，但
+`WasmlineLoadOptions.manifestTtlMs` 只是新鲜度窗口，既不是签名过期时间，也不提供
+防回滚保证；命中新鲜缓存时仍可在不访问网络的情况下返回该包。`maxCacheBytes` 以
+best-effort 方式约束内置文件缓存：受保护路径、未达到最小淘汰年龄的条目，以及清理
+过程中的任何错误都会被跳过，因此目录可能暂时超出该上限。自定义 `WasmlineCache`
+自行负责其容量策略。
+
 ## 执行模型
 
 运行时根据 `WasmlineArtifactDescriptor` 选择后端。文件扩展名不会决定执行模型。
@@ -138,6 +145,13 @@ Component Model 调用通过 Wasmtime Component Model API 反序列化预编译�
 Export 和 Component Model 返回 typed failure。只有调用无效、运行时状态不可恢复或
 无法创建结果时才抛出异常。
 
+Native Core Service 会拒绝同一线程上对正在调用的 session 的同步重入。该检查在
+session mutex 之前执行，因此 `A -> A` 与 `A -> B -> A` 都返回 `REENTRANT_CALL`
+而不是死锁；从回调中调用另一个未激活的 session 仍然允许。Guest 提供的 `memory32`
+range 会在创建任何 view 或执行拷贝之前按当前线性内存校验；负数 guest 长度以
+`CORE_TRAP` 触发。Host 自身的 payload 长度只有在通过 `INT32_MAX` 检查之后才会收窄
+为有符号 `i32` bridge ABI。
+
 Web 实现同时支持 `CORE_WASM + WASMLINE_SERVICE` 与
 `CORE_WASM + RAW_EXPORT`，通过浏览器的 `WebAssembly.Module` 和
 `WebAssembly.Instance` API 执行。Raw session 直接调用数值 export，在实例化前注册同步
@@ -145,6 +159,23 @@ import，并提供有边界检查的线性内存访问；它不使用 Service �
 typed 调用仍仅由 native 提供。Web 与 native 共用 Core ABI 契约，但保留不同后端：Web
 使用 JS/WasmJS binding 和 raw `.wasm`，native 使用 Wasmtime bridge 与
 `.cwasm`/`.pwasm` AOT 产物。
+
+Web Raw 的结果结构错误复用既有 Core 错误码：产出的结果数量与声明签名不符时返回
+`ARGUMENT_COUNT_MISMATCH`；产出值的 JavaScript 表示与声明类型矛盾时返回
+`ARGUMENT_TYPE_MISMATCH`。普通 JS number 不携带 wasm 类型，因此 `i32`、`f32` 与
+`f64` 之间的错误声明无法检测；`i64` 失配则可通过 `bigint` 识别。真正的 guest trap
+仍为 `WASM_TRAP`，失败的 host import 保留其自身错误码。`RawMemory` 的 offset 是有
+符号 32 位 JS 索引，因此只接受 `0..Int.MAX_VALUE`；length 与当前内存大小分别校验，
+接近 2 GiB 的 length 既未验证也不承诺可用。`CoreWasmCapabilities` 是受支持 feature
+集的声明，而不是对浏览器的运行时探测：当前所有后端都声明支持 `multiValue`、`i64`、
+`bulkMemory` 与 `referenceTypes`，并声明不支持 `simd` 与 `threads`。
+
+Component instance 与 resource wrapper 不支持并发使用。调用方必须串行执行完整操作，
+包括生成代码中的参数准备与所有权转移。`transferToComponent()` 会在 native 调用前立即
+消费 `own<T>` wrapper；后续参数准备、校验或 guest 执行失败不会恢复 wrapper。显式
+resource `close()` 则区分两种结果：拒绝 drop 时 wrapper 保持打开；已经消费引用后，
+即使析构失败，wrapper 也保持关闭。Guest 调用是同步的；关闭 instance 或取消 host
+协程不能中断正在执行的 guest 调用。
 
 ## 模块依赖关系图
 
@@ -168,37 +199,42 @@ OkHttp 覆盖 JVM 与 Android。浏览器 raw `.wasm` 使用 `WasmlineWeb.prefet
 ## 仓库目录结构
 
 ```text
-wasmline/
-├── wasmline-core/                      # C/C++ wasmtime bridge (Engine, Module, Session, Api)
-├── wasmline/
-│   ├── wasmline/                       # Core Kotlin runtime — execution, dispatch, serialization SPI
-│   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
-│   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
-│   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
+wasmline/                               # 仓库根目录
+├── wasmline/                           # Gradle KMP 模块：公共 runtime 与各后端 actual
+│   ├── src/
+│   │   ├── commonMain/                 # 平台无关 contract、值类型与 bridge 抽象
+│   │   ├── hostMain/                   # Host API：Wasmline、load state、Core 与 Component 调用
+│   │   ├── jniMain/                    # JVM / Android actual — JNI 声明与 native 辅助代码
 │   │   ├── nativeMain/                 # Kotlin/Native actual 与 C Interop
 │   │   ├── webMain/                    # 共享 Web host runtime 与 expect binding contract
 │   │   ├── jsMain/                     # Kotlin/JS binding actual
 │   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actual
 │   │   └── wasmWasiMain/               # Core 与 Component Service guest hook
-│   ├── wasmline-loader/                # Load request/options、cache/network SPI 与 .wlm 校验
-│   ├── wasmline-plugin-core/           # 共享 Core/Component 构建、签名、打包与工具链逻辑
-│   ├── wasmline-cli/                   # plugin-core 与 loader 操作的 CLI adapter
-│   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
-│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — 生成 bridge 类和重写调用点
-│   ├── wasmline-gradle-plugin/         # Gradle 配置 DSL 与任务，使用 compiler plugin 和 plugin-core
-│   ├── wasmline-engine-cranelift/      # Cranelift runtime distribution 与平台变体
-│   ├── wasmline-engine-pulley/         # Pulley runtime distribution 与平台变体
-│   ├── wasmline-network-ktor/          # Ktor loader 网络 adapter
-│   ├── wasmline-network-okhttp/        # OkHttp loader 网络 adapter
-│   ├── wasmline-bom/                   # 强制所有 Maven 模块使用同一版本
-│   ├── wasmline-plugin-test/           # plugin 与 native 集成测试
-│   └── wasmline-build-logic/           # Shared Gradle convention plugins
+│   ├── build.zig                       # 桌面 JNI 库的 Zig 构建
+│   └── build.gradle.kts                # 目标、native bridge 任务与发布配置
+├── wasmline-core/                      # C/C++ Wasmtime bridge（Engine、Module、Session、Api）
+├── wasmline-loader/                    # Load request/options、cache/network SPI 与 .wlm 校验
+├── wasmline-engine-cranelift/          # Cranelift 分发：预编译 JVM JNI 与 Native archive
+├── wasmline-engine-pulley/             # Pulley 分发：预编译 JVM JNI 与 Native archive
+├── wasmline-android/                   # Android 库；预编译 JNI 由 engine 模块提供
+├── wasmline-kotlin-plugin/             # Kotlin IR compiler plugin — 生成 bridge 类和重写调用点
+├── wasmline-gradle-plugin/             # Gradle 配置 DSL 与任务，使用 compiler plugin 和 plugin-core
+├── wasmline-plugin-core/               # 共享 Core/Component 构建、签名、打包与工具链逻辑
+├── wasmline-cli/                       # plugin-core 与 loader 操作的 CLI adapter
+├── wasmline-network-ktor/              # Ktor loader 网络 adapter
+├── wasmline-network-okhttp/            # OkHttp loader 网络 adapter
+├── wasmline-bom/                       # 强制所有 Maven 模块使用同一版本
+├── wasmline-native-test-fixtures/      # Native AOT fixture 源、生成任务与 fixture 索引
+├── wasmline-plugin-test/               # 独立的 Gradle 构建，用于 plugin 端到端集成测试
+├── wasmline-build-logic/               # included build，提供共享 Gradle convention plugin
 ├── samples/
-│   ├── kotlin/                         # Kotlin plugin、Component fixture 与 host app
-│   ├── rust/                           # Rust Component fixture
-│   ├── c/                              # C Component fixture
-│   └── cpp/                            # C++ Component fixture
-├── scripts/                            # 环境、资产、lint 与版本同步
-├── build/                              # Root build outputs, including build/platforms/ wasmtime min C-API assets
-└── docs/                               # Documentation site (Next.js + Fumadocs)
+│   ├── minimal-library/                # 两个 minimal 示例共用的 UI 与加载库
+│   ├── minimal-raw-export/             # Raw export 示例，含 Android、Desktop、JS 与 WasmJS host
+│   ├── minimal-service/                # Typed service 示例，含 Android、Desktop、JS 与 WasmJS host
+│   └── multiplatform-app/              # 多平台 host、示例 app 与跨语言 guest
+├── iosApp/                             # iOS framework 的 Xcode host 应用
+├── scripts/                            # 环境、资产、lint、native 构建与版本同步命令
+├── build/                              # Root 构建输出；build/platforms/v<wasmtime-release>/ 存放 Wasmtime 资产
+├── docs/                               # 技术说明：runtime 思维导图、IR fixture 与 native 加载
+└── fumadocs/                           # 文档站点（Next.js + Fumadocs）
 ```

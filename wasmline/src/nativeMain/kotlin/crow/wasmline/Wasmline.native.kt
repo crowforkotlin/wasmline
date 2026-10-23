@@ -7,9 +7,12 @@ import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentBindings
 import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.component.WasmlineComponentResourceDropResult
+import crow.wasmline.internal.component.decodeComponentResourceDropCarrier
 import crow.wasmline.internal.core.CoreWasmBackendModule
 import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
+import crow.wasmline.internal.runtime.WasmlineHandleState
 import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.internal.runtime.decodeArtifactLoadResult
 import crow.wasmline.internal.service.WasmlineHostServiceRegistry
@@ -31,6 +34,8 @@ actual class Wasmline internal actual constructor(
     actual val config: WasmlineConfig,
     actual val descriptor: WasmlineArtifactDescriptor,
 ) {
+    private val lifecycle = WasmlineHandleState(this)
+
     internal actual val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
     internal actual val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
 
@@ -40,11 +45,13 @@ actual class Wasmline internal actual constructor(
         WasmlineComponentBindings.bindService(this, handler)
 
     internal actual fun setOutbound(dispatcher: WasmlineHostDispatcher) {
+        check(!lifecycle.isClosed) { "Wasmline handle is closed." }
         WasmlineCallbackRegistry.register(moduleKey, dispatcher)
         wasmline_set_outbound_handler(moduleKey, config.serialization.factoryId, staticCFunction(::nativeStaticOutboundCallback))
     }
 
     internal actual fun setComponentHostDispatcher(dispatcher: WasmlineComponentHostDispatcher) {
+        check(!lifecycle.isClosed) { "Wasmline handle is closed." }
         WasmlineComponentHostCallbackRegistry.register(moduleKey, dispatcher)
         if (!wasmline_set_component_host_handler(moduleKey, staticCFunction(::nativeStaticComponentHostCallback))) {
             WasmlineComponentHostCallbackRegistry.unregister(moduleKey)
@@ -98,7 +105,7 @@ actual class Wasmline internal actual constructor(
     internal actual fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> =
         createNativeCoreWasmBackend(moduleKey, descriptor)
 
-    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = createCoreWasmModule(this)
+    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = lifecycle.coreModule()
 
     internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         invokeTypedCarrier(arguments) { dataPtr, dataSize, outLen ->
@@ -132,16 +139,36 @@ actual class Wasmline internal actual constructor(
         wasmline_release_component_instance(instanceKey)
     }
 
-    internal actual fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean {
-        val encoded = WasmlineTypedInvocationCodec.encodeComponentArguments(listOf(reference))
-        return encoded is WasmlineCallResult.Success &&
-            encoded.value.usePinned { pinned ->
-                wasmline_drop_component_resource(
+    internal actual fun dropComponentResource(
+        instanceKey: String,
+        reference: WasmlineComponentValue.ResourceValue,
+    ): WasmlineComponentResourceDropResult {
+        val encoded = when (val carrier = WasmlineTypedInvocationCodec.encodeComponentArguments(listOf(reference))) {
+            is WasmlineCallResult.Failure -> return WasmlineComponentResourceDropResult.Rejected(carrier.failure)
+            is WasmlineCallResult.Success -> carrier.value
+        }
+        return memScoped {
+            val outLen = alloc<ULongVar>()
+            val pointer = encoded.usePinned { pinned ->
+                wasmline_drop_component_resource_outcome(
                     instanceKey,
-                    if (encoded.value.isEmpty()) null else pinned.addressOf(0),
-                    encoded.value.size.toULong(),
+                    if (encoded.isEmpty()) null else pinned.addressOf(0),
+                    encoded.size.toULong(),
+                    outLen.ptr,
+                )
+            } ?: return@memScoped WasmlineComponentResourceDropResult.Rejected(
+                WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native Component resource drop returned no response."),
+            )
+            if (outLen.value > Int.MAX_VALUE.toULong()) {
+                wasmline_free_memory(pointer)
+                return@memScoped WasmlineComponentResourceDropResult.Rejected(
+                    WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "Native Component resource drop carrier is too large."),
                 )
             }
+            val carrier = pointer.readBytes(outLen.value.toInt())
+            wasmline_free_memory(pointer)
+            decodeComponentResourceDropCarrier(carrier)
+        }
     }
 
     internal actual fun createComponentHostResource(
@@ -180,6 +207,8 @@ actual class Wasmline internal actual constructor(
     }
 
     actual fun close() {
+        if (!lifecycle.beginClose()) return
+        lifecycle.closeCoreModule()
         componentModuleState.close()
         hostServiceRegistry.clear()
         WasmlineCallbackRegistry.unregister(moduleKey)
@@ -301,7 +330,6 @@ internal actual fun platformWasmlineLoadArtifact(descriptor: WasmlineArtifactDes
                 if (!wasmline_path_exists(path)) return null
                 return ResolvedPrecompiledArtifact(
                     artifactPath = path,
-                    moduleKey = path,
                 )
             }
 

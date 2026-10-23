@@ -59,6 +59,7 @@ Valid runtime combinations:
   - Local and remote `.wlm` packages
   - Signature verification and trusted-key policy
   - Artifact selection and descriptor construction
+  - `manifestTtlMs` is a freshness window rather than signature expiry or rollback protection; `maxCacheBytes` bounds the built-in file cache on a best-effort basis
 - `wasmline-engine-cranelift`, `wasmline-engine-pulley`
   - Packaged native runtime distributions and JVM platform variants
 - `wasmline-kotlin-plugin`
@@ -72,7 +73,8 @@ Valid runtime combinations:
 - `wasmline-network-ktor`, `wasmline-network-okhttp`
   - Loader network implementations
 - `wasmline-android`
-  - Android CMake/JNI integration
+  - Android library that packages the precompiled JNI runtime; consumers do not compile native code
+  - Its CMake project is a development and CI rebuild path for `libwasmline.so`
 - `wasmline-plugin-test`
   - End-to-end plugin build and native invocation verification
 
@@ -131,6 +133,15 @@ Browser limits:
 - raw imports are synchronous and must be registered before instantiation
 - `i64` crosses the JavaScript boundary as `BigInt`; threads/shared memory are not promised
 - raw memory access is bounds-checked and refreshed after `memory.grow`
+- an import invoked by the guest start function sees
+  `RawImportContext.memory == null`, because the instance does not exist yet
+- a produced-result count mismatch returns `ARGUMENT_COUNT_MISMATCH` and a
+  produced `bigint`/`number` contradiction returns `ARGUMENT_TYPE_MISMATCH`;
+  a genuine guest trap returns `WASM_TRAP`, and a failing host import keeps its
+  own failure code
+- browser offsets are signed 32-bit JS indices, so `RawMemory` accepts only
+  offsets in `0..Int.MAX_VALUE`; length and current size are validated
+  separately, and a near-2 GiB length is neither exercised nor claimed to work
 
 The shared `webMain` layer contains no platform interop. `jsMain` supplies typed JS externals; `wasmJsMain` supplies `JsAny` and constant `js()` helpers.
 
@@ -138,6 +149,15 @@ The Service/WASI lifecycle and the Raw Export lifecycle are intentionally
 separate. Raw modules do not assume `__wasmline_wasi_init`,
 `__wasmline_wasi_entry`, or `env.bridge_*`; they register only the imports
 their module declares.
+
+`CoreWasmCapabilities` is a supported feature-set declaration, not a probe of
+the host browser. Every current backend reports `multiValue`, `i64`,
+`bulkMemory`, and `referenceTypes` as supported and `simd` and `threads` as
+unsupported. Instantiation rejects an uncovered
+`runtimeContract.rawAbi.requiredFeatures` entry with
+`WASM_FEATURE_UNSUPPORTED`. Plain JS numbers carry no wasm type, so result
+decoding cannot distinguish a wrong declaration among `i32`, `f32`, and `f64`;
+only the `bigint`/`number` split is observable.
 
 ## Core Wasmline Service Flow
 
@@ -167,6 +187,17 @@ Normal call failures are values:
 - handler failure
 
 `throwOnFailure()` is an explicit adapter; the result API does not use exceptions for normal call failures.
+
+Native Core Service rejects synchronous reuse of a session that is already
+invoking on the same thread. The check reads a per-thread invocation-frame stack
+before the session mutex, so `A -> A` and `A -> B -> A` return
+`REENTRANT_CALL` instead of deadlocking. Invoking a different, inactive session
+`B` from an `A` callback is allowed.
+
+Guest-provided `memory32` ranges are validated against the current linear
+memory before any view or copy is created, and a negative guest length traps
+with `CORE_TRAP`. The host narrows its own payload lengths to the signed `i32`
+bridge ABI only after the `INT32_MAX` check succeeds.
 
 ## Component Model Flow
 
@@ -199,6 +230,34 @@ executables.
   - Uses `WasmlineComponentValue` for typed parameters and results.
   - Supports generated host bindings, imported host functions, explicit instances, and owned/borrowed resources.
   - Does not use Core linear-memory bridge imports or the `WLMF` response frame.
+
+Component host resource constraints:
+
+- An `own<T>` wrapper belongs to the instance that created it; a borrowed value
+  is call-scoped and cannot be dropped or transferred.
+- `WasmlineComponentResource.close()` distinguishes a rejected request from a
+  failed drop. When the request is rejected before the reference is consumed,
+  the wrapper keeps its carrier and stays open, so the value can still be
+  inspected or transferred. When the drop consumes the reference and resource
+  destruction or a host callback then fails, the wrapper is closed, that
+  cleanup failure surfaces as a `WasmlineException` carrying `HANDLER_FAILED`
+  with the original message, a second `close()` is a no-op, and the destructor
+  is not retried. No claim is made that a failure discards the owning instance.
+- `transferToComponent()` consumes the wrapper before the call is sent, and an
+  interrupted call is never rolled back: the carrier is not restored to the
+  wrapper. Because the call then serializes that value, a caller must not reuse
+  the wrapper after transfer.
+- One `WasmlineComponentInstance` serializes its host-side mutations —
+  `invoke`, `link`, `dropResource`, `createHostResource`, and `close` — through
+  a per-instance lock. On Kotlin/Native that lock is a recursive native mutex,
+  so a same-thread guest callback re-entering the same Component session reaches
+  the native session, which rejects it with `COMPONENT_CALL_FAILED`. Do not
+  assume concurrent use of one wrapper or instance is supported.
+
+Calls into a guest are synchronous, and the public API exposes no cancellation
+token. A long-running or spinning guest invocation cannot be interrupted from
+another thread; host timeouts must be enforced by isolating the work in a
+separate process or by not invoking untrusted code that has no bound.
 
 ## Kotlin IR Pipeline
 

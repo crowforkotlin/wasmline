@@ -4,7 +4,6 @@ package crow.wasmline.loader.internal
 
 import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.invocation.WasmlineErrorCode
-import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineSource
 import crow.wasmline.loader.WasmlineSourceResolution
@@ -151,7 +150,9 @@ internal object WasmlineLocalPackageResolution {
             )
         }
 
-        return WasmlineSourceResolution.ContinueWith(VerifiedPackageArtifact(descriptor = descriptor))
+        return WasmlineSourceResolution.ContinueWith(
+            WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor),
+        )
     }
 
     private fun localArtifactIdentity(path: String): Pair<Long, String>? {

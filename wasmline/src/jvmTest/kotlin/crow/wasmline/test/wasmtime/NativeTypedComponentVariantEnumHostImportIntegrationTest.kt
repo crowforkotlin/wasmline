@@ -1,6 +1,5 @@
 package crow.wasmline.test.wasmtime
 
-import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentFunctionId
 import crow.wasmline.WasmlineComponentHostAdapter

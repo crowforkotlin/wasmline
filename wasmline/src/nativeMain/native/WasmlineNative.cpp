@@ -10,6 +10,7 @@
 #include "wasmline/invocation/TypedInvocationCodec.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/ComponentHostHandler.h"
+#include "wasmline/runtime/ComponentResourceDrop.h"
 #include "wasmline/runtime/OutboundHandler.h"
 #include "wasmline/internal/io/FileIO.h"
 #include <cstdlib>
@@ -150,6 +151,29 @@ char *encodeArtifactLoadResult(const ArtifactLoadResult &result,
                                                       result.details().data()),
                                                   result.details().size()));
   return copyNativeBytes(encoded.data(), encoded.size(), outLen);
+}
+
+ResourceDropOutcome decodeComponentResourceDropInput(const char *instanceKey,
+                                                     const void *data,
+                                                     size_t dataLen) {
+  const auto invalid = [](const char *message) {
+    return ResourceDropOutcome::rejected(WasmlineErrorCode::INVALID_PAYLOAD,
+                                         message);
+  };
+  if (!instanceKey || (!data && dataLen != 0))
+    return invalid("Component resource drop payload is invalid.");
+  const std::string_view input =
+      dataLen == 0 ? std::string_view()
+                   : std::string_view(static_cast<const char *>(data), dataLen);
+  std::vector<ComponentValue> values;
+  std::string error;
+  if (!TypedInvocationCodec::decodeComponentArguments(input, &values, &error) ||
+      values.size() != 1 ||
+      values.front().kind() != ComponentValue::Kind::RESOURCE) {
+    return invalid("Component resource drop payload is invalid.");
+  }
+  return Api::dropComponentResource(std::string(instanceKey),
+                                    values.front().resourceValue());
 }
 } // namespace
 
@@ -389,22 +413,13 @@ void wasmline_release_component_instance(const char *instanceKey) {
   Api::releaseComponentInstance(std::string(instanceKey));
 }
 
-bool wasmline_drop_component_resource(const char *instanceKey, const void *data,
-                                      size_t dataLen) {
-  if (!instanceKey || (!data && dataLen != 0))
-    return false;
-  const std::string_view input =
-      dataLen == 0 ? std::string_view()
-                   : std::string_view(static_cast<const char *>(data), dataLen);
-  std::vector<ComponentValue> values;
-  std::string error;
-  if (!TypedInvocationCodec::decodeComponentArguments(input, &values, &error) ||
-      values.size() != 1 ||
-      values.front().kind() != ComponentValue::Kind::RESOURCE) {
-    return false;
-  }
-  return Api::dropComponentResource(std::string(instanceKey),
-                                    values.front().resourceValue());
+char *wasmline_drop_component_resource_outcome(const char *instanceKey,
+                                               const void *data, size_t dataLen,
+                                               size_t *outLen) {
+  return copyNativeBytes(
+      encodeResourceDropOutcome(
+          decodeComponentResourceDropInput(instanceKey, data, dataLen)),
+      outLen);
 }
 
 char *wasmline_create_component_host_resource(const char *instanceKey,

@@ -5,6 +5,7 @@ package crow.wasmline
 import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.component.WasmlineComponentResourceDropResult
 import crow.wasmline.internal.core.CoreWasmBackendModule
 import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
@@ -49,7 +50,10 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
         arguments: ByteArray,
     ): WasmlineCallResult<ByteArray>
     internal fun releaseComponentInstance(instanceKey: String)
-    internal fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean
+    internal fun dropComponentResource(
+        instanceKey: String,
+        reference: WasmlineComponentValue.ResourceValue,
+    ): WasmlineComponentResourceDropResult
     internal fun createComponentHostResource(
         instanceKey: String,
         interfaceId: String,
@@ -58,9 +62,9 @@ expect class Wasmline internal constructor(moduleKey: String, config: WasmlineCo
     ): WasmlineCallResult<WasmlineComponentValue.ResourceValue>
     internal fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule>
 
-    /** Adapts this loaded handle to an uninstantiated Core Wasm module. */
+    /** Returns this handle's Core Wasm module facade, reusing it on subsequent calls. */
     fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule>
 
-    /** Closes this handle and releases its platform session. */
+    /** Closes this handle and all its sessions. Idempotent; other loaded handles remain usable. */
     fun close()
 }

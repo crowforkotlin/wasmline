@@ -94,7 +94,8 @@ internal abstract class WasmlineGenerateTrustedKeysTask : DefaultTask() {
         require(isKotlinIdentifier(value)) { "$label '$value' is invalid." }
     }
 
-    private fun isKotlinIdentifier(value: String): Boolean = value.isNotEmpty() && (value.first() == '_' || value.first().isLetter()) &&
+    private fun isKotlinIdentifier(value: String): Boolean = value.isNotEmpty() &&
+        (value.first() == '_' || value.first().isLetter()) &&
         value.drop(1).all { character -> character == '_' || character.isLetterOrDigit() }
 
     private fun isAsciiHexDigit(character: Char): Boolean = character in '0'..'9' || character in 'a'..'f' || character in 'A'..'F'

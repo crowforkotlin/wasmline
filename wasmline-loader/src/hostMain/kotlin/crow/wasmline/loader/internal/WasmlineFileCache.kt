@@ -50,10 +50,6 @@ internal class WasmlineFileCache(
         }
     }
 
-    override fun exists(key: String): Boolean = runCatching {
-        fileSystem.metadataOrNull(pathForKey(key))?.isRegularFile == true
-    }.getOrDefault(false)
-
     /**
      * Resolves one content-addressed artifact directly to its final runtime path.
      * Cached and downloaded bytes are hashed as streams and never materialized as

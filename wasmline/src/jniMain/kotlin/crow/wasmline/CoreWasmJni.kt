@@ -79,19 +79,22 @@ private class JniCoreWasmModule(
                 return coreFailure(WasmlineErrorCode.INSTANTIATION_FAILED, "Native Core Wasm session returned unexpected values.")
             }
         }
-        val session = JniCoreWasmSession(sessionKey, memory)
-        lock.withLock {
+        val session = JniCoreWasmSession(sessionKey, memory) {
+            lock.withLock { sessions.remove(sessionKey) }
+        }
+        val moduleWasClosed = lock.withLock {
             if (closed) {
-                JniWasmlineBindings.coreReleaseSession(sessionKey)
+                true
             } else {
                 sessions[sessionKey] = session
+                false
             }
         }
-        return if (lock.withLock { closed }) {
-            coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Native Core Wasm module was closed during instantiation.")
-        } else {
-            WasmlineCallResult.Success(session)
+        if (moduleWasClosed) {
+            session.close()
+            return coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Native Core Wasm module was closed during instantiation.")
         }
+        return WasmlineCallResult.Success(session)
     }
 
     override fun close() {
@@ -113,7 +116,12 @@ private class JniCoreWasmModule(
  * Date: 2026-08-25
  * Author: crowforkotlin
  */
-private class JniCoreWasmSession(private val sessionKey: String, override val memory: JniCoreWasmMemory?) : CoreWasmBackendSession {
+private class JniCoreWasmSession(
+    private val sessionKey: String,
+    override val memory: JniCoreWasmMemory?,
+    private val onClosed: () -> Unit,
+) : CoreWasmBackendSession {
+    private val lock = WasmlineRuntimeLock()
     private var closed = false
 
     override fun invoke(
@@ -132,9 +140,19 @@ private class JniCoreWasmSession(private val sessionKey: String, override val me
     }
 
     override fun close() {
-        if (!closed) {
-            closed = true
+        val shouldRelease = lock.withLock {
+            if (closed) {
+                false
+            } else {
+                closed = true
+                true
+            }
+        }
+        if (!shouldRelease) return
+        try {
             JniWasmlineBindings.coreReleaseSession(sessionKey)
+        } finally {
+            onClosed()
         }
     }
 }

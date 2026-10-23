@@ -139,7 +139,7 @@ class WasmlineLocalArtifactBridgeTest {
     @Test
     fun rejectsUnsupportedArtifactExtension() {
         val platform = FakePlatform(
-            resolvedArtifact = ResolvedPrecompiledArtifact("plugin.bin", "module"),
+            resolvedArtifact = ResolvedPrecompiledArtifact("plugin.bin"),
         )
 
         val result = WasmlineLocalArtifactBridge.load(
@@ -157,7 +157,7 @@ class WasmlineLocalArtifactBridgeTest {
     @Test
     fun reportsNativeLoadFailure() {
         val platform = FakePlatform(
-            resolvedArtifact = ResolvedPrecompiledArtifact("plugin.wasm", "module"),
+            resolvedArtifact = ResolvedPrecompiledArtifact("plugin.wasm"),
             loadResult = WasmlineCallResult.Failure(
                 WasmlineFailure(
                     code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
@@ -192,7 +192,7 @@ class WasmlineLocalArtifactBridgeTest {
         WasmlineLog.logger = logger
         try {
             val platform = FakePlatform(
-                resolvedArtifact = ResolvedPrecompiledArtifact("plugin.wasm", "module"),
+                resolvedArtifact = ResolvedPrecompiledArtifact("plugin.wasm"),
                 loadResult = WasmlineCallResult.Failure(
                     WasmlineFailure(
                         code = WasmlineErrorCode.MODULE_FORMAT_INVALID,
@@ -228,7 +228,7 @@ class WasmlineLocalArtifactBridgeTest {
      * Author: crowforkotlin
      */
     private class FakePlatform(
-        private val resolvedArtifact: ResolvedPrecompiledArtifact? = ResolvedPrecompiledArtifact("plugin.pwasm", "module"),
+        private val resolvedArtifact: ResolvedPrecompiledArtifact? = ResolvedPrecompiledArtifact("plugin.pwasm"),
         private val loadResult: WasmlineCallResult<Unit> = WasmlineCallResult.Success(Unit),
         private val descriptorValidation: (WasmlineArtifactDescriptor) -> String? = { null },
         private val requiresExplicitFormat: Boolean = false,

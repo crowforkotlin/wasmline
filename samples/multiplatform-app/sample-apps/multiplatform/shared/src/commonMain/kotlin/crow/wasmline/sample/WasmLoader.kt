@@ -2,7 +2,12 @@
 
 package crow.wasmline.sample
 
+import crow.wasmline.CoreWasmModule
+import crow.wasmline.CoreWasmSessionOptions
+import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawImport
 import crow.wasmline.RawValue
+import crow.wasmline.RawValueType
 import crow.wasmline.Wasmline
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
@@ -19,7 +24,6 @@ import crow.wasmline.callResult
 import crow.wasmline.generated.WasmlineHostTrust
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invokeComponentResult
-import crow.wasmline.invokeRawResult
 import crow.wasmline.link
 import crow.wasmline.loader.WasmlineLoadOptions
 import crow.wasmline.loader.WasmlineLoader
@@ -33,6 +37,7 @@ import crow.wasmline.sample.extensions.toJsonString
 import crow.wasmline.sample.ir.EchoService
 import crow.wasmline.sample.ir.TimeSyncService
 import crow.wasmline.serialization.WasmlineSerializationConfig
+import kotlin.random.Random
 import kotlin.time.TimeSource
 
 enum class WasmSampleMode(
@@ -188,6 +193,7 @@ data class WasmExecutionReport(
 /** Coordinates the sample's Wasmline lifecycle without exposing it to Compose UI. */
 internal class WasmSampleRunner(private val assetRefresher: AssetRefresher) {
     private var wasmline: Wasmline? = null
+    private var rawModule: CoreWasmModule? = null
     private var loadedKey: String? = null
     private var coreInvocationLog: ((String) -> Unit)? = null
     private var componentFixtureInvocationLog: ((String) -> Unit)? = null
@@ -525,20 +531,51 @@ internal class WasmSampleRunner(private val assetRefresher: AssetRefresher) {
     }
 
     private fun runRaw(runtime: Wasmline, value: Int, log: (String) -> Unit): SampleInvocation {
-        val result = runtime.invokeRawResult(
-            exportName = WasmSampleMode.RAW_EXPORT.defaultExport,
-            arguments = listOf(
-                RawValue.I32(value),
-                RawValue.I32(1),
+        val module = rawModule ?: when (val created = runtime.asCoreWasmModule()) {
+            is WasmlineCallResult.Failure -> return SampleInvocation.Failure(created.failure.message)
+            is WasmlineCallResult.Success -> created.value.also { rawModule = it }
+        }
+        val options = CoreWasmSessionOptions(
+            imports = listOf(
+                RawImport(
+                    module = "wasi_snapshot_preview1",
+                    name = "random_get",
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ) { context, arguments ->
+                    val memory = requireNotNull(context.memory) { "random_get requires exported memory." }
+                    val offset = (arguments[0] as RawValue.I32).value.toUInt().toLong()
+                    val length = (arguments[1] as RawValue.I32).value
+                    memory.write(offset, Random.nextBytes(length)).getOrThrow()
+                    WasmlineCallResult.Success(listOf(RawValue.I32(0)))
+                },
+            ),
+            exportSignatures = mapOf(
+                WasmSampleMode.RAW_EXPORT.defaultExport to RawFunctionSignature(
+                    parameters = listOf(RawValueType.I32, RawValueType.I32),
+                    results = listOf(RawValueType.I32),
+                ),
             ),
         )
+        val session = when (val created = module.instantiate(options)) {
+            is WasmlineCallResult.Failure -> return SampleInvocation.Failure(created.failure.message)
+            is WasmlineCallResult.Success -> created.value
+        }
+        val result = session.use {
+            it.invoke(
+                exportName = WasmSampleMode.RAW_EXPORT.defaultExport,
+                arguments = listOf(RawValue.I32(value), RawValue.I32(1)),
+            )
+        }
         return when (result) {
             is crow.wasmline.invocation.WasmlineCallResult.Failure ->
                 SampleInvocation.Failure(result.failure.message)
 
             is crow.wasmline.invocation.WasmlineCallResult.Success -> {
                 log("[Raw Export] invoked add_i32($value, 1)")
-                val output = result.value.values.singleOrNull()
+                val output = result.value.singleOrNull()
                     ?: return SampleInvocation.Failure("Raw export returned no value.")
                 SampleInvocation.Success(
                     action = "add_i32",
@@ -653,7 +690,9 @@ internal class WasmSampleRunner(private val assetRefresher: AssetRefresher) {
     private fun closeRuntime() {
         coreInvocationLog = null
         componentFixtureInvocationLog = null
-        wasmline?.close()
+        val raw = rawModule
+        rawModule = null
+        if (raw != null) raw.close() else wasmline?.close()
         wasmline = null
         loadedKey = null
     }

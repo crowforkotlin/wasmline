@@ -14,7 +14,6 @@ val constrainedWasmlineModules = listOf(
     "wasmline-network-okhttp",
     "wasmline-kotlin-plugin",
     "wasmline-gradle-plugin",
-    "wasmline-plugin-core",
     "wasmline-cli",
     "wasmline-engine-cranelift",
     "wasmline-engine-pulley",

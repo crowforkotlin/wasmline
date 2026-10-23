@@ -1,0 +1,1064 @@
+FILE fqName:test.ir.inherited fileName:/07_inheritedService.kt
+  annotations:
+    Suppress(names = ["INVISIBLE_MEMBER", "INVISIBLE_REFERENCE"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+  CLASS CLASS name:ChildImplementation modality:FINAL visibility:private superTypes:[test.ir.inherited.ChildService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.ChildImplementation
+    CONSTRUCTOR visibility:public returnType:test.ir.inherited.ChildImplementation [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:ChildImplementation modality:FINAL visibility:private superTypes:[test.ir.inherited.ChildService]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in test.ir.inherited.ChildService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in test.ir.inherited.ChildService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in test.ir.inherited.ChildService
+    FUN name:add visibility:public modality:OPEN returnType:kotlin.Int
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildImplementation
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ChildService
+      BLOCK_BODY
+        RETURN type=kotlin.Nothing from='public open fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ChildImplementation'
+          CALL 'public final fun plus (other: kotlin.Int): kotlin.Int declared in kotlin.Int' type=kotlin.Int origin=PLUS
+            ARG <this>: GET_VAR 'left: kotlin.Int declared in test.ir.inherited.ChildImplementation.add' type=kotlin.Int origin=null
+            ARG other: GET_VAR 'right: kotlin.Int declared in test.ir.inherited.ChildImplementation.add' type=kotlin.Int origin=null
+    FUN name:inherited visibility:public modality:OPEN returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildImplementation
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ChildService
+      BLOCK_BODY
+        RETURN type=kotlin.Nothing from='public open fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ChildImplementation'
+          STRING_CONCATENATION type=kotlin.String
+            CONST String type=kotlin.String value="parent:"
+            GET_VAR 'value: kotlin.String declared in test.ir.inherited.ChildImplementation.inherited' type=kotlin.String origin=null
+    FUN name:local visibility:public modality:OPEN returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildImplementation
+      overridden:
+        public abstract fun local (): kotlin.String declared in test.ir.inherited.ChildService
+      BLOCK_BODY
+        RETURN type=kotlin.Nothing from='public open fun local (): kotlin.String declared in test.ir.inherited.ChildImplementation'
+          CONST String type=kotlin.String value="child"
+  CLASS CLASS name:ChildService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.ChildService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.ChildService_WasmlineBridge
+    FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
+    FIELD name:implementation type:test.ir.inherited.ChildService? visibility:private [final]
+    FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final]
+    FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final]
+    FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final]
+    CONSTRUCTOR visibility:public returnType:test.ir.inherited.ChildService_WasmlineBridge [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.inherited.ChildService?
+      VALUE_PARAMETER kind:Regular name:serializationFactory index:2 type:crow.wasmline.serialization.WasmlineSerializationFactory
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:ChildService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.ChildService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.inherited.ChildService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.ir.inherited.ChildService? visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.ir.inherited.ChildService? declared in test.ir.inherited.ChildService_WasmlineBridge.<init>' type=test.ir.inherited.ChildService? origin=null
+        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.inherited.ChildService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+        SET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+          value: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+            TYPE_ARG T: kotlinx.serialization.KSerializer<*>
+            ARG elements: VARARG type=kotlin.Array<kotlinx.serialization.KSerializer<*>> varargElementType=kotlinx.serialization.KSerializer<*>
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+        SET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+          value: CALL 'internal final fun buildParamsDescriptor (name: kotlin.String, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>): kotlinx.serialization.descriptors.SerialDescriptor declared in crow.wasmline.internal.bridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+            ARG name: CONST String type=kotlin.String value="test.ir.inherited.ChildService#add"
+            ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+    FUN name:add visibility:public modality:FINAL returnType:kotlin.Int
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ChildService
+      BLOCK_BODY
+        RETURN type=kotlin.Int from='public final fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ChildService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.Int origin=null
+            TYPE_ARG T: kotlin.Int
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.add' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.add' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.ChildService#add"
+              ARG payload: CALL 'internal final fun encodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, values: kotlin.Array<kotlin.Any?>): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.add' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.add' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.add' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                ARG values: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+                  TYPE_ARG T: kotlin.Any?
+                  ARG elements: VARARG type=kotlin.Array<kotlin.Any?> varargElementType=kotlin.Any?
+                    GET_VAR 'left: kotlin.Int declared in test.ir.inherited.ChildService_WasmlineBridge.add' type=kotlin.Int origin=null
+                    GET_VAR 'right: kotlin.Int declared in test.ir.inherited.ChildService_WasmlineBridge.add' type=kotlin.Int origin=null
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
+      overridden:
+        public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.ChildService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.ChildService#local"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.bind' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.ChildService#local"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.ChildService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.ChildService#inherited"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.bind' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.ChildService#inherited"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.ChildService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.ChildService#add"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.bind' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.ChildService#add"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+    FUN name:inherited visibility:public modality:FINAL returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ChildService
+      BLOCK_BODY
+        RETURN type=kotlin.String from='public final fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ChildService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+            TYPE_ARG T: kotlin.String
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.inherited' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.inherited' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.ChildService#inherited"
+              ARG payload: CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.inherited' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                ARG value: GET_VAR 'value: kotlin.String declared in test.ir.inherited.ChildService_WasmlineBridge.inherited' type=kotlin.String origin=null
+    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+      overridden:
+        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.ChildService#local"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                ARG value: CALL 'public abstract fun local (): kotlin.String declared in test.ir.inherited.ChildService' type=kotlin.String origin=null
+                  ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.ChildService origin=null
+                    TYPE_ARG T: test.ir.inherited.ChildService
+                    ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.ChildService? visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService? origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                    ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.ChildService"
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.ChildService#inherited"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                ARG value: CALL 'public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ChildService' type=kotlin.String origin=null
+                  ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.ChildService origin=null
+                    TYPE_ARG T: test.ir.inherited.ChildService
+                    ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.ChildService? visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService? origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                    ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.ChildService"
+                  ARG value: CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+                    TYPE_ARG T: kotlin.String
+                    ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.ChildService#add"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.Int
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                ARG value: BLOCK type=kotlin.Int origin=null
+                  VAR name:tmp0_decodedArgs type:kotlin.Array<kotlin.Any?> [val]
+                    CALL 'internal final fun decodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, payload: kotlin.ByteArray): kotlin.Array<kotlin.Any?> declared in crow.wasmline.internal.bridge' type=kotlin.Array<kotlin.Any?> origin=null
+                      ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                      ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                      ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                      ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+                  CALL 'public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ChildService' type=kotlin.Int origin=null
+                    ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.ChildService origin=null
+                      TYPE_ARG T: test.ir.inherited.ChildService
+                      ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.ChildService? visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=test.ir.inherited.ChildService? origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+                      ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.ChildService"
+                    ARG left: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=0
+                    ARG right: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=1
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ChildService_WasmlineBridge'
+          CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.ChildService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.inherited.ChildService_WasmlineBridge.invoke' type=kotlin.String origin=null
+    FUN name:local visibility:public modality:FINAL returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildService_WasmlineBridge
+      overridden:
+        public abstract fun local (): kotlin.String declared in test.ir.inherited.ChildService
+      BLOCK_BODY
+        RETURN type=kotlin.String from='public final fun local (): kotlin.String declared in test.ir.inherited.ChildService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+            TYPE_ARG T: kotlin.String
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.local' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.ChildService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.ChildService_WasmlineBridge declared in test.ir.inherited.ChildService_WasmlineBridge.local' type=test.ir.inherited.ChildService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.ChildService#local"
+              ARG payload: CALL 'internal final fun emptyPayload (): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+  CLASS CLASS name:LeftService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.LeftService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.LeftService_WasmlineBridge
+    FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
+    FIELD name:implementation type:test.ir.inherited.LeftService? visibility:private [final]
+    FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final]
+    FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final]
+    FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final]
+    CONSTRUCTOR visibility:public returnType:test.ir.inherited.LeftService_WasmlineBridge [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.inherited.LeftService?
+      VALUE_PARAMETER kind:Regular name:serializationFactory index:2 type:crow.wasmline.serialization.WasmlineSerializationFactory
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:LeftService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.LeftService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.inherited.LeftService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.ir.inherited.LeftService? visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.ir.inherited.LeftService? declared in test.ir.inherited.LeftService_WasmlineBridge.<init>' type=test.ir.inherited.LeftService? origin=null
+        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.inherited.LeftService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+        SET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+          value: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+            TYPE_ARG T: kotlinx.serialization.KSerializer<*>
+            ARG elements: VARARG type=kotlin.Array<kotlinx.serialization.KSerializer<*>> varargElementType=kotlinx.serialization.KSerializer<*>
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+        SET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+          value: CALL 'internal final fun buildParamsDescriptor (name: kotlin.String, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>): kotlinx.serialization.descriptors.SerialDescriptor declared in crow.wasmline.internal.bridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+            ARG name: CONST String type=kotlin.String value="test.ir.inherited.LeftService#add"
+            ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+    FUN name:add visibility:public modality:FINAL returnType:kotlin.Int
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.LeftService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.LeftService
+      BLOCK_BODY
+        RETURN type=kotlin.Int from='public final fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.LeftService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.Int origin=null
+            TYPE_ARG T: kotlin.Int
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.add' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.add' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.LeftService#add"
+              ARG payload: CALL 'internal final fun encodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, values: kotlin.Array<kotlin.Any?>): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.add' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.add' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.add' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                ARG values: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+                  TYPE_ARG T: kotlin.Any?
+                  ARG elements: VARARG type=kotlin.Array<kotlin.Any?> varargElementType=kotlin.Any?
+                    GET_VAR 'left: kotlin.Int declared in test.ir.inherited.LeftService_WasmlineBridge.add' type=kotlin.Int origin=null
+                    GET_VAR 'right: kotlin.Int declared in test.ir.inherited.LeftService_WasmlineBridge.add' type=kotlin.Int origin=null
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.LeftService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
+      overridden:
+        public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.LeftService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.LeftService#inherited"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.bind' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.LeftService#inherited"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.LeftService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.LeftService#add"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.bind' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.LeftService#add"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+    FUN name:inherited visibility:public modality:FINAL returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.LeftService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.LeftService
+      BLOCK_BODY
+        RETURN type=kotlin.String from='public final fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.LeftService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+            TYPE_ARG T: kotlin.String
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.inherited' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.inherited' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.LeftService#inherited"
+              ARG payload: CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.inherited' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                ARG value: GET_VAR 'value: kotlin.String declared in test.ir.inherited.LeftService_WasmlineBridge.inherited' type=kotlin.String origin=null
+    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.LeftService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+      overridden:
+        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.LeftService#inherited"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                ARG value: CALL 'public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.LeftService' type=kotlin.String origin=null
+                  ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.LeftService origin=null
+                    TYPE_ARG T: test.ir.inherited.LeftService
+                    ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.LeftService? visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService? origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                    ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.LeftService"
+                  ARG value: CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+                    TYPE_ARG T: kotlin.String
+                    ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.LeftService#add"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.Int
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                ARG value: BLOCK type=kotlin.Int origin=null
+                  VAR name:tmp0_decodedArgs type:kotlin.Array<kotlin.Any?> [val]
+                    CALL 'internal final fun decodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, payload: kotlin.ByteArray): kotlin.Array<kotlin.Any?> declared in crow.wasmline.internal.bridge' type=kotlin.Array<kotlin.Any?> origin=null
+                      ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                      ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                      ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                      ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+                  CALL 'public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.LeftService' type=kotlin.Int origin=null
+                    ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.LeftService origin=null
+                      TYPE_ARG T: test.ir.inherited.LeftService
+                      ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.LeftService? visibility:private [final] declared in test.ir.inherited.LeftService_WasmlineBridge' type=test.ir.inherited.LeftService? origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.LeftService_WasmlineBridge declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=test.ir.inherited.LeftService_WasmlineBridge origin=null
+                      ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.LeftService"
+                    ARG left: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=0
+                    ARG right: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=1
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.LeftService_WasmlineBridge'
+          CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.LeftService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.inherited.LeftService_WasmlineBridge.invoke' type=kotlin.String origin=null
+  CLASS CLASS name:ParentService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.ParentService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.ParentService_WasmlineBridge
+    FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
+    FIELD name:implementation type:test.ir.inherited.ParentService? visibility:private [final]
+    FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final]
+    FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final]
+    FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final]
+    CONSTRUCTOR visibility:public returnType:test.ir.inherited.ParentService_WasmlineBridge [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.inherited.ParentService?
+      VALUE_PARAMETER kind:Regular name:serializationFactory index:2 type:crow.wasmline.serialization.WasmlineSerializationFactory
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:ParentService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.ParentService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.inherited.ParentService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.ir.inherited.ParentService? visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.ir.inherited.ParentService? declared in test.ir.inherited.ParentService_WasmlineBridge.<init>' type=test.ir.inherited.ParentService? origin=null
+        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.inherited.ParentService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+        SET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+          value: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+            TYPE_ARG T: kotlinx.serialization.KSerializer<*>
+            ARG elements: VARARG type=kotlin.Array<kotlinx.serialization.KSerializer<*>> varargElementType=kotlinx.serialization.KSerializer<*>
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+        SET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+          value: CALL 'internal final fun buildParamsDescriptor (name: kotlin.String, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>): kotlinx.serialization.descriptors.SerialDescriptor declared in crow.wasmline.internal.bridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+            ARG name: CONST String type=kotlin.String value="test.ir.inherited.ParentService#add"
+            ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+    FUN name:add visibility:public modality:FINAL returnType:kotlin.Int
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ParentService
+      BLOCK_BODY
+        RETURN type=kotlin.Int from='public final fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ParentService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.Int origin=null
+            TYPE_ARG T: kotlin.Int
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.add' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.add' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.ParentService#add"
+              ARG payload: CALL 'internal final fun encodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, values: kotlin.Array<kotlin.Any?>): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.add' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.add' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.add' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                ARG values: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+                  TYPE_ARG T: kotlin.Any?
+                  ARG elements: VARARG type=kotlin.Array<kotlin.Any?> varargElementType=kotlin.Any?
+                    GET_VAR 'left: kotlin.Int declared in test.ir.inherited.ParentService_WasmlineBridge.add' type=kotlin.Int origin=null
+                    GET_VAR 'right: kotlin.Int declared in test.ir.inherited.ParentService_WasmlineBridge.add' type=kotlin.Int origin=null
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
+      overridden:
+        public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.ParentService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.ParentService#inherited"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.bind' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.ParentService#inherited"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.ParentService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.ParentService#add"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.bind' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.ParentService#add"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+    FUN name:inherited visibility:public modality:FINAL returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ParentService
+      BLOCK_BODY
+        RETURN type=kotlin.String from='public final fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ParentService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+            TYPE_ARG T: kotlin.String
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.inherited' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.inherited' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.ParentService#inherited"
+              ARG payload: CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.inherited' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                ARG value: GET_VAR 'value: kotlin.String declared in test.ir.inherited.ParentService_WasmlineBridge.inherited' type=kotlin.String origin=null
+    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+      overridden:
+        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.ParentService#inherited"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                ARG value: CALL 'public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ParentService' type=kotlin.String origin=null
+                  ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.ParentService origin=null
+                    TYPE_ARG T: test.ir.inherited.ParentService
+                    ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.ParentService? visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService? origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                    ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.ParentService"
+                  ARG value: CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+                    TYPE_ARG T: kotlin.String
+                    ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.ParentService#add"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.Int
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                ARG value: BLOCK type=kotlin.Int origin=null
+                  VAR name:tmp0_decodedArgs type:kotlin.Array<kotlin.Any?> [val]
+                    CALL 'internal final fun decodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, payload: kotlin.ByteArray): kotlin.Array<kotlin.Any?> declared in crow.wasmline.internal.bridge' type=kotlin.Array<kotlin.Any?> origin=null
+                      ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                      ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                      ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                      ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+                  CALL 'public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ParentService' type=kotlin.Int origin=null
+                    ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.ParentService origin=null
+                      TYPE_ARG T: test.ir.inherited.ParentService
+                      ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.ParentService? visibility:private [final] declared in test.ir.inherited.ParentService_WasmlineBridge' type=test.ir.inherited.ParentService? origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.ParentService_WasmlineBridge declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=test.ir.inherited.ParentService_WasmlineBridge origin=null
+                      ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.ParentService"
+                    ARG left: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=0
+                    ARG right: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=1
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.ParentService_WasmlineBridge'
+          CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.ParentService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.inherited.ParentService_WasmlineBridge.invoke' type=kotlin.String origin=null
+  CLASS CLASS name:RightService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.RightService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.RightService_WasmlineBridge
+    FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final]
+    FIELD name:implementation type:test.ir.inherited.RightService? visibility:private [final]
+    FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final]
+    FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final]
+    FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final]
+    CONSTRUCTOR visibility:public returnType:test.ir.inherited.RightService_WasmlineBridge [primary]
+      VALUE_PARAMETER kind:Regular name:endpoint index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+      VALUE_PARAMETER kind:Regular name:implementation index:1 type:test.ir.inherited.RightService?
+      VALUE_PARAMETER kind:Regular name:serializationFactory index:2 type:crow.wasmline.serialization.WasmlineSerializationFactory
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:RightService_WasmlineBridge modality:FINAL visibility:public superTypes:[test.ir.inherited.RightService; crow.wasmline.internal.bridge.WasmlineGeneratedBridge]' type=kotlin.Unit
+        SET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+          value: GET_VAR 'endpoint: crow.wasmline.internal.bridge.WasmlineEndpoint declared in test.ir.inherited.RightService_WasmlineBridge.<init>' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+        SET_FIELD 'FIELD name:implementation type:test.ir.inherited.RightService? visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+          value: GET_VAR 'implementation: test.ir.inherited.RightService? declared in test.ir.inherited.RightService_WasmlineBridge.<init>' type=test.ir.inherited.RightService? origin=null
+        SET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+          value: GET_VAR 'serializationFactory: crow.wasmline.serialization.WasmlineSerializationFactory declared in test.ir.inherited.RightService_WasmlineBridge.<init>' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+        SET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+          value: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+            TYPE_ARG T: kotlinx.serialization.KSerializer<*>
+            ARG elements: VARARG type=kotlin.Array<kotlinx.serialization.KSerializer<*>> varargElementType=kotlinx.serialization.KSerializer<*>
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+              CALL 'public final fun serializer <T> (): kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> declared in kotlinx.serialization' type=kotlinx.serialization.KSerializer<T of kotlinx.serialization.serializer> origin=null
+                TYPE_ARG T: kotlin.Int
+        SET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Unit origin=null
+          receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+          value: CALL 'internal final fun buildParamsDescriptor (name: kotlin.String, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>): kotlinx.serialization.descriptors.SerialDescriptor declared in crow.wasmline.internal.bridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+            ARG name: CONST String type=kotlin.String value="test.ir.inherited.RightService#add"
+            ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+    FUN name:add visibility:public modality:FINAL returnType:kotlin.Int
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.RightService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.RightService
+      BLOCK_BODY
+        RETURN type=kotlin.Int from='public final fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.RightService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.Int origin=null
+            TYPE_ARG T: kotlin.Int
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.add' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.add' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.RightService#add"
+              ARG payload: CALL 'internal final fun encodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, values: kotlin.Array<kotlin.Any?>): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.add' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.add' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.add' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                ARG values: CALL 'public final fun arrayOf <T> (vararg elements: T of kotlin.arrayOf): kotlin.Array<T of kotlin.arrayOf> declared in kotlin' type=kotlin.Array<T of kotlin.arrayOf> origin=null
+                  TYPE_ARG T: kotlin.Any?
+                  ARG elements: VARARG type=kotlin.Array<kotlin.Any?> varargElementType=kotlin.Any?
+                    GET_VAR 'left: kotlin.Int declared in test.ir.inherited.RightService_WasmlineBridge.add' type=kotlin.Int origin=null
+                    GET_VAR 'right: kotlin.Int declared in test.ir.inherited.RightService_WasmlineBridge.add' type=kotlin.Int origin=null
+    FUN name:bind visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.RightService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:registerAction index:1 type:kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>
+      overridden:
+        public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.RightService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.RightService#inherited"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.bind' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.RightService#inherited"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+        CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 declared in kotlin.Function2' type=R of kotlin.Function2 origin=null
+          ARG <this>: GET_VAR 'registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> declared in test.ir.inherited.RightService_WasmlineBridge.bind' type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=null
+          ARG p1: CONST String type=kotlin.String value="test.ir.inherited.RightService#add"
+          ARG p2: FUN_EXPR type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:Regular name:payload index:0 type:kotlin.ByteArray
+              BLOCK_BODY
+                RETURN type=kotlin.ByteArray from='local final fun <anonymous> (payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge.bind'
+                  CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.ByteArray origin=null
+                    ARG <this>: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.bind' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                    ARG action: CONST String type=kotlin.String value="test.ir.inherited.RightService#add"
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge.bind.<anonymous>' type=kotlin.ByteArray origin=null
+    FUN name:inherited visibility:public modality:FINAL returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.RightService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.RightService
+      BLOCK_BODY
+        RETURN type=kotlin.String from='public final fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.RightService_WasmlineBridge'
+          CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+            TYPE_ARG T: kotlin.String
+            ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+              receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.inherited' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+            ARG payload: CALL 'public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint' type=kotlin.ByteArray origin=null
+              ARG <this>: GET_FIELD 'FIELD name:endpoint type:crow.wasmline.internal.bridge.WasmlineEndpoint visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.internal.bridge.WasmlineEndpoint origin=null
+                receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.inherited' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+              ARG action: CONST String type=kotlin.String value="test.ir.inherited.RightService#inherited"
+              ARG payload: CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.inherited' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                ARG value: GET_VAR 'value: kotlin.String declared in test.ir.inherited.RightService_WasmlineBridge.inherited' type=kotlin.String origin=null
+    FUN name:invoke visibility:public modality:FINAL returnType:kotlin.ByteArray [operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.RightService_WasmlineBridge
+      VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+      VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+      overridden:
+        public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+      BLOCK_BODY
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.RightService#inherited"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.String
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                ARG value: CALL 'public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.RightService' type=kotlin.String origin=null
+                  ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.RightService origin=null
+                    TYPE_ARG T: test.ir.inherited.RightService
+                    ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.RightService? visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService? origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                    ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.RightService"
+                  ARG value: CALL 'internal final fun decodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, payload: kotlin.ByteArray): T of crow.wasmline.internal.bridge.decodeGeneratedValue declared in crow.wasmline.internal.bridge' type=kotlin.String origin=null
+                    TYPE_ARG T: kotlin.String
+                    ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                      receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                    ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+        WHEN type=kotlin.Unit origin=null
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: GET_VAR 'action: kotlin.String declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=kotlin.String origin=null
+              ARG arg1: CONST String type=kotlin.String value="test.ir.inherited.RightService#add"
+            then: RETURN type=kotlin.ByteArray from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge'
+              CALL 'internal final fun encodeGeneratedValue <T> (factory: crow.wasmline.serialization.WasmlineSerializationFactory, value: T of crow.wasmline.internal.bridge.encodeGeneratedValue): kotlin.ByteArray declared in crow.wasmline.internal.bridge' type=kotlin.ByteArray origin=null
+                TYPE_ARG T: kotlin.Int
+                ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                  receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                ARG value: BLOCK type=kotlin.Int origin=null
+                  VAR name:tmp0_decodedArgs type:kotlin.Array<kotlin.Any?> [val]
+                    CALL 'internal final fun decodeMultiParams (factory: crow.wasmline.serialization.WasmlineSerializationFactory, descriptor: kotlinx.serialization.descriptors.SerialDescriptor, serializers: kotlin.Array<kotlinx.serialization.KSerializer<*>>, payload: kotlin.ByteArray): kotlin.Array<kotlin.Any?> declared in crow.wasmline.internal.bridge' type=kotlin.Array<kotlin.Any?> origin=null
+                      ARG factory: GET_FIELD 'FIELD name:serializationFactory type:crow.wasmline.serialization.WasmlineSerializationFactory visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=crow.wasmline.serialization.WasmlineSerializationFactory origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                      ARG descriptor: GET_FIELD 'FIELD name:add_descriptor type:kotlinx.serialization.descriptors.SerialDescriptor visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlinx.serialization.descriptors.SerialDescriptor origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                      ARG serializers: GET_FIELD 'FIELD name:add_serializers type:kotlin.Array<kotlinx.serialization.KSerializer<*>> visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=kotlin.Array<kotlinx.serialization.KSerializer<*>> origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                      ARG payload: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=kotlin.ByteArray origin=null
+                  CALL 'public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.RightService' type=kotlin.Int origin=null
+                    ARG <this>: CALL 'internal final fun requireGeneratedImplementation <T> (implementation: T of crow.wasmline.internal.bridge.requireGeneratedImplementation?, contractId: kotlin.String): T of crow.wasmline.internal.bridge.requireGeneratedImplementation declared in crow.wasmline.internal.bridge' type=test.ir.inherited.RightService origin=null
+                      TYPE_ARG T: test.ir.inherited.RightService
+                      ARG implementation: GET_FIELD 'FIELD name:implementation type:test.ir.inherited.RightService? visibility:private [final] declared in test.ir.inherited.RightService_WasmlineBridge' type=test.ir.inherited.RightService? origin=null
+                        receiver: GET_VAR '<this>: test.ir.inherited.RightService_WasmlineBridge declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=test.ir.inherited.RightService_WasmlineBridge origin=null
+                      ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.RightService"
+                    ARG left: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=0
+                    ARG right: TYPE_OP type=kotlin.Int origin=CAST typeOperand=kotlin.Int
+                      CALL 'public final fun get (index: kotlin.Int): T of kotlin.Array declared in kotlin.Array' type=T of kotlin.Array origin=null
+                        ARG <this>: GET_VAR 'val tmp0_decodedArgs: kotlin.Array<kotlin.Any?> declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=kotlin.Array<kotlin.Any?> origin=null
+                        ARG index: CONST Int type=kotlin.Int value=1
+        RETURN type=kotlin.Nothing from='public final fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.RightService_WasmlineBridge'
+          CALL 'internal final fun unknownGeneratedAction (contractId: kotlin.String, action: kotlin.String): kotlin.Nothing declared in crow.wasmline.internal.bridge' type=kotlin.Nothing origin=null
+            ARG contractId: CONST String type=kotlin.String value="test.ir.inherited.RightService"
+            ARG action: GET_VAR 'action: kotlin.String declared in test.ir.inherited.RightService_WasmlineBridge.invoke' type=kotlin.String origin=null
+  CLASS INTERFACE name:ChildService modality:ABSTRACT visibility:public superTypes:[test.ir.inherited.LeftService; test.ir.inherited.RightService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.ChildService
+    FUN FAKE_OVERRIDE name:add visibility:public modality:ABSTRACT returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.LeftService
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.RightService
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in test.ir.inherited.LeftService
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in test.ir.inherited.RightService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in test.ir.inherited.LeftService
+        public open fun hashCode (): kotlin.Int declared in test.ir.inherited.RightService
+    FUN FAKE_OVERRIDE name:inherited visibility:public modality:ABSTRACT returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.LeftService
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.RightService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in test.ir.inherited.LeftService
+        public open fun toString (): kotlin.String declared in test.ir.inherited.RightService
+    FUN name:local visibility:public modality:ABSTRACT returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ChildService
+  CLASS INTERFACE name:LeftService modality:ABSTRACT visibility:public superTypes:[test.ir.inherited.ParentService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.LeftService
+    FUN FAKE_OVERRIDE name:add visibility:public modality:ABSTRACT returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:inherited visibility:public modality:ABSTRACT returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in test.ir.inherited.ParentService
+  CLASS INTERFACE name:ParentService modality:ABSTRACT visibility:public superTypes:[crow.wasmline.WasmlineService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in crow.wasmline.WasmlineService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in crow.wasmline.WasmlineService
+    FUN name:add visibility:public modality:ABSTRACT returnType:kotlin.Int
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+    FUN name:inherited visibility:public modality:ABSTRACT returnType:kotlin.String
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+  CLASS INTERFACE name:RightService modality:ABSTRACT visibility:public superTypes:[test.ir.inherited.ParentService]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.RightService
+    FUN FAKE_OVERRIDE name:add visibility:public modality:ABSTRACT returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:left index:1 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:right index:2 type:kotlin.Int
+      overridden:
+        public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:inherited visibility:public modality:ABSTRACT returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.ParentService
+      VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+      overridden:
+        public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ParentService
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in test.ir.inherited.ParentService
+  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+    BLOCK_BODY
+      VAR name:actions type:kotlin.collections.MutableMap<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>> [val]
+        CALL 'public final fun mutableMapOf <K, V> (): kotlin.collections.MutableMap<K of kotlin.collections.mutableMapOf, V of kotlin.collections.mutableMapOf> declared in kotlin.collections' type=kotlin.collections.MutableMap<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
+          TYPE_ARG K: kotlin.String
+          TYPE_ARG V: kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>
+      VAR name:endpoint type:test.ir.inherited.box.<no name provided> [val]
+        BLOCK type=test.ir.inherited.box.<no name provided> origin=OBJECT_LITERAL
+          CLASS CLASS name:<no name provided> modality:FINAL visibility:local superTypes:[crow.wasmline.internal.bridge.WasmlineEndpoint]
+            thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:test.ir.inherited.box.<no name provided>
+            CONSTRUCTOR visibility:public returnType:test.ir.inherited.box.<no name provided> [primary]
+              BLOCK_BODY
+                DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+                INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:<no name provided> modality:FINAL visibility:local superTypes:[crow.wasmline.internal.bridge.WasmlineEndpoint]' type=kotlin.Unit
+            FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+              VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+              overridden:
+                public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in crow.wasmline.internal.bridge.WasmlineEndpoint
+            FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+              overridden:
+                public open fun hashCode (): kotlin.Int declared in crow.wasmline.internal.bridge.WasmlineEndpoint
+            FUN FAKE_OVERRIDE name:invokeResult visibility:public modality:OPEN returnType:crow.wasmline.invocation.WasmlineCallResult<kotlin.ByteArray> [fake_override]
+              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:crow.wasmline.internal.bridge.WasmlineEndpoint
+              VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+              VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+              overridden:
+                public open fun invokeResult (action: kotlin.String, payload: kotlin.ByteArray): crow.wasmline.invocation.WasmlineCallResult<kotlin.ByteArray> declared in crow.wasmline.internal.bridge.WasmlineEndpoint
+            FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+              overridden:
+                public open fun toString (): kotlin.String declared in crow.wasmline.internal.bridge.WasmlineEndpoint
+            FUN name:invoke visibility:public modality:OPEN returnType:kotlin.ByteArray
+              VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:test.ir.inherited.box.<no name provided>
+              VALUE_PARAMETER kind:Regular name:action index:1 type:kotlin.String
+              VALUE_PARAMETER kind:Regular name:payload index:2 type:kotlin.ByteArray
+              overridden:
+                public abstract fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in crow.wasmline.internal.bridge.WasmlineEndpoint
+              BLOCK_BODY
+                RETURN type=kotlin.Nothing from='public open fun invoke (action: kotlin.String, payload: kotlin.ByteArray): kotlin.ByteArray declared in test.ir.inherited.box.<no name provided>'
+                  CALL 'public abstract fun invoke (p1: P1 of kotlin.Function1): R of kotlin.Function1 declared in kotlin.Function1' type=kotlin.ByteArray origin=INVOKE
+                    ARG <this>: CALL 'public final fun requireNotNull <T> (value: T of kotlin.requireNotNull?, lazyMessage: kotlin.Function0<kotlin.Any>): T of kotlin.requireNotNull declared in kotlin' type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=null
+                      TYPE_ARG T: kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>
+                      ARG value: CALL 'public abstract fun get (key: K of kotlin.collections.MutableMap): V of kotlin.collections.MutableMap? declared in kotlin.collections.MutableMap' type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>? origin=GET_ARRAY_ELEMENT
+                        ARG <this>: GET_VAR 'val actions: kotlin.collections.MutableMap<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>> declared in test.ir.inherited.box' type=kotlin.collections.MutableMap<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
+                        ARG key: GET_VAR 'action: kotlin.String declared in test.ir.inherited.box.<no name provided>.invoke' type=kotlin.String origin=null
+                      ARG lazyMessage: FUN_EXPR type=kotlin.Function0<kotlin.Any> origin=LAMBDA
+                        FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Any
+                          BLOCK_BODY
+                            RETURN type=kotlin.Nothing from='local final fun <anonymous> (): kotlin.Any declared in test.ir.inherited.box.<no name provided>.invoke'
+                              STRING_CONCATENATION type=kotlin.String
+                                CONST String type=kotlin.String value="Unbound action: "
+                                GET_VAR 'action: kotlin.String declared in test.ir.inherited.box.<no name provided>.invoke' type=kotlin.String origin=null
+                    ARG p1: GET_VAR 'payload: kotlin.ByteArray declared in test.ir.inherited.box.<no name provided>.invoke' type=kotlin.ByteArray origin=null
+          CONSTRUCTOR_CALL 'public constructor <init> () declared in test.ir.inherited.box.<no name provided>' type=test.ir.inherited.box.<no name provided> origin=OBJECT_LITERAL
+      VAR name:bridgeClass type:@[FlexibleNullability] java.lang.Class<*>? [val]
+        CALL 'public open fun forName (p0: @[FlexibleNullability] kotlin.String?): @[FlexibleNullability] java.lang.Class<*>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG p0: CONST String type=kotlin.String value="test.ir.inherited.ChildService_WasmlineBridge"
+      VAR name:constructor type:@[FlexibleNullability] java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>? [val]
+        CALL 'public open fun getConstructor (vararg p0: @[FlexibleNullability] java.lang.Class<*>?): @[FlexibleNullability] java.lang.reflect.Constructor<@[FlexibleNullability] T of java.lang.Class?>? declared in java.lang.Class' type=@[FlexibleNullability] java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>? origin=null
+          ARG <this>: TYPE_OP type=java.lang.Class<*> origin=IMPLICIT_NOTNULL typeOperand=java.lang.Class<*>
+            GET_VAR 'val bridgeClass: @[FlexibleNullability] java.lang.Class<*>? declared in test.ir.inherited.box' type=@[FlexibleNullability] java.lang.Class<*>? origin=null
+          ARG p0: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] java.lang.Class<*>?>? varargElementType=@[FlexibleNullability] java.lang.Class<*>?
+            CALL 'public final fun <get-java> <T> (<this>: kotlin.reflect.KClass<T of kotlin.jvm.<get-java>>): java.lang.Class<T of kotlin.jvm.<get-java>> declared in kotlin.jvm' type=java.lang.Class<crow.wasmline.internal.bridge.WasmlineEndpoint> origin=GET_PROPERTY
+              TYPE_ARG T: crow.wasmline.internal.bridge.WasmlineEndpoint
+              ARG <this>: CLASS_REFERENCE 'CLASS IR_EXTERNAL_DECLARATION_STUB INTERFACE name:WasmlineEndpoint modality:ABSTRACT visibility:internal superTypes:[kotlin.Any]' type=kotlin.reflect.KClass<crow.wasmline.internal.bridge.WasmlineEndpoint>
+            CALL 'public final fun <get-java> <T> (<this>: kotlin.reflect.KClass<T of kotlin.jvm.<get-java>>): java.lang.Class<T of kotlin.jvm.<get-java>> declared in kotlin.jvm' type=java.lang.Class<test.ir.inherited.ChildService> origin=GET_PROPERTY
+              TYPE_ARG T: test.ir.inherited.ChildService
+              ARG <this>: CLASS_REFERENCE 'CLASS INTERFACE name:ChildService modality:ABSTRACT visibility:public superTypes:[test.ir.inherited.LeftService; test.ir.inherited.RightService]' type=kotlin.reflect.KClass<test.ir.inherited.ChildService>
+            CALL 'public final fun <get-java> <T> (<this>: kotlin.reflect.KClass<T of kotlin.jvm.<get-java>>): java.lang.Class<T of kotlin.jvm.<get-java>> declared in kotlin.jvm' type=java.lang.Class<crow.wasmline.serialization.WasmlineSerializationFactory> origin=GET_PROPERTY
+              TYPE_ARG T: crow.wasmline.serialization.WasmlineSerializationFactory
+              ARG <this>: CLASS_REFERENCE 'CLASS IR_EXTERNAL_DECLARATION_STUB INTERFACE name:WasmlineSerializationFactory modality:ABSTRACT visibility:public superTypes:[kotlin.Any]' type=kotlin.reflect.KClass<crow.wasmline.serialization.WasmlineSerializationFactory>
+      VAR name:binder type:crow.wasmline.internal.bridge.WasmlineGeneratedBridge [val]
+        TYPE_OP type=crow.wasmline.internal.bridge.WasmlineGeneratedBridge origin=CAST typeOperand=crow.wasmline.internal.bridge.WasmlineGeneratedBridge
+          CALL 'public open fun newInstance (vararg p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] T of java.lang.reflect.Constructor? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] kotlin.Any? origin=null
+            ARG <this>: TYPE_OP type=java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?> origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>
+              GET_VAR 'val constructor: @[FlexibleNullability] java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>? declared in test.ir.inherited.box' type=@[FlexibleNullability] java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>? origin=null
+            ARG p0: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
+              GET_VAR 'val endpoint: test.ir.inherited.box.<no name provided> declared in test.ir.inherited.box' type=test.ir.inherited.box.<no name provided> origin=null
+              CONSTRUCTOR_CALL 'public constructor <init> () declared in test.ir.inherited.ChildImplementation' type=test.ir.inherited.ChildImplementation origin=null
+              GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:WasmlineProtobufSerializationFactory modality:FINAL visibility:public superTypes:[crow.wasmline.serialization.WasmlineSerializationFactory]' type=crow.wasmline.serialization.WasmlineProtobufSerializationFactory
+      CALL 'public abstract fun bind (registerAction: kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit>): kotlin.Unit declared in crow.wasmline.internal.bridge.WasmlineGeneratedBridge' type=kotlin.Unit origin=null
+        ARG <this>: GET_VAR 'val binder: crow.wasmline.internal.bridge.WasmlineGeneratedBridge declared in test.ir.inherited.box' type=crow.wasmline.internal.bridge.WasmlineGeneratedBridge origin=null
+        ARG registerAction: FUN_EXPR type=kotlin.Function2<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>, kotlin.Unit> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+            VALUE_PARAMETER kind:Regular name:action index:0 type:kotlin.String
+            VALUE_PARAMETER kind:Regular name:handler index:1 type:kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>
+            BLOCK_BODY
+              CALL 'public final fun set <K, V> (<this>: kotlin.collections.MutableMap<K of kotlin.collections.set, V of kotlin.collections.set>, key: K of kotlin.collections.set, value: V of kotlin.collections.set): kotlin.Unit declared in kotlin.collections' type=kotlin.Unit origin=EQ
+                TYPE_ARG K: kotlin.String
+                TYPE_ARG V: kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>
+                ARG <this>: GET_VAR 'val actions: kotlin.collections.MutableMap<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>> declared in test.ir.inherited.box' type=kotlin.collections.MutableMap<kotlin.String, kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray>> origin=null
+                ARG key: GET_VAR 'action: kotlin.String declared in test.ir.inherited.box.<anonymous>' type=kotlin.String origin=null
+                ARG value: GET_VAR 'handler: kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> declared in test.ir.inherited.box.<anonymous>' type=kotlin.Function1<kotlin.ByteArray, kotlin.ByteArray> origin=null
+      VAR name:proxy type:test.ir.inherited.ChildService [val]
+        TYPE_OP type=test.ir.inherited.ChildService origin=CAST typeOperand=test.ir.inherited.ChildService
+          CALL 'public open fun newInstance (vararg p0: @[FlexibleNullability] kotlin.Any?): @[FlexibleNullability] T of java.lang.reflect.Constructor? declared in java.lang.reflect.Constructor' type=@[FlexibleNullability] kotlin.Any? origin=null
+            ARG <this>: TYPE_OP type=java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?> origin=IMPLICIT_NOTNULL typeOperand=java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>
+              GET_VAR 'val constructor: @[FlexibleNullability] java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>? declared in test.ir.inherited.box' type=@[FlexibleNullability] java.lang.reflect.Constructor<out @[FlexibleNullability] kotlin.Any?>? origin=null
+            ARG p0: VARARG type=@[FlexibleNullability] @[FlexibleArrayElementVariance] kotlin.Array<out @[FlexibleNullability] kotlin.Any?>? varargElementType=@[FlexibleNullability] kotlin.Any?
+              GET_VAR 'val endpoint: test.ir.inherited.box.<no name provided> declared in test.ir.inherited.box' type=test.ir.inherited.box.<no name provided> origin=null
+              CONST Null type=kotlin.Nothing? value=null
+              GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:WasmlineProtobufSerializationFactory modality:FINAL visibility:public superTypes:[crow.wasmline.serialization.WasmlineSerializationFactory]' type=crow.wasmline.serialization.WasmlineProtobufSerializationFactory
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public abstract fun inherited (value: kotlin.String): kotlin.String declared in test.ir.inherited.ChildService' type=kotlin.String origin=null
+                ARG <this>: GET_VAR 'val proxy: test.ir.inherited.ChildService declared in test.ir.inherited.box' type=test.ir.inherited.ChildService origin=null
+                ARG value: CONST String type=kotlin.String value="payload"
+              ARG arg1: CONST String type=kotlin.String value="parent:payload"
+          then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.ir.inherited'
+            CONST String type=kotlin.String value="Inherited method returned an incorrect result"
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public abstract fun add (left: kotlin.Int, right: kotlin.Int): kotlin.Int declared in test.ir.inherited.ChildService' type=kotlin.Int origin=null
+                ARG <this>: GET_VAR 'val proxy: test.ir.inherited.ChildService declared in test.ir.inherited.box' type=test.ir.inherited.ChildService origin=null
+                ARG left: CONST Int type=kotlin.Int value=19
+                ARG right: CONST Int type=kotlin.Int value=23
+              ARG arg1: CONST Int type=kotlin.Int value=42
+          then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.ir.inherited'
+            CONST String type=kotlin.String value="Inherited multi-parameter method returned an incorrect result"
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun not (): kotlin.Boolean declared in kotlin.Boolean' type=kotlin.Boolean origin=EXCLEQ
+            ARG <this>: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EXCLEQ
+              ARG arg0: CALL 'public abstract fun local (): kotlin.String declared in test.ir.inherited.ChildService' type=kotlin.String origin=null
+                ARG <this>: GET_VAR 'val proxy: test.ir.inherited.ChildService declared in test.ir.inherited.box' type=test.ir.inherited.ChildService origin=null
+              ARG arg1: CONST String type=kotlin.String value="child"
+          then: RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.ir.inherited'
+            CONST String type=kotlin.String value="Declared method returned an incorrect result"
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test.ir.inherited'
+        CONST String type=kotlin.String value="OK"

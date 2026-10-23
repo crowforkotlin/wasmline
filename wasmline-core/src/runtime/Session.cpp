@@ -14,9 +14,62 @@
 #include "wasmline/internal/wasmtime/WasmtimeMessage.h"
 #include <cstring>
 #include <exception>
+#include <limits>
 #include <vector>
 
 namespace wasmline {
+    namespace {
+        /** Enforces the signed i32 Core Wasm invocation ABI on host-provided lengths. */
+        constexpr size_t kMaxBridgeLength = static_cast<size_t>(std::numeric_limits<int32_t>::max());
+
+        /** Reports the guest as having provided an invalid length or capacity. */
+        constexpr const char* kNegativeBridgeLengthTrap = "Wasmline Core bridge received a negative guest length or capacity.";
+
+        /** Links one active invocation into the calling thread's frame stack without allocating. */
+        struct InvocationFrame {
+            const Session* session;
+            InvocationFrame* previous;
+        };
+
+        thread_local InvocationFrame* activeInvocationFrames = nullptr;
+
+        /** Pushes one invocation frame for the lifetime of its scope. */
+        class InvocationFrameScope final {
+        public:
+            explicit InvocationFrameScope(const Session* session) noexcept : frame{session, activeInvocationFrames} {
+                activeInvocationFrames = &frame;
+            }
+
+            ~InvocationFrameScope() { activeInvocationFrames = frame.previous; }
+
+            InvocationFrameScope(const InvocationFrameScope&) = delete;
+
+            InvocationFrameScope& operator=(const InvocationFrameScope&) = delete;
+
+        private:
+            InvocationFrame frame;
+        };
+
+        /** Reports whether the session already owns an invocation on the calling thread. */
+        bool isInvocationActive(const Session* session) noexcept {
+            for (const InvocationFrame* frame = activeInvocationFrames; frame; frame = frame->previous) {
+                if (frame->session == session) return true;
+            }
+            return false;
+        }
+
+        /** Reports whether a guest memory32 range lies inside the current linear memory. */
+        bool isMemoryRangeValid(const uint8_t* base, size_t memorySize, uint32_t offset, size_t length) {
+            if (offset > memorySize) return false;
+            if (length == 0) return true;
+            return base != nullptr && length <= memorySize - offset;
+        }
+
+        /** Creates a trap that reports one rejected bridge range or length. */
+        wasm_trap_t* bridgeTrap(const char* message) {
+            return wasmtime_trap_new(message, strlen(message));
+        }
+    } // namespace
     /** Creates a Core Wasm session and its Wasmtime store. */
     Session::Session(wasm_engine_t* eng, wasmtime_module_t* mod, std::string k)
         : engine(eng ? wasmtime_engine_clone(eng) : nullptr), module(mod ? wasmtime_module_clone(mod) : nullptr), key(std::move(k)) {
@@ -179,7 +232,19 @@ namespace wasmline {
      * @return Encoded invocation result.
      */
     std::string Session::invokeInbound(const char* action, size_t actionLen, const char* data, size_t dataLen) {
+        // The frame stack is checked before the mutex because a guest host callback
+        // reentering this session on the same thread would otherwise deadlock on it.
+        if (isInvocationActive(this)) {
+            return WasmlineResponseCodec::failure(WasmlineErrorCode::REENTRANT_CALL,
+                                                  "Wasmline Core session invocation cannot reenter its own session.");
+        }
+        if (actionLen > kMaxBridgeLength || dataLen > kMaxBridgeLength) {
+            return WasmlineResponseCodec::failure(WasmlineErrorCode::CORE_TRAP,
+                                                  "Wasmline Core invocation length exceeds the signed i32 bridge ABI.");
+        }
+
         std::lock_guard<std::mutex> lock(sessionMutex);
+        InvocationFrameScope invocationFrame(this);
         if (!isInitialized) {
             return WasmlineResponseCodec::failure(WasmlineErrorCode::ENGINE_NOT_INITIALIZED, "Wasmline session is not initialized.");
         }
@@ -305,8 +370,10 @@ namespace wasmline {
                                                   wasmtime_val_t* results, size_t nresults) {
         auto* self = get_session(caller);
         int32_t type = args[0].of.i32;
+        // invokeInbound rejects host lengths above INT32_MAX, so both values fit the signed bridge ABI.
+        const size_t length = (type == 0) ? self->inbound.actionLen : self->inbound.dataLen;
         results[0].kind = WASMTIME_I32;
-        results[0].of.i32 = (int32_t)(type == 0 ? self->inbound.actionLen : self->inbound.dataLen);
+        results[0].of.i32 = static_cast<int32_t>(length);
         return nullptr;
     }
 
@@ -321,18 +388,24 @@ namespace wasmline {
         if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
 
         int32_t type = args[0].of.i32;
-        int32_t wasmPtr = args[1].of.i32;
-        int32_t len = args[2].of.i32;
+        const int32_t wasmPtr = args[1].of.i32;
+        const int32_t len = args[2].of.i32;
+
+        if (len < 0) return bridgeTrap(kNegativeBridgeLengthTrap);
 
         const char* srcData = (type == 0) ? self->inbound.actionPtr : self->inbound.dataPtr;
-        size_t maxLen = (type == 0) ? self->inbound.actionLen : self->inbound.dataLen;
-
-        if (len < 0 || static_cast<size_t>(len) > maxLen) len = (int32_t)maxLen;
+        const size_t maxLen = (type == 0) ? self->inbound.actionLen : self->inbound.dataLen;
+        const size_t requested = static_cast<size_t>(len);
+        const size_t copyLen = requested < maxLen ? requested : maxLen;
+        if (copyLen == 0) return nullptr;
 
         uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);
-        if (rawMemory && srcData && len > 0) {
-            memcpy(rawMemory + wasmPtr, srcData, len);
-        }
+        const size_t memorySize = wasmtime_memory_data_size(self->context, &self->memory);
+        if (!isMemoryRangeValid(rawMemory, memorySize, static_cast<uint32_t>(wasmPtr), copyLen))
+            return bridgeTrap("Wasmline Core bridge destination range is outside the linear memory.");
+        if (!srcData) return bridgeTrap("Wasmline Core inbound value is not available.");
+
+        std::memcpy(rawMemory + static_cast<uint32_t>(wasmPtr), srcData, copyLen);
         return nullptr;
     }
 
@@ -342,38 +415,54 @@ namespace wasmline {
         auto* self = get_session(caller);
         if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
 
-        int32_t wasmPtr = args[0].of.i32;
-        int32_t len = args[1].of.i32;
+        const int32_t wasmPtr = args[0].of.i32;
+        const int32_t len = args[1].of.i32;
+        if (len < 0) return bridgeTrap(kNegativeBridgeLengthTrap);
+        if (len == 0) return nullptr;
 
-        uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);
-        if (rawMemory && len > 0) {
-            self->inbound.responseBuffer.append(reinterpret_cast<char*>(rawMemory + wasmPtr), len);
+        const uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);
+        const size_t memorySize = wasmtime_memory_data_size(self->context, &self->memory);
+        if (!isMemoryRangeValid(rawMemory, memorySize, static_cast<uint32_t>(wasmPtr), static_cast<size_t>(len)))
+            return bridgeTrap("Wasmline Core bridge source range is outside the linear memory.");
+
+        try {
+            self->inbound.responseBuffer.append(reinterpret_cast<const char*>(rawMemory + static_cast<uint32_t>(wasmPtr)),
+                                                static_cast<size_t>(len));
+        } catch (const std::exception& error) {
+            return bridgeTrap(error.what());
         }
         return nullptr;
     }
 
     /** Sends an outbound request to the host handler.
      *
-     * @note The memory views remain valid during the synchronous host call.
+     * @note The memory views are reacquired after the synchronous host call because a handler may grow the linear memory.
      * @warning The Wasm pointers and lengths must describe valid memory ranges.
      */
     wasm_trap_t* Session::bridge_outbound_call_host(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
                                                     wasmtime_val_t* results, size_t nresults) {
         Session* self = get_session(caller);
+        if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
         auto* ctx = wasmtime_caller_context(caller);
-        uint8_t* mem = wasmtime_memory_data(ctx, &self->memory);
-        size_t mem_size = wasmtime_memory_size(ctx, &self->memory);
 
-        int32_t aPtr = args[0].of.i32;
-        int32_t aLen = args[1].of.i32;
-        int32_t pPtr = args[2].of.i32;
-        int32_t pLen = args[3].of.i32;
+        const int32_t aPtr = args[0].of.i32;
+        const int32_t aLen = args[1].of.i32;
+        const int32_t pPtr = args[2].of.i32;
+        const int32_t pLen = args[3].of.i32;
 
-        int32_t outPtr = args[4].of.i32;
-        int32_t outCap = args[5].of.i32;
+        const int32_t outPtr = args[4].of.i32;
+        const int32_t outCap = args[5].of.i32;
 
-        std::string_view action(reinterpret_cast<char*>(mem + aPtr), aLen);
-        std::string_view payload(reinterpret_cast<char*>(mem + pPtr), pLen);
+        if (aLen < 0 || pLen < 0 || outCap < 0) return bridgeTrap(kNegativeBridgeLengthTrap);
+
+        const uint8_t* mem = wasmtime_memory_data(ctx, &self->memory);
+        const size_t memSize = wasmtime_memory_data_size(ctx, &self->memory);
+        if (!isMemoryRangeValid(mem, memSize, static_cast<uint32_t>(aPtr), static_cast<size_t>(aLen)) ||
+            !isMemoryRangeValid(mem, memSize, static_cast<uint32_t>(pPtr), static_cast<size_t>(pLen)))
+            return bridgeTrap("Wasmline Core bridge request range is outside the linear memory.");
+
+        const std::string_view action(reinterpret_cast<const char*>(mem + static_cast<uint32_t>(aPtr)), static_cast<size_t>(aLen));
+        const std::string_view payload(reinterpret_cast<const char*>(mem + static_cast<uint32_t>(pPtr)), static_cast<size_t>(pLen));
 
         std::string resultData;
         if (self->outbound.handler) {
@@ -388,12 +477,20 @@ namespace wasmline {
             resultData = WasmlineResponseCodec::failure(WasmlineErrorCode::ACTION_NOT_BOUND, "No Wasmline outbound action is bound.");
         }
 
-        int32_t resultSize = (int32_t)resultData.size();
+        if (resultData.size() > kMaxBridgeLength) {
+            self->outbound.responseBuffer.clear();
+            return bridgeTrap("Wasmline Core outbound result exceeds the signed i32 bridge ABI.");
+        }
+        const int32_t resultSize = static_cast<int32_t>(resultData.size());
 
         if (resultSize <= outCap) {
             if (resultSize > 0) {
-                uint8_t* current_mem = wasmtime_memory_data(ctx, &self->memory);
-                memcpy(current_mem + outPtr, resultData.data(), resultSize);
+                // The handler may have grown or replaced the linear memory, so both the base and the size are reacquired.
+                uint8_t* currentMem = wasmtime_memory_data(ctx, &self->memory);
+                const size_t currentSize = wasmtime_memory_data_size(ctx, &self->memory);
+                if (!isMemoryRangeValid(currentMem, currentSize, static_cast<uint32_t>(outPtr), static_cast<size_t>(resultSize)))
+                    return bridgeTrap("Wasmline Core bridge result range is outside the linear memory.");
+                std::memcpy(currentMem + static_cast<uint32_t>(outPtr), resultData.data(), static_cast<size_t>(resultSize));
             }
             self->outbound.responseBuffer.clear();
             results[0].of.i32 = resultSize;
@@ -409,12 +506,19 @@ namespace wasmline {
     wasm_trap_t* Session::bridge_outbound_get_response(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
                                                        wasmtime_val_t* results, size_t nresults) {
         Session* self = get_session(caller);
-        uint8_t* mem = wasmtime_memory_data(self->context, &self->memory);
-        int32_t ptr = args[0].of.i32;
+        if (!self->hasMemory) return wasmtime_trap_new("Memory not available", 20);
+        auto* ctx = wasmtime_caller_context(caller);
+        const int32_t ptr = args[0].of.i32;
+        const size_t pending = self->outbound.responseBuffer.size();
 
-        if (!self->outbound.responseBuffer.empty()) {
-            memcpy(mem + ptr, self->outbound.responseBuffer.data(), self->outbound.responseBuffer.size());
+        if (pending > 0) {
+            uint8_t* mem = wasmtime_memory_data(ctx, &self->memory);
+            const size_t memSize = wasmtime_memory_data_size(ctx, &self->memory);
+            if (!isMemoryRangeValid(mem, memSize, static_cast<uint32_t>(ptr), pending))
+                return bridgeTrap("Wasmline Core bridge result range is outside the linear memory.");
+            std::memcpy(mem + static_cast<uint32_t>(ptr), self->outbound.responseBuffer.data(), pending);
         }
+
         self->outbound.responseBuffer.clear();
         self->outbound.responseBuffer.shrink_to_fit();
         return nullptr;

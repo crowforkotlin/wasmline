@@ -20,6 +20,7 @@ For each `*.kt` file:
 | `04_multiMethod.kt` | Multiple methods |
 | `05_complexTypes.kt` | Complex types (Int, Long, String, ByteArray) |
 | `06_linkBindPattern.kt` | Link/bind usage pattern |
+| `07_inheritedService.kt` | Diamond inheritance with single- and multi-parameter calls through a bound generated bridge |
 
 ## Test Requirements
 

@@ -2,7 +2,6 @@ package crow.wasmline.plugin.core.aot
 
 import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
-import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.loader.model.WasmlineArtifactTarget
 import crow.wasmline.loader.model.WasmlineArtifactVariant

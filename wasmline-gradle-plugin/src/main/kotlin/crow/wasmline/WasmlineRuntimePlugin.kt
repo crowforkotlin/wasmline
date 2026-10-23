@@ -22,7 +22,7 @@ public class WasmlineRuntimePlugin : Plugin<Project> {
 
         target.configurations.configureEach { configuration ->
             if (configuration.isCanBeResolved) {
-                configuration.incoming.beforeResolve {
+                configuration.withDependencies {
                     configureJvmHostAttributes(configuration, operatingSystem, architecture)
                 }
             }

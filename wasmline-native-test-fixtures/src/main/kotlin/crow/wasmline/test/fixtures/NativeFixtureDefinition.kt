@@ -49,6 +49,9 @@ object NativeFixtureDefinitions {
     val all: List<NativeFixtureDefinition> = listOf(
         coreRawExport("raw-export-basic", "core/raw-export-basic.wat"),
         coreRawExport("raw-export-import-memory", "core/raw-export-import-memory.wat"),
+        coreRawExport("raw-export-duplicate-import", "core/raw-export-duplicate-import.wat"),
+        coreRawExport("raw-export-duplicate-import-mismatch", "core/raw-export-duplicate-import-mismatch.wat"),
+        coreService("core-service-bridge", "service/core-service-bridge.wat"),
         componentExport("component-direct", NativeFixtureSourceKind.COMPONENT_WASM),
         componentExport("component-typed-host", NativeFixtureSourceKind.COMPONENT_WAT, "component/typed-host-import.component.wat"),
         componentExport(
@@ -115,6 +118,16 @@ object NativeFixtureDefinitions {
             executionModel = WasmlineExecutionModel.CORE_WASM,
             invocationProtocol = WasmlineInvocationProtocol.RAW_EXPORT,
             exportName = "add",
+        ),
+    )
+
+    private fun coreService(id: String, source: String): NativeFixtureDefinition = NativeFixtureDefinition(
+        id = id,
+        sourceKind = NativeFixtureSourceKind.CORE_WAT,
+        sourceRelativePath = source,
+        runtimeContract = WasmlineRuntimeContract(
+            executionModel = WasmlineExecutionModel.CORE_WASM,
+            invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
         ),
     )
 

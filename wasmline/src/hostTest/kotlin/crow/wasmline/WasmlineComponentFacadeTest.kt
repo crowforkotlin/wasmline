@@ -1,8 +1,12 @@
 package crow.wasmline
 
 import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
+import crow.wasmline.internal.component.WasmlineComponentResourceDropResult
+import crow.wasmline.internal.component.decodeComponentResourceDropCarrier
+import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
+import crow.wasmline.invocation.WasmlineFailure
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -122,6 +126,32 @@ class WasmlineComponentFacadeTest {
         assertFailsWith<IllegalStateException> { resource.toComponentValue() }
         assertFailsWith<IllegalStateException> { resource.close() }
         assertTrue(!resource.isClosed, "A failed drop must not consume the local wrapper state.")
+    }
+
+    @Test
+    fun dropCarrierDistinguishesRejectionFromConsumedCleanupFailure() {
+        val dropped = assertIs<WasmlineCallResult.Success<ByteArray>>(
+            WasmlineTypedInvocationCodec.encodeComponentResult(WasmlineCallResult.Success(emptyList())),
+        )
+        val rejected = assertIs<WasmlineCallResult.Success<ByteArray>>(
+            WasmlineTypedInvocationCodec.encodeComponentResult(
+                WasmlineCallResult.Failure(WasmlineFailure(WasmlineErrorCode.COMPONENT_RESOURCE_INVALID, "stale carrier")),
+            ),
+        )
+        val consumed = assertIs<WasmlineCallResult.Success<ByteArray>>(
+            WasmlineTypedInvocationCodec.encodeComponentResult(
+                WasmlineCallResult.Failure(
+                    WasmlineFailure(WasmlineErrorCode.HANDLER_FAILED, "destructor failed", byteArrayOf(1)),
+                ),
+            ),
+        )
+
+        assertIs<WasmlineComponentResourceDropResult.Dropped>(decodeComponentResourceDropCarrier(dropped.value))
+        assertIs<WasmlineComponentResourceDropResult.Rejected>(decodeComponentResourceDropCarrier(rejected.value))
+        assertIs<WasmlineComponentResourceDropResult.ConsumedCleanupFailed>(
+            decodeComponentResourceDropCarrier(consumed.value),
+        )
+        assertIs<WasmlineComponentResourceDropResult.Rejected>(decodeComponentResourceDropCarrier(null))
     }
 
     private fun contract(): WasmlineComponentContract = WasmlineComponentContract(

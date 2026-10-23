@@ -1,12 +1,18 @@
 package crow.wasmline
 
-import crow.wasmline.internal.core.CoreWasmModuleImpl
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
 
 /**
- * Reports Core WebAssembly features supported by one runtime backend.
+ * Declares the Core WebAssembly feature set one runtime backend supports.
+ *
+ * This is a statement of the features the Wasmline Core ABI exposes for that
+ * backend, not a runtime probe of the host engine or browser. Instantiation
+ * compares it with `runtimeContract.rawAbi.requiredFeatures` and fails with
+ * `WASM_FEATURE_UNSUPPORTED` before creating a session. Current backends
+ * declare `multiValue`, `i64`, `bulkMemory`, and `referenceTypes` as supported,
+ * and `simd` and `threads` as unsupported.
  *
  * Date: 2026-08-25
  * Author: crowforkotlin
@@ -47,7 +53,15 @@ data class CoreWasmCapabilities(
  * Author: crowforkotlin
  */
 interface RawImportContext {
-    /** Current instance memory when one is visible to the import callback. */
+    /**
+     * Current instance memory when one is visible to the import callback.
+     *
+     * Availability is backend-defined. The browser backend builds its import
+     * functions before the instance exists, so an import invoked during
+     * instantiation, including the guest start function, receives `null` even
+     * when the module exports a memory; calls after instantiation receive the
+     * configured memory.
+     */
     val memory: RawMemory?
 
     /** Session whose Wasm invocation entered the import callback. */
@@ -84,6 +98,11 @@ class RawImport(
  * Author: crowforkotlin
  *
  * @property imports Synchronous host functions registered before instantiation.
+ *   Duplicate `(module, name)` pairs are rejected with
+ *   `IMPORT_SIGNATURE_MISMATCH`. When `runtimeContract.rawAbi.imports` declares
+ *   imports, a missing entry returns `IMPORT_MISSING`, and an undeclared entry
+ *   or a signature difference returns `IMPORT_SIGNATURE_MISMATCH`, all before
+ *   the instance exists.
  * @property exportSignatures Caller-provided signatures used when module reflection is unavailable.
  * @property memoryExportName Primary exported memory name, or `null` to expose no session memory.
  */
@@ -103,6 +122,13 @@ data class CoreWasmSessionOptions(
  *
  * Every operation refreshes backend storage before access, so a Wasm
  * `memory.grow` cannot leave this object with a stale view or data pointer.
+ * Each range is validated against the current memory size before a view is
+ * created or bytes are copied.
+ *
+ * The browser backend addresses memory with a signed 32-bit offset, so each
+ * operation rejects an offset outside `0..Int.MAX_VALUE`; the length limit and
+ * the memory-size limit are checked separately. A near-2 GiB length is neither
+ * exercised nor claimed to work.
  *
  * Date: 2026-08-25
  * Author: crowforkotlin
@@ -149,7 +175,7 @@ interface CoreWasmModule : AutoCloseable {
     /** Export inventory merged with any versioned ABI metadata. */
     val exports: List<RawExport>
 
-    /** Features supported by this module's backend. */
+    /** Feature set this backend declares for [WasmlineArtifactDescriptor] validation. */
     val capabilities: CoreWasmCapabilities
 
     /** Whether this module has been closed. */
@@ -172,8 +198,9 @@ interface CoreWasmModule : AutoCloseable {
 /**
  * Represents one isolated live instance of a [CoreWasmModule].
  *
- * A session accepts one active call at a time. Concurrent calls and import
- * callback reentry fail with stable error codes instead of blocking.
+ * A session accepts one active call at a time. Concurrent calls fail with
+ * `CONCURRENT_ACCESS`, and callback reentry fails with `REENTRANT_CALL`
+ * instead of blocking.
  *
  * Date: 2026-08-25
  * Author: crowforkotlin
@@ -191,28 +218,20 @@ interface CoreWasmSession : AutoCloseable {
     /** Finds an export by its exact name. */
     fun findExport(name: String): RawExport?
 
-    /** Invokes a scalar Core Wasm function export. */
+    /**
+     * Invokes a scalar Core Wasm function export.
+     *
+     * Returned values are checked against the export's declared result
+     * signature. A wrong result count returns `ARGUMENT_COUNT_MISMATCH`, a
+     * wrong result type returns `ARGUMENT_TYPE_MISMATCH`, and a genuine guest
+     * trap returns `WASM_TRAP`. A failing host import is reported with its own
+     * code, such as `IMPORT_HANDLER_FAILED`, and takes precedence over trap
+     * classification.
+     */
     fun invoke(exportName: String, arguments: List<RawValue> = emptyList()): WasmlineCallResult<List<RawValue>>
 
     /** Releases this instance. This operation is idempotent. */
     override fun close()
-}
-
-/** Adapts a loaded `CORE_WASM + RAW_EXPORT` handle to the module/session API. */
-internal fun createCoreWasmModule(owner: Wasmline): WasmlineCallResult<CoreWasmModule> {
-    val descriptor = owner.descriptor
-    if (descriptor.executionModel != WasmlineExecutionModel.CORE_WASM ||
-        descriptor.invocationProtocol != WasmlineInvocationProtocol.RAW_EXPORT
-    ) {
-        return coreFailure(
-            WasmlineErrorCode.INVOCATION_PROTOCOL_MISMATCH,
-            "CoreWasmModule requires CORE_WASM with RAW_EXPORT.",
-        )
-    }
-    return when (val backend = owner.createCoreWasmBackend()) {
-        is WasmlineCallResult.Failure -> backend
-        is WasmlineCallResult.Success -> WasmlineCallResult.Success(CoreWasmModuleImpl(owner, backend.value))
-    }
 }
 
 internal fun coreFailure(code: WasmlineErrorCode, message: String, details: ByteArray? = null): WasmlineCallResult.Failure =

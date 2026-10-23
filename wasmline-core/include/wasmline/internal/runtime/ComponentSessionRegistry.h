@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "wasmline/invocation/InvocationResult.h"
+#include "wasmline/runtime/ComponentResourceDrop.h"
 
 namespace wasmline {
     class ComponentHostHandler;
@@ -51,7 +52,7 @@ namespace wasmline {
                                         const std::vector<ComponentValue>& arguments);
 
         /** Drops one owned Component resource. */
-        bool dropResource(const std::string& instanceKey, const ComponentResourceReference& reference);
+        ResourceDropOutcome dropResource(const std::string& instanceKey, const ComponentResourceReference& reference);
 
         /** Creates one owned imported Host resource. */
         bool createHostResource(const std::string& instanceKey, std::string_view interfaceName, std::string_view resourceName,

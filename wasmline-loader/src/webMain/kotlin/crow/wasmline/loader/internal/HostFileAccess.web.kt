@@ -14,4 +14,4 @@ internal fun browserHostMkdirs(path: String): Boolean = false
 
 internal fun browserHostDeleteFile(path: String): Boolean = false
 
-internal fun browserHostCurrentTimeMs(): Long = 0L
+internal fun browserHostCurrentTimeMs(): Long = browserSystemEpochMsClock()

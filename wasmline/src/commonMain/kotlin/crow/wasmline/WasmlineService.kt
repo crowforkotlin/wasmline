@@ -16,6 +16,9 @@ package crow.wasmline
  * Multi-parameter methods are supported. Parameters are encoded as a
  * positional structure through a shared runtime serializer, producing
  * a single payload with one encode/decode round-trip.
+ * Inherited methods, including diamond inheritance, use the child contract's
+ * action namespace. The same restrictions apply to declared and inherited
+ * methods; inherited overloads are rejected.
  *
  * The compiler plugin validates these rules, generates one internal
  * `*_WasmlineBridge` per contract, and rewrites typed `link()` / `bind()`

@@ -17,6 +17,8 @@ import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.WasmlineRawCallResult
 import crow.wasmline.WasmlineRuntime
+import crow.wasmline.callResult
+import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.core.CoreWasmNativeCodec
 import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
 import crow.wasmline.invocation.WasmlineCallResult
@@ -86,6 +88,251 @@ class NativeDirectInvocationTest {
                 assertEquals(WasmlineErrorCode.WASM_TRAP, trapFailure.failure.code)
             } finally {
                 handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun coreServiceBridgeAcceptsNormalAndBoundaryInvocations() {
+        val artifact = copyAotCoreServiceFixture()
+        try {
+            val handle = loadAotCoreService(artifact)
+            try {
+                // 'A': both inbound transfer paths, entry sizes and copied action bytes.
+                val action = "A-normal-arm"
+                val data = "payload-1234"
+                val normal = assertIs<WasmlineCallResult.Success<ByteArray>>(handle.callResult(action, data.encodeToByteArray()))
+                assertEquals(20, normal.value.size)
+                assertEquals(data.length, readInt32(normal.value, 0))
+                assertEquals(action.length, readInt32(normal.value, 4))
+                assertContentEquals(action.encodeToByteArray().copyOfRange(0, 12), normal.value.copyOfRange(8, 20))
+
+                // 'E': the requested length exceeds the available host data and is clamped.
+                val clamped = assertIs<WasmlineCallResult.Success<ByteArray>>(handle.callResult("E", "abc".encodeToByteArray()))
+                assertContentEquals("abc".encodeToByteArray(), clamped.value)
+
+                // 'D': the copy ends exactly at the end of the linear memory.
+                val tail = assertIs<WasmlineCallResult.Success<ByteArray>>(handle.callResult("D", "wxyz".encodeToByteArray()))
+                assertContentEquals("wxyz".encodeToByteArray(), tail.value)
+
+                // 'H': a zero-length copy at the exact memory end stays legal.
+                val zeroTail = assertIs<WasmlineCallResult.Success<ByteArray>>(handle.callResult("H", "abcd".encodeToByteArray()))
+                assertContentEquals("abcd".encodeToByteArray(), zeroTail.value)
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun coreServiceBridgeReturnsMissingResponseForEmptyResponse() {
+        val artifact = copyAotCoreServiceFixture()
+        try {
+            val handle = loadAotCoreService(artifact)
+            try {
+                // 'Z' publishes an empty response, which keeps the existing missing-response failure.
+                val result = assertIs<WasmlineCallResult.Failure>(handle.callResult("Z"))
+                assertEquals(WasmlineErrorCode.RESPONSE_MISSING, result.failure.code)
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun coreServiceBridgeRejectsSameSessionCallbackReentry() {
+        val artifact = copyAotCoreServiceFixture()
+        try {
+            val handle = loadAotCoreService(artifact)
+            var reentryFailure: WasmlineFailure? = null
+            var observedAction: String? = null
+            try {
+                handle.setOutbound(
+                    WasmlineHostDispatcher { action, payload ->
+                        observedAction = action
+                        // The guest copies this result into its scratch buffer and republishes it
+                        // as its own response payload, so the nested frame is decoded below.
+                        when (val reentry = handle.callResult("A")) {
+                            is WasmlineCallResult.Success -> reentry.value
+
+                            is WasmlineCallResult.Failure -> {
+                                reentryFailure = reentry.failure
+                                payload
+                            }
+                        }
+                    },
+                )
+                val result = assertIs<WasmlineCallResult.Success<ByteArray>>(handle.callResult("B", "data".encodeToByteArray()))
+                assertEquals("B", observedAction)
+                assertEquals(WasmlineErrorCode.REENTRANT_CALL, requireNotNull(reentryFailure).code)
+                assertContentEquals("data".encodeToByteArray(), result.value)
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun coreServiceBridgeRejectsMalformedGuestRanges() {
+        val artifact = copyAotCoreServiceFixture()
+        try {
+            val handle = loadAotCoreService(artifact)
+            try {
+                handle.setOutbound(WasmlineHostDispatcher { _, payload -> payload })
+                // Arm 'X' only reaches the slow-path copy when the raw echo result exceeds
+                // its 4-byte scratch capacity, so it receives a 16-byte payload.
+                val malformed = linkedMapOf(
+                    "N" to ByteArray(4) { 0x4E },
+                    "O" to ByteArray(4) { 0x4F },
+                    "P" to ByteArray(4) { 0x50 },
+                    "Q" to ByteArray(4) { 0x51 },
+                    "R" to ByteArray(4) { 0x52 },
+                    "S" to ByteArray(4) { 0x53 },
+                    "T" to ByteArray(4) { 0x54 },
+                    "U" to ByteArray(4) { 0x55 },
+                    "V" to ByteArray(4) { 0x56 },
+                    "W" to ByteArray(4) { 0x57 },
+                    "X" to ByteArray(16) { 0x58 },
+                    "Y" to ByteArray(4) { 0x59 },
+                )
+                malformed.forEach { (arm, payload) ->
+                    val failure = assertIs<WasmlineCallResult.Failure>(
+                        handle.callResult(arm, payload),
+                        "arm '$arm' must be rejected before any host copy",
+                    )
+                    assertEquals(
+                        WasmlineErrorCode.CORE_TRAP,
+                        failure.failure.code,
+                        "arm '$arm' must report CORE_TRAP",
+                    )
+                }
+
+                // The session stays usable once the malformed invocation is rejected.
+                // Arm 'A' publishes u32(data size), u32(action size), then action[0..12].
+                val recovered = assertIs<WasmlineCallResult.Success<ByteArray>>(handle.callResult("A"))
+                assertEquals(20, recovered.value.size)
+                assertEquals(0, readInt32(recovered.value, 0))
+                assertEquals(1, readInt32(recovered.value, 4))
+                assertEquals('A'.code.toByte(), recovered.value[8])
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun coreServiceBridgeAllowsOuterToInnerButRejectsInnerReturningToOuter() {
+        val outerArtifact = copyAotCoreServiceFixture()
+        val innerArtifact = copyAotCoreServiceFixture()
+        try {
+            val outer = loadAotCoreService(outerArtifact)
+            val inner = loadAotCoreService(innerArtifact)
+            var innerFailure: WasmlineFailure? = null
+            var outerReentryFailure: WasmlineFailure? = null
+            try {
+                // The inner session forwards to the outer session while the outer
+                // invocation is still active.
+                inner.setOutbound(
+                    WasmlineHostDispatcher { _, payload ->
+                        outerReentryFailure = assertIs<WasmlineCallResult.Failure>(outer.callResult("A")).failure
+                        payload
+                    },
+                )
+                // A -> callback -> B is a legal forward call across two live sessions.
+                outer.setOutbound(
+                    WasmlineHostDispatcher { _, payload ->
+                        when (val forwarded = inner.callResult("B", payload)) {
+                            is WasmlineCallResult.Success -> forwarded.value
+
+                            is WasmlineCallResult.Failure -> {
+                                innerFailure = forwarded.failure
+                                payload
+                            }
+                        }
+                    },
+                )
+
+                val result = assertIs<WasmlineCallResult.Success<ByteArray>>(outer.callResult("B", "chain".encodeToByteArray()))
+
+                assertEquals(null, innerFailure, "a forward A -> B call must be allowed")
+                assertContentEquals("chain".encodeToByteArray(), result.value)
+                assertEquals(
+                    WasmlineErrorCode.REENTRANT_CALL,
+                    requireNotNull(outerReentryFailure).code,
+                    "returning into the still-active outer session must be rejected",
+                )
+
+                // Both sessions stay usable after the rejected chain return.
+                assertIs<WasmlineCallResult.Success<ByteArray>>(outer.callResult("A"))
+                assertIs<WasmlineCallResult.Success<ByteArray>>(inner.callResult("A"))
+            } finally {
+                outer.close()
+                inner.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            outerArtifact.delete()
+            innerArtifact.delete()
+        }
+    }
+
+    @Test
+    fun identicalArtifactsHaveIndependentHandlesAndSessionLifecycles() {
+        val artifact = copyAotCoreFixture()
+        try {
+            WasmlineRuntime.shutdown()
+            wasmlineResetAotLoadPathDiagnostics()
+            val first = loadAotCore(artifact)
+            val second = loadAotCore(artifact)
+            try {
+                val firstModule = first.asCoreWasmModule().getOrThrow()
+                val secondModule = second.asCoreWasmModule().getOrThrow()
+                val firstSession = firstModule.instantiate().getOrThrow()
+                val secondSession = secondModule.instantiate().getOrThrow()
+                first.close()
+                first.close()
+                assertTrue(firstModule.isClosed)
+                assertTrue(firstSession.isClosed)
+                assertEquals(
+                    WasmlineErrorCode.SESSION_CLOSED,
+                    assertIs<WasmlineCallResult.Failure>(first.asCoreWasmModule()).failure.code,
+                )
+                assertEquals(
+                    listOf(RawValue.I32(42)),
+                    secondSession.invoke("add", listOf(RawValue.I32(19), RawValue.I32(23))).getOrThrow(),
+                )
+                secondModule.instantiate().getOrThrow().use { replacement ->
+                    assertEquals(
+                        listOf(RawValue.I32(7)),
+                        replacement.invoke("add", listOf(RawValue.I32(3), RawValue.I32(4))).getOrThrow(),
+                    )
+                }
+                assertEquals(1, wasmlineAotLoadPathDiagnostics().coreDeserializeSuccesses)
+                val third = loadAotCore(artifact)
+                try {
+                    first.close()
+                    assertEquals(listOf(RawValue.I32(9)), invokeRawValues(third, "add", RawValue.I32(4), RawValue.I32(5)))
+                } finally {
+                    third.close()
+                }
+            } finally {
+                first.close()
+                second.close()
             }
         } finally {
             WasmlineRuntime.shutdown()
@@ -166,8 +413,9 @@ class NativeDirectInvocationTest {
         val importedArtifact = copyAotCoreImportFixture()
         val basicArtifact = copyAotCoreFixture()
         try {
-            val importedHandle = loadAotCore(importedArtifact)
-            val basicHandle = loadAotCore(basicArtifact)
+            platformWasmlineRuntimeCapabilities()
+            JniWasmlineBindings.loadModule(importedArtifact.path, importedArtifact.path, coreAotFormat(importedArtifact.name)).getOrThrow()
+            JniWasmlineBindings.loadModule(basicArtifact.path, basicArtifact.path, coreAotFormat(basicArtifact.name)).getOrThrow()
             var explicitCreated = false
             try {
                 val importSignature = RawFunctionSignature(
@@ -193,14 +441,19 @@ class NativeDirectInvocationTest {
                 explicitCreated = true
 
                 val implicitFailure = assertIs<WasmlineCallResult.Failure>(
-                    basicHandle.invokeRawResult(
-                        exportName = "call_host",
-                        arguments = listOf(RawValue.I32(2), RawValue.I32(3)),
+                    WasmlineTypedInvocationCodec.decodeRawValues(
+                        requireNotNull(
+                            JniWasmlineBindings.invokeRaw(
+                                basicArtifact.path,
+                                "call_host",
+                                WasmlineTypedInvocationCodec.encodeRawArguments(listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow(),
+                            ),
+                        ),
                     ),
                 )
                 assertEquals(WasmlineErrorCode.EXPORT_NOT_FOUND, implicitFailure.failure.code)
 
-                basicHandle.close()
+                JniWasmlineBindings.releaseModule(basicArtifact.path)
                 val explicitArguments = assertIs<WasmlineCallResult.Success<ByteArray>>(
                     WasmlineTypedInvocationCodec.encodeRawArguments(listOf(RawValue.I64(2), RawValue.I64(3))),
                 ).value
@@ -215,8 +468,8 @@ class NativeDirectInvocationTest {
                 )
             } finally {
                 if (explicitCreated) JniWasmlineBindings.coreReleaseSession(basicArtifact.path)
-                basicHandle.close()
-                importedHandle.close()
+                JniWasmlineBindings.releaseModule(basicArtifact.path)
+                JniWasmlineBindings.releaseModule(importedArtifact.path)
             }
         } finally {
             WasmlineRuntime.shutdown()
@@ -440,6 +693,124 @@ class NativeDirectInvocationTest {
                 }
             } finally {
                 module.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    /** Verifies a guest may import one host function twice and both occurrences reach the single handler. */
+    @Test
+    fun duplicateGuestImportsShareOneHostDefinition() {
+        val artifact = copyAotDuplicateImportFixture()
+        try {
+            val handle = loadAotCore(artifact)
+            val module = assertIs<WasmlineCallResult.Success<crow.wasmline.CoreWasmModule>>(handle.asCoreWasmModule()).value
+            try {
+                val invoked = mutableListOf<List<RawValue>>()
+                val session = assertIs<WasmlineCallResult.Success<crow.wasmline.CoreWasmSession>>(
+                    module.instantiate(
+                        CoreWasmSessionOptions(
+                            imports = listOf(
+                                rawImport { _, values ->
+                                    invoked += values
+                                    WasmlineCallResult.Success(
+                                        listOf(
+                                            RawValue.I32(
+                                                (values[0] as RawValue.I32).value + (values[1] as RawValue.I32).value,
+                                            ),
+                                        ),
+                                    )
+                                },
+                            ),
+                        ),
+                    ),
+                ).value
+                try {
+                    assertEquals(
+                        listOf(RawValue.I32(5)),
+                        assertIs<WasmlineCallResult.Success<List<RawValue>>>(
+                            session.invoke("call_host_first", listOf(RawValue.I32(2), RawValue.I32(3))),
+                        ).value,
+                    )
+                    assertEquals(
+                        listOf(RawValue.I32(42)),
+                        assertIs<WasmlineCallResult.Success<List<RawValue>>>(
+                            session.invoke("call_host_second", listOf(RawValue.I32(40), RawValue.I32(2))),
+                        ).value,
+                    )
+                    assertEquals<List<List<RawValue>>>(
+                        listOf(listOf(RawValue.I32(2), RawValue.I32(3)), listOf(RawValue.I32(40), RawValue.I32(2))),
+                        invoked,
+                        "both guest import occurrences must dispatch to the single registered handler",
+                    )
+                } finally {
+                    session.close()
+                }
+            } finally {
+                module.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    /** Verifies every repeated guest import occurrence is still checked against the host signature. */
+    @Test
+    fun duplicateGuestImportWithMismatchedSignatureFailsInstantiation() {
+        val artifact = copyAotDuplicateImportMismatchFixture()
+        try {
+            val handle = loadAotCore(artifact)
+            val module = assertIs<WasmlineCallResult.Success<crow.wasmline.CoreWasmModule>>(handle.asCoreWasmModule()).value
+            try {
+                val failure = assertIs<WasmlineCallResult.Failure>(
+                    module.instantiate(CoreWasmSessionOptions(imports = listOf(rawImport()))),
+                )
+                assertEquals(WasmlineErrorCode.IMPORT_SIGNATURE_MISMATCH, failure.failure.code)
+            } finally {
+                module.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    /** Verifies duplicate host definitions for one module/name pair are still rejected by the native linker path. */
+    @Test
+    fun duplicateHostDefinitionsRemainRejected() {
+        val artifact = copyAotDuplicateImportFixture()
+        val sessionKey = artifact.path + "#duplicate-host"
+        try {
+            JniWasmlineBindings.loadModule(artifact.path, artifact.path, coreAotFormat(artifact.name)).getOrThrow()
+            try {
+                val dispatcher = object {
+                    @Suppress("UNUSED_PARAMETER")
+                    fun dispatchRaw(module: String, name: String, arguments: ByteArray): ByteArray = byteArrayOf()
+                }
+                val created = WasmlineTypedInvocationCodec.decodeRawValues(
+                    requireNotNull(
+                        JniWasmlineBindings.coreCreateSession(
+                            artifactKey = artifact.path,
+                            sessionKey = sessionKey,
+                            imports = CoreWasmNativeCodec.encodeImports(listOf(rawImport(), rawImport())),
+                            dispatcher = dispatcher,
+                            memoryExportName = "memory",
+                        ),
+                    ),
+                )
+                try {
+                    assertEquals(
+                        WasmlineErrorCode.IMPORT_SIGNATURE_MISMATCH,
+                        assertIs<WasmlineCallResult.Failure>(created).failure.code,
+                    )
+                } finally {
+                    if (created is WasmlineCallResult.Success) JniWasmlineBindings.coreReleaseSession(sessionKey)
+                }
+            } finally {
+                JniWasmlineBindings.releaseModule(artifact.path)
             }
         } finally {
             WasmlineRuntime.shutdown()
@@ -743,6 +1114,33 @@ class NativeDirectInvocationTest {
     private fun copyAotCoreFixture(): File = NativeFixtureTestSupport.copy("raw-export-basic")
 
     private fun copyAotCoreImportFixture(): File = NativeFixtureTestSupport.copy("raw-export-import-memory")
+
+    private fun copyAotDuplicateImportFixture(): File = NativeFixtureTestSupport.copy("raw-export-duplicate-import")
+
+    private fun copyAotDuplicateImportMismatchFixture(): File = NativeFixtureTestSupport.copy("raw-export-duplicate-import-mismatch")
+
+    private fun copyAotCoreServiceFixture(): File = NativeFixtureTestSupport.copy("core-service-bridge")
+
+    /** Loads one CORE_WASM + WASMLINE_SERVICE AOT fixture behind the Core Service facade. */
+    private fun loadAotCoreService(artifact: File): crow.wasmline.Wasmline {
+        val state = platformWasmlineLoadArtifact(
+            descriptor = nativeTestArtifactDescriptor(
+                path = artifact.absolutePath,
+                artifactFormat = coreAotFormat(artifact.name),
+                runtime = platformWasmlineRuntimeCapabilities(),
+                executionModel = WasmlineExecutionModel.CORE_WASM,
+                invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE,
+            ),
+            config = WasmlineConfig(supportConcurrent = false),
+        )
+        return assertIs<WasmlineLoadState.Success>(state).wasmline
+    }
+
+    /** Reads one little-endian i32 out of a guest response payload. */
+    private fun readInt32(payload: ByteArray, offset: Int): Int = (payload[offset].toInt() and 0xFF) or
+        ((payload[offset + 1].toInt() and 0xFF) shl 8) or
+        ((payload[offset + 2].toInt() and 0xFF) shl 16) or
+        ((payload[offset + 3].toInt() and 0xFF) shl 24)
 
     /** Invokes a direct raw export and returns its successful values. */
     private fun invokeRawValues(handle: crow.wasmline.Wasmline, exportName: String, vararg arguments: RawValue): List<RawValue> =

@@ -104,8 +104,8 @@ namespace wasmline {
         InvocationResult invokeComponentInstance(const std::string& instanceKey, std::string_view exportName,
                                                  const std::vector<ComponentValue>& arguments);
 
-        /** Drops one Component resource. */
-        bool dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference);
+        /** Drops one Component resource and reports its exact outcome. */
+        ResourceDropOutcome dropComponentResource(const std::string& instanceKey, const ComponentResourceReference& reference);
 
         /** Creates one imported Host resource. */
         bool createComponentHostResource(const std::string& instanceKey, std::string_view interfaceName, std::string_view resourceName,

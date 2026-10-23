@@ -4,6 +4,7 @@ import crow.wasmline.RawAbiMetadata
 import crow.wasmline.RawExport
 import crow.wasmline.RawExportKind
 import crow.wasmline.RawFunctionSignature
+import crow.wasmline.RawImportDeclaration
 import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
@@ -35,6 +36,16 @@ wasmline {
                 RawExport(
                     name = "add_i32",
                     kind = RawExportKind.FUNCTION,
+                    signature = RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                ),
+            ),
+            imports = listOf(
+                RawImportDeclaration(
+                    module = "wasi_snapshot_preview1",
+                    name = "random_get",
                     signature = RawFunctionSignature(
                         parameters = listOf(RawValueType.I32, RawValueType.I32),
                         results = listOf(RawValueType.I32),

@@ -7,6 +7,7 @@
 
 #include "wasmline/invocation/TypedInvocationCodec.h"
 
+#include <cstddef>
 #include <cstring>
 #include <memory>
 #include <utility>
@@ -16,6 +17,12 @@ namespace wasmline {
         constexpr uint32_t kMaxCollectionSize = 1'000'000;
         constexpr uint32_t kMaxStringSize = 16 * 1024 * 1024;
         constexpr uint32_t kMaxDepth = 64;
+        /** Smallest encoded size of one component value: its type tag plus at least one payload byte. */
+        constexpr size_t kMinValueBytes = 2;
+        /** Smallest encoded size of one string: its length prefix. */
+        constexpr size_t kMinStringBytes = sizeof(uint32_t);
+        /** Smallest encoded size of one raw scalar: its tag plus an i32 or f32 payload. */
+        constexpr size_t kMinRawValueBytes = 1 + sizeof(uint32_t);
 
         /** Reads bounded little-endian values from an invocation payload. */
         class Reader {
@@ -54,6 +61,9 @@ namespace wasmline {
             }
 
             bool empty() const { return position_ == size_; }
+
+            /** Returns the number of unread bytes. */
+            size_t remaining() const { return size_ - position_; }
 
         private:
             const uint8_t* data_;
@@ -170,10 +180,21 @@ namespace wasmline {
 
         bool decodeComponentValue(Reader& reader, ComponentValue* value, std::string* error, uint32_t depth);
 
-        /** Reads a collection size and enforces the nesting limit. */
-        bool decodeCollectionCount(Reader& reader, uint32_t* count, std::string* error, uint32_t depth) {
-            if (depth > kMaxDepth || !readLength(reader, kMaxCollectionSize, count, error)) {
-                if (error && depth > kMaxDepth) *error = "Typed invocation value nesting is too deep.";
+        /**
+         * Reads a collection size, enforcing the nesting limit and payload feasibility.
+         *
+         * Each declared item occupies at least minimumItemBytes, so a count larger than
+         * remaining() / minimumItemBytes cannot be satisfied and is rejected before any
+         * caller reserves capacity for it.
+         */
+        bool decodeCollectionCount(Reader& reader, uint32_t* count, size_t minimumItemBytes, std::string* error, uint32_t depth) {
+            if (depth > kMaxDepth) {
+                if (error) *error = "Typed invocation value nesting is too deep.";
+                return false;
+            }
+            if (!readLength(reader, kMaxCollectionSize, count, error)) return false;
+            if (*count > reader.remaining() / minimumItemBytes) {
+                if (error) *error = "Typed invocation collection is truncated.";
                 return false;
             }
             return true;
@@ -254,7 +275,7 @@ namespace wasmline {
             case ValueTag::LIST:
             case ValueTag::TUPLE: {
                 uint32_t count = 0;
-                if (!decodeCollectionCount(reader, &count, error, depth)) return false;
+                if (!decodeCollectionCount(reader, &count, kMinValueBytes, error, depth)) return false;
                 ComponentList values;
                 values.reserve(count);
                 for (uint32_t index = 0; index < count; ++index) {
@@ -268,7 +289,7 @@ namespace wasmline {
             }
             case ValueTag::RECORD: {
                 uint32_t count = 0;
-                if (!decodeCollectionCount(reader, &count, error, depth)) return false;
+                if (!decodeCollectionCount(reader, &count, kMinStringBytes + kMinValueBytes, error, depth)) return false;
                 ComponentRecord fields;
                 fields.reserve(count);
                 for (uint32_t index = 0; index < count; ++index) {
@@ -330,7 +351,7 @@ namespace wasmline {
             }
             case ValueTag::FLAGS: {
                 uint32_t count = 0;
-                if (!decodeCollectionCount(reader, &count, error, depth)) return false;
+                if (!decodeCollectionCount(reader, &count, kMinStringBytes, error, depth)) return false;
                 ComponentFlags names;
                 names.reserve(count);
                 for (uint32_t index = 0; index < count; ++index) {
@@ -343,7 +364,7 @@ namespace wasmline {
             }
             case ValueTag::MAP: {
                 uint32_t count = 0;
-                if (!decodeCollectionCount(reader, &count, error, depth)) return false;
+                if (!decodeCollectionCount(reader, &count, 2 * kMinValueBytes, error, depth)) return false;
                 ComponentMap entries;
                 entries.reserve(count);
                 for (uint32_t index = 0; index < count; ++index) {
@@ -387,8 +408,8 @@ namespace wasmline {
             }
         }
 
-        bool decodeHeader(Reader& reader, uint32_t* count, std::string* error) {
-            return decodeCollectionCount(reader, count, error, 0);
+        bool decodeHeader(Reader& reader, uint32_t* count, size_t minimumItemBytes, std::string* error) {
+            return decodeCollectionCount(reader, count, minimumItemBytes, error, 0);
         }
 
         bool readResultDetails(Reader& reader, std::vector<uint8_t>* details, std::string* error) {
@@ -588,7 +609,7 @@ namespace wasmline {
         if (!values) return false;
         Reader reader(input);
         uint32_t count = 0;
-        if (!decodeHeader(reader, &count, error)) return false;
+        if (!decodeHeader(reader, &count, kMinRawValueBytes, error)) return false;
         values->clear();
         values->reserve(count);
         for (uint32_t index = 0; index < count; ++index) {
@@ -635,7 +656,7 @@ namespace wasmline {
         if (!values) return false;
         Reader reader(input);
         uint32_t count = 0;
-        if (!decodeHeader(reader, &count, error)) return false;
+        if (!decodeHeader(reader, &count, kMinValueBytes, error)) return false;
         values->clear();
         values->reserve(count);
         for (uint32_t index = 0; index < count; ++index) {
@@ -670,7 +691,7 @@ namespace wasmline {
         std::vector<uint8_t> details;
         uint32_t valueCount = 0;
         if (!reader.readByte(&status) || !reader.readByte(&kind) || !reader.readU32(&rawCode) || !readString(reader, &message, error) ||
-            !readResultDetails(reader, &details, error) || !decodeHeader(reader, &valueCount, error)) {
+            !readResultDetails(reader, &details, error) || !decodeHeader(reader, &valueCount, kMinRawValueBytes, error)) {
             if (error && error->empty()) *error = "Typed raw invocation response is truncated.";
             return false;
         }
@@ -745,7 +766,7 @@ namespace wasmline {
         std::vector<uint8_t> details;
         uint32_t valueCount = 0;
         if (!reader.readByte(&status) || !reader.readByte(&kind) || !reader.readU32(&rawCode) || !readString(reader, &message, error) ||
-            !readResultDetails(reader, &details, error) || !decodeHeader(reader, &valueCount, error)) {
+            !readResultDetails(reader, &details, error) || !decodeHeader(reader, &valueCount, kMinValueBytes, error)) {
             if (error && error->empty()) *error = "Typed Component invocation response is truncated.";
             return false;
         }

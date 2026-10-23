@@ -118,7 +118,7 @@ internal object WasmlineResponseCodec {
         return result
     }
 
-    private fun hasMagic(bytes: ByteArray): Boolean = MAGIC.indices.all { bytes[it] == MAGIC[it] }
+    private fun hasMagic(bytes: ByteArray): Boolean = bytes.size >= MAGIC.size && MAGIC.indices.all { bytes[it] == MAGIC[it] }
 
     private fun readUInt32(bytes: ByteArray, offset: Int): Long = (bytes[offset].toLong() and 0xFF) or
         ((bytes[offset + 1].toLong() and 0xFF) shl 8) or
@@ -156,6 +156,11 @@ private fun ByteArray.isValidUtf8(): Boolean {
                 if (!secondValid || !thirdValid) {
                     return false
                 }
+                index += 3
+            }
+
+            first == 0xED -> {
+                if (!isByteInRange(index + 1, 0x80..0x9F) || !isContinuation(index + 2)) return false
                 index += 3
             }
 
@@ -201,6 +206,7 @@ private fun ByteArray.isValidUtf8(): Boolean {
 }
 
 private fun ByteArray.isContinuation(index: Int): Boolean {
+    if (index !in indices) return false
     val value = this[index].toInt() and 0xFF
     return value in 0x80..0xBF
 }

@@ -7,8 +7,11 @@ import crow.wasmline.internal.bridge.WasmlineHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentBindings
 import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.component.WasmlineComponentResourceDropResult
+import crow.wasmline.internal.component.decodeComponentResourceDropCarrier
 import crow.wasmline.internal.core.CoreWasmBackendModule
 import crow.wasmline.internal.invocation.WasmlineTypedInvocationCodec
+import crow.wasmline.internal.runtime.WasmlineHandleState
 import crow.wasmline.internal.service.WasmlineHostServiceRegistry
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
@@ -20,6 +23,8 @@ actual class Wasmline internal actual constructor(
     actual val config: WasmlineConfig,
     actual val descriptor: WasmlineArtifactDescriptor,
 ) {
+    private val lifecycle = WasmlineHandleState(this)
+
     internal actual val hostServiceRegistry: WasmlineHostServiceRegistry = WasmlineHostServiceRegistry()
     internal actual val componentModuleState: WasmlineComponentModuleState = WasmlineComponentModuleState(this)
 
@@ -29,10 +34,12 @@ actual class Wasmline internal actual constructor(
         WasmlineComponentBindings.bindService(this, handler)
 
     internal actual fun setOutbound(dispatcher: WasmlineHostDispatcher) {
+        check(!lifecycle.isClosed) { "Wasmline handle is closed." }
         JniWasmlineBindings.setOutboundHandler(moduleKey, config.serialization.factoryId, dispatcher)
     }
 
     internal actual fun setComponentHostDispatcher(dispatcher: WasmlineComponentHostDispatcher) {
+        check(!lifecycle.isClosed) { "Wasmline handle is closed." }
         check(JniWasmlineBindings.setComponentHostHandler(moduleKey, dispatcher)) {
             "Failed to install the typed Component host dispatcher for '$moduleKey'."
         }
@@ -46,7 +53,7 @@ actual class Wasmline internal actual constructor(
 
     internal actual fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> = createJniCoreWasmBackend(moduleKey, descriptor)
 
-    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = createCoreWasmModule(this)
+    actual fun asCoreWasmModule(): WasmlineCallResult<CoreWasmModule> = lifecycle.coreModule()
 
     internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         decodeNativeCarrier(JniWasmlineBindings.invokeComponent(moduleKey, exportName, arguments))
@@ -62,9 +69,15 @@ actual class Wasmline internal actual constructor(
 
     internal actual fun releaseComponentInstance(instanceKey: String) = JniWasmlineBindings.releaseComponentInstance(instanceKey)
 
-    internal actual fun dropComponentResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean {
-        val encoded = WasmlineTypedInvocationCodec.encodeComponentArguments(listOf(reference))
-        return encoded is WasmlineCallResult.Success && JniWasmlineBindings.dropComponentResource(instanceKey, encoded.value)
+    internal actual fun dropComponentResource(
+        instanceKey: String,
+        reference: WasmlineComponentValue.ResourceValue,
+    ): WasmlineComponentResourceDropResult {
+        val encoded = when (val carrier = WasmlineTypedInvocationCodec.encodeComponentArguments(listOf(reference))) {
+            is WasmlineCallResult.Failure -> return WasmlineComponentResourceDropResult.Rejected(carrier.failure)
+            is WasmlineCallResult.Success -> carrier.value
+        }
+        return decodeComponentResourceDropCarrier(JniWasmlineBindings.dropComponentResource(instanceKey, encoded))
     }
 
     internal actual fun createComponentHostResource(
@@ -77,6 +90,8 @@ actual class Wasmline internal actual constructor(
     )
 
     actual fun close() {
+        if (!lifecycle.beginClose()) return
+        lifecycle.closeCoreModule()
         componentModuleState.close()
         hostServiceRegistry.clear()
         JniWasmlineBindings.releaseModule(moduleKey)
@@ -198,7 +213,6 @@ internal actual fun platformWasmlineLoadArtifact(descriptor: WasmlineArtifactDes
                 if (!artifactFile.exists()) return null
                 return ResolvedPrecompiledArtifact(
                     artifactPath = artifactFile.path,
-                    moduleKey = artifactFile.path,
                 )
             }
 

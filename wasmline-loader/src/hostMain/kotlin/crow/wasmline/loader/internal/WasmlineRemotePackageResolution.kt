@@ -5,7 +5,6 @@ package crow.wasmline.loader.internal
 import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineLog
 import crow.wasmline.invocation.WasmlineErrorCode
-import crow.wasmline.loader.VerifiedPackageArtifact
 import crow.wasmline.loader.WasmlineCache
 import crow.wasmline.loader.WasmlineLoadRequest
 import crow.wasmline.loader.WasmlineNoOpCache
@@ -218,8 +217,9 @@ internal object WasmlineRemotePackageResolution {
             }
         }
 
+        val descriptor = selected.toDescriptor(localPath, manifest.runtimeContract)
         return WasmlineSourceResolution.ContinueWith(
-            VerifiedPackageArtifact(selected.toDescriptor(localPath, manifest.runtimeContract)),
+            WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor),
         )
     }
 

@@ -126,9 +126,14 @@ namespace wasmline {
         return session->invoke(exportName, arguments);
     }
 
-    bool ComponentSessionRegistry::dropResource(const std::string& instanceKey, const ComponentResourceReference& reference) {
+    ResourceDropOutcome ComponentSessionRegistry::dropResource(const std::string& instanceKey,
+                                                               const ComponentResourceReference& reference) {
         const auto session = findExplicit(instanceKey);
-        return session && session->dropResource(reference);
+        if (!session) {
+            return ResourceDropOutcome::rejected(WasmlineErrorCode::SESSION_CLOSED,
+                                                 "Component instance is not initialized or has been closed.");
+        }
+        return session->dropResource(reference);
     }
 
     bool ComponentSessionRegistry::createHostResource(const std::string& instanceKey, std::string_view interfaceName,

@@ -26,6 +26,7 @@ internal class CoreWasmSessionImpl(
     override val module: CoreWasmModule,
     internal val options: CoreWasmSessionOptions,
     private val lock: WasmlineRuntimeLock,
+    private val onClosed: (CoreWasmSessionImpl) -> Unit,
 ) : CoreWasmSession {
     private var backend: CoreWasmBackendSession? = null
     private var closed = false
@@ -209,7 +210,11 @@ internal class CoreWasmSessionImpl(
                 backend.also { backend = null }
             }
         } ?: return
-        active.close()
+        try {
+            active.close()
+        } finally {
+            onClosed(this)
+        }
     }
 
     private fun beginExternalMemoryAccess(): WasmlineFailure? = lock.withLock {

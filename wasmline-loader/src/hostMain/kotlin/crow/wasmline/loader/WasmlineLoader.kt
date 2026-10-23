@@ -6,7 +6,6 @@ import crow.wasmline.WasmlineLoadFailure
 import crow.wasmline.WasmlineLoadResult
 import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineLoadState
-import crow.wasmline.invocation.WasmlineErrorCode
 
 /**
  * Primary entry point for resolving and loading Wasmline modules on the host side.

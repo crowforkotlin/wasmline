@@ -110,6 +110,8 @@ Before either action:
 
 The GitHub Actions CI workflow has no publication or release jobs; a successful CI run is not a release. Formal publication is implemented by `.github/workflows/release.yml`, which runs only for a validated `release-x.y.z.v` tag. It publishes Maven artifacts, then creates the matching GitHub Release with `aot-compatibility.json` and its checksum. The local `scripts/release.sh` validates inputs and prepares release notes/assets but never creates tags or publishes artifacts.
 
+The Linux job verifies native AOT, JVM tests, and dynamic plugin tests, then transfers its JVM and Android engine libraries to the publisher. The iOS simulator Pulley gate runs separately on macOS. Publication uses one macOS job because the Kotlin builds declare Apple targets only on macOS; publishing root metadata on Linux would omit those target variants. Before the single `publishToMavenCentral` invocation, the workflow verifies the expected Apple targets in each root `.module` file. A Linux `--dry-run` or local publication cannot verify Apple compilation, linking, or publication.
+
 ## Change Scenarios
 
 | Change | `wasmline_version` | `wasmtime_version` | Native rebuild |

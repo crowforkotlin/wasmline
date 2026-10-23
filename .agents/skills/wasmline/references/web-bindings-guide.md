@@ -6,7 +6,7 @@ manual commands unless the user explicitly requests their execution.
 
 Reference for the Kotlin/JS and Kotlin/WasmJS host runtime. Read it before changing `webMain`, `jsMain`, `wasmJsMain`, or `webTest` under `wasmline/`.
 
-Paths below are relative to ``.
+Paths below are relative to the repository root.
 
 ## Contents
 
@@ -16,6 +16,7 @@ Paths below are relative to ``.
 - [Layer Constraints](#layer-constraints)
 - [Value Codec](#value-codec)
 - [Raw Wasm Prefetch and Suspended Load](#raw-wasm-prefetch-and-suspended-load)
+- [RAW_EXPORT sessions and imports](#raw_export-sessions-and-imports)
 - [WASI Preview 1 Imports](#wasi-preview-1-imports)
 - [Environment Bridge Imports](#environment-bridge-imports)
 - [Tests and CI](#tests-and-ci)
@@ -157,18 +158,40 @@ session memory when an exported memory is configured. A handler must not wait
 for Fetch, IndexedDB, user interaction, or any other Promise-producing API;
 prepare those resources before entering Wasm.
 
+Browser imports run during instance construction, before the WebAssembly API
+returns an instance. `RawImportContext.memory` is therefore `null` for a host
+import invoked by the guest start function, even when the module exports a
+memory; handlers that run after instantiation receive the configured memory.
+
 The browser WebAssembly API does not provide general function-signature
 reflection. Raw function signatures therefore come from `rawAbi` metadata or
 `CoreWasmSessionOptions.exportSignatures`. Calls support `i32`, `i64`, `f32`,
 and `f64`, including void and multi-value results. Web `i64` crosses the JS
 boundary as `BigInt`; the public API continues to expose Kotlin `Long`.
 
+Result decoding compares the produced values with the declared result
+signature. A count mismatch returns `ARGUMENT_COUNT_MISMATCH`; a produced value
+whose JavaScript representation contradicts the declared type returns
+`ARGUMENT_TYPE_MISMATCH`. Because `i32`, `f32`, and `f64` all arrive as JS
+`number`, a wrong declaration among those three types cannot be detected, while
+an `i64` mismatch is detected through the `bigint`/`number` distinction. A
+genuine guest trap returns `WASM_TRAP`, and a failing host import keeps its own
+failure code instead of being reported as a trap.
+
 `RawMemory` checks every range and refreshes typed-array views after
-`memory.grow`. Use `readInto`/`writeFrom` for batch transfers. Component
-browser boundaries still reject Component typed calls, and Web does not claim
-threads/shared memory. SIMD, bulk memory, and reference types are reported by
-`CoreWasmCapabilities` and must be checked before loading a module that
-requires them.
+`memory.grow`. Use `readInto`/`writeFrom` for batch transfers. Web offsets are
+signed 32-bit JS indices, so an offset outside `0..Int.MAX_VALUE` is rejected;
+length and current memory size are validated separately. A near-2 GiB length is
+neither exercised nor claimed to work.
+
+The Web boundary supports `CORE_WASM + WASMLINE_SERVICE` and
+`CORE_WASM + RAW_EXPORT`. Component typed execution remains native-only, and
+Web does not claim threads or shared memory. `CoreWasmCapabilities` is the
+supported feature-set declaration the module reports, not a runtime probe of
+the browser: every current backend declares `multiValue`, `i64`, `bulkMemory`,
+and `referenceTypes` as supported and `simd` and `threads` as unsupported.
+Instantiation rejects a `rawAbi.requiredFeatures` entry the declaration does not
+cover with `WASM_FEATURE_UNSUPPORTED` before creating a session.
 
 ## WASI Preview 1 Imports
 
@@ -221,6 +244,7 @@ Runtime Web tests are under `wasmline/src/webTest/kotlin/crow/wasmline/`:
 | `web/WebWasmRuntimeTest.kt` | Compilation, instantiation, exports, invocation, and memory |
 | `web/WebWasmImportsBuilderTest.kt` | Import grouping and typed host functions |
 | `web/WebTestModule.kt` | Hand-encoded Core Wasm fixture |
+| `WebCoreWasmTest.kt` | Raw session exports, imports, result-shape errors, and memory |
 | `WasmlineComponentBrowserBoundaryTest.kt` | Component and typed-invocation rejection |
 | `WasmlineNativeRuntimeInfoWebTest.kt` | Absence of native runtime identity on Web |
 
@@ -243,6 +267,7 @@ wasmline/src/webMain/kotlin/crow/wasmline/
 └── web/
     ├── WebArtifactFetcher.kt
     ├── WebBindings.web.kt
+    ├── WebCoreWasmModule.kt
     ├── WebWasmArtifacts.kt
     ├── WebWasmImportsBuilder.kt
     ├── WebWasmPlugin.kt

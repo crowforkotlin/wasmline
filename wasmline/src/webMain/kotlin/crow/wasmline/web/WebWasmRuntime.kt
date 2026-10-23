@@ -1,7 +1,19 @@
 package crow.wasmline.web
 
 /** Failure raised by the web WebAssembly runtime wrappers. */
-internal class WebWasmException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+internal open class WebWasmException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+
+/**
+ * Marks a completed wasm call whose produced result shape or type does not
+ * match the caller-declared result ABI.
+ *
+ * The web binding contract cannot reflect a function signature, so a wrong
+ * `rawAbi`/`CoreWasmSessionOptions.exportSignatures` entry is a caller
+ * declaration error rather than a guest trap. The category stays inside
+ * `webMain`; the type extends [WebWasmException], so every existing wrapper
+ * call site keeps its behavior.
+ */
+internal class WebWasmResultAbiException(val mismatch: WebWasmResultMismatch, message: String) : WebWasmException(message)
 
 /**
  * Shared entry point to the `WebAssembly` JS API.
@@ -78,6 +90,15 @@ internal class WebWasmInstanceHandle internal constructor(private val instance: 
  * Author: crowforkotlin
  */
 internal class WebWasmFunction internal constructor(private val name: String, private val function: WebJsValue) {
+    /**
+     * Invokes the export with [args] and decodes the produced values against
+     * [resultTypes].
+     *
+     * Argument count and type are validated against the declared signature by
+     * `CoreWasmSessionImpl` before this layer runs, so a caller mistake never
+     * reaches the guest. Result decoding raises [WebWasmResultAbiException]
+     * when the completed call's values disagree with the declared result ABI.
+     */
     fun invoke(args: List<WebWasmValue> = emptyList(), resultTypes: List<WebWasmType> = emptyList()): List<WebWasmValue> {
         val encodedArgs = webArrayOf(args.map(WebWasmValueCodec::encode))
         val result = when (val outcome = webCallFunctionSafely(function, encodedArgs)) {

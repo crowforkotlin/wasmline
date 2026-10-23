@@ -2,7 +2,7 @@
 title: Platform Architecture
 description: Execution models, module boundaries, and artifact selection by platform
 createdAt: 2026-07-18
-updatedAt: 2026-09-04
+updatedAt: 2026-10-22
 ---
 
 # Platform Architecture
@@ -113,6 +113,15 @@ streams that artifact while checking its declared size and SHA-256. It does not
 download the offline ZIP. A Core Web `.wasm` variant is independent of native
 profiles and is stored once. Raw Component Wasm remains a build input.
 
+Cached manifest bytes are re-verified on every load, but
+`WasmlineLoadOptions.manifestTtlMs` is a freshness window, not a signature
+expiry or an anti-rollback guarantee; a package can still be served from a
+fresh cache entry without contacting the network. `maxCacheBytes` bounds the
+built-in file cache on a best-effort basis: eviction is skipped for protected
+paths, entries younger than the minimum eviction age, and any error while
+trimming, so the directory can temporarily exceed the bound. A custom
+`WasmlineCache` owns its own capacity policy.
+
 ## Execution Models
 
 The runtime selects the backend from `WasmlineArtifactDescriptor`. A file
@@ -147,6 +156,15 @@ Export and Component Model return a typed failure. Exceptions are reserved for
 invalid calls, unrecoverable runtime state, and failures that prevent a result
 from being created.
 
+Native Core Service rejects synchronous reuse of a session that is already
+invoking on the same thread. The check runs before the session mutex, so both
+`A -> A` and `A -> B -> A` return `REENTRANT_CALL` instead of deadlocking, while
+calling a different, inactive session from a callback remains allowed.
+Guest-provided `memory32` ranges are validated against the current linear memory
+before any view or copy is created, a negative guest length traps with
+`CORE_TRAP`, and host payload lengths are narrowed to the signed `i32` bridge
+ABI only after an `INT32_MAX` check.
+
 The Web implementation supports both `CORE_WASM + WASMLINE_SERVICE` and
 `CORE_WASM + RAW_EXPORT` through the browser `WebAssembly.Module` and
 `WebAssembly.Instance` APIs. Raw sessions use direct numeric exports, imports
@@ -155,6 +173,30 @@ use the Service response frame. Component Model typed calls remain native-only.
 Web and native share the Core ABI contract while retaining different backends:
 Web uses JS/WasmJS bindings and raw `.wasm`, while native uses the Wasmtime
 bridge and `.cwasm`/`.pwasm` AOT artifacts.
+
+Web Raw result-shape errors reuse the existing Core codes: a produced result
+count that disagrees with the declared signature returns
+`ARGUMENT_COUNT_MISMATCH`, and a produced value whose JavaScript representation
+contradicts the declared type returns `ARGUMENT_TYPE_MISMATCH`. Plain JS numbers
+carry no wasm type, so a wrong declaration among `i32`, `f32`, and `f64` cannot
+be detected, while an `i64` mismatch is detectable through `bigint`. A genuine
+guest trap stays `WASM_TRAP`, and a failing host import keeps its own code.
+`RawMemory` offsets are signed 32-bit JS indices, so only `0..Int.MAX_VALUE` is
+accepted; length and current memory size are validated separately, and a
+near-2 GiB length is neither exercised nor claimed to work.
+`CoreWasmCapabilities` is a supported feature-set declaration rather than
+browser feature detection: every current backend declares `multiValue`, `i64`,
+`bulkMemory`, and `referenceTypes`, and declares `simd` and `threads`
+unsupported.
+
+Component instances and resource wrappers do not support concurrent use. Callers
+must serialize the complete operation, including generated argument preparation
+and ownership transfer. `transferToComponent()` consumes an `own<T>` wrapper
+immediately, before the native call; a later argument-preparation, validation,
+or guest failure does not restore it. Explicit resource `close()` is different:
+a rejected drop keeps the wrapper open, while a consumed drop leaves it closed
+even if destruction fails. Guest calls are synchronous; closing an instance or
+cancelling a host coroutine cannot interrupt an active guest call.
 
 ## Module Dependency Graph
 
@@ -179,37 +221,42 @@ Browser raw `.wasm` loading uses `WasmlineWeb.prefetch()`.
 ## Repository Structure
 
 ```text
-wasmline/
-├── wasmline-core/                      # C/C++ wasmtime bridge (Engine, Module, Session, Api)
-├── wasmline/
-│   ├── wasmline/                       # Core Kotlin runtime — execution, dispatch, serialization SPI
-│   │   ├── commonMain/                 # Platform-agnostic contracts and bridge abstractions
-│   │   ├── hostMain/                   # Host API: Wasmline, WasmlineLoadState, link<T>(), bind()
-│   │   ├── jniMain/                    # JVM / Android actual — JNI external declarations
+wasmline/                               # Repository root
+├── wasmline/                           # Gradle KMP module: public runtime and backend actuals
+│   ├── src/
+│   │   ├── commonMain/                 # Platform-agnostic contracts, values, and bridge abstractions
+│   │   ├── hostMain/                   # Host API: Wasmline, load state, Core and Component invocation
+│   │   ├── jniMain/                    # JVM / Android actuals — JNI declarations and native helpers
 │   │   ├── nativeMain/                 # Kotlin/Native actuals and C Interop
 │   │   ├── webMain/                    # Shared Web host runtime and expect binding contract
 │   │   ├── jsMain/                     # Kotlin/JS binding actuals
 │   │   ├── wasmJsMain/                 # Kotlin/WasmJS binding actuals
 │   │   └── wasmWasiMain/               # Core and Component Service guest hooks
-│   ├── wasmline-loader/                # Load requests/options, cache/network SPI, .wlm verification
-│   ├── wasmline-plugin-core/           # Shared Core/Component build, signing, packaging, and toolchain logic
-│   ├── wasmline-cli/                   # CLI adapters for plugin-core and loader operations
-│   ├── wasmline-android/               # Android native bindings (CMake / JNI C++)
-│   ├── wasmline-kotlin-plugin/         # Kotlin IR compiler plugin — generated bridge classes and call-site rewriting
-│   ├── wasmline-gradle-plugin/         # Gradle configuration DSL and tasks using compiler plugin and plugin-core
-│   ├── wasmline-engine-cranelift/      # Cranelift runtime distribution and platform variants
-│   ├── wasmline-engine-pulley/         # Pulley runtime distribution and platform variants
-│   ├── wasmline-network-ktor/          # Ktor loader network adapter
-│   ├── wasmline-network-okhttp/        # OkHttp loader network adapter
-│   ├── wasmline-bom/                   # Forces all published Maven modules to use one version
-│   ├── wasmline-plugin-test/           # Plugin and native integration tests
-│   └── wasmline-build-logic/           # Shared Gradle convention plugins
+│   ├── build.zig                       # Zig build for the desktop JNI library
+│   └── build.gradle.kts                # Targets, native bridge tasks, and publication
+├── wasmline-core/                      # C/C++ Wasmtime bridge (Engine, Module, Session, Api)
+├── wasmline-loader/                    # Load requests/options, cache/network SPI, .wlm verification
+├── wasmline-engine-cranelift/          # Cranelift distribution: precompiled JVM JNI and Native archives
+├── wasmline-engine-pulley/             # Pulley distribution: precompiled JVM JNI and Native archives
+├── wasmline-android/                   # Android library; precompiled JNI is provided by the engine modules
+├── wasmline-kotlin-plugin/             # Kotlin IR compiler plugin — generated bridge classes and call-site rewriting
+├── wasmline-gradle-plugin/             # Consumer DSL and Gradle tasks using the compiler plugin and plugin-core
+├── wasmline-plugin-core/               # Shared Core/Component build, signing, packaging, and toolchain logic
+├── wasmline-cli/                       # CLI adapters for plugin-core and loader operations
+├── wasmline-network-ktor/              # Ktor loader network adapter
+├── wasmline-network-okhttp/            # OkHttp loader network adapter
+├── wasmline-bom/                       # Forces all published Maven modules to use one version
+├── wasmline-native-test-fixtures/      # Native AOT fixture sources, generation task, and fixture index
+├── wasmline-plugin-test/               # Separate Gradle build for end-to-end plugin integration tests
+├── wasmline-build-logic/               # Included build with shared Gradle convention plugins
 ├── samples/
-│   ├── kotlin/                         # Kotlin plugins, Component fixtures, and host applications
-│   ├── rust/                           # Rust Component fixtures
-│   ├── c/                              # C Component fixture
-│   └── cpp/                            # C++ Component fixture
-├── scripts/                            # Environment, assets, lint, and version synchronization
-├── build/                              # Root build outputs, including build/platforms/ wasmtime min C-API assets
-└── docs/                               # Documentation site (Next.js + Fumadocs)
+│   ├── minimal-library/                # Shared UI and loading library for the minimal samples
+│   ├── minimal-raw-export/             # Raw export sample with Android, desktop, JS, and WasmJS hosts
+│   ├── minimal-service/                # Typed service sample with Android, desktop, JS, and WasmJS hosts
+│   └── multiplatform-app/              # Multiplatform hosts, sample apps, and cross-language guests
+├── iosApp/                             # Xcode host application for the iOS framework
+├── scripts/                            # Environment, asset, lint, native build, and version-sync commands
+├── build/                              # Root build outputs; build/platforms/v<wasmtime-release>/ holds Wasmtime assets
+├── docs/                               # Technical notes: runtime mind map, IR fixtures, and native loading
+└── fumadocs/                           # Documentation site (Next.js + Fumadocs)
 ```

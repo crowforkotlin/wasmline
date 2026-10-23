@@ -124,8 +124,10 @@ suspend fun main() {
 
 各 API 的职责如下：`WasmlineLoader` 负责解析、校验、选择并加载产物；`WasmlineRuntime` 提供进程级的预加载、引擎预热、运行时信息和全局关闭；每个已加载的 `Wasmline` 都是可独立关闭的产物句柄。加载采用惰性初始化，因此调用 `WasmlineLoader.load()` 前不需要显式初始化运行时。
 
+重复加载同一产物会创建独立的句柄和服务绑定，关闭其中一个不会关闭另一个。`close()` 可重复调用。每个句柄复用自己的 `CoreWasmModule` 外观；关闭句柄会关闭其会话，并更新模块和会话的 `isClosed` 状态。单独关闭会话会立即移除其注册，不需要等待模块关闭。
+
 > [!NOTE]
-> `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。编译单元未应用 `wasmline-kotlin-plugin` 时，这些调用会在运行时抛出 `UnsupportedOperationException`。
+> `link<T>()` 与 `bind(impl)` 是 Kotlin IR 编译器插件的重写目标。编译单元未应用 `wasmline-kotlin-plugin` 时，这些调用会在运行时失败，错误消息会说明编译器插件未完成重写。
 
 ## Package 与 AOT 兼容性
 
@@ -237,6 +239,8 @@ when (val result = module.callResult("echo", payload)) {
 
 `WASMLINE_SERVICE` 响应帧以四字节 `WLMF` magic 标记开始，并使用一个字节的 `frameVersion`，当前值为 `1`。magic 只用于识别帧格式，不提供安全校验。`frameVersion` 表示响应字节布局，不表示 Wasmtime、Kotlin、框架或业务 API 版本。Raw Export 和 Component Model 调用不使用该 Core 响应帧。
 
+解码器对截断的响应帧和非法 UTF-8 消息返回 `RESPONSE_MALFORMED`。旧式无帧响应仍可使用：不足四字节、仅匹配 `WLMF` 前缀的数据按 payload 返回；完整标记后缺少完整 header 则属于非法响应帧。
+
 有可用 Package 时，通过 `manifest.wlm` 加载。Loader 会校验 package，并将 execution model、
 invocation protocol、target identity、artifact format 与 AOT compatibility
 profile 写入所选 descriptor。直接加载调用方信任的 AOT artifact 时，必须显式提供
@@ -263,9 +267,10 @@ Native 选择使用已链接 engine 实际报告的 AOT compatibility profile ID
 > Wasmline 当前通过 `mavenLocal()` 分发，尚未发布到 Maven Central。请参阅[安装说明](fumadocs/content/docs/installation.zh.mdx)。
 
 > [!WARNING]
-> 最低需要 **Kotlin 2.3.0-RC2** 版本。
+> 最低需要 **Kotlin 2.4.0** 版本。
 >
-> ![Kotlin/Wasm 运行时支持矩阵](fumadocs/public/images/kotlin_support.png)
+> 本次发行产物使用该 Kotlin 版本编译并验证。较早的 Kotlin/Native 编译器可能拒绝发布的 KLIB ABI；
+> 使用更高版本时，需要重新验证运行时产物与编译器插件的兼容性。
 
 JVM 与 Android 使用 BOM，使 runtime、Loader、network adapter 与 engine
 解析为同一个 strict Wasmline 版本：

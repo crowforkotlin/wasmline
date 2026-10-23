@@ -71,7 +71,8 @@ allprojects {
         }
     }
 
-    pluginManager.withPlugin("com.vanniktech.maven.publish") {
+    // The full publishing plugin also applies this base ID; configure each module only once.
+    pluginManager.withPlugin("com.vanniktech.maven.publish.base") {
         configure<MavenPublishBaseExtension> {
             publishToMavenCentral(automaticRelease = true)
             signAllPublications()

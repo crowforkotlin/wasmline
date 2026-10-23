@@ -14,12 +14,6 @@ import crow.wasmline.serialization.WasmlineSerializationFactory
 class Wasmline private constructor() {
     var serializationFactory: WasmlineSerializationFactory = WasmlineProtobufSerializationFactory
 
-    var convertFactory: WasmlineSerializationFactory
-        get() = serializationFactory
-        set(value) {
-            serializationFactory = value
-        }
-
     internal fun call(action: String, inputBytes: ByteArray): ByteArray = WasmlineWasmBridge.callHost(action = action, payload = inputBytes)
 
     fun configure(block: WasmlineConfigurationBuilder.() -> Unit): Wasmline {

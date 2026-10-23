@@ -3,13 +3,13 @@ package crow.wasmline
 import crow.wasmline.internal.component.WasmlineComponentHostDispatcher
 import crow.wasmline.internal.component.WasmlineComponentInstanceConfiguration
 import crow.wasmline.internal.component.WasmlineComponentModuleState
+import crow.wasmline.internal.component.WasmlineComponentResourceDropResult
 import crow.wasmline.internal.component.componentFailure
 import crow.wasmline.internal.component.requireIdentifier
 import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineException
-import crow.wasmline.invocation.WasmlineFailure
 
 /**
  * Identifies the exact WIT package and world consumed by a generated Host binding.
@@ -188,6 +188,12 @@ class WasmlineComponentInstanceBuilder internal constructor(private val descript
 /**
  * Represents one isolated Store, Linker, and Component instance with immutable imports.
  *
+ * Concurrent use of one instance or its resource wrappers is unsupported. The
+ * instance lock serializes host-side mutations, not generated argument
+ * preparation or wrapper ownership transfers; callers must serialize the whole
+ * operation. Guest calls are synchronous and cannot be interrupted by closing
+ * the instance or cancelling a host coroutine.
+ *
  * Date: 2026-09-02
  * Author: crowforkotlin
  */
@@ -226,7 +232,7 @@ class WasmlineComponentInstance internal constructor(
         binding.attach(this)
     }
 
-    internal fun dropResource(reference: WasmlineComponentValue.ResourceValue): Boolean = lock.withLock {
+    internal fun dropResource(reference: WasmlineComponentValue.ResourceValue): WasmlineComponentResourceDropResult = lock.withLock {
         check(!closed) { "Cannot drop a Component resource after the instance was closed." }
         check(reference.instanceKey == instanceKey) { "Component resource belongs to a different instance." }
         check(reference.ownership == WasmlineComponentResourceOwnership.OWN) {
@@ -296,6 +302,21 @@ data class WasmlineComponentResourceDiagnostics(val activeHostResources: Int)
  * the owning Wasmline Component instance. A borrowed value must be represented
  * by a call-scoped adapter and must not be wrapped as this type.
  *
+ * [close] distinguishes a rejected request from a failed drop. A rejection
+ * before the native reference is consumed throws [IllegalStateException] and
+ * leaves the wrapper open, so the carrier stays usable. Once the drop consumed
+ * the reference, the wrapper reaches its terminal closed state even when
+ * resource destruction or a Host drop callback fails; that failure then
+ * surfaces as [WasmlineException] carrying the original code and message, and a
+ * later [close] is a no-op.
+ *
+ * [transferToComponent] consumes the wrapper immediately, before generated
+ * argument preparation finishes or the native invocation begins. Ownership is
+ * not restored if later argument preparation, validation, or guest execution
+ * fails. Do not reuse the wrapper after transfer. Concurrent access to one
+ * wrapper or its owning instance is unsupported; callers must serialize the
+ * complete operation, including argument preparation and transfer.
+ *
  * Date: 2026-09-02
  * Author: crowforkotlin
  */
@@ -318,14 +339,30 @@ abstract class WasmlineComponentResource protected constructor(
         check(value.ownership == WasmlineComponentResourceOwnership.OWN) {
             "Borrowed Component resources cannot be closed explicitly."
         }
-        check(instance.dropResource(value)) { "Component resource drop failed or the resource is stale." }
-        currentReference = null
+        when (val outcome = instance.dropResource(value)) {
+            is WasmlineComponentResourceDropResult.Rejected -> throw IllegalStateException(
+                "Component resource drop failed or the resource is stale: ${outcome.failure.message}",
+            )
+
+            is WasmlineComponentResourceDropResult.Dropped -> currentReference = null
+
+            is WasmlineComponentResourceDropResult.ConsumedCleanupFailed -> {
+                currentReference = null
+                throw WasmlineException(outcome.failure)
+            }
+        }
     }
 
     /** Returns the opaque carrier accepted by generated WIT codecs. */
     fun toComponentValue(): WasmlineComponentValue.ResourceValue = reference
 
-    /** Consumes this `own<T>` wrapper when ownership is transferred into a Component call. */
+    /**
+     * Consumes this `own<T>` wrapper immediately and returns its Component carrier.
+     *
+     * Generated bindings call this during argument preparation, before invoking
+     * the Component. A later preparation, validation, or invocation failure does
+     * not restore the wrapper's ownership.
+     */
     fun transferToComponent(): WasmlineComponentValue.ResourceValue {
         val value = reference
         check(value.ownership == WasmlineComponentResourceOwnership.OWN) {

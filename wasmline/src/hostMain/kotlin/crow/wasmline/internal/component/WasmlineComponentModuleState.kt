@@ -76,7 +76,7 @@ internal class WasmlineComponentModuleState(private val owner: Wasmline) {
         if (shouldRelease) owner.releaseComponentInstance(instanceKey)
     }
 
-    fun dropResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): Boolean =
+    fun dropResource(instanceKey: String, reference: WasmlineComponentValue.ResourceValue): WasmlineComponentResourceDropResult =
         owner.dropComponentResource(instanceKey, reference)
 
     fun createHostResource(

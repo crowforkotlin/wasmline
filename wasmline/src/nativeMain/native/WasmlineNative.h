@@ -122,10 +122,11 @@ char* wasmline_core_memory_grow(const char* sessionKey,
 /** Releases one explicitly instantiated Component session. */
 void wasmline_release_component_instance(const char* instanceKey);
 
-/** Drops one owned Component resource associated with an instance. */
-bool wasmline_drop_component_resource(const char* instanceKey,
-                                     const void* data,
-                                     size_t dataLen);
+/** Drops one owned Component resource and returns its typed outcome carrier. */
+char* wasmline_drop_component_resource_outcome(const char* instanceKey,
+                                              const void* data,
+                                              size_t dataLen,
+                                              size_t* outLen);
 
 /** Creates one owned imported Host resource and returns its typed carrier. */
 char* wasmline_create_component_host_resource(const char* instanceKey,

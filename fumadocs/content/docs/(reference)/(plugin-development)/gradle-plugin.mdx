@@ -61,10 +61,10 @@ when the defaults do not match the Host project. Declare several `publicKey` or
 remains a compatibility fallback; for one unlabelled key, leave both values
 unset.
 
-`signingKey` remains a deprecated alias for `privateKeyFile` for source
-compatibility. The plugin intentionally does not accept a private-key string in
-the DSL: it would be easy to expose through source control, a build scan, or
-Gradle state. Public-key Hex is non-sensitive and is supported directly.
+Configure the private signing key only through `manifest.privateKeyFile`. The
+plugin intentionally does not accept a private-key string in the DSL: it would
+be easy to expose through source control, a build scan, or Gradle state.
+Public-key Hex is non-sensitive and is supported directly.
 
 ## AOT Profile Selection
 

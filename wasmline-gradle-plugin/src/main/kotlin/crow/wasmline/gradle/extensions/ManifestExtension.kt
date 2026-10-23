@@ -77,18 +77,6 @@ public abstract class ManifestExtension @Inject constructor(objects: ObjectFacto
     public val privateKeyFile: RegularFileProperty = objects.fileProperty()
 
     /**
-     * Legacy name for [privateKeyFile].
-     *
-     * The value is a private signing key and is only consumed by package assembly.
-     * It is never included in generated Host source or resources.
-     */
-    @Deprecated(
-        message = "Use privateKeyFile to make the private-key role explicit.",
-        replaceWith = ReplaceWith("privateKeyFile"),
-    )
-    public val signingKey: RegularFileProperty = privateKeyFile
-
-    /**
      * Optional identifier of the public key that verifies this package signature.
      *
      * When set, this value selects the matching `keyId` from the Host's trusted

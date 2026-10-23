@@ -193,11 +193,15 @@ three segments of `wasmtime_release_version` must equal `wasmtime_version`, and
 the catalog current version must equal the Wasmline version in the manifest.
 The tag commit must be reachable from `main`.
 
-After validation, the workflow downloads the locked Wasmtime assets, builds the
-JVM and Android engine libraries, runs JVM verification tests, and invokes the
-existing `publishToMavenCentral` aggregate task. Maven credentials and signing
-material are supplied through the corresponding `ORG_GRADLE_PROJECT_*` secrets.
-It then creates these release assets:
+After validation, the Linux native AOT job downloads the locked Wasmtime assets,
+builds the JVM and Android engine libraries, and runs native AOT, JVM, and dynamic
+plugin tests. A separate macOS job runs the iOS simulator Pulley gate. Both gates
+must succeed before one macOS publisher generates root metadata for every declared
+target and verifies its Apple variants. It consumes the verified JVM/Android
+libraries and invokes the existing `publishToMavenCentral` aggregate task once.
+Maven credentials and signing material are supplied through the corresponding
+`ORG_GRADLE_PROJECT_*` secrets. Linux local publication does not verify Apple
+artifacts. The workflow then creates these release assets:
 
 - `aot-compatibility.json`;
 - `aot-compatibility.json.sha256`.

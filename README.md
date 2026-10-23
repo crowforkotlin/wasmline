@@ -124,8 +124,10 @@ For a remote artifact, the loader streams bytes into the cache, verifies the SHA
 
 Each API has a separate role: `WasmlineLoader` resolves, verifies, selects, and loads artifacts; `WasmlineRuntime` provides process-wide preload, engine warm-up, runtime information, and shutdown; each loaded `Wasmline` is an independently closeable artifact handle. Loading is lazy, so applications do not need an explicit runtime initialization call before `WasmlineLoader.load()`.
 
+Repeated loads of the same artifact have independent handles and service bindings; closing one does not close another. `close()` is idempotent. A handle reuses its `CoreWasmModule` facade, closes its sessions, and updates their `isClosed` state when it closes. Closing a session releases its registration without waiting for the module to close.
+
 > [!NOTE]
-> `link<T>()` and `bind(impl)` are rewrite targets of the Kotlin IR compiler plugin. If `wasmline-kotlin-plugin` is not applied to the compilation unit, these calls throw `UnsupportedOperationException` at runtime.
+> `link<T>()` and `bind(impl)` are rewrite targets of the Kotlin IR compiler plugin. If `wasmline-kotlin-plugin` is not applied to the compilation unit, these calls fail at runtime with an error explaining that the compiler plugin did not rewrite them.
 
 ## Package and AOT Compatibility
 
@@ -207,8 +209,9 @@ Wasmline supports four explicit host-side invocation paths:
 
 The runtime side of the Component Model path loads an already compiled component
 binary. Optional plugin build steps can generate bindings and create that
-binary from WIT through `wasmline-plugin-core`, the Gradle plugin, or the CLI;
-the loader itself does not run those tools. `contractMetadata` describes the
+binary from WIT through the Gradle plugin or the CLI; `wasmline-plugin-core` is
+an internal module embedded in both tools, not a published artifact. The loader
+itself does not run those tools. `contractMetadata` describes the
 call contract when needed; it is not a WIT compiler input. See the
 [Component Service Protocol](<fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>).
 
@@ -252,6 +255,8 @@ APIs.
 
 The `WASMLINE_SERVICE` response frame starts with the four-byte `WLMF` magic marker and a one-byte `frameVersion` whose current value is `1`. The magic marker identifies the frame format; it is not a security check. `frameVersion` identifies the response byte layout; it is not a Wasmtime, Kotlin, framework, or business API version. Raw Export and Component Model calls do not use this Core response frame.
 
+The decoder rejects truncated frames and invalid UTF-8 messages with `RESPONSE_MALFORMED`. Legacy unframed responses remain supported: fewer than four bytes matching the `WLMF` prefix are preserved as payload; the full marker without a complete header is a malformed frame.
+
 Load through `manifest.wlm` when the package is available. The Loader verifies the package and
 copies its execution model, invocation protocol, target identity, artifact
 format, and AOT compatibility profile into the selected descriptor. A direct,
@@ -280,9 +285,11 @@ engine. It does not infer compatibility from a Maven version or filename.
 > available from Maven Central. See [Installation](fumadocs/content/docs/installation.mdx).
 
 > [!WARNING]
-> The minimum required Kotlin version is **2.3.0-RC2**.
+> The minimum required Kotlin version is **2.4.0**.
 >
-> ![Kotlin/Wasm runtime support matrix](fumadocs/public/images/kotlin_support.png)
+> This release is built and verified with that Kotlin version. Earlier Kotlin/Native
+> compilers may reject the published KLIB ABI; newer compiler versions require
+> separate validation of the runtime artifacts and compiler plugin.
 
 Use the BOM on JVM and Android so the runtime, Loader, network adapter, and
 engine resolve to one strict Wasmline version:

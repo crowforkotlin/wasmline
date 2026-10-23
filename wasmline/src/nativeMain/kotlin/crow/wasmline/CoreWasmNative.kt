@@ -104,9 +104,18 @@ private class NativeCoreWasmModule(
                 return coreFailure(WasmlineErrorCode.INSTANTIATION_FAILED, "Native Core Wasm session returned unexpected values.")
             }
         }
-        val session = NativeCoreWasmSession(sessionKey, memory)
-        lock.withLock { if (!closed) sessions[sessionKey] = session }
-        if (lock.withLock { closed }) {
+        val session = NativeCoreWasmSession(sessionKey, memory) {
+            lock.withLock { sessions.remove(sessionKey) }
+        }
+        val moduleWasClosed = lock.withLock {
+            if (closed) {
+                true
+            } else {
+                sessions[sessionKey] = session
+                false
+            }
+        }
+        if (moduleWasClosed) {
             session.close()
             return coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Native Core Wasm module was closed during instantiation.")
         }
@@ -132,7 +141,12 @@ private class NativeCoreWasmModule(
  * Date: 2026-08-25
  * Author: crowforkotlin
  */
-private class NativeCoreWasmSession(private val sessionKey: String, override val memory: NativeCoreWasmMemory?) : CoreWasmBackendSession {
+private class NativeCoreWasmSession(
+    private val sessionKey: String,
+    override val memory: NativeCoreWasmMemory?,
+    private val onClosed: () -> Unit,
+) : CoreWasmBackendSession {
+    private val lock = WasmlineRuntimeLock()
     private var closed = false
 
     override fun invoke(
@@ -161,10 +175,20 @@ private class NativeCoreWasmSession(private val sessionKey: String, override val
     }
 
     override fun close() {
-        if (!closed) {
-            closed = true
+        val shouldRelease = lock.withLock {
+            if (closed) {
+                false
+            } else {
+                closed = true
+                true
+            }
+        }
+        if (!shouldRelease) return
+        try {
             NativeRawImportRegistry.unregister(sessionKey)
             wasmline_core_release_session(sessionKey)
+        } finally {
+            onClosed()
         }
     }
 }
@@ -308,8 +332,10 @@ private fun nativeRawImportCallback(
         val moduleSize = checkedLength(moduleLen) ?: return null
         val nameSize = checkedLength(nameLen) ?: return null
         val argumentSize = checkedLength(argumentsLen) ?: return null
-        if (sessionKey == null || (moduleSize > 0 && module == null) ||
-            (nameSize > 0 && name == null) || (argumentSize > 0 && arguments == null)
+        if (sessionKey == null ||
+            (moduleSize > 0 && module == null) ||
+            (nameSize > 0 && name == null) ||
+            (argumentSize > 0 && arguments == null)
         ) {
             return null
         }

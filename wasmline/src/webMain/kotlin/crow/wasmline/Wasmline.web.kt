@@ -25,13 +25,20 @@ import crow.wasmline.web.WebWasmRuntime
  * Author: crowforkotlin
  */
 internal class BrowserWasmline(private val moduleKey: String) {
+    private var closed = false
+
     fun setOutbound(dispatcher: WasmlineHostDispatcher) {
+        check(!closed) { "Wasmline handle is closed." }
         WasmlineWebModuleRegistry.require(moduleKey).setDispatcher(dispatcher::dispatch)
     }
 
     fun call(action: String, inputBytes: ByteArray): ByteArray = WasmlineWebModuleRegistry.require(moduleKey).call(action, inputBytes)
 
-    fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> = WasmlineWebModuleRegistry.coreModule(moduleKey)
+    fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> = if (closed) {
+        coreFailure(WasmlineErrorCode.SESSION_CLOSED, "Wasmline handle is closed.")
+    } else {
+        WasmlineWebModuleRegistry.coreModule(moduleKey)
+    }
 
     fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> = unsupportedTypedInvocation(exportName)
 
@@ -39,6 +46,8 @@ internal class BrowserWasmline(private val moduleKey: String) {
         unsupportedTypedInvocation(exportName)
 
     fun close() {
+        if (closed) return
+        closed = true
         WasmlineWebModuleRegistry.remove(moduleKey)
     }
 }
@@ -78,7 +87,6 @@ internal object BrowserWasmlineRuntime {
 
                 override fun resolveArtifact(path: String): ResolvedPrecompiledArtifact? = ResolvedPrecompiledArtifact(
                     artifactPath = path,
-                    moduleKey = path,
                 )
 
                 override fun validationError(descriptor: WasmlineArtifactDescriptor): String? =

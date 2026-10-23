@@ -9,7 +9,7 @@
     "kotlin_version": "2.4.0",
     "ktlint_version": "1.8.0",
     "dokka_version": "2.2.0",
-    "kotlin_min_version": "2.3.0-RC2",
+    "kotlin_min_version": "2.4.0",
     "agp_version": "9.3.0",
     "gradle_version": "9.5.0",
     "zig_version": "0.16.0",

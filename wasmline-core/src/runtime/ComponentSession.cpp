@@ -914,35 +914,50 @@ namespace wasmline {
         return true;
     }
 
-    bool ComponentSession::dropResourceUnlocked(const ComponentResourceReference& reference) {
+    ResourceDropOutcome ComponentSession::dropResourceUnlocked(const ComponentResourceReference& reference) {
+        const auto rejected = [](const char* message) {
+            return ResourceDropOutcome::rejected(WasmlineErrorCode::COMPONENT_RESOURCE_INVALID, message);
+        };
         if (reference.instanceKey != key_ || reference.handleId == 0 || reference.typeId == 0 || reference.generation == 0 ||
             reference.ownership != ComponentResourceOwnership::OWN) {
-            return false;
+            return rejected("Component resource carrier does not belong to this session or is not owned.");
         }
         const auto found = resources_.find(reference.handleId);
-        if (found == resources_.end()) return false;
+        if (found == resources_.end()) return rejected("Component resource is stale or has the wrong instance, type, or generation.");
         const ResourceEntry entry = found->second;
         if (entry.typeId != reference.typeId || entry.generation != reference.generation || entry.ownership != reference.ownership ||
             entry.origin != reference.origin || !entry.value) {
-            return false;
+            return rejected("Component resource is stale or has the wrong instance, type, or generation.");
         }
         resources_.erase(found);
         ComponentInvocationScope invocationScope(this);
         wasmtime_error_t* error = wasmtime_component_resource_any_drop(context_, entry.value);
         if (error) {
+            const std::string message = wasmtime::errorMessage(error);
+            const bool trap = hasWasmTrace(error);
             wasmtime_error_delete(error);
             wasmtime_component_resource_any_delete(entry.value);
-            return false;
+            return ResourceDropOutcome::cleanupFailed(trap ? WasmlineErrorCode::COMPONENT_TRAP : WasmlineErrorCode::COMPONENT_CALL_FAILED,
+                                                      message.empty() ? "Component resource destructor failed." : message);
         }
         wasmtime_component_resource_any_delete(entry.value);
-        if (entry.origin == ComponentResourceOrigin::HOST && !notifyHostResourceDrop(entry.hostRepresentation, entry.hostType)) {
-            return false;
+        if (entry.origin == ComponentResourceOrigin::HOST) {
+            InvocationResult dropFailure =
+                InvocationResult::failure(WasmlineErrorCode::HANDLER_FAILED, "Component Host resource drop handler is unavailable.");
+            if (!notifyHostResourceDrop(entry.hostRepresentation, entry.hostType, &dropFailure)) {
+                // The resource is already consumed: never notify its Host representation again.
+                hostRepresentations_.erase(entry.hostRepresentation);
+                return ResourceDropOutcome::cleanupFailed(dropFailure.errorCode(), dropFailure.message());
+            }
         }
-        return true;
+        return ResourceDropOutcome::dropped();
     }
 
-    bool ComponentSession::dropResource(const ComponentResourceReference& reference) {
-        if (std::find(activeComponentSessions.begin(), activeComponentSessions.end(), this) != activeComponentSessions.end()) return false;
+    ResourceDropOutcome ComponentSession::dropResource(const ComponentResourceReference& reference) {
+        if (std::find(activeComponentSessions.begin(), activeComponentSessions.end(), this) != activeComponentSessions.end()) {
+            return ResourceDropOutcome::rejected(WasmlineErrorCode::REENTRANT_CALL,
+                                                 "Component resource cannot be dropped during an active Component call.");
+        }
         std::lock_guard<std::mutex> lock(mutex_);
         return dropResourceUnlocked(reference);
     }
@@ -980,7 +995,11 @@ namespace wasmline {
         }
     }
 
-    bool ComponentSession::notifyHostResourceDrop(uint32_t representation, uint32_t hostType) {
+    bool ComponentSession::notifyHostResourceDrop(uint32_t representation, uint32_t hostType, InvocationResult* failure) {
+        const auto reportFailure = [failure](WasmlineErrorCode code, std::string message) {
+            if (failure) *failure = InvocationResult::failure(code, std::move(message));
+            return false;
+        };
         const auto trusted = hostRepresentations_.find(representation);
         if (trusted == hostRepresentations_.end()) return true;
         const auto binding =
@@ -989,10 +1008,15 @@ namespace wasmline {
                 const auto type = resourceTypes_.find(trusted->second.typeId);
                 return type != resourceTypes_.end() && item->type && wasmtime_component_resource_type_equal(item->type, type->second);
             });
-        if (binding == importedResourceBindings_.end() || !componentHostHandler_) return false;
+        if (binding == importedResourceBindings_.end())
+            return reportFailure(WasmlineErrorCode::COMPONENT_RESOURCE_INVALID,
+                                 "Component Host resource representation has no matching imported resource type.");
+        if (!componentHostHandler_)
+            return reportFailure(WasmlineErrorCode::HANDLER_FAILED,
+                                 "No typed Component host adapter is registered for the Host resource drop.");
         InvocationResult result =
             componentHostHandler_->onComponentHostResourceDrop((*binding)->interfaceName, (*binding)->resourceName, representation);
-        if (!result.isSuccess()) return false;
+        if (!result.isSuccess()) return reportFailure(result.errorCode(), result.message());
         hostRepresentations_.erase(trusted);
         return true;
     }
@@ -1508,8 +1532,11 @@ namespace wasmline {
     }
 
     wasmtime_error_t* ComponentSession::handleImportedResourceDrop(const ImportedResourceBinding& binding, uint32_t representation) {
-        if (!notifyHostResourceDrop(representation, binding.hostType))
-            return componentError("Typed Component host resource is stale or its drop handler failed.");
+        InvocationResult failure =
+            InvocationResult::failure(WasmlineErrorCode::COMPONENT_RESOURCE_INVALID, "Typed Component host resource is stale.");
+        if (!notifyHostResourceDrop(representation, binding.hostType, &failure)) {
+            return componentError(failure.message().empty() ? "Typed Component host resource drop failed." : failure.message());
+        }
         return nullptr;
     }
 

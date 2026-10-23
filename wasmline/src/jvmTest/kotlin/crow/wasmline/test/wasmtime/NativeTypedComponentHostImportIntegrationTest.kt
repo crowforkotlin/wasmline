@@ -1,6 +1,5 @@
 package crow.wasmline.test.wasmtime
 
-import crow.wasmline.WasmlineArtifactDescriptor
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineComponentCallResult
 import crow.wasmline.WasmlineComponentExport
@@ -94,6 +93,32 @@ class NativeTypedComponentHostImportIntegrationTest {
                 assertEquals(listOf(WasmlineComponentValue.S32(42)), success.value.values)
             } finally {
                 handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun identicalComponentArtifactsKeepBindingsAndCloseIndependent() {
+        val artifact = copyFixture()
+        try {
+            val first = loadComponent(artifact)
+            val second = loadComponent(artifact)
+            try {
+                first.bindComponentHost(typedHostRegistry(1))
+                second.bindComponentHost(typedHostRegistry(100))
+                val arguments = listOf(WasmlineComponentValue.S32(41))
+                assertEquals(42, first.invokeComponentResult("run", arguments).singleS32())
+                assertEquals(141, second.invokeComponentResult("run", arguments).singleS32())
+                first.close()
+                first.close()
+                assertEquals(141, second.invokeComponentResult("run", arguments).singleS32())
+                assertFailsWith<IllegalStateException> { first.bindComponentHost(typedHostRegistry(5)) }
+            } finally {
+                first.close()
+                second.close()
             }
         } finally {
             WasmlineRuntime.shutdown()

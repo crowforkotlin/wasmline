@@ -13,11 +13,12 @@ repository itself, see [Building from Source](/en/docs/building-from-source).
 ## Requirements
 
 - JBR **21**
-- Kotlin **2.3.0-RC2** or later
+- Kotlin **2.4.0** or later
 
 <Callout type="warn" title="Kotlin requirement">
-  The minimum required Kotlin version is **2.3.0-RC2**. Earlier versions can produce incomplete Kotlin/WasmWasi
-  binaries. Do not use them for Wasmline plugins.
+  The minimum required Kotlin version is **2.4.0**. This release is built and verified with that Kotlin version.
+  Earlier Kotlin/Native compilers may reject the published KLIB ABI. A newer Kotlin compiler requires separate
+  validation of the runtime artifacts and compiler plugin; this minimum does not guarantee future-version compatibility.
 </Callout>
 
 ## Apply the Gradle Plugin

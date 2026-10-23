@@ -4,7 +4,6 @@ import crow.wasmline.CoreWasmCapabilities
 import crow.wasmline.CoreWasmSessionOptions
 import crow.wasmline.RawExport
 import crow.wasmline.RawExportKind
-import crow.wasmline.RawImport
 import crow.wasmline.RawValue
 import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineArtifactDescriptor
@@ -155,6 +154,14 @@ private class WebCoreWasmSession(
                     args = arguments.map(RawValue::toWebValue),
                     resultTypes = resultTypes.map(RawValueType::toWebType),
                 ).map(WebWasmValue::toRawValue),
+            )
+        } catch (failure: WebWasmResultAbiException) {
+            importFailure() ?: coreFailure(
+                when (failure.mismatch) {
+                    WebWasmResultMismatch.COUNT -> WasmlineErrorCode.ARGUMENT_COUNT_MISMATCH
+                    WebWasmResultMismatch.TYPE -> WasmlineErrorCode.ARGUMENT_TYPE_MISMATCH
+                },
+                "Web Core Wasm export '$exportName' completed but its declared result ABI did not match: ${failure.message}",
             )
         } catch (failure: Throwable) {
             importFailure() ?: coreFailure(

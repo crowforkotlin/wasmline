@@ -41,7 +41,8 @@ wasmline-kotlin-plugin/testData/box/
 ├── 03_parameterService.kt
 ├── 04_multiMethod.kt
 ├── 05_complexTypes.kt
-└── 06_linkBindPattern.kt
+├── 06_linkBindPattern.kt
+└── 07_inheritedService.kt
 ```
 
 Each `.kt` fixture has generated `.fir.txt` and `.fir.ir.txt` snapshots.

@@ -1,0 +1,81 @@
+FILE: 07_inheritedService.kt
+    @FILE:R|kotlin/Suppress|(names = vararg(String(INVISIBLE_MEMBER), String(INVISIBLE_REFERENCE)) [evaluated = vararg(String(INVISIBLE_MEMBER), String(INVISIBLE_REFERENCE))])
+    package test.ir.inherited
+
+    public abstract interface ParentService : R|crow/wasmline/WasmlineService| {
+        public abstract fun inherited(value: R|kotlin/String|): R|kotlin/String|
+
+        public abstract fun add(left: R|kotlin/Int|, right: R|kotlin/Int|): R|kotlin/Int|
+
+    }
+    public abstract interface LeftService : R|test/ir/inherited/ParentService| {
+    }
+    public abstract interface RightService : R|test/ir/inherited/ParentService| {
+    }
+    public abstract interface ChildService : R|test/ir/inherited/LeftService|, R|test/ir/inherited/RightService| {
+        public abstract fun local(): R|kotlin/String|
+
+    }
+    private final class ChildImplementation : R|test/ir/inherited/ChildService| {
+        public constructor(): R|test/ir/inherited/ChildImplementation| {
+            super<R|kotlin/Any|>()
+        }
+
+        public open override fun inherited(value: R|kotlin/String|): R|kotlin/String| {
+            ^inherited <strcat>(String(parent:), R|<local>/value|)
+        }
+
+        public open override fun add(left: R|kotlin/Int|, right: R|kotlin/Int|): R|kotlin/Int| {
+            ^add R|<local>/left|.R|kotlin/Int.plus|(R|<local>/right|)
+        }
+
+        public open override fun local(): R|kotlin/String| {
+            ^local String(child)
+        }
+
+    }
+    public final fun box(): R|kotlin/String| {
+        lval actions: R|kotlin/collections/MutableMap<kotlin/String, (kotlin/ByteArray) -> kotlin/ByteArray>| = R|kotlin/collections/mutableMapOf|<R|kotlin/String|, R|(kotlin/ByteArray) -> kotlin/ByteArray|>()
+        lval endpoint: R|test/ir/inherited/<anonymous>| = object : <ERROR TYPE REF: HIDDEN: crow/wasmline/internal/bridge/WasmlineEndpoint is invisible> {
+            private constructor(): R|test/ir/inherited/<anonymous>| {
+                super<R|kotlin/Any|>()
+            }
+
+            public open override fun invoke(action: R|kotlin/String|, payload: R|kotlin/ByteArray|): R|kotlin/ByteArray| {
+                ^invoke R|kotlin/requireNotNull|<R|(kotlin/ByteArray) -> kotlin/ByteArray|>(R|<local>/actions|.R|SubstitutionOverride<kotlin/collections/MutableMap.get: R|((kotlin/ByteArray) -> kotlin/ByteArray)?|>|(R|<local>/action|), <L> = requireNotNull@fun <anonymous>(): R|kotlin/Any| <inline=Inline, kind=UNKNOWN>  {
+                    ^ <strcat>(String(Unbound action: ), R|<local>/action|)
+                }
+                ).R|SubstitutionOverride<kotlin/Function1.invoke: R|kotlin/ByteArray|>|(R|<local>/payload|)
+            }
+
+        }
+
+        lval bridgeClass: R|java/lang/Class<*>!| = Q|java/lang/Class|.R|java/lang/Class.forName*s|(String(test.ir.inherited.ChildService_WasmlineBridge))
+        lval constructor: R|java/lang/reflect/Constructor<out kotlin/Any!>!| = R|<local>/bridgeClass|.R|SubstitutionOverride<java/lang/Class.getConstructor: R|java/lang/reflect/Constructor<CapturedType(*)!>!|>|(vararg(<getClass>(Q|crow/wasmline/internal/bridge/WasmlineEndpoint|).R|kotlin/jvm/java|<R|crow/wasmline/internal/bridge/WasmlineEndpoint|>, <getClass>(Q|test/ir/inherited/ChildService|).R|kotlin/jvm/java|<R|test/ir/inherited/ChildService|>, <getClass>(Q|crow/wasmline/serialization/WasmlineSerializationFactory|).R|kotlin/jvm/java|<R|crow/wasmline/serialization/WasmlineSerializationFactory|>))
+        lval binder: R|crow/wasmline/internal/bridge/WasmlineGeneratedBridge| = (R|<local>/constructor|.R|SubstitutionOverride<java/lang/reflect/Constructor.newInstance: R|CapturedType(out kotlin/Any!)!|>|(vararg(R|<local>/endpoint|, R|test/ir/inherited/ChildImplementation.ChildImplementation|(), Q|crow/wasmline/serialization/WasmlineProtobufSerializationFactory|)) as <ERROR TYPE REF: HIDDEN: crow/wasmline/internal/bridge/WasmlineGeneratedBridge is invisible>)
+        R|<local>/binder|.R|crow/wasmline/internal/bridge/WasmlineGeneratedBridge.bind<HIDDEN: crow/wasmline/internal/bridge/WasmlineGeneratedBridge is invisible>#|(<L> = bind@fun <anonymous>(action: R|kotlin/String|, handler: R|(kotlin/ByteArray) -> kotlin/ByteArray|): R|kotlin/Unit| <inline=Unknown>  {
+            R|<local>/actions|.R|kotlin/collections/set|<R|kotlin/String|, R|(kotlin/ByteArray) -> kotlin/ByteArray|>(R|<local>/action|, R|<local>/handler|)
+            Unit
+        }
+        )
+        lval proxy: R|test/ir/inherited/ChildService| = (R|<local>/constructor|.R|SubstitutionOverride<java/lang/reflect/Constructor.newInstance: R|CapturedType(out kotlin/Any!)!|>|(vararg(R|<local>/endpoint|, Null(null), Q|crow/wasmline/serialization/WasmlineProtobufSerializationFactory|)) as R|test/ir/inherited/ChildService|)
+        when () {
+            !=(R|<local>/proxy|.R|test/ir/inherited/ParentService.inherited|(String(payload)), String(parent:payload)) ->  {
+                ^box String(Inherited method returned an incorrect result)
+            }
+        }
+
+        when () {
+            !=(R|<local>/proxy|.R|test/ir/inherited/ParentService.add|(Int(19), Int(23)), Int(42)) ->  {
+                ^box String(Inherited multi-parameter method returned an incorrect result)
+            }
+        }
+
+        when () {
+            !=(R|<local>/proxy|.R|test/ir/inherited/ChildService.local|(), String(child)) ->  {
+                ^box String(Declared method returned an incorrect result)
+            }
+        }
+
+        ^box String(OK)
+    }

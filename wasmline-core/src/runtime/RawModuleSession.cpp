@@ -238,6 +238,10 @@ namespace wasmline {
                                                                "Raw import signature does not match: " + moduleText + "." + fieldText);
                 return false;
             }
+            // A module may import the same module/name pair more than once, and the
+            // linker resolves imports by name. Register each host definition once;
+            // the signature check above still runs for every guest occurrence.
+            if (consumedDefinitions.find(id) != consumedDefinitions.end()) continue;
             if (!defineImport(*found->second)) {
                 wasm_importtype_vec_delete(&importTypes);
                 return false;

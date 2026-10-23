@@ -15,6 +15,7 @@
 #include <unordered_map>
 
 #include "wasmline/invocation/InvocationResult.h"
+#include "wasmline/runtime/ComponentResourceDrop.h"
 #include "wasmline/value/ComponentValue.h"
 #include <wasmtime/component/component.h>
 #include <wasmtime/component/func.h>
@@ -52,7 +53,7 @@ namespace wasmline {
         void setComponentHostHandler(std::unique_ptr<ComponentHostHandler> handler);
 
         /** Drops one owned resource previously returned by this session. */
-        bool dropResource(const ComponentResourceReference& reference);
+        ResourceDropOutcome dropResource(const ComponentResourceReference& reference);
 
         /** Creates one owned Host resource for an imported Component resource type. */
         bool createHostResource(std::string_view interfaceName, std::string_view resourceName, uint32_t representation,
@@ -112,8 +113,8 @@ namespace wasmline {
 
         bool registerResource(wasmtime_component_resource_any_t* value, ComponentResourceOwnership ownership,
                               ComponentResourceOrigin origin, ComponentResourceReference* reference);
-        bool dropResourceUnlocked(const ComponentResourceReference& reference);
-        bool notifyHostResourceDrop(uint32_t representation, uint32_t hostType = 0);
+        ResourceDropOutcome dropResourceUnlocked(const ComponentResourceReference& reference);
+        bool notifyHostResourceDrop(uint32_t representation, uint32_t hostType = 0, InvocationResult* failure = nullptr);
         void clearTransientResources(const std::vector<uint64_t>& handles);
         void clearResources();
         void clearHostRepresentations();

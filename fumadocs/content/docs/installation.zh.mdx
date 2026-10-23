@@ -13,11 +13,11 @@ updatedAt: 2026-09-04
 ## 环境要求
 
 - JBR **21**
-- Kotlin **2.3.0-RC2** 或更高版本
+- Kotlin **2.4.0** 或更高版本
 
 <Callout type="warn" title="Kotlin 版本要求">
-  最低需要 **Kotlin 2.3.0-RC2** 版本。更低版本可能生成不完整的 Kotlin/WasmWasi 二进制文件，不能
-  用于 Wasmline 插件。
+  最低需要 **Kotlin 2.4.0** 版本。本次发行产物使用该版本编译并验证。较早的 Kotlin/Native 编译器可能
+  拒绝发布的 KLIB ABI；使用更高版本时需要重新验证运行时产物与编译器插件，最低版本声明不保证未来版本兼容。
 </Callout>
 
 ## 应用 Gradle 插件

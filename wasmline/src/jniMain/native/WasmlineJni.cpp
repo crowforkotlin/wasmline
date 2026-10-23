@@ -21,6 +21,7 @@ int _fltused = 0;
 #include "wasmline/invocation/TypedInvocationCodec.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/AotLoadPathDiagnostics.h"
+#include "wasmline/runtime/ComponentResourceDrop.h"
 #include <limits>
 #include <vector>
 
@@ -680,20 +681,27 @@ Java_crow_wasmline_JniWasmlineBindings_nativeReleaseComponentInstance(
   env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
 }
 
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jbyteArray JNICALL
 Java_crow_wasmline_JniWasmlineBindings_nativeDropComponentResource(
     JNIEnv *env, jclass thiz, jstring instanceKeyStr,
     jbyteArray resourceBytes) {
+  const auto invalid = [&](const char *message) {
+    return newByteArray(env,
+                        wasmline::encodeResourceDropOutcome(
+                            wasmline::ResourceDropOutcome::rejected(
+                                wasmline::WasmlineErrorCode::INVALID_PAYLOAD,
+                                message)));
+  };
   if (!env || !instanceKeyStr || !resourceBytes)
-    return JNI_FALSE;
+    return invalid("Component resource drop received a null input.");
   const char *instanceKey = env->GetStringUTFChars(instanceKeyStr, nullptr);
   if (!instanceKey)
-    return JNI_FALSE;
+    return invalid("Component resource drop could not read its instance key.");
   const jsize length = env->GetArrayLength(resourceBytes);
   jbyte *bytes = env->GetByteArrayElements(resourceBytes, nullptr);
   if (length > 0 && !bytes) {
     env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
-    return JNI_FALSE;
+    return invalid("Component resource drop could not read its carrier.");
   }
   const auto *input = reinterpret_cast<const uint8_t *>(bytes);
   std::vector<wasmline::ComponentValue> values;
@@ -702,15 +710,21 @@ Java_crow_wasmline_JniWasmlineBindings_nativeDropComponentResource(
       std::string_view(reinterpret_cast<const char *>(input),
                        static_cast<size_t>(length)),
       &values, &error);
-  const bool dropped =
-      decoded && values.size() == 1 &&
-      values.front().kind() == wasmline::ComponentValue::Kind::RESOURCE &&
-      wasmline::Api::dropComponentResource(instanceKey,
-                                           values.front().resourceValue());
+  jbyteArray carrier = nullptr;
+  if (decoded && values.size() == 1 &&
+      values.front().kind() == wasmline::ComponentValue::Kind::RESOURCE) {
+    carrier = newByteArray(
+        env,
+        wasmline::encodeResourceDropOutcome(
+            wasmline::Api::dropComponentResource(
+                instanceKey, values.front().resourceValue())));
+  } else {
+    carrier = invalid("Component resource drop payload is invalid.");
+  }
   if (bytes)
     env->ReleaseByteArrayElements(resourceBytes, bytes, JNI_ABORT);
   env->ReleaseStringUTFChars(instanceKeyStr, instanceKey);
-  return dropped ? JNI_TRUE : JNI_FALSE;
+  return carrier;
 }
 
 JNIEXPORT jbyteArray JNICALL

@@ -7,10 +7,8 @@ import crow.wasmline.web.WebTestModule
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -222,6 +220,95 @@ class WebCoreWasmTest {
         }
     }
 
+    /**
+     * A completed guest call must not be reported as a trap merely because the
+     * caller-declared result ABI disagrees with the real export. The reported
+     * codes match the native Core backends, which validate declared results
+     * after a successful invocation.
+     */
+    @Test
+    fun reportsDeclaredResultAbiMismatchAsResultFailure() {
+        val loaded = load("web-core-result-abi")
+        try {
+            val session = instantiate(
+                module = loaded.module,
+                exportSignatures = mapOf(
+                    // Real "void": (param i32) -> no results.
+                    "void" to RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                    // Real "pair": (param i32) -> (i32, i64).
+                    "pair" to RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32),
+                        results = listOf(RawValueType.I32, RawValueType.I64, RawValueType.I32),
+                    ),
+                    // Real "neg_f32": (param f32) -> (f32); an i64 declared result
+                    // cannot represent the fractional produced value.
+                    "neg_f32" to RawFunctionSignature(
+                        parameters = listOf(RawValueType.F32),
+                        results = listOf(RawValueType.I64),
+                    ),
+                ),
+            )
+            try {
+                val voidFailure = requireFailure(session.invoke("void", listOf(RawValue.I32(0))))
+                assertEquals(WasmlineErrorCode.ARGUMENT_COUNT_MISMATCH, voidFailure.code)
+
+                val pairFailure = requireFailure(session.invoke("pair", listOf(RawValue.I32(7))))
+                assertEquals(WasmlineErrorCode.ARGUMENT_COUNT_MISMATCH, pairFailure.code)
+
+                val typeFailure = requireFailure(session.invoke("neg_f32", listOf(RawValue.F32(1.25f))))
+                assertEquals(WasmlineErrorCode.ARGUMENT_TYPE_MISMATCH, typeFailure.code)
+
+                assertEquals(
+                    listOf(RawValue.I32(42)),
+                    requireSuccess(session.invoke("add", listOf(RawValue.I32(19), RawValue.I32(23)))),
+                )
+                assertEquals(WasmlineErrorCode.WASM_TRAP, requireFailure(session.invoke("trap")).code)
+                assertEquals(
+                    WasmlineErrorCode.ARGUMENT_COUNT_MISMATCH,
+                    requireFailure(session.invoke("trap", listOf(RawValue.I32(1)))).code,
+                )
+            } finally {
+                session.close()
+            }
+
+            val failingSession = instantiate(
+                module = loaded.module,
+                exportSignatures = mapOf(
+                    "void" to RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32),
+                        results = listOf(RawValueType.I32),
+                    ),
+                    "call_host" to RawFunctionSignature(
+                        parameters = listOf(RawValueType.I32, RawValueType.I32),
+                        results = listOf(RawValueType.I32, RawValueType.I32),
+                    ),
+                ),
+                handler = { _, _ ->
+                    WasmlineCallResult.Failure(
+                        WasmlineFailure(WasmlineErrorCode.TRANSPORT_FAILURE, "handler failed"),
+                    )
+                },
+            )
+            try {
+                assertEquals(
+                    WasmlineErrorCode.IMPORT_HANDLER_FAILED,
+                    requireFailure(failingSession.invoke("call_host", listOf(RawValue.I32(1), RawValue.I32(2)))).code,
+                )
+                assertEquals(
+                    WasmlineErrorCode.ARGUMENT_COUNT_MISMATCH,
+                    requireFailure(failingSession.invoke("void", listOf(RawValue.I32(0)))).code,
+                )
+            } finally {
+                failingSession.close()
+            }
+        } finally {
+            loaded.module.close()
+        }
+    }
+
     @Test
     fun mapsImportHandlerFailureAndCloseLifecycle() {
         val loaded = load("web-core-lifecycle")
@@ -248,6 +335,47 @@ class WebCoreWasmTest {
         }
     }
 
+    @Test
+    fun identicalArtifactsKeepSessionsIndependentWhenOneHandleCloses() {
+        val key = "web-core-independent-handles"
+        WasmlineWeb.registerBytes(key, WebTestModule.bytes())
+        fun loadHandle(): Wasmline = assertIs<WasmlineLoadState.Success>(
+            platformWasmlineLoadArtifact(descriptor(key), WasmlineConfig(supportConcurrent = false)),
+        ).wasmline
+        val first = loadHandle()
+        val second = loadHandle()
+        try {
+            val firstModule = requireSuccess(first.asCoreWasmModule())
+            val secondModule = requireSuccess(second.asCoreWasmModule())
+            val firstSession = instantiate(firstModule)
+            val secondSession = instantiate(secondModule)
+            first.close()
+            first.close()
+            assertTrue(firstModule.isClosed)
+            assertTrue(firstSession.isClosed)
+            assertEquals(WasmlineErrorCode.SESSION_CLOSED, requireFailure(first.asCoreWasmModule()).code)
+            assertEquals(
+                listOf(RawValue.I32(42)),
+                requireSuccess(secondSession.invoke("call_host", listOf(RawValue.I32(19), RawValue.I32(23)))),
+            )
+            val third = loadHandle()
+            try {
+                first.close()
+                val thirdSession = instantiate(requireSuccess(third.asCoreWasmModule()))
+                assertEquals(
+                    listOf(RawValue.I32(7)),
+                    requireSuccess(thirdSession.invoke("add", listOf(RawValue.I32(3), RawValue.I32(4)))),
+                )
+            } finally {
+                third.close()
+            }
+        } finally {
+            first.close()
+            second.close()
+            WasmlineWeb.invalidate(key)
+        }
+    }
+
     private fun load(key: String): LoadedModule {
         WasmlineWeb.registerBytes(key, WebTestModule.bytes())
         val state = platformWasmlineLoadArtifact(
@@ -261,6 +389,7 @@ class WebCoreWasmTest {
 
     private fun instantiate(
         module: CoreWasmModule,
+        exportSignatures: Map<String, RawFunctionSignature> = emptyMap(),
         handler: (RawImportContext, List<RawValue>) -> WasmlineCallResult<List<RawValue>> = { _, values ->
             WasmlineCallResult.Success(
                 listOf(
@@ -274,6 +403,7 @@ class WebCoreWasmTest {
         module.instantiate(
             CoreWasmSessionOptions(
                 imports = listOf(defaultImport(handler = handler)),
+                exportSignatures = exportSignatures,
             ),
         ),
     )

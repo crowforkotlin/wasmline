@@ -1,16 +1,17 @@
 package crow.wasmline
 
+import crow.wasmline.internal.runtime.WasmlineRuntimeLock
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
 
 /**
- * Describes a resolved local artifact path and its native module key.
+ * Describes a resolved local artifact path.
  *
  * Date: 2026-09-02
  * Author: crowforkotlin
  */
-internal data class ResolvedPrecompiledArtifact(val artifactPath: String, val moduleKey: String)
+internal data class ResolvedPrecompiledArtifact(val artifactPath: String)
 
 /**
  * Shared local-artifact bridge for runtime platform actuals.
@@ -24,6 +25,9 @@ internal data class ResolvedPrecompiledArtifact(val artifactPath: String, val mo
  * Author: crowforkotlin
  */
 internal object WasmlineLocalArtifactBridge {
+
+    private val handleIdLock = WasmlineRuntimeLock()
+    private var nextHandleId = 0L
 
     internal fun load(
         descriptor: WasmlineArtifactDescriptor,
@@ -85,8 +89,9 @@ internal object WasmlineLocalArtifactBridge {
                 ).toLoadState()
             }
 
+        val moduleKey = handleIdLock.withLock { "wasmline:handle:${++nextHandleId}" }
         val loadFailure = try {
-            when (val result = platform.loadPrecompiled(resolvedArtifact.moduleKey, resolvedArtifactPath, resolvedDescriptor)) {
+            when (val result = platform.loadPrecompiled(moduleKey, resolvedArtifactPath, resolvedDescriptor)) {
                 is WasmlineCallResult.Success -> null
                 is WasmlineCallResult.Failure -> result.failure
             }
@@ -109,10 +114,10 @@ internal object WasmlineLocalArtifactBridge {
             ).toLoadState()
         }
 
-        log?.info("[WasmlineLocalArtifactBridge] Module loaded: ${resolvedArtifact.moduleKey}")
+        log?.info("[WasmlineLocalArtifactBridge] Module loaded: $moduleKey")
         return WasmlineLoadState.Success(
             code = code,
-            wasmline = platform.createWasmline(resolvedArtifact.moduleKey, config, resolvedDescriptor),
+            wasmline = platform.createWasmline(moduleKey, config, resolvedDescriptor),
         )
     }
 
