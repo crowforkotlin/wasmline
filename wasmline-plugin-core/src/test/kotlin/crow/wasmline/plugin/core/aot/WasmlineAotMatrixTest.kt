@@ -28,10 +28,20 @@ class WasmlineAotMatrixTest {
 
         val units = planWasmlineAotBuildUnits(targets, profiles)
 
-        assertEquals(4, units.size)
+        val expectedUnits = targets.sumOf { target ->
+            profiles.count { it.artifactBackend == target.artifactBackend }
+        }
+        assertEquals(expectedUnits, units.size)
+        assertEquals(units.size, units.map { (target, profile) -> target to profile }.distinct().size)
         assertTrue(units.all { (target, profile) -> target.artifactBackend == profile.artifactBackend })
-        assertEquals(2, units.count { it.first.artifactBackend == WasmlineEngineKind.CRANELIFT })
-        assertEquals(2, units.count { it.first.artifactBackend == WasmlineEngineKind.PULLEY })
+        for (target in targets) {
+            val planned = units.filter { it.first == target }.map { it.second.id }.sorted()
+            val available = profiles
+                .filter { it.artifactBackend == target.artifactBackend }
+                .map { it.id }
+                .sorted()
+            assertEquals(available, planned, "Target ${target.requestedTarget}")
+        }
     }
 
     @Test

@@ -1,19 +1,13 @@
 package crow.wasmline.plugin.core.toolchain
 
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.statement.bodyAsChannel
-import io.ktor.http.HttpHeaders
-import io.ktor.http.isSuccess
-import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URI
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -27,7 +21,7 @@ import java.nio.file.StandardOpenOption
  */
 
 @InternalWasmlineToolingApi
-class ToolDownloader(private val httpClient: HttpClient = HttpClient(CIO), private val logger: (String) -> Unit = {}) : Closeable {
+class ToolDownloader(private val logger: (String) -> Unit = {}) : Closeable {
     /**
      * Resolves a cached asset or downloads it when it is missing.
      *
@@ -53,7 +47,7 @@ class ToolDownloader(private val httpClient: HttpClient = HttpClient(CIO), priva
     }
 
     override fun close() {
-        httpClient.close()
+        // Connections are opened and released per request, so there is nothing to close.
     }
 
     private suspend fun install(spec: ToolAssetSpec, cache: ToolCache, githubToken: String?): ResolvedToolAsset {
@@ -97,24 +91,50 @@ class ToolDownloader(private val httpClient: HttpClient = HttpClient(CIO), priva
         }
     }
 
-    private suspend fun downloadFile(url: String, destination: File, githubToken: String?) {
-        val response = httpClient.get(url) {
-            if (!githubToken.isNullOrBlank()) {
-                header(HttpHeaders.Authorization, "Bearer $githubToken")
-                header(HttpHeaders.Accept, "application/octet-stream")
-            }
-        }
-        check(response.status.isSuccess()) {
-            "Download failed with HTTP " + response.status.value + ": " + url
-        }
-
-        FileOutputStream(destination).use { output ->
-            val channel = response.bodyAsChannel()
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            while (!channel.isClosedForRead) {
-                val count = channel.readAvailable(buffer)
-                if (count < 0) break
-                if (count > 0) output.write(buffer, 0, count)
+    /**
+     * Downloads one asset through the JDK HTTP stack.
+     *
+     * GitHub answers release downloads with a redirect whose `Location` header can
+     * exceed the header-line limit of HTTP/1.1 protocol parsers, so redirects are
+     * followed explicitly instead of relying on a stack with a fixed header size.
+     */
+    private suspend fun downloadFile(url: String, destination: File, githubToken: String?) = withContext(Dispatchers.IO) {
+        var current = URI(url)
+        var redirects = 0
+        while (true) {
+            require(current.scheme == "https") { "Tool URL must use HTTPS: $current" }
+            val connection = current.toURL().openConnection() as HttpURLConnection
+            try {
+                connection.instanceFollowRedirects = false
+                connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
+                connection.readTimeout = READ_TIMEOUT_MILLIS
+                connection.requestMethod = "GET"
+                if (!githubToken.isNullOrBlank()) {
+                    connection.setRequestProperty("Authorization", "Bearer $githubToken")
+                    connection.setRequestProperty("Accept", "application/octet-stream")
+                }
+                val status = connection.responseCode
+                if (status in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                    require(!location.isNullOrBlank()) { "Tool download redirect omitted Location." }
+                    require(++redirects <= MAX_REDIRECTS) { "Tool download redirect limit exceeded." }
+                    current = current.resolve(location)
+                    continue
+                }
+                check(status in 200..299) { "Download failed with HTTP " + status + ": " + url }
+                connection.inputStream.use { input ->
+                    FileOutputStream(destination).use { output ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                        }
+                    }
+                }
+                return@withContext
+            } finally {
+                connection.disconnect()
             }
         }
     }
@@ -144,5 +164,11 @@ class ToolDownloader(private val httpClient: HttpClient = HttpClient(CIO), priva
         }.getOrElse {
             Files.move(source.toPath(), destination.toPath())
         }
+    }
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MILLIS: Int = 30_000
+        const val READ_TIMEOUT_MILLIS: Int = 120_000
+        const val MAX_REDIRECTS: Int = 5
     }
 }

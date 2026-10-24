@@ -53,7 +53,7 @@ class WasmlineAotCompatibilityCheckerTest {
 
     @Test
     fun reportsZeroGapWhenOnlyWasmlineVersionChanges() = withTemporaryDirectory { directory ->
-        val remote = localCatalog().copy(currentWasmlineVersion = "2.0.0")
+        val remote = syntheticBaseCatalog().copy(currentWasmlineVersion = "2.0.0")
         val messages = mutableListOf<String>()
         val result = checker(ScriptedTransport.forCatalog(remote)).check(request(directory, messages::add))
 
@@ -119,7 +119,7 @@ class WasmlineAotCompatibilityCheckerTest {
 
     @Test
     fun checksumFailureIsAdvisoryAndDoesNotFailTheCheck() = withTemporaryDirectory { directory ->
-        val transport = ScriptedTransport.forCatalog(localCatalog(), validChecksum = false)
+        val transport = ScriptedTransport.forCatalog(syntheticBaseCatalog(), validChecksum = false)
         val messages = mutableListOf<String>()
         val result = checker(transport).check(request(directory, messages::add))
 
@@ -150,7 +150,7 @@ class WasmlineAotCompatibilityCheckerTest {
         ).check(request(directory))
         assertUnavailable(catalogResult, "remote catalog validation failed")
 
-        val body = encoded(localCatalog())
+        val body = encoded(syntheticBaseCatalog())
         val checksumResult = checker(
             ScriptedTransport { url, _, _ ->
                 if (url.endsWith(".sha256")) {
@@ -190,7 +190,7 @@ class WasmlineAotCompatibilityCheckerTest {
 
     @Test
     fun offlineModeDoesNotUseTransport() = withTemporaryDirectory { directory ->
-        val transport = ScriptedTransport.forCatalog(localCatalog())
+        val transport = ScriptedTransport.forCatalog(syntheticBaseCatalog())
         val result = checker(transport).check(request(directory).copy(offline = true))
 
         assertEquals(0, transport.calls.size)
@@ -201,7 +201,7 @@ class WasmlineAotCompatibilityCheckerTest {
 
     @Test
     fun freshCacheAvoidsNetworkAndExpiredCacheUsesConditionalRequest() = withTemporaryDirectory { directory ->
-        val remote = localCatalog()
+        val remote = syntheticBaseCatalog()
         val now = Instant.parse("2026-08-29T00:00:00Z")
         val firstTransport = ScriptedTransport.forCatalog(remote)
         checker(firstTransport, now).check(request(directory))
@@ -252,7 +252,7 @@ class WasmlineAotCompatibilityCheckerTest {
     @Test
     fun suppressionKeepsTheReportButOmitsLoggerOutput() = withTemporaryDirectory { directory ->
         val messages = mutableListOf<String>()
-        val result = checker(ScriptedTransport.forCatalog(localCatalog()))
+        val result = checker(ScriptedTransport.forCatalog(syntheticBaseCatalog()))
             .check(request(directory, messages::add).copy(warningSuppressed = true))
 
         assertTrue(messages.isEmpty())
@@ -268,7 +268,7 @@ class WasmlineAotCompatibilityCheckerTest {
     private fun request(
         directory: File,
         logger: (String) -> Unit = {},
-        localCatalog: WasmlineAotReleaseCatalog = localCatalog(),
+        localCatalog: WasmlineAotReleaseCatalog = syntheticBaseCatalog(),
         selector: String = "current",
         selectedGenerations: List<Int> = listOf(localCatalog.ranges.last().aotGeneration),
         requestedBackends: Set<WasmlineEngineKind> = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
@@ -287,12 +287,13 @@ class WasmlineAotCompatibilityCheckerTest {
     )
 
     private fun catalogWithSecondGeneration(changedBackends: List<WasmlineEngineKind>): WasmlineAotReleaseCatalog {
-        val local = localCatalog()
+        val local = syntheticBaseCatalog()
+        val nextGeneration = local.ranges.last().aotGeneration + 1
         return local.copy(
             currentWasmlineVersion = "2.0.0",
             ranges = local.ranges + WasmlineAotReleaseRange(
                 fromWasmlineVersion = "2.0.0",
-                aotGeneration = 2,
+                aotGeneration = nextGeneration,
                 wasmtimeDistributionVersion = "49.0.0.1",
                 changedBackends = changedBackends,
             ),
@@ -300,7 +301,7 @@ class WasmlineAotCompatibilityCheckerTest {
     }
 
     private fun catalogWithReusedCraneliftProfile(): WasmlineAotReleaseCatalog {
-        val local = localCatalog()
+        val local = syntheticBaseCatalog()
         return local.copy(
             currentWasmlineVersion = "3.0.0",
             ranges = local.ranges +
@@ -385,7 +386,25 @@ private inline fun withTemporaryDirectory(block: (File) -> Unit) {
     }
 }
 
-private fun localCatalog(): WasmlineAotReleaseCatalog = AotCompatibilityCatalog.publicReleaseCatalog()
+/**
+ * Returns one fixed single-generation catalog.
+ *
+ * Checker tests mutate a baseline; deriving it from the packaged catalog would couple
+ * generation numbering to whichever releases the repository has published so far.
+ */
+private fun syntheticBaseCatalog(): WasmlineAotReleaseCatalog = WasmlineAotReleaseCatalog(
+    schemaVersion = 1,
+    currentWasmlineVersion = "1.0.0",
+    minimumSupportedWasmlineVersion = "1.0.0",
+    ranges = listOf(
+        WasmlineAotReleaseRange(
+            fromWasmlineVersion = "1.0.0",
+            aotGeneration = 1,
+            wasmtimeDistributionVersion = "48.0.1.1",
+            changedBackends = WasmlineEngineKind.entries.sortedBy(WasmlineEngineKind::name),
+        ),
+    ),
+)
 
 private fun encoded(catalog: WasmlineAotReleaseCatalog): ByteArray =
     WasmlineAotReleaseCatalogCodec.encodePublic(catalog).encodeToByteArray()

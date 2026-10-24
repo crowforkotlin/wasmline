@@ -5,14 +5,6 @@ import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.toolchain.FileDigest
 import crow.wasmline.plugin.core.toolchain.SecureArchiveExtractor
 import crow.wasmline.plugin.core.toolchain.ToolDistribution
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.statement.bodyAsChannel
-import io.ktor.http.HttpHeaders
-import io.ktor.http.isSuccess
-import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -24,6 +16,8 @@ import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URI
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -112,7 +106,7 @@ class AotCompilerCache(val rootDirectory: File) {
  * Author: crowforkotlin
  */
 @InternalWasmlineToolingApi
-class AotCompilerResolver(private val cache: AotCompilerCache, private val httpClient: HttpClient = HttpClient(CIO)) : Closeable {
+class AotCompilerResolver(private val cache: AotCompilerCache) : Closeable {
     /** Resolves every selected profile and reports all offline cache misses together. */
     suspend fun resolveAll(
         profiles: Collection<AotCompatibilityProfileSpec>,
@@ -154,7 +148,7 @@ class AotCompilerResolver(private val cache: AotCompilerCache, private val httpC
     }
 
     override fun close() {
-        httpClient.close()
+        // Connections are opened and released per request, so there is nothing to close.
     }
 
     private suspend fun resolveOrDownload(
@@ -233,28 +227,18 @@ class AotCompilerResolver(private val cache: AotCompilerCache, private val httpC
         }
     }
 
+    /**
+     * Downloads one archive through the JDK HTTP stack.
+     *
+     * GitHub answers release downloads with a 302 whose `Location` can exceed the
+     * header-line limit enforced by HTTP/1.1 protocol parsers, so this follows
+     * redirects manually instead of relying on a stack with a fixed header size.
+     */
     private suspend fun downloadFromMirrors(asset: AotCompilerAssetSpec, destination: File, githubToken: String?) {
         var failure: Throwable? = null
         asset.downloadUrls.forEach { url ->
             try {
-                val response = httpClient.get(url) {
-                    if (!githubToken.isNullOrBlank()) header(HttpHeaders.Authorization, "Bearer $githubToken")
-                }
-                check(response.status.isSuccess()) { "HTTP ${response.status.value}" }
-                FileOutputStream(destination).use { output ->
-                    val channel = response.bodyAsChannel()
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var written = 0L
-                    while (!channel.isClosedForRead) {
-                        val count = channel.readAvailable(buffer)
-                        if (count < 0) break
-                        if (count > 0) {
-                            written += count
-                            require(written <= asset.archiveSize) { "Compiler archive exceeds its locked size." }
-                            output.write(buffer, 0, count)
-                        }
-                    }
-                }
+                downloadFollowingRedirects(url, destination, asset.archiveSize, githubToken)
                 return
             } catch (error: CancellationException) {
                 throw error
@@ -263,6 +247,60 @@ class AotCompilerResolver(private val cache: AotCompilerCache, private val httpC
             }
         }
         throw IllegalStateException("Unable to download compiler archive '${asset.archiveName}'.", failure)
+    }
+
+    private suspend fun downloadFollowingRedirects(
+        url: String,
+        destination: File,
+        expectedSize: Long,
+        githubToken: String?,
+    ) = withContext(Dispatchers.IO) {
+        var current = URI(url)
+        var redirects = 0
+        while (true) {
+            require(current.scheme == "https") { "Compiler archive URL must use HTTPS: $current" }
+            val connection = current.toURL().openConnection() as HttpURLConnection
+            try {
+                connection.instanceFollowRedirects = false
+                connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
+                connection.readTimeout = READ_TIMEOUT_MILLIS
+                connection.requestMethod = "GET"
+                if (!githubToken.isNullOrBlank()) {
+                    connection.setRequestProperty("Authorization", "Bearer $githubToken")
+                }
+                val status = connection.responseCode
+                if (status in 300..399 && status != HTTP_NOT_MODIFIED) {
+                    val location = connection.getHeaderField("Location")
+                    require(!location.isNullOrBlank()) { "Compiler archive redirect omitted Location." }
+                    require(++redirects <= MAX_REDIRECTS) { "Compiler archive redirect limit exceeded." }
+                    current = current.resolve(location)
+                    continue
+                }
+                check(status in 200..299) { "HTTP $status" }
+                val declared = connection.contentLengthLong
+                require(declared < 0 || declared == expectedSize) {
+                    "Compiler archive size $declared does not match locked size $expectedSize."
+                }
+                FileOutputStream(destination).use { output ->
+                    connection.inputStream.use { input ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var written = 0L
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            written += count
+                            require(written <= expectedSize) {
+                                "Compiler archive exceeds its locked size."
+                            }
+                            output.write(buffer, 0, count)
+                        }
+                    }
+                }
+                return@withContext
+            } finally {
+                connection.disconnect()
+            }
+        }
     }
 
     private fun hasCompileCapability(executable: File): Boolean = runCatching {
@@ -286,5 +324,9 @@ class AotCompilerResolver(private val cache: AotCompilerCache, private val httpC
      */
     private companion object {
         const val DEFAULT_MAX_PARALLEL_DOWNLOADS: Int = 2
+        const val CONNECT_TIMEOUT_MILLIS: Int = 30_000
+        const val READ_TIMEOUT_MILLIS: Int = 120_000
+        const val MAX_REDIRECTS: Int = 5
+        const val HTTP_NOT_MODIFIED: Int = 304
     }
 }

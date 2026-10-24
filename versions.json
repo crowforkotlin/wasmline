@@ -1,6 +1,6 @@
 {
   "versions": {
-    "wasmline_version": "1.0.0",
+    "wasmline_version": "1.0.1",
     "sample_plugin_version": "1.0.0",
     "wasmtime_version": "50.0.0",
     "wasmtime_release_version": "50.0.0.2",

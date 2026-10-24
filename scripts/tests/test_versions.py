@@ -494,10 +494,11 @@ class SyncVersionTest(unittest.TestCase):
         """A new generation obtains detailed metadata without expanding versions.json."""
         source = copy.deepcopy(aot_compatibility.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
+        next_generation = source["ranges"][-1]["aotGeneration"] + 1
         source["ranges"].append(
             {
                 "fromWasmlineVersion": "1.1.0",
-                "aotGeneration": 2,
+                "aotGeneration": next_generation,
                 "wasmtimeDistributionVersion": "49.0.0.1",
                 "changedBackends": ["CRANELIFT", "PULLEY"],
             }
@@ -515,20 +516,24 @@ class SyncVersionTest(unittest.TestCase):
         aot_compatibility.validate_append_only(previous, generated)
 
         self.assertEqual(["49.0.0.1"], resolver.requested)
-        self.assertEqual(4, len(generated["profiles"]))
-        self.assertEqual(10, len(generated["compilerAssets"]))
-        self.assertEqual(20, len(generated["profileCompilerBindings"]))
-        self.assertEqual(2, generated["releaseCatalog"]["ranges"][-1]["aotGeneration"])
+        self.assertEqual(len(previous["profiles"]) + 2, len(generated["profiles"]))
+        self.assertEqual(len(previous["compilerAssets"]) + 5, len(generated["compilerAssets"]))
+        self.assertEqual(
+            len(previous["profileCompilerBindings"]) + 10,
+            len(generated["profileCompilerBindings"]),
+        )
+        self.assertEqual(next_generation, generated["releaseCatalog"]["ranges"][-1]["aotGeneration"])
 
     def test_aot_sync_reuses_one_backend_for_a_new_generation(self) -> None:
         """A generation can replace one backend profile without duplicating the other."""
         source = copy.deepcopy(aot_compatibility.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
         current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
+        next_generation = source["ranges"][-1]["aotGeneration"] + 1
         source["ranges"].append(
             {
                 "fromWasmlineVersion": "1.1.0",
-                "aotGeneration": 2,
+                "aotGeneration": next_generation,
                 "wasmtimeDistributionVersion": current_distribution,
                 "changedBackends": ["CRANELIFT"],
             }
@@ -565,9 +570,12 @@ class SyncVersionTest(unittest.TestCase):
             previous_range["profileIdsByBackend"]["PULLEY"],
             current_range["profileIdsByBackend"]["PULLEY"],
         )
-        self.assertEqual(3, len(generated["profiles"]))
-        self.assertEqual(5, len(generated["compilerAssets"]))
-        self.assertEqual(15, len(generated["profileCompilerBindings"]))
+        self.assertEqual(len(previous["profiles"]) + 1, len(generated["profiles"]))
+        self.assertEqual(len(previous["compilerAssets"]), len(generated["compilerAssets"]))
+        self.assertEqual(
+            len(previous["profileCompilerBindings"]) + 5,
+            len(generated["profileCompilerBindings"]),
+        )
 
     def test_aot_sync_rejects_an_unmarked_backend_contract_change(self) -> None:
         """A backend contract change must be declared by changedBackends."""
@@ -609,10 +617,11 @@ class SyncVersionTest(unittest.TestCase):
         source = copy.deepcopy(aot_compatibility.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
         current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
+        next_generation = source["ranges"][-1]["aotGeneration"] + 1
         source["ranges"].append(
             {
                 "fromWasmlineVersion": "1.1.0",
-                "aotGeneration": 2,
+                "aotGeneration": next_generation,
                 "wasmtimeDistributionVersion": current_distribution,
                 "changedBackends": ["CRANELIFT"],
             }
@@ -806,16 +815,38 @@ class SyncVersionTest(unittest.TestCase):
                 rendered,
             )
 
-    def test_aot_catalog_contains_only_current_distribution(self) -> None:
-        """The initial catalog contains only the active Wasmtime fork distribution."""
+    def test_aot_catalog_contains_only_published_distributions(self) -> None:
+        """Every catalogued distribution is finished and bound to a full compiler asset."""
         source = aot_compatibility.load_public_catalog()
         lock = aot_compatibility.load_lock()
-        active_distribution = "48" + ".0.1.1"
-        self.assertEqual({active_distribution}, {item["wasmtimeDistributionVersion"] for item in source["ranges"]})
-        self.assertEqual({active_distribution}, {item["wasmtimeDistributionVersion"] for item in lock["profiles"]})
-        self.assertEqual(2, len(lock["profiles"]))
-        self.assertEqual(5, len(lock["compilerAssets"]))
-        self.assertEqual(10, len(lock["profileCompilerBindings"]))
+        versions = sync_version.load_manifest()["versions"]
+        active_distribution = versions["wasmtime_release_version"]
+
+        self.assertEqual(
+            active_distribution,
+            source["ranges"][-1]["wasmtimeDistributionVersion"],
+        )
+        catalogued = {item["wasmtimeDistributionVersion"] for item in source["ranges"]}
+        self.assertEqual(
+            catalogued,
+            {item["wasmtimeDistributionVersion"] for item in lock["profiles"]},
+        )
+        build_hosts = {item["buildHost"] for item in lock["profileCompilerBindings"]}
+        self.assertEqual(5, len(build_hosts))
+        for profile in lock["profiles"]:
+            bound_hosts = {
+                item["buildHost"]
+                for item in lock["profileCompilerBindings"]
+                if item["profileId"] == profile["id"]
+            }
+            self.assertEqual(build_hosts, bound_hosts, msg=profile["id"])
+        self.assertTrue(
+            all(item["distribution"] == "FULL" for item in lock["compilerAssets"]),
+            msg="Every catalogued compiler asset must ship the compile command.",
+        )
+        self.assertEqual(2 * len(source["ranges"]), len(lock["profiles"]))
+        self.assertEqual(5 * len(source["ranges"]), len(lock["compilerAssets"]))
+        self.assertEqual(10 * len(source["ranges"]), len(lock["profileCompilerBindings"]))
 
     def test_aot_catalog_rejects_runtime_only_compiler_distribution(self) -> None:
         """AOT catalog assets must contain the Wasmtime compile command."""

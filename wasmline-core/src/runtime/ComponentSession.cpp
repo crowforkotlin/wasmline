@@ -33,12 +33,39 @@ namespace wasmline {
             }
         };
 
-        struct ComponentItemGuard {
-            wasmtime_component_item_t value{};
-            bool active = false;
+        /**
+         * Owns one component import/export handle and the item view derived from it.
+         *
+         * The C API allocates the extern and requires the caller to release it. The
+         * derived item borrows storage from that extern, so it must be deleted first.
+         */
+        struct ComponentExternGuard {
+            wasmtime_component_extern_t* value = nullptr;
+            wasmtime_component_item_t item{};
+            bool itemActive = false;
 
-            ~ComponentItemGuard() {
-                if (active) wasmtime_component_item_delete(&value);
+            ComponentExternGuard() = default;
+            ComponentExternGuard(const ComponentExternGuard&) = delete;
+            ComponentExternGuard& operator=(const ComponentExternGuard&) = delete;
+
+            ~ComponentExternGuard() { reset(); }
+
+            void reset() {
+                if (itemActive) {
+                    wasmtime_component_item_delete(&item);
+                    itemActive = false;
+                }
+                if (value) {
+                    wasmtime_component_extern_delete(value);
+                    value = nullptr;
+                }
+            }
+
+            bool resolveItem() {
+                if (!value) return false;
+                wasmtime_component_extern_type(value, &item);
+                itemActive = true;
+                return true;
             }
         };
 
@@ -177,11 +204,11 @@ namespace wasmline {
 
         bool serviceInstanceTypeMatches(const wasmtime_component_instance_type_t* type, const wasm_engine_t* engine) {
             if (!type || !engine) return false;
-            ComponentItemGuard invoke;
+            ComponentExternGuard invoke;
             if (!wasmtime_component_instance_type_export_get(type, engine, "invoke", 6, &invoke.value)) return false;
-            invoke.active = true;
-            return invoke.value.kind == WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC &&
-                   serviceFunctionTypeMatches(invoke.value.of.component_func);
+            if (!invoke.resolveItem()) return false;
+            return invoke.item.kind == WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC &&
+                   serviceFunctionTypeMatches(invoke.item.of.component_func);
         }
 
         const ComponentValue* recordField(const ComponentRecord& record, std::string_view name) {
@@ -1265,16 +1292,20 @@ namespace wasmline {
         for (size_t index = 0; index < importCount; ++index) {
             const char* importName = nullptr;
             size_t importNameSize = 0;
-            ComponentItemGuard import;
+            ComponentExternGuard import;
             if (!wasmtime_component_type_import_nth(componentType, engine_, index, &importName, &importNameSize, &import.value)) {
                 wasmtime_component_type_delete(componentType);
                 LOGE("[Wasmtime] ComponentSession -> Component import type is unavailable: %s", key_.c_str());
                 return false;
             }
-            import.active = true;
+            if (!import.resolveItem()) {
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Component import item is unavailable: %s", key_.c_str());
+                return false;
+            }
             const std::string importNameText = nameString(importName, importNameSize);
-            if (import.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
-                !serviceInstanceTypeMatches(import.value.of.component_instance, engine_)) {
+            if (import.item.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
+                !serviceInstanceTypeMatches(import.item.of.component_instance, engine_)) {
                 continue;
             }
 
@@ -1320,17 +1351,21 @@ namespace wasmline {
         for (size_t importIndex = 0; importIndex < importCount; ++importIndex) {
             const char* importName = nullptr;
             size_t importNameSize = 0;
-            ComponentItemGuard import;
+            ComponentExternGuard import;
             if (!wasmtime_component_type_import_nth(componentType, engine_, importIndex, &importName, &importNameSize, &import.value)) {
                 wasmtime_component_type_delete(componentType);
                 LOGE("[Wasmtime] ComponentSession -> Component import type is unavailable: %s", key_.c_str());
                 return false;
             }
-            import.active = true;
+            if (!import.resolveItem()) {
+                wasmtime_component_type_delete(componentType);
+                LOGE("[Wasmtime] ComponentSession -> Component import item is unavailable: %s", key_.c_str());
+                return false;
+            }
 
             const std::string interfaceName = nameString(importName, importNameSize);
-            if (isWasiImport(interfaceName) || import.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
-                serviceInstanceTypeMatches(import.value.of.component_instance, engine_)) {
+            if (isWasiImport(interfaceName) || import.item.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_INSTANCE ||
+                serviceInstanceTypeMatches(import.item.of.component_instance, engine_)) {
                 continue;
             }
 
@@ -1354,20 +1389,25 @@ namespace wasmline {
                 return false;
             }
 
-            const size_t functionCount = wasmtime_component_instance_type_export_count(import.value.of.component_instance, engine_);
+            const size_t functionCount = wasmtime_component_instance_type_export_count(import.item.of.component_instance, engine_);
             for (size_t functionIndex = 0; functionIndex < functionCount; ++functionIndex) {
                 const char* functionName = nullptr;
                 size_t functionNameSize = 0;
-                ComponentItemGuard function;
-                if (!wasmtime_component_instance_type_export_nth(import.value.of.component_instance, engine_, functionIndex, &functionName,
+                ComponentExternGuard function;
+                if (!wasmtime_component_instance_type_export_nth(import.item.of.component_instance, engine_, functionIndex, &functionName,
                                                                  &functionNameSize, &function.value)) {
                     wasmtime_component_linker_instance_delete(hostInstance);
                     wasmtime_component_type_delete(componentType);
                     LOGE("[Wasmtime] ComponentSession -> Component import function type is unavailable: %s", interfaceName.c_str());
                     return false;
                 }
-                function.active = true;
-                if (function.value.kind == WASMTIME_COMPONENT_ITEM_RESOURCE) {
+                if (!function.resolveItem()) {
+                    wasmtime_component_linker_instance_delete(hostInstance);
+                    wasmtime_component_type_delete(componentType);
+                    LOGE("[Wasmtime] ComponentSession -> Component import function item is unavailable: %s", interfaceName.c_str());
+                    return false;
+                }
+                if (function.item.kind == WASMTIME_COMPONENT_ITEM_RESOURCE) {
                     auto binding = std::make_unique<ImportedResourceBinding>();
                     binding->session = this;
                     binding->interfaceName = interfaceName;
@@ -1393,11 +1433,11 @@ namespace wasmline {
                     importedResourceBindings_.push_back(std::move(binding));
                     continue;
                 }
-                if (function.value.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC) continue;
+                if (function.item.kind != WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC) continue;
 
                 const std::string functionNameText = nameString(functionName, functionNameSize);
                 const std::string functionLabel = componentHostFunctionLabel(interfaceName, functionNameText);
-                if (wasmtime_component_func_type_async(function.value.of.component_func)) {
+                if (wasmtime_component_func_type_async(function.item.of.component_func)) {
                     wasmtime_component_linker_instance_delete(hostInstance);
                     wasmtime_component_type_delete(componentType);
                     LOGE("[Wasmtime] ComponentSession -> Async typed import is unsupported: %s", functionLabel.c_str());
