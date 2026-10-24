@@ -10,10 +10,11 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "lib" / "python"))
+sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "internal" / "python"))
 
 from wasmline_tools import doctor, wasmtime
 from wasmline_tools.targets import load_targets, target_by_id
+from wasmline_tools.terminal import Console
 
 
 class WasmtimeConfigurationTest(unittest.TestCase):
@@ -91,7 +92,7 @@ class WasmtimeConfigurationTest(unittest.TestCase):
                 "b" * 64,
             ),
         ]
-        progress = wasmtime._DownloadProgress(wasmtime.Console(stream), jobs)
+        progress = wasmtime._DownloadProgress(Console(stream), jobs)
 
         progress.advance(100)
         progress.complete_file()

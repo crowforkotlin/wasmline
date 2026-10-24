@@ -41,6 +41,11 @@ allprojects {
     group = if (project == rootProject) "crow.wasmline.build" else "crow.wasmline"
     version = project.property("wasmline.version") as String
 
+    // Local publication must not demand a GPG key; releases still sign when CI provides one.
+    val hasSigningCredentials =
+        providers.gradleProperty("signingInMemoryKey").isPresent ||
+            providers.gradleProperty("signing.secretKeyRingFile").isPresent
+
     pluginManager.withPlugin("org.jetbrains.dokka") {
         configure<DokkaExtension> {
             dokkaSourceSets.configureEach {
@@ -75,7 +80,9 @@ allprojects {
     pluginManager.withPlugin("com.vanniktech.maven.publish.base") {
         configure<MavenPublishBaseExtension> {
             publishToMavenCentral(automaticRelease = true)
-            signAllPublications()
+            if (hasSigningCredentials) {
+                signAllPublications()
+            }
             pom {
                 description.set("Wasmline")
                 name.set("Wasmline")

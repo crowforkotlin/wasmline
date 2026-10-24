@@ -207,8 +207,7 @@ namespace wasmline {
             ComponentExternGuard invoke;
             if (!wasmtime_component_instance_type_export_get(type, engine, "invoke", 6, &invoke.value)) return false;
             if (!invoke.resolveItem()) return false;
-            return invoke.item.kind == WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC &&
-                   serviceFunctionTypeMatches(invoke.item.of.component_func);
+            return invoke.item.kind == WASMTIME_COMPONENT_ITEM_COMPONENT_FUNC && serviceFunctionTypeMatches(invoke.item.of.component_func);
         }
 
         const ComponentValue* recordField(const ComponentRecord& record, std::string_view name) {

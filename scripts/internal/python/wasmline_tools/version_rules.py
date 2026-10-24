@@ -1,58 +1,21 @@
-#!/usr/bin/env python3
-"""Synchronize repository version references from a single manifest.
+"""Version file rules and their rendering.
 
-Public commands:
-    ./scripts/wasmline versions sync
-    ./scripts/wasmline versions check
-    ./scripts/wasmline versions sync --set wasmtime_version=<version> \
-        --set wasmtime_release_version=<release-version>
-    ./scripts/wasmline versions verify-upstream
-    ./scripts/wasmline versions check-ktlint
-    ./scripts/wasmline versions update-ktlint
+Rules live here so `versions.py` can import them without the rule module
+importing the version operations in return.
 """
 
 from __future__ import annotations
 
-import argparse
-import json
-import os
 import re
-import stat
-import sys
-import tempfile
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
-from urllib.request import Request, urlopen
+from typing import Callable
 
-from . import aot_compatibility, toolchain_lock
-from .output import Console
-from .paths import MANIFEST_PATH, PROJECT_ROOT
-KTLINT_LATEST_RELEASE_URL = "https://api.github.com/repos/ktlint/ktlint/releases/latest"
+from .support.text import MissingMatches, replace_matches
 
 VersionMap = dict[str, str]
 Replacement = str | Callable[[VersionMap], str]
 
-REQUIRED_KEYS = (
-    "wasmline_version",
-    "sample_plugin_version",
-    "wasmtime_version",
-    "wasmtime_release_version",
-    "wasm_tools_version",
-    "wit_bindgen_version",
-    "kotlin_version",
-    "ktlint_version",
-    "dokka_version",
-    "kotlin_min_version",
-    "agp_version",
-    "gradle_version",
-    "zig_version",
-    "jbr_version",
-)
-
-SEMANTIC_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
 SEMANTIC_VERSION_TOKEN_PATTERN = r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?"
-WASMTIME_RELEASE_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+\.[1-9][0-9]*$")
 
 
 @dataclass(frozen=True)
@@ -69,10 +32,6 @@ class FileSpec:
     rules: tuple[Rule, ...]
 
 
-class KtlintReleaseError(RuntimeError):
-    """Raised when the latest stable KtLint release cannot be resolved."""
-
-
 def badge_value(value: str) -> str:
     return value.replace("-", "--")
 
@@ -86,170 +45,23 @@ def wasmtime_code(value: str) -> int:
 def render(value: Replacement, versions: VersionMap) -> str:
     return value(versions) if callable(value) else value
 
-
-def load_manifest() -> dict[str, Any]:
-    try:
-        data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise SystemExit(f"Missing manifest: {MANIFEST_PATH}") from exc
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"Invalid JSON in {MANIFEST_PATH}: {exc}") from exc
-
-    if "aotCompatibility" in data:
-        raise SystemExit(
-            "AOT compatibility is maintained in root aot-compatibility.json; "
-            "remove aotCompatibility from versions.json."
-        )
-
-    versions = data.get("versions")
-    if not isinstance(versions, dict):
-        raise SystemExit("Manifest must contain a 'versions' object.")
-
-    normalized = {str(key): str(value) for key, value in versions.items()}
-    missing = [key for key in REQUIRED_KEYS if not normalized.get(key)]
-    if missing:
-        raise SystemExit(f"Manifest is missing required keys: {', '.join(missing)}")
-    validate_versions(normalized)
-    data["versions"] = normalized
-    return data
-
-
-def render_manifest(data: Mapping[str, Any]) -> str:
-    """Render the version manifest in its canonical format."""
-
-    return json.dumps(data, ensure_ascii=True, indent=2) + "\n"
-
-
-def parse_updates(entries: list[str]) -> dict[str, str]:
-    updates: dict[str, str] = {}
-    for entry in entries:
-        if "=" not in entry:
-            raise SystemExit(f"Invalid --set value '{entry}'. Expected key=value.")
-        key, value = entry.split("=", 1)
-        key = key.strip()
-        value = value.strip()
-        if key not in REQUIRED_KEYS:
-            raise SystemExit(
-                f"Unknown version key '{key}'. Valid keys: {', '.join(REQUIRED_KEYS)}"
-            )
-        if not value:
-            raise SystemExit(f"Version value for '{key}' cannot be empty.")
-        validate_version(key, value)
-        updates[key] = value
-    return updates
-
-
-def validate_version(key: str, value: str) -> None:
-    if key == "jbr_version":
-        if not re.fullmatch(r"[0-9]+", value):
-            raise SystemExit(f"Invalid version value for '{key}': '{value}'. Expected an integer.")
-        return
-    if key == "wasmtime_release_version":
-        if not WASMTIME_RELEASE_VERSION_PATTERN.fullmatch(value):
-            raise SystemExit(
-                f"Invalid version value for '{key}': '{value}'. "
-                "Expected UPSTREAM_MAJOR.UPSTREAM_MINOR.UPSTREAM_PATCH.REVISION."
-            )
-        return
-    if not SEMANTIC_VERSION_PATTERN.fullmatch(value):
-        raise SystemExit(
-            f"Invalid version value for '{key}': '{value}'. "
-            "Expected MAJOR.MINOR.PATCH with an optional prerelease/build suffix."
-        )
-    if key == "ktlint_version" and not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", value):
-        raise SystemExit(
-            f"Invalid version value for '{key}': '{value}'. "
-            "KtLint must use a stable release without prerelease or build metadata."
-        )
-    if key == "wasmtime_version":
-        numeric_version = value.split("-", 1)[0].split("+", 1)[0]
-        _, minor, patch = (int(part) for part in numeric_version.split("."))
-        if minor > 9 or patch > 9:
-            raise SystemExit(
-                "Invalid version value for 'wasmtime_version': "
-                f"'{value}'. Minor and patch must remain single digits while "
-                "the release-tag encoding is in use."
-            )
-
-
-def validate_versions(versions: VersionMap) -> None:
-    for key in REQUIRED_KEYS:
-        validate_version(key, versions[key])
-    release_upstream = versions["wasmtime_release_version"].rsplit(".", 1)[0]
-    if release_upstream != versions["wasmtime_version"]:
-        raise SystemExit(
-            "wasmtime_release_version must use wasmtime_version as its first three segments: "
-            f"{versions['wasmtime_release_version']} != {versions['wasmtime_version']}.<revision>"
-        )
-
-
-def parse_latest_ktlint_release(payload: Mapping[str, Any]) -> str:
-    """Extract one stable semantic version from GitHub's latest-release payload."""
-
-    if payload.get("draft") is not False or payload.get("prerelease") is not False:
-        raise KtlintReleaseError("GitHub did not return a stable KtLint release.")
-    tag = payload.get("tag_name")
-    if not isinstance(tag, str) or not tag:
-        raise KtlintReleaseError("GitHub's KtLint release payload has no tag_name.")
-    version = tag.removeprefix("v")
-    if not SEMANTIC_VERSION_PATTERN.fullmatch(version) or "-" in version or "+" in version:
-        raise KtlintReleaseError(f"GitHub returned an invalid stable KtLint version: {tag!r}.")
-    return version
-
-
-def stable_version_key(value: str) -> tuple[int, int, int]:
-    major, minor, patch = (int(part) for part in value.split("."))
-    return major, minor, patch
-
-
-def latest_ktlint_version() -> str:
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "wasmline-version-sync",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    if token := os.environ.get("GITHUB_TOKEN"):
-        headers["Authorization"] = f"Bearer {token}"
-    request = Request(
-        KTLINT_LATEST_RELEASE_URL,
-        headers=headers,
-    )
-    try:
-        with urlopen(request, timeout=20) as response:
-            payload = json.load(response)
-    except (OSError, ValueError) as error:
-        raise KtlintReleaseError(f"Failed to resolve the latest KtLint release: {error}") from error
-    if not isinstance(payload, Mapping):
-        raise KtlintReleaseError("GitHub returned an invalid KtLint release payload.")
-    return parse_latest_ktlint_release(payload)
-
-
-def check_ktlint_latest(versions: VersionMap) -> int:
-    current = versions["ktlint_version"]
-    latest = latest_ktlint_version()
-    current_key = stable_version_key(current)
-    latest_key = stable_version_key(latest)
-    console = Console(sys.stdout)
-    if current_key == latest_key:
-        console.ok("ktlint version", current)
-        return 0
-    if current_key > latest_key:
-        console.info("ktlint version", f"Configured {current}; upstream {latest}.")
-        return 0
-    console.error("ktlint version", f"Update available: {current} -> {latest}.")
-    console.info("Command", "./scripts/wasmline versions update-ktlint")
-    return 1
-
-
 def apply_rules(text: str, spec: FileSpec, versions: VersionMap) -> str:
+    """Apply every rule for one file in declaration order."""
+
     updated = text
     for rule in spec.rules:
-        replacement = render(rule.replacement, versions)
-        updated, count = re.subn(rule.pattern, replacement, updated, flags=rule.flags)
-        if count < rule.min_count:
+        try:
+            updated = replace_matches(
+                updated,
+                rule.pattern,
+                render(rule.replacement, versions),
+                flags=rule.flags,
+                minimum=rule.min_count,
+            )
+        except MissingMatches as error:
             raise SystemExit(
                 f"Pattern not found enough times in {spec.path}: {rule.pattern}"
-            )
+            ) from error
     return updated
 
 
@@ -988,246 +800,3 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
     )
-
-
-def list_versions(versions: VersionMap) -> None:
-    for key in REQUIRED_KEYS:
-        print(f"{key}={versions[key]}")
-
-
-AdditionalFile = tuple[str, Path, str]
-
-
-def sync_files(
-    versions: VersionMap,
-    check: bool,
-    additional_files: tuple[AdditionalFile, ...] = (),
-) -> int:
-    """Render all managed files before reporting or writing changes."""
-
-    original_by_path: dict[Path, str] = {}
-    updated_by_path: dict[Path, str] = {}
-    path_order: list[tuple[str, Path]] = []
-    for spec in file_specs():
-        path = PROJECT_ROOT / spec.path
-        if not path.is_file():
-            raise SystemExit(f"Managed file does not exist: {spec.path}")
-        if path not in original_by_path:
-            original_by_path[path] = path.read_text(encoding="utf-8")
-            updated_by_path[path] = original_by_path[path]
-            path_order.append((spec.path, path))
-        updated_by_path[path] = apply_rules(updated_by_path[path], spec, versions)
-
-    for display_path, path, content in additional_files:
-        if path in original_by_path:
-            raise SystemExit(f"Managed file was registered more than once: {display_path}")
-        original_by_path[path] = path.read_text(encoding="utf-8") if path.is_file() else ""
-        updated_by_path[path] = content
-        path_order.append((display_path, path))
-
-    changed_files = [
-        display_path
-        for display_path, path in path_order
-        if updated_by_path[path] != original_by_path[path]
-    ]
-
-    if not check:
-        for _, path in path_order:
-            if updated_by_path[path] != original_by_path[path]:
-                write_text_atomic(path, updated_by_path[path])
-
-    if check:
-        if changed_files:
-            console = Console(sys.stdout)
-            for item in changed_files:
-                console.error("Version file", item)
-            return 1
-        Console(sys.stdout).ok("Version check", "All managed files are synchronized.")
-        return 0
-
-    if changed_files:
-        console = Console(sys.stdout)
-        for item in changed_files:
-            console.ok("Version file", item)
-    else:
-        Console(sys.stdout).ok("Version sync", "No changes were necessary.")
-    return 0
-
-
-def write_text_atomic(path: Path, content: str) -> None:
-    """Replace one text file from a temporary file in the same directory."""
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    target_mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
-    temporary_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=path.parent,
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary_file:
-            temporary_file.write(content)
-            temporary_path = Path(temporary_file.name)
-        temporary_path.chmod(target_mode)
-        temporary_path.replace(path)
-    finally:
-        if temporary_path is not None and temporary_path.exists():
-            temporary_path.unlink()
-
-
-def load_or_refresh_toolchain_lock(
-    versions: VersionMap,
-    updated_keys: set[str],
-    *,
-    allow_refresh: bool,
-) -> dict[str, Any]:
-    """Load the toolchain lock and refresh it when manifest versions changed."""
-
-    refresh_required = bool(updated_keys & toolchain_lock.TOOLCHAIN_VERSION_KEYS)
-    if not refresh_required:
-        lock = toolchain_lock.load_lock()
-        try:
-            toolchain_lock.validate_lock(lock, versions)
-        except toolchain_lock.ToolchainLockVersionMismatchError:
-            if not allow_refresh:
-                raise
-            refresh_required = True
-        else:
-            return lock
-
-    Console(sys.stdout).info("Toolchain lock", "Resolving GitHub release metadata.")
-    return toolchain_lock.generate_lock(versions)
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Synchronize managed version references.")
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Fail if managed files are out of sync.",
-    )
-    parser.add_argument(
-        "--set",
-        action="append",
-        default=[],
-        metavar="KEY=VALUE",
-        help=f"Update a manifest version key ({', '.join(REQUIRED_KEYS)}).",
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="Print the current manifest values and exit.",
-    )
-    parser.add_argument(
-        "--verify-upstream",
-        action="store_true",
-        help="Fail if GitHub release metadata differs from the checked-in toolchain lock.",
-    )
-    parser.add_argument(
-        "--check-ktlint-latest",
-        action="store_true",
-        help="Fail when a newer stable KtLint release is available.",
-    )
-    parser.add_argument(
-        "--update-ktlint",
-        action="store_true",
-        help="Update ktlint_version to the latest stable GitHub release and synchronize files.",
-    )
-    args = parser.parse_args(argv)
-
-    if args.check and args.set:
-        raise SystemExit("--check cannot be used together with --set.")
-    if args.verify_upstream and args.set:
-        raise SystemExit("--verify-upstream cannot be used together with --set.")
-    if args.check_ktlint_latest and (
-        args.check or args.set or args.list or args.verify_upstream or args.update_ktlint
-    ):
-        raise SystemExit("--check-ktlint-latest cannot be combined with other operations.")
-    if args.update_ktlint and (args.check or args.set or args.list or args.verify_upstream):
-        raise SystemExit("--update-ktlint cannot be combined with other operations.")
-    if args.list and (args.check or args.set or args.verify_upstream or args.update_ktlint):
-        raise SystemExit("--list cannot be combined with other operations.")
-
-    data = load_manifest()
-    versions = data["versions"]
-
-    if args.list:
-        list_versions(versions)
-        return 0
-
-    if args.check_ktlint_latest:
-        try:
-            return check_ktlint_latest(versions)
-        except KtlintReleaseError as error:
-            raise SystemExit(str(error)) from error
-
-    updates: dict[str, str] = {}
-    if args.update_ktlint:
-        try:
-            latest = latest_ktlint_version()
-        except KtlintReleaseError as error:
-            raise SystemExit(str(error)) from error
-        current = versions["ktlint_version"]
-        current_key = stable_version_key(current)
-        latest_key = stable_version_key(latest)
-        console = Console(sys.stdout)
-        if current_key == latest_key:
-            console.ok("ktlint version", current)
-            return 0
-        if current_key > latest_key:
-            console.info("ktlint version", f"Configured {current}; upstream {latest}.")
-            return 0
-        updates = {"ktlint_version": latest}
-        console.info("ktlint version", f"Updating {current} -> {latest}.")
-    elif args.set:
-        updates = parse_updates(args.set)
-
-    if updates:
-        versions.update(updates)
-        validate_versions(versions)
-        data["versions"] = versions
-
-    try:
-        lock = load_or_refresh_toolchain_lock(
-            versions,
-            set(updates),
-            allow_refresh=not (args.check or args.verify_upstream),
-        )
-
-        if args.verify_upstream:
-            toolchain_lock.verify_upstream(lock, versions)
-            Console(sys.stdout).ok("Toolchain lock", "GitHub metadata matches.")
-            if not args.check:
-                return 0
-    except toolchain_lock.ToolchainLockError as error:
-        raise SystemExit(str(error)) from error
-
-    additional_files: tuple[AdditionalFile, ...] = (
-        (
-            toolchain_lock.LOCK_PATH.relative_to(PROJECT_ROOT).as_posix(),
-            toolchain_lock.LOCK_PATH,
-            toolchain_lock.render_lock(lock),
-        ),
-        (
-            aot_compatibility.KOTLIN_RELEASE_IDENTITY_PATH.relative_to(PROJECT_ROOT).as_posix(),
-            aot_compatibility.KOTLIN_RELEASE_IDENTITY_PATH,
-            aot_compatibility.render_kotlin_release_identity(versions),
-        ),
-        (
-            MANIFEST_PATH.relative_to(PROJECT_ROOT).as_posix(),
-            MANIFEST_PATH,
-            render_manifest(data),
-        ),
-    )
-    return sync_files(
-        versions,
-        check=args.check,
-        additional_files=additional_files,
-    )
-
-
-if __name__ == "__main__":
-    sys.exit(main())

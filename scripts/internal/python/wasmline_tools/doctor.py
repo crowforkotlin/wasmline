@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .manifest import load_versions
-from .output import Console
+from .support.text import find_matches
+from .terminal import Console
 from .paths import PLATFORMS_ROOT, PROJECT_ROOT
 from .targets import Target, load_targets
 
@@ -51,8 +52,10 @@ def _java_home() -> Path | None:
     if not java:
         return None
     output = _run([java, "-XshowSettings:properties", "-version"])
-    match = re.search(r"^\s*java\.home\s*=\s*(.+)$", output, re.MULTILINE)
-    return Path(match.group(1).strip()) if match else None
+    matches = find_matches(output, r"^\s*java\.home\s*=\s*(.+)$")
+    for match in matches:
+        return Path(match.group(1).strip())
+    return None
 
 
 def _release_values(java_home: Path) -> dict[str, str]:
@@ -196,7 +199,10 @@ def run() -> int:
     jni = _check_jni(targets)
     kotlin_native = _check_kotlin_native(targets)
     results = (jbr, zig, wasmtime, jni, kotlin_native)
-    console.table([(result.status, result.check, result.details) for result in results])
+    console.table(
+        ("STATUS", "CHECK", "DETAILS"),
+        [(result.status, result.check, result.details) for result in results],
+    )
 
     jbr_ready = jbr.ready
     zig_ready = zig.ready

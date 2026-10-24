@@ -249,59 +249,55 @@ class AotCompilerResolver(private val cache: AotCompilerCache) : Closeable {
         throw IllegalStateException("Unable to download compiler archive '${asset.archiveName}'.", failure)
     }
 
-    private suspend fun downloadFollowingRedirects(
-        url: String,
-        destination: File,
-        expectedSize: Long,
-        githubToken: String?,
-    ) = withContext(Dispatchers.IO) {
-        var current = URI(url)
-        var redirects = 0
-        while (true) {
-            require(current.scheme == "https") { "Compiler archive URL must use HTTPS: $current" }
-            val connection = current.toURL().openConnection() as HttpURLConnection
-            try {
-                connection.instanceFollowRedirects = false
-                connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
-                connection.readTimeout = READ_TIMEOUT_MILLIS
-                connection.requestMethod = "GET"
-                if (!githubToken.isNullOrBlank()) {
-                    connection.setRequestProperty("Authorization", "Bearer $githubToken")
-                }
-                val status = connection.responseCode
-                if (status in 300..399 && status != HTTP_NOT_MODIFIED) {
-                    val location = connection.getHeaderField("Location")
-                    require(!location.isNullOrBlank()) { "Compiler archive redirect omitted Location." }
-                    require(++redirects <= MAX_REDIRECTS) { "Compiler archive redirect limit exceeded." }
-                    current = current.resolve(location)
-                    continue
-                }
-                check(status in 200..299) { "HTTP $status" }
-                val declared = connection.contentLengthLong
-                require(declared < 0 || declared == expectedSize) {
-                    "Compiler archive size $declared does not match locked size $expectedSize."
-                }
-                FileOutputStream(destination).use { output ->
-                    connection.inputStream.use { input ->
-                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                        var written = 0L
-                        while (true) {
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            written += count
-                            require(written <= expectedSize) {
-                                "Compiler archive exceeds its locked size."
+    private suspend fun downloadFollowingRedirects(url: String, destination: File, expectedSize: Long, githubToken: String?) =
+        withContext(Dispatchers.IO) {
+            var current = URI(url)
+            var redirects = 0
+            while (true) {
+                require(current.scheme == "https") { "Compiler archive URL must use HTTPS: $current" }
+                val connection = current.toURL().openConnection() as HttpURLConnection
+                try {
+                    connection.instanceFollowRedirects = false
+                    connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
+                    connection.readTimeout = READ_TIMEOUT_MILLIS
+                    connection.requestMethod = "GET"
+                    if (!githubToken.isNullOrBlank()) {
+                        connection.setRequestProperty("Authorization", "Bearer $githubToken")
+                    }
+                    val status = connection.responseCode
+                    if (status in 300..399 && status != HTTP_NOT_MODIFIED) {
+                        val location = connection.getHeaderField("Location")
+                        require(!location.isNullOrBlank()) { "Compiler archive redirect omitted Location." }
+                        require(++redirects <= MAX_REDIRECTS) { "Compiler archive redirect limit exceeded." }
+                        current = current.resolve(location)
+                        continue
+                    }
+                    check(status in 200..299) { "HTTP $status" }
+                    val declared = connection.contentLengthLong
+                    require(declared < 0 || declared == expectedSize) {
+                        "Compiler archive size $declared does not match locked size $expectedSize."
+                    }
+                    FileOutputStream(destination).use { output ->
+                        connection.inputStream.use { input ->
+                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                            var written = 0L
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                written += count
+                                require(written <= expectedSize) {
+                                    "Compiler archive exceeds its locked size."
+                                }
+                                output.write(buffer, 0, count)
                             }
-                            output.write(buffer, 0, count)
                         }
                     }
+                    return@withContext
+                } finally {
+                    connection.disconnect()
                 }
-                return@withContext
-            } finally {
-                connection.disconnect()
             }
         }
-    }
 
     private fun hasCompileCapability(executable: File): Boolean = runCatching {
         val process = ProcessBuilder(executable.absolutePath, "compile", "--help")

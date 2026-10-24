@@ -23,6 +23,13 @@ kotlin {
     }
 }
 
+// `-PaotSelector=current|minimum|all|ranges` and `-PaotMinSdk=x.y.z` exercise
+// every compatibility strategy against the same guest module.
+val aotSelector = providers.gradleProperty("aotSelector").getOrElse("current")
+val aotMinSdk = providers.gradleProperty("aotMinSdk").getOrElse("1.0.0")
+val aotFrom = providers.gradleProperty("aotFrom").getOrElse("1.0.0")
+val aotThrough = providers.gradleProperty("aotThrough").getOrElse("1.0.1")
+
 wasmline {
     manifest {
         pluginId = "crow.wasmline.minimal.service"
@@ -30,9 +37,18 @@ wasmline {
         privateKeyFile = rootProject.file("keys/private.key")
         executionModel = WasmlineExecutionModel.CORE_WASM
         invocationProtocol = WasmlineInvocationProtocol.WASMLINE_SERVICE
+        minSdkVersion = aotMinSdk
     }
     wasmtime {
-        aotCompatibility { current() }
+        aotCompatibility {
+            when (aotSelector) {
+                "current" -> current()
+                "minimum" -> minimum()
+                "all" -> all()
+                "ranges" -> versionRanges { include(from = aotFrom, through = aotThrough) }
+                else -> error("Unknown -PaotSelector=$aotSelector; use current, minimum, all, or ranges.")
+            }
+        }
         targets = listOf(WasmtimeTarget.PULLEY_64)
         autoDownload = true
     }

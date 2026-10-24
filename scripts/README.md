@@ -10,12 +10,11 @@ Repository root
 `-- scripts/
     |-- wasmline                 Public command
     |-- config/                  Platform and artifact configuration
-    |-- lib/
-    |   |-- python/wasmline_tools/  Command implementation
-    |   `-- shell/                  Shared Shell paths, output, and helpers
+    |-- lib/shell/               Shared Shell paths, output, and helpers
     |-- internal/
     |   |-- lint/                Language-specific format commands
-    |   `-- native/              JNI and Kotlin/Native build backends
+    |   |-- native/              JNI and Kotlin/Native build backends
+    |   `-- python/wasmline_tools/  Command implementation
     `-- tests/                   Repository tooling tests
 ```
 
@@ -124,7 +123,7 @@ clang-format. Zig and ZON files use `zig fmt`.
 ./scripts/wasmline versions update-ktlint
 ```
 
-The implementation is under `lib/python/wasmline_tools/`. Version and Wasmtime
+The implementation is under `internal/python/wasmline_tools/`. Version and Wasmtime
 tooling tests are under `tests/`; they are not part of normal commands.
 
 ## Output
@@ -138,5 +137,15 @@ ERR     Failed requirement or operation
 SKIP    Nothing matched the requested scope
 ```
 
-Colors are enabled only for a terminal and can be disabled with `NO_COLOR`.
+Colors and progress lines are enabled only for a terminal and can be disabled
+with `NO_COLOR` or `TERM=dumb`. Redirected output is plain text, and a narrow
+terminal stacks table details instead of cutting them.
+
+Every command accepts `-h`/`--help`, and `help` navigates the same tree:
+
+```bash
+./scripts/wasmline help jni build
+./scripts/wasmline aot help
+```
+
 Native build logs are written to stderr.

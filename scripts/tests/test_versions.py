@@ -20,10 +20,14 @@ from typing import Any, Mapping
 from unittest import mock
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "lib" / "python"))
+sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "internal" / "python"))
 
-from wasmline_tools import aot_compatibility, aot_metadata, toolchain_lock
+from wasmline_tools import toolchain_lock
 from wasmline_tools import versions as sync_version
+from wasmline_tools.aot import catalog, lock, metadata, profiles
+from wasmline_tools.aot import sync as aot_sync
+from wasmline_tools.support import text as text_support
+from wasmline_tools.version_rules import apply_rules, file_specs, wasmtime_code
 
 
 class LockedReleaseClient:
@@ -65,12 +69,12 @@ class FixedAotMetadataResolver:
         self.distribution = distribution
         self.requested: list[str] = []
 
-    def resolve(self, distribution_version: str) -> aot_metadata.ResolvedAotDistribution:
+    def resolve(self, distribution_version: str) -> metadata.ResolvedAotDistribution:
         self.requested.append(distribution_version)
         if distribution_version != self.distribution:
             raise AssertionError(f"Unexpected AOT distribution: {distribution_version}")
         assets = []
-        for build_host in aot_metadata.AOT_COMPILER_BUILD_HOSTS:
+        for build_host in metadata.AOT_COMPILER_BUILD_HOSTS:
             extension = "zip" if build_host.endswith("windows") else "tar.gz"
             archive_format = "ZIP" if extension == "zip" else "TAR_GZ"
             asset_id = f"wasmtime-v{distribution_version}-{build_host}"
@@ -95,7 +99,7 @@ class FixedAotMetadataResolver:
                     "executableSha256": hashlib.sha256(asset_id.encode()).hexdigest(),
                 }
             )
-        return aot_metadata.ResolvedAotDistribution(
+        return metadata.ResolvedAotDistribution(
             source_revision="b" * 40,
             compiler_assets=tuple(assets),
         )
@@ -108,10 +112,10 @@ class SyncVersionTest(unittest.TestCase):
     def render_managed_files(versions: dict[str, str]) -> dict[str, str]:
         """Applies all rules for each path in declaration order."""
         rendered: dict[str, str] = {}
-        for spec in sync_version.file_specs():
+        for spec in file_specs():
             path = sync_version.PROJECT_ROOT / spec.path
             rendered.setdefault(spec.path, path.read_text(encoding="utf-8"))
-            rendered[spec.path] = sync_version.apply_rules(rendered[spec.path], spec, versions)
+            rendered[spec.path] = apply_rules(rendered[spec.path], spec, versions)
         return rendered
 
     def test_all_managed_files_exist(self) -> None:
@@ -120,7 +124,7 @@ class SyncVersionTest(unittest.TestCase):
         self.assertEqual(sync_version.PROJECT_ROOT / "versions.json", sync_version.MANIFEST_PATH)
         self.assertFalse((sync_version.PROJECT_ROOT / "scripts" / "versions.json").exists())
         self.assertTrue((sync_version.PROJECT_ROOT / "scripts/wasmline").is_file())
-        for spec in sync_version.file_specs():
+        for spec in file_specs():
             self.assertTrue(
                 (sync_version.PROJECT_ROOT / spec.path).is_file(),
                 msg=f"Missing managed file: {spec.path}",
@@ -149,11 +153,11 @@ class SyncVersionTest(unittest.TestCase):
         }
         manifest_path = sync_version.MANIFEST_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
         lock_path = toolchain_lock.LOCK_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
-        aot_lock_path = aot_compatibility.AOT_LOCK_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
-        public_catalog_path = aot_compatibility.PUBLIC_CATALOG_PATH.relative_to(
+        aot_lock_path = catalog.AOT_LOCK_PATH.relative_to(sync_version.PROJECT_ROOT).as_posix()
+        public_catalog_path = catalog.PUBLIC_CATALOG_PATH.relative_to(
             sync_version.PROJECT_ROOT
         ).as_posix()
-        packaged_public_catalog_path = aot_compatibility.PACKAGED_PUBLIC_CATALOG_PATH.relative_to(
+        packaged_public_catalog_path = catalog.PACKAGED_PUBLIC_CATALOG_PATH.relative_to(
             sync_version.PROJECT_ROOT
         ).as_posix()
         aot_compatibility_reference_path = ".agents/skills/wasmline/references/aot-compatibility.md"
@@ -410,89 +414,90 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_checked_in_aot_compatibility_lock_matches_public_catalog(self) -> None:
         """The generated AOT lock must exactly match the standalone catalog."""
-        source = aot_compatibility.load_public_catalog()
+        source = catalog.load_public_catalog()
         versions = sync_version.load_manifest()["versions"]
-        expected = aot_compatibility.render_lock(source, versions)
+        expected = lock.render_lock(source, versions)
 
-        self.assertEqual(expected, aot_compatibility.load_lock())
+        self.assertEqual(expected, lock.load_lock())
 
     def test_aot_sync_and_check_use_the_standard_console_labels(self) -> None:
         """AOT maintenance commands use Console output and distinguish check mode."""
         with mock.patch.object(sys, "stdout", new_callable=io.StringIO) as stdout:
-            self.assertEqual(0, aot_compatibility.sync_aot())
-            self.assertEqual(0, aot_compatibility.check_aot())
+            self.assertEqual(0, aot_sync.sync_aot())
+            self.assertEqual(0, aot_sync.check_aot())
 
-        self.assertEqual(
-            "OK      AOT sync    Generated files are synchronized.\n"
-            "OK      AOT check    Generated files are synchronized.\n",
-            stdout.getvalue(),
-        )
+        lines = stdout.getvalue().splitlines()
+        self.assertEqual(2, len(lines))
+        self.assertIn("OK", lines[0])
+        self.assertIn("AOT sync", lines[0])
+        self.assertIn("OK", lines[1])
+        self.assertIn("AOT check", lines[1])
 
     def test_public_aot_catalog_matches_packaged_resource_and_versions(self) -> None:
         """The public catalog and packaged resource must be byte-identical."""
-        source = aot_compatibility.load_public_catalog()
+        source = catalog.load_public_catalog()
         versions = sync_version.load_manifest()["versions"]
-        expected = aot_compatibility.render_public_catalog_text(source, versions)
-        self.assertEqual(expected.encode("utf-8"), aot_compatibility.PUBLIC_CATALOG_PATH.read_bytes())
+        expected = catalog.render_public_catalog_text(source, versions)
+        self.assertEqual(expected.encode("utf-8"), catalog.PUBLIC_CATALOG_PATH.read_bytes())
         self.assertEqual(
-            aot_compatibility.PUBLIC_CATALOG_PATH.read_bytes(),
-            aot_compatibility.PACKAGED_PUBLIC_CATALOG_PATH.read_bytes(),
+            catalog.PUBLIC_CATALOG_PATH.read_bytes(),
+            catalog.PACKAGED_PUBLIC_CATALOG_PATH.read_bytes(),
         )
 
     def test_public_catalog_excludes_internal_profile_bindings(self) -> None:
         """The public catalog exposes generations without compiler or profile identities."""
-        catalog = json.loads(aot_compatibility.PUBLIC_CATALOG_PATH.read_text(encoding="utf-8"))
-        self.assertNotIn("profiles", catalog)
-        self.assertNotIn("profileIdsByBackend", catalog["ranges"][0])
+        public = json.loads(catalog.PUBLIC_CATALOG_PATH.read_text(encoding="utf-8"))
+        self.assertNotIn("profiles", public)
+        self.assertNotIn("profileIdsByBackend", public["ranges"][0])
 
     def test_aot_release_history_is_append_only(self) -> None:
         """Published range records cannot be changed or removed during synchronization."""
-        previous = aot_compatibility.load_lock()
+        previous = lock.load_lock()
         generated = copy.deepcopy(previous)
         generated["releaseCatalog"]["ranges"][0]["wasmtimeDistributionVersion"] = "49.0.0.1"
 
         with self.assertRaisesRegex(
-            aot_compatibility.AotCompatibilityError,
+            catalog.AotCompatibilityError,
             "cannot be modified",
         ):
-            aot_compatibility.validate_append_only(previous, generated)
+            lock.validate_append_only(previous, generated)
 
         generated = copy.deepcopy(previous)
         generated["releaseCatalog"]["currentWasmlineVersion"] = "0.9.0"
         with self.assertRaisesRegex(
-            aot_compatibility.AotCompatibilityError,
+            catalog.AotCompatibilityError,
             "current Wasmline version cannot move backward",
         ):
-            aot_compatibility.validate_append_only(previous, generated)
+            lock.validate_append_only(previous, generated)
 
         generated = copy.deepcopy(previous)
         generated["releaseCatalog"]["ranges"][0]["aotGeneration"] = 2
         with self.assertRaisesRegex(
-            aot_compatibility.AotCompatibilityError,
+            catalog.AotCompatibilityError,
             "cannot be modified",
         ):
-            aot_compatibility.validate_append_only(previous, generated)
+            lock.validate_append_only(previous, generated)
 
     def test_aot_source_rejects_generation_gaps_and_unknown_backends(self) -> None:
         """Generation numbering and backend names remain structurally complete."""
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["ranges"][0]["aotGeneration"] = 2
-        with self.assertRaisesRegex(aot_compatibility.AotCompatibilityError, "without gaps"):
-            aot_compatibility.validate_source(source, sync_version.load_manifest()["versions"])
+        with self.assertRaisesRegex(catalog.AotCompatibilityError, "without gaps"):
+            catalog.validate_source(source, sync_version.load_manifest()["versions"])
 
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["ranges"][0]["changedBackends"].append("EXTRA")
-        with self.assertRaisesRegex(aot_compatibility.AotCompatibilityError, "unknown backend"):
-            aot_compatibility.validate_source(source, sync_version.load_manifest()["versions"])
+        with self.assertRaisesRegex(catalog.AotCompatibilityError, "unknown backend"):
+            catalog.validate_source(source, sync_version.load_manifest()["versions"])
 
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["ranges"][0]["changedBackends"].reverse()
-        with self.assertRaisesRegex(aot_compatibility.AotCompatibilityError, "canonical backend order"):
-            aot_compatibility.validate_source(source, sync_version.load_manifest()["versions"])
+        with self.assertRaisesRegex(catalog.AotCompatibilityError, "canonical backend order"):
+            catalog.validate_source(source, sync_version.load_manifest()["versions"])
 
     def test_aot_sync_resolves_metadata_for_a_new_distribution(self) -> None:
         """A new generation obtains detailed metadata without expanding versions.json."""
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
         next_generation = source["ranges"][-1]["aotGeneration"] + 1
         source["ranges"].append(
@@ -507,13 +512,13 @@ class SyncVersionTest(unittest.TestCase):
         versions["wasmline_version"] = "1.1.0"
         versions["wasmtime_version"] = "49.0.0"
         versions["wasmtime_release_version"] = "49.0.0.1"
-        previous = aot_compatibility.load_lock()
+        previous = lock.load_lock()
         resolver = FixedAotMetadataResolver("49.0.0.1")
 
-        metadata = aot_compatibility.prepare_metadata_for_catalog(source, previous, resolver)
-        generated = aot_compatibility.render_lock(source, versions, metadata)
-        aot_compatibility.validate_lock_against_source(generated, source, versions)
-        aot_compatibility.validate_append_only(previous, generated)
+        metadata = aot_sync.prepare_metadata_for_catalog(source, previous, resolver)
+        generated = lock.render_lock(source, versions, metadata)
+        lock.validate_lock_against_source(generated, source, versions)
+        lock.validate_append_only(previous, generated)
 
         self.assertEqual(["49.0.0.1"], resolver.requested)
         self.assertEqual(len(previous["profiles"]) + 2, len(generated["profiles"]))
@@ -526,7 +531,7 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_aot_sync_reuses_one_backend_for_a_new_generation(self) -> None:
         """A generation can replace one backend profile without duplicating the other."""
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
         current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
         next_generation = source["ranges"][-1]["aotGeneration"] + 1
@@ -540,26 +545,26 @@ class SyncVersionTest(unittest.TestCase):
         )
         versions = dict(sync_version.load_manifest()["versions"])
         versions["wasmline_version"] = "1.1.0"
-        previous = aot_compatibility.load_lock()
+        previous = lock.load_lock()
         previous_range = previous["releaseCatalog"]["ranges"][-1]
 
         with mock.patch.dict(
-            aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES,
+            profiles.CURRENT_ENGINE_CONFIGURATION_PROFILES,
             {
                 "CRANELIFT": (
-                    aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES["CRANELIFT"]
+                    profiles.CURRENT_ENGINE_CONFIGURATION_PROFILES["CRANELIFT"]
                     + ";synthetic-profile-change=y"
                 )
             },
         ):
-            metadata = aot_compatibility.prepare_metadata_for_catalog(
+            metadata = aot_sync.prepare_metadata_for_catalog(
                 source,
                 previous,
                 resolver=None,
             )
-            generated = aot_compatibility.render_lock(source, versions, metadata)
-            aot_compatibility.validate_lock_against_source(generated, source, versions)
-            aot_compatibility.validate_append_only(previous, generated)
+            generated = lock.render_lock(source, versions, metadata)
+            lock.validate_lock_against_source(generated, source, versions)
+            lock.validate_append_only(previous, generated)
 
         current_range = generated["releaseCatalog"]["ranges"][-1]
         self.assertNotEqual(
@@ -579,7 +584,7 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_aot_sync_rejects_an_unmarked_backend_contract_change(self) -> None:
         """A backend contract change must be declared by changedBackends."""
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
         current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
         source["ranges"].append(
@@ -593,28 +598,28 @@ class SyncVersionTest(unittest.TestCase):
 
         with (
             mock.patch.dict(
-                aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES,
+                profiles.CURRENT_ENGINE_CONFIGURATION_PROFILES,
                 {
                     "CRANELIFT": (
-                        aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES["CRANELIFT"]
+                        profiles.CURRENT_ENGINE_CONFIGURATION_PROFILES["CRANELIFT"]
                         + ";synthetic-profile-change=y"
                     )
                 },
             ),
             self.assertRaisesRegex(
-                aot_compatibility.AotCompatibilityError,
+                catalog.AotCompatibilityError,
                 "does not mark that backend as changed",
             ),
         ):
-            aot_compatibility.prepare_metadata_for_catalog(
+            aot_sync.prepare_metadata_for_catalog(
                 source,
-                aot_compatibility.load_lock(),
+                lock.load_lock(),
                 resolver=None,
             )
 
     def test_aot_sync_rejects_a_declared_backend_without_identity_change(self) -> None:
         """changedBackends cannot create a generation when its profile ID is unchanged."""
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
         current_distribution = source["ranges"][-1]["wasmtimeDistributionVersion"]
         next_generation = source["ranges"][-1]["aotGeneration"] + 1
@@ -628,17 +633,17 @@ class SyncVersionTest(unittest.TestCase):
         )
         versions = dict(sync_version.load_manifest()["versions"])
         versions["wasmline_version"] = "1.1.0"
-        metadata = aot_compatibility.prepare_metadata_for_catalog(
+        metadata = aot_sync.prepare_metadata_for_catalog(
             source,
-            aot_compatibility.load_lock(),
+            lock.load_lock(),
             resolver=None,
         )
 
         with self.assertRaisesRegex(
-            aot_compatibility.AotCompatibilityError,
+            catalog.AotCompatibilityError,
             "changedBackends does not match detailed profile metadata",
         ):
-            aot_compatibility.render_lock(source, versions, metadata)
+            lock.render_lock(source, versions, metadata)
 
     def test_github_aot_metadata_resolver_verifies_full_archives(self) -> None:
         """Fork release metadata maps five full archives to verified executables."""
@@ -656,7 +661,7 @@ class SyncVersionTest(unittest.TestCase):
             }
         ]
 
-        for build_host in aot_metadata.AOT_COMPILER_BUILD_HOSTS:
+        for build_host in metadata.AOT_COMPILER_BUILD_HOSTS:
             asset_id = f"wasmtime-v{distribution}-{build_host}"
             executable_name = "wasmtime.exe" if build_host.endswith("windows") else "wasmtime"
             executable_path = f"{asset_id}/{executable_name}"
@@ -691,11 +696,11 @@ class SyncVersionTest(unittest.TestCase):
         checksums = "".join(
             f"{hashlib.sha256(archive_bytes[host]).hexdigest()}  "
             f"wasmtime-v{distribution}-{host}.{'zip' if host.endswith('windows') else 'tar.gz'}\n"
-            for host in aot_metadata.AOT_COMPILER_BUILD_HOSTS
+            for host in metadata.AOT_COMPILER_BUILD_HOSTS
         )
         response_bytes[checksum_url] = checksums.encode()
-        release_url = f"{aot_metadata.WASMTIME_API_ROOT}/releases/tags/{tag}"
-        commit_url = f"{aot_metadata.WASMTIME_API_ROOT}/commits/{tag}"
+        release_url = f"{metadata.WASMTIME_API_ROOT}/releases/tags/{tag}"
+        commit_url = f"{metadata.WASMTIME_API_ROOT}/commits/{tag}"
         response_bytes[release_url] = json.dumps(
             {
                 "tag_name": tag,
@@ -705,7 +710,7 @@ class SyncVersionTest(unittest.TestCase):
             }
         ).encode()
         response_bytes[commit_url] = json.dumps({"sha": "c" * 40}).encode()
-        resolver = aot_metadata.GitHubAotMetadataResolver(jobs=3, token="test-token")
+        resolver = metadata.GitHubAotMetadataResolver(jobs=3, token="test-token")
 
         with mock.patch.object(
             resolver,
@@ -716,7 +721,7 @@ class SyncVersionTest(unittest.TestCase):
 
         self.assertEqual("c" * 40, resolved.source_revision)
         self.assertEqual(
-            set(aot_metadata.AOT_COMPILER_BUILD_HOSTS),
+            set(metadata.AOT_COMPILER_BUILD_HOSTS),
             {asset["buildHost"] for asset in resolved.compiler_assets},
         )
         for asset in resolved.compiler_assets:
@@ -733,12 +738,12 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_github_aot_metadata_token_is_limited_to_the_api_origin(self) -> None:
         """GitHub credentials must not be forwarded to release asset URLs."""
-        resolver = aot_metadata.GitHubAotMetadataResolver(token="test-token")
+        resolver = metadata.GitHubAotMetadataResolver(token="test-token")
         opener = mock.Mock()
         opener.open.return_value = object()
 
-        with mock.patch.object(aot_metadata, "build_opener", return_value=opener):
-            resolver._open(f"{aot_metadata.WASMTIME_API_ROOT}/commits/v49.0.0.1")
+        with mock.patch.object(metadata, "build_opener", return_value=opener):
+            resolver._open(f"{metadata.WASMTIME_API_ROOT}/commits/v49.0.0.1")
             api_request = opener.open.call_args.args[0]
             self.assertEqual("Bearer test-token", api_request.get_header("Authorization"))
 
@@ -751,15 +756,15 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_github_aot_metadata_rejects_malformed_asset_urls(self) -> None:
         """Malformed release asset URLs produce the stable resolver error type."""
-        with self.assertRaises(aot_metadata.AotMetadataResolutionError):
-            aot_metadata.GitHubAotMetadataResolver._required_https_url(
+        with self.assertRaises(metadata.AotMetadataResolutionError):
+            metadata.GitHubAotMetadataResolver._required_https_url(
                 {"browser_download_url": "https://["},
                 "invalid-asset",
             )
 
     def test_aot_check_does_not_resolve_missing_metadata(self) -> None:
         """Offline validation reports missing generated metadata without network access."""
-        source = copy.deepcopy(aot_compatibility.load_public_catalog())
+        source = copy.deepcopy(catalog.load_public_catalog())
         source["currentWasmlineVersion"] = "1.1.0"
         source["ranges"].append(
             {
@@ -770,10 +775,10 @@ class SyncVersionTest(unittest.TestCase):
             }
         )
 
-        with self.assertRaisesRegex(aot_compatibility.AotCompatibilityError, "aot sync"):
-            aot_compatibility.prepare_metadata_for_catalog(
+        with self.assertRaisesRegex(catalog.AotCompatibilityError, "aot sync"):
+            aot_sync.prepare_metadata_for_catalog(
                 source,
-                aot_compatibility.load_lock(),
+                lock.load_lock(),
                 resolver=None,
             )
 
@@ -795,21 +800,21 @@ class SyncVersionTest(unittest.TestCase):
 
         self.assertEqual(
             {descriptor},
-            set(aot_compatibility.CURRENT_ENGINE_CONFIGURATION_PROFILES.values()),
+            set(profiles.CURRENT_ENGINE_CONFIGURATION_PROFILES.values()),
         )
         self.assertIn(
-            f"val schemaVersion: Int = {aot_compatibility.CURRENT_COMPILE_PROFILE_SCHEMA_VERSION}",
+            f"val schemaVersion: Int = {profiles.CURRENT_COMPILE_PROFILE_SCHEMA_VERSION}",
             kotlin,
         )
 
     def test_native_build_identity_uses_format_stable_profile_macros(self) -> None:
         """Generated profile macros must remain stable under clang-format."""
-        source = aot_compatibility.load_public_catalog()
+        source = catalog.load_public_catalog()
         versions = sync_version.load_manifest()["versions"]
-        rendered = aot_compatibility.render_native_build_identity(source, versions)
-        defaults = aot_compatibility.load_lock()["currentDefaultProfileIdsByBackend"]
+        rendered = lock.render_native_build_identity(source, versions)
+        defaults = lock.load_lock()["currentDefaultProfileIdsByBackend"]
 
-        for backend in aot_compatibility.BACKENDS:
+        for backend in profiles.BACKENDS:
             self.assertIn(
                 f'#define WASMLINE_{backend}_AOT_COMPATIBILITY_PROFILE_ID "{defaults[backend]}"',
                 rendered,
@@ -817,8 +822,8 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_aot_catalog_contains_only_published_distributions(self) -> None:
         """Every catalogued distribution is finished and bound to a full compiler asset."""
-        source = aot_compatibility.load_public_catalog()
-        lock = aot_compatibility.load_lock()
+        source = catalog.load_public_catalog()
+        detail = lock.load_lock()
         versions = sync_version.load_manifest()["versions"]
         active_distribution = versions["wasmtime_release_version"]
 
@@ -829,53 +834,53 @@ class SyncVersionTest(unittest.TestCase):
         catalogued = {item["wasmtimeDistributionVersion"] for item in source["ranges"]}
         self.assertEqual(
             catalogued,
-            {item["wasmtimeDistributionVersion"] for item in lock["profiles"]},
+            {item["wasmtimeDistributionVersion"] for item in detail["profiles"]},
         )
-        build_hosts = {item["buildHost"] for item in lock["profileCompilerBindings"]}
+        build_hosts = {item["buildHost"] for item in detail["profileCompilerBindings"]}
         self.assertEqual(5, len(build_hosts))
-        for profile in lock["profiles"]:
+        for profile in detail["profiles"]:
             bound_hosts = {
                 item["buildHost"]
-                for item in lock["profileCompilerBindings"]
+                for item in detail["profileCompilerBindings"]
                 if item["profileId"] == profile["id"]
             }
             self.assertEqual(build_hosts, bound_hosts, msg=profile["id"])
         self.assertTrue(
-            all(item["distribution"] == "FULL" for item in lock["compilerAssets"]),
+            all(item["distribution"] == "FULL" for item in detail["compilerAssets"]),
             msg="Every catalogued compiler asset must ship the compile command.",
         )
-        self.assertEqual(2 * len(source["ranges"]), len(lock["profiles"]))
-        self.assertEqual(5 * len(source["ranges"]), len(lock["compilerAssets"]))
-        self.assertEqual(10 * len(source["ranges"]), len(lock["profileCompilerBindings"]))
+        self.assertEqual(2 * len(source["ranges"]), len(detail["profiles"]))
+        self.assertEqual(5 * len(source["ranges"]), len(detail["compilerAssets"]))
+        self.assertEqual(10 * len(source["ranges"]), len(detail["profileCompilerBindings"]))
 
     def test_aot_catalog_rejects_runtime_only_compiler_distribution(self) -> None:
         """AOT catalog assets must contain the Wasmtime compile command."""
-        source = aot_compatibility.load_public_catalog()
+        source = catalog.load_public_catalog()
         versions = sync_version.load_manifest()["versions"]
-        generated = aot_compatibility.render_lock(source, versions)
+        generated = lock.render_lock(source, versions)
         generated["compilerAssets"][0]["distribution"] = "MINIMAL"
 
         with self.assertRaisesRegex(
-            aot_compatibility.AotCompatibilityError,
+            catalog.AotCompatibilityError,
             "FULL Wasmtime distribution",
         ):
-            aot_compatibility.validate_lock_against_source(generated, source, versions)
+            lock.validate_lock_against_source(generated, source, versions)
 
     def test_aot_catalog_rejects_historical_profile_mutation(self) -> None:
         """Synchronization must not rewrite a profile that appeared in an earlier lock."""
-        previous = aot_compatibility.load_lock()
+        previous = lock.load_lock()
         generated = copy.deepcopy(previous)
         generated["profiles"][0]["wasmtimeSourceRevision"] = "0" * 40
 
         with self.assertRaisesRegex(
-            aot_compatibility.AotCompatibilityError,
+            catalog.AotCompatibilityError,
             "cannot be modified",
         ):
-            aot_compatibility.validate_append_only(previous, generated)
+            lock.validate_append_only(previous, generated)
 
     def test_aot_catalog_allows_new_records_and_additional_mirrors(self) -> None:
         """Append-only updates may add records and equivalent download mirrors."""
-        previous = aot_compatibility.load_lock()
+        previous = lock.load_lock()
         generated = copy.deepcopy(previous)
         generated["compilerAssets"][0]["downloadUrls"].append(
             "https://mirror.example.invalid/wasmtime-compiler"
@@ -884,7 +889,7 @@ class SyncVersionTest(unittest.TestCase):
             {"id": "sha256:" + "f" * 64, "artifactBackend": "PULLEY"}
         )
 
-        aot_compatibility.validate_append_only(previous, generated)
+        lock.validate_append_only(previous, generated)
 
     def test_toolchain_lock_generation_is_deterministic(self) -> None:
         """Equivalent release metadata must reproduce the checked-in lock."""
@@ -1024,21 +1029,15 @@ class SyncVersionTest(unittest.TestCase):
         self.assertIn("versions update-ktlint", stdout.getvalue())
 
     def test_update_ktlint_synchronizes_the_manifest(self) -> None:
-        """The update command passes the discovered release through synchronization."""
+        """The update operation passes the discovered release into synchronization."""
         with (
             mock.patch.object(sync_version, "latest_ktlint_version", return_value="1.8.1"),
-            mock.patch.object(sync_version, "sync_files", return_value=0) as sync_files,
+            mock.patch.object(sync_version, "synchronize", return_value=0) as synchronize,
         ):
-            result = sync_version.main(["--update-ktlint"])
+            result = sync_version.update_ktlint()
 
         self.assertEqual(0, result)
-        versions = sync_files.call_args.args[0]
-        self.assertEqual("1.8.1", versions["ktlint_version"])
-        additional_files = sync_files.call_args.kwargs["additional_files"]
-        manifest = next(
-            content for path, _, content in additional_files if path == "versions.json"
-        )
-        self.assertIn('"ktlint_version": "1.8.1"', manifest)
+        self.assertEqual({"ktlint_version": "1.8.1"}, synchronize.call_args.args[0])
 
     def test_atomic_write_preserves_file_mode(self) -> None:
         """Atomic replacement must retain executable permissions."""
@@ -1047,7 +1046,7 @@ class SyncVersionTest(unittest.TestCase):
             path.write_text("before\n", encoding="utf-8")
             path.chmod(0o755)
 
-            sync_version.write_text_atomic(path, "after\n")
+            text_support.write_text_atomic(path, "after\n")
 
             self.assertEqual("after\n", path.read_text(encoding="utf-8"))
             self.assertEqual(0o755, stat.S_IMODE(path.stat().st_mode))
@@ -1066,8 +1065,8 @@ class SyncVersionTest(unittest.TestCase):
 
     def test_wasmtime_code_ignores_semver_metadata(self) -> None:
         """Wasmtime tag encoding uses the numeric core of a valid semantic version."""
-        self.assertEqual(1234, sync_version.wasmtime_code("12.3.4-rc1"))
-        self.assertEqual(1234, sync_version.wasmtime_code("12.3.4+build1"))
+        self.assertEqual(1234, wasmtime_code("12.3.4-rc1"))
+        self.assertEqual(1234, wasmtime_code("12.3.4+build1"))
 
 
 if __name__ == "__main__":

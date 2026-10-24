@@ -5,7 +5,7 @@ if [[ -n "${WASMLINE_OUTPUT_SH_LOADED:-}" ]]; then
 fi
 WASMLINE_OUTPUT_SH_LOADED=1
 
-if [[ -t 2 && -z "${NO_COLOR:-}" ]]; then
+if [[ -t 2 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]; then
   WASMLINE_COLOR_GREEN=$'\033[1;32m'
   WASMLINE_COLOR_RED=$'\033[1;31m'
   WASMLINE_COLOR_YELLOW=$'\033[1;33m'

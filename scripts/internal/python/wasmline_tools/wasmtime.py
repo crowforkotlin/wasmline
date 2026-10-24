@@ -19,7 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
 from .manifest import version as manifest_version
-from .output import Console
+from .terminal import Console
 from .paths import PLATFORMS_ROOT
 from .targets import ENGINES, Target, load_targets, target_by_id
 
@@ -305,9 +305,12 @@ def _selected_pairs(target_id: str, engine: str) -> list[tuple[Target, str]]:
 
 
 def list_target_rows(console: Console) -> None:
-    print(f"{'TARGET':<24} ENGINES", file=console.stream)
-    for target in load_targets():
-        print(f"{target.id:<24} {', '.join(target.engines)}", file=console.stream)
+    """Print every configured target with its supported engines."""
+
+    console.table(
+        ("TARGET", "ENGINES"),
+        [(target.id, ", ".join(target.engines)) for target in load_targets()],
+    )
 
 
 def download(

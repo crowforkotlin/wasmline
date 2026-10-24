@@ -57,15 +57,15 @@ Use the singular command in documentation and normal work:
 
 `./scripts/wasmline` is the only public entry point. Synchronization rules and
 generated-lock handling are internal Python modules under
-`scripts/lib/python/wasmline_tools/`.
+`scripts/internal/python/wasmline_tools/`.
 
 ## Change Procedure
 
 1. Edit `versions.json` and run `./scripts/wasmline versions sync`, or supply every intended change through `versions sync --set`.
 2. For a Component toolchain key, allow the synchronizer to resolve every required GitHub release asset.
 3. Inspect every file listed by the synchronizer and run `./scripts/wasmline aot check` when the AOT catalog is changed.
-4. Run `--check`.
-5. Run `--verify-upstream` when network verification is required.
+4. Run `./scripts/wasmline versions check`.
+5. Run `./scripts/wasmline versions verify-upstream` when network verification is required.
 6. Run `python3 scripts/tests/test_versions.py`.
 7. Inspect the final diff for unrelated replacements.
 
@@ -97,7 +97,7 @@ compiler assets, or range bindings in `versions.json`.
 
 When code or documentation duplicates a manifest value:
 
-1. Add or extend a `FileSpec` in `scripts/lib/python/wasmline_tools/versions.py`.
+1. Add or extend a `FileSpec` in `scripts/internal/python/wasmline_tools/version_rules.py`.
 2. Use a narrow pattern anchored to stable surrounding text.
 3. Keep `min_count=1` for required references. Use `min_count=0` only when the reference is genuinely optional.
 4. Add the path to the synthetic coverage in `scripts/tests/test_versions.py`.
@@ -143,9 +143,9 @@ compiler executable on every supported build host.
 
 Do not edit the lock or `ToolchainCatalog.kt` to perform a version upgrade. Changing `wasmtime_version`, `wasm_tools_version`, or `wit_bindgen_version` in the manifest and running `./scripts/wasmline versions sync` resolves and validates all three locked releases before writing derived files. The same behavior applies when versions are supplied through `--set`. The WASI Preview 1 adapter version remains derived from `wasmtime_version` and has no independent manifest key.
 
-`versions --check` validates the checked-in manifest and managed references
+`versions check` validates the checked-in manifest and managed references
 without network access or lock refresh. `aot check` validates the public catalog,
-the generated lock, and the packaged resource. `--verify-upstream` performs the
+the generated lock, and the packaged resource. `versions verify-upstream` performs the
 separate network check and fails if current GitHub release metadata differs from
 the checked-in toolchain lock.
 
@@ -156,4 +156,4 @@ the checked-in toolchain lock.
 python3 scripts/tests/test_versions.py
 ```
 
-`--check` validates the repository's current values. The regression suite also renders synthetic values, which detects stale patterns that happen to match the current manifest but would fail during the next upgrade.
+`versions check` validates the repository's current values. The regression suite also renders synthetic values, which detects stale patterns that happen to match the current manifest but would fail during the next upgrade.

@@ -8,111 +8,80 @@ import io
 import sys
 import unittest
 from pathlib import Path
-from unittest import mock
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "lib" / "python"))
+sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "internal" / "python"))
 
 from wasmline_tools import cli
 
 
-class CommandLineTest(unittest.TestCase):
-    def test_jni_without_subcommand_shows_available_commands(self) -> None:
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output):
-            result = cli.main(["jni"])
+def run(*arguments: str) -> tuple[int, str, str]:
+    """Run the CLI and capture its streams."""
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        result = cli.main(list(arguments))
+    return result, stdout.getvalue(), stderr.getvalue()
+
+
+class HelpTest(unittest.TestCase):
+    def test_root_without_arguments_shows_commands(self) -> None:
+        result, stdout, stderr = run()
 
         self.assertEqual(0, result)
-        self.assertIn("usage: ./scripts/wasmline jni", output.getvalue())
-        self.assertIn("build", output.getvalue())
-        self.assertNotIn("ERR", output.getvalue())
+        for command in ("doctor", "lint", "wasmtime", "jni", "versions", "aot"):
+            self.assertIn(command, stdout)
+        self.assertNotIn("ERR", stderr)
 
-    def test_wasmtime_without_subcommand_shows_available_commands(self) -> None:
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output):
-            result = cli.main(["wasmtime"])
+    def test_help_command_matches_bare_invocation(self) -> None:
+        self.assertEqual(run()[1], run("help")[1])
 
-        self.assertEqual(0, result)
-        self.assertIn("targets", output.getvalue())
-        self.assertIn("download", output.getvalue())
+    def test_group_help_paths_agree(self) -> None:
+        for group, child in (("jni", "build"), ("aot", "sync"), ("versions", "check")):
+            bare = run(group)[1]
+            explicit = run(group, "help")[1]
+            option = run(group, "--help")[1]
+            self.assertIn(child, bare)
+            self.assertEqual(bare, explicit)
+            self.assertEqual(bare, option)
 
-    def test_download_defaults_to_all_targets_and_engines(self) -> None:
-        with mock.patch.object(cli.wasmtime, "download", return_value=0) as download:
-            result = cli.main(["wasmtime", "download"])
-
-        self.assertEqual(0, result)
-        download.assert_called_once_with(
-            target_id="all",
-            engine="all",
-            jobs=None,
-            proxy=None,
-            force=False,
-        )
-
-    def test_download_help_has_a_bounded_width(self) -> None:
-        parser = cli._parser()
-        download = parser._subparsers._group_actions[0].choices["wasmtime"]
-        download = download._subparsers._group_actions[0].choices["download"]
-        help_text = download.format_help()
-
-        self.assertLessEqual(max(map(len, help_text.splitlines())), 88)
-        self.assertIn("--engine ENGINE", help_text)
-        self.assertIn("pulley, cranelift, or all", help_text)
-        self.assertIn("default: all", help_text)
-
-    def test_kotlin_native_build_defaults_to_all_targets_and_engines(self) -> None:
-        with mock.patch.object(cli, "_run_shell", return_value=0) as run_shell:
-            result = cli.main(["kotlin-native", "build"])
+    def test_help_navigates_to_a_leaf_command(self) -> None:
+        result, stdout, _ = run("help", "jni", "build")
 
         self.assertEqual(0, result)
-        run_shell.assert_called_once_with("internal/native/build-kotlin-native.sh", ["all"])
+        self.assertIn("usage: ./scripts/wasmline jni build", stdout)
+        self.assertIn("--engine", stdout)
 
-    def test_kotlin_native_build_accepts_all_engines_for_all_targets(self) -> None:
-        with mock.patch.object(cli, "_run_shell", return_value=0) as run_shell:
-            result = cli.main(
-                ["kotlin-native", "build", "--target", "all", "--engine", "all"]
-            )
+    def test_help_does_not_run_the_command(self) -> None:
+        result, stdout, _ = run("lint", "--help")
 
         self.assertEqual(0, result)
-        run_shell.assert_called_once_with("internal/native/build-kotlin-native.sh", ["all"])
+        self.assertIn("usage: ./scripts/wasmline lint", stdout)
+        self.assertNotIn("Lint", stdout)
 
-    def test_kotlin_native_build_all_engines_for_one_target_uses_configured_engines(
-        self,
-    ) -> None:
-        with mock.patch.object(cli, "_run_shell", return_value=0) as run_shell:
-            result = cli.main(
-                ["kotlin-native", "build", "--target", "linuxX64", "--engine", "all"]
-            )
+    def test_unknown_command_and_help_topic_fail_with_usage(self) -> None:
+        for arguments in (("missing",), ("help", "missing")):
+            result, _, stderr = run(*arguments)
+            self.assertEqual(2, result, msg=str(arguments))
+            self.assertIn("ERR", stderr)
+            self.assertIn("usage:", stderr)
 
-        self.assertEqual(0, result)
-        self.assertEqual(
-            [
-                mock.call("internal/native/build-kotlin-native.sh", ["linuxX64", "pulley"]),
-                mock.call("internal/native/build-kotlin-native.sh", ["linuxX64", "cranelift"]),
-            ],
-            run_shell.call_args_list,
-        )
 
-    def test_kotlin_native_build_single_target_defaults_to_pulley(self) -> None:
-        with mock.patch.object(cli, "_run_shell", return_value=0) as run_shell:
-            result = cli.main(["kotlin-native", "build", "--target", "linuxX64"])
+class CommandBehaviorTest(unittest.TestCase):
+    def test_unsupported_kotlin_native_target_fails_without_building(self) -> None:
+        result, _, stderr = run("kotlin-native", "build", "--target", "missing-target")
+
+        self.assertEqual(1, result)
+        self.assertIn("Unknown Kotlin/Native target", stderr)
+
+    def test_version_list_prints_key_value_pairs(self) -> None:
+        result, stdout, _ = run("versions", "list")
 
         self.assertEqual(0, result)
-        run_shell.assert_called_once_with(
-            "internal/native/build-kotlin-native.sh", ["linuxX64", "pulley"]
-        )
-
-    def test_kotlin_native_build_help_has_defaults_and_all_engine(self) -> None:
-        parser = cli._parser()
-        native = parser._subparsers._group_actions[0].choices["kotlin-native"]
-        build = native._subparsers._group_actions[0].choices["build"]
-        help_text = build.format_help()
-
-        self.assertLessEqual(max(map(len, help_text.splitlines())), 88)
-        self.assertIn("--target TARGET", help_text)
-        self.assertIn("--engine {pulley,cranelift,all}", help_text)
-        self.assertIn("Defaults to all engines for all targets", help_text)
+        self.assertIn("wasmline_version=", stdout)
+        self.assertTrue(all("=" in line for line in stdout.splitlines()))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPTS_ROOT / "lib" / "python"))
+sys.path.insert(0, str(SCRIPTS_ROOT / "internal" / "python"))
 
 from wasmline_tools.cli import main  # noqa: E402
 
