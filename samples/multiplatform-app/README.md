@@ -102,8 +102,10 @@ import crow.wasmline.gradle.WasmtimeTarget
 
 wasmline {
     wasmtime {
+        // Omitting the block compiles every generation retained in the local
+        // catalog; `generations("latest")` narrows it to the current one.
         aotCompatibility {
-            current()
+            generations("latest")
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -116,10 +118,14 @@ wasmline {
 `targets` is a DSL property configured only by assignment; function-style
 target selectors are not part of the DSL.
 
-Native AOT builds require one explicit selector. Use `current()`, `minimum()`,
-`all()`, or `versionRanges { include(from = "1.0.0", through = "1.20.0") }`.
-The selector resolves immutable AOT generations from the packaged catalog;
-Wasmtime versions and profile IDs are not direct DSL inputs. The
+`generations(version)` selects the generation containing one stable Wasmline
+release version; `generations(from = ..., through = ...)` selects a closed range
+whose end may be `"latest"`. Omit `aotCompatibility` to build every locally
+retained generation. Calls accumulate as a union after the first one replaces
+the default, and repeated generations resolve to one deterministically ordered
+set of backend profile IDs. Endpoints outside the locally supported catalog
+range fail the build instead of being clipped. Wasmline release versions are the
+public input; Wasmtime distributions and profile IDs stay internal. The
 `wasmlineCheckAotCompatibility` task reports newly published generations after a
 successful assemble.
 

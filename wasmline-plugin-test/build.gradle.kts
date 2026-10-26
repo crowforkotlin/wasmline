@@ -58,7 +58,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            current()
+            generations("latest")
         }
         autoDownload = true
         targets = listOf(testPluginCompileTarget)

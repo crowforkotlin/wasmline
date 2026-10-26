@@ -154,14 +154,12 @@ object AotCompatibilityCatalog {
     /** Resolves one Wasmline release selector for the requested artifact backends. */
     fun resolveSelection(
         selection: AotCompatibilitySelection,
-        manifestMinimumWasmlineVersion: String,
         artifactBackends: Set<WasmlineEngineKind>,
     ): AotCompatibilityResolution {
         // Force validation of the packaged public view before compiler resolution.
         publicReleaseCatalog()
         return AotCompatibilitySelectionResolver.resolve(
             selection = selection,
-            manifestMinimumWasmlineVersion = manifestMinimumWasmlineVersion,
             releaseCatalog = lock.releaseCatalog,
             profiles = lock.profiles,
             requestedBackends = artifactBackends,

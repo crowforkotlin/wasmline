@@ -237,7 +237,7 @@ class WasmlineAotCompatibilityChecker(
         require(request.nativeTargetCount >= 0) {
             "AOT checker native target count must not be negative."
         }
-        require(request.selector in AOT_COMPATIBILITY_SELECTOR_NAMES) {
+        require(request.selector == AOT_COMPATIBILITY_SELECTOR) {
             "AOT checker selector is invalid: '${request.selector}'."
         }
         val uri = runCatching { URI(request.remoteUrl) }.getOrElse {

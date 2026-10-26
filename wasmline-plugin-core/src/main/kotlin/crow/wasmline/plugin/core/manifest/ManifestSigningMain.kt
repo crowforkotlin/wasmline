@@ -26,7 +26,6 @@ object ManifestSigningMain {
                 pluginId = request.required(PLUGIN_ID),
                 version = request.required(PLUGIN_VERSION),
                 versionCode = request.required(VERSION_CODE).toLong(),
-                minSdkVersion = request.required(MIN_SDK_VERSION),
                 buildTimestamp = request.required(BUILD_TIMESTAMP).toLong(),
                 signingKey = request.required(SIGNING_KEY),
                 publicKeyId = request.getProperty(PUBLIC_KEY_ID),
@@ -55,7 +54,6 @@ object ManifestSigningMain {
     const val PLUGIN_ID: String = "pluginId"
     const val PLUGIN_VERSION: String = "pluginVersion"
     const val VERSION_CODE: String = "versionCode"
-    const val MIN_SDK_VERSION: String = "minSdkVersion"
     const val BUILD_TIMESTAMP: String = "buildTimestamp"
     const val SIGNING_KEY: String = "signingKey"
     const val PUBLIC_KEY_ID: String = "publicKeyId"

@@ -11,6 +11,7 @@ import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -34,7 +35,32 @@ class WasmlineAotBuildRecordTest {
         WasmlineAotBuildRecords.materializeArtifacts(decoded, sourcePackage, destination)
 
         assertEquals(record, decoded)
+        assertEquals("generations", decoded.aotCompatibilitySelector)
+        assertEquals(listOf(1), decoded.selectedAotGenerations)
         assertTrue(File(destination, stored.relativePath).isFile)
+    }
+
+    @Test
+    fun rejectsRetiredSelectorsAndInvalidSelectedGenerations() {
+        val record = record(
+            StoredWasmlineArtifact(
+                file = File("artifact.pwasm"),
+                relativePath = "artifacts/sha256/aa/${"a".repeat(64)}.pwasm",
+                sha256 = "a".repeat(64),
+                sizeBytes = 3,
+            ),
+        )
+
+        listOf("current", "minimum", "all", "versionRanges", "").forEach { retired ->
+            assertFailsWith<IllegalArgumentException> {
+                record.copy(aotCompatibilitySelector = retired)
+            }
+        }
+        listOf(emptyList<Int>(), listOf(0), listOf(-1)).forEach { generations ->
+            assertFailsWith<IllegalArgumentException> {
+                record.copy(selectedAotGenerations = generations)
+            }
+        }
     }
 
     private fun record(stored: StoredWasmlineArtifact): WasmlineAotBuildRecord {
@@ -80,7 +106,7 @@ class WasmlineAotBuildRecordTest {
             compilerProvenance = emptyList(),
             compileOptions = WasmlineAotCompileOptions(),
             artifactTargets = listOf(target),
-            aotCompatibilitySelector = "current",
+            aotCompatibilitySelector = "generations",
             selectedAotGenerations = listOf(1),
         )
     }

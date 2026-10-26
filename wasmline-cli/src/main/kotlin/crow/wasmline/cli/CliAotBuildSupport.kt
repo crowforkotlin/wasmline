@@ -4,6 +4,7 @@ import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.loader.model.WasmlineRuntimeContract
 import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
+import crow.wasmline.plugin.core.aot.AotCompatibilityResolution
 import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecord
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRequest
@@ -150,25 +151,18 @@ internal class CliAotBuildSupport(private val logger: (String) -> Unit = {}) {
         }
     }
 
-    /** Builds one complete catalog profile and target matrix. */
+    /** Builds one complete catalog profile and target matrix from an already resolved selection. */
     suspend fun buildMatrix(
         input: CliPreparedAotInput,
         packageDirectory: File,
         workingDirectory: File,
         targets: Collection<String>,
-        selection: AotCompatibilitySelection,
-        minSdkVersion: String,
+        resolution: AotCompatibilityResolution,
         publishRawWasm: Boolean,
         compilerCacheDirectory: File,
         autoDownload: Boolean,
         maxParallelCompilations: Int,
     ): WasmlineAotBuildRecord {
-        val targetSpecs = WasmlineArtifactTargetFactory.create(targets)
-        val resolution = AotCompatibilityCatalog.resolveSelection(
-            selection = selection,
-            manifestMinimumWasmlineVersion = minSdkVersion,
-            artifactBackends = targetSpecs.map(WasmlineAotTargetSpec::artifactBackend).toSet(),
-        )
         return WasmlineAotBuildService().build(
             WasmlineAotBuildRequest(
                 inputFile = input.file,
@@ -202,44 +196,40 @@ internal fun defaultAotCompilerCacheDirectory(): File = File(
 /** Returns the default export for a Component Wasmline Service contract. */
 internal fun defaultComponentServiceExport(): String = WasmlineComponentServiceContract.DEFAULT_EXPORT
 
-/** Parses the CLI selector and its optional closed ranges into the shared model. */
-internal fun parseCliAotSelection(kind: String?, encodedRanges: Collection<String>): AotCompatibilitySelection {
-    val normalizedKind = kind?.trim()?.takeIf(String::isNotEmpty)
-        ?: throw IllegalArgumentException(
-            "An explicit --aot-compatibility selector is required: current, minimum, all, or versionRanges.",
-        )
-    return when (normalizedKind) {
-        "current" -> {
-            require(encodedRanges.isEmpty()) {
-                "--aot-version-range can only be used with --aot-compatibility versionRanges."
-            }
-            AotCompatibilitySelection.Current
-        }
-
-        "minimum" -> {
-            require(encodedRanges.isEmpty()) {
-                "--aot-version-range can only be used with --aot-compatibility versionRanges."
-            }
-            AotCompatibilitySelection.Minimum
-        }
-
-        "all" -> {
-            require(encodedRanges.isEmpty()) {
-                "--aot-version-range can only be used with --aot-compatibility versionRanges."
-            }
-            AotCompatibilitySelection.All
-        }
-
-        "versionRanges" -> AotCompatibilitySelection.VersionRanges(
-            encodedRanges.map { encoded ->
-                val parts = encoded.split("..")
-                require(parts.size == 2) { "AOT version range must use FROM..THROUGH: '$encoded'." }
-                WasmlineVersionRange(parts[0], parts[1])
-            },
-        )
-
-        else -> throw IllegalArgumentException(
-            "Unknown --aot-compatibility selector '$normalizedKind'. Expected current, minimum, all, or versionRanges.",
-        )
-    }
+/** Resolves one parsed CLI selection against the local catalog for the requested targets. */
+internal fun resolveCliAotSelection(
+    selection: AotCompatibilitySelection,
+    targets: Collection<String>,
+): AotCompatibilityResolution {
+    val targetSpecs = WasmlineArtifactTargetFactory.create(targets)
+    return AotCompatibilityCatalog.resolveSelection(
+        selection = selection,
+        artifactBackends = targetSpecs.map(WasmlineAotTargetSpec::artifactBackend).toSet(),
+    )
 }
+
+/** Parses repeated --aot-generations values into the shared local selection model. */
+internal fun parseCliAotSelection(values: Collection<String>): AotCompatibilitySelection =
+    AotCompatibilitySelection(values.map(::parseAotGeneration))
+
+/** Parses one point or closed FROM..THROUGH generation token without normalization. */
+private fun parseAotGeneration(value: String): WasmlineVersionRange {
+    val separatorIndex = value.indexOf(AOT_GENERATION_RANGE_SEPARATOR)
+    if (separatorIndex < 0) return WasmlineVersionRange(value, value)
+    val from = value.substring(0, separatorIndex)
+    val through = value.substring(separatorIndex + AOT_GENERATION_RANGE_SEPARATOR.length)
+    require(from.isNotEmpty() && through.isNotEmpty()) {
+        "AOT generation range must use two non-empty endpoints: '$value'."
+    }
+    require(value.indexOf(AOT_GENERATION_RANGE_SEPARATOR, separatorIndex + AOT_GENERATION_RANGE_SEPARATOR.length) < 0) {
+        "AOT generation range must contain exactly one separator: '$value'."
+    }
+    require(from != LATEST_AOT_GENERATION) {
+        "AOT generation range must start at a concrete x.y.z version: '$value'."
+    }
+    return WasmlineVersionRange(from, through)
+}
+
+private const val LATEST_AOT_GENERATION: String = "latest"
+
+private const val AOT_GENERATION_RANGE_SEPARATOR: String = ".."

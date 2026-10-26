@@ -61,7 +61,6 @@ data class SignedManifestEnvelope(
  * @property pluginId Stable package identifier.
  * @property version Human-readable package version.
  * @property versionCode Monotonic package version code.
- * @property minSdkVersion Minimum host SDK version accepted by the package.
  * @property displayName Optional display name.
  * @property author Optional package author.
  * @property description Optional package description.
@@ -78,7 +77,6 @@ data class WasmlineManifest(
     @property:ProtoNumber(1) val pluginId: String,
     @property:ProtoNumber(2) val version: String,
     @property:ProtoNumber(3) val versionCode: Long,
-    @property:ProtoNumber(4) val minSdkVersion: String,
     @property:ProtoNumber(5) val displayName: String? = null,
     @property:ProtoNumber(6) val author: String? = null,
     @property:ProtoNumber(7) val description: String? = null,

@@ -2,7 +2,7 @@
 title: CLI Reference
 description: Build, sign, inspect, and package Wasmline plugins
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-10-25
 ---
 
 # CLI Reference
@@ -32,7 +32,9 @@ CLI distribution and forwards its arguments:
 
 The CLI does not accept the removed `download` command, a `--wasmtime` directory,
 or an arbitrary compiler executable. AOT compilers come from the digest-locked
-catalog.
+catalog. The removed `--aot-compatibility`, `--aot-version-range`, and
+`--min-sdk` options have no aliases either; AOT coverage is selected only through
+`--aot-generations`.
 
 ## Build a Package
 
@@ -41,7 +43,7 @@ catalog.
 
 ./wasmline-cli/cli.sh build \
   --input plugin.wasm \
-  --aot-compatibility current \
+  --aot-generations latest \
   --target pulley64 \
   --target x86_64-linux \
   --auto-download \
@@ -51,26 +53,41 @@ catalog.
   --key build/wasmline/keys/ed25519_private.key
 ```
 
-Native AOT requires one selector. Select the current generation, the configured
-minimum, every catalog generation, or explicit inclusive ranges:
+`--aot-generations` is repeatable. Each value is a stable `x.y.z` Wasmline
+version, the exact lowercase token `latest`, or a closed `FROM..THROUGH` range
+whose `FROM` is a stable version and whose `THROUGH` is a stable version or
+`latest`. Values are exact tokens: the CLI does not split comma lists, trim
+whitespace, accept open ranges, or accept more than one `..` delimiter.
+`latest` refers to the Wasmline version of the catalog packaged into the CLI,
+not the newest remote release. Omitting the option selects every generation
+retained in that local catalog; repeated values contribute to one union:
 
 ```bash
 ./wasmline-cli/cli.sh compile \
   --input plugin.wasm \
-  --aot-compatibility minimum \
+  --aot-generations 1.0.0 \
   --target pulley64
 
 ./wasmline-cli/cli.sh compile \
   --input plugin.wasm \
-  --aot-compatibility versionRanges \
-  --aot-version-range 1.0.0..1.20.0 \
-  --aot-version-range 1.50.0..1.72.3 \
+  --aot-generations 1.0.0 \
+  --aot-generations 1.0.1..latest \
   --target x86_64-linux
 ```
 
-Ranges are closed and use stable `x.y.z` Wasmline versions. The CLI resolves
-them through its local catalog and then uses exact backend profile IDs. It does
-not accept a free-form Wasmtime version or profile ID.
+Both endpoints of a range must lie inside the catalog's
+`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` bounds. For the
+catalog retained today, `--aot-generations 1.0.0..latest` therefore selects the
+same generations as omitting the option. An empty token, an inverted range, a
+symbolic range start such as `latest..1.0.1`, or an out-of-range endpoint is
+rejected without clipping to the intersecting part.
+Different values that resolve to the same generation, and reused backend
+profiles, are deduplicated and sorted deterministically. The CLI resolves
+catalog bounds and profiles once before any tool download, Component
+preparation, compilation, or signing, so selection errors surface before a
+package is written. These inputs are Wasmline versions that select catalog
+generations; the CLI still does not accept a free-form Wasmtime version or
+profile ID.
 
 ## Raw Export ABI
 

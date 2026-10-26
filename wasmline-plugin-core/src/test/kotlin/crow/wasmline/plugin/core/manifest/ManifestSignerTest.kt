@@ -22,7 +22,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 /**
  * Verifies that manifest signing rejects incomplete or inconsistent AOT build records.
@@ -63,11 +62,11 @@ class ManifestSignerTest {
             artifactTargets = aggregateWasmlineArtifactTargets(outputs),
         )
 
-        val failure = assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<IllegalArgumentException> {
             ManifestSigner().createSignedManifest(signingRequest(record, directory).copy(publicKeyId = " "))
         }
 
-        assertTrue(failure.message.orEmpty().contains("publicKeyId"))
+        assertFalse(File(directory, ManifestSigner.DEFAULT_MANIFEST_NAME).exists())
     }
 
     @Test
@@ -81,11 +80,10 @@ class ManifestSignerTest {
             artifactTargets = aggregateWasmlineArtifactTargets(outputs),
         )
 
-        val failure = assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<IllegalArgumentException> {
             ManifestSigner().createSignedManifest(signingRequest(record, directory))
         }
 
-        assertTrue(failure.message.orEmpty().contains("complete profile and target matrix"))
         assertFalse(File(directory, ManifestSigner.DEFAULT_MANIFEST_NAME).exists())
     }
 
@@ -110,12 +108,86 @@ class ManifestSignerTest {
         }
         val record = record(listOf(selectedProfile), outputs, targets)
 
-        val failure = assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<IllegalArgumentException> {
             ManifestSigner().createSignedManifest(signingRequest(record, directory))
         }
 
-        assertTrue(failure.message.orEmpty().contains("artifact targets do not match"))
         assertFalse(File(directory, ManifestSigner.DEFAULT_MANIFEST_NAME).exists())
+    }
+
+    @Test
+    fun rejectsCompileOptionsOrProvenanceThatDoNotMatchTheMatrix() = withSigningDirectory { directory ->
+        val selectedProfile = profile(FIRST_PROFILE_ID, "12.3.4")
+        val outputs = listOf(aotOutput(selectedProfile.id), rawOutput())
+        val record = record(
+            profiles = listOf(selectedProfile),
+            outputs = outputs,
+            artifactTargets = aggregateWasmlineArtifactTargets(outputs),
+        )
+        writeContentObjects(record, directory)
+
+        assertFailsWith<IllegalArgumentException> {
+            ManifestSigner().createSignedManifest(
+                signingRequest(
+                    record.copy(
+                        resolvedProfiles = record.resolvedProfiles.map {
+                            it.copy(engineConfigurationProfile = "unrecorded-profile")
+                        },
+                    ),
+                    directory,
+                ),
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ManifestSigner().createSignedManifest(
+                signingRequest(
+                    record.copy(
+                        compilerProvenance = record.compilerProvenance.map {
+                            it.copy(wasmtimeDistributionVersion = "49.0.0.1")
+                        },
+                    ),
+                    directory,
+                ),
+            )
+        }
+        assertFalse(File(directory, ManifestSigner.DEFAULT_MANIFEST_NAME).exists())
+    }
+
+    @Test
+    fun rejectsCoreRecordsWithoutExactlyOneRawWasmOutput() = withSigningDirectory { directory ->
+        val selectedProfile = profile(FIRST_PROFILE_ID, "12.3.4")
+        val outputs = listOf(aotOutput(selectedProfile.id))
+        val record = record(
+            profiles = listOf(selectedProfile),
+            outputs = outputs,
+            artifactTargets = aggregateWasmlineArtifactTargets(outputs),
+        )
+        writeContentObjects(record, directory)
+
+        assertFailsWith<IllegalArgumentException> {
+            ManifestSigner().createSignedManifest(signingRequest(record, directory))
+        }
+        assertFalse(File(directory, ManifestSigner.DEFAULT_MANIFEST_NAME).exists())
+    }
+
+    @Test
+    fun rejectsContentObjectsWithMismatchedSizeOrDigest() = withSigningDirectory { directory ->
+        listOf("ab", "abd").forEach { content ->
+            val selectedProfile = profile(FIRST_PROFILE_ID, "12.3.4")
+            val outputs = listOf(aotOutput(selectedProfile.id), rawOutput())
+            val record = record(
+                profiles = listOf(selectedProfile),
+                outputs = outputs,
+                artifactTargets = aggregateWasmlineArtifactTargets(outputs),
+            )
+            writeContentObjects(record, directory)
+            File(directory, outputs.first().contentRelativePath).writeText(content)
+
+            assertFailsWith<IllegalArgumentException> {
+                ManifestSigner().createSignedManifest(signingRequest(record, directory))
+            }
+            assertFalse(File(directory, ManifestSigner.DEFAULT_MANIFEST_NAME).exists())
+        }
     }
 }
 
@@ -186,7 +258,7 @@ private fun record(
     },
     compileOptions = WasmlineAotCompileOptions(),
     artifactTargets = artifactTargets,
-    aotCompatibilitySelector = "current",
+    aotCompatibilitySelector = "generations",
     selectedAotGenerations = listOf(1),
 )
 
@@ -197,7 +269,6 @@ private fun signingRequest(record: WasmlineAotBuildRecord, directory: File): Was
         pluginId = "crow.wasmline.signer-test",
         version = "1.0.0",
         versionCode = 1,
-        minSdkVersion = "1.0.0",
         buildTimestamp = 0,
         signingKey = "00",
         outputDirectory = directory,

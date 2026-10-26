@@ -318,7 +318,6 @@ class WasmlineRemotePackageResolutionTest {
         pluginId = "crow.wasmline.remote",
         version = "12.3.4",
         versionCode = 1,
-        minSdkVersion = "12.3.4",
         buildTimestamp = 0,
         runtimeContract = contract(),
         artifactTargets = listOf(
@@ -336,7 +335,6 @@ class WasmlineRemotePackageResolutionTest {
             pluginId = "crow.wasmline.remote",
             version = "12.3.4",
             versionCode = 1,
-            minSdkVersion = "12.3.4",
             buildTimestamp = 0,
             runtimeContract = contract(),
             aotCompatibilityProfiles = listOf(

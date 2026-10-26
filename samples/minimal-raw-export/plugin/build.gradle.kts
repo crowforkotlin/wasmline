@@ -55,7 +55,7 @@ wasmline {
         )
     }
     wasmtime {
-        aotCompatibility { current() }
+        aotCompatibility { generations("latest") }
         targets = listOf(WasmtimeTarget.PULLEY_64)
         autoDownload = true
     }

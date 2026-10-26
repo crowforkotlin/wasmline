@@ -6,6 +6,7 @@ import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRequest
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildService
 import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
+import crow.wasmline.plugin.core.aot.WasmlineVersionRange
 import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
 import crow.wasmline.plugin.core.component.WasmToolsTool
@@ -55,10 +56,10 @@ class NativeFixtureAssembler(
 
         val targetSpecs = WasmlineArtifactTargetFactory.create(targets)
         val resolution = AotCompatibilityCatalog.resolveSelection(
-            selection = AotCompatibilitySelection.Current,
-            manifestMinimumWasmlineVersion = AotCompatibilityCatalog.releaseCatalog().minimumSupportedWasmlineVersion,
+            selection = AotCompatibilitySelection(listOf(WasmlineVersionRange("latest", "latest"))),
             artifactBackends = targetSpecs.map { spec -> spec.artifactBackend }.toSet(),
         )
+        val selector = resolution.selection.diagnosticName()
         val downloader = ToolDownloader(logger = logger)
         try {
             val resolver = ToolResolver(ToolCache(toolCacheDirectory), downloader)
@@ -89,6 +90,7 @@ class NativeFixtureAssembler(
                         workingDirectory = workingDirectory,
                         resolvedProfileIds = resolution.profiles.map { profile -> profile.id },
                         selectedGenerations = resolution.selectedGenerations,
+                        selector = selector,
                     )
                 }
                 val index = NativeFixtureIndex(fixtures = entries.sortedWith(NATIVE_FIXTURE_ARTIFACT_ORDER))
@@ -229,6 +231,7 @@ class NativeFixtureAssembler(
         workingDirectory: File,
         resolvedProfileIds: List<String>,
         selectedGenerations: List<Int>,
+        selector: String,
     ): List<NativeFixtureArtifact> {
         val packageDirectory = File(outputDirectory, "fixtures/${definition.id}")
         val record = WasmlineAotBuildService().build(
@@ -239,7 +242,7 @@ class NativeFixtureAssembler(
                 runtimeContract = definition.runtimeContract,
                 targets = targets,
                 resolvedProfileIds = resolvedProfileIds,
-                aotCompatibilitySelector = AotCompatibilitySelection.Current.diagnosticName(),
+                aotCompatibilitySelector = selector,
                 selectedAotGenerations = selectedGenerations,
                 publishRawWasm = false,
                 compilerCacheDirectory = compilerCacheDirectory,

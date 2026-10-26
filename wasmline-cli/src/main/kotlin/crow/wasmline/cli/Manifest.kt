@@ -28,7 +28,6 @@ internal class Manifest : CliktCommand(name = "manifest") {
     private val pluginId by option("--plugin-id")
     private val version by option("--version").default("1.0.0")
     private val versionCode by option("--version-code").long().default(1L)
-    private val minSdkVersion by option("--min-sdk").default(BuildConfig.VERSION)
     private val buildTimestamp by option("--build-timestamp").long().default(0L)
     private val displayName by option("--display-name")
     private val author by option("--author")
@@ -49,7 +48,6 @@ internal class Manifest : CliktCommand(name = "manifest") {
                     pluginId = pluginId ?: File(record.inputFile).nameWithoutExtension,
                     version = version,
                     versionCode = versionCode,
-                    minSdkVersion = minSdkVersion,
                     buildTimestamp = buildTimestamp,
                     signingKey = key,
                     publicKeyId = publicKeyId,

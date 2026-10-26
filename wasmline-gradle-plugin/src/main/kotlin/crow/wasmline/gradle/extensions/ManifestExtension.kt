@@ -21,7 +21,6 @@ import javax.inject.Inject
  *         pluginId = "crow.wasmline.demo"
  *         version = "1.0.0"
  *         versionCode = 1L
- *         minSdkVersion = "1.0.1"
  *         displayName = "Demo Plugin"
  *         author = "crow"
  *         description = "A sample wasmline plugin"
@@ -47,9 +46,6 @@ public abstract class ManifestExtension @Inject constructor(objects: ObjectFacto
 
     /** Reproducible manifest build timestamp in milliseconds. Default: 0. */
     public val buildTimestamp: Property<Long> = objects.property(Long::class.java).convention(0L)
-
-    /** Minimum wasmline SDK version required by this plugin. */
-    public val minSdkVersion: Property<String> = objects.property(String::class.java).convention("1.0.1")
 
     /** Human-readable display name shown to users. */
     public val displayName: Property<String> = objects.property(String::class.java)

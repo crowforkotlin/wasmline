@@ -5,6 +5,7 @@ import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.jvm.tasks.Jar
+import org.gradle.plugin.devel.tasks.PluginUnderTestMetadata
 
 
 plugins {
@@ -72,6 +73,10 @@ val pluginCoreOutput = project(":wasmline-plugin-core")
 
 tasks.named<Jar>("jar") {
     from(pluginCoreOutput)
+}
+
+tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
+    pluginClasspath.from(pluginCoreOutput)
 }
 
 gradlePlugin {

@@ -133,15 +133,19 @@ Repeated loads of the same artifact have independent handles and service binding
 
 A plugin release uses one `manifest.wlm` for every configured AOT compatibility
 generation and physical target. Plugin authors select Wasmline release
-generations; the local catalog resolves immutable, backend-specific profile IDs.
+generations; the packaged local catalog resolves immutable, backend-specific
+profile IDs.
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
 
 wasmline {
     wasmtime {
+        // `generations` narrows the build to the generation of the current
+        // local Wasmline release; omit the block to compile every generation
+        // retained in the local catalog.
         aotCompatibility {
-            current()
+            generations("latest")
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -153,12 +157,42 @@ wasmline {
 }
 ```
 
-Native AOT requires exactly one explicit selector. Use `minimum()` to cover the
-effective supported minimum, `all()` to include every formal generation retained
-in the catalog, or `versionRanges { include(from = "1.0.0", through = "1.20.0") }`
-for selected closed intervals. `current()` supports only the current generation
-and must still be written in the DSL. The selector does not accept a Wasmtime
-version or a profile digest.
+Omitting the block, leaving it empty, or only setting
+`suppressCompatibilityWarning` keeps every locally retained generation:
+
+```kotlin
+wasmline {
+    wasmtime {
+        // No `aotCompatibility` call: compile every generation in the catalog.
+    }
+}
+```
+
+Points and closed ranges can be combined in one block; the first explicit call
+replaces the implicit default and every later call is a union:
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            generations("1.0.0")
+            generations(from = "1.0.1", through = "latest")
+        }
+    }
+}
+```
+
+`generations(version)` selects the generation containing one stable Wasmline
+release version, and `generations(from = ..., through = ...)` selects a closed
+range. `"latest"` means the local catalog current version and is valid as a
+point or as the range end; `generations("latest")` selects only the current
+generation. The first explicit call replaces the implicit all-generations
+default and later calls add their generations to the union. Duplicate
+generations and reused backend profiles are deduplicated. Both endpoints must
+lie inside the locally supported catalog interval, and inverted or out-of-range
+input fails the build instead of being clipped. Selection never reads the
+network. The public input is a Wasmline release version; Wasmtime distribution
+versions and profile digests are internal catalog and diagnostic values.
 
 After a successful assemble, `wasmlineCheckAotCompatibility` compares the local
 selection with the latest stable catalog and writes a report to

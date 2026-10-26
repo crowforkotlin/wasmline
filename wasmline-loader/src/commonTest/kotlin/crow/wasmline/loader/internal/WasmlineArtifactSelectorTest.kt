@@ -115,7 +115,6 @@ class WasmlineArtifactSelectorTest {
         pluginId = "crow.wasmline.selector",
         version = "1.0.0",
         versionCode = 1,
-        minSdkVersion = "1.0.0",
         buildTimestamp = 0,
         runtimeContract = WasmlineRuntimeContract(
             WasmlineExecutionModel.CORE_WASM,

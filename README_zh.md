@@ -132,16 +132,19 @@ suspend fun main() {
 ## Package 与 AOT 兼容性
 
 一个插件发行版只使用一个 `manifest.wlm`，用于描述全部已配置的 AOT
-generation 和物理 target。插件作者选择 Wasmline 发行 generation；本地
-catalog 负责解析不可变且区分 backend 的 profile ID。
+generation 和物理 target。插件作者选择 Wasmline 发行 generation；随构建工具
+打包的本地 catalog 负责解析不可变且区分 backend 的 profile ID。
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
 
 wasmline {
     wasmtime {
+        // `generations` narrows the build to the generation of the current
+        // local Wasmline release; omit the block to compile every generation
+        // retained in the local catalog.
         aotCompatibility {
-            current()
+            generations("latest")
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -153,11 +156,39 @@ wasmline {
 }
 ```
 
-Native AOT 必须显式配置且只能配置一个 selector。可以使用 `minimum()` 覆盖
-有效支持下限，使用 `all()` 包含 catalog 保留的全部正式 generation，或使用
-`versionRanges { include(from = "1.0.0", through = "1.20.0") }` 选择闭区间。
-`current()` 只支持当前 generation，但仍必须写在 DSL 中。Selector 不接受
-Wasmtime 版本或 profile digest。
+省略该块、使用空块，或只设置 `suppressCompatibilityWarning`，都会保留本地
+全部 generation：
+
+```kotlin
+wasmline {
+    wasmtime {
+        // No `aotCompatibility` call: compile every generation in the catalog.
+    }
+}
+```
+
+点版本与闭区间可以写在同一个块中；第一次显式调用替换隐式默认值，之后每次
+调用都并入结果并集：
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            generations("1.0.0")
+            generations(from = "1.0.1", through = "latest")
+        }
+    }
+}
+```
+
+`generations(version)` 选择包含该稳定 Wasmline 发行版本的 generation，
+`generations(from = ..., through = ...)` 选择闭区间。`"latest"` 表示本地
+catalog 的当前版本，既可作为点版本，也可作为区间上界；
+`generations("latest")` 只选择当前 generation。第一次显式调用会替换默认的
+全部 generation，后续调用取并集。重复 generation 与复用的 backend profile
+会去重。区间两端必须位于本地支持的 catalog 范围内，倒置或越界输入会直接构建
+失败，不会被裁剪。选择过程不访问网络。公共输入是 Wasmline 发行版本；
+Wasmtime distribution 版本与 profile digest 属于内部 catalog 与诊断信息。
 
 assemble 成功后，`wasmlineCheckAotCompatibility` 会将本地选择与最新稳定
 catalog 比较，并写入 `build/reports/wasmline/aot-compatibility-check.json`。

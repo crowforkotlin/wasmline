@@ -46,7 +46,7 @@ Read only the documents required by the current task.
 | [`development-guide.md`](./references/development-guide.md) | Environment checks, module selection, generated files, commands, validation, or CI |
 | [`version-sync.md`](./references/version-sync.md) | Version changes or additions of duplicated version references |
 | [`branching-and-release.md`](./references/branching-and-release.md) | Branches, tags, Maven publication, releases, or hotfixes |
-| [`aot-compatibility.md`](./references/aot-compatibility.md) | AOT generation catalogs, selector DSL, compatibility checks, or release assets |
+| [`aot-compatibility.md`](./references/aot-compatibility.md) | AOT generation catalogs, `generations` DSL, compatibility checks, or release assets |
 | [`web-bindings-guide.md`](./references/web-bindings-guide.md) | `webMain`, `jsMain`, `wasmJsMain`, browser loading, or Web tests |
 | [Technical Mind Map](../../../docs/design-mind.md) | Runtime architecture, execution models, invocation protocols, Component Model, or IR flow |
 | [Component Service Guide](<../../../fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
@@ -74,10 +74,10 @@ Read only the documents required by the current task.
 - iOS uses the Pulley interpreter. Select `pulley64` `.pwasm`; never select iOS `.cwasm`.
 - Native runtime AOT tests use the internal `wasmline-native-test-fixtures` module. Its `assembleNativeTestFixtures` task generates `.cwasm`, `.pwasm`, and `fixture-index.json` below `build/`; do not commit those files or supply replacement artifacts through test environment variables.
 - `:wasmline:nativeAotJvmTest` depends on fixture assembly and obtains the index through a system property. The iOS simulator test obtains the same index through `WASMLINE_NATIVE_FIXTURE_INDEX` and accepts only a matching `pulley64` `.pwasm` record.
-- One signed `manifest.wlm` may describe several immutable, backend-specific AOT compatibility profiles. Wasmtime `x.y.z` selects catalog records; it is not the serialized-artifact identity.
+- One signed `manifest.wlm` may describe several immutable, backend-specific AOT compatibility profiles. The Wasmtime distribution `x.y.z` is an internal catalog binding and diagnostic value; it is not the public AOT selection input and not the serialized-artifact identity.
 - Package artifacts use `artifacts/sha256/{prefix}/{digest}.{extension}`. Core Web `.wasm` is profile-independent and stored once; remote loading downloads only the manifest and one selected artifact.
 - Runtime, loader, build tools, and engine modules share one Maven version. Do not upgrade an engine independently; use the BOM where its Gradle platform is consumable.
-- Native AOT selection is explicit: use exactly one of `current()`, `minimum()`, `all()`, or `versionRanges {}`. The default is no selector, which is a configuration error for native AOT.
+- Native AOT selection uses Wasmline release versions: `aotCompatibility { generations("x.y.z") }` for one generation and `generations(from = "x.y.z", through = "x.y.z" | "latest")` for a closed range. Omitting the block or leaving it empty builds every generation retained in the packaged local catalog; the first call replaces that default and later calls add to the union. Both endpoints must be inside the locally supported catalog interval; out-of-range or inverted input fails instead of being clipped.
 - `wasmlineCheckAotCompatibility` is advisory and runs after a successful Wasmline assemble. Warnings are enabled by default; `suppressCompatibilityWarning.set(true)` suppresses only the log message.
 - The root `aot-compatibility.json` is the only manually maintained AOT compatibility catalog. `./scripts/wasmline aot sync` validates it, resolves verified fork release metadata only for a newly appended current distribution, generates the internal lock, packages an identical classpath resource, and updates `NativeBuildIdentity.h` plus `WasmlineReleaseIdentity.kt`. Remote catalog data never enters AOT task inputs.
 - Stable releases use `release-x.y.z.v`; `v` encodes the fork Wasmtime `x.y.z` as `major×100 + minor×10 + patch`. The release workflow validates the tag before Maven publication.

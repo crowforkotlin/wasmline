@@ -5,6 +5,7 @@ package crow.wasmline.loader.internal
 import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.WasmlineLoadStage
 import crow.wasmline.WasmlineLoadState
 import crow.wasmline.extensions.Keys
 import crow.wasmline.invocation.WasmlineErrorCode
@@ -139,7 +140,7 @@ class WasmlineLocalPackageResolutionTest {
     }
 
     @Test
-    fun rejectsSignedPayloadContainingRetiredManifestField() {
+    fun rejectsSignedPayloadContainingRetiredArtifactsField() {
         val canonical = WasmlineManifestProtocol.canonicalize(rawManifest(DIGEST, 3))
         val payload = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), canonical) +
             byteArrayOf(RETIRED_ARTIFACTS_FIELD_TAG, 0)
@@ -154,6 +155,52 @@ class WasmlineLocalPackageResolutionTest {
 
         assertEquals(WasmlineErrorCode.MANIFEST_INVALID, rejection.code)
         assertTrue(rejection.cause.contains("payload encoding is not canonical"))
+    }
+
+    @Test
+    fun rejectsSignedPayloadContainingRetiredMinimumField() {
+        val payload = canonicalPayload()
+        assertIs<WasmlineManifestVerification.Verified>(
+            WasmlinePackageSignatureVerifier.verify(
+                signPayload(payload),
+                trustedKeys(),
+                "canonical.wlm",
+                WasmlineManifestLimits(),
+            ),
+        )
+        val rejection = assertIs<WasmlineManifestVerification.Rejected>(
+            WasmlinePackageSignatureVerifier.verify(
+                signPayload(withRetiredMinimumField(payload)),
+                trustedKeys(),
+                "retired-minimum-field.wlm",
+                WasmlineManifestLimits(),
+            ),
+        )
+
+        assertEquals(WasmlineLoadStage.MANIFEST_DECODING, rejection.stage)
+        assertEquals(WasmlineErrorCode.MANIFEST_INVALID, rejection.code)
+        assertTrue(rejection.cause.contains("payload encoding is not canonical"))
+    }
+
+    @Test
+    fun rejectsLocalManifestContainingRetiredMinimumField() = withPackageDirectory { root ->
+        val payload = withRetiredMinimumField(canonicalPayload())
+        val manifestFile = File(root, "manifest.wlm").apply {
+            writeBytes(ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), signPayload(payload)))
+        }
+        val source = WasmlineSource.LocalManifestPath(manifestFile.absolutePath)
+
+        val resolution = WasmlineLocalPackageResolution.resolve(
+            source,
+            WasmlineLoadRequest(source, options = WasmlineLoadOptions(trustedKeys = trustedKeys())),
+            browserHost(),
+        )
+
+        val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
+        val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
+        assertEquals(WasmlineLoadStage.MANIFEST_DECODING, failure.failure.stage)
+        assertEquals(WasmlineErrorCode.MANIFEST_INVALID, failure.failure.code)
+        assertTrue(failure.failure.message.contains("payload encoding is not canonical"))
     }
 
     @Test
@@ -199,11 +246,37 @@ class WasmlineLocalPackageResolutionTest {
         assertTrue(failure.failure.message.contains("byte limit"))
     }
 
+    private fun canonicalPayload(manifest: WasmlineManifest = rawManifest(DIGEST, 3)): ByteArray =
+        ProtoBuf.encodeToByteArray(
+            WasmlineManifest.serializer(),
+            WasmlineManifestProtocol.canonicalize(manifest),
+        )
+
+    /**
+     * Inserts the retired manifest field 4 between the top-level field 3 and the next field.
+     *
+     * The canonical fixture encodes field 1 and field 2 as single-byte-length strings followed by
+     * field 3 as a varint, so the insertion point is resolved by walking those top-level fields only.
+     */
+    private fun withRetiredMinimumField(payload: ByteArray): ByteArray {
+        var offset = 0
+        for (field in 1..2) {
+            assertEquals((field shl 3) or WIRE_TYPE_LENGTH_DELIMITED, payload[offset++].toInt() and 0xFF)
+            val length = payload[offset++].toInt() and 0xFF
+            assertTrue(length < 0x80, "Fixture string fields must encode their length in one varint byte.")
+            offset += length
+        }
+        assertEquals((3 shl 3) or WIRE_TYPE_VARINT, payload[offset++].toInt() and 0xFF)
+        while ((payload[offset++].toInt() and VARINT_CONTINUATION_BIT) != 0) {
+            // Skip the remaining field 3 varint bytes.
+        }
+        return payload.copyOfRange(0, offset) + RETIRED_MINIMUM_FIELD + payload.copyOfRange(offset, payload.size)
+    }
+
     private fun rawManifest(digest: String, sizeBytes: Long): WasmlineManifest = WasmlineManifest(
         pluginId = "crow.wasmline.local",
         version = "1.0.0",
         versionCode = 1,
-        minSdkVersion = "1.0.0",
         buildTimestamp = 0,
         runtimeContract = WasmlineRuntimeContract(
             WasmlineExecutionModel.CORE_WASM,
@@ -222,11 +295,7 @@ class WasmlineLocalPackageResolutionTest {
     private fun signAndEncode(manifest: WasmlineManifest): ByteArray =
         ProtoBuf.encodeToByteArray(SignedManifestEnvelope.serializer(), sign(manifest))
 
-    private fun sign(manifest: WasmlineManifest): SignedManifestEnvelope {
-        val canonical = WasmlineManifestProtocol.canonicalize(manifest)
-        val payload = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), canonical)
-        return signPayload(payload)
-    }
+    private fun sign(manifest: WasmlineManifest): SignedManifestEnvelope = signPayload(canonicalPayload(manifest))
 
     private fun signPayload(payload: ByteArray): SignedManifestEnvelope {
         val version = WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION
@@ -254,6 +323,12 @@ class WasmlineLocalPackageResolutionTest {
     private companion object {
         const val DIGEST = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         const val RETIRED_ARTIFACTS_FIELD_TAG: Byte = 0x62
+        const val WIRE_TYPE_VARINT: Int = 0
+        const val WIRE_TYPE_LENGTH_DELIMITED: Int = 2
+        const val VARINT_CONTINUATION_BIT: Int = 0x80
+
+        /** Encodes retired manifest field 4 as the length-delimited value `1.0.0`. */
+        val RETIRED_MINIMUM_FIELD: ByteArray = byteArrayOf(0x22, 0x05, 0x31, 0x2e, 0x30, 0x2e, 0x30)
     }
 }
 

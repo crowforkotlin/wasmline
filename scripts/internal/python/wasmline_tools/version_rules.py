@@ -642,20 +642,12 @@ def file_specs() -> tuple[FileSpec, ...]:
                     lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
                 ),
                 Rule(
-                    r'(?m)^ \*         minSdkVersion = "[0-9A-Za-z.\-]+"$',
-                    lambda v: f' *         minSdkVersion = "{v["wasmline_version"]}"',
-                ),
-                Rule(
                     r'(?m)^    /\*\* Semantic version string\. Default: "[0-9A-Za-z.\-]+"\. \*/$',
                     lambda v: f'    /** Semantic version string. Default: "{v["sample_plugin_version"]}". */',
                 ),
                 Rule(
                     r'(?m)^(    (?:public )?val version: Property<String> = objects\.property\(String::class\.java\)\.convention\(")[0-9A-Za-z.\-]+("\))$',
                     lambda v: rf'\g<1>{v["sample_plugin_version"]}\g<2>',
-                ),
-                Rule(
-                    r'(?m)^(    (?:public )?val minSdkVersion: Property<String> = objects\.property\(String::class\.java\)\.convention\(")[0-9A-Za-z.\-]+("\))$',
-                    lambda v: rf'\g<1>{v["wasmline_version"]}\g<2>',
                 ),
             ),
         ),

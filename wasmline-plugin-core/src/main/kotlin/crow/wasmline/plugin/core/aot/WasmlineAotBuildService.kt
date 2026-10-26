@@ -49,8 +49,8 @@ data class WasmlineAotBuildRequest(
         require(inputFile.isFile && inputFile.length() > 0) { "AOT input does not exist or is empty: ${inputFile.absolutePath}" }
         require(maxParallelCompilations > 0) { "maxParallelCompilations must be positive." }
         require(resolvedProfileIds.isNotEmpty()) { "AOT profile resolution must produce at least one profile." }
-        require(aotCompatibilitySelector in AOT_COMPATIBILITY_SELECTOR_NAMES) {
-            "AOT build request must use one explicit compatibility selector."
+        require(aotCompatibilitySelector == AOT_COMPATIBILITY_SELECTOR) {
+            "AOT build request selector must be '$AOT_COMPATIBILITY_SELECTOR'."
         }
         require(selectedAotGenerations.isNotEmpty() && selectedAotGenerations.all { it > 0 }) {
             "AOT build request must contain positive selected generations."

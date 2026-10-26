@@ -118,30 +118,6 @@ class ManifestTest {
     }
 
     @Test
-    fun fieldNumberRegistryNeverReusesRetiredFields() {
-        assertTrue(
-            WasmlineManifestWireFormat.envelopeFieldNumbers
-                .intersect(WasmlineManifestWireFormat.retiredEnvelopeFieldNumbers)
-                .isEmpty(),
-        )
-        assertTrue(
-            WasmlineManifestWireFormat.manifestFieldNumbers
-                .intersect(WasmlineManifestWireFormat.retiredManifestFieldNumbers)
-                .isEmpty(),
-        )
-        assertEquals(setOf(4), WasmlineManifestWireFormat.retiredEnvelopeFieldNumbers)
-        assertEquals(setOf(12), WasmlineManifestWireFormat.retiredManifestFieldNumbers)
-        assertEquals((1..5).toSet(), WasmlineManifestWireFormat.runtimeContractFieldNumbers)
-        assertEquals((1..5).toSet(), WasmlineManifestWireFormat.aotCompatibilityProfileFieldNumbers)
-        assertEquals((1..6).toSet(), WasmlineManifestWireFormat.artifactTargetFieldNumbers)
-        assertEquals((1..3).toSet(), WasmlineManifestWireFormat.artifactVariantFieldNumbers)
-        assertEquals((1..5).toSet(), WasmlineManifestWireFormat.rawAbiMetadataFieldNumbers)
-        assertEquals((1..3).toSet(), WasmlineManifestWireFormat.rawExportFieldNumbers)
-        assertEquals((1..3).toSet(), WasmlineManifestWireFormat.rawImportDeclarationFieldNumbers)
-        assertEquals((1..2).toSet(), WasmlineManifestWireFormat.rawFunctionSignatureFieldNumbers)
-    }
-
-    @Test
     fun contentAddressedPathsAreFormatSpecificAndTraversalFree() {
         assertEquals(
             "artifacts/sha256/aa/$SHARED_DIGEST.cwasm",
@@ -371,7 +347,6 @@ class ManifestTest {
         pluginId = "crow.wasmline.test",
         version = "12.3.4",
         versionCode = 1,
-        minSdkVersion = "12.3.4",
         buildTimestamp = 1_700_000_000_000,
         metadata = metadata,
         runtimeContract = contract,

@@ -3,7 +3,6 @@
 package crow.wasmline.gradle.extensions
 
 import crow.wasmline.gradle.WasmtimeTarget
-import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineVersionRange
 import crow.wasmline.plugin.core.aot.encodeForTaskInput
 import org.gradle.api.file.DirectoryProperty
@@ -15,98 +14,63 @@ import java.io.File
 import javax.inject.Inject
 
 /**
- * Defines explicit native AOT compatibility selection for a Wasmline plugin.
+ * Selects the local AOT generations a Wasmline build compiles.
+ *
+ * An omitted block, an empty block, and a block that only configures
+ * [suppressCompatibilityWarning] all select every generation retained in the
+ * packaged catalog. The first [generations] call replaces that implicit
+ * default; later calls add their generations to the union.
+ *
+ * ```kotlin
+ * wasmline {
+ *     wasmtime {
+ *         aotCompatibility {
+ *             generations("1.0.0")
+ *             generations(from = "1.0.1", through = "latest")
+ *         }
+ *     }
+ * }
+ * ```
  *
  * Date: 2026-08-29
  * Author: crowforkotlin
  */
 public abstract class AotCompatibilityExtension @Inject constructor(objects: ObjectFactory) {
-    private val selectorKindProperty: Property<String> = objects.property(String::class.java)
-    private val selectorRangesProperty: ListProperty<String> = objects.listProperty(String::class.java)
+    private val generationRangesProperty: ListProperty<String> = objects.listProperty(String::class.java)
         .convention(emptyList())
 
     /** Controls whether the post-build compatibility warning is omitted from Gradle logging. */
     public val suppressCompatibilityWarning: Property<Boolean> = objects.property(Boolean::class.java)
         .convention(false)
 
-    /** Selects only the AOT generation used by the current Wasmline release. */
-    public fun current() {
-        select("current")
+    /**
+     * Selects the AOT generation that contains one Wasmline version.
+     *
+     * `"latest"` selects the generation of the catalog's current Wasmline
+     * version; any other value must be a stable `x.y.z` version inside the
+     * local catalog.
+     */
+    public fun generations(version: String) {
+        generationRangesProperty.add(WasmlineVersionRange(from = version, through = version).encodeForTaskInput())
     }
 
-    /** Selects generations from the effective minimum supported Wasmline release. */
-    public fun minimum() {
-        select("minimum")
-    }
-
-    /** Selects every generation in the packaged formal release catalog. */
-    public fun all() {
-        select("all")
-    }
-
-    /** Selects generations intersecting explicit closed Wasmline version ranges. */
-    public fun versionRanges(action: VersionRangesSpec.() -> Unit) {
-        val specification = VersionRangesSpec()
-        specification.action()
-        require(specification.ranges.isNotEmpty()) {
-            "versionRanges { } must include at least one include(from = ..., through = ...) entry."
+    /**
+     * Selects every AOT generation intersecting the inclusive
+     * `from`..`through` Wasmline version range.
+     *
+     * `from` must be a stable `x.y.z` version; `through` may also be
+     * `"latest"`, which resolves to the catalog's current version.
+     */
+    public fun generations(from: String, through: String) {
+        require(from != "latest") {
+            "AOT generation range start must be a stable x.y.z version; " +
+                "use generations(\"latest\") to select the current generation."
         }
-        select(
-            kind = "versionRanges",
-            ranges = specification.ranges.map(WasmlineVersionRange::encodeForTaskInput),
-        )
+        generationRangesProperty.add(WasmlineVersionRange(from = from, through = through).encodeForTaskInput())
     }
 
-    /** Returns the configured selector, or null when native AOT selection is missing. */
-    internal fun selectionOrNull(): AotCompatibilitySelection? {
-        val kind = selectorKindProperty.orNull ?: return null
-        return when (kind) {
-            "current" -> AotCompatibilitySelection.Current
-
-            "minimum" -> AotCompatibilitySelection.Minimum
-
-            "all" -> AotCompatibilitySelection.All
-
-            "versionRanges" -> AotCompatibilitySelection.VersionRanges(
-                selectorRangesProperty.get().map { encoded ->
-                    val parts = encoded.split('\u0000')
-                    require(parts.size == 2) { "Invalid encoded AOT version range." }
-                    WasmlineVersionRange(parts[0], parts[1])
-                },
-            )
-
-            else -> error("Unknown AOT compatibility selector '$kind'.")
-        }
-    }
-
-    internal val selectorKind: Provider<String>
-        get() = selectorKindProperty
-
-    internal val selectorRanges: Provider<List<String>>
-        get() = selectorRangesProperty
-
-    private fun select(kind: String, ranges: List<String> = emptyList()) {
-        check(!selectorKindProperty.isPresent) {
-            "AOT compatibility selector is already configured. Select exactly one of current(), minimum(), all(), or versionRanges { ... }."
-        }
-        selectorKindProperty.set(kind)
-        selectorRangesProperty.set(ranges)
-    }
-}
-
-/**
- * Collects closed Wasmline version ranges for the Gradle DSL.
- *
- * Date: 2026-08-29
- * Author: crowforkotlin
- */
-public class VersionRangesSpec {
-    internal val ranges: MutableList<WasmlineVersionRange> = mutableListOf()
-
-    /** Adds one inclusive Wasmline version range. */
-    public fun include(from: String, through: String) {
-        ranges += WasmlineVersionRange(from = from, through = through)
-    }
+    internal val generationRanges: Provider<List<String>>
+        get() = generationRangesProperty
 }
 
 /**
@@ -116,7 +80,7 @@ public class VersionRangesSpec {
  * wasmline {
  *     wasmtime {
  *         aotCompatibility {
- *             current()
+ *             generations("latest")
  *         }
  *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
  *         autoDownload.set(true)
@@ -128,7 +92,7 @@ public class VersionRangesSpec {
  * Author: crowforkotlin
  */
 public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFactory) {
-    /** Profile selectors shared by Core and Component AOT builds. */
+    /** Wasmline version selection shared by Core and Component AOT builds. */
     public val aotCompatibility: AotCompatibilityExtension = objects.newInstance(AotCompatibilityExtension::class.java)
 
     private val configuredTargets: ListProperty<WasmtimeTarget> = objects.listProperty(WasmtimeTarget::class.java)
@@ -159,7 +123,7 @@ public abstract class WasmtimeExtension @Inject constructor(objects: ObjectFacto
     /** Optional GitHub token used only when downloading locked compiler assets. */
     public val githubToken: Property<String> = objects.property(String::class.java)
 
-    /** Configures the [aotCompatibility] selector block. */
+    /** Configures the [aotCompatibility] generation selection. */
     public fun aotCompatibility(action: AotCompatibilityExtension.() -> Unit) {
         aotCompatibility.action()
     }

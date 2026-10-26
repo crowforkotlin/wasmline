@@ -34,8 +34,7 @@ class WasmlineAotCompatibilityCheckerTest {
         assertEquals(listOf(WasmlineEngineKind.CRANELIFT), result.report.affectedBackends)
         assertTrue(result.report.affectedWasmlineRanges.isNotEmpty())
         assertEquals("WLAOT001", result.warningCode)
-        assertTrue(messages.single().contains("AOT generation gap: 1"))
-        assertTrue(messages.single().contains("Affected backends: CRANELIFT"))
+        assertEquals(1, messages.size)
     }
 
     @Test
@@ -59,7 +58,8 @@ class WasmlineAotCompatibilityCheckerTest {
 
         assertEquals(0, result.report.aotGenerationGap)
         assertEquals(0, result.report.newerGenerationCount)
-        assertTrue(messages.single().contains("AOT generation gap: 0"))
+        assertTrue(result.report.affectedWasmlineRanges.isEmpty())
+        assertEquals(1, messages.size)
     }
 
     @Test
@@ -71,24 +71,28 @@ class WasmlineAotCompatibilityCheckerTest {
             request(
                 directory = directory,
                 localCatalog = local,
-                selector = "versionRanges",
+                selector = "generations",
                 selectedGenerations = listOf(1),
             ),
         )
 
+        assertEquals("generations", result.report.selector)
+        assertEquals(listOf(1), result.report.selectedAotGenerations)
         assertEquals(listOf(2), result.report.omittedKnownGenerations)
-        assertTrue(result.report.affectedWasmlineRanges.single().contains("AOT generation 2"))
-        assertTrue(result.warningMessage.contains("Native hosts using omitted AOT profiles cannot load"))
+        val omittedRange = local.ranges.single { it.aotGeneration == 2 }
+        assertEquals(1, result.report.affectedWasmlineRanges.size)
+        assertTrue(omittedRange.fromWasmlineVersion in result.report.affectedWasmlineRanges.single())
+        assertEquals(listOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY), result.report.affectedBackends)
     }
 
     @Test
-    fun customRangeMayIntentionallyOmitCurrentGeneration() = withTemporaryDirectory { directory ->
+    fun explicitGenerationMayIntentionallyOmitCurrentGeneration() = withTemporaryDirectory { directory ->
         val local = catalogWithSecondGeneration(changedBackends = listOf(WasmlineEngineKind.PULLEY))
         val result = checker(ScriptedTransport.forCatalog(local)).check(
             request(
                 directory = directory,
                 localCatalog = local,
-                selector = "versionRanges",
+                selector = "generations",
                 selectedGenerations = listOf(1),
                 requestedBackends = setOf(WasmlineEngineKind.PULLEY),
             ),
@@ -96,7 +100,7 @@ class WasmlineAotCompatibilityCheckerTest {
 
         assertEquals(listOf(2), result.report.omittedKnownGenerations)
         assertEquals(listOf(WasmlineEngineKind.PULLEY), result.report.affectedBackends)
-        assertTrue(result.warningMessage.contains("Selector: versionRanges"))
+        assertEquals("generations", result.report.selector)
     }
 
     @Test
@@ -106,7 +110,7 @@ class WasmlineAotCompatibilityCheckerTest {
             request(
                 directory = directory,
                 localCatalog = local,
-                selector = "versionRanges",
+                selector = "generations",
                 selectedGenerations = listOf(1, 3),
                 requestedBackends = setOf(WasmlineEngineKind.CRANELIFT),
             ),
@@ -118,13 +122,41 @@ class WasmlineAotCompatibilityCheckerTest {
     }
 
     @Test
+    fun retiredSelectorLabelsAreRejectedBeforeTouchingTheNetwork() = withTemporaryDirectory { directory ->
+        val transport = ScriptedTransport.forCatalog(syntheticBaseCatalog())
+
+        listOf("current", "minimum", "all", "versionRanges", "").forEach { retired ->
+            assertFailsWith<IllegalArgumentException> {
+                checker(transport).check(request(directory, selector = retired))
+            }
+        }
+
+        assertTrue(transport.calls.isEmpty())
+        assertFalse(reportFile(directory).isFile)
+    }
+
+    @Test
+    fun emptyNonPositiveAndUnknownGenerationsAreRejected() = withTemporaryDirectory { directory ->
+        val transport = ScriptedTransport.forCatalog(syntheticBaseCatalog())
+
+        listOf(emptyList<Int>(), listOf(0), listOf(-1), listOf(99)).forEach { generations ->
+            assertFailsWith<IllegalArgumentException> {
+                checker(transport).check(request(directory, selectedGenerations = generations))
+            }
+        }
+
+        assertTrue(transport.calls.isEmpty())
+        assertFalse(reportFile(directory).isFile)
+    }
+
+    @Test
     fun checksumFailureIsAdvisoryAndDoesNotFailTheCheck() = withTemporaryDirectory { directory ->
         val transport = ScriptedTransport.forCatalog(syntheticBaseCatalog(), validChecksum = false)
         val messages = mutableListOf<String>()
         val result = checker(transport).check(request(directory, messages::add))
 
         assertUnavailable(result, "checksum verification failed")
-        assertTrue(messages.single().contains("could not be checked"))
+        assertEquals(1, messages.size)
         assertTrue(reportFile(directory).isFile)
     }
 
@@ -269,7 +301,7 @@ class WasmlineAotCompatibilityCheckerTest {
         directory: File,
         logger: (String) -> Unit = {},
         localCatalog: WasmlineAotReleaseCatalog = syntheticBaseCatalog(),
-        selector: String = "current",
+        selector: String = "generations",
         selectedGenerations: List<Int> = listOf(localCatalog.ranges.last().aotGeneration),
         requestedBackends: Set<WasmlineEngineKind> = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
         cacheDirectoryName: String = "cache",

@@ -2,7 +2,7 @@
 title: Gradle 插件
 description: 配置 AOT profile、签名、打包与 Component 工具
 createdAt: 2026-08-15
-updatedAt: 2026-09-18
+updatedAt: 2026-10-25
 ---
 
 # Gradle 插件
@@ -61,8 +61,11 @@ val options = WasmlineLoadOptions(trustedKeys = WasmlineHostTrust)
 
 ## AOT Profile 选择
 
-Native AOT 构建必须选择一组 catalog generation。选择器与产物 target 相互独立：
-`targets` 决定写入哪些文件，selector 决定编译哪些 AOT profile。
+Native AOT 构建会编译 `aotCompatibility` 配置的本地 catalog generation。省略该
+block、留空或只配置 `suppressCompatibilityWarning` 都会选择 packaged catalog 中
+保留的全部 generation；第一次 `generations` 调用会替换这一隐式默认值，之后的调用
+把各自的 generation 并入并集。选择与产物 target 相互独立：`targets` 决定写入哪些
+文件，配置的 generation 决定编译哪些 AOT profile。
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
@@ -76,7 +79,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            current()
+            generations("latest")
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -87,33 +90,54 @@ wasmline {
 }
 ```
 
-可用 selector 互斥：
+以上配置只选择 packaged catalog 当前 Wasmline 版本所在的 generation。省略 block、
+留空或只配置警告开关时，仍使用“本地保留的全部 generation”这一隐式默认值；显式
+调用则只选择它声明的范围：
 
 ```kotlin
 wasmline {
     wasmtime {
         aotCompatibility {
-            minimum()
-            // all()
-            // versionRanges {
-            //     include(from = "1.0.0", through = "1.20.0")
-            //     include(from = "1.50.0", through = "1.72.3")
-            // }
+            generations("1.0.0")
+            generations(from = "1.0.1", through = "latest")
             suppressCompatibilityWarning.set(false)
         }
     }
 }
 ```
 
-| Selector | 结果 |
+| 调用 | 结果 |
 |---|---|
-| `current()` | 当前 Wasmline 发行版使用的 generation |
-| `minimum()` | 从配置的支持下限到当前发行版的全部 generation |
-| `all()` | 本地 catalog 中的全部 generation |
-| `versionRanges {}` | 与列出的闭区间 `x.y.z` 相交的 generation |
+| `generations("1.0.0")` | 包含该稳定 Wasmline 版本的 generation |
+| `generations("latest")` | packaged catalog 当前 Wasmline 版本所在的 generation |
+| `generations(from = "1.0.0", through = "latest")` | 与闭区间相交的全部 generation |
+| 省略 `aotCompatibility` | 本地 catalog 中保留的全部 generation |
 
-selector 缺失或范围为空时，会在下载 compiler asset 前失败。仓库根目录的
-`aot-compatibility.json` 是唯一人工维护的 AOT catalog。修改后执行
+由于默认值本身就是“本地全部 generation”，需要全部 generation 的构建直接省略该
+block 即可：
+
+```kotlin
+wasmline {
+    wasmtime {
+        // No aotCompatibility block: compile every locally retained generation.
+        targets = listOf(WasmtimeTarget.PULLEY_64)
+        autoDownload.set(true)
+    }
+}
+```
+
+一旦显式调用替换了默认值，后续调用只会并入并集，而不是在“全部 generation”上追加。
+两端除 `through` 可以使用 `"latest"`（解析为 packaged catalog 的当前版本）外，都
+必须是稳定的 `x.y.z` Wasmline 版本，且必须位于 catalog 的
+`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 支持范围内；区间倒置、
+越界或其他非法选择会被直接拒绝，不会裁剪为相交部分。generation、请求的 backend 与
+复用的 backend profile 都会去重并确定性排序。这些输入是用于选择 catalog generation
+的 Wasmline 版本，绝不是 Wasmtime distribution 版本或 profile 摘要。
+
+在声明了 WASI assemble graph 的项目中，被拒绝的选择会在 Gradle 配置该 graph 阶段
+失败，并以 `[WLAOT100]` 报告；AOT 构建与检查 task action 仍会校验各自已求值的
+输入。无论走哪条路径，校验都会在下载 compiler asset 或签名 package 之前完成。
+仓库根目录的 `aot-compatibility.json` 是唯一人工维护的 AOT catalog。修改后执行
 `./scripts/wasmline aot sync`；该命令会校验条目并生成构建工具使用的 packaged
 lock。generation 编号只用于排列 catalog 条目，Native 加载仍按已链接 engine
 报告的 backend-specific profile ID 匹配。

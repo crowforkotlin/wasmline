@@ -43,7 +43,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            current()
+            generations("latest")
         }
         autoDownload = true
         githubToken = providers.gradleProperty("github.token").orNull

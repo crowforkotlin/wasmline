@@ -2,7 +2,7 @@
 title: Gradle Plugin
 description: Configure AOT profiles, signing, packaging, and Component tools
 createdAt: 2026-08-15
-updatedAt: 2026-09-18
+updatedAt: 2026-10-25
 ---
 
 # Gradle Plugin
@@ -68,9 +68,13 @@ Public-key Hex is non-sensitive and is supported directly.
 
 ## AOT Profile Selection
 
-Native AOT builds must select one set of catalog generations. The selection is
-independent of the artifact target: `targets` controls which files are written,
-while the selector controls which AOT profiles are compiled.
+Native AOT builds compile the local catalog generations configured through
+`aotCompatibility`. Omitting the block, leaving it empty, or configuring only
+`suppressCompatibilityWarning` selects every generation retained in the packaged
+catalog; the first `generations` call replaces that implicit default, and later
+calls add their generations to a union. The selection is independent of the
+artifact target: `targets` controls which files are written, while the configured
+generations decide which AOT profiles are compiled.
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
@@ -84,7 +88,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            current()
+            generations("latest")
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -95,36 +99,63 @@ wasmline {
 }
 ```
 
-Available selectors are mutually exclusive:
+That configuration selects only the generation of the packaged catalog's
+current Wasmline version. An omitted, empty, or warning-only block keeps the
+implicit default of every locally retained generation, and an explicit call
+selects only what it names:
 
 ```kotlin
 wasmline {
     wasmtime {
         aotCompatibility {
-            minimum()
-            // all()
-            // versionRanges {
-            //     include(from = "1.0.0", through = "1.20.0")
-            //     include(from = "1.50.0", through = "1.72.3")
-            // }
+            generations("1.0.0")
+            generations(from = "1.0.1", through = "latest")
             suppressCompatibilityWarning.set(false)
         }
     }
 }
 ```
 
-| Selector | Result |
+| Call | Result |
 |---|---|
-| `current()` | The generation used by the current Wasmline release |
-| `minimum()` | Every generation from the configured support minimum through the current release |
-| `all()` | Every generation in the local catalog |
-| `versionRanges {}` | Generations that overlap the listed inclusive `x.y.z` ranges |
+| `generations("1.0.0")` | The generation containing that stable Wasmline version |
+| `generations("latest")` | The generation of the packaged catalog's current Wasmline version |
+| `generations(from = "1.0.0", through = "latest")` | Every generation intersecting the closed range |
+| Omitted `aotCompatibility` | Every generation retained in the local catalog |
 
-An empty or missing selector fails before compiler assets are downloaded. The
-repository root `aot-compatibility.json` is the only manually maintained AOT
-catalog. Run `./scripts/wasmline aot sync` after changing it; the command
-validates the entries and creates the packaged lock used by build tools. A
-generation number orders catalog entries. Native loading still matches the
+Because the default is already "every local generation", a build that wants all
+of them simply leaves the block out:
+
+```kotlin
+wasmline {
+    wasmtime {
+        // No aotCompatibility block: compile every locally retained generation.
+        targets = listOf(WasmtimeTarget.PULLEY_64)
+        autoDownload.set(true)
+    }
+}
+```
+
+Once an explicit call replaced the default, later calls contribute to a union
+instead of being appended to "all generations". Each endpoint must be a stable
+`x.y.z` Wasmline version, except that `through` may also be `"latest"`, which
+resolves to the packaged catalog's current version. Both endpoints must lie
+inside the catalog's supported
+`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` bounds; an inverted,
+out-of-range, or otherwise invalid selection is rejected instead of being
+clipped to the intersecting part. Generations, requested backends, and reused
+backend profiles are deduplicated and sorted deterministically. These inputs are
+Wasmline versions that select catalog generations, never Wasmtime distribution
+versions or profile digests.
+
+In a project that declares a WASI assemble graph, a rejected selection fails
+while Gradle configures that graph and is reported as `[WLAOT100]`; the AOT
+build and check task actions still validate their own evaluated inputs. Either
+way, validation completes before compiler assets are downloaded or a package is
+signed. The repository root `aot-compatibility.json` is the only manually
+maintained AOT catalog. Run `./scripts/wasmline aot sync` after changing it; the
+command validates the entries and creates the packaged lock used by build tools.
+A generation number orders catalog entries. Native loading still matches the
 backend-specific profile ID reported by the linked engine.
 
 After a successful assemble, `wasmlineCheckAotCompatibility` compares the local

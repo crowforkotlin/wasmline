@@ -49,9 +49,6 @@ internal abstract class WasmlineAssembleTask @Inject constructor(private val exe
     abstract val versionCode: Property<Long>
 
     @get:Input
-    abstract val minSdkVersion: Property<String>
-
-    @get:Input
     abstract val buildTimestamp: Property<Long>
 
     @get:Input
@@ -161,7 +158,6 @@ internal abstract class WasmlineAssembleTask @Inject constructor(private val exe
             setProperty(ManifestSigningMain.PLUGIN_ID, pluginId.get())
             setProperty(ManifestSigningMain.PLUGIN_VERSION, pluginVersion.get())
             setProperty(ManifestSigningMain.VERSION_CODE, versionCode.get().toString())
-            setProperty(ManifestSigningMain.MIN_SDK_VERSION, minSdkVersion.get())
             setProperty(ManifestSigningMain.BUILD_TIMESTAMP, buildTimestamp.get().toString())
             setProperty(ManifestSigningMain.SIGNING_KEY, privateKeyFile.get().asFile.absolutePath)
             setOptional(ManifestSigningMain.PUBLIC_KEY_ID, publicKeyId.orNull)

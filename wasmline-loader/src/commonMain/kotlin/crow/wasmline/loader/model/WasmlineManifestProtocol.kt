@@ -25,10 +25,10 @@ object WasmlineManifestWireFormat {
     val retiredEnvelopeFieldNumbers: Set<Int> = setOf(4)
 
     /** Active field numbers in [WasmlineManifest]. */
-    val manifestFieldNumbers: Set<Int> = (1..11).toSet() + setOf(13, 14, 15)
+    val manifestFieldNumbers: Set<Int> = (1..3).toSet() + (5..11).toSet() + setOf(13, 14, 15)
 
     /** Field numbers retired from [WasmlineManifest]. */
-    val retiredManifestFieldNumbers: Set<Int> = setOf(12)
+    val retiredManifestFieldNumbers: Set<Int> = setOf(4, 12)
 
     /** Active field numbers in [WasmlineRuntimeContract]. */
     val runtimeContractFieldNumbers: Set<Int> = (1..5).toSet()
@@ -256,7 +256,6 @@ object WasmlineManifestProtocol {
     ): String? {
         stringValidationError("pluginId", manifest.pluginId, limits)?.let { return it }
         stringValidationError("version", manifest.version, limits)?.let { return it }
-        stringValidationError("minSdkVersion", manifest.minSdkVersion, limits)?.let { return it }
         stringValidationError("displayName", manifest.displayName, limits, allowNull = true)?.let { return it }
         stringValidationError("author", manifest.author, limits, allowNull = true)?.let { return it }
         stringValidationError("description", manifest.description, limits, allowNull = true)?.let { return it }

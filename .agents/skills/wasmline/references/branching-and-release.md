@@ -55,8 +55,9 @@ Engine modules do **not** use `x.y.z.v` Maven versions. JVM native libraries are
 Wasmtime AOT identity is carried separately from the Maven version. Native
 engines report backend-specific compatibility profile IDs, and signed manifests
 bind CWASM or PWASM variants to those exact IDs. The human-readable Wasmtime
-`x.y.z` is a catalog selector and diagnostic value; it is not sufficient proof
-that a serialized artifact can be loaded.
+`x.y.z` identifies the internal catalog distribution and its diagnostics; it is
+not the public AOT selection input and it is not sufficient proof that a
+serialized artifact can be loaded.
 
 The published `wasmline-bom` applies strict same-version constraints to runtime,
 loader, network, build-tool, and engine modules. Consumers that cannot use the
@@ -68,12 +69,12 @@ A Wasmtime upgrade appends immutable Cranelift and Pulley profile descriptors,
 compiler-asset digests, and build-host bindings through the root
 `aot-compatibility.json` maintenance workflow. Already released profile IDs and
 provenance records are never rewritten. A
-plugin selects compatibility generations through exactly one of `current()`,
-`minimum()`, `all()`, or `versionRanges { include(from = ..., through = ...) }`.
-Consumers do not enter Wasmtime versions or profile digests in the normal DSL;
-the Gradle plugin resolves those internal bindings from its packaged catalog.
-Publishing several generations in one manifest does not create additional
-Wasmline Maven versions or engine artifacts.
+plugin selects compatibility generations with `generations(...)` points or
+closed ranges; an omitted or empty selection builds every generation retained in
+the packaged catalog. Consumers do not enter Wasmtime versions or profile
+digests in the normal DSL; the Gradle plugin resolves those internal bindings
+from its packaged catalog. Publishing several generations in one manifest does
+not create additional Wasmline Maven versions or engine artifacts.
 
 ## Release Tag
 

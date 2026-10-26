@@ -42,7 +42,6 @@ data class WasmlineManifestSigningRequest(
     val pluginId: String,
     val version: String,
     val versionCode: Long,
-    val minSdkVersion: String,
     val buildTimestamp: Long,
     val signingKey: String,
     val outputDirectory: File,
@@ -108,7 +107,6 @@ class ManifestSigner {
                 pluginId = request.pluginId,
                 version = request.version,
                 versionCode = request.versionCode,
-                minSdkVersion = request.minSdkVersion,
                 displayName = request.displayName,
                 author = request.author,
                 description = request.description,
@@ -159,7 +157,6 @@ class ManifestSigner {
         require(request.pluginId.isNotBlank()) { "Manifest pluginId must not be blank." }
         require(request.version.isNotBlank()) { "Manifest version must not be blank." }
         require(request.versionCode >= 0) { "Manifest versionCode must be non-negative." }
-        require(request.minSdkVersion.isNotBlank()) { "Manifest minSdkVersion must not be blank." }
         require(request.buildTimestamp >= 0) { "Manifest buildTimestamp must be non-negative." }
         require(request.publicKeyId == null || request.publicKeyId.isNotBlank()) {
             "Manifest publicKeyId must not be blank when specified."

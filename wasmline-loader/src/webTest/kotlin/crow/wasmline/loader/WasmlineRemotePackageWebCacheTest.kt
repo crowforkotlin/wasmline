@@ -188,7 +188,6 @@ class WasmlineRemotePackageWebCacheTest {
         pluginId = "crow.wasmline.web-cache",
         version = "12.3.4",
         versionCode = 1,
-        minSdkVersion = "12.3.4",
         buildTimestamp = 0,
         runtimeContract = WasmlineRuntimeContract(
             executionModel = WasmlineExecutionModel.CORE_WASM,

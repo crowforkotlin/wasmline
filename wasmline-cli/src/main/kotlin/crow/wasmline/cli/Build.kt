@@ -38,8 +38,10 @@ internal class Build : CliktCommand(name = "build") {
         .required()
     private val name by option("-n", "--name")
     private val targets by option("-t", "--target").multiple().unique()
-    private val aotCompatibility by option("--aot-compatibility")
-    private val aotVersionRanges by option("--aot-version-range").multiple().unique()
+    private val aotGenerations by option("--aot-generations")
+        .multiple()
+        .unique()
+        .help("AOT Wasmline generation: x.y.z, latest, or FROM..THROUGH. Repeatable; omitted selects every local generation")
     private val compilerCache by option("--aot-compiler-cache")
         .file(canBeFile = false, canBeDir = true)
         .default(defaultAotCompilerCacheDirectory())
@@ -50,7 +52,6 @@ internal class Build : CliktCommand(name = "build") {
     private val pluginId by option("--plugin-id")
     private val version by option("-v", "--version").default("1.0.0")
     private val versionCode by option("--version-code").long().default(1L)
-    private val minSdkVersion by option("--min-sdk").default(BuildConfig.VERSION)
     private val buildTimestamp by option("--build-timestamp").long().default(0L)
     private val displayName by option("--display-name")
     private val author by option("--author")
@@ -88,7 +89,7 @@ internal class Build : CliktCommand(name = "build") {
         val temporaryZip = Files.createTempFile(distributionDirectory.toPath(), ".$folderName-", ".zip").toFile()
         try {
             val invocation = resolveInvocation()
-            val aotSelection = parseCliAotSelection(aotCompatibility, aotVersionRanges)
+            val resolution = resolveCliAotSelection(parseCliAotSelection(aotGenerations), targets)
             val support = CliAotBuildSupport(::echo)
             WasmlineDirectoryTransaction.create(destination).use { transaction ->
                 val componentInputDirectory = File(transaction.stagingDirectory, ".component-input")
@@ -114,8 +115,7 @@ internal class Build : CliktCommand(name = "build") {
                     packageDirectory = transaction.stagingDirectory,
                     workingDirectory = workingDirectory,
                     targets = targets,
-                    selection = aotSelection,
-                    minSdkVersion = minSdkVersion,
+                    resolution = resolution,
                     publishRawWasm = invocation.executionModel == WasmlineExecutionModel.CORE_WASM,
                     compilerCacheDirectory = compilerCache,
                     autoDownload = autoDownload,
@@ -129,7 +129,6 @@ internal class Build : CliktCommand(name = "build") {
                         pluginId = packageId,
                         version = version,
                         versionCode = versionCode,
-                        minSdkVersion = minSdkVersion,
                         buildTimestamp = buildTimestamp,
                         signingKey = key,
                         publicKeyId = publicKeyId,

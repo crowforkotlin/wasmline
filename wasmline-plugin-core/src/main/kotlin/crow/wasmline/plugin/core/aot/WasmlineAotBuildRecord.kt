@@ -40,8 +40,8 @@ data class WasmlineAotBuildRecord(
         require(requestedTargets.isNotEmpty()) { "AOT build record must contain requested targets." }
         require(compiledOutputs.isNotEmpty()) { "AOT build record must contain compiled outputs." }
         require(artifactTargets.isNotEmpty()) { "AOT build record must contain artifact targets." }
-        require(aotCompatibilitySelector in AOT_COMPATIBILITY_SELECTOR_NAMES) {
-            "AOT build record must use one explicit compatibility selector."
+        require(aotCompatibilitySelector == AOT_COMPATIBILITY_SELECTOR) {
+            "AOT build record selector must be '$AOT_COMPATIBILITY_SELECTOR'."
         }
         require(selectedAotGenerations.isNotEmpty() && selectedAotGenerations.all { it > 0 }) {
             "AOT build record must contain positive selected generations."

@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
@@ -37,8 +38,10 @@ internal class Compile : CliktCommand(name = "compile") {
         .file(canBeFile = false, canBeDir = true)
         .default(File("build/wasmline/output"))
     private val targets by option("-t", "--target").multiple().unique()
-    private val aotCompatibility by option("--aot-compatibility")
-    private val aotVersionRanges by option("--aot-version-range").multiple().unique()
+    private val aotGenerations by option("--aot-generations")
+        .multiple()
+        .unique()
+        .help("AOT Wasmline generation: x.y.z, latest, or FROM..THROUGH. Repeatable; omitted selects every local generation")
     private val compilerCache by option("--aot-compiler-cache")
         .file(canBeFile = false, canBeDir = true)
         .default(defaultAotCompilerCacheDirectory())
@@ -63,14 +66,13 @@ internal class Compile : CliktCommand(name = "compile") {
         .file(canBeFile = false, canBeDir = true)
         .default(defaultToolCacheDirectory())
     private val wasmToolsVersion by option("--wasm-tools-version").default(ToolchainCatalog.WASM_TOOLS_VERSION)
-    private val minSdkVersion by option("--min-sdk").default(BuildConfig.VERSION)
 
     override fun run() = runBlocking {
         val productName = name ?: inputFile.nameWithoutExtension
         val destination = File(outputRoot, "$productName-$version")
         try {
             val invocation = resolveInvocation()
-            val aotSelection = parseCliAotSelection(aotCompatibility, aotVersionRanges)
+            val resolution = resolveCliAotSelection(parseCliAotSelection(aotGenerations), targets)
             val support = CliAotBuildSupport(::echo)
             WasmlineDirectoryTransaction.create(destination).use { transaction ->
                 val componentInputDirectory = File(transaction.stagingDirectory, ".component-input")
@@ -110,8 +112,7 @@ internal class Compile : CliktCommand(name = "compile") {
                     packageDirectory = transaction.stagingDirectory,
                     workingDirectory = workingDirectory,
                     targets = targets,
-                    selection = aotSelection,
-                    minSdkVersion = minSdkVersion,
+                    resolution = resolution,
                     publishRawWasm = invocation.executionModel == WasmlineExecutionModel.CORE_WASM,
                     compilerCacheDirectory = compilerCache,
                     autoDownload = autoDownload,

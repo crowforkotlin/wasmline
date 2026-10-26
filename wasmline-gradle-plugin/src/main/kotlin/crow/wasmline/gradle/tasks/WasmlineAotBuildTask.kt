@@ -4,13 +4,14 @@ import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.loader.model.WasmlineRuntimeContract
 import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
+import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecords
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRequest
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildService
 import crow.wasmline.plugin.core.aot.WasmlineAotTargetSpec
 import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
 import crow.wasmline.plugin.core.aot.WasmlineRawAbiMetadataCodec
-import crow.wasmline.plugin.core.aot.decodeAotCompatibilitySelection
+import crow.wasmline.plugin.core.aot.decodeWasmlineVersionRange
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.packaging.WasmlineDirectoryTransaction
 import kotlinx.coroutines.runBlocking
@@ -63,14 +64,7 @@ internal abstract class WasmlineAotBuildTask : DefaultTask() {
     abstract val targets: ListProperty<String>
 
     @get:Input
-    @get:Optional
-    abstract val aotCompatibilitySelector: Property<String>
-
-    @get:Input
     abstract val aotCompatibilityRanges: ListProperty<String>
-
-    @get:Input
-    abstract val minSdkVersion: Property<String>
 
     @get:Input
     abstract val autoDownload: Property<Boolean>
@@ -158,22 +152,15 @@ internal abstract class WasmlineAotBuildTask : DefaultTask() {
     }
 
     private fun resolveCompatibility() = runCatching {
-        val selectorName = aotCompatibilitySelector.orNull
-            ?: throw GradleException(
-                "[WLAOT100] An explicit AOT compatibility selector is required. " +
-                    "Configure aotCompatibility { current() }, minimum(), all(), or versionRanges { include(from = \"1.0.0\", through = \"1.0.0\") }.",
-            )
-        val selection = decodeAotCompatibilitySelection(selectorName, aotCompatibilityRanges.get())
+        val selection = AotCompatibilitySelection(
+            ranges = aotCompatibilityRanges.get().map(::decodeWasmlineVersionRange),
+        )
         val targetSpecs = WasmlineArtifactTargetFactory.create(targets.get())
         AotCompatibilityCatalog.resolveSelection(
             selection = selection,
-            manifestMinimumWasmlineVersion = minSdkVersion.get(),
             artifactBackends = targetSpecs.map(WasmlineAotTargetSpec::artifactBackend).toSet(),
         )
     }.getOrElse { error ->
-        if (error is GradleException && error.message?.startsWith("[WLAOT100]") == true) {
-            throw error
-        }
         throw GradleException("Unable to resolve Wasmline AOT compatibility selection: ${error.message}", error)
     }
 

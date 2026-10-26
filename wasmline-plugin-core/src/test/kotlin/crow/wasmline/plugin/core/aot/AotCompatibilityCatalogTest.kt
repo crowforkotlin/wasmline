@@ -8,108 +8,177 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * Verifies release-range selection and backend-specific AOT identities.
+ * Verifies generation selection, strict local bounds, and backend-specific AOT identities.
  *
  * Date: 2026-08-29
  * Author: crowforkotlin
  */
 class AotCompatibilityCatalogTest {
     @Test
-    fun currentSelectsOnlyTheFinalGeneration() {
+    fun emptySelectionUsesEveryLocalGeneration() {
         val (catalog, profiles) = fixtureCatalog()
 
-        val resolution = AotCompatibilitySelectionResolver.resolve(
-            selection = AotCompatibilitySelection.Current,
-            manifestMinimumWasmlineVersion = "1.0.0",
-            releaseCatalog = catalog,
-            profiles = profiles,
-            requestedBackends = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
+        val resolution = resolve(catalog, profiles, AotCompatibilitySelection())
+
+        assertEquals(listOf(1, 2, 3), resolution.selectedGenerations)
+        assertEquals(5, resolution.profiles.size)
+        assertEquals(resolution.profiles.map { it.id }.distinct().size, resolution.profiles.size)
+        assertEquals(
+            setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
+            resolution.requestedBackends,
+        )
+    }
+
+    @Test
+    fun concretePointSelectsExactlyItsGeneration() {
+        val (catalog, profiles) = fixtureCatalog()
+
+        val resolution = resolve(
+            catalog,
+            profiles,
+            AotCompatibilitySelection(listOf(WasmlineVersionRange("1.0.0", "1.0.0"))),
+        )
+
+        assertEquals(listOf(1), resolution.selectedGenerations)
+        assertEquals(
+            catalog.ranges.first().profileIdsByBackend.values.toSet(),
+            resolution.profiles.map { it.id }.toSet(),
+        )
+    }
+
+    @Test
+    fun latestPointSelectsOnlyTheCurrentGeneration() {
+        val (catalog, profiles) = fixtureCatalog()
+
+        val resolution = resolve(
+            catalog,
+            profiles,
+            AotCompatibilitySelection(listOf(WasmlineVersionRange("latest", "latest"))),
+            setOf(WasmlineEngineKind.PULLEY),
         )
 
         assertEquals(listOf(3), resolution.selectedGenerations)
-        assertEquals(2, resolution.profiles.size)
+        assertEquals(
+            listOf(catalog.ranges.last().profileIdsByBackend.getValue(WasmlineEngineKind.PULLEY)),
+            resolution.profiles.map { it.id },
+        )
     }
 
     @Test
-    fun minimumAndAllDeduplicateProfilesByGeneration() {
+    fun latestThroughExtendsAConcreteStartToTheCurrentGeneration() {
         val (catalog, profiles) = fixtureCatalog()
 
-        val minimum = AotCompatibilitySelectionResolver.resolve(
-            selection = AotCompatibilitySelection.Minimum,
-            manifestMinimumWasmlineVersion = "1.0.0",
-            releaseCatalog = catalog,
-            profiles = profiles,
-            requestedBackends = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
-        )
-        val all = AotCompatibilitySelectionResolver.resolve(
-            selection = AotCompatibilitySelection.All,
-            manifestMinimumWasmlineVersion = "1.0.0",
-            releaseCatalog = catalog,
-            profiles = profiles,
-            requestedBackends = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
+        val resolution = resolve(
+            catalog,
+            profiles,
+            AotCompatibilitySelection(listOf(WasmlineVersionRange("1.0.0", "latest"))),
         )
 
-        assertEquals(listOf(1, 2, 3), minimum.selectedGenerations)
-        assertEquals(listOf(1, 2, 3), all.selectedGenerations)
-        assertEquals(5, minimum.profiles.size)
-        assertEquals(minimum.profiles.map { it.id }.distinct().size, minimum.profiles.size)
+        assertEquals(listOf(1, 2, 3), resolution.selectedGenerations)
     }
 
     @Test
-    fun versionRangesUseClosedBoundariesAndMergeOverlaps() {
+    fun closedIntervalIncludesItsThroughBoundaryGeneration() {
         val (catalog, profiles) = fixtureCatalog()
 
-        val resolution = AotCompatibilitySelectionResolver.resolve(
-            selection = AotCompatibilitySelection.VersionRanges(
+        val beforeSwitch = resolve(
+            catalog,
+            profiles,
+            AotCompatibilitySelection(listOf(WasmlineVersionRange("1.0.0", "1.4.9"))),
+        )
+        val atSwitch = resolve(
+            catalog,
+            profiles,
+            AotCompatibilitySelection(listOf(WasmlineVersionRange("1.0.0", "1.5.0"))),
+        )
+
+        assertEquals(listOf(1), beforeSwitch.selectedGenerations)
+        assertEquals(listOf(1, 2), atSwitch.selectedGenerations)
+        assertEquals(
+            setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
+            atSwitch.requestedBackends,
+        )
+    }
+
+    @Test
+    fun overlappingPointsAndRangesMergeGenerationsAndReuseProfiles() {
+        val (catalog, profiles) = fixtureCatalog()
+        val selection = AotCompatibilitySelection(
+            listOf(
+                WasmlineVersionRange("1.0.0", "1.0.0"),
+                WasmlineVersionRange("1.2.3", "1.2.3"),
+                WasmlineVersionRange("1.5.0", "2.5.0"),
+                WasmlineVersionRange("2.0.0", "3.0.0"),
+            ),
+        )
+
+        val resolution = resolve(catalog, profiles, selection)
+        val repeatedGeneration = resolve(
+            catalog,
+            profiles,
+            AotCompatibilitySelection(
                 listOf(
-                    WasmlineVersionRange("1.5.0", "2.5.0"),
-                    WasmlineVersionRange("2.0.0", "3.0.0"),
+                    WasmlineVersionRange("1.0.0", "1.0.0"),
+                    WasmlineVersionRange("1.2.3", "1.2.3"),
                 ),
             ),
-            manifestMinimumWasmlineVersion = "1.0.0",
-            releaseCatalog = catalog,
-            profiles = profiles,
-            requestedBackends = setOf(WasmlineEngineKind.PULLEY),
+        )
+
+        val expectedProfileIds = catalog.ranges
+            .flatMap { range -> range.profileIdsByBackend.values }
+            .toSet()
+        val craneliftBindings = catalog.ranges.map { it.profileIdsByBackend.getValue(WasmlineEngineKind.CRANELIFT) }
+        assertEquals(craneliftBindings[1], craneliftBindings[2])
+        assertEquals(1, resolution.profiles.count { it.id == craneliftBindings[1] })
+        assertEquals(listOf(1), repeatedGeneration.selectedGenerations)
+        assertEquals(2, repeatedGeneration.profiles.size)
+        assertEquals(listOf(1, 2, 3), resolution.selectedGenerations)
+        assertEquals(expectedProfileIds, resolution.profiles.map { it.id }.toSet())
+        assertEquals(5, resolution.profiles.size)
+        assertEquals(expectedProfileIds.size, resolution.profiles.size)
+    }
+
+    @Test
+    fun selectionBoundsMustStayInsideTheLocalCatalog() {
+        val (catalog, profiles) = fixtureCatalog()
+
+        listOf(
+            WasmlineVersionRange("0.9.9", "0.9.9"),
+            WasmlineVersionRange("0.9.9", "1.0.0"),
+            WasmlineVersionRange("0.5.0", "1.5.0"),
+            WasmlineVersionRange("1.0.0", "3.0.1"),
+            WasmlineVersionRange("2.5.0", "4.0.0"),
+        ).forEach { invalid ->
+            assertFailsWith<IllegalArgumentException> {
+                resolve(catalog, profiles, AotCompatibilitySelection(listOf(invalid)))
+            }
+        }
+    }
+
+    @Test
+    fun invertedRangesAndSymbolicRangeStartsAreRejected() {
+        assertFailsWith<IllegalArgumentException> {
+            WasmlineVersionRange("2.0.0", "1.0.0")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            WasmlineVersionRange("latest", "2.0.0")
+        }
+    }
+
+    @Test
+    fun versionsCompareNumericallyWithoutLeadingZeroOrLengthLimits() {
+        assertEquals(0, compareWasmlineVersions("01.0.0", "1.0.0"))
+        assertEquals(0, compareWasmlineVersions("1.0000000000000000000000000000002.0", "1.2.0"))
+        assertTrue(compareWasmlineVersions("1.9999999999999999999999999999999.0", "1.2.0") > 0)
+        val (catalog, profiles) = fixtureCatalog()
+
+        val resolution = resolve(
+            catalog,
+            profiles,
+            AotCompatibilitySelection(listOf(WasmlineVersionRange("01.5.0", "02.5.1"))),
         )
 
         assertEquals(listOf(2, 3), resolution.selectedGenerations)
-        assertEquals(2, resolution.profiles.size)
-    }
-
-    @Test
-    fun allRejectsGenerationsEntirelyBelowManifestMinimum() {
-        val (catalog, profiles) = fixtureCatalog()
-
-        val failure = assertFailsWith<IllegalArgumentException> {
-            AotCompatibilitySelectionResolver.resolve(
-                selection = AotCompatibilitySelection.All,
-                manifestMinimumWasmlineVersion = "2.0.0",
-                releaseCatalog = catalog,
-                profiles = profiles,
-                requestedBackends = setOf(WasmlineEngineKind.CRANELIFT),
-            )
-        }
-
-        assertTrue(failure.message.orEmpty().contains("entirely below"))
-    }
-
-    @Test
-    fun customRangesRejectGenerationsEntirelyBelowManifestMinimum() {
-        val (catalog, profiles) = fixtureCatalog()
-
-        val failure = assertFailsWith<IllegalArgumentException> {
-            AotCompatibilitySelectionResolver.resolve(
-                selection = AotCompatibilitySelection.VersionRanges(
-                    listOf(WasmlineVersionRange("1.0.0", "1.4.0")),
-                ),
-                manifestMinimumWasmlineVersion = "2.0.0",
-                releaseCatalog = catalog,
-                profiles = profiles,
-                requestedBackends = setOf(WasmlineEngineKind.CRANELIFT),
-            )
-        }
-
-        assertTrue(failure.message.orEmpty().contains("entirely below"))
     }
 
     @Test
@@ -123,28 +192,64 @@ class AotCompatibilityCatalogTest {
     }
 
     @Test
-    fun rangeOutsideCatalogIsRejected() {
+    fun requestedBackendsAreRequired() {
         val (catalog, profiles) = fixtureCatalog()
 
-        val failure = assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<IllegalArgumentException> {
             AotCompatibilitySelectionResolver.resolve(
-                selection = AotCompatibilitySelection.VersionRanges(
-                    listOf(WasmlineVersionRange("4.0.0", "5.0.0")),
-                ),
-                manifestMinimumWasmlineVersion = "1.0.0",
+                selection = AotCompatibilitySelection(),
                 releaseCatalog = catalog,
                 profiles = profiles,
-                requestedBackends = setOf(WasmlineEngineKind.PULLEY),
+                requestedBackends = emptySet(),
             )
         }
+    }
 
-        assertTrue(failure.message.orEmpty().contains("outside the local Wasmline catalog"))
+    @Test
+    fun catalogRejectsMissingBackendBindingsAndUnknownProfiles() {
+        val (catalog, profiles) = fixtureCatalog()
+        val incomplete = catalog.copy(
+            ranges = catalog.ranges.map { range ->
+                if (range.aotGeneration == 2) {
+                    range.copy(profileIdsByBackend = range.profileIdsByBackend - WasmlineEngineKind.PULLEY)
+                } else {
+                    range
+                }
+            },
+        )
+        val mismatched = catalog.copy(
+            ranges = catalog.ranges.map { range ->
+                if (range.aotGeneration == 2) {
+                    range.copy(
+                        profileIdsByBackend = range.profileIdsByBackend +
+                            (WasmlineEngineKind.CRANELIFT to range.profileIdsByBackend.getValue(WasmlineEngineKind.PULLEY)),
+                    )
+                } else {
+                    range
+                }
+            },
+        )
+        val missingProfileId = catalog.ranges.last().profileIdsByBackend.getValue(WasmlineEngineKind.PULLEY)
+
+        assertFailsWith<IllegalArgumentException> {
+            resolve(incomplete, profiles, AotCompatibilitySelection())
+        }
+        assertFailsWith<IllegalArgumentException> {
+            resolve(mismatched, profiles, AotCompatibilitySelection())
+        }
+        assertFailsWith<IllegalStateException> {
+            resolve(
+                catalog,
+                profiles.filterNot { it.id == missingProfileId },
+                AotCompatibilitySelection(),
+            )
+        }
     }
 
     @Test
     fun changedBackendsMustUseCanonicalOrder() {
-        val (catalog, _) = fixtureCatalog()
-        val invalid = catalog.copy(
+        val (catalog, profiles) = fixtureCatalog()
+        val reordered = catalog.copy(
             ranges = catalog.ranges.mapIndexed { index, range ->
                 if (index == 0) {
                     range.copy(changedBackends = listOf(WasmlineEngineKind.PULLEY, WasmlineEngineKind.CRANELIFT))
@@ -154,12 +259,23 @@ class AotCompatibilityCatalogTest {
             },
         )
 
-        val failure = assertFailsWith<IllegalArgumentException> {
-            invalid.validate()
+        catalog.validate(requireProfileBindings = true, profiles = profiles)
+        assertFailsWith<IllegalArgumentException> {
+            reordered.validate(requireProfileBindings = true, profiles = profiles)
         }
-
-        assertTrue(failure.message.orEmpty().contains("canonical order"))
     }
+
+    private fun resolve(
+        catalog: WasmlineAotReleaseCatalog,
+        profiles: List<AotCompatibilityProfileSpec>,
+        selection: AotCompatibilitySelection,
+        backends: Set<WasmlineEngineKind> = setOf(WasmlineEngineKind.CRANELIFT, WasmlineEngineKind.PULLEY),
+    ): AotCompatibilityResolution = AotCompatibilitySelectionResolver.resolve(
+        selection = selection,
+        releaseCatalog = catalog,
+        profiles = profiles,
+        requestedBackends = backends,
+    )
 
     private fun fixtureCatalog(): Pair<WasmlineAotReleaseCatalog, List<AotCompatibilityProfileSpec>> {
         val generationOneCranelift = profile(
