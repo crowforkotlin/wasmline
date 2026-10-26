@@ -6,12 +6,12 @@ import crow.wasmline.loader.model.WasmlineRuntimeContract
 import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
 import crow.wasmline.plugin.core.aot.AotCompatibilityResolution
 import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
+import crow.wasmline.plugin.core.aot.AotGenerations
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecord
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRequest
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildService
 import crow.wasmline.plugin.core.aot.WasmlineAotTargetSpec
 import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
-import crow.wasmline.plugin.core.aot.WasmlineVersionRange
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
@@ -208,28 +208,113 @@ internal fun resolveCliAotSelection(
     )
 }
 
-/** Parses repeated --aot-generations values into the shared local selection model. */
+/** Parses repeated --aot-generations tokens into the shared typed local selection model. */
 internal fun parseCliAotSelection(values: Collection<String>): AotCompatibilitySelection =
-    AotCompatibilitySelection(values.map(::parseAotGeneration))
+    AotCompatibilitySelection(values.map(::parseCliAotGeneration))
 
-/** Parses one point or closed FROM..THROUGH generation token without normalization. */
-private fun parseAotGeneration(value: String): WasmlineVersionRange {
+/** Parses one strategy identifier, concrete version point, closed range, or anchored window. */
+private fun parseCliAotGeneration(value: String): AotGenerations = when (value) {
+    AOT_GENERATION_CURRENT -> AotGenerations.Current
+    AOT_GENERATION_LATEST -> AotGenerations.Latest
+    AOT_GENERATION_EARLIEST -> AotGenerations.Earliest
+    AOT_GENERATION_ALL -> AotGenerations.All
+    else -> parseAotGenerationValue(value)
+}
+
+/** Parses one non-singleton selector as a version selection only when it has no window field. */
+private fun parseAotGenerationValue(value: String): AotGenerations =
+    if (AOT_GENERATION_WINDOW_SEPARATOR in value) parseAotGenerationWindow(value) else parseAotGenerationVersions(value)
+
+/** Parses one concrete x.y.z point or closed MIN..MAX interval without symbolic endpoints. */
+private fun parseAotGenerationVersions(value: String): AotGenerations {
     val separatorIndex = value.indexOf(AOT_GENERATION_RANGE_SEPARATOR)
-    if (separatorIndex < 0) return WasmlineVersionRange(value, value)
-    val from = value.substring(0, separatorIndex)
-    val through = value.substring(separatorIndex + AOT_GENERATION_RANGE_SEPARATOR.length)
-    require(from.isNotEmpty() && through.isNotEmpty()) {
-        "AOT generation range must use two non-empty endpoints: '$value'."
+    if (separatorIndex < 0) return AotGenerations.Versions(value)
+    val min = value.substring(0, separatorIndex)
+    val max = value.substring(separatorIndex + AOT_GENERATION_RANGE_SEPARATOR.length)
+    require(min.isNotEmpty() && max.isNotEmpty()) {
+        "AOT generation range must use two non-empty concrete endpoints: '$value'."
     }
     require(value.indexOf(AOT_GENERATION_RANGE_SEPARATOR, separatorIndex + AOT_GENERATION_RANGE_SEPARATOR.length) < 0) {
         "AOT generation range must contain exactly one separator: '$value'."
     }
-    require(from != LATEST_AOT_GENERATION) {
-        "AOT generation range must start at a concrete x.y.z version: '$value'."
-    }
-    return WasmlineVersionRange(from, through)
+    return AotGenerations.Versions(min = min, max = max)
 }
 
-private const val LATEST_AOT_GENERATION: String = "latest"
+/** Parses ANCHOR:before=N:after=M for the anchors that support each neighbor direction. */
+private fun parseAotGenerationWindow(value: String): AotGenerations {
+    val parts = value.split(AOT_GENERATION_WINDOW_SEPARATOR)
+    val anchor = parts.first()
+    require(parts.size >= 2) { "AOT generation window must declare a before or after count: '$value'." }
+    require(parts.size <= 3) { "AOT generation window accepts only distinct before and after counts: '$value'." }
+    var before = 0
+    var after = 0
+    var beforeSeen = false
+    var afterSeen = false
+    for (index in 1 until parts.size) {
+        val field = parts[index]
+        val separatorIndex = field.indexOf(AOT_GENERATION_FIELD_SEPARATOR)
+        require(separatorIndex > 0 && field.indexOf('=', separatorIndex + 1) < 0) {
+            "AOT generation window field must use name=count: '$value'."
+        }
+        val count = field.substring(separatorIndex + 1)
+        when (field.substring(0, separatorIndex)) {
+            AOT_GENERATION_BEFORE_FIELD -> {
+                before = parseAotGenerationCount(count, value)
+                require(!beforeSeen) { "AOT generation window fields must be distinct: '$value'." }
+                beforeSeen = true
+            }
+            AOT_GENERATION_AFTER_FIELD -> {
+                after = parseAotGenerationCount(count, value)
+                require(!afterSeen) { "AOT generation window fields must be distinct: '$value'." }
+                afterSeen = true
+            }
+            else -> throw IllegalArgumentException(
+                "AOT generation window field must be before or after: '$value'.",
+            )
+        }
+    }
+    return when (anchor) {
+        AOT_GENERATION_CURRENT -> AotGenerations.Current(before = before, after = after)
+        AOT_GENERATION_LATEST -> {
+            require(!afterSeen) { "Latest AOT generation window accepts only a before count: '$value'." }
+            AotGenerations.Latest(before = before)
+        }
+        AOT_GENERATION_EARLIEST -> {
+            require(!beforeSeen) { "Earliest AOT generation window accepts only an after count: '$value'." }
+            AotGenerations.Earliest(after = after)
+        }
+        else -> throw IllegalArgumentException(
+            "AOT generation window anchor must be current, latest, or earliest: '$value'.",
+        )
+    }
+}
+
+/** Parses one decimal neighbor count, rejecting signs, padding, and Int overflow. */
+private fun parseAotGenerationCount(value: String, token: String): Int {
+    require(value.isNotEmpty() && value.all { character -> character in '0'..'9' }) {
+        "AOT generation count must be a nonnegative decimal integer: '$token'."
+    }
+    require(value.length == 1 || value.first() != '0') {
+        "AOT generation count must not use leading zero padding: '$token'."
+    }
+    return value.toIntOrNull()
+        ?: throw IllegalArgumentException("AOT generation count exceeds Int.MAX_VALUE: '$token'.")
+}
+
+private const val AOT_GENERATION_CURRENT: String = "current"
+
+private const val AOT_GENERATION_LATEST: String = "latest"
+
+private const val AOT_GENERATION_EARLIEST: String = "earliest"
+
+private const val AOT_GENERATION_ALL: String = "all"
 
 private const val AOT_GENERATION_RANGE_SEPARATOR: String = ".."
+
+private const val AOT_GENERATION_WINDOW_SEPARATOR: String = ":"
+
+private const val AOT_GENERATION_FIELD_SEPARATOR: Char = '='
+
+private const val AOT_GENERATION_BEFORE_FIELD: String = "before"
+
+private const val AOT_GENERATION_AFTER_FIELD: String = "after"

@@ -29,8 +29,8 @@ class ComponentToolchainIntegrationTest {
         val adapterVersion = ToolchainCatalog.WASI_PREVIEW1_ADAPTER_VERSION
         val root = createTempDirectory("wasmline-component-live").toFile()
         try {
-            val witDirectory = File(root, "wit").apply { mkdirs() }
-            copyResource(CANONICAL_WIT_RESOURCE, File(witDirectory, "wasmline.wit"))
+            val witDirectory = File(root, "wit")
+            WasmlineServiceWit.writeTo(witDirectory)
 
             val generatedDirectory = File(root, "generated")
             val verificationLogs = mutableListOf<String>()
@@ -123,7 +123,6 @@ class ComponentToolchainIntegrationTest {
         const val WIT_BINDGEN_ENV = "WASMLINE_TEST_WIT_BINDGEN"
         const val WASM_TOOLS_ENV = "WASMLINE_TEST_WASM_TOOLS"
         const val WASI_ADAPTER_ENV = "WASMLINE_TEST_WASI_ADAPTER"
-        const val CANONICAL_WIT_RESOURCE = "META-INF/wasmline/wit/wasmline-service/wasmline.wit"
         const val CORE_WAT_RESOURCE = "fixtures/component-rpc-core.wat"
     }
 }

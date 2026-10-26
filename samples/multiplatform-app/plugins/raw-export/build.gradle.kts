@@ -8,6 +8,7 @@ import crow.wasmline.RawImportDeclaration
 import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
+import crow.wasmline.plugin.core.aot.AotGenerations
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -66,7 +67,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            generations("latest")
+            generations(AotGenerations.Current)
         }
         autoDownload = true
     }

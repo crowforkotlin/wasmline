@@ -98,69 +98,101 @@ or reused.
 
 ## Gradle and CLI selection
 
-Native AOT selection is expressed with `generations` calls in the Wasmtime DSL:
+Native AOT selection is expressed with typed `generations` calls in the Wasmtime
+DSL:
 
 ```kotlin
+import crow.wasmline.plugin.core.aot.AotGenerations
+
 wasmline {
     wasmtime {
         aotCompatibility {
+            generations(AotGenerations.Current)
+            generations(AotGenerations.Current(before = 1))
+            generations(AotGenerations.Latest(before = 1))
+            generations(AotGenerations.Earliest(after = 1))
+            generations(AotGenerations.All)
             generations("1.0.0")
-            generations(from = "1.0.1", through = "latest")
+            generations(AotGenerations.Versions(versions = listOf("1.0.0", "1.0.1")))
+            generations(versions = listOf("1.0.0", "1.0.1"))
+            generations(min = "1.0.0", max = "1.0.1")
             // suppressCompatibilityWarning.set(true)
         }
     }
 }
 ```
 
-- `generations("x.y.z")` selects the generation containing that stable Wasmline
-  release version.
-- `generations(from = "x.y.z", through = "x.y.z" | "latest")` selects a closed
-  inclusive range. `from` must be a concrete stable version; `through` may be
-  `"latest"`.
-- `"latest"` means the local catalog `currentWasmlineVersion`; it is valid only
-  as a point version or as the range end.
+- `generations(AotGenerations.Current)`, `Latest`, `Earliest`, and `All` select
+  the generation containing the currently introduced build-tool version, the
+  newest local generation, the oldest local generation, or every locally
+  retained generation.
+- `generations(AotGenerations.Current(before = 1, after = 1))`,
+  `Latest(before = 1)`, and `Earliest(after = 1)` additionally select adjacent
+  AOT generations. The anchor generation is always included, so the counts are
+  extra neighbors, not window totals. `Latest` forbids an `after` count and
+  `Earliest` forbids a `before` count. Windows count AOT generations, never
+  Maven release versions or backend profile changes.
+- `generations("x.y.z")` selects the generation containing that concrete stable
+  Wasmline release version. `generations(versions = listOf(...))` selects a
+  non-empty collection of concrete versions, and `generations(min = ..., max =
+  ...)` selects the closed concrete interval. The typed `AotGenerations.Versions`
+  factories (`Versions(version)`, `Versions(versions)`, `Versions(min, max)`) are
+  equivalent. There is no symbolic version string, no `from`/`through` overload,
+  and no vararg form, so two version strings can never be read as an interval
+  silently.
 
-Omitting `aotCompatibility`, or leaving the block empty, selects every
-generation retained in the packaged local catalog. The first explicit call
-replaces that default; later calls add their generations to the union. The
+Omitting `aotCompatibility`, leaving the block empty, or configuring only
+`suppressCompatibilityWarning` selects `Current`: the generation containing the
+currently introduced Wasmline build-tool version, resolved from the packaged
+local catalog. Explicit `All` is the opt-in way to build every locally retained
+generation and may require many compiler invocations. The first explicit call
+replaces that default; later calls add their strategies to the union. The
 resolver maps the union to unique, deterministically ordered backend profile
 IDs, so repeated Wasmline versions in one generation do not cause repeated AOT
 compilation.
 
-Both endpoints must lie within the locally supported catalog interval
-(`minimumSupportedWasmlineVersion..currentWasmlineVersion`). An inverted range,
-an endpoint outside that interval, a symbolic range start, or a malformed token
-is a selection error; the build does not clip a range to its intersecting part.
-A project whose WASI/component assemble graph resolves during configuration
-fails there with `WLAOT100`; other projects fail in the AOT or check task action.
-The CLI reports removed flags as usage errors and validates grammar, inverted
-bounds, and out-of-range tokens before any tool download, compilation, or
-signing. Selection is resolved entirely from the packaged local catalog and
-never reads the network. The public input is a Wasmline release version:
-Wasmtime distribution versions and profile digests are internal catalog bindings
-and diagnostics, not DSL inputs. The build record and the compatibility report
-keep the resolved selection under the diagnostic name `generations`.
+Because future AOT generations are not remotely discoverable by an older
+packaged build tool, `Current(after = 1)` fails when the local catalog has no
+successor generation. `Current` and `Latest` coincide while the packaged catalog
+contains no newer generation than the build-tool release.
+
+Every concrete version must lie within the locally supported catalog interval
+(`minimumSupportedWasmlineVersion..currentWasmlineVersion`) and every requested
+window neighbor must exist locally. An inverted range, an endpoint outside that
+interval, an unavailable neighbor, a symbolic endpoint, or a malformed token is
+a selection error; the build does not clip a range to its intersecting part and
+never reads the network. A project whose WASI/component assemble graph resolves
+during configuration fails there with `WLAOT100`; other projects fail in the AOT
+or check task action. The CLI reports removed flags as usage errors and
+validates grammar and catalog bounds before any tool download, compilation, or
+signing. The public input is a Wasmline release version: Wasmtime distribution
+versions and profile digests are internal catalog bindings and diagnostics, not
+DSL inputs. The build record and the compatibility report keep the resolved
+selection under the diagnostic name `generations`.
 
 The CLI exposes the same selection as a repeatable option:
 
 ```bash
-./wasmline-cli/cli.sh compile --input core.wasm --aot-generations 1.0.0 \
-  --aot-generations 1.0.1..latest --target pulley64
+./wasmline-cli/cli.sh compile --input core.wasm --aot-generations current \
+  --aot-generations 1.0.0..1.0.1 --aot-generations latest:before=1 --target pulley64
 ```
 
-`--aot-generations` accepts one stable `x.y.z` point, the exact lowercase
-`latest`, or one closed `FROM..THROUGH` range per occurrence; omitting the option
-selects every local generation. Ranges require two non-empty endpoints, `FROM`
-must be a stable version, and `THROUGH` may be `latest`. Tokens are not
-normalized: comma lists, padded whitespace, an empty range endpoint, and
-multiple `..` separators are rejected, as are the removed
-`--aot-compatibility`, `--aot-version-range`, and `--min-sdk` flags.
+`--aot-generations` is repeatable, and omitting the option selects `current`.
+Each occurrence accepts one concrete stable `x.y.z` point, one concrete closed
+`MIN..MAX` interval, one exact lowercase strategy token (`current`, `latest`,
+`earliest`, `all`), or one typed window (`current:before=N`, `current:after=N`,
+`current:before=N:after=M`, `latest:before=N`, `earliest:after=N`). Window
+counts are nonnegative decimal integers that reject signs, padding, and Int
+overflow; duplicate or unknown fields, unsupported anchor directions, symbolic
+endpoints such as `..latest`, comma lists, padded whitespace, and multiple `..`
+separators are rejected, as are the removed `--aot-compatibility`,
+`--aot-version-range`, and `--min-sdk` flags.
 
 `suppressCompatibilityWarning` defaults to `false`:
 
 ```kotlin
 aotCompatibility {
-    generations("latest")
+    generations(AotGenerations.Current)
     suppressCompatibilityWarning.set(true)
 }
 ```
@@ -261,6 +293,8 @@ metadata from the fork release; use `aot sync --proxy <url>` or `--jobs <count>`
 when required by the maintenance environment. Do not put AOT records in
 `versions.json` or hand-edit generated resources.
 Do not expose Wasmtime version strings or arbitrary profile digests as the
-normal Gradle selection input; use Wasmline release versions. During the active
-development phase, remove obsolete APIs and update all call sites instead of
-retaining compatibility annotations.
+normal Gradle selection input; use Wasmline release versions or typed
+`AotGenerations` strategies. Default selection is current-only: a maintainer who
+wants a full local matrix asks for it with `AotGenerations.All` or concrete
+versions. During the active development phase, remove obsolete APIs and update
+all call sites instead of retaining compatibility annotations.

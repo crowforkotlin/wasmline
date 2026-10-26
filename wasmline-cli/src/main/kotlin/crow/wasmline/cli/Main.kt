@@ -13,7 +13,7 @@ public fun main(vararg args: String) {
     val tools = NoOpCliktCommand(name = "tools")
         .subcommands(commands = arrayOf(ToolDownload()))
     val wit = NoOpCliktCommand(name = "wit")
-        .subcommands(commands = arrayOf(WitGenerate()))
+        .subcommands(commands = arrayOf(WitExport(), WitGenerate()))
     val component = NoOpCliktCommand(name = "component")
         .subcommands(commands = arrayOf(ComponentValidate(), ComponentInspect()))
     val aotProfiles = NoOpCliktCommand(name = "aot-profiles")

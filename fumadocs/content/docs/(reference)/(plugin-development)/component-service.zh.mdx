@@ -2,7 +2,7 @@
 title: 组件服务协议
 description: 固定 WIT 请求格式、Component 构建步骤与宿主回调
 createdAt: 2026-08-05
-updatedAt: 2026-09-04
+updatedAt: 2026-10-26
 ---
 
 # 组件服务协议
@@ -44,14 +44,18 @@ Kotlin/Wasm WASI sample 按以下顺序执行：
    以及包含 digest 和大小的 target variant。
 
 Gradle 入口是 `wasmlineAssembleDebug` 或 `wasmlineAssembleRelease`。CLI 通过
-`wit generate`、`componentize`、`component validate` 和 `component inspect`
+`wit export`、`wit generate`、`componentize`、`component validate` 和
+`component inspect`
 提供各个步骤；`compile --execution-model COMPONENT_MODEL` 还会执行 Component
 AOT。任务名称参见 [Gradle 插件参考](/zh/docs/gradle-plugin)。Native loader
 只接收完成的 Component 产物，加载时不运行生成器或编译器。
 
 Rust 可以使用 `wasm32-wasip2` 直接生成 Component。fixture 位于
 `samples/multiplatform-app/plugins/rust-component-service`，固定 fork 的 `wit-bindgen`
-0.57.1 Git tag。生成的 binding 只属于构建输出，不提交到仓库。
+0.57.1 Git tag，并让 `wit_bindgen::generate!` 指向 `wasmline-plugin-core` 内的规范
+WIT，不在 fixture 内保留已提交的 WIT 副本。生成的 binding 只属于构建输出，
+不提交到仓库。仓库外的 guest 可以用 `wit export --output <dir>` 导出同一
+contract；命令及输出路径见 [CLI 参考](/zh/docs/cli)。
 
 C 和 C++ 通过已验证的 WASI SDK 33 编译到 `wasm32-wasip1`。对应 fixture 位于
 `samples/multiplatform-app/plugins/c-component-service` 和

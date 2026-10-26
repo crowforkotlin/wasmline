@@ -9,6 +9,7 @@ import crow.wasmline.RawValueType
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.gradle.WasmtimeTarget
+import crow.wasmline.plugin.core.aot.AotGenerations
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -55,7 +56,7 @@ wasmline {
         )
     }
     wasmtime {
-        aotCompatibility { generations("latest") }
+        aotCompatibility { generations(AotGenerations.Current) }
         targets = listOf(WasmtimeTarget.PULLEY_64)
         autoDownload = true
     }

@@ -3,10 +3,10 @@ package crow.wasmline.test.fixtures
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
 import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
+import crow.wasmline.plugin.core.aot.AotGenerations
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRequest
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildService
 import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
-import crow.wasmline.plugin.core.aot.WasmlineVersionRange
 import crow.wasmline.plugin.core.component.ComponentPipeline
 import crow.wasmline.plugin.core.component.ComponentizeRequest
 import crow.wasmline.plugin.core.component.WasmToolsTool
@@ -55,8 +55,9 @@ class NativeFixtureAssembler(
         }
 
         val targetSpecs = WasmlineArtifactTargetFactory.create(targets)
+        // Runtime fixtures cover exactly the current AOT generation, never every local generation.
         val resolution = AotCompatibilityCatalog.resolveSelection(
-            selection = AotCompatibilitySelection(listOf(WasmlineVersionRange("latest", "latest"))),
+            selection = AotCompatibilitySelection(listOf(AotGenerations.Current)),
             artifactBackends = targetSpecs.map { spec -> spec.artifactBackend }.toSet(),
         )
         val selector = resolution.selection.diagnosticName()

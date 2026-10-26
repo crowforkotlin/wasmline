@@ -9,6 +9,7 @@ import crow.wasmline.loader.model.WasmlineManifest
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecord
 import crow.wasmline.plugin.core.aot.WasmlineAotBuildRecords
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
+import crow.wasmline.plugin.core.component.WasmlineServiceWit
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -178,7 +179,7 @@ class ComponentCliIntegrationTest {
                 "--aot-compiler-cache",
                 compilerCache.absolutePath,
                 "--aot-generations",
-                "latest",
+                "current",
                 "--auto-download",
                 "--target",
                 "x86_64-linux",
@@ -219,7 +220,7 @@ class ComponentCliIntegrationTest {
                 "--aot-compiler-cache",
                 compilerCache.absolutePath,
                 "--aot-generations",
-                "latest",
+                "current",
                 "--target",
                 "x86_64-linux",
                 "--target",
@@ -337,7 +338,7 @@ class ComponentCliIntegrationTest {
         val configured = System.getenv(WIT_DIRECTORY_ENV)?.let(::File)
         val candidates = listOfNotNull(
             configured,
-            File("wasmline-plugin-core/src/main/resources/$CANONICAL_WIT_PATH"),
+            File("wasmline-plugin-core/src/main/resources/${WasmlineServiceWit.DIRECTORY_RESOURCE}"),
         )
         return candidates.firstOrNull(File::isDirectory)?.canonicalFile
             ?: error("Unable to locate the canonical Wasmline Service WIT directory.")
@@ -365,6 +366,5 @@ class ComponentCliIntegrationTest {
         const val WASM_TOOLS_ENV = "WASMLINE_TEST_WASM_TOOLS"
         const val WASI_ADAPTER_ENV = "WASMLINE_TEST_WASI_ADAPTER"
         const val WIT_DIRECTORY_ENV = "WASMLINE_TEST_WIT_DIRECTORY"
-        const val CANONICAL_WIT_PATH = "META-INF/wasmline/wit/wasmline-service"
     }
 }

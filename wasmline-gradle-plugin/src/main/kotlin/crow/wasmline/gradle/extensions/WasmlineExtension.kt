@@ -17,7 +17,7 @@ import javax.inject.Inject
  *     }
  *     wasmtime {
  *         aotCompatibility {
- *             generations("latest")
+ *             generations(AotGenerations.Current)
  *         }
  *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
  *         autoDownload.set(true)

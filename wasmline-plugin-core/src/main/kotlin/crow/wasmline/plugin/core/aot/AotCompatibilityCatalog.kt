@@ -163,6 +163,8 @@ object AotCompatibilityCatalog {
             releaseCatalog = lock.releaseCatalog,
             profiles = lock.profiles,
             requestedBackends = artifactBackends,
+            // The packaged catalog belongs to the introduced build-tool release, not the consumer project.
+            currentWasmlineVersion = lock.releaseCatalog.currentWasmlineVersion,
         )
     }
 

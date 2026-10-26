@@ -2,7 +2,7 @@
 title: Wasmtime AOT 兼容性
 description: 选择兼容的 Wasmtime profile 与经过校验的 compiler asset
 createdAt: 2026-08-15
-updatedAt: 2026-10-25
+updatedAt: 2026-10-26
 ---
 
 # Wasmtime AOT 兼容性
@@ -23,19 +23,20 @@ Profile 描述包含 fork 的 Wasmtime `x.y.z`、source revision、产物格式�
 fork 发布新 distribution 时会增加第四段；该数字本身不能证明 AOT 兼容。
 
 插件作者通过 `aotCompatibility { generations(...) }` 选择本地 Wasmline release 的
-覆盖范围；省略该 block 会选择 packaged catalog 中保留的全部 generation。他们不填写
-Wasmtime distribution 版本。catalog 会把选中的 Wasmline 版本解析为所需的 profile ID
-和 compiler asset。
+覆盖范围；省略该 block 会选择包含当前引入的 Wasmline 构建工具版本的那个
+generation。他们不填写 Wasmtime distribution 版本。catalog 会把选中的 Wasmline
+版本解析为所需的 profile ID 和 compiler asset。
 
 ## 配置构建
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
+import crow.wasmline.plugin.core.aot.AotGenerations
 
 wasmline {
     wasmtime {
         aotCompatibility {
-            generations("latest")
+            generations(AotGenerations.Current)
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -46,16 +47,22 @@ wasmline {
 }
 ```
 
-`generations("latest")` 保持“只编译 packaged catalog 当前 Wasmline 版本”的范围。
-省略 block、留空或只配置 `suppressCompatibilityWarning` 时，会编译本地 catalog 中保留
-的全部 generation；第一次显式调用替换该默认值，之后的调用形成并集：
+`generations(AotGenerations.Current)` 选择当前引入的构建工具版本所在的 generation，
+这也是省略 block、留空或只配置 `suppressCompatibilityWarning` 时的隐式默认值。
+`AotGenerations.Current(before = 1, after = 1)` 还会要求相邻的 AOT generation，
+因此该窗口覆盖三个 generation；本地不存在的相邻 generation 会让构建失败。第一次
+显式调用替换隐式默认值，之后的调用形成并集：
 
 ```kotlin
+import crow.wasmline.plugin.core.aot.AotGenerations
+
 wasmline {
     wasmtime {
         aotCompatibility {
-            generations("1.0.0")
-            generations(from = "1.0.1", through = "latest")
+            generations(AotGenerations.Latest(before = 1))
+            generations(versions = listOf("1.0.0", "1.0.1"))
+            generations(min = "1.0.0", max = "1.0.1")
+            generations(AotGenerations.All)
             suppressCompatibilityWarning.set(false)
         }
     }
@@ -64,15 +71,22 @@ wasmline {
 
 | 调用 | 选择内容 |
 |---|---|
-| `generations("1.0.0")` | 包含该稳定 Wasmline 版本的 generation |
-| `generations("latest")` | packaged catalog 当前 Wasmline 版本所在的 generation |
-| `generations(from = "1.0.1", through = "latest")` | 与闭区间相交的全部 generation |
-| 省略 `aotCompatibility` | 本地 catalog 中保留的全部 generation |
+| `generations(AotGenerations.Current)` | 包含当前引入的构建工具版本所在的 generation |
+| `generations(AotGenerations.Latest)` | 本地保留的最新 generation |
+| `generations(AotGenerations.Earliest)` | 本地保留的最早 generation |
+| `generations(AotGenerations.All)` | 本地 catalog 中保留的全部 generation |
+| `generations("1.0.0")` | 包含该具体稳定 Wasmline 版本的 generation |
+| `generations(AotGenerations.Versions(min = "1.0.0", max = "1.0.1"))` | 直接以类型化方式表达相同的点、集合或闭区间选择 |
+| `generations(versions = listOf(...))` | 包含这些具体版本的 generation |
+| `generations(min = "1.0.0", max = "1.0.1")` | 与具体版本闭区间相交的全部 generation |
+| 省略 `aotCompatibility` | 当前 generation |
 
-两端都必须是稳定的 `x.y.z` Wasmline 版本，并位于 catalog 的
-`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 边界内；`through` 也可以
-是 `"latest"`。倒置区间、以符号值作为区间起点、越界 endpoint 或其他不可用的选择都
-会在下载 compiler 文件前失败，不会被裁剪或静默缩小。选择基于 Wasmline 版本：
+每个具体版本都必须是稳定的 `x.y.z` Wasmline 版本，并位于 catalog 的
+`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 边界内。不存在符号版本
+字符串，也没有 `from`/`through` 重载；`All` 需要显式选择，因为编译全部保留
+generation 代价可能很高。倒置区间、越界 endpoint、本地不存在的窗口相邻 generation
+或其他不可用的选择都会在下载 compiler 文件前失败，不会被裁剪或静默缩小。解析到同一
+generation 的版本与复用的 backend profile 只编译一次。选择基于 Wasmline 版本：
 profile 摘要和 fork distribution 版本永远不是用户输入。仓库根目录的
 `aot-compatibility.json` 是唯一人工维护的 catalog。修改后执行
 `./scripts/wasmline aot sync`；该命令会校验条目并生成构建工具使用的 packaged

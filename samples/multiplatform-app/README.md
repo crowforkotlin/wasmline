@@ -99,13 +99,14 @@ similar to an NDK ABI filter:
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
+import crow.wasmline.plugin.core.aot.AotGenerations
 
 wasmline {
     wasmtime {
-        // Omitting the block compiles every generation retained in the local
-        // catalog; `generations("latest")` narrows it to the current one.
+        // Omit `aotCompatibility` to compile the current generation only;
+        // `AotGenerations.All` opts into every locally retained generation.
         aotCompatibility {
-            generations("latest")
+            generations(AotGenerations.Current)
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -118,14 +119,19 @@ wasmline {
 `targets` is a DSL property configured only by assignment; function-style
 target selectors are not part of the DSL.
 
-`generations(version)` selects the generation containing one stable Wasmline
-release version; `generations(from = ..., through = ...)` selects a closed range
-whose end may be `"latest"`. Omit `aotCompatibility` to build every locally
+`generations("1.0.0")` selects the generation containing one concrete stable
+Wasmline release version, `generations(versions = listOf(...))` selects several
+concrete versions, and `generations(min = ..., max = ...)` selects a closed
+concrete interval. Typed strategies select the current, newest, oldest, or every
+locally retained generation, and `Current(before = 1)` adds adjacent AOT
+generations around the anchor. Omit `aotCompatibility` to build the current
+generation; `AotGenerations.All` is the explicit opt-in for every locally
 retained generation. Calls accumulate as a union after the first one replaces
 the default, and repeated generations resolve to one deterministically ordered
-set of backend profile IDs. Endpoints outside the locally supported catalog
-range fail the build instead of being clipped. Wasmline release versions are the
-public input; Wasmtime distributions and profile IDs stay internal. The
+set of backend profile IDs. Unavailable neighbors, symbolic version strings, and
+endpoints outside the locally supported catalog range fail the build instead of
+being clipped. Wasmline release versions are the public input; Wasmtime
+distributions and profile IDs stay internal. The
 `wasmlineCheckAotCompatibility` task reports newly published generations after a
 successful assemble.
 

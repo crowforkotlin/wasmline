@@ -1,8 +1,10 @@
 package crow.wasmline.gradle.tasks
 
+import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.plugin.core.component.KotlinBindingsRequest
+import crow.wasmline.plugin.core.component.WasmlineServiceWit
 import crow.wasmline.plugin.core.component.WitBindgenTool
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.ToolCache
@@ -75,12 +77,12 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
         val output = outputDirectory.get().asFile
         val serviceWitDirectory = File(output, "wit")
         val bindingInput = if (componentService) {
-            materializeCanonicalServiceWit(serviceWitDirectory)
+            WasmlineServiceWit.writeTo(serviceWitDirectory)
             serviceWitDirectory
         } else {
             witDirectory.get().asFile
         }
-        val bindingWorld = if (componentService) SERVICE_WORLD else world.orNull
+        val bindingWorld = if (componentService) WasmlineComponentServiceContract.WORLD else world.orNull
         val bindingImports = if (componentService) {
             "$SERVICE_ADAPTER_PACKAGE.*"
         } else {
@@ -122,16 +124,6 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
         } finally {
             downloader.close()
         }
-    }
-
-    private fun materializeCanonicalServiceWit(directory: File): File {
-        check(directory.mkdirs() || directory.isDirectory) {
-            "Unable to create canonical Wasmline Service WIT directory: ${directory.absolutePath}"
-        }
-        val source = requireNotNull(javaClass.classLoader.getResourceAsStream(CANONICAL_SERVICE_WIT_RESOURCE)) {
-            "Wasmline canonical Wasmline Service WIT resource is missing: $CANONICAL_SERVICE_WIT_RESOURCE"
-        }.bufferedReader().use { it.readText() }
-        return File(directory, "wasmline.wit").apply { writeText(source) }
     }
 
     private fun componentServiceAdapterSource(): String = """
@@ -215,8 +207,6 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
     """.trimIndent() + "\n"
 
     private companion object {
-        const val CANONICAL_SERVICE_WIT_RESOURCE = "META-INF/wasmline/wit/wasmline-service/wasmline.wit"
-        const val SERVICE_WORLD = "plugin"
         const val SERVICE_BINDING_PACKAGE = "crow.wasmline.component.service.binding"
         const val SERVICE_ADAPTER_PACKAGE = "crow.wasmline.component.service.generated"
     }

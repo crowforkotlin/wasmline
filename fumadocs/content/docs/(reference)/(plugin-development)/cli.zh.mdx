@@ -2,7 +2,7 @@
 title: CLI 参考
 description: 使用 CLI 构建、签名、检查和打包 Wasmline 插件
 createdAt: 2026-07-18
-updatedAt: 2026-10-25
+updatedAt: 2026-10-26
 ---
 
 # CLI 参考
@@ -26,6 +26,7 @@ updatedAt: 2026-10-25
 | `aot-profiles describe <id>` | 显示一个 profile 的描述和构建宿主 |
 | `componentize` | 创建或检查作为 AOT 输入的 raw Component |
 | `tools download` | 下载锁定的 Component 工具 |
+| `wit export` | 输出规范的 `wasmline:service` WIT，供非 Kotlin guest 使用 |
 | `wit generate` | 生成 WIT binding |
 | `component validate` | 校验 Component |
 | `component inspect` | 输出 Component 的 WIT |
@@ -35,6 +36,21 @@ executable。AOT compiler 必须来自摘要锁定的 catalog。已删除的
 `--aot-compatibility`、`--aot-version-range` 与 `--min-sdk` 也没有别名；AOT 覆盖
 范围只能通过 `--aot-generations` 选择。
 
+## 导出 Service WIT
+
+```bash
+./wasmline-cli/cli.sh wit export --output build/wasmline/wit
+```
+
+该命令写出 `build/wasmline/wit/wasmline.wit`，内容为当前 CLI 版本携带的规范
+`wasmline:service@1.0.0` contract。`--output` 指定目录，默认值是
+`build/wasmline/wit`；不存在的目录会创建，已有 `wasmline.wit` 会覆盖。
+
+`wit export` 只复制资源，不生成 binding，也不下载 Component 工具。将导出的目录
+交给 guest 语言的 binding generator，例如 `wit-bindgen c`、`wit-bindgen cpp`
+或 Rust 的 `wit_bindgen::generate!`。独立的 `wit generate` 命令仍只生成 Kotlin
+binding。
+
 ## 构建 Package
 
 ```bash
@@ -42,7 +58,7 @@ executable。AOT compiler 必须来自摘要锁定的 catalog。已删除的
 
 ./wasmline-cli/cli.sh build \
   --input plugin.wasm \
-  --aot-generations latest \
+  --aot-generations current \
   --target pulley64 \
   --target x86_64-linux \
   --auto-download \
@@ -52,12 +68,22 @@ executable。AOT compiler 必须来自摘要锁定的 catalog。已删除的
   --key build/wasmline/keys/ed25519_private.key
 ```
 
-`--aot-generations` 可以重复传入。每个取值只能是稳定的 `x.y.z` Wasmline 版本、
-精确的小写 `latest`，或形如 `FROM..THROUGH` 的闭区间，且 `FROM` 必须是稳定版本，
-`THROUGH` 可以是稳定版本或 `latest`。取值都是精确 token：CLI 不会拆分逗号列表、
-不裁剪空白、不接受开放式区间，也不接受多于一个 `..` 分隔符。`latest` 指 CLI 内置
-catalog 的 Wasmline 版本，而不是远程最新发行版。省略该 option 会选择本地 catalog
-中保留的全部 generation；重复取值会并入同一个并集：
+`--aot-generations` 可以重复传入；省略该 option 时选择 `current`。每个取值只能是
+以下之一：
+
+- 具体的稳定 `x.y.z` 版本；
+- 具体的 `MIN..MAX` 闭区间；
+- 精确的小写策略 token：`current`、`latest`、`earliest` 或 `all`；
+- 形如 `current:before=N`、`current:after=N`（两种字段顺序均可的
+  `current:before=N:after=M`）、`latest:before=N` 或 `earliest:after=N` 的窗口。
+
+`current` 选择包含 CLI 内置 catalog 的 Wasmline 版本所在的 generation。
+`latest` 与 `earliest` 分别选择本地保留的最新与最早 generation；`all` 显式选择
+本地全部 generation，代价可能很高。窗口计数是额外的相邻数量：锚点 generation
+始终包含在内，所以 `current:before=1:after=1` 覆盖三个 AOT generation。计数必须
+是非负十进制整数；负数、溢出、带前导零的计数、重复或未知字段、`latest:after=N`
+这类不受支持的锚点方向、`..latest` 这类符号 endpoint、逗号列表、首尾空白以及多个
+`..` 分隔符都会被拒绝。token 不做归一化；重复传入的选择会并入同一个并集：
 
 ```bash
 ./wasmline-cli/cli.sh compile \
@@ -67,20 +93,20 @@ catalog 的 Wasmline 版本，而不是远程最新发行版。省略该 option 
 
 ./wasmline-cli/cli.sh compile \
   --input plugin.wasm \
-  --aot-generations 1.0.0 \
-  --aot-generations 1.0.1..latest \
+  --aot-generations 1.0.0..1.0.1 \
+  --aot-generations latest:before=1 \
   --target x86_64-linux
 ```
 
-区间两端都必须位于 catalog 的
-`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 范围内。对当前保留的
-catalog，`--aot-generations 1.0.0..latest` 因此与省略该 option 选出同样的 generation。
-空 token、倒置区间、以 `latest..1.0.1` 这类符号值作为起点，或越界的 endpoint 都会
-被拒绝，不会被裁剪为相交部分。解析到同一 generation 的不同取值以及复用的 backend profile
-都会去重并确定性排序。CLI 会在任何工具下载、Component 准备、编译或签名之前，
-一次性解析 catalog 边界与 profile，因此选择错误会在写出 package 之前暴露。这些
-输入是用于选择 catalog generation 的 Wasmline 版本，CLI 仍不接受任意 Wasmtime
-版本或 profile ID。
+每个具体 endpoint 都必须位于 catalog 的
+`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 范围内，窗口请求的相邻
+generation 也必须在本地存在。倒置区间、越界或本地不可用的选择，以及其他非法 token
+都会被拒绝，不会被裁剪为相交部分。解析到同一 generation 的不同取值以及
+复用的 backend profile 都会去重并确定性排序。选择完全基于随 CLI 打包的本地 catalog
+解析，不访问网络。CLI 会在任何工具下载、Component 准备、编译或签名之前，一次性解析
+catalog 边界与 profile，因此选择错误会在写出 package 之前暴露。这些输入是用于选择
+catalog generation 的 Wasmline 版本；CLI 仍不接受任意 Wasmtime 版本、profile ID，
+也不接受已删除的 `--aot-compatibility`、`--aot-version-range` 与 `--min-sdk`。
 
 ## Raw Export ABI
 

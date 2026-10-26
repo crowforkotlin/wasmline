@@ -69,12 +69,13 @@ A Wasmtime upgrade appends immutable Cranelift and Pulley profile descriptors,
 compiler-asset digests, and build-host bindings through the root
 `aot-compatibility.json` maintenance workflow. Already released profile IDs and
 provenance records are never rewritten. A
-plugin selects compatibility generations with `generations(...)` points or
-closed ranges; an omitted or empty selection builds every generation retained in
-the packaged catalog. Consumers do not enter Wasmtime versions or profile
-digests in the normal DSL; the Gradle plugin resolves those internal bindings
-from its packaged catalog. Publishing several generations in one manifest does
-not create additional Wasmline Maven versions or engine artifacts.
+plugin selects compatibility generations with typed `AotGenerations` strategies
+or concrete versions; an omitted or empty selection selects the current
+generation only, and building every locally retained generation requires the
+explicit `AotGenerations.All` opt-in. Consumers do not enter Wasmtime versions or
+profile digests in the normal DSL; the Gradle plugin resolves those internal
+bindings from its packaged catalog. Publishing several generations in one
+manifest does not create additional Wasmline Maven versions or engine artifacts.
 
 ## Release Tag
 

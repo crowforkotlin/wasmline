@@ -5,7 +5,7 @@ import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
 import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineAotCompatibilityCheckRequest
 import crow.wasmline.plugin.core.aot.WasmlineAotCompatibilityChecker
-import crow.wasmline.plugin.core.aot.decodeWasmlineVersionRange
+import crow.wasmline.plugin.core.aot.decodeAotGenerations
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
@@ -27,7 +27,7 @@ import org.gradle.work.DisableCachingByDefault
 @DisableCachingByDefault(because = "The advisory check observes bounded remote release state.")
 internal abstract class WasmlineCheckAotCompatibilityTask : DefaultTask() {
     @get:Input
-    abstract val aotCompatibilityRanges: ListProperty<String>
+    abstract val aotGenerationStrategies: ListProperty<String>
 
     @get:Input
     abstract val requestedBackends: ListProperty<String>
@@ -70,7 +70,7 @@ internal abstract class WasmlineCheckAotCompatibilityTask : DefaultTask() {
         }.toSet()
         val localCatalog = AotCompatibilityCatalog.publicReleaseCatalog()
         val selection = AotCompatibilitySelection(
-            ranges = aotCompatibilityRanges.get().map(::decodeWasmlineVersionRange),
+            strategies = aotGenerationStrategies.get().map(::decodeAotGenerations),
         )
         val resolution = AotCompatibilityCatalog.resolveSelection(
             selection = selection,

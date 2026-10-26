@@ -4,19 +4,19 @@ import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 
 /**
- * Selects local AOT generations from closed Wasmline version ranges.
+ * Selects local AOT generations with an implicit current-release strategy.
  *
  * Date: 2026-08-29
  * Author: crowforkotlin
  */
 @InternalWasmlineToolingApi
-data class AotCompatibilitySelection(val ranges: List<WasmlineVersionRange> = emptyList()) {
+data class AotCompatibilitySelection(val strategies: List<AotGenerations> = emptyList()) {
     /** Returns the stable selector name used by diagnostics and reports. */
     fun diagnosticName(): String = AOT_COMPATIBILITY_SELECTOR
 }
 
 /**
- * Defines one closed Wasmline version interval or the symbolic latest point.
+ * Defines one closed interval of concrete stable Wasmline versions.
  *
  * Date: 2026-08-29
  * Author: crowforkotlin
@@ -24,16 +24,14 @@ data class AotCompatibilitySelection(val ranges: List<WasmlineVersionRange> = em
 @InternalWasmlineToolingApi
 data class WasmlineVersionRange(val from: String, val through: String) {
     init {
-        require(isStableWasmlineVersion(from) || (from == "latest" && through == "latest")) {
-            "AOT range from version must use x.y.z, except for the latest point: '$from'."
+        require(isStableWasmlineVersion(from)) {
+            "AOT range from version must use x.y.z: '$from'."
         }
-        require(isStableWasmlineVersion(through) || through == "latest") {
-            "AOT range through version must use x.y.z or latest: '$through'."
+        require(isStableWasmlineVersion(through)) {
+            "AOT range through version must use x.y.z: '$through'."
         }
-        if (from != "latest" && through != "latest") {
-            require(compareWasmlineVersions(from, through) <= 0) {
-                "AOT range start '$from' must not exceed its end '$through'."
-            }
+        require(compareWasmlineVersions(from, through) <= 0) {
+            "AOT range start '$from' must not exceed its end '$through'."
         }
     }
 }
@@ -66,44 +64,69 @@ object AotCompatibilitySelectionResolver {
         releaseCatalog: WasmlineAotReleaseCatalog,
         profiles: Collection<AotCompatibilityProfileSpec>,
         requestedBackends: Set<WasmlineEngineKind>,
+        currentWasmlineVersion: String = releaseCatalog.currentWasmlineVersion,
     ): AotCompatibilityResolution {
         val normalizedBackends = requestedBackends
-            .distinct()
             .toSortedSet(compareBy(WasmlineEngineKind::name))
         require(normalizedBackends.isNotEmpty()) { "At least one AOT artifact backend is required." }
         releaseCatalog.validate(requireProfileBindings = true, profiles = profiles)
-        val currentVersion = releaseCatalog.currentWasmlineVersion
-        val minimumVersion = releaseCatalog.minimumSupportedWasmlineVersion
-        val selectedRanges = if (selection.ranges.isEmpty()) {
-            releaseCatalog.ranges
-        } else {
-            selection.ranges
-                .flatMap { requestedRange ->
-                    val range = if (requestedRange.through == "latest") {
-                        WasmlineVersionRange(
-                            from = if (requestedRange.from == "latest") currentVersion else requestedRange.from,
-                            through = currentVersion,
-                        )
-                    } else {
-                        requestedRange
-                    }
+        val currentGenerationIndex = generationIndex(currentWasmlineVersion, releaseCatalog)
+        val selectedGenerations = sortedSetOf<Int>()
+
+        fun includeWindow(anchor: Int, before: Int = 0, after: Int = 0) {
+            require(before <= anchor && after <= releaseCatalog.ranges.lastIndex - anchor) {
+                "AOT generation window before=$before after=$after around generation ${anchor + 1} " +
+                    "is outside the local catalog generations 1..${releaseCatalog.ranges.size}."
+            }
+            for (index in (anchor - before)..(anchor + after)) {
+                selectedGenerations.add(releaseCatalog.ranges[index].aotGeneration)
+            }
+        }
+
+        fun includeStrategy(strategy: AotGenerations) {
+            when (strategy) {
+                AotGenerations.Current -> includeWindow(currentGenerationIndex)
+                AotGenerations.Latest -> includeWindow(releaseCatalog.ranges.lastIndex)
+                AotGenerations.Earliest -> includeWindow(0)
+                AotGenerations.All -> releaseCatalog.ranges.forEach { range ->
+                    selectedGenerations.add(range.aotGeneration)
+                }
+                is AotGenerations.Versions -> strategy.ranges.forEach { range ->
                     require(
-                        compareWasmlineVersions(range.from, minimumVersion) >= 0 &&
-                            compareWasmlineVersions(range.through, currentVersion) <= 0,
+                        compareWasmlineVersions(range.from, releaseCatalog.minimumSupportedWasmlineVersion) >= 0 &&
+                            compareWasmlineVersions(range.through, releaseCatalog.currentWasmlineVersion) <= 0,
                     ) {
                         "AOT version range ${range.from} through ${range.through} is outside the local " +
-                            "Wasmline catalog $minimumVersion..$currentVersion."
+                            "Wasmline catalog ${releaseCatalog.minimumSupportedWasmlineVersion}.." +
+                            "${releaseCatalog.currentWasmlineVersion}."
                     }
-                    releaseCatalog.rangesIntersecting(range)
+                    releaseCatalog.rangesIntersecting(range).forEach { selected ->
+                        selectedGenerations.add(selected.aotGeneration)
+                    }
                 }
-                .distinctBy(WasmlineAotReleaseRange::aotGeneration)
-                .sortedBy(WasmlineAotReleaseRange::aotGeneration)
+                is AotGenerationWindow -> includeWindow(
+                    anchor = when (strategy.anchor) {
+                        AotGenerationAnchor.CURRENT -> currentGenerationIndex
+                        AotGenerationAnchor.LATEST -> releaseCatalog.ranges.lastIndex
+                        AotGenerationAnchor.EARLIEST -> 0
+                    },
+                    before = strategy.before,
+                    after = strategy.after,
+                )
+            }
         }
-        check(selectedRanges.isNotEmpty()) { "AOT compatibility selection resolved to no release generation." }
+
+        if (selection.strategies.isEmpty()) {
+            includeWindow(currentGenerationIndex)
+        } else {
+            for (strategy in selection.strategies) includeStrategy(strategy)
+        }
+        check(selectedGenerations.isNotEmpty()) { "AOT compatibility selection resolved to no release generation." }
 
         val profilesById = profiles.associateBy(AotCompatibilityProfileSpec::id)
         val selectedProfiles = linkedMapOf<String, AotCompatibilityProfileSpec>()
-        selectedRanges.forEach { range ->
+        selectedGenerations.forEach { generation ->
+            val range = releaseCatalog.ranges[generation - 1]
             normalizedBackends.forEach { backend ->
                 val profileId = range.profileIdsByBackend[backend]
                     ?: error("AOT generation ${range.aotGeneration} has no $backend profile binding.")
@@ -117,23 +140,80 @@ object AotCompatibilitySelectionResolver {
         }
         return AotCompatibilityResolution(
             selection = selection,
-            selectedGenerations = selectedRanges.map(WasmlineAotReleaseRange::aotGeneration).distinct().sorted(),
+            selectedGenerations = selectedGenerations.toList(),
             profiles = selectedProfiles.values.sortedWith(AOT_PROFILE_ORDER),
             requestedBackends = normalizedBackends,
         )
     }
+
+    private fun generationIndex(version: String, catalog: WasmlineAotReleaseCatalog): Int {
+        require(isStableWasmlineVersion(version)) { "Current Wasmline version must use x.y.z: '$version'." }
+        require(
+            compareWasmlineVersions(version, catalog.minimumSupportedWasmlineVersion) >= 0 &&
+                compareWasmlineVersions(version, catalog.currentWasmlineVersion) <= 0,
+        ) {
+            "Current Wasmline version '$version' is outside the local catalog " +
+                "${catalog.minimumSupportedWasmlineVersion}..${catalog.currentWasmlineVersion}."
+        }
+        return catalog.ranges.indexOfLast { range ->
+            compareWasmlineVersions(range.fromWasmlineVersion, version) <= 0
+        }
+    }
 }
 
-/** Encodes one custom range for Gradle task inputs without JSON parsing. */
+/** Encodes a typed strategy as a primitive Gradle task input. */
 @InternalWasmlineToolingApi
-fun WasmlineVersionRange.encodeForTaskInput(): String = "$from\u0000$through"
+fun AotGenerations.encodeForTaskInput(): String = when (this) {
+    AotGenerations.Current -> "current"
+    AotGenerations.Latest -> "latest"
+    AotGenerations.Earliest -> "earliest"
+    AotGenerations.All -> "all"
+    is AotGenerations.Versions -> buildString {
+        append("versions")
+        ranges.forEach { range ->
+            append('\u0000').append(range.from).append('\u0000').append(range.through)
+        }
+    }
+    is AotGenerationWindow -> "window\u0000${anchor.token}\u0000$before\u0000$after"
+}
 
-/** Decodes one custom range from a Gradle task input. */
+/** Decodes a typed strategy before local selection and compiler resolution. */
 @InternalWasmlineToolingApi
-fun decodeWasmlineVersionRange(value: String): WasmlineVersionRange {
-    val parts = value.split('\u0000')
-    require(parts.size == 2) { "Invalid encoded Wasmline AOT version range." }
-    return WasmlineVersionRange(from = parts[0], through = parts[1])
+fun decodeAotGenerations(value: String): AotGenerations {
+    val fields = value.split('\u0000')
+    when (fields.first()) {
+        "current", "latest", "earliest", "all" -> {
+            require(fields.size == 1) { "Invalid encoded AOT generation strategy." }
+            return when (value) {
+                "current" -> AotGenerations.Current
+                "latest" -> AotGenerations.Latest
+                "earliest" -> AotGenerations.Earliest
+                else -> AotGenerations.All
+            }
+        }
+        "versions" -> {
+            require(fields.size >= 3 && fields.size % 2 == 1) { "Invalid encoded AOT version selection." }
+            val ranges = ArrayList<WasmlineVersionRange>((fields.size - 1) / 2)
+            for (index in 1 until fields.size step 2) {
+                ranges.add(WasmlineVersionRange(fields[index], fields[index + 1]))
+            }
+            return AotGenerations.Versions(ranges)
+        }
+        "window" -> {
+            require(fields.size == 4) { "Invalid encoded AOT generation window." }
+            val anchor = AotGenerationAnchor.entries.firstOrNull { it.token == fields[1] }
+                ?: throw IllegalArgumentException("Invalid encoded AOT generation anchor.")
+            val before = decodeGenerationCount(fields[2])
+            val after = decodeGenerationCount(fields[3])
+            return AotGenerationWindow(anchor, before, after)
+        }
+        else -> throw IllegalArgumentException("Invalid encoded AOT generation strategy.")
+    }
+}
+
+private fun decodeGenerationCount(value: String): Int {
+    require(value.isNotEmpty() && value.all { it in '0'..'9' }) { "AOT generation counts must be nonnegative integers." }
+    return value.toIntOrNull() ?: throw IllegalArgumentException("AOT generation count exceeds Int.MAX_VALUE.")
 }
 
 internal val AOT_PROFILE_ORDER: Comparator<AotCompatibilityProfileSpec> = compareBy(

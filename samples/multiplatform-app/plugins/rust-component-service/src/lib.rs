@@ -1,4 +1,5 @@
 wit_bindgen::generate!({
+    path: "../../../../wasmline-plugin-core/src/main/resources/META-INF/wasmline/wit/wasmline-service",
     world: "plugin",
 });
 

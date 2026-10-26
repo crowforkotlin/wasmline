@@ -1,6 +1,7 @@
 @file:Suppress("OPT_IN_USAGE")
 
 import crow.wasmline.gradle.WasmlineBuildVariant
+import crow.wasmline.plugin.core.aot.AotGenerations
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -43,7 +44,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            generations("latest")
+            generations(AotGenerations.Current)
         }
         autoDownload = true
         githubToken = providers.gradleProperty("github.token").orNull

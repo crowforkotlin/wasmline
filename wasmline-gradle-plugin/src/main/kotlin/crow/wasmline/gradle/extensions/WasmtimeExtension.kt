@@ -3,7 +3,7 @@
 package crow.wasmline.gradle.extensions
 
 import crow.wasmline.gradle.WasmtimeTarget
-import crow.wasmline.plugin.core.aot.WasmlineVersionRange
+import crow.wasmline.plugin.core.aot.AotGenerations
 import crow.wasmline.plugin.core.aot.encodeForTaskInput
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.model.ObjectFactory
@@ -17,26 +17,36 @@ import javax.inject.Inject
  * Selects the local AOT generations a Wasmline build compiles.
  *
  * An omitted block, an empty block, and a block that only configures
- * [suppressCompatibilityWarning] all select every generation retained in the
- * packaged catalog. The first [generations] call replaces that implicit
- * default; later calls add their generations to the union.
+ * [suppressCompatibilityWarning] all select [AotGenerations.Current]: the
+ * generation containing the currently introduced Wasmline build-tool
+ * version. The first [generations] call replaces that implicit default; later
+ * calls add their strategies to the union, which is deduplicated across
+ * generations and profiles. Selecting [AotGenerations.All] is an explicit
+ * opt-in that may compile every retained generation.
  *
  * ```kotlin
  * wasmline {
  *     wasmtime {
  *         aotCompatibility {
+ *             generations(AotGenerations.Current)
+ *             generations(AotGenerations.Current(before = 1))
  *             generations("1.0.0")
- *             generations(from = "1.0.1", through = "latest")
+ *             generations(versions = listOf("1.0.0", "1.0.1"))
+ *             generations(min = "1.0.0", max = "1.0.1")
  *         }
  *     }
  * }
  * ```
  *
+ * `Current(after = 1)` is the symmetric forward-looking form; it requires a
+ * locally retained successor generation and fails before tool preparation
+ * when none exists yet.
+ *
  * Date: 2026-08-29
  * Author: crowforkotlin
  */
 public abstract class AotCompatibilityExtension @Inject constructor(objects: ObjectFactory) {
-    private val generationRangesProperty: ListProperty<String> = objects.listProperty(String::class.java)
+    private val generationStrategiesProperty: ListProperty<String> = objects.listProperty(String::class.java)
         .convention(emptyList())
 
     /** Controls whether the post-build compatibility warning is omitted from Gradle logging. */
@@ -44,33 +54,41 @@ public abstract class AotCompatibilityExtension @Inject constructor(objects: Obj
         .convention(false)
 
     /**
-     * Selects the AOT generation that contains one Wasmline version.
+     * Selects the generations described by one typed [AotGenerations] strategy.
      *
-     * `"latest"` selects the generation of the catalog's current Wasmline
-     * version; any other value must be a stable `x.y.z` version inside the
-     * local catalog.
+     * The named singleton objects select the current release generation, the
+     * newest retained generation, the oldest retained generation, or every
+     * retained generation. `Current(before, after)`, `Latest(before)`, and
+     * `Earliest(after)` include that many *additional* neighboring generations
+     * around the anchor, which is always included and is not counted. Those
+     * counts are AOT generations, not Maven release versions.
+     * `AotGenerations.Versions` selects one concrete `x.y.z` version, a
+     * collection of concrete versions, or a closed `min`..`max` interval.
      */
+    public fun generations(strategy: AotGenerations) {
+        generationStrategiesProperty.add(strategy.encodeForTaskInput())
+    }
+
+    /** Selects the AOT generation that contains one concrete `x.y.z` Wasmline version. */
     public fun generations(version: String) {
-        generationRangesProperty.add(WasmlineVersionRange(from = version, through = version).encodeForTaskInput())
+        generations(AotGenerations.Versions(version))
+    }
+
+    /** Selects the AOT generations containing each concrete `x.y.z` version in [versions]. */
+    public fun generations(versions: Collection<String>) {
+        generations(AotGenerations.Versions(versions))
     }
 
     /**
      * Selects every AOT generation intersecting the inclusive
-     * `from`..`through` Wasmline version range.
-     *
-     * `from` must be a stable `x.y.z` version; `through` may also be
-     * `"latest"`, which resolves to the catalog's current version.
+     * concrete `min`..`max` Wasmline version interval.
      */
-    public fun generations(from: String, through: String) {
-        require(from != "latest") {
-            "AOT generation range start must be a stable x.y.z version; " +
-                "use generations(\"latest\") to select the current generation."
-        }
-        generationRangesProperty.add(WasmlineVersionRange(from = from, through = through).encodeForTaskInput())
+    public fun generations(min: String, max: String) {
+        generations(AotGenerations.Versions(min, max))
     }
 
-    internal val generationRanges: Provider<List<String>>
-        get() = generationRangesProperty
+    internal val generationStrategies: Provider<List<String>>
+        get() = generationStrategiesProperty
 }
 
 /**
@@ -80,7 +98,8 @@ public abstract class AotCompatibilityExtension @Inject constructor(objects: Obj
  * wasmline {
  *     wasmtime {
  *         aotCompatibility {
- *             generations("latest")
+ *             generations(AotGenerations.Current)
+ *             generations(AotGenerations.Latest(before = 1))
  *         }
  *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
  *         autoDownload.set(true)

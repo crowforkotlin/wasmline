@@ -11,7 +11,7 @@ import crow.wasmline.plugin.core.aot.WasmlineAotBuildService
 import crow.wasmline.plugin.core.aot.WasmlineAotTargetSpec
 import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
 import crow.wasmline.plugin.core.aot.WasmlineRawAbiMetadataCodec
-import crow.wasmline.plugin.core.aot.decodeWasmlineVersionRange
+import crow.wasmline.plugin.core.aot.decodeAotGenerations
 import crow.wasmline.plugin.core.component.ComponentBuildRecords
 import crow.wasmline.plugin.core.packaging.WasmlineDirectoryTransaction
 import kotlinx.coroutines.runBlocking
@@ -64,7 +64,7 @@ internal abstract class WasmlineAotBuildTask : DefaultTask() {
     abstract val targets: ListProperty<String>
 
     @get:Input
-    abstract val aotCompatibilityRanges: ListProperty<String>
+    abstract val aotGenerationStrategies: ListProperty<String>
 
     @get:Input
     abstract val autoDownload: Property<Boolean>
@@ -153,7 +153,7 @@ internal abstract class WasmlineAotBuildTask : DefaultTask() {
 
     private fun resolveCompatibility() = runCatching {
         val selection = AotCompatibilitySelection(
-            ranges = aotCompatibilityRanges.get().map(::decodeWasmlineVersionRange),
+            strategies = aotGenerationStrategies.get().map(::decodeAotGenerations),
         )
         val targetSpecs = WasmlineArtifactTargetFactory.create(targets.get())
         AotCompatibilityCatalog.resolveSelection(

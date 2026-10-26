@@ -2,7 +2,7 @@
 title: CLI Reference
 description: Build, sign, inspect, and package Wasmline plugins
 createdAt: 2026-07-18
-updatedAt: 2026-10-25
+updatedAt: 2026-10-26
 ---
 
 # CLI Reference
@@ -26,6 +26,7 @@ CLI distribution and forwards its arguments:
 | `aot-profiles describe <id>` | Show one profile descriptor and its build hosts |
 | `componentize` | Create or inspect the raw Component used as AOT input |
 | `tools download` | Download locked Component tools |
+| `wit export` | Write the canonical `wasmline:service` WIT for non-Kotlin guests |
 | `wit generate` | Generate WIT bindings |
 | `component validate` | Validate a Component |
 | `component inspect` | Print a Component's WIT |
@@ -36,6 +37,23 @@ catalog. The removed `--aot-compatibility`, `--aot-version-range`, and
 `--min-sdk` options have no aliases either; AOT coverage is selected only through
 `--aot-generations`.
 
+## Export Service WIT
+
+```bash
+./wasmline-cli/cli.sh wit export --output build/wasmline/wit
+```
+
+This writes `build/wasmline/wit/wasmline.wit`, the canonical
+`wasmline:service@1.0.0` contract packaged with this CLI version. `--output` names
+a directory and defaults to `build/wasmline/wit`; missing directories are created
+and an existing `wasmline.wit` is overwritten.
+
+`wit export` only copies the resource. It does not generate bindings or download
+Component tools. Use the exported directory with the guest language's binding
+generator, such as `wit-bindgen c`, `wit-bindgen cpp`, or Rust's
+`wit_bindgen::generate!`. The separate `wit generate` command still generates
+Kotlin bindings only.
+
 ## Build a Package
 
 ```bash
@@ -43,7 +61,7 @@ catalog. The removed `--aot-compatibility`, `--aot-version-range`, and
 
 ./wasmline-cli/cli.sh build \
   --input plugin.wasm \
-  --aot-generations latest \
+  --aot-generations current \
   --target pulley64 \
   --target x86_64-linux \
   --auto-download \
@@ -53,14 +71,26 @@ catalog. The removed `--aot-compatibility`, `--aot-version-range`, and
   --key build/wasmline/keys/ed25519_private.key
 ```
 
-`--aot-generations` is repeatable. Each value is a stable `x.y.z` Wasmline
-version, the exact lowercase token `latest`, or a closed `FROM..THROUGH` range
-whose `FROM` is a stable version and whose `THROUGH` is a stable version or
-`latest`. Values are exact tokens: the CLI does not split comma lists, trim
-whitespace, accept open ranges, or accept more than one `..` delimiter.
-`latest` refers to the Wasmline version of the catalog packaged into the CLI,
-not the newest remote release. Omitting the option selects every generation
-retained in that local catalog; repeated values contribute to one union:
+`--aot-generations` is repeatable, and omitting it selects `current`. Each
+occurrence accepts exactly one of:
+
+- a concrete stable `x.y.z` version;
+- a concrete closed `MIN..MAX` version interval;
+- the exact lowercase strategy token `current`, `latest`, `earliest`, or `all`;
+- a window such as `current:before=N`, `current:after=N`,
+  `current:before=N:after=M` in either distinct-field order, `latest:before=N`,
+  or `earliest:after=N`.
+
+`current` selects the generation that contains the Wasmline version of the
+catalog packaged into the CLI. `latest` and `earliest` select the newest and
+oldest generations retained locally, and `all` opts into every local generation,
+which may be expensive. Window counts are additional neighbors: the anchor
+generation is always included, so `current:before=1:after=1` covers three AOT
+generations. Counts are nonnegative decimal integers; negative, overflowed, or
+zero-padded counts, duplicate or unknown fields, unsupported anchor directions
+such as `latest:after=N`, a symbolic endpoint such as `..latest`, comma lists,
+padded whitespace, and multiple `..` separators are rejected. Tokens are exact
+and are not normalized; repeated occurrences contribute to one union:
 
 ```bash
 ./wasmline-cli/cli.sh compile \
@@ -70,24 +100,24 @@ retained in that local catalog; repeated values contribute to one union:
 
 ./wasmline-cli/cli.sh compile \
   --input plugin.wasm \
-  --aot-generations 1.0.0 \
-  --aot-generations 1.0.1..latest \
+  --aot-generations 1.0.0..1.0.1 \
+  --aot-generations latest:before=1 \
   --target x86_64-linux
 ```
 
-Both endpoints of a range must lie inside the catalog's
-`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` bounds. For the
-catalog retained today, `--aot-generations 1.0.0..latest` therefore selects the
-same generations as omitting the option. An empty token, an inverted range, a
-symbolic range start such as `latest..1.0.1`, or an out-of-range endpoint is
-rejected without clipping to the intersecting part.
-Different values that resolve to the same generation, and reused backend
-profiles, are deduplicated and sorted deterministically. The CLI resolves
-catalog bounds and profiles once before any tool download, Component
-preparation, compilation, or signing, so selection errors surface before a
-package is written. These inputs are Wasmline versions that select catalog
-generations; the CLI still does not accept a free-form Wasmtime version or
-profile ID.
+Every concrete endpoint must lie inside the catalog's
+`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` bounds and every
+window neighbor must exist locally. An inverted range, an out-of-range or
+unavailable selection, or an otherwise invalid token is rejected without
+clipping to the intersecting part. Different values that resolve to the same
+generation, and reused backend profiles, are deduplicated and sorted
+deterministically. Selection is resolved entirely from the packaged
+local catalog and never reads the network. The CLI resolves catalog bounds and
+profiles once before any tool download, Component preparation, compilation, or
+signing, so selection errors surface before a package is written. These inputs
+are Wasmline versions that select catalog generations; the CLI still does not
+accept a free-form Wasmtime version, a profile ID, or the removed
+`--aot-compatibility`, `--aot-version-range`, and `--min-sdk` flags.
 
 ## Raw Export ABI
 

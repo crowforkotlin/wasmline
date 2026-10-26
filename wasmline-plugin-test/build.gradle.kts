@@ -2,6 +2,7 @@
 
 import crow.wasmline.gradle.WasmlineBuildVariant
 import crow.wasmline.gradle.WasmtimeTarget
+import crow.wasmline.plugin.core.aot.AotGenerations
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -58,7 +59,7 @@ wasmline {
     }
     wasmtime {
         aotCompatibility {
-            generations("latest")
+            generations(AotGenerations.Current)
         }
         autoDownload = true
         targets = listOf(testPluginCompileTarget)

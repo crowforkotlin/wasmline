@@ -41,7 +41,11 @@ internal class Compile : CliktCommand(name = "compile") {
     private val aotGenerations by option("--aot-generations")
         .multiple()
         .unique()
-        .help("AOT Wasmline generation: x.y.z, latest, or FROM..THROUGH. Repeatable; omitted selects every local generation")
+        .help(
+            "AOT generation: current (default), latest, earliest, all (opt-in, every local generation); " +
+                "concrete x.y.z or MIN..MAX; windows current:before=N:after=M, latest:before=N, " +
+                "earliest:after=N. Repeatable",
+        )
     private val compilerCache by option("--aot-compiler-cache")
         .file(canBeFile = false, canBeDir = true)
         .default(defaultAotCompilerCacheDirectory())

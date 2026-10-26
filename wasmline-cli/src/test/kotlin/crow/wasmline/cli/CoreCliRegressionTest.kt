@@ -96,35 +96,41 @@ class CoreCliRegressionTest {
         val cacheSnapshot = compilerCache.snapshot()
         val catalog = AotCompatibilityCatalog.releaseCatalog()
         val outOfBounds = successorAotVersion(catalog.currentWasmlineVersion)
+        val invalidSelections = listOf(
+            "${catalog.minimumSupportedWasmlineVersion}..$outOfBounds" to outOfBounds,
+            "current:after=${catalog.ranges.size}" to "after=${catalog.ranges.size}",
+        )
 
-        val command = Compile()
-        val echoed = command.captureEcho()
-        val failure = assertFailsWith<ProgramResult> {
-            command.parse(
-                listOf(
-                    "--input",
-                    input.absolutePath,
-                    "--output",
-                    outputRoot.absolutePath,
-                    "--name",
-                    "plugin",
-                    "--version",
-                    "1.0.0",
-                    "--aot-compiler-cache",
-                    compilerCache.absolutePath,
-                    "--target",
-                    "pulley64",
-                    "--aot-generations",
-                    "${catalog.minimumSupportedWasmlineVersion}..$outOfBounds",
-                ),
-            )
+        for ((invalidSelection, expectedToken) in invalidSelections) {
+            val command = Compile()
+            val echoed = command.captureEcho()
+            val failure = assertFailsWith<ProgramResult> {
+                command.parse(
+                    listOf(
+                        "--input",
+                        input.absolutePath,
+                        "--output",
+                        outputRoot.absolutePath,
+                        "--name",
+                        "plugin",
+                        "--version",
+                        "1.0.0",
+                        "--aot-compiler-cache",
+                        compilerCache.absolutePath,
+                        "--target",
+                        "pulley64",
+                        "--aot-generations",
+                        invalidSelection,
+                    ),
+                )
+            }
+
+            assertEquals(1, failure.statusCode)
+            assertSelectionFailure(echoed, expectedToken)
+            assertEquals(outputSnapshot, outputRoot.snapshot())
+            assertEquals(cacheSnapshot, compilerCache.snapshot())
+            assertEquals(emptyList(), outputRoot.stagingDirectories("plugin-1.0.0"))
         }
-
-        assertEquals(1, failure.statusCode)
-        assertSelectionFailure(echoed, outOfBounds)
-        assertEquals(outputSnapshot, outputRoot.snapshot())
-        assertEquals(cacheSnapshot, compilerCache.snapshot())
-        assertEquals(emptyList(), outputRoot.stagingDirectories("plugin-1.0.0"))
     }
 
     @Test
@@ -138,14 +144,18 @@ class CoreCliRegressionTest {
         val distributionDirectory = File(buildRoot, "dist")
         val packageDirectory = File(outputRoot, folderName)
         val archive = File(distributionDirectory, "$folderName.zip")
-        val minimumVersion = AotCompatibilityCatalog.releaseCatalog().minimumSupportedWasmlineVersion
-        val currentVersion = AotCompatibilityCatalog.releaseCatalog().currentWasmlineVersion
+        val catalog = AotCompatibilityCatalog.releaseCatalog()
+        val minimumVersion = catalog.minimumSupportedWasmlineVersion
+        val currentVersion = catalog.currentWasmlineVersion
         val aboveCurrent = successorAotVersion(currentVersion)
         val belowMinimum = predecessorAotVersion(minimumVersion)
         val invalidSelections = listOf(
             "$minimumVersion..$aboveCurrent" to aboveCurrent,
             "$belowMinimum..$minimumVersion" to belowMinimum,
             "$currentVersion..$belowMinimum" to currentVersion,
+            "current:after=${catalog.ranges.size}" to "after=${catalog.ranges.size}",
+            "latest:before=${catalog.ranges.size}" to "before=${catalog.ranges.size}",
+            "current:before=01" to "before=01",
         )
         val buildRootExisted = buildRoot.exists()
         val outputRootExisted = outputRoot.exists()

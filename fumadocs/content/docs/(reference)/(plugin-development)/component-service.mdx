@@ -2,7 +2,7 @@
 title: Component Service Protocol
 description: Fixed WIT request format, Component build steps, and host callbacks
 createdAt: 2026-08-05
-updatedAt: 2026-09-04
+updatedAt: 2026-10-26
 ---
 
 # Component Service Protocol
@@ -45,7 +45,8 @@ For the Kotlin/Wasm WASI sample, run these steps in order:
 
 The Gradle entry point is `wasmlineAssembleDebug` or
 `wasmlineAssembleRelease`. The CLI exposes the individual stages through
-`wit generate`, `componentize`, `component validate`, and `component inspect`.
+`wit export`, `wit generate`, `componentize`, `component validate`, and
+`component inspect`.
 `compile --execution-model COMPONENT_MODEL` also runs Component AOT. See the
 [Gradle Plugin reference](/en/docs/gradle-plugin) for task names. The native
 loader receives a finished Component artifact and does not run generators or
@@ -53,7 +54,11 @@ compilers while loading.
 
 Rust can target `wasm32-wasip2` and produce a Component directly. The fixture at
 `samples/multiplatform-app/plugins/rust-component-service` pins the forked `wit-bindgen`
-0.57.1 Git tag. Generated bindings are build outputs and are not committed.
+0.57.1 Git tag and points `wit_bindgen::generate!` at the canonical WIT in
+`wasmline-plugin-core` without a checked-in fixture copy. Generated bindings are
+build outputs and are not committed. Out-of-tree guests can export the same
+contract with `wit export --output <dir>`; see the
+[CLI reference](/en/docs/cli) for the command and output layout.
 
 C and C++ target `wasm32-wasip1` through the verified WASI SDK 33 baseline. Their
 fixtures are `samples/multiplatform-app/plugins/c-component-service` and

@@ -138,14 +138,13 @@ profile IDs.
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
+import crow.wasmline.plugin.core.aot.AotGenerations
 
 wasmline {
     wasmtime {
-        // `generations` narrows the build to the generation of the current
-        // local Wasmline release; omit the block to compile every generation
-        // retained in the local catalog.
+        // Omit `aotCompatibility` to compile the current generation only.
         aotCompatibility {
-            generations("latest")
+            generations(AotGenerations.Current)
         }
         targets = listOf(
             WasmtimeTarget.PULLEY_64,
@@ -158,41 +157,79 @@ wasmline {
 ```
 
 Omitting the block, leaving it empty, or only setting
-`suppressCompatibilityWarning` keeps every locally retained generation:
+`suppressCompatibilityWarning` selects the generation that contains the
+currently introduced Wasmline build-tool version:
 
 ```kotlin
 wasmline {
     wasmtime {
-        // No `aotCompatibility` call: compile every generation in the catalog.
+        // No `aotCompatibility` call: compile the current generation only.
     }
 }
 ```
 
-Points and closed ranges can be combined in one block; the first explicit call
-replaces the implicit default and every later call is a union:
+Typed strategies and concrete version selections can be combined in one block;
+the first explicit call replaces the implicit current default and every later
+call is a union:
 
 ```kotlin
 wasmline {
     wasmtime {
         aotCompatibility {
-            generations("1.0.0")
-            generations(from = "1.0.1", through = "latest")
+            generations(AotGenerations.Current(before = 1))
+            generations(AotGenerations.Latest)
+            generations(AotGenerations.Earliest(after = 1))
+            generations(AotGenerations.Versions(min = "1.0.0", max = "1.0.1"))
+            generations(versions = listOf("1.0.0", "1.0.1"))
+            generations(min = "1.0.0", max = "1.0.1")
         }
     }
 }
 ```
 
-`generations(version)` selects the generation containing one stable Wasmline
-release version, and `generations(from = ..., through = ...)` selects a closed
-range. `"latest"` means the local catalog current version and is valid as a
-point or as the range end; `generations("latest")` selects only the current
-generation. The first explicit call replaces the implicit all-generations
-default and later calls add their generations to the union. Duplicate
-generations and reused backend profiles are deduplicated. Both endpoints must
-lie inside the locally supported catalog interval, and inverted or out-of-range
-input fails the build instead of being clipped. Selection never reads the
-network. The public input is a Wasmline release version; Wasmtime distribution
-versions and profile digests are internal catalog and diagnostic values.
+`AotGenerations.Current`, `Latest`, `Earliest`, and `All` each select one
+strategy, and `Current(before = 1, after = 1)`, `Latest(before = 1)`, and
+`Earliest(after = 1)` add adjacent AOT generations. The counts are additional
+neighbors: the anchor generation is always included, so
+`Current(before = 1, after = 1)` covers three generations when both neighbors
+exist locally. Windows count AOT generations, not Maven release versions, and a
+requested neighbor that does not exist locally fails the build instead of being
+clipped. `All` is opt-in and may compile every generation retained in the
+packaged catalog:
+
+```kotlin
+wasmline {
+    wasmtime {
+        aotCompatibility {
+            generations(AotGenerations.All)
+        }
+    }
+}
+```
+
+`generations(version)` selects the generation containing one concrete `x.y.z`
+Wasmline version, `generations(versions = listOf(...))` selects a non-empty
+collection of concrete versions, and `generations(min = ..., max = ...)`
+selects the closed interval between two concrete versions. The typed
+`AotGenerations.Versions` form is equivalent to those overloads:
+`Versions(version)`, `Versions(versions)`, and `Versions(min, max)`. The string
+inputs are always concrete versions; there is no symbolic version string, and
+`from`/`through` overloads do not exist. `Latest` is the newest generation
+retained locally, `Earliest` is the oldest, and `Current` anchors on the
+build-tool release version, so `Current` and `Latest` coincide while the
+packaged catalog retains no newer generation. The first explicit call replaces
+the implicit current default and later calls add their generations to the
+union. Duplicate generations and reused backend profiles are deduplicated, so
+several versions from one generation compile once. Selection is resolved
+entirely from the packaged local catalog and never reads the network. Every
+concrete version must lie inside the locally supported
+`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` interval, and
+out-of-range, inverted, or unavailable input fails the build instead of being
+clipped. A project with a WASI assemble graph fails at configuration time with
+`[WLAOT100]`; AOT and check task actions otherwise reject the selection before
+downloading compilers or signing a package. The public input is a Wasmline
+release version; Wasmtime distribution versions and profile digests are internal
+catalog and diagnostic values.
 
 After a successful assemble, `wasmlineCheckAotCompatibility` compares the local
 selection with the latest stable catalog and writes a report to

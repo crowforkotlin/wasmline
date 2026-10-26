@@ -22,7 +22,7 @@ import crow.wasmline.plugin.core.aot.AotCompatibilitySelection
 import crow.wasmline.plugin.core.aot.WasmlineAotTargetSpec
 import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
 import crow.wasmline.plugin.core.aot.WasmlineRawAbiMetadataCodec
-import crow.wasmline.plugin.core.aot.decodeWasmlineVersionRange
+import crow.wasmline.plugin.core.aot.decodeAotGenerations
 import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
 import crow.wasmline.plugin.core.util.PlatformDetector
 import org.gradle.api.GradleException
@@ -73,7 +73,7 @@ import kotlin.jvm.java
  *         privateKeyFile = file("../keys/private.key")
  *     }
  *     wasmtime {
- *         aotCompatibility { generations("latest") }
+ *         aotCompatibility { generations(AotGenerations.Current) }
  *         targets = listOf(WasmtimeTarget.PULLEY_64, WasmtimeTarget.X86_64_LINUX)
  *         autoDownload.set(true)
  *     }
@@ -288,7 +288,7 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
     ) = project.tasks.register("wasmlineCheckAotCompatibility", WasmlineCheckAotCompatibilityTask::class.java) { task ->
         task.assembleStateService.set(stateService)
         task.usesService(stateService)
-        task.aotCompatibilityRanges.set(ext.wasmtime.aotCompatibility.generationRanges)
+        task.aotGenerationStrategies.set(ext.wasmtime.aotCompatibility.generationStrategies)
         task.requestedBackends.set(project.provider { requestedAotBackends(ext) })
         task.nativeTargetCount.set(project.provider { requestedAotTargetSpecs(ext).size })
         task.offline.set(project.provider { project.gradle.startParameter.isOffline })
@@ -307,10 +307,10 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
      * invalid selection fails before any tool download. Task actions still validate inputs.
      */
     private fun preflightAotGenerationSelection(ext: WasmlineExtension) {
-        val ranges = ext.wasmtime.aotCompatibility.generationRanges.get()
+        val strategies = ext.wasmtime.aotCompatibility.generationStrategies.get()
         runCatching {
             AotCompatibilityCatalog.resolveSelection(
-                selection = AotCompatibilitySelection(ranges = ranges.map(::decodeWasmlineVersionRange)),
+                selection = AotCompatibilitySelection(strategies.map(::decodeAotGenerations)),
                 artifactBackends = requestedAotTargetSpecs(ext).map(WasmlineAotTargetSpec::artifactBackend).toSet(),
             )
         }.getOrElse { error ->
@@ -567,7 +567,7 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
             task.contractMetadata.set(ext.manifest.contractMetadata)
             task.rawAbiMetadataJson.set(ext.manifest.rawAbi.map(WasmlineRawAbiMetadataCodec::encode))
             task.targets.set(ext.wasmtime.targetsProvider.map { targets -> targets.map(WasmtimeTarget::targetName) })
-            task.aotCompatibilityRanges.set(ext.wasmtime.aotCompatibility.generationRanges)
+            task.aotGenerationStrategies.set(ext.wasmtime.aotCompatibility.generationStrategies)
             task.autoDownload.set(ext.wasmtime.autoDownload)
             task.buildHost.set(detectCurrentPlatform())
             task.maxParallelCompilations.set(ext.wasmtime.maxParallelCompilations)
