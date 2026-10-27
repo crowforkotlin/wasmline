@@ -185,13 +185,11 @@ class CliAotSelectionTest {
     private fun resolve(tokens: Collection<String>): AotCompatibilityResolution =
         resolveCliAotSelection(parseCliAotSelection(tokens), listOf("pulley64"))
 
-    private fun localGenerations(): List<Int> =
-        AotCompatibilityCatalog.releaseCatalog().ranges.map { range -> range.aotGeneration }
+    private fun localGenerations(): List<Int> = AotCompatibilityCatalog.releaseCatalog().ranges.map { range -> range.aotGeneration }
 
-    private fun localPulleyProfileIds(): List<String> =
-        AotCompatibilityCatalog.releaseCatalog().ranges.mapNotNull { range ->
-            range.profileIdsByBackend[WasmlineEngineKind.PULLEY]
-        }.distinct()
+    private fun localPulleyProfileIds(): List<String> = AotCompatibilityCatalog.releaseCatalog().ranges.mapNotNull { range ->
+        range.profileIdsByBackend[WasmlineEngineKind.PULLEY]
+    }.distinct()
 }
 
 /** Returns the stable version immediately below one local catalog version. */

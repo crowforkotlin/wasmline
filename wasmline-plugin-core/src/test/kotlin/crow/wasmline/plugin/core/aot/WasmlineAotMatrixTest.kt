@@ -96,23 +96,21 @@ class WasmlineAotMatrixTest {
     @Test
     fun buildRequestOnlyAcceptsTheGenerationsSelectorAndPositiveGenerations() = withMatrixDirectory { root ->
         val input = File(root, "plugin.component.wasm").apply { writeBytes(byteArrayOf(1)) }
-        fun request(
-            selector: String = "generations",
-            generations: Collection<Int> = listOf(1),
-        ): WasmlineAotBuildRequest = WasmlineAotBuildRequest(
-            inputFile = input,
-            packageDirectory = File(root, "package"),
-            workingDirectory = File(root, "working"),
-            runtimeContract = WasmlineRuntimeContract(
-                WasmlineExecutionModel.COMPONENT_MODEL,
-                WasmlineInvocationProtocol.COMPONENT_EXPORT,
-            ),
-            targets = listOf("pulley64"),
-            resolvedProfileIds = listOf("sha256:${"a".repeat(64)}"),
-            aotCompatibilitySelector = selector,
-            selectedAotGenerations = generations,
-            publishRawWasm = false,
-        )
+        fun request(selector: String = "generations", generations: Collection<Int> = listOf(1)): WasmlineAotBuildRequest =
+            WasmlineAotBuildRequest(
+                inputFile = input,
+                packageDirectory = File(root, "package"),
+                workingDirectory = File(root, "working"),
+                runtimeContract = WasmlineRuntimeContract(
+                    WasmlineExecutionModel.COMPONENT_MODEL,
+                    WasmlineInvocationProtocol.COMPONENT_EXPORT,
+                ),
+                targets = listOf("pulley64"),
+                resolvedProfileIds = listOf("sha256:${"a".repeat(64)}"),
+                aotCompatibilitySelector = selector,
+                selectedAotGenerations = generations,
+                publishRawWasm = false,
+            )
 
         assertEquals("generations", request().aotCompatibilitySelector)
         listOf("current", "minimum", "all", "versionRanges", "").forEach { retired ->

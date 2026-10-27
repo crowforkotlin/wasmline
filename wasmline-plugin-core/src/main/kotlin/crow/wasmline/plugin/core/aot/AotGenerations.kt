@@ -14,15 +14,13 @@ public sealed interface AotGenerations {
     /** The newest generation retained in the local catalog, without a remote lookup. */
     public data object Latest : AotGenerations {
         /** Includes the newest generation plus [before] earlier AOT generations. */
-        public operator fun invoke(before: Int = 0): AotGenerations =
-            generationWindow(AotGenerationAnchor.LATEST, before, 0)
+        public operator fun invoke(before: Int = 0): AotGenerations = generationWindow(AotGenerationAnchor.LATEST, before, 0)
     }
 
     /** The oldest generation retained in the local catalog. */
     public data object Earliest : AotGenerations {
         /** Includes the oldest generation plus [after] later AOT generations. */
-        public operator fun invoke(after: Int = 0): AotGenerations =
-            generationWindow(AotGenerationAnchor.EARLIEST, 0, after)
+        public operator fun invoke(after: Int = 0): AotGenerations = generationWindow(AotGenerationAnchor.EARLIEST, 0, after)
     }
 
     /** Every retained generation; opting in may require many compiler invocations. */
@@ -60,11 +58,7 @@ internal enum class AotGenerationAnchor(val token: String) {
     EARLIEST("earliest"),
 }
 
-internal data class AotGenerationWindow(
-    val anchor: AotGenerationAnchor,
-    val before: Int,
-    val after: Int,
-) : AotGenerations {
+internal data class AotGenerationWindow(val anchor: AotGenerationAnchor, val before: Int, val after: Int) : AotGenerations {
     init {
         require(before >= 0 && after >= 0) { "AOT generation counts must be nonnegative." }
         require(anchor != AotGenerationAnchor.LATEST || after == 0) {
@@ -76,13 +70,12 @@ internal data class AotGenerationWindow(
     }
 }
 
-private fun generationWindow(anchor: AotGenerationAnchor, before: Int, after: Int): AotGenerations =
-    if (before == 0 && after == 0) {
-        when (anchor) {
-            AotGenerationAnchor.CURRENT -> AotGenerations.Current
-            AotGenerationAnchor.LATEST -> AotGenerations.Latest
-            AotGenerationAnchor.EARLIEST -> AotGenerations.Earliest
-        }
-    } else {
-        AotGenerationWindow(anchor, before, after)
+private fun generationWindow(anchor: AotGenerationAnchor, before: Int, after: Int): AotGenerations = if (before == 0 && after == 0) {
+    when (anchor) {
+        AotGenerationAnchor.CURRENT -> AotGenerations.Current
+        AotGenerationAnchor.LATEST -> AotGenerations.Latest
+        AotGenerationAnchor.EARLIEST -> AotGenerations.Earliest
     }
+} else {
+    AotGenerationWindow(anchor, before, after)
+}

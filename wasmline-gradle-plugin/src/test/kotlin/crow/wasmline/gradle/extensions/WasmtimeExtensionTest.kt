@@ -287,8 +287,7 @@ class WasmtimeExtensionTest {
         assertFailsWith<IllegalArgumentException> { resolve(extension) }
     }
 
-    private fun localGenerations(): List<Int> =
-        AotCompatibilityCatalog.releaseCatalog().ranges.map { it.aotGeneration }
+    private fun localGenerations(): List<Int> = AotCompatibilityCatalog.releaseCatalog().ranges.map { it.aotGeneration }
 
     private fun resolveWith(strategy: AotGenerations): AotCompatibilityResolution {
         val extension = extension()
@@ -296,13 +295,12 @@ class WasmtimeExtensionTest {
         return resolve(extension)
     }
 
-    private fun resolve(extension: WasmtimeExtension): AotCompatibilityResolution =
-        AotCompatibilityCatalog.resolveSelection(
-            selection = AotCompatibilitySelection(
-                strategies = extension.aotCompatibility.generationStrategies.get().map(::decodeAotGenerations),
-            ),
-            artifactBackends = setOf(WasmlineEngineKind.PULLEY),
-        )
+    private fun resolve(extension: WasmtimeExtension): AotCompatibilityResolution = AotCompatibilityCatalog.resolveSelection(
+        selection = AotCompatibilitySelection(
+            strategies = extension.aotCompatibility.generationStrategies.get().map(::decodeAotGenerations),
+        ),
+        artifactBackends = setOf(WasmlineEngineKind.PULLEY),
+    )
 
     private fun extension(): WasmtimeExtension {
         val project = ProjectBuilder.builder().build()

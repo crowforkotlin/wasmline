@@ -86,11 +86,15 @@ object AotCompatibilitySelectionResolver {
         fun includeStrategy(strategy: AotGenerations) {
             when (strategy) {
                 AotGenerations.Current -> includeWindow(currentGenerationIndex)
+
                 AotGenerations.Latest -> includeWindow(releaseCatalog.ranges.lastIndex)
+
                 AotGenerations.Earliest -> includeWindow(0)
+
                 AotGenerations.All -> releaseCatalog.ranges.forEach { range ->
                     selectedGenerations.add(range.aotGeneration)
                 }
+
                 is AotGenerations.Versions -> strategy.ranges.forEach { range ->
                     require(
                         compareWasmlineVersions(range.from, releaseCatalog.minimumSupportedWasmlineVersion) >= 0 &&
@@ -104,6 +108,7 @@ object AotCompatibilitySelectionResolver {
                         selectedGenerations.add(selected.aotGeneration)
                     }
                 }
+
                 is AotGenerationWindow -> includeWindow(
                     anchor = when (strategy.anchor) {
                         AotGenerationAnchor.CURRENT -> currentGenerationIndex
@@ -165,15 +170,20 @@ object AotCompatibilitySelectionResolver {
 @InternalWasmlineToolingApi
 fun AotGenerations.encodeForTaskInput(): String = when (this) {
     AotGenerations.Current -> "current"
+
     AotGenerations.Latest -> "latest"
+
     AotGenerations.Earliest -> "earliest"
+
     AotGenerations.All -> "all"
+
     is AotGenerations.Versions -> buildString {
         append("versions")
         ranges.forEach { range ->
             append('\u0000').append(range.from).append('\u0000').append(range.through)
         }
     }
+
     is AotGenerationWindow -> "window\u0000${anchor.token}\u0000$before\u0000$after"
 }
 
@@ -191,6 +201,7 @@ fun decodeAotGenerations(value: String): AotGenerations {
                 else -> AotGenerations.All
             }
         }
+
         "versions" -> {
             require(fields.size >= 3 && fields.size % 2 == 1) { "Invalid encoded AOT version selection." }
             val ranges = ArrayList<WasmlineVersionRange>((fields.size - 1) / 2)
@@ -199,6 +210,7 @@ fun decodeAotGenerations(value: String): AotGenerations {
             }
             return AotGenerations.Versions(ranges)
         }
+
         "window" -> {
             require(fields.size == 4) { "Invalid encoded AOT generation window." }
             val anchor = AotGenerationAnchor.entries.firstOrNull { it.token == fields[1] }
@@ -207,6 +219,7 @@ fun decodeAotGenerations(value: String): AotGenerations {
             val after = decodeGenerationCount(fields[3])
             return AotGenerationWindow(anchor, before, after)
         }
+
         else -> throw IllegalArgumentException("Invalid encoded AOT generation strategy.")
     }
 }

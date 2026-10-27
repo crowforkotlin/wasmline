@@ -246,11 +246,10 @@ class WasmlineLocalPackageResolutionTest {
         assertTrue(failure.failure.message.contains("byte limit"))
     }
 
-    private fun canonicalPayload(manifest: WasmlineManifest = rawManifest(DIGEST, 3)): ByteArray =
-        ProtoBuf.encodeToByteArray(
-            WasmlineManifest.serializer(),
-            WasmlineManifestProtocol.canonicalize(manifest),
-        )
+    private fun canonicalPayload(manifest: WasmlineManifest = rawManifest(DIGEST, 3)): ByteArray = ProtoBuf.encodeToByteArray(
+        WasmlineManifest.serializer(),
+        WasmlineManifestProtocol.canonicalize(manifest),
+    )
 
     /**
      * Inserts the retired manifest field 4 between the top-level field 3 and the next field.

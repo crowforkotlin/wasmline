@@ -162,27 +162,25 @@ internal class CliAotBuildSupport(private val logger: (String) -> Unit = {}) {
         compilerCacheDirectory: File,
         autoDownload: Boolean,
         maxParallelCompilations: Int,
-    ): WasmlineAotBuildRecord {
-        return WasmlineAotBuildService().build(
-            WasmlineAotBuildRequest(
-                inputFile = input.file,
-                packageDirectory = packageDirectory,
-                workingDirectory = workingDirectory,
-                runtimeContract = input.runtimeContract,
-                targets = targets,
-                resolvedProfileIds = resolution.profiles.map { it.id },
-                aotCompatibilitySelector = resolution.selection.diagnosticName(),
-                selectedAotGenerations = resolution.selectedGenerations,
-                publishRawWasm = publishRawWasm,
-                compilerCacheDirectory = compilerCacheDirectory,
-                buildHost = PlatformDetector.detectPlatform(),
-                autoDownload = autoDownload,
-                githubToken = githubToken(),
-                maxParallelCompilations = maxParallelCompilations,
-                logger = logger,
-            ),
-        )
-    }
+    ): WasmlineAotBuildRecord = WasmlineAotBuildService().build(
+        WasmlineAotBuildRequest(
+            inputFile = input.file,
+            packageDirectory = packageDirectory,
+            workingDirectory = workingDirectory,
+            runtimeContract = input.runtimeContract,
+            targets = targets,
+            resolvedProfileIds = resolution.profiles.map { it.id },
+            aotCompatibilitySelector = resolution.selection.diagnosticName(),
+            selectedAotGenerations = resolution.selectedGenerations,
+            publishRawWasm = publishRawWasm,
+            compilerCacheDirectory = compilerCacheDirectory,
+            buildHost = PlatformDetector.detectPlatform(),
+            autoDownload = autoDownload,
+            githubToken = githubToken(),
+            maxParallelCompilations = maxParallelCompilations,
+            logger = logger,
+        ),
+    )
 
     private fun githubToken(): String? = System.getenv("GITHUB_TOKEN")?.takeIf(String::isNotBlank)
 }
@@ -197,10 +195,7 @@ internal fun defaultAotCompilerCacheDirectory(): File = File(
 internal fun defaultComponentServiceExport(): String = WasmlineComponentServiceContract.DEFAULT_EXPORT
 
 /** Resolves one parsed CLI selection against the local catalog for the requested targets. */
-internal fun resolveCliAotSelection(
-    selection: AotCompatibilitySelection,
-    targets: Collection<String>,
-): AotCompatibilityResolution {
+internal fun resolveCliAotSelection(selection: AotCompatibilitySelection, targets: Collection<String>): AotCompatibilityResolution {
     val targetSpecs = WasmlineArtifactTargetFactory.create(targets)
     return AotCompatibilityCatalog.resolveSelection(
         selection = selection,
@@ -263,11 +258,13 @@ private fun parseAotGenerationWindow(value: String): AotGenerations {
                 require(!beforeSeen) { "AOT generation window fields must be distinct: '$value'." }
                 beforeSeen = true
             }
+
             AOT_GENERATION_AFTER_FIELD -> {
                 after = parseAotGenerationCount(count, value)
                 require(!afterSeen) { "AOT generation window fields must be distinct: '$value'." }
                 afterSeen = true
             }
+
             else -> throw IllegalArgumentException(
                 "AOT generation window field must be before or after: '$value'.",
             )
@@ -275,14 +272,17 @@ private fun parseAotGenerationWindow(value: String): AotGenerations {
     }
     return when (anchor) {
         AOT_GENERATION_CURRENT -> AotGenerations.Current(before = before, after = after)
+
         AOT_GENERATION_LATEST -> {
             require(!afterSeen) { "Latest AOT generation window accepts only a before count: '$value'." }
             AotGenerations.Latest(before = before)
         }
+
         AOT_GENERATION_EARLIEST -> {
             require(!beforeSeen) { "Earliest AOT generation window accepts only an after count: '$value'." }
             AotGenerations.Earliest(after = after)
         }
+
         else -> throw IllegalArgumentException(
             "AOT generation window anchor must be current, latest, or earliest: '$value'.",
         )

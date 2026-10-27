@@ -47,6 +47,7 @@ wasmline {
                         "all" -> generations(AotGenerations.All)
                         else -> generations(value)
                     }
+
                     bounds.size == 2 -> {
                         val (min, max) = bounds
                         require(min.isNotEmpty() && max.isNotEmpty()) {
@@ -54,6 +55,7 @@ wasmline {
                         }
                         generations(min = min, max = max)
                     }
+
                     else -> error(
                         "Invalid -PaotGenerations=$value; use current, latest, earliest, all, " +
                             "a concrete x.y.z, or a concrete MIN..MAX interval.",

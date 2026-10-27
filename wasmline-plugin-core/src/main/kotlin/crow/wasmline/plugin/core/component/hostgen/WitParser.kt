@@ -5,8 +5,7 @@ import java.io.File
 internal object WitParser {
     fun parse(path: File): WitPackage = parse(WitSources.load(path))
 
-    fun parse(sources: WitSourceSet): WitPackage =
-        Parser(Lexer(sources.source).tokens(), sources.sha256).parsePackage()
+    fun parse(sources: WitSourceSet): WitPackage = Parser(Lexer(sources.source).tokens(), sources.sha256).parsePackage()
 }
 
 private enum class TokenKind { IDENTIFIER, SYMBOL, EOF }

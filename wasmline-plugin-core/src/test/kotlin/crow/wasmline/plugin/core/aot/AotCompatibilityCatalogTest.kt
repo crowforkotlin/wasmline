@@ -501,8 +501,7 @@ class AotCompatibilityCatalogTest {
         }
     }
 
-    private fun selection(vararg strategies: AotGenerations): AotCompatibilitySelection =
-        AotCompatibilitySelection(strategies.toList())
+    private fun selection(vararg strategies: AotGenerations): AotCompatibilitySelection = AotCompatibilitySelection(strategies.toList())
 
     private fun resolve(
         catalog: WasmlineAotReleaseCatalog,
