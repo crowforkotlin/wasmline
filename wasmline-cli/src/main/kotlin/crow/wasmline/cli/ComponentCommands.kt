@@ -97,7 +97,7 @@ internal class Componentize : CliktCommand(name = "componentize") {
             ComponentBuildRecords.write(result, File(outputDirectory, ComponentBuildRecords.FILE_NAME))
             echo("Component Wasm: " + result.componentWasm.absolutePath)
             echo("Component SHA-256: " + result.componentSha256)
-            echo("WIT SHA-256: " + result.witSha256)
+            result.witSha256?.let { echo("WIT SHA-256: " + it) }
         } catch (error: Exception) {
             echo("Error: " + error.message, err = true)
             throw ProgramResult(1)

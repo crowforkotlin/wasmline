@@ -1,6 +1,7 @@
 package crow.wasmline.gradle.tasks
 
 import crow.wasmline.plugin.core.component.WasmToolsTool
+import crow.wasmline.plugin.core.component.WitBindgenLanguage
 import crow.wasmline.plugin.core.component.WitBindgenTool
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.ToolCache
@@ -65,7 +66,10 @@ internal abstract class DownloadComponentToolsTask : DefaultTask() {
             WitBindgenTool(
                 executable = witBindgen.file,
                 runner = ExternalToolRunner(logger = { message -> logger.info(message) }),
-            ).verify(witBindgenVersion.get())
+            ).also { tool ->
+                tool.verify(witBindgenVersion.get())
+                tool.verifyGenerator(WitBindgenLanguage.KOTLIN)
+            }
             WasmToolsTool(
                 executable = wasmTools.file,
                 runner = ExternalToolRunner(logger = { message -> logger.info(message) }),

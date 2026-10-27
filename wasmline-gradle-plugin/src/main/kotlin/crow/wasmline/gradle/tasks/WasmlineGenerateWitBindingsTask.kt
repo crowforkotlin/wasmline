@@ -3,9 +3,10 @@ package crow.wasmline.gradle.tasks
 import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
-import crow.wasmline.plugin.core.component.KotlinBindingsRequest
 import crow.wasmline.plugin.core.component.WasmlineServiceWit
+import crow.wasmline.plugin.core.component.WitBindgenLanguage
 import crow.wasmline.plugin.core.component.WitBindgenTool
+import crow.wasmline.plugin.core.component.WitBindingsRequest
 import crow.wasmline.plugin.core.toolchain.ExternalToolRunner
 import crow.wasmline.plugin.core.toolchain.ToolCache
 import crow.wasmline.plugin.core.toolchain.ToolDownloader
@@ -108,10 +109,11 @@ internal abstract class WasmlineGenerateWitBindingsTask : DefaultTask() {
             WitBindgenTool(
                 executable = executable,
                 runner = ExternalToolRunner(logger = { message -> logger.info(message) }),
-            ).generateKotlin(
-                KotlinBindingsRequest(
+            ).generate(
+                WitBindingsRequest(
                     witDirectory = bindingInput,
                     outputDirectory = output,
+                    language = WitBindgenLanguage.KOTLIN,
                     world = bindingWorld,
                     kotlinImports = bindingImports,
                     additionalArguments = additionalArguments,

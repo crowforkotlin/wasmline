@@ -10,7 +10,6 @@ import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
 
 /** Inputs required to turn a compiled Core Wasm guest into a Component. */
 
@@ -66,7 +65,7 @@ data class ComponentizeResult(
     val codec: String?,
     val serviceProtocolVersion: String?,
     val componentSha256: String,
-    val witSha256: String,
+    val witSha256: String?,
     val adapterSha256: String?,
     val adapterVersion: String?,
     val witBindgenVersion: String?,
@@ -85,6 +84,8 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
     /** Embeds WIT, creates a Component, validates it and records its WIT view. */
     fun componentize(request: ComponentizeRequest): ComponentizeResult {
         validateRequest(request)
+        val wit = WitSources.load(request.witPath)
+        val witPackage = WitParser.parse(wit).packageId
         val verifiedWasmToolsVersion = wasmTools.verify(request.wasmToolsVersion)
         if (request.invocationProtocol == WasmlineInvocationProtocol.WASMLINE_SERVICE) {
             validateComponentServiceCoreAbi(wasmTools.printCoreModule(request.coreWasm))
@@ -119,13 +120,13 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
             componentWasm = componentWasm,
             inspectedWit = inspectedWit,
             world = request.world,
-            witPackage = findWitPackage(request.witPath),
+            witPackage = witPackage,
             invocationProtocol = request.invocationProtocol,
             exportName = request.exportName,
             codec = request.codec,
             serviceProtocolVersion = request.serviceProtocolVersion,
             componentSha256 = FileDigest.sha256Hex(componentWasm),
-            witSha256 = hashWitPath(request.witPath),
+            witSha256 = wit.sha256,
             adapterSha256 = FileDigest.sha256Hex(request.wasiPreview1Adapter),
             adapterVersion = request.adapterVersion,
             witBindgenVersion = request.witBindgenVersion,
@@ -163,19 +164,20 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
         } else {
             null
         }
+        val wit = request.witPath?.let(WitSources::load)
         return ComponentizeResult(
             coreWasm = component,
             embeddedWasm = component,
             componentWasm = component,
             inspectedWit = inspectedWit,
             world = request.world,
-            witPackage = request.witPath?.let(::findWitPackage),
+            witPackage = wit?.let { WitParser.parse(it).packageId },
             invocationProtocol = request.invocationProtocol,
             exportName = request.exportName,
             codec = request.codec,
             serviceProtocolVersion = request.serviceProtocolVersion,
             componentSha256 = FileDigest.sha256Hex(component),
-            witSha256 = request.witPath?.let(::hashWitPath) ?: sha256Text(inspectedText),
+            witSha256 = wit?.sha256,
             adapterSha256 = null,
             adapterVersion = null,
             witBindgenVersion = null,
@@ -198,8 +200,6 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
             "Component product name may only contain letters, digits, dot, underscore and dash."
         }
     }
-
-    private fun findWitPackage(path: File): String? = WitParser.parse(path).packageId
 
     private fun validateComponentServiceCoreAbi(wat: String) {
         val imports = CORE_IMPORT.findAll(wat).map { it.groupValues[1] to it.groupValues[2] }.toSet()
@@ -257,12 +257,6 @@ class ComponentPipeline(private val wasmTools: WasmTools) {
             }
         }
     }
-
-    private fun hashWitPath(path: File): String = WitSources.load(path).sha256
-
-    private fun sha256Text(text: String): String = MessageDigest.getInstance("SHA-256")
-        .digest(text.encodeToByteArray())
-        .joinToString("") { byte -> "%02x".format(byte) }
 
     private companion object {
         val CORE_IMPORT = Regex("""\(import\s+\"([^\"]+)\"\s+\"([^\"]+)\"""")

@@ -40,8 +40,8 @@ class ComponentToolchainIntegrationTest {
             )
             witBindgenTool.verify(witBindgenVersion)
             assertTrue(verificationLogs.isEmpty())
-            witBindgenTool.generateKotlin(
-                KotlinBindingsRequest(
+            witBindgenTool.generate(
+                WitBindingsRequest(
                     witDirectory = witDirectory,
                     outputDirectory = generatedDirectory,
                     world = "plugin",

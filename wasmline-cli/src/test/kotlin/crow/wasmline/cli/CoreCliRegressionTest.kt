@@ -271,6 +271,19 @@ class CoreCliRegressionTest {
         assertEquals(listOf(RawValueType.I32), export.signature?.results)
     }
 
+    @Test
+    fun `wit generate accepts only known language tokens`() = withCoreCliDirectory { root ->
+        val wit = File(root, "wit").apply { mkdirs() }
+        File(wit, "wasmline.wit").writeText("package wasmline:service@1.0.0; world plugin {}\n")
+
+        // Rejected during option parsing, before any tool resolution or generation runs.
+        listOf("Kotlin", "typescript", "c++").forEach { token ->
+            assertFailsWith<UsageError> {
+                WitGenerate().parse(listOf("--wit", wit.absolutePath, "--lang", token))
+            }
+        }
+    }
+
     private companion object {
         const val SENTINEL_NAME = "wasmline-regression-sentinel.txt"
     }

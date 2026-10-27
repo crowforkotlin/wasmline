@@ -2,7 +2,7 @@
 title: CLI 参考
 description: 使用 CLI 构建、签名、检查和打包 Wasmline 插件
 createdAt: 2026-07-18
-updatedAt: 2026-10-26
+updatedAt: 2026-10-27
 ---
 
 # CLI 参考
@@ -27,7 +27,7 @@ updatedAt: 2026-10-26
 | `componentize` | 创建或检查作为 AOT 输入的 raw Component |
 | `tools download` | 下载锁定的 Component 工具 |
 | `wit export` | 输出规范的 `wasmline:service` WIT，供非 Kotlin guest 使用 |
-| `wit generate` | 生成 WIT binding |
+| `wit generate` | 用锁定的 `wit-bindgen` 生成 guest binding（`--lang`） |
 | `component validate` | 校验 Component |
 | `component inspect` | 输出 Component 的 WIT |
 
@@ -44,12 +44,27 @@ executable。AOT compiler 必须来自摘要锁定的 catalog。已删除的
 
 该命令写出 `build/wasmline/wit/wasmline.wit`，内容为当前 CLI 版本携带的规范
 `wasmline:service@1.0.0` contract。`--output` 指定目录，默认值是
-`build/wasmline/wit`；不存在的目录会创建，已有 `wasmline.wit` 会覆盖。
+`build/wasmline/wit`；不存在的目录会创建，已有 `wasmline.wit` 会覆盖。命令同时输出
+该文件的 `WIT SHA-256`；把同一文件作为 `--wit` 传入构建时，记录的
+`component.wit.sha256` 就是这个值，算法见
+[组件服务协议](/zh/docs/component-service)。
 
 `wit export` 只复制资源，不生成 binding，也不下载 Component 工具。将导出的目录
 交给 guest 语言的 binding generator，例如 `wit-bindgen c`、`wit-bindgen cpp`
-或 Rust 的 `wit_bindgen::generate!`。独立的 `wit generate` 命令仍只生成 Kotlin
-binding。
+或 Rust 的 `wit_bindgen::generate!`。
+
+`wit generate` 使用与 Gradle 相同的锁定 `wit-bindgen`：
+
+```bash
+./wasmline-cli/cli.sh wit generate --wit build/wasmline/wit --lang c --world plugin
+```
+
+`--lang` 只接受 `kotlin`、`rust`、`c`、`cpp`、`go`、`csharp`、`moonbit`、
+`markdown` 之一，默认 `kotlin`。取值区分大小写，未知值在选项解析阶段失败。
+`--kotlin-imports` 只对 `kotlin` 有效，其默认值为 `impl.*`。输出目录默认是
+`build/generated/wasmline/wit`；生成前会删除该语言后缀的文件，生成后若没有产出
+任何该类文件则命令失败。`--lang csharp` 会自动补上必需的
+`--runtime native-aot`。
 
 ## 构建 Package
 

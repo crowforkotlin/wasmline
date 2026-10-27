@@ -2,7 +2,7 @@
 title: 组件服务协议
 description: 固定 WIT 请求格式、Component 构建步骤与宿主回调
 createdAt: 2026-08-05
-updatedAt: 2026-10-26
+updatedAt: 2026-10-27
 ---
 
 # 组件服务协议
@@ -77,6 +77,11 @@ adapter。
 | C | `wit-bindgen c --world plugin` | `plugin_invoke` | `host_invoke` |
 | C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::service::Invoke` | `wasmline::service::Invoke` |
 
+`wit generate --lang <id>` 用锁定的 `wit-bindgen` 运行 `kotlin`、`rust`、`c`、
+`cpp`、`go`、`csharp`、`moonbit` 和 `markdown`。它只生成 binding；guest 仍然需要
+自己的编译器、Component 构建步骤，以及 `wit-bindgen` 对该语言的要求，例如 C# 的
+`--runtime native-aot`。
+
 生成源码和 Component type object 都只属于 build 输出。CMake configure 阶段严格检查 `wit-bindgen 0.57.1` 和 `wasm-tools 1.256.0`，所需的 WASI SDK 命令见各自 README。
 C++ 0.57.1 generator 会对 move-only WIT error 生成一次
 `std::expected::value()` 调用。fixture 在 `has_value()` 检查之后将该调用替换为
@@ -98,6 +103,26 @@ fixture 测试 callback bytes、未绑定 handler、同 session 重入，以及 
 第二个 Component session。同一个 JVM 任务还会通过 Cranelift native library 加载
 一个 Core `RAW_EXPORT` 的 `pulley64` PWASM fixture。生产 Component 由 Wasmline
 Gradle 或 CLI 任务编译和打包，并从配置的 AOT catalog 选择 `.cwasm` 或 `.pwasm`。
+
+## WIT 标识
+
+`component.wit.sha256` 标识生成 Host binding 时使用的那份 WIT 源码树。Wasmline
+只有一处实现（`WitSources`），Guest 打包和 Host binding 生成使用同一个值：
+
+- 读取根目录下所有 `.wit` 文件，包括 `deps/`。
+- 按 `/` 分隔的相对路径排序。
+- 每个条目依次写入相对路径、`0x00`、把 `\r\n` 和 `\r` 规范化成 `\n` 后的内容、
+  `0x00`。
+- 按该顺序送入 SHA-256，输出小写十六进制。
+
+目录位置和绝对路径不参与计算。把单个 `.wit` 文件作为根，与把它所在的仅含该文件的
+目录作为根，得到同一个摘要。
+
+没有传 `--wit` 的 raw Component 没有可哈希的 WIT 源码树。此时 Wasmline 不记录
+`component.wit.sha256`，而不是去哈希 `wasm-tools component wit` 的输出，因为那个值
+与生成器不一致。需要调用 `WasmlineComponentContract.requireMatches` 的 typed
+`COMPONENT_EXPORT` 构建，必须传入生成 Host binding 所用的同一份 WIT；否则
+descriptor 缺少契约元数据，实例化会被拒绝。
 
 ## Codec Profile
 

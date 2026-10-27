@@ -4,6 +4,7 @@ import crow.wasmline.WasmlineComponentServiceContract
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineTypedComponentContract
+import crow.wasmline.plugin.core.component.hostgen.WitSources
 import crow.wasmline.plugin.core.toolchain.ToolExecutionResult
 import crow.wasmline.plugin.core.toolchain.ToolchainCatalog
 import java.io.File
@@ -42,6 +43,10 @@ class ComponentPipelineTest {
         assertEquals(null, contract.exportName)
         assertEquals("test:plugin", contract.contractMetadata[WasmlineTypedComponentContract.METADATA_WIT_PACKAGE])
         assertEquals(null, contract.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC])
+        assertEquals(
+            WitSources.load(File(wit, "world.wit")).sha256,
+            contract.contractMetadata[WasmlineTypedComponentContract.METADATA_WIT_SHA256],
+        )
     }
 
     @Test
@@ -63,6 +68,7 @@ class ComponentPipelineTest {
         assertEquals("plugin-component.wasm", result.componentWasm.name)
         assertEquals(WasmlineInvocationProtocol.COMPONENT_EXPORT, result.invocationProtocol)
         assertEquals(null, result.exportName)
+        assertEquals(WitSources.load(wit).sha256, result.witSha256)
     }
 
     @Test
@@ -89,6 +95,7 @@ class ComponentPipelineTest {
             WasmlineComponentServiceContract.DEFAULT_CODEC,
             contract.contractMetadata[WasmlineComponentServiceContract.METADATA_CODEC],
         )
+        assertEquals(null, contract.contractMetadata[WasmlineTypedComponentContract.METADATA_WIT_SHA256])
     }
 
     @Test

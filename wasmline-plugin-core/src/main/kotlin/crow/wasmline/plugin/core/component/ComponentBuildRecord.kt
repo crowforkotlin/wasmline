@@ -32,7 +32,7 @@ data class ComponentBuildRecord(
     val codec: String? = null,
     val serviceProtocolVersion: String? = null,
     val componentSha256: String,
-    val witSha256: String,
+    val witSha256: String? = null,
     val adapterSha256: String? = null,
     val adapterVersion: String? = null,
     val witBindgenVersion: String? = null,
@@ -66,7 +66,7 @@ data class ComponentBuildRecord(
         exportName = exportName,
         contractMetadata = buildMap {
             world?.let { put(WasmlineTypedComponentContract.METADATA_WORLD, it) }
-            put(WasmlineTypedComponentContract.METADATA_WIT_SHA256, witSha256)
+            witSha256?.let { put(WasmlineTypedComponentContract.METADATA_WIT_SHA256, it) }
             adapterSha256?.let { put("component.adapter.sha256", it) }
             adapterVersion?.let { put("component.adapter.version", it) }
             witBindgenVersion?.let { put("component.wit-bindgen.version", it) }

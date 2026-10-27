@@ -2,7 +2,7 @@
 title: Component Service Protocol
 description: Fixed WIT request format, Component build steps, and host callbacks
 createdAt: 2026-08-05
-updatedAt: 2026-10-26
+updatedAt: 2026-10-27
 ---
 
 # Component Service Protocol
@@ -80,6 +80,11 @@ steps do not modify Wasmtime, `wit-bindgen`, or the shared WIT source.
 | C | `wit-bindgen c --world plugin` | `plugin_invoke` | `host_invoke` |
 | C++ | `wit-bindgen cpp --world plugin` | `exports::wasmline::service::Invoke` | `wasmline::service::Invoke` |
 
+`wit generate --lang <id>` runs the locked binary for `kotlin`, `rust`, `c`,
+`cpp`, `go`, `csharp`, `moonbit`, and `markdown`. It writes bindings only; the
+guest still needs its own compiler, a Component build step, and `wit-bindgen`'s
+language-specific requirements, such as C# `--runtime native-aot`.
+
 Generated source and Component type objects remain build outputs. The C++ fixtures enforce `wit-bindgen 0.57.1` and `wasm-tools 1.256.0` at CMake
 configure time; their READMEs list the required WASI SDK commands.
 The pinned C++ generator emits one `std::expected::value()` use with a
@@ -105,6 +110,29 @@ reentry, and a callback into a second Component session. The same JVM task also
 loads a Core `RAW_EXPORT` `pulley64` PWASM fixture through the Cranelift native
 library. Gradle and CLI tasks compile and package production Components and
 select `.cwasm` or `.pwasm` from the configured AOT catalog.
+
+## WIT Identity
+
+`component.wit.sha256` identifies the WIT source tree used to generate Host
+bindings. Wasmline computes it in one place (`WitSources`) and uses the same
+value for Guest packaging and Host binding generation:
+
+- Read every `.wit` file under the root, including `deps/`.
+- Sort by relative path with `/` separators.
+- Hash each entry as relative path, `0x00`, the content with `\r\n` and `\r`
+  normalized to `\n`, then `0x00`.
+- Feed entries to SHA-256 in that order and print lowercase hexadecimal.
+
+Directory location and absolute paths do not affect the digest. Passing one
+`.wit` file as the root produces the same value as passing a directory that
+contains only that file.
+
+A raw Component without `--wit` has no WIT source tree to hash. Wasmline then
+records no `component.wit.sha256` instead of hashing `wasm-tools component wit`
+output, which would not match the generator. Typed `COMPONENT_EXPORT` builds
+that call `WasmlineComponentContract.requireMatches` must pass the same WIT the
+Host bindings were generated from; otherwise the descriptor lacks the contract
+metadata and instantiation is rejected.
 
 ## Codec Profiles
 

@@ -7,6 +7,13 @@ internal data class WitSourceSet(val root: File, val rootFiles: List<File>, val 
     val source: String = rootFiles.joinToString("\n") { it.readText(Charsets.UTF_8).normalizeWitNewlines() }
 }
 
+/**
+ * Reads WIT source trees and derives the identity recorded as `component.wit.sha256`.
+ *
+ * A single `.wit` file and a directory containing only that file produce the
+ * same digest. Paths are relative to the WIT root, so moving the tree does not
+ * change the value.
+ */
 internal object WitSources {
     fun load(path: File): WitSourceSet {
         require(path.exists()) { "WIT path does not exist: ${path.absolutePath}" }
@@ -16,7 +23,7 @@ internal object WitSources {
                 root = path.parentFile,
                 rootFiles = listOf(path),
                 allFiles = listOf(path),
-                sha256 = sha256Hex(path.readText(Charsets.UTF_8).normalizeWitNewlines().encodeToByteArray()),
+                sha256 = digestOf(listOf(path.name to path.readText(Charsets.UTF_8))),
             )
         }
 
@@ -31,24 +38,29 @@ internal object WitSources {
         }
         require(rootFiles.isNotEmpty()) { "WIT directory contains no root package .wit files outside deps/: ${path.absolutePath}" }
 
-        val digest = MessageDigest.getInstance("SHA-256")
-        allFiles.forEach { file ->
-            digest.update(file.relativeTo(path).invariantSeparatorsPath.encodeToByteArray())
-            digest.update(0)
-            digest.update(file.readText(Charsets.UTF_8).normalizeWitNewlines().encodeToByteArray())
-            digest.update(0)
-        }
         return WitSourceSet(
             root = path,
             rootFiles = rootFiles,
             allFiles = allFiles,
-            sha256 = digest.digest().toHex(),
+            sha256 = digestOf(
+                allFiles.map { file ->
+                    file.relativeTo(path).invariantSeparatorsPath to file.readText(Charsets.UTF_8)
+                },
+            ),
         )
     }
 
-    private fun sha256Hex(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).toHex()
-
-    private fun ByteArray.toHex(): String = joinToString("") { byte -> "%02x".format(byte) }
+    /** Hashes relative path, NUL, newline-normalized content, NUL for every entry in order. */
+    private fun digestOf(entries: List<Pair<String, String>>): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        entries.forEach { (relativePath, content) ->
+            digest.update(relativePath.encodeToByteArray())
+            digest.update(0)
+            digest.update(content.normalizeWitNewlines().encodeToByteArray())
+            digest.update(0)
+        }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
 }
 
 private fun String.normalizeWitNewlines(): String = replace("\r\n", "\n").replace('\r', '\n')

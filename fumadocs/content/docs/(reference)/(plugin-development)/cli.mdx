@@ -2,7 +2,7 @@
 title: CLI Reference
 description: Build, sign, inspect, and package Wasmline plugins
 createdAt: 2026-07-18
-updatedAt: 2026-10-26
+updatedAt: 2026-10-27
 ---
 
 # CLI Reference
@@ -27,7 +27,7 @@ CLI distribution and forwards its arguments:
 | `componentize` | Create or inspect the raw Component used as AOT input |
 | `tools download` | Download locked Component tools |
 | `wit export` | Write the canonical `wasmline:service` WIT for non-Kotlin guests |
-| `wit generate` | Generate WIT bindings |
+| `wit generate` | Generate guest bindings with the locked `wit-bindgen` (`--lang`) |
 | `component validate` | Validate a Component |
 | `component inspect` | Print a Component's WIT |
 
@@ -46,13 +46,29 @@ catalog. The removed `--aot-compatibility`, `--aot-version-range`, and
 This writes `build/wasmline/wit/wasmline.wit`, the canonical
 `wasmline:service@1.0.0` contract packaged with this CLI version. `--output` names
 a directory and defaults to `build/wasmline/wit`; missing directories are created
-and an existing `wasmline.wit` is overwritten.
+and an existing `wasmline.wit` is overwritten. The command also prints the file's
+`WIT SHA-256`, the same value a build records as `component.wit.sha256` when the
+same file is passed as `--wit`; see the
+[Component Service reference](/en/docs/component-service).
 
 `wit export` only copies the resource. It does not generate bindings or download
 Component tools. Use the exported directory with the guest language's binding
 generator, such as `wit-bindgen c`, `wit-bindgen cpp`, or Rust's
-`wit_bindgen::generate!`. The separate `wit generate` command still generates
-Kotlin bindings only.
+`wit_bindgen::generate!`.
+
+`wit generate` runs the same locked `wit-bindgen` binary that Gradle uses:
+
+```bash
+./wasmline-cli/cli.sh wit generate --wit build/wasmline/wit --lang c --world plugin
+```
+
+`--lang` accepts exactly one of `kotlin`, `rust`, `c`, `cpp`, `go`, `csharp`,
+`moonbit`, or `markdown`, and defaults to `kotlin`. Values are case-sensitive and
+unknown tokens fail during option parsing. `--kotlin-imports` applies only to
+`kotlin` and defaults to `impl.*` there. The output directory defaults to
+`build/generated/wasmline/wit`; files with that language's extensions are removed
+before generation, and the command fails if the generator writes none of them.
+`--lang csharp` adds the required `--runtime native-aot` flag.
 
 ## Build a Package
 
