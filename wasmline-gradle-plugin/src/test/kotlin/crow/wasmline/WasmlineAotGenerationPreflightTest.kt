@@ -102,7 +102,7 @@ class WasmlineAotGenerationPreflightTest {
             wasmline.manifest.executionModel.set(crow.wasmline.WasmlineExecutionModel.COMPONENT_MODEL)
             wasmline.manifest.invocationProtocol.set(crow.wasmline.WasmlineInvocationProtocol.COMPONENT_EXPORT)
             wasmline.manifest.exportName.set('run')
-            wasmline.wasmtime.targets = [crow.wasmline.gradle.WasmtimeTarget.Companion.getPULLEY_64()]
+            wasmline.wasmtime.targets = [crow.wasmline.gradle.WasmtimeTarget.PULLEY_64]
             $aotSelectionLine
             wasmline.wasmtime.autoDownload.set(true)
             wasmline.wasmtime.compilerCacheDirectory.set(layout.projectDirectory.dir('compiler-cache'))
