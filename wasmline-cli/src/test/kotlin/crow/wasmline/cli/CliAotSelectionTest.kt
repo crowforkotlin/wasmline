@@ -2,11 +2,14 @@ package crow.wasmline.cli
 
 import crow.wasmline.WasmlineEngineKind
 import crow.wasmline.plugin.core.aot.AotCompatibilityCatalog
+import crow.wasmline.plugin.core.aot.AotCompatibilityProfileSpec
 import crow.wasmline.plugin.core.aot.AotCompatibilityResolution
+import crow.wasmline.plugin.core.aot.AotCompatibilitySelectionResolver
+import crow.wasmline.plugin.core.aot.WasmlineAotReleaseCatalog
+import crow.wasmline.plugin.core.aot.WasmlineAotReleaseRange
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 /**
  * Verifies the typed CLI AOT generation grammar and its local catalog resolution.
@@ -73,18 +76,31 @@ class CliAotSelectionTest {
 
     @Test
     fun generationWindowsIncludeTheAnchorAndRequestedNeighbors() {
-        val generations = localGenerations()
-        assertTrue(generations.size >= 2, "Windows need at least two local AOT generations.")
+        // Windows only make sense across several generations, so this case uses a
+        // synthetic catalog instead of depending on how many generations the
+        // shipped release happens to contain.
+        val (catalog, profiles) = syntheticWindowCatalog()
+        val generations = catalog.ranges.map { it.aotGeneration }
 
-        assertEquals(generations.takeLast(2), resolve(listOf("current:before=1")).selectedGenerations)
-        assertEquals(generations.takeLast(2), resolve(listOf("current:before=1:after=0")).selectedGenerations)
-        assertEquals(generations.takeLast(2), resolve(listOf("current:after=0:before=1")).selectedGenerations)
-        assertEquals(generations.takeLast(2), resolve(listOf("latest:before=1")).selectedGenerations)
-        assertEquals(generations.take(2), resolve(listOf("earliest:after=1")).selectedGenerations)
-        assertEquals(generations.takeLast(1), resolve(listOf("current:before=0:after=0")).selectedGenerations)
+        assertEquals(generations.takeLast(2), resolve(catalog, profiles, listOf("current:before=1")).selectedGenerations)
+        assertEquals(
+            generations.takeLast(2),
+            resolve(catalog, profiles, listOf("current:before=1:after=0")).selectedGenerations,
+        )
+        assertEquals(
+            generations.takeLast(2),
+            resolve(catalog, profiles, listOf("current:after=0:before=1")).selectedGenerations,
+        )
+        assertEquals(generations.takeLast(2), resolve(catalog, profiles, listOf("latest:before=1")).selectedGenerations)
+        assertEquals(generations.take(2), resolve(catalog, profiles, listOf("earliest:after=1")).selectedGenerations)
+        assertEquals(generations.takeLast(1), resolve(catalog, profiles, listOf("current:before=0:after=0")).selectedGenerations)
         assertEquals(
             generations,
-            resolve(listOf("earliest:after=${generations.lastIndex}", "current:before=1")).selectedGenerations,
+            resolve(
+                catalog,
+                profiles,
+                listOf("earliest:after=${generations.lastIndex}", "current:before=1"),
+            ).selectedGenerations,
         )
     }
 
@@ -185,11 +201,64 @@ class CliAotSelectionTest {
     private fun resolve(tokens: Collection<String>): AotCompatibilityResolution =
         resolveCliAotSelection(parseCliAotSelection(tokens), listOf("pulley64"))
 
+    private fun resolve(
+        catalog: WasmlineAotReleaseCatalog,
+        profiles: List<AotCompatibilityProfileSpec>,
+        tokens: Collection<String>,
+    ): AotCompatibilityResolution = AotCompatibilitySelectionResolver.resolve(
+        selection = parseCliAotSelection(tokens),
+        releaseCatalog = catalog,
+        profiles = profiles,
+        requestedBackends = setOf(WasmlineEngineKind.PULLEY),
+        currentWasmlineVersion = catalog.currentWasmlineVersion,
+    )
+
     private fun localGenerations(): List<Int> = AotCompatibilityCatalog.releaseCatalog().ranges.map { range -> range.aotGeneration }
 
     private fun localPulleyProfileIds(): List<String> = AotCompatibilityCatalog.releaseCatalog().ranges.mapNotNull { range ->
         range.profileIdsByBackend[WasmlineEngineKind.PULLEY]
     }.distinct()
+
+    /**
+     * Builds a three-generation catalog so anchored windows have real neighbors.
+     *
+     * The first generation must mark every backend as changed, so both backends are
+     * bound per generation; the tested windows only resolve the PULLEY profile.
+     */
+    private fun syntheticWindowCatalog(): Pair<WasmlineAotReleaseCatalog, List<AotCompatibilityProfileSpec>> {
+        val profilePairs = (1..3).map { generation ->
+            WasmlineEngineKind.entries.sortedBy(WasmlineEngineKind::name).associateWith { backend ->
+                AotCompatibilityProfileSpec(
+                    id = "pending",
+                    artifactBackend = backend,
+                    wasmtimeVersion = "50.$generation.0",
+                    wasmtimeDistributionVersion = "50.$generation.0.$generation",
+                    wasmtimeSourceRevision = generation.toString().repeat(40),
+                    serializedArtifactFormatIdentity = "fixture-format-v1",
+                    compileProfileSchemaVersion = 1,
+                    engineConfigurationProfile = "fixture-${backend.name.lowercase()}",
+                    introducedInWasmlineVersion = "1.0.$generation",
+                ).let { profile -> profile.copy(id = AotCompatibilityCatalog.calculateCompatibilityId(profile)) }
+            }
+        }
+        val profiles = profilePairs.flatMap { it.values }.sortedBy { it.id }
+        val catalog = WasmlineAotReleaseCatalog(
+            schemaVersion = 1,
+            currentWasmlineVersion = "1.0.3",
+            minimumSupportedWasmlineVersion = "1.0.1",
+            ranges = profilePairs.mapIndexed { index, bindings ->
+                val pulley = bindings.getValue(WasmlineEngineKind.PULLEY)
+                WasmlineAotReleaseRange(
+                    fromWasmlineVersion = "1.0.${index + 1}",
+                    aotGeneration = index + 1,
+                    wasmtimeDistributionVersion = pulley.wasmtimeDistributionVersion,
+                    changedBackends = WasmlineEngineKind.entries.sortedBy(WasmlineEngineKind::name),
+                    profileIdsByBackend = bindings.mapValues { (_, profile) -> profile.id },
+                )
+            },
+        )
+        return catalog to profiles
+    }
 }
 
 /** Returns the stable version immediately below one local catalog version. */

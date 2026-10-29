@@ -233,8 +233,9 @@ class WasmtimeExtensionTest {
     @Test
     fun repeatedStrategyCallsFormADeduplicatedUnion() {
         val extension = extension()
-        val first = AotCompatibilityCatalog.releaseCatalog().ranges.first()
-        val last = AotCompatibilityCatalog.releaseCatalog().ranges.last()
+        val ranges = AotCompatibilityCatalog.releaseCatalog().ranges
+        val first = ranges.first()
+        val last = ranges.last()
         extension.aotCompatibility {
             generations(first.fromWasmlineVersion)
             generations(AotGenerations.Current)
@@ -244,7 +245,9 @@ class WasmtimeExtensionTest {
 
         val resolution = resolve(extension)
 
-        assertEquals(listOf(first.aotGeneration, last.aotGeneration), resolution.selectedGenerations)
+        // Repeating a strategy must not duplicate its generation; with a single
+        // local generation the anchor and the earliest range coincide.
+        assertEquals(listOf(first.aotGeneration, last.aotGeneration).distinct(), resolution.selectedGenerations)
         assertEquals(
             listOf(first, last).map { it.profileIdsByBackend.getValue(WasmlineEngineKind.PULLEY) }.distinct(),
             resolution.profiles.map { it.id },
@@ -269,12 +272,17 @@ class WasmtimeExtensionTest {
 
     @Test
     fun rejectsInvertedConcreteBounds() {
+        // The bound check must reject an inverted range on its own. When the shipped
+        // catalog spans a single version, its own bounds cannot form one, so use an
+        // explicit pair that is always inverted.
         val catalog = AotCompatibilityCatalog.releaseCatalog()
+        val min = catalog.minimumSupportedWasmlineVersion
+        val current = catalog.currentWasmlineVersion
+        val invertedFrom = if (min == current) "1.0.1" else current
+        val invertedThrough = if (min == current) "1.0.0" else min
+
         assertFailsWith<IllegalArgumentException> {
-            extension().aotCompatibility.generations(
-                min = catalog.currentWasmlineVersion,
-                max = catalog.minimumSupportedWasmlineVersion,
-            )
+            extension().aotCompatibility.generations(min = invertedFrom, max = invertedThrough)
         }
     }
 
