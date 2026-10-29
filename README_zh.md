@@ -385,20 +385,20 @@ wasmline {
 
 ```bash
 # Wasmline 模块与 Android AAR
-(cd . && ./gradlew assemble)
-(cd . && ./gradlew :wasmline-android:assembleDebug)
-(cd . && ./gradlew :wasmline-android:assembleRelease)
+./gradlew assemble
+./gradlew :wasmline-android:assembleDebug
+./gradlew :wasmline-android:assembleRelease
 
 # JVM 校验与 Gradle plugin 集成测试
-(cd . && ./gradlew :wasmline:jvmTest)
+./gradlew :wasmline:jvmTest
 (cd wasmline-plugin-test && ./gradlew jvmTest)
 
 # Web production distribution
-(cd . && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
-(cd . && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
+./gradlew :wasmline:jsBrowserProductionLibraryDistribution
+./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution
 
 # Apple binary（需要 macOS）
-(cd . && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
+./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries
 
 # 当前操作系统的 Desktop 分发包
 (cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)

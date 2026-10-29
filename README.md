@@ -419,20 +419,20 @@ wrapper belonging to the project that it builds:
 
 ```bash
 # Wasmline modules and Android AARs
-(cd . && ./gradlew assemble)
-(cd . && ./gradlew :wasmline-android:assembleDebug)
-(cd . && ./gradlew :wasmline-android:assembleRelease)
+./gradlew assemble
+./gradlew :wasmline-android:assembleDebug
+./gradlew :wasmline-android:assembleRelease
 
 # JVM verification and Gradle plugin integration tests
-(cd . && ./gradlew :wasmline:jvmTest)
+./gradlew :wasmline:jvmTest
 (cd wasmline-plugin-test && ./gradlew jvmTest)
 
 # Web production distributions
-(cd . && ./gradlew :wasmline:jsBrowserProductionLibraryDistribution)
-(cd . && ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution)
+./gradlew :wasmline:jsBrowserProductionLibraryDistribution
+./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution
 
 # Apple binaries (macOS host)
-(cd . && ./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries)
+./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries
 
 # Desktop distribution for the current operating system
 (cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
