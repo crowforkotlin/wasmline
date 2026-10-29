@@ -377,12 +377,10 @@ class SyncVersionTest(unittest.TestCase):
         }
         rendered = self.render_managed_files(versions)
 
-        for path in (
-            "samples/multiplatform-app/plugins/c-component-service/CMakeLists.txt",
-            "samples/multiplatform-app/plugins/cpp-component-service/CMakeLists.txt",
-        ):
-            self.assertIn("wit-bindgen-cli 7.6.5", rendered[path], msg=path)
-            self.assertIn("wasm-tools 8.7.6", rendered[path], msg=path)
+        for fixture in ("c-component-service", "cpp-component-service"):
+            build_script = f"samples/multiplatform-app/plugins/{fixture}/build.sh"
+            self.assertIn('WIT_BINDGEN_VERSION="7.6.5"', rendered[build_script])
+            self.assertIn('WASM_TOOLS_VERSION="8.7.6"', rendered[build_script])
 
     def test_component_tool_versions_do_not_rewrite_kotlin_sources(self) -> None:
         """Component CLI tool upgrades must not modify Kotlin source files."""

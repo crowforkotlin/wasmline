@@ -110,7 +110,7 @@ def _aot(args: argparse.Namespace) -> int:
 
     try:
         if args.operation == "sync":
-            return sync_aot(proxy=args.proxy, jobs=args.jobs)
+            return sync_aot(proxy=args.proxy, jobs=args.jobs, rebuild=args.rebuild)
         if args.operation == "check":
             return check_aot()
         raise RuntimeError(f"Unknown AOT operation: {args.operation}")

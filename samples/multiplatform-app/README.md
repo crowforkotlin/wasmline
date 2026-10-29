@@ -66,8 +66,8 @@ Each valid execution-model/protocol pair has a standalone signed sample package:
 
 Gradle module names remain stable; `settings.gradle.kts` maps them to their
 directories. C, C++, and Rust guest sources live in `plugins/c-component-service`,
-`plugins/cpp-component-service`, and `plugins/rust-component-service`. Shared
-CMake configuration lives in `plugins/build-support`. The plain WAT alternative
+`plugins/cpp-component-service`, and `plugins/rust-component-service`; each is
+built by its own `build.sh`. The plain WAT alternative
 is in `plugins/raw-export/wat`; the Gradle Raw Export module compiles Kotlin.
 These are parts of this application example, not separate runnable samples.
 

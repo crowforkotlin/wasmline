@@ -62,11 +62,11 @@ contract with `wit export --output <dir>`; see the
 
 C and C++ target `wasm32-wasip1` through the verified WASI SDK 33 baseline. Their
 fixtures are `samples/multiplatform-app/plugins/c-component-service` and
-`samples/multiplatform-app/plugins/cpp-component-service`. Each reads the fixed WIT
-world from `wasmline-plugin-core`, generates bindings in the CMake build
-directory, links the Component type object, and runs `wasm-tools component new`.
-Pass a Preview 1 reactor adapter when the selected SDK leaves Preview 1 imports
-in the Core Wasm.
+`samples/multiplatform-app/plugins/cpp-component-service`. Each `build.sh` reads
+the fixed WIT world from `wasmline-plugin-core`, generates bindings with
+`wit-bindgen`, compiles the hand-written source together with the generated
+Component type object, and runs `wasm-tools component new`. Pass a Preview 1
+reactor adapter when the selected SDK leaves Preview 1 imports in the Core Wasm.
 
 ## Language Bindings
 
@@ -85,8 +85,10 @@ steps do not modify Wasmtime, `wit-bindgen`, or the shared WIT source.
 guest still needs its own compiler, a Component build step, and `wit-bindgen`'s
 language-specific requirements, such as C# `--runtime native-aot`.
 
-Generated source and Component type objects remain build outputs. The C++ fixtures enforce `wit-bindgen 0.57.1` and `wasm-tools 1.256.0` at CMake
-configure time; their READMEs list the required WASI SDK commands.
+Generated source and Component type objects remain build outputs. The C and C++
+`build.sh` scripts reject any `wit-bindgen` or `wasm-tools` version other than
+`wit-bindgen 0.57.1` and `wasm-tools 1.262.0`; their READMEs list the required
+WASI SDK commands.
 The pinned C++ generator emits one `std::expected::value()` use with a
 move-only WIT error type. Its fixture applies a fail-closed generated-source
 compatibility step that switches that checked access to `operator*` after

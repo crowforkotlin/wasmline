@@ -1,20 +1,11 @@
 {
   "schemaVersion": 1,
-  "currentWasmlineVersion": "1.0.1",
+  "currentWasmlineVersion": "1.0.0",
   "minimumSupportedWasmlineVersion": "1.0.0",
   "ranges": [
     {
       "fromWasmlineVersion": "1.0.0",
       "aotGeneration": 1,
-      "wasmtimeDistributionVersion": "48.0.1.1",
-      "changedBackends": [
-        "CRANELIFT",
-        "PULLEY"
-      ]
-    },
-    {
-      "fromWasmlineVersion": "1.0.1",
-      "aotGeneration": 2,
       "wasmtimeDistributionVersion": "50.0.0.2",
       "changedBackends": [
         "CRANELIFT",

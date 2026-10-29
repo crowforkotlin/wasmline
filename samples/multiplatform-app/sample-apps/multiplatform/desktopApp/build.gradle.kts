@@ -31,7 +31,7 @@ compose.desktop {
                 TargetFormat.Pkg,
             )
             packageName = "Wasmline"
-            packageVersion = project.findProperty("wasmline.version") as? String ?: "1.0.1"
+            packageVersion = project.findProperty("wasmline.version") as? String ?: "1.0.0"
             description = "Wasmline Sample Desktop Application"
             copyright = "© 2026 Wasmline. All rights reserved."
             vendor = "Wasmline"

@@ -136,7 +136,7 @@ maven-publish = "0.37.0"
 jetbrains-annotations = "26.1.0"
 ktlint = "14.2.0"
 
-wasmline = "1.0.1"
+wasmline = "1.0.0"
 
 [libraries]
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
@@ -342,7 +342,7 @@ conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 maven-publish = { id = "com.vanniktech.maven.publish.base", version.ref = "maven-publish" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 
-wasmline = { id = "crow.wasmline", version = "1.0.1" }
+wasmline = { id = "crow.wasmline", version = "1.0.0" }
 wasmline-kotlin = { id = "crow.wasmline.kotlin" }
 
 app-base-multiplatform-library = { id = "app.base.multiplatform.library" }

@@ -217,18 +217,28 @@ def sync_aot(
     check: bool = False,
     proxy: str | None = None,
     jobs: int | None = None,
+    rebuild: bool = False,
 ) -> int:
-    """Validate the public catalog and synchronize generated AOT resources."""
+    """Validate the public catalog and synchronize generated AOT resources.
+
+    A normal run appends new generations to the existing lock and rejects any
+    change to published history. ``rebuild`` discards the previous lock and
+    regenerates every record from the public catalog, which is the only way to
+    remove generations; it is intended for unpublished local history.
+    """
 
     console = Console(sys.stdout)
     versions = _read_versions()
     source = load_public_catalog()
-    existing = load_lock()
+    existing = {} if rebuild else load_lock()
     resolver = None if check else GitHubAotMetadataResolver(proxy=proxy, jobs=jobs)
+    if rebuild and not check:
+        console.info("AOT rebuild", "Discarding the existing lock and regenerating every record.")
     metadata = prepare_metadata_for_catalog(source, existing, resolver)
     generated_lock = render_lock(source, versions, metadata)
     validate_lock_against_source(generated_lock, source, versions)
-    validate_append_only(existing, generated_lock)
+    if not rebuild:
+        validate_append_only(existing, generated_lock)
     generated = {
         AOT_LOCK_PATH: json.dumps(generated_lock, ensure_ascii=True, indent=2) + "\n",
         PACKAGED_PUBLIC_CATALOG_PATH: render_public_catalog_text(source, versions),

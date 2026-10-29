@@ -186,6 +186,21 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
     )
 
+    component_fixture_build_rules = (
+        Rule(
+            rf'(WIT_BINDGEN_VERSION="){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
+            lambda v: rf'\g<1>{v["wit_bindgen_version"]}\g<2>',
+        ),
+        Rule(
+            rf'(WASM_TOOLS_VERSION="){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
+            lambda v: rf'\g<1>{v["wasm_tools_version"]}\g<2>',
+        ),
+        Rule(
+            rf'(ADAPTER_VERSION="){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
+            lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+        ),
+    )
+
     architecture_rules = (
         Rule(r"Zig [0-9]+\.[0-9]+\.[0-9]+", lambda v: f"Zig {v['zig_version']}", min_count=0),
         Rule(
@@ -661,30 +676,12 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "samples/multiplatform-app/plugins/c-component-service/CMakeLists.txt",
-            (
-                Rule(
-                    rf'("wit-bindgen-cli ){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
-                    lambda v: rf'\g<1>{v["wit_bindgen_version"]}\g<2>',
-                ),
-                Rule(
-                    rf'("wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
-                    lambda v: rf'\g<1>{v["wasm_tools_version"]}\g<2>',
-                ),
-            ),
+            "samples/multiplatform-app/plugins/c-component-service/build.sh",
+            component_fixture_build_rules,
         ),
         FileSpec(
-            "samples/multiplatform-app/plugins/cpp-component-service/CMakeLists.txt",
-            (
-                Rule(
-                    rf'("wit-bindgen-cli ){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
-                    lambda v: rf'\g<1>{v["wit_bindgen_version"]}\g<2>',
-                ),
-                Rule(
-                    rf'("wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(")',
-                    lambda v: rf'\g<1>{v["wasm_tools_version"]}\g<2>',
-                ),
-            ),
+            "samples/multiplatform-app/plugins/cpp-component-service/build.sh",
+            component_fixture_build_rules,
         ),
         FileSpec(
             "samples/multiplatform-app/plugins/c-component-service/README.md",
@@ -696,6 +693,14 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     rf'(`wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(`)',
                     lambda v: rf'\g<1>{v["wasm_tools_version"]}\g<2>',
+                ),
+                Rule(
+                    rf'(\| Preview 1 reactor adapter \| ){SEMANTIC_VERSION_TOKEN_PATTERN}( \|)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+                Rule(
+                    rf'(bytecodealliance/wasmtime/releases/tag/v){SEMANTIC_VERSION_TOKEN_PATTERN}(>)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
                 ),
             ),
         ),
@@ -713,6 +718,14 @@ def file_specs() -> tuple[FileSpec, ...]:
                 Rule(
                     rf'(`wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(`)',
                     lambda v: rf'\g<1>{v["wasm_tools_version"]}\g<2>',
+                ),
+                Rule(
+                    rf'(\| Preview 1 reactor adapter \| ){SEMANTIC_VERSION_TOKEN_PATTERN}( \|)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
+                ),
+                Rule(
+                    rf'(bytecodealliance/wasmtime/releases/tag/v){SEMANTIC_VERSION_TOKEN_PATTERN}(>)',
+                    lambda v: rf'\g<1>{v["wasmtime_version"]}\g<2>',
                 ),
             ),
         ),
@@ -733,8 +746,8 @@ def file_specs() -> tuple[FileSpec, ...]:
             "fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx",
             (
                 Rule(
-                    rf'(C\+\+ fixtures enforce `wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
-                    rf'(` and `wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(` at CMake)',
+                    rf'(`wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
+                    rf'(` and `wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(`)',
                     lambda v: (
                         rf'\g<1>{v["wit_bindgen_version"]}'
                         rf'\g<2>{v["wasm_tools_version"]}\g<3>'
@@ -746,8 +759,8 @@ def file_specs() -> tuple[FileSpec, ...]:
             "fumadocs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
             (
                 Rule(
-                    rf'(CMake configure 阶段严格检查 `wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
-                    rf'(` 和\s+`wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(`)',
+                    rf'(`wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
+                    rf'(` 或非 `wasm-tools ){SEMANTIC_VERSION_TOKEN_PATTERN}(`)',
                     lambda v: (
                         rf'\g<1>{v["wit_bindgen_version"]}'
                         rf'\g<2>{v["wasm_tools_version"]}\g<3>'

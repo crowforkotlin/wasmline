@@ -203,6 +203,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         help="Limit concurrent compiler archive verification for a new distribution.",
     )
+    aot_sync.add_argument(
+        "--rebuild",
+        action="store_true",
+        help=(
+            "Discard the existing lock and regenerate every record from the public catalog. "
+            "Use only while the recorded generations are unpublished."
+        ),
+    )
     aot_commands.add_parser(
         "check",
         help="Validate the public catalog and generated AOT files without writing.",

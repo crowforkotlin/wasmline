@@ -91,7 +91,7 @@ tasks.register<Exec>("wasmlineRunDebug") {
 androidApplication {
     config(
         versionCode = 1,
-        versionName = "1.0.1-release",
+        versionName = "1.0.0-release",
     ) {}
 }
 
