@@ -66,7 +66,7 @@ The public catalog has this shape:
     {
       "fromWasmlineVersion": "1.0.0",
       "aotGeneration": 1,
-      "wasmtimeDistributionVersion": "48.0.1.1",
+      "wasmtimeDistributionVersion": "12.3.4.2",
       "changedBackends": ["CRANELIFT", "PULLEY"]
     }
   ]
@@ -253,7 +253,9 @@ the fixed encoding `major * 100 + minor * 10 + patch` of
 `versions.wasmtime_version`; minor and patch must be single digits. The first
 three segments of `wasmtime_release_version` must equal `wasmtime_version`, and
 the catalog current version must equal the Wasmline version in the manifest.
-The tag commit must be reachable from `main`.
+The tag commit must be reachable from `main`. The fourth fork build component
+is recorded separately and does not enter the tag suffix. Use
+`./scripts/release.sh expected-tag` to derive the current tag.
 
 After validation, the Linux native AOT job downloads the locked Wasmtime assets,
 builds the JVM and Android engine libraries, and runs native AOT, JVM, and dynamic
@@ -275,7 +277,8 @@ compatibility documentation URL.
 For local validation and asset preparation, use:
 
 ```bash
-./scripts/release.sh verify-tag release-1.0.0.4801
+./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+./scripts/release.sh verify-publications --require-apple
 ./scripts/release.sh prepare-assets build/release
 ./scripts/release.sh write-notes build/release-notes.md
 ```

@@ -1,0 +1,134 @@
+---
+title: Releasing
+description: Prepare Maven artifacts, verify consumers, and understand release tags
+createdAt: 2026-10-30
+updatedAt: 2026-10-30
+---
+
+# Releasing
+
+The release workflow is `.github/workflows/release.yml`. Pushes to `main` run CI;
+formal Maven publication starts when a valid release tag is pushed.
+
+## Version Identities and Tags
+
+| Input in `versions.json` | Meaning |
+|---|---|
+| `wasmline_version` | One `x.y.z` Maven version for runtime, loader, plugins, CLI, and engines |
+| `wasmtime_version` | Three-part upstream Wasmtime version linked by the engines |
+| `wasmtime_release_version` | Exact four-part Wasmtime fork distribution used for downloads |
+
+Release tags use `release-x.y.z.v`. The first three parts are the Wasmline Maven
+version. The last part encodes the three-part Wasmtime version:
+
+```text
+v = major × 100 + minor × 10 + patch
+```
+
+For example, Wasmline `1.2.3` with Wasmtime `12.3.4` produces
+`release-1.2.3.1234` because `12 × 100 + 3 × 10 + 4 = 1234`.
+The fork distribution `12.3.4.2` still produces `1234`: its final `.2` identifies
+the fork build and is recorded separately in the catalog and release notes.
+
+The suffix is neither a fourth Maven version component nor an AOT generation
+number. Minor and patch must each fit in one digit while this encoding is used.
+Tags and Maven versions are immutable; each formal Maven release has one tag.
+
+Read the expected tag from the current manifest:
+
+```bash
+./scripts/release.sh expected-tag
+./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+```
+
+These commands print and validate release inputs. Tag creation is a separate
+release operation.
+
+## Prepare the Candidate
+
+Use the JBR and native toolchain declared in `versions.json`. Follow
+[Building from Source](/en/docs/building-from-source) to prepare locked Wasmtime
+and JNI assets. From the repository root, verify the environment and inputs:
+
+```bash
+./scripts/wasmline doctor
+./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+python3 scripts/tests/test_versions.py
+python3 scripts/tests/test_publications.py
+```
+
+Run the JVM suites, including the plugin core and Gradle plugin tests:
+
+```bash
+./gradlew :wasmline:jvmTest :wasmline-loader:jvmTest \
+  :wasmline-plugin-core:test :wasmline-gradle-plugin:test \
+  :wasmline-kotlin-plugin:test :wasmline-cli:test :wasmline-bom:check --no-daemon
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 --no-daemon
+```
+
+The second command is the Linux native AOT gate and requires the Rust
+`wasm32-wasip2` target. CI also runs browser, Node, Kotlin/Native, and iOS
+simulator tests. Review the results for the exact candidate commit.
+
+## Verify Published Artifacts
+
+Use macOS for a complete formal publication because Apple targets are declared
+only on macOS. After preparing the native assets, run:
+
+```bash
+./gradlew publishToMavenLocal --no-daemon
+./scripts/release.sh verify-publications --require-apple
+(cd wasmline-plugin-test && ./gradlew jvmTest -Pwasmline.source=false --no-daemon)
+```
+
+The publication check verifies current-version POMs and Gradle metadata,
+target redirects, artifact files and digests, self dependencies, JNI classifier
+JARs, Android engine libraries, and embedded Native engine archives.
+`--repository <path>` selects a different local Maven repository.
+
+The final command disables `includeBuild` substitution and uses the actual
+published Gradle plugin, runtime, and Cranelift JNI classifier. It builds a
+signed plugin package and invokes it through the published runtime.
+Leave `WASMLINE_NATIVE_LIBRARY_PATH` unset so the test loads the classifier JAR.
+
+On Linux, omit `--require-apple` to check locally declared targets. Record Apple
+compilation, linking, and publication as pending until the macOS gate passes.
+
+The `wasmline-android` Maven coordinate belongs to the Android target of
+`:wasmline`. The same-named source project holds native build inputs and is not
+a separately published runtime dependency.
+
+## Credentials and Release Notes
+
+Configure these repository Actions secrets before pushing the release tag:
+
+| Secret | Purpose |
+|---|---|
+| `MAVEN_CENTRAL_USERNAME` | Maven Central publishing token username |
+| `MAVEN_CENTRAL_PASSWORD` | Maven Central publishing token password |
+| `MAVEN_CENTRAL_SIGNING_KEY` | ASCII-armored private signing key |
+| `MAVEN_CENTRAL_SIGNING_KEY_PASSWORD` | Passphrase when the signing key is protected |
+
+The publishing account needs permission for the `crow.wasmline` namespace.
+Keep release changes in the `Unreleased` section of `CHANGELOG.md`. The release
+script adds those changes to the generated compatibility metadata:
+
+```bash
+./scripts/release.sh prepare-assets build/release
+./scripts/release.sh write-notes build/release-notes.md
+```
+
+## Formal Release
+
+Push the verified candidate to `main` and review CI for that commit. Push the
+tag printed by `expected-tag` as the formal release operation.
+
+The workflow validates the tag and catalog, runs Linux JVM/native AOT and iOS
+gates, prepares all Maven artifacts on macOS, checks local publications, and
+tests the published consumer before invoking `publishToMavenCentral`.
+It then creates the GitHub Release with `aot-compatibility.json` and its checksum.
+
+After Maven Central makes the artifacts available, verify installation from
+Maven Central, update the local-only distribution notes in both READMEs and
+installation pages, and move the changelog entry under the released version.

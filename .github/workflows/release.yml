@@ -35,12 +35,27 @@ jobs:
         run: ./scripts/wasmline aot check
 
       - name: Verify repository tooling
-        run: python3 scripts/tests/test_versions.py
+        run: |
+          python3 scripts/tests/test_versions.py
+          python3 scripts/tests/test_publications.py
 
       - name: Confirm tag commit is reachable from main
         run: |
           git fetch origin main --no-tags
           git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"
+
+      - name: Verify publication credentials
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          MAVEN_CENTRAL_SIGNING_KEY: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY }}
+        run: |
+          for release_secret_name in MAVEN_CENTRAL_USERNAME MAVEN_CENTRAL_PASSWORD MAVEN_CENTRAL_SIGNING_KEY; do
+            if [ -z "${!release_secret_name}" ]; then
+              echo "::error::Missing repository secret ${release_secret_name}"
+              exit 1
+            fi
+          done
 
   native-aot-jvm:
     name: validate-native-aot-jvm
@@ -135,6 +150,7 @@ jobs:
           :wasmline-loader:jvmTest
           :wasmline-plugin-core:test
           :wasmline-gradle-plugin:test
+          :wasmline-bom:check
           :wasmline-kotlin-plugin:test
           :wasmline-cli:test
           --no-daemon
@@ -231,28 +247,21 @@ jobs:
           :wasmline-engine-cranelift:generateMetadataFileForKotlinMultiplatformPublication
           --no-daemon
 
-      - name: Verify Apple publication variants
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
+      - name: Prepare local Maven publications
+        run: ./gradlew publishToMavenLocal --no-daemon
 
-          expected = {
-              "wasmline": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
-              "wasmline-loader": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
-              "wasmline-network-ktor": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
-              "wasmline-engine-pulley": {"ios_arm64", "ios_simulator_arm64", "macos_arm64"},
-              "wasmline-engine-cranelift": {"macos_arm64"},
-          }
-          for module, targets in expected.items():
-              metadata = json.loads(Path(module, "build/publications/kotlinMultiplatform/module.json").read_text())
-              actual = {variant.get("attributes", {}).get("org.jetbrains.kotlin.native.target")
-                        for variant in metadata["variants"] if "available-at" in variant}
-              missing = targets - actual
-              if missing:
-                  raise SystemExit(f"{module}: missing Apple Maven variants {sorted(missing)}")
-              print(f"{module}: Apple Maven variants {sorted(targets)}")
-          PY
+      - name: Verify complete Maven publications
+        run: ./scripts/release.sh verify-publications --require-apple
+
+      - name: Verify published plugin and native runtime
+        working-directory: wasmline-plugin-test
+        run: ./gradlew jvmTest -Pwasmline.source=false --no-daemon
+
+      - name: Prepare release catalog assets
+        run: ./scripts/release.sh prepare-assets build/release
+
+      - name: Generate release notes
+        run: ./scripts/release.sh write-notes build/release-notes.md
 
       - name: Publish Maven artifacts
         working-directory: .
@@ -262,12 +271,6 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY_PASSWORD }}
         run: ./gradlew publishToMavenCentral --no-daemon
-
-      - name: Prepare release catalog assets
-        run: ./scripts/release.sh prepare-assets build/release
-
-      - name: Generate release notes
-        run: ./scripts/release.sh write-notes build/release-notes.md
 
       - name: Upload release inputs
         uses: actions/upload-artifact@v4

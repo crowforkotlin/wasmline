@@ -57,7 +57,7 @@ Do not initialize assets merely because the directory exists or is absent. Confi
 | `wasmline-loader/` | Local and remote manifests, signatures, artifact selection, and network-neutral loading |
 | `wasmline-engine-cranelift/` | Cranelift native runtime distribution |
 | `wasmline-engine-pulley/` | Pulley native runtime distribution |
-| `wasmline-android/` | Android native build integration |
+| `wasmline-android/` | Internal Android native build inputs; Maven Android variants belong to runtime and engine modules |
 | `wasmline-kotlin-plugin/` | Kotlin IR validation, bridge generation, entry-point rewriting, and WASI/Component hooks |
 | `wasmline-plugin-core/` | Shared plugin build pipeline, Component tooling, manifest signing, packaging, and host WIT generation |
 | `wasmline-gradle-plugin/` | Consumer DSL and Gradle tasks built on the compiler plugin and plugin core |
@@ -251,7 +251,7 @@ Pushes and pull requests targeting `main` ignore `fumadocs/**`, root `*.md`, and
 | `lint-kotlin`, `lint-clang`, `lint-zig` | Full repository formatting checks | None |
 | `build-cranelift-assets` | Build Cranelift Android/JVM native assets and upload the Linux x64 JNI library | None |
 | `build-pulley-assets` | Build Pulley Android/JVM native assets | None |
-| `test-jvm` | Compiler plugin, loader, runtime, and CLI JVM tests using the Cranelift JNI artifact | `build-cranelift-assets` |
+| `test-jvm` | Compiler plugin, loader, runtime, plugin core, Gradle plugin, CLI tests, BOM constraints, and release tooling using the Cranelift JNI artifact | `build-cranelift-assets` |
 | `test-native-aot-jvm` | Generated Cranelift and `pulley64` Core, Component, and Service AOT fixtures with JVM runtime integration tests | `build-cranelift-assets` |
 | `test-kotlin-native` | Kotlin/Native sample using an independently cached Linux x64 Pulley platform asset | None |
 | `test-web` | Runtime and loader JS/WasmJS browser tests | None |

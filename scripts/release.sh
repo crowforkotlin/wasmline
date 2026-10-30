@@ -10,8 +10,10 @@ CATALOG_FILE="${REPOSITORY_ROOT}/aot-compatibility.json"
 usage() {
   cat <<'EOF'
 Usage:
+  ./scripts/release.sh expected-tag
   ./scripts/release.sh verify [release-tag]
   ./scripts/release.sh verify-tag <release-tag>
+  ./scripts/release.sh verify-publications [--repository <path>] [--require-apple]
   ./scripts/release.sh prepare-assets [output-directory]
   ./scripts/release.sh write-notes <output-file>
 
@@ -48,6 +50,15 @@ wasmtime_tag_code() {
     exit 2
   }
   printf '%d\n' "$((10#${major} * 100 + 10#${minor} * 10 + 10#${patch}))"
+}
+
+expected_tag() {
+  require_command jq
+  local wasmline_version wasmtime_version expected_code
+  wasmline_version="$(json_value '.versions.wasmline_version')"
+  wasmtime_version="$(json_value '.versions.wasmtime_version')"
+  expected_code="$(wasmtime_tag_code "${wasmtime_version}")"
+  printf 'release-%s.%s\n' "${wasmline_version}" "${expected_code}"
 }
 
 verify_tag() {
@@ -106,6 +117,12 @@ verify_repository() {
   printf 'Repository release inputs are synchronized.\n'
 }
 
+verify_publications() {
+  require_command python3
+  PYTHONPATH="${REPOSITORY_ROOT}/scripts/internal/python" \
+    python3 -m wasmline_tools.publications "$@"
+}
+
 sha256_digest() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | awk '{ print $1 }'
@@ -136,10 +153,20 @@ prepare_assets() {
 write_notes() {
   local output_file="$1"
   local wasmline_version wasmtime_release_version generation distribution changed added
-  local temporary_file
+  local temporary_file release_changes
 
   require_command jq
   verify_repository
+  release_changes="$(awk '
+    /^## Unreleased$/ { release_section = 1; next }
+    /^## / && release_section { exit }
+    release_section && !release_content && /^[[:space:]]*$/ { next }
+    release_section { release_content = 1; print }
+  ' "${REPOSITORY_ROOT}/CHANGELOG.md")"
+  [[ -n "${release_changes//[[:space:]]/}" ]] || {
+    printf 'CHANGELOG.md must contain non-empty Unreleased release notes.\n' >&2
+    exit 2
+  }
   mkdir -p "$(dirname "${output_file}")"
   wasmline_version="$(json_value '.versions.wasmline_version')"
   wasmtime_release_version="$(json_value '.versions.wasmtime_release_version')"
@@ -151,6 +178,8 @@ write_notes() {
   temporary_file="$(mktemp "${output_file}.XXXXXX")"
   {
     printf '# Wasmline %s\n\n' "${wasmline_version}"
+    printf '%s\n\n' "${release_changes}"
+    printf '## Runtime compatibility\n\n'
     printf -- '- Wasmtime fork distribution: `%s`\n' "${wasmtime_release_version}"
     printf -- '- AOT generation: `%s`\n' "${generation}"
     printf -- '- New AOT generation in this release: `%s`\n' "${added}"
@@ -163,6 +192,9 @@ write_notes() {
 main() {
   local command="${1:-verify}"
   case "${command}" in
+    expected-tag)
+      expected_tag
+      ;;
     verify)
       verify_repository
       if [[ "${2:-}" != "" ]]; then
@@ -176,6 +208,10 @@ main() {
       ;;
     prepare-assets)
       prepare_assets "${2:-}"
+      ;;
+    verify-publications)
+      shift
+      verify_publications "$@"
       ;;
     write-notes)
       [[ "${2:-}" != "" ]] || { usage >&2; exit 2; }

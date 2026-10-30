@@ -1,0 +1,127 @@
+---
+title: 发行
+description: 准备 Maven 构件，验证使用方，并说明发行 tag 的含义
+createdAt: 2026-10-30
+updatedAt: 2026-10-30
+---
+
+# 发行
+
+发行工作流为 `.github/workflows/release.yml`。推送到 `main` 会运行 CI；
+推送有效的发行 tag 后才开始正式 Maven 发布。
+
+## 版本与 Tag
+
+| `versions.json` 输入 | 含义 |
+|---|---|
+| `wasmline_version` | runtime、loader、插件、CLI 与 engine 共用的 `x.y.z` Maven 版本 |
+| `wasmtime_version` | engine 链接的三段 Wasmtime 上游版本 |
+| `wasmtime_release_version` | 下载时使用的四段 Wasmtime fork 发行版本 |
+
+发行 tag 格式为 `release-x.y.z.v`。前三段是 Wasmline Maven 版本；
+最后一段按三段 Wasmtime 版本计算：
+
+```text
+v = major × 100 + minor × 10 + patch
+```
+
+例如，Wasmline `1.2.3` 配合 Wasmtime `12.3.4`，tag 为
+`release-1.2.3.1234`，因为 `12 × 100 + 3 × 10 + 4 = 1234`。
+如果 fork 发行版本是 `12.3.4.2`，编码仍为 `1234`：最后的 `.2` 标识 fork
+构建，单独记录在 catalog 和发行说明中。
+
+该后缀不是 Maven 的第四段版本，也不是 AOT generation 编号。使用此编码时，
+Wasmtime 的 minor 和 patch 必须各为一位数字。Tag 和 Maven 版本均不可覆盖；
+每次正式 Maven 发行对应一个 tag。
+
+从当前 manifest 读取预期 tag：
+
+```bash
+./scripts/release.sh expected-tag
+./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+```
+
+上述命令输出并校验发行输入。创建 tag 属于后续正式发行操作。
+
+## 准备候选版本
+
+使用 `versions.json` 声明的 JBR 与原生工具链。按
+[从源码编译](/zh/docs/building-from-source)准备锁定版本的 Wasmtime 和 JNI
+文件，然后从仓库根目录检查环境与发行输入：
+
+```bash
+./scripts/wasmline doctor
+./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+python3 scripts/tests/test_versions.py
+python3 scripts/tests/test_publications.py
+```
+
+运行 JVM 测试，包括 plugin core 和 Gradle 插件测试：
+
+```bash
+./gradlew :wasmline:jvmTest :wasmline-loader:jvmTest \
+  :wasmline-plugin-core:test :wasmline-gradle-plugin:test \
+  :wasmline-kotlin-plugin:test :wasmline-cli:test :wasmline-bom:check --no-daemon
+./gradlew :wasmline:nativeAotJvmTest \
+  -Pwasmline.native.fixtures.targets=x86_64-linux,pulley64 --no-daemon
+```
+
+第二条命令为 Linux 原生 AOT 测试，需要 Rust 的 `wasm32-wasip2` target。
+CI 还运行浏览器、Node、Kotlin/Native 和 iOS 模拟器测试。确认结果对应实际
+候选提交。
+
+## 验证发布构件
+
+完整正式发行需要 macOS，因为 Apple 目标仅在 macOS 上声明。准备好原生文件后执行：
+
+```bash
+./gradlew publishToMavenLocal --no-daemon
+./scripts/release.sh verify-publications --require-apple
+(cd wasmline-plugin-test && ./gradlew jvmTest -Pwasmline.source=false --no-daemon)
+```
+
+构件检查会验证当前版本的 POM 和 Gradle metadata、目标跳转、构件文件及摘要、
+自身依赖、JNI classifier JAR、Android engine 库，以及 Native engine 内嵌的
+静态库。使用 `--repository <path>` 可选择其他本地 Maven 仓库。
+
+最后一条命令关闭 `includeBuild` 源码替换，使用实际发布的 Gradle 插件、
+runtime 和 Cranelift JNI classifier，构建签名插件包并通过发布的 runtime 调用。
+保持 `WASMLINE_NATIVE_LIBRARY_PATH` 未设置，让测试从 classifier JAR 加载原生库。
+
+Linux 上省略 `--require-apple`，可检查本机声明的目标。Apple 编译、链接与发布
+在 macOS 验证通过之前仍应记录为待验证。
+
+`wasmline-android` Maven 坐标属于 `:wasmline` 的 Android 目标。同名源码项目
+只保存原生构建输入，不作为独立的 runtime 依赖发布。
+
+## 凭据与发行说明
+
+推送发行 tag 前，在仓库配置以下 Actions secrets：
+
+| Secret | 用途 |
+|---|---|
+| `MAVEN_CENTRAL_USERNAME` | Maven Central 发布 token 的用户名 |
+| `MAVEN_CENTRAL_PASSWORD` | Maven Central 发布 token 的密码 |
+| `MAVEN_CENTRAL_SIGNING_KEY` | ASCII-armored 格式的私有签名密钥 |
+| `MAVEN_CENTRAL_SIGNING_KEY_PASSWORD` | 受密码保护的签名密钥口令 |
+
+发布账号需要拥有 `crow.wasmline` namespace 的发布权限。将本次变化写入
+`CHANGELOG.md` 的 `Unreleased` 部分，发行脚本会将其加入生成的兼容性信息：
+
+```bash
+./scripts/release.sh prepare-assets build/release
+./scripts/release.sh write-notes build/release-notes.md
+```
+
+## 正式发行
+
+将已验证的候选提交推送到 `main`，确认该提交的 CI。将 `expected-tag` 输出的
+tag 推送作为正式发行操作。
+
+工作流会校验 tag 和 catalog，运行 Linux JVM、原生 AOT 与 iOS 测试，在 macOS
+准备完整 Maven 构件，检查本地发布结果并测试实际使用方，再调用
+`publishToMavenCentral`。随后创建 GitHub Release，并上传
+`aot-compatibility.json` 及其摘要。
+
+Maven Central 构件可用后，验证从 Maven Central 安装，同步更新两个 README
+和安装页中仅本地分发的说明，并将 changelog 条目移到已发布版本下。

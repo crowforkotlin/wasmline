@@ -386,8 +386,6 @@ wasmline {
 ```bash
 # Wasmline 模块与 Android AAR
 ./gradlew assemble
-./gradlew :wasmline-android:assembleDebug
-./gradlew :wasmline-android:assembleRelease
 
 # JVM 校验与 Gradle plugin 集成测试
 ./gradlew :wasmline:jvmTest
@@ -407,7 +405,14 @@ wasmline {
 GitHub Actions 的发布任务会构建可发布的 Wasmline 模块、校验 AOT catalog，并上传
 `aot-compatibility.json` 及其 SHA-256 摘要。该发布任务只响应
 `release-x.y.z.v` 格式的 tag；推送到 `main` 不会发布。`x.y.z` 是 Wasmline
-Maven 版本，`v` 是 Wasmtime runtime 版本的固定数字编码。
+Maven 版本，`v` 按三段 Wasmtime 版本计算为
+`major × 100 + minor × 10 + patch`。例如 Wasmline `1.2.3` 配合
+Wasmtime `12.3.4`，tag 为 `release-1.2.3.1234`。Fork 发行版本
+`12.3.4.2` 的最后一段构建号单独记录，不参与该后缀计算。
+
+`./scripts/release.sh expected-tag` 会输出当前 manifest 对应的 tag。
+[发行文档](<fumadocs/content/docs/(reference)/(repository-development)/releasing.zh.mdx>)
+说明了构件检查、凭据配置，以及如何测试实际 Maven 构件。
 
 ## 架构图
 

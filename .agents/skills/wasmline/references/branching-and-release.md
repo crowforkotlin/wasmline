@@ -90,6 +90,11 @@ release-x.y.z.v
 
 Example: Wasmtime `12.3.4` encodes to `1234`, so Wasmline `1.2.3` uses `release-1.2.3.1234`.
 
+The fourth component of the fork distribution, such as the `.2` in `12.3.4.2`,
+does not enter that encoding. It remains recorded in the AOT catalog and release
+notes. `./scripts/release.sh expected-tag` derives the current tag from
+`versions.json`; it never creates a tag.
+
 The encoding is unambiguous only while Wasmtime minor and patch values are single digits. Revise the tag format before accepting a version that violates this condition.
 
 Tags are immutable. Do not move or reuse a release tag.
@@ -112,7 +117,12 @@ Before either action:
 
 The GitHub Actions CI workflow has no publication or release jobs; a successful CI run is not a release. Formal publication is implemented by `.github/workflows/release.yml`, which runs only for a validated `release-x.y.z.v` tag. It publishes Maven artifacts, then creates the matching GitHub Release with `aot-compatibility.json` and its checksum. The local `scripts/release.sh` validates inputs and prepares release notes/assets but never creates tags or publishes artifacts.
 
-The Linux job verifies native AOT, JVM tests, and dynamic plugin tests, then transfers its JVM and Android engine libraries to the publisher. The iOS simulator Pulley gate runs separately on macOS. Publication uses one macOS job because the Kotlin builds declare Apple targets only on macOS; publishing root metadata on Linux would omit those target variants. Before the single `publishToMavenCentral` invocation, the workflow verifies the expected Apple targets in each root `.module` file. A Linux `--dry-run` or local publication cannot verify Apple compilation, linking, or publication.
+The Linux job verifies native AOT, JVM tests, and dynamic plugin tests, then transfers its JVM and Android engine libraries to the publisher. The iOS simulator Pulley gate runs separately on macOS. Publication uses one macOS job because the Kotlin builds declare Apple targets only on macOS; publishing root metadata on Linux would omit those target variants. Before the single `publishToMavenCentral` invocation, it publishes locally, runs `./scripts/release.sh verify-publications --require-apple`, and tests `wasmline-plugin-test` with `-Pwasmline.source=false`. The verifier checks target redirects, current versions, artifact files/digests, native libraries, and self dependencies. A Linux local publication cannot verify Apple compilation, linking, or publication.
+
+Keep release changes in `CHANGELOG.md` under `Unreleased`. The release notes
+generator includes that section with the Wasmtime distribution and AOT metadata.
+See the [Releasing guide](<../../../../fumadocs/content/docs/(reference)/(repository-development)/releasing.mdx>)
+for prerequisites, Maven secrets, and consumer verification.
 
 ## Change Scenarios
 

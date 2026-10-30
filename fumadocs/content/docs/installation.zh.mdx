@@ -2,7 +2,7 @@
 title: 安装
 description: 应用 Gradle 插件，添加运行时模块和一个原生引擎
 createdAt: 2026-07-18
-updatedAt: 2026-09-04
+updatedAt: 2026-10-30
 ---
 
 # 安装
@@ -19,6 +19,32 @@ updatedAt: 2026-09-04
   最低需要 **Kotlin 2.4.0** 版本。本次发行产物使用该版本编译并验证。较早的 Kotlin/Native 编译器可能
   拒绝发布的 KLIB ABI；使用更高版本时需要重新验证运行时产物与编译器插件，最低版本声明不保证未来版本兼容。
 </Callout>
+
+## 配置仓库
+
+使用已发布的版本时，在 `settings.gradle.kts` 的两个仓库配置中添加 Maven
+Central。Gradle 插件通过 `pluginManagement` 解析；只在依赖仓库中添加
+`mavenCentral()`，无法解析 `crow.wasmline` 插件。
+
+```kotlin
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
+Wasmline 尚未发布到 Maven Central。接入当前本地构建时，按下方
+[当前分发方式](#当前分发方式)配置。
 
 ## 应用 Gradle 插件
 
@@ -64,6 +90,9 @@ dependencies {
 BOM 让 runtime、loader、插件、CLI、插件构建工具和 engine 模块使用同一
 Wasmline 版本。不要单独升级 engine 模块。
 
+Gradle 会自动选择 Android 目标构件。源码目录 `wasmline-android/` 只保存原生
+构建文件；应用依赖 runtime、loader 和一个 engine，无需依赖该源码项目。
+
 ## Kotlin/Native 宿主
 
 在 Native source set 中添加相同的运行时模块。已发布的 Kotlin Multiplatform
@@ -101,10 +130,16 @@ kotlin {
 Wasmline 当前通过 `mavenLocal()` 分发。在本仓库执行下面命令后，其他本地项目可
 引用这些构件：
 
+先按[从源码编译](/zh/docs/building-from-source)准备锁定版本的 Wasmtime 与
+JNI 文件，再从仓库根目录执行：
+
 ```bash
-cd .
-./gradlew publishToMavenLocal
+./gradlew publishToMavenLocal --no-daemon
 ```
+
+在使用方项目的 `settings.gradle.kts` 中，将 `mavenLocal()` 加到上方两个仓库
+配置的开头。Linux 本地发布只包含 Linux 上声明的目标。完整 Apple 构件需要
+在 macOS 上生成并验证，参阅[发行](/zh/docs/releasing)。
 
 ## 后续页面
 

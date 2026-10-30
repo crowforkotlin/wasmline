@@ -1,4 +1,4 @@
 {
   "title": "仓库开发",
-  "pages": ["building-from-source", "testing", "compiler-plugin"]
+  "pages": ["building-from-source", "testing", "compiler-plugin", "releasing"]
 }

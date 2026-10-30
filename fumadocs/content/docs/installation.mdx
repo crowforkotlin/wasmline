@@ -2,7 +2,7 @@
 title: Installation
 description: Add the Gradle plugin, runtime modules, and one native engine
 createdAt: 2026-07-18
-updatedAt: 2026-09-03
+updatedAt: 2026-10-30
 ---
 
 # Installation
@@ -20,6 +20,32 @@ repository itself, see [Building from Source](/en/docs/building-from-source).
   Earlier Kotlin/Native compilers may reject the published KLIB ABI. A newer Kotlin compiler requires separate
   validation of the runtime artifacts and compiler plugin; this minimum does not guarantee future-version compatibility.
 </Callout>
+
+## Configure Repositories
+
+For a published release, declare Maven Central in both repository blocks in
+`settings.gradle.kts`. Gradle plugin resolution uses `pluginManagement`; adding
+`mavenCentral()` only to dependency repositories does not resolve `crow.wasmline`.
+
+```kotlin
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
+Wasmline has not yet been published to Maven Central. To consume the current
+local build, follow [Current Distribution](#current-distribution) below.
 
 ## Apply the Gradle Plugin
 
@@ -66,6 +92,10 @@ dependencies {
 The BOM keeps the runtime, loader, plugins, CLI, plugin build tools, and engine
 modules on the same Wasmline version. Do not upgrade an engine module by itself.
 
+Gradle selects the Android target publication automatically. The
+`wasmline-android/` source directory is a native build helper; applications
+depend on the runtime, loader, and one engine rather than that source project.
+
 ## Kotlin/Native Hosts
 
 Add the same runtime modules to the Native source set. Published Kotlin
@@ -105,10 +135,17 @@ Wasmline is currently distributed through `mavenLocal()`. From this repository,
 run the following command before consuming the artifacts from another local
 project:
 
+Prepare the locked Wasmtime and JNI assets as described in
+[Building from Source](/en/docs/building-from-source), then run from the repository root:
+
 ```bash
-cd .
-./gradlew publishToMavenLocal
+./gradlew publishToMavenLocal --no-daemon
 ```
+
+In the consuming project's `settings.gradle.kts`, add `mavenLocal()` at the start
+of both repository blocks shown above. Linux local publication contains the
+targets declared on Linux. Use macOS to prepare and verify the complete Apple
+publications, as described in [Releasing](/en/docs/releasing).
 
 ## Next Pages
 

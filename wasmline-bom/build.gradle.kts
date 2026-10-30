@@ -9,6 +9,7 @@ plugins {
 val constrainedWasmlineModules = listOf(
     "wasmline",
     "wasmline-loader",
+    // Android target publication of :wasmline; the native build helper is not published.
     "wasmline-android",
     "wasmline-network-ktor",
     "wasmline-network-okhttp",

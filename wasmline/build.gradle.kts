@@ -104,9 +104,6 @@ kotlin {
         val nativeMain by getting { dependsOn(other = hostMain) }
         val androidMain by getting {
             dependsOn(other = jniMain)
-            dependencies {
-                implementation(projects.wasmlineAndroid)
-            }
         }
 
         // commonTest: base test dependencies available on ALL platforms (including wasmWasi)

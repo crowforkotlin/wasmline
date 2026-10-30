@@ -420,8 +420,6 @@ wrapper belonging to the project that it builds:
 ```bash
 # Wasmline modules and Android AARs
 ./gradlew assemble
-./gradlew :wasmline-android:assembleDebug
-./gradlew :wasmline-android:assembleRelease
 
 # JVM verification and Gradle plugin integration tests
 ./gradlew :wasmline:jvmTest
@@ -442,7 +440,14 @@ The GitHub Actions release job builds the publishable Wasmline modules,
 validates the AOT catalog, and uploads `aot-compatibility.json` with its
 SHA-256 checksum. It runs only for a tag named `release-x.y.z.v`; pushes to
 `main` never publish a release. Here `x.y.z` is the Wasmline Maven version and
-`v` is the fixed numeric encoding of the Wasmtime runtime version.
+`v` is `major × 100 + minor × 10 + patch` for the three-part Wasmtime version.
+For example, Wasmline `1.2.3` with Wasmtime `12.3.4` uses
+`release-1.2.3.1234`. The final fork build number in `12.3.4.2` is recorded
+separately and does not enter that suffix.
+
+`./scripts/release.sh expected-tag` prints the tag for the current manifest.
+See [Releasing](<fumadocs/content/docs/(reference)/(repository-development)/releasing.mdx>)
+for publication checks, credentials, and testing the actual Maven artifacts.
 
 ## Architecture Diagram
 

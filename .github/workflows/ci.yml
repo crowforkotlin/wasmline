@@ -255,6 +255,12 @@ jobs:
           name: jni-cranelift-linux-x64
           path: wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
 
+      - name: Verify release tooling
+        run: |
+          ./scripts/release.sh verify
+          python3 scripts/tests/test_versions.py
+          python3 scripts/tests/test_publications.py
+
       - name: Run JVM tests
         working-directory: .
         env:
@@ -264,6 +270,9 @@ jobs:
                     :wasmline-kotlin-plugin:test \
                     :wasmline-loader:jvmTest \
                     :wasmline:jvmTest \
+                    :wasmline-plugin-core:test \
+                    :wasmline-gradle-plugin:test \
+                    :wasmline-bom:check \
                     :wasmline-cli:test \
                     --no-daemon
 
