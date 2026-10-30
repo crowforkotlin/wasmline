@@ -209,6 +209,11 @@ val nativeAotTestClassPatterns = listOf(
 )
 val standardJvmTest = tasks.named<Test>("jvmTest") {
     exclude(*nativeAotTestClassPatterns.toTypedArray())
+    // The engine JVM JAR is deliberately platform-neutral and excludes `jni/**`, so
+    // the loader cannot find the library on the test classpath. Point it at the
+    // build-tree copy instead, matching the nativeAotJvmTest setup.
+    inputs.file(nativeAotJvmLibrary).withPropertyName("wasmlineNativeLibrary").optional()
+    systemProperty("wasmline.native.library.path", nativeAotJvmLibraryPath.get())
 }
 
 tasks.register<Test>("nativeAotJvmTest") {
