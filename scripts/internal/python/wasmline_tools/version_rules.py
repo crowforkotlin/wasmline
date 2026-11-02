@@ -156,11 +156,11 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: f"minimum required Kotlin version is **{v['kotlin_min_version']}**",
         ),
         Rule(
-            r'(?m)(id\("crow\.wasmline"\) version ")[0-9A-Za-z.\-]+(")',
+            r'(?m)(id\("io\.github\.crowforkotlin"\) version ")[0-9A-Za-z.\-]+(")',
             lambda v: rf"\g<1>{v['wasmline_version']}\g<2>",
         ),
         Rule(
-            r"(crow\.wasmline:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+",
+            r"(io\.github\.crowforkotlin:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+",
             lambda v: rf"\g<1>{v['wasmline_version']}",
             min_count=0,
         ),
@@ -176,11 +176,11 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: f"最低需要 **Kotlin {v['kotlin_min_version']}** 版本",
         ),
         Rule(
-            r'(?m)(id\("crow\.wasmline"\) version ")[0-9A-Za-z.\-]+(")',
+            r'(?m)(id\("io\.github\.crowforkotlin"\) version ")[0-9A-Za-z.\-]+(")',
             lambda v: rf"\g<1>{v['wasmline_version']}\g<2>",
         ),
         Rule(
-            r"(crow\.wasmline:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+",
+            r"(io\.github\.crowforkotlin:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+",
             lambda v: rf"\g<1>{v['wasmline_version']}",
             min_count=0,
         ),
@@ -479,8 +479,8 @@ def file_specs() -> tuple[FileSpec, ...]:
                     lambda v: f'wasmline = "{v["wasmline_version"]}"',
                 ),
                 Rule(
-                    r'(?m)^wasmline = \{ id = "crow\.wasmline", version = ".*" \}$',
-                    lambda v: f'wasmline = {{ id = "crow.wasmline", version = "{v["wasmline_version"]}" }}',
+                    r'(?m)^wasmline = \{ id = "io\.github\.crowforkotlin", version = ".*" \}$',
+                    lambda v: f'wasmline = {{ id = "io.github.crowforkotlin", version = "{v["wasmline_version"]}" }}',
                 ),
             ),
         ),

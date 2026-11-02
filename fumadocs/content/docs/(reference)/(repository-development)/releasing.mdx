@@ -2,7 +2,7 @@
 title: Releasing
 description: Prepare Maven artifacts, verify consumers, and understand release tags
 createdAt: 2026-10-30
-updatedAt: 2026-10-30
+updatedAt: 2026-11-02
 ---
 
 # Releasing
@@ -110,7 +110,12 @@ Configure these repository Actions secrets before pushing the release tag:
 | `MAVEN_CENTRAL_SIGNING_KEY` | ASCII-armored private signing key |
 | `MAVEN_CENTRAL_SIGNING_KEY_PASSWORD` | Passphrase when the signing key is protected |
 
-The publishing account needs permission for the `crow.wasmline` namespace.
+The publishing account needs permission for the `io.github.crowforkotlin`
+namespace, which is used by all Wasmline Maven modules and the Gradle plugin ID.
+Sign in to the [Central Portal](https://central.sonatype.com) with the
+`crowforkotlin` GitHub account and confirm this namespace is verified before
+creating the publishing token.
+
 Keep release changes in the `Unreleased` section of `CHANGELOG.md`. The release
 script adds those changes to the generated compatibility metadata:
 

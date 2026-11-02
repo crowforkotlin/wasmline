@@ -15,3 +15,4 @@ Initial Wasmline runtime and build-tool release.
 - Browser Core Wasm Service and Raw Export execution with raw WebAssembly.
 - One Maven version across runtime, loader, network adapters, plugins, CLI,
   and engines, with strict version constraints in the BOM.
+- Maven coordinates and the Gradle plugin ID use `io.github.crowforkotlin`.

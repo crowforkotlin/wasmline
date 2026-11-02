@@ -12,7 +12,7 @@ from pathlib import Path
 from .manifest import load_versions
 
 
-GROUP = "crow.wasmline"
+GROUP = "io.github.crowforkotlin"
 MODULES = (
     "wasmline",
     "wasmline-loader",
@@ -66,7 +66,7 @@ def verify_publications(repository: Path, version: str, require_apple: bool = Fa
     namespace = {"m": "http://maven.apache.org/POM/4.0.0"}
 
     def coordinate_path(module: str, extension: str) -> Path:
-        return repository / "crow/wasmline" / module / version / f"{module}-{version}.{extension}"
+        return repository.joinpath(*GROUP.split("."), module, version, f"{module}-{version}.{extension}")
 
     def verify_pom(module: str) -> None:
         path = coordinate_path(module, "pom")
@@ -189,7 +189,7 @@ def verify_publications(repository: Path, version: str, require_apple: bool = Fa
 
     for module in MODULES:
         verify_module(module)
-    verify_pom("crow.wasmline.gradle.plugin")
+    verify_pom(f"{GROUP}.gradle.plugin")
     return len(checked_modules), len(checked_artifacts)
 
 

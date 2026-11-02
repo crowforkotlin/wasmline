@@ -155,7 +155,7 @@ dependencies {
  * build time.
  *
  * After running the 'publishToMavenLocal' task, this artifact will be
- * available at: ~/.m2/repository/crow/wasmline/wasmline-kotlin-plugin/
+ * available at: ~/.m2/repository/io/github/crowforkotlin/wasmline-kotlin-plugin/
  *
  * 2026-03-24 00:56:58
  * @author crowforkotlin

@@ -337,10 +337,10 @@ JVM 与 Android 使用 BOM，使 runtime、Loader、network adapter 与 engine
 
 ```kotlin
 dependencies {
-    implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
-    implementation("crow.wasmline:wasmline-loader")
-    implementation("crow.wasmline:wasmline-network-ktor")
-    implementation("crow.wasmline:wasmline-engine-cranelift")
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0"))
+    implementation("io.github.crowforkotlin:wasmline-loader")
+    implementation("io.github.crowforkotlin:wasmline-network-ktor")
+    implementation("io.github.crowforkotlin:wasmline-engine-cranelift")
 }
 ```
 

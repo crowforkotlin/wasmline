@@ -23,11 +23,11 @@ class PublicationTest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.repository = Path(self.temporary.name)
         self.version = "12.3.4"
-        for module in (*MODULES, "crow.wasmline.gradle.plugin"):
+        for module in (*MODULES, f"{GROUP}.gradle.plugin"):
             self.write_module(module)
 
     def directory(self, module: str) -> Path:
-        return self.repository / "crow/wasmline" / module / self.version
+        return self.repository.joinpath(*GROUP.split("."), module, self.version)
 
     def write_module(self, module: str, variants: list | None = None) -> None:
         directory = self.directory(module)

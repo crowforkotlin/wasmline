@@ -2,7 +2,7 @@
 title: 发行
 description: 准备 Maven 构件，验证使用方，并说明发行 tag 的含义
 createdAt: 2026-10-30
-updatedAt: 2026-10-30
+updatedAt: 2026-11-02
 ---
 
 # 发行
@@ -105,8 +105,13 @@ Linux 上省略 `--require-apple`，可检查本机声明的目标。Apple 编�
 | `MAVEN_CENTRAL_SIGNING_KEY` | ASCII-armored 格式的私有签名密钥 |
 | `MAVEN_CENTRAL_SIGNING_KEY_PASSWORD` | 受密码保护的签名密钥口令 |
 
-发布账号需要拥有 `crow.wasmline` namespace 的发布权限。将本次变化写入
-`CHANGELOG.md` 的 `Unreleased` 部分，发行脚本会将其加入生成的兼容性信息：
+发布账号需要拥有 `io.github.crowforkotlin` namespace 的发布权限。全部 Wasmline
+Maven 模块和 Gradle 插件 ID 均使用该命名空间。使用 `crowforkotlin` GitHub 账号
+登录 [Central Portal](https://central.sonatype.com)，确认该命名空间已验证后，再
+创建发布 token。
+
+将本次变化写入 `CHANGELOG.md` 的 `Unreleased` 部分，发行脚本会将其加入
+生成的兼容性信息：
 
 ```bash
 ./scripts/release.sh prepare-assets build/release

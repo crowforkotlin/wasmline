@@ -2,7 +2,7 @@
 title: 安装
 description: 应用 Gradle 插件，添加运行时模块和一个原生引擎
 createdAt: 2026-07-18
-updatedAt: 2026-10-30
+updatedAt: 2026-11-02
 ---
 
 # 安装
@@ -24,7 +24,7 @@ updatedAt: 2026-10-30
 
 使用已发布的版本时，在 `settings.gradle.kts` 的两个仓库配置中添加 Maven
 Central。Gradle 插件通过 `pluginManagement` 解析；只在依赖仓库中添加
-`mavenCentral()`，无法解析 `crow.wasmline` 插件。
+`mavenCentral()`，无法解析 `io.github.crowforkotlin` 插件。
 
 ```kotlin
 pluginManagement {
@@ -53,7 +53,7 @@ Wasmline 尚未发布到 Maven Central。接入当前本地构建时，按下方
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("crow.wasmline") version "1.0.0"
+    id("io.github.crowforkotlin") version "1.0.0"
 }
 ```
 
@@ -69,12 +69,12 @@ network 模块。
 
 ```kotlin
 dependencies {
-    implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
-    implementation("crow.wasmline:wasmline-loader")
-    implementation("crow.wasmline:wasmline-engine-pulley")
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0"))
+    implementation("io.github.crowforkotlin:wasmline-loader")
+    implementation("io.github.crowforkotlin:wasmline-engine-pulley")
 
     // 仅在支持的原生目标执行远程加载时需要。
-    implementation("crow.wasmline:wasmline-network-ktor")
+    implementation("io.github.crowforkotlin:wasmline-network-ktor")
 }
 ```
 
@@ -105,9 +105,9 @@ kotlin {
     sourceSets {
         val nativeMain by getting {
             dependencies {
-                implementation("crow.wasmline:wasmline:$wasmlineVersion")
-                implementation("crow.wasmline:wasmline-loader:$wasmlineVersion")
-                implementation("crow.wasmline:wasmline-engine-pulley:$wasmlineVersion")
+                implementation("io.github.crowforkotlin:wasmline:$wasmlineVersion")
+                implementation("io.github.crowforkotlin:wasmline-loader:$wasmlineVersion")
+                implementation("io.github.crowforkotlin:wasmline-engine-pulley:$wasmlineVersion")
             }
         }
     }

@@ -27,10 +27,10 @@ if (System.getenv("WASMLINE_USE_INCLUDED_BUILD")?.let { it == "1" } ?: true) {
 // Use Maven local artifacts instead of includeBuild source dependency
 // includeBuild("../../") {
 //     dependencySubstitution {
-//         substitute(module("crow.wasmline:wasmline")).using(project(":wasmline"))
-//         substitute(module("crow.wasmline:wasmline-loader")).using(project(":wasmline-loader"))
-//         substitute(module("crow.wasmline:wasmline-kotlin-plugin")).using(project(":wasmline-kotlin-plugin"))
-//         substitute(module("crow.wasmline:wasmline-network-ktor")).using(project(":wasmline-network-ktor"))
+//         substitute(module("io.github.crowforkotlin:wasmline")).using(project(":wasmline"))
+//         substitute(module("io.github.crowforkotlin:wasmline-loader")).using(project(":wasmline-loader"))
+//         substitute(module("io.github.crowforkotlin:wasmline-kotlin-plugin")).using(project(":wasmline-kotlin-plugin"))
+//         substitute(module("io.github.crowforkotlin:wasmline-network-ktor")).using(project(":wasmline-network-ktor"))
 //     }
 // }
 dependencyResolutionManagement {

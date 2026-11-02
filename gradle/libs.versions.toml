@@ -310,11 +310,11 @@ gradle-maven-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-pl
 gradle-dokka-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 
-crow-wasmline = { module = "crow.wasmline:wasmline", version.ref = "wasmline" }
-crow-wasmline-loader = { module = "crow.wasmline:wasmline-loader", version.ref = "wasmline" }
-crow-wasmline-network-ktor = { module = "crow.wasmline:wasmline-network-ktor", version.ref = "wasmline" }
-crow-wasmline-engine-pulley = { module = "crow.wasmline:wasmline-engine-pulley", version.ref = "wasmline" }
-crow-wasmline-engine-cranelift = { module = "crow.wasmline:wasmline-engine-cranelift", version.ref = "wasmline" }
+crow-wasmline = { module = "io.github.crowforkotlin:wasmline", version.ref = "wasmline" }
+crow-wasmline-loader = { module = "io.github.crowforkotlin:wasmline-loader", version.ref = "wasmline" }
+crow-wasmline-network-ktor = { module = "io.github.crowforkotlin:wasmline-network-ktor", version.ref = "wasmline" }
+crow-wasmline-engine-pulley = { module = "io.github.crowforkotlin:wasmline-engine-pulley", version.ref = "wasmline" }
+crow-wasmline-engine-cranelift = { module = "io.github.crowforkotlin:wasmline-engine-cranelift", version.ref = "wasmline" }
 
 
 [plugins]
@@ -342,7 +342,7 @@ conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 maven-publish = { id = "com.vanniktech.maven.publish.base", version.ref = "maven-publish" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 
-wasmline = { id = "crow.wasmline", version = "1.0.0" }
+wasmline = { id = "io.github.crowforkotlin", version = "1.0.0" }
 wasmline-kotlin = { id = "crow.wasmline.kotlin" }
 
 app-base-multiplatform-library = { id = "app.base.multiplatform.library" }

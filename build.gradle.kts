@@ -38,7 +38,7 @@ dependencies {
 }
 
 allprojects {
-    group = if (project == rootProject) "crow.wasmline.build" else "crow.wasmline"
+    group = if (project == rootProject) "io.github.crowforkotlin.build" else "io.github.crowforkotlin"
     version = project.property("wasmline.version") as String
 
     // Local publication must not demand a GPG key; releases still sign when CI provides one.

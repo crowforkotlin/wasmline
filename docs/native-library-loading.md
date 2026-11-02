@@ -11,9 +11,9 @@ kotlin {
     sourceSets {
         val nativeMain by getting {
             dependencies {
-                implementation("crow.wasmline:wasmline:1.0.0")
-                implementation("crow.wasmline:wasmline-loader:1.0.0")
-                implementation("crow.wasmline:wasmline-engine-pulley:1.0.0")
+                implementation("io.github.crowforkotlin:wasmline:1.0.0")
+                implementation("io.github.crowforkotlin:wasmline-loader:1.0.0")
+                implementation("io.github.crowforkotlin:wasmline-engine-pulley:1.0.0")
             }
         }
     }
@@ -96,8 +96,8 @@ Wasmline provides two engine modules. They are mutually exclusive — a project 
 
 | Module | Artifact ID | Description |
 |--------|------------|-------------|
-| `wasmline-engine-pulley` | `crow.wasmline:wasmline-engine-pulley` | Pulley-only interpreter. Supports `.pwasm` only; smaller binary and broader platform support. Use `pulley32` or `pulley64` to match host bitness. |
-| `wasmline-engine-cranelift` | `crow.wasmline:wasmline-engine-cranelift` | Cranelift + Pulley runtime. Requires exact backend profile and target identity for `.cwasm`; uses `.pwasm` only when no compatible CWASM exists and a matching Pulley profile is reported. |
+| `wasmline-engine-pulley` | `io.github.crowforkotlin:wasmline-engine-pulley` | Pulley-only interpreter. Supports `.pwasm` only; smaller binary and broader platform support. Use `pulley32` or `pulley64` to match host bitness. |
+| `wasmline-engine-cranelift` | `io.github.crowforkotlin:wasmline-engine-cranelift` | Cranelift + Pulley runtime. Requires exact backend profile and target identity for `.cwasm`; uses `.pwasm` only when no compatible CWASM exists and a matching Pulley profile is reported. |
 
 Both modules follow the same build and publishing structure. The examples below use `pulley`.
 These modules intentionally do not expose a Kotlin runtime API. The dependency selects the native runtime distribution; the `wasmline` runtime reports the linked engine through `WasmlineEngineKind`.
@@ -191,7 +191,7 @@ publishing.publications {
 This produces the following MavenLocal layout:
 
 ```
-~/.m2/repository/crow/wasmline/wasmline-engine-pulley-jvm/1.0.0/
+~/.m2/repository/io/github/crowforkotlin/wasmline-engine-pulley-jvm/1.0.0/
 ├── wasmline-engine-pulley-jvm-1.0.0.jar                  (main JAR, no native libs)
 ├── wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar     (classifier: linux-x86_64)
 ├── wasmline-engine-pulley-jvm-1.0.0-linux-aarch64.jar    (classifier: linux-aarch64)
@@ -234,7 +234,7 @@ The attributes serve two purposes:
 
 - **Standard JVM attributes** (first five) — tell Gradle this is a standard JVM library.
 - **OS/architecture attributes** (last two) — standard Gradle attributes used by
-  the `crow.wasmline` Gradle plugin for automatic variant-aware resolution.
+  the `io.github.crowforkotlin` Gradle plugin for automatic variant-aware resolution.
 
 ---
 
@@ -245,29 +245,29 @@ The attributes serve two purposes:
 When a consumer adds a dependency on the engine module, Gradle's Kotlin Multiplatform resolution redirects to the JVM sub-module:
 
 ```
-crow.wasmline:wasmline-engine-pulley:1.0.0
-    → crow.wasmline:wasmline-engine-pulley-jvm:1.0.0
+io.github.crowforkotlin:wasmline-engine-pulley:1.0.0
+    → io.github.crowforkotlin:wasmline-engine-pulley-jvm:1.0.0
 ```
 
 The main JVM JAR (`wasmline-engine-pulley-jvm-1.0.0.jar`) contains no native libraries. The platform-specific JAR must be added separately.
 
 ### Consumer Dependency Configuration
 
-With the `crow.wasmline` Gradle plugin applied, consumers only need a single dependency declaration. The plugin automatically configures JVM runtime configurations with OS/architecture attributes, enabling Gradle's variant-aware resolution to select the correct platform-specific native JAR:
+With the `io.github.crowforkotlin` Gradle plugin applied, consumers only need a single dependency declaration. The plugin automatically configures JVM runtime configurations with OS/architecture attributes, enabling Gradle's variant-aware resolution to select the correct platform-specific native JAR:
 
-The JVM host resolver is included in `crow.wasmline`; no separate runtime-only
+The JVM host resolver is included in `io.github.crowforkotlin`; no separate runtime-only
 plugin is needed.
 
 ```kotlin
 val desktopMain by getting {
     dependencies {
-        // Single dependency — the `crow.wasmline` plugin handles native variant resolution
+        // Single dependency — the `io.github.crowforkotlin` plugin handles native variant resolution
         implementation(libs.crow.wasmline.engine.pulley)
     }
 }
 ```
 
-The `crow.wasmline` Gradle plugin:
+The `io.github.crowforkotlin` Gradle plugin:
 1. Detects the current build machine's OS and architecture.
 2. Sets the standard Gradle OS and architecture attributes on JVM runtime classpath configurations.
 3. Uses Gradle's built-in attribute matching to select the exact platform variant while keeping dependencies without these attributes compatible.
@@ -301,7 +301,7 @@ In the `.module` metadata, each native variant declares:
 ```json
 "capabilities": [
     {
-        "group": "crow.wasmline",
+        "group": "io.github.crowforkotlin",
         "name": "wasmline-engine-pulley-jvm",
         "version": "1.0.0"
     }
@@ -402,7 +402,7 @@ Resolution time:
        ↓
   implementation(libs.crow.wasmline.engine.pulley)
        ↓
-  `crow.wasmline` plugin sets Gradle OS/architecture attributes
+  `io.github.crowforkotlin` plugin sets Gradle OS/architecture attributes
        ↓
   Gradle variant-aware resolution selects matching native JAR
        ↓

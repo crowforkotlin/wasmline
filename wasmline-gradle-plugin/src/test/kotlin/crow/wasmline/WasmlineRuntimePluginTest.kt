@@ -78,7 +78,7 @@ class WasmlineRuntimePluginTest {
                 """
                 plugins {
                     id 'java-library'
-                    id 'crow.wasmline' apply false
+                    id 'io.github.crowforkotlin' apply false
                 }
                 apply plugin: crow.wasmline.WasmlineRuntimePlugin
                 repositories {

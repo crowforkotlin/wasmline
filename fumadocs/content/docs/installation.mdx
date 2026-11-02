@@ -2,7 +2,7 @@
 title: Installation
 description: Add the Gradle plugin, runtime modules, and one native engine
 createdAt: 2026-07-18
-updatedAt: 2026-10-30
+updatedAt: 2026-11-02
 ---
 
 # Installation
@@ -25,7 +25,7 @@ repository itself, see [Building from Source](/en/docs/building-from-source).
 
 For a published release, declare Maven Central in both repository blocks in
 `settings.gradle.kts`. Gradle plugin resolution uses `pluginManagement`; adding
-`mavenCentral()` only to dependency repositories does not resolve `crow.wasmline`.
+`mavenCentral()` only to dependency repositories does not resolve `io.github.crowforkotlin`.
 
 ```kotlin
 pluginManagement {
@@ -55,7 +55,7 @@ Apply the plugin to each compilation that uses generated `link<T>()` or
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("crow.wasmline") version "1.0.0"
+    id("io.github.crowforkotlin") version "1.0.0"
 }
 ```
 
@@ -71,12 +71,12 @@ download a remote manifest or an artifact that is not cached.
 
 ```kotlin
 dependencies {
-    implementation(platform("crow.wasmline:wasmline-bom:1.0.0"))
-    implementation("crow.wasmline:wasmline-loader")
-    implementation("crow.wasmline:wasmline-engine-pulley")
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0"))
+    implementation("io.github.crowforkotlin:wasmline-loader")
+    implementation("io.github.crowforkotlin:wasmline-engine-pulley")
 
     // Required only for remote loading on supported native targets.
-    implementation("crow.wasmline:wasmline-network-ktor")
+    implementation("io.github.crowforkotlin:wasmline-network-ktor")
 }
 ```
 
@@ -109,9 +109,9 @@ kotlin {
     sourceSets {
         val nativeMain by getting {
             dependencies {
-                implementation("crow.wasmline:wasmline:$wasmlineVersion")
-                implementation("crow.wasmline:wasmline-loader:$wasmlineVersion")
-                implementation("crow.wasmline:wasmline-engine-pulley:$wasmlineVersion")
+                implementation("io.github.crowforkotlin:wasmline:$wasmlineVersion")
+                implementation("io.github.crowforkotlin:wasmline-loader:$wasmlineVersion")
+                implementation("io.github.crowforkotlin:wasmline-engine-pulley:$wasmlineVersion")
             }
         }
     }

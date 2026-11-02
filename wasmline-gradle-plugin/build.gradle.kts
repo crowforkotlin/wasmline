@@ -82,7 +82,7 @@ tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
 gradlePlugin {
     plugins {
         create("wasmline") {
-            id = "crow.wasmline"
+            id = "io.github.crowforkotlin"
             displayName = "wasmline"
             description = "wasmline desc"
             implementationClass = "crow.wasmline.WasmlinePlugin"
