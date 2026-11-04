@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-Initial Wasmline runtime and build-tool release.
+Initial Wasmline beta release.
+
+Public APIs and Gradle configuration may change before 1.0.0.
 
 - Core Wasm Service and Raw Export invocation, typed Component invocation,
   Component host imports, and the Wasmline Service Component contract.
@@ -15,4 +17,7 @@ Initial Wasmline runtime and build-tool release.
 - Browser Core Wasm Service and Raw Export execution with raw WebAssembly.
 - One Maven version across runtime, loader, network adapters, plugins, CLI,
   and engines, with strict version constraints in the BOM.
-- Maven coordinates and the Gradle plugin ID use `io.github.crowforkotlin`.
+- Maven coordinates use `io.github.crowforkotlin`; the Gradle plugin ID is
+  `io.github.crowforkotlin.wasmline`.
+- Alpha and beta Maven versions use `-alphaN` and `-betaN`; Git release tags
+  retain the Wasmtime version code.

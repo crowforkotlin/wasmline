@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 from . import toolchain_lock
 from .aot.catalog import KOTLIN_RELEASE_IDENTITY_PATH
 from .aot.lock import render_kotlin_release_identity
+from .release_versions import WASMLINE_VERSION_PATTERN
 from .terminal import Console
 from .paths import MANIFEST_PATH, PROJECT_ROOT
 from .support.text import write_text_atomic
@@ -103,6 +104,13 @@ def parse_updates(entries: list[str]) -> dict[str, str]:
 
 
 def validate_version(key: str, value: str) -> None:
+    if key == "wasmline_version":
+        if not WASMLINE_VERSION_PATTERN.fullmatch(value):
+            raise SystemExit(
+                f"Invalid version value for '{key}': '{value}'. "
+                "Expected MAJOR.MINOR.PATCH with an optional -alphaN or -betaN suffix."
+            )
+        return
     if key == "jbr_version":
         if not re.fullmatch(r"[0-9]+", value):
             raise SystemExit(f"Invalid version value for '{key}': '{value}'. Expected an integer.")

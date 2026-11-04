@@ -421,6 +421,68 @@ class AotCompatibilityCatalogTest {
     }
 
     @Test
+    fun alphaAndBetaIterationsCompareNumericallyBeforeTheStableRelease() {
+        val expected = listOf(
+            "12.3.3",
+            "12.3.4-alpha1",
+            "12.3.4-alpha5",
+            "12.3.4-alpha10",
+            "12.3.4-beta1",
+            "12.3.4-beta2",
+            "12.3.4-beta10",
+            "12.3.4",
+            "12.3.5-alpha1",
+        )
+
+        assertEquals(expected, expected.reversed().sortedWith(::compareWasmlineVersions))
+        assertEquals(0, compareWasmlineVersions("01.3.4-beta2", "1.3.4-beta2"))
+        assertTrue(compareWasmlineVersions("12.3.4-beta999999999999999999999", "12.3.4-beta10") > 0)
+    }
+
+    @Test
+    fun malformedPrereleaseSuffixesAreRejected() {
+        listOf(
+            "12.3.4-beta.1",
+            "12.3.4-beta0",
+            "12.3.4-beta01",
+            "12.3.4-alpha",
+            "12.3.4-BETA1",
+            "12.3.4-rc1",
+            "12.3.4+build1",
+        ).forEach { version ->
+            assertFailsWith<IllegalArgumentException> { AotGenerations.Versions(version) }
+        }
+    }
+
+    @Test
+    fun betaSelectionsKeepTheirGenerationWhenPromotedToStable() {
+        val (originalCatalog, profiles) = syntheticCatalog()
+        val betaCatalog = originalCatalog.copy(currentWasmlineVersion = "1.4.1-beta10")
+        val betaSelection = selection(AotGenerations.Versions(min = "1.4.1-beta2", max = "1.4.1-beta10"))
+
+        assertResolution(
+            resolve(betaCatalog, profiles, betaSelection, currentWasmlineVersion = "1.4.1-beta2"),
+            betaCatalog,
+            listOf(5),
+        )
+        assertFailsWith<IllegalArgumentException> {
+            resolve(
+                betaCatalog,
+                profiles,
+                selection(AotGenerations.Versions("1.4.1")),
+                currentWasmlineVersion = betaCatalog.currentWasmlineVersion,
+            )
+        }
+
+        val stableCatalog = betaCatalog.copy(currentWasmlineVersion = "1.4.1")
+        assertResolution(
+            resolve(stableCatalog, profiles, betaSelection, currentWasmlineVersion = stableCatalog.currentWasmlineVersion),
+            stableCatalog,
+            listOf(5),
+        )
+    }
+
+    @Test
     fun backendProfilesHaveDifferentCompatibilityIdentities() {
         val (catalog, profiles) = syntheticCatalog()
         val pulley = profiles.first { it.artifactBackend == WasmlineEngineKind.PULLEY }

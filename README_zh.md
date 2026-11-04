@@ -9,7 +9,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![wasmtime](https://img.shields.io/badge/wasmtime-50.0.0-5C9BD6?style=flat-square)](https://wasmtime.dev)
+[![wasmtime](https://img.shields.io/badge/wasmtime-50.0.1-5C9BD6?style=flat-square)](https://wasmtime.dev)
 [![AGP](https://img.shields.io/badge/AGP-9.3.0-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/build/releases/gradle-plugin)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Web-555555?style=flat-square)](https://wuya.click/wasmline)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-WASI-654FF0?style=flat-square&logo=webassembly&logoColor=white)](https://wasi.dev)
@@ -337,7 +337,7 @@ JVM 与 Android 使用 BOM，使 runtime、Loader、network adapter 与 engine
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0"))
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta1"))
     implementation("io.github.crowforkotlin:wasmline-loader")
     implementation("io.github.crowforkotlin:wasmline-network-ktor")
     implementation("io.github.crowforkotlin:wasmline-engine-cranelift")
@@ -376,7 +376,7 @@ wasmline {
 ```
 
 默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。
-`wasmlineServerDeploy` 会构建并提供所选变体的 package。[Gradle 插件任务参考](<fumadocs/content/docs/(reference)/(plugin-development)/gradle-plugin.zh.mdx>)
+`wasmlineServerDeploy` 会构建并提供所选变体的 package。[Gradle 插件任务参考](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/gradle-plugin.zh.mdx>)
 列出当前任务及其注册条件。
 
 ## Release 构建

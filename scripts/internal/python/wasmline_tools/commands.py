@@ -208,7 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Discard the existing lock and regenerate every record from the public catalog. "
-            "Use only while the recorded generations are unpublished."
+            "Requires no release tags locally or on origin; use only before the first release."
         ),
     )
     aot_commands.add_parser(

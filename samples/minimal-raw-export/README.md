@@ -57,7 +57,7 @@ Desktop on Linux x86-64:
 ./gradlew -p samples/minimal-raw-export desktopRun
 ```
 
-The `io.github.crowforkotlin` plugin selects the matching JNI engine variant on Linux,
+The `io.github.crowforkotlin.wasmline` plugin selects the matching JNI engine variant on Linux,
 macOS, and Windows. Desktop packaging is not configured.
 
 Android:

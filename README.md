@@ -9,7 +9,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-4078C0?style=flat-square)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![wasmtime](https://img.shields.io/badge/wasmtime-50.0.0-5C9BD6?style=flat-square)](https://wasmtime.dev)
+[![wasmtime](https://img.shields.io/badge/wasmtime-50.0.1-5C9BD6?style=flat-square)](https://wasmtime.dev)
 [![AGP](https://img.shields.io/badge/AGP-9.3.0-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/build/releases/gradle-plugin)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Web-555555?style=flat-square)](https://wuya.click/wasmline)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-WASI-654FF0?style=flat-square&logo=webassembly&logoColor=white)](https://wasi.dev)
@@ -284,7 +284,7 @@ binary from WIT through the Gradle plugin or the CLI; `wasmline-plugin-core` is
 an internal module embedded in both tools, not a published artifact. The loader
 itself does not run those tools. `contractMetadata` describes the
 call contract when needed; it is not a WIT compiler input. See the
-[Component Service Protocol](<fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>).
+[Component Service Protocol](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/component-service.mdx>).
 
 The browser runtime supports both Core Service and Core Raw Export paths. Web
 uses raw `.wasm`, `WebAssembly.Module`/`WebAssembly.Instance`, synchronous
@@ -367,7 +367,7 @@ engine resolve to one strict Wasmline version:
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0"))
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta1"))
     implementation("io.github.crowforkotlin:wasmline-loader")
     implementation("io.github.crowforkotlin:wasmline-network-ktor")
     implementation("io.github.crowforkotlin:wasmline-engine-cranelift")
@@ -409,7 +409,7 @@ wasmline {
 The default is `DEBUG`, served at `http://localhost:8080`.
 `wasmlineServerDeploy` builds and serves the package directory for the selected
 variant. See the
-[Gradle plugin task reference](<fumadocs/content/docs/(reference)/(plugin-development)/gradle-plugin.mdx>) for the
+[Gradle plugin task reference](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/gradle-plugin.mdx>) for the
 current task set and registration conditions.
 
 ## Release Build

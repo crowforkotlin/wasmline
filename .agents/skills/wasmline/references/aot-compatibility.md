@@ -49,6 +49,14 @@ and then writes the new immutable profile, asset, and build-host bindings. The
 archives are temporary and are not retained. Existing distributions are
 synchronized without network access. `aot check` is always offline.
 
+For a first unpublished alpha/beta release, `aot sync --rebuild` can replace
+unpublished generated history after updating the source catalog. It refuses to
+run if a local or origin `release-*` tag exists, or if either tag lookup fails.
+Confirm that no Maven release exists before rebuilding. Rebuild resolves and
+verifies every required distribution again, so it requires network access.
+Use normal `aot sync` after the first publication; never rebuild published
+ranges or edit generated resources by hand.
+
 The two public files must be byte-identical. They intentionally omit profile
 digests and compiler assets. The packaged
 `META-INF/wasmline/aot/aot-compatibility-lock.json` keeps the detailed binding
@@ -76,10 +84,16 @@ The public catalog has this shape:
 Each range starts at `fromWasmlineVersion` and ends immediately before the next
 range start. The final range ends at `currentWasmlineVersion`.
 
+Wasmline versions may be `x.y.z`, `x.y.z-alphaN`, or `x.y.z-betaN`. `N` is a
+positive integer without leading zeros; use `beta1`, not `beta.1`. Compare
+numeric base components first, then alpha, beta, and stable; iteration numbers
+are numeric (`beta2 < beta10`). Advancing the current version from beta to
+stable preserves the generation when both backend profile IDs remain unchanged.
+
 ## Generation policy
 
 `aotGeneration` is a sequential release label, not a runtime credential and not
-a shortened Wasmtime version. Generation `1` is the first formal generation.
+a shortened Wasmtime version. Generation `1` is the first published generation.
 Generation numbers are continuous and append-only.
 
 Create a new generation when either backend profile identity changes. A change
@@ -132,7 +146,7 @@ wasmline {
   extra neighbors, not window totals. `Latest` forbids an `after` count and
   `Earliest` forbids a `before` count. Windows count AOT generations, never
   Maven release versions or backend profile changes.
-- `generations("x.y.z")` selects the generation containing that concrete stable
+- `generations("x.y.z")` selects the generation containing that concrete
   Wasmline release version. `generations(versions = listOf(...))` selects a
   non-empty collection of concrete versions, and `generations(min = ..., max =
   ...)` selects the closed concrete interval. The typed `AotGenerations.Versions`
@@ -178,7 +192,8 @@ The CLI exposes the same selection as a repeatable option:
 ```
 
 `--aot-generations` is repeatable, and omitting the option selects `current`.
-Each occurrence accepts one concrete stable `x.y.z` point, one concrete closed
+Each occurrence accepts one concrete Wasmline release point, including an
+`-alphaN` or `-betaN` suffix, one concrete closed
 `MIN..MAX` interval, one exact lowercase strategy token (`current`, `latest`,
 `earliest`, `all`), or one typed window (`current:before=N`, `current:after=N`,
 `current:before=N:after=M`, `latest:before=N`, `earliest:after=N`). Window
@@ -245,10 +260,11 @@ The release workflow is `.github/workflows/release.yml`. A push to `main` never
 publishes. The workflow accepts only tags matching:
 
 ```text
-release-x.y.z.v
+release-<Maven-version>.<Wasmtime-code>
 ```
 
-The first three segments must equal `versions.wasmline_version`. The suffix is
+The complete Maven version, including any alpha/beta suffix, must equal
+`versions.wasmline_version`. The final dot separates the Wasmtime code. It is
 the fixed encoding `major * 100 + minor * 10 + patch` of
 `versions.wasmtime_version`; minor and patch must be single digits. The first
 three segments of `wasmtime_release_version` must equal `wasmtime_version`, and
@@ -274,10 +290,18 @@ Release notes include the Wasmtime fork distribution, AOT generation, changed
 backends, whether the current range introduces a generation, and the stable
 compatibility documentation URL.
 
+The title is `Wasmline <Maven-version>`. Alpha/beta releases use
+`prerelease=true` and `make_latest=false`; stable releases use
+`prerelease=false` and `make_latest=true`. Prereleases do not replace the
+`releases/latest` catalog used by the advisory check. Before the first stable
+release, that endpoint can be unavailable without failing a package build.
+
 For local validation and asset preparation, use:
 
 ```bash
 ./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+./scripts/release.sh github-release-metadata
+python3 scripts/tests/test_release.py
 ./scripts/release.sh verify-publications --require-apple
 ./scripts/release.sh prepare-assets build/release
 ./scripts/release.sh write-notes build/release-notes.md

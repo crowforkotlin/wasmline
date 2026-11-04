@@ -1,0 +1,335 @@
+---
+title: AOT Catalog and Versions
+description: Which file owns which version, how generations and profile IDs are derived, and when each synchronizer must run
+createdAt: 2026-11-04
+updatedAt: 2026-11-04
+---
+
+# AOT Catalog and Versions
+
+This page explains the two authoritative JSON files, the generated files they
+produce, and the exact command sequence for each kind of version change.
+It is written for people changing the repository itself.
+
+<Callout type="info" title="Two different version questions">
+  "Which Wasmline release am I using?" is answered by `versions.json`.
+  "Which precompiled artifacts can this engine load?" is answered by
+  `aot-compatibility.json`. They move independently.
+</Callout>
+
+## Sources of Truth
+
+| File | Edited by hand | Scope |
+|---|---|---|
+| `versions.json` | Yes | Scalar project and toolchain versions, one value per key |
+| `aot-compatibility.json` | Yes | AOT release ranges, generations, and the Wasmtime fork distribution bound to each generation |
+
+Everything else is generated. `scripts/internal/python/wasmline_tools/aot/catalog.py`
+and `aot/profiles.py` hold the contract constants used while generating.
+
+### `versions.json` keys that matter here
+
+| Key | Consumed by |
+|---|---|
+| `wasmline_version` | Every Maven coordinate, the Gradle plugin marker, `gradle.properties`, `libs.versions.toml`, and the runtime release identity |
+| `wasmtime_version` | Engine link version, the release-tag code, `gradle.properties` |
+| `wasmtime_release_version` | The fork distribution downloaded by `aot sync`; its first three segments must equal `wasmtime_version` |
+| `wasm_tools_version`, `wit_bindgen_version` | Locked Component CLI assets |
+| `sample_plugin_version` | Sample manifests only; independent of `wasmline_version` |
+
+`validate_versions()` in `scripts/internal/python/wasmline_tools/versions.py`
+rejects a `wasmtime_release_version` whose first three segments differ from
+`wasmtime_version`, and rejects `wasmtime_version` minor or patch values wider
+than one digit.
+
+### `aot-compatibility.json` fields
+
+| Field | Meaning | Change rule |
+|---|---|---|
+| `schemaVersion` | Format version, currently `1` | Never changes during normal work |
+| `currentWasmlineVersion` | Right edge of the supported interval | Equal to `versions.json:wasmline_version` on every release |
+| `minimumSupportedWasmlineVersion` | Left edge of the supported interval | Raised only when dropping support for older releases |
+| `ranges[].fromWasmlineVersion` | First Wasmline version in that range | Strictly increasing |
+| `ranges[].aotGeneration` | Sequential label, `1..N` | Starts at 1, no gaps, never rewritten after publication |
+| `ranges[].wasmtimeDistributionVersion` | Fork distribution the range is bound to | Final range must equal `versions.json:wasmtime_release_version` |
+| `ranges[].changedBackends` | Backends whose profile changed relative to the previous range | Derived from actual profile digests; see below |
+
+A range starts at its `fromWasmlineVersion` and ends immediately before the next
+range's `fromWasmlineVersion`. The final range ends at `currentWasmlineVersion`.
+`AotCompatibilitySelection.generationIndex()` implements the lookup as
+`ranges.indexOfLast { from <= version }`, so one range covers an interval of
+versions, not a single point.
+
+## Why `currentWasmlineVersion` Is Duplicated
+
+`aot-compatibility.json` is a published file. `release.sh` copies it to
+`build/release/aot-compatibility.json` and uploads it with a `.sha256` sidecar,
+and build tools read the copy packaged at
+`META-INF/wasmline/aot/aot-compatibility.json`. A remote consumer downloads one
+JSON file and nothing else, so the file must state its own interval.
+
+`versions.json` is never packaged: it does not appear under any `src/*/resources`
+directory. `validate_source()` in `aot/catalog.py` therefore compares the two
+files during repository work only. Drift between them fails `aot sync` and
+`aot check`, and never reaches a consumer.
+
+## Generated Files
+
+| File | Writer | Contains |
+|---|---|---|
+| `wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json` | `aot sync` | Immutable profiles, deduplicated compiler assets, per-profile build-host bindings |
+| `wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility.json` | `aot sync` | Byte-identical copy of the root catalog |
+| `wasmline-core/include/wasmline/internal/runtime/NativeBuildIdentity.h` | `aot sync` | Release version, bridge ABI version, both current profile IDs |
+| `wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineReleaseIdentity.kt` | `versions sync` and `aot sync` | Release version and bridge ABI version for the Kotlin side |
+| `wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` | `versions sync` | GitHub release, asset ID, size, URL, and SHA-256 for every Component CLI platform |
+| `gradle.properties`, `gradle/libs.versions.toml`, README files, installation pages, sample build scripts | `versions sync` | Scalar version references |
+
+Do not edit any generated file by hand. `./scripts/wasmline versions check` and
+`./scripts/wasmline aot check` detect the difference and fail.
+
+## The Native Identity Constants
+
+`NativeBuildIdentity.h` and `WasmlineReleaseIdentity.kt` carry the same two
+values — release version and bridge ABI version — which the native engine
+reports and Kotlin verifies before loading any artifact. The header additionally
+carries both profile IDs.
+
+| Constant | Source | Purpose |
+|---|---|---|
+| `WASMLINE_RELEASE_VERSION` | `versions.json:wasmline_version` | Rejects a jar linked against a different runtime release |
+| `WASMLINE_NATIVE_BRIDGE_ABI_VERSION` | `NATIVE_BRIDGE_ABI_VERSION` in `aot/catalog.py` | Layout generation of the `WasmlineNativeRuntimeIdentity` struct |
+| `WASMLINE_CRANELIFT_AOT_COMPATIBILITY_PROFILE_ID` | Computed profile digest | Which `.cwasm` files the Cranelift engine can deserialize |
+| `WASMLINE_PULLEY_AOT_COMPATIBILITY_PROFILE_ID` | Computed profile digest | Which `.pwasm` files the Pulley engine can deserialize |
+
+`WasmlineRuntimeCapabilities.validatedNativeIdentity()` compares the bridge ABI
+version and the release version with strict equality; `WasmlineNativeRuntimeInfo`
+only requires the ABI version to be positive. The ABI value is an identity, not
+an ordering: `1` and `2` are not "older" and "newer", they are two layouts that
+must match on both sides.
+
+Changing `NATIVE_BRIDGE_ABI_VERSION` means editing the single constant in
+`aot/catalog.py` and running `aot sync`; the command rewrites both files. The
+value does not enter the profile digest, so changing it alone marks no artifact
+as incompatible.
+
+## Profile IDs
+
+Each backend profile is identified by a SHA-256 digest over seven fields,
+encoded by `canonical_profile_bytes()` in `aot/profiles.py`:
+
+```text
+artifactBackend
+compileProfileSchemaVersion
+engineConfigurationProfile
+serializedArtifactFormatIdentity
+wasmtimeDistributionVersion
+wasmtimeSourceRevision
+wasmtimeVersion
+```
+
+The bridge ABI version is not among them. A new fork distribution or a new
+upstream Wasmtime version changes at least two inputs, so both backends receive
+new digests. A change confined to one backend's
+`engineConfigurationProfile` moves only that backend.
+
+The lock is deterministic by construction: profiles sort by `id`, compiler
+bindings by `(profileId, buildHost)`, compiler assets by
+`(archiveSha256, buildHost)`, and each generation's
+`profileIdsByBackend` map is key-sorted. `changedBackends` is re-emitted in
+`BACKENDS` order (`CRANELIFT`, `PULLEY`) regardless of the order written in the
+source catalog.
+
+## `changedBackends`
+
+This field records which backends received a new profile in that generation. The
+only reader is `WasmlineAotCompatibilityChecker.profileEpochs()`, which keeps a
+per-backend counter: the counter increments only when the backend appears in
+`changedBackends`, and otherwise the previous profile is reused.
+
+| Generation | `changedBackends` | Cranelift epoch | Pulley epoch |
+|---|---|---|---|
+| 1 | `CRANELIFT`, `PULLEY` | 0 | 0 |
+| 2 | `CRANELIFT`, `PULLEY` | 1 | 1 |
+| 3 | `PULLEY` only | 1 (unchanged) | 2 |
+
+The counters drive the advisory check: epochs missing from the selected
+generations are reported as affected backends. A third-generation `.cwasm` from
+epoch 1 stays loadable, and the report does not ask for it to be rebuilt.
+
+The value must equal the digests actually produced. `sync.py` rejects a range
+that changes distribution without marking both backends, and `lock.py`
+(`validate_append_only`, and the binding comparison in `render_lock`) rejects a
+`changedBackends` list that differs from the computed difference. Writing both
+backends for a distribution change is always correct; writing one is correct only
+when the other profile digest provably did not move.
+
+## Command Behavior
+
+| Command | Appends to history | Rewrites history | Network |
+|---|---|---|---|
+| `versions check` | No writes | No writes | No |
+| `versions sync` | Rewrites generated scalars | Rewrites generated scalars | Only when `wasmtime_version`, `wasm_tools_version`, or `wit_bindgen_version` changed |
+| `aot check` | No writes | No writes | No |
+| `aot sync` | Adds new ranges and profiles | Rejects removal or modification of existing profiles | Only when a named distribution is absent from the lock |
+| `aot sync --rebuild` | Regenerates everything | Allowed | Yes |
+
+`aot sync --rebuild` calls `_require_unpublished_rebuild()`, which fails if any
+local or origin `release-*` tag exists or if either lookup fails. It exists for
+the period before the first publication; after that, generated history is
+append-only.
+
+## Change Procedures
+
+### Only the Wasmline version changes
+
+The AOT backend contract did not change, so no new range is added.
+
+```bash
+# 1. Update the Maven version and every managed scalar reference.
+./scripts/wasmline versions sync --set wasmline_version=1.2.3
+```
+
+`aot-compatibility.json` is not version-managed, so update its right edge by
+hand in the same commit:
+
+```diff
+  {
+    "schemaVersion": 1,
+-   "currentWasmlineVersion": "1.2.3-beta3",
++   "currentWasmlineVersion": "1.2.3",
+    "minimumSupportedWasmlineVersion": "1.2.3-beta1",
+    "ranges": [
+      {
+        "fromWasmlineVersion": "1.2.3-beta1",
+        "aotGeneration": 1,
+        "wasmtimeDistributionVersion": "12.3.4.1",
+        "changedBackends": ["CRANELIFT", "PULLEY"]
+      }
+    ]
+  }
+```
+
+```bash
+# 2. Regenerate the packaged catalog and both identity files. Offline.
+./scripts/wasmline aot sync
+
+# 3. Verify.
+./scripts/wasmline versions check
+./scripts/wasmline aot check
+```
+
+`ranges` does not change. Generation 1's interval is extended from
+`1.2.3-beta1..1.2.3-beta1` to `1.2.3-beta1..1.2.3`, and existing `.cwasm` and
+`.pwasm` files remain loadable because both profile digests are unchanged.
+
+### Only Wasmtime changes
+
+A new fork distribution produces new profile digests, so the catalog needs a new
+range. The range needs a start version, so the Wasmline version must move too.
+
+```bash
+./scripts/wasmline versions sync \
+  --set wasmline_version=1.2.3 \
+  --set wasmtime_version=12.4.0 \
+  --set wasmtime_release_version=12.4.0.1
+```
+
+Keep the last segment equal to the fork release tag: `aot sync` requests
+`https://api.github.com/repos/crowforkotlin/wasmtime/releases/tags/v<distribution>`.
+
+```diff
+  {
+    "schemaVersion": 1,
+-   "currentWasmlineVersion": "1.2.3-beta3",
++   "currentWasmlineVersion": "1.2.3",
+    "minimumSupportedWasmlineVersion": "1.2.3-beta1",
+    "ranges": [
+      {
+        "fromWasmlineVersion": "1.2.3-beta1",
+        "aotGeneration": 1,
+        "wasmtimeDistributionVersion": "12.3.4.1",
+        "changedBackends": ["CRANELIFT", "PULLEY"]
+-     }
++     },
++     {
++       "fromWasmlineVersion": "1.2.3",
++       "aotGeneration": 2,
++       "wasmtimeDistributionVersion": "12.4.0.1",
++       "changedBackends": ["CRANELIFT", "PULLEY"]
++     }
+    ]
+  }
+```
+
+```bash
+./scripts/wasmline aot sync     # resolves the fork release, verifies SHA256SUMS, records digests
+./scripts/wasmline aot check
+```
+
+`aot sync` downloads five full CLI archives once to hash the compiler executable
+on each supported build host. Later runs reuse the recorded assets without
+network access. `--proxy <url>` and `--jobs <count>` are available.
+
+### A backend contract changes without a new distribution
+
+Change the constant in `aot/profiles.py`, then append a range with the unchanged
+`wasmtimeDistributionVersion` and list only the backends whose profile moved.
+Omitting the unchanged backend keeps its digest, so previously built artifacts of
+that backend stay valid.
+
+### Before the first release
+
+While no `release-*` tag exists, an already written generation can be corrected
+instead of appended to:
+
+```bash
+./scripts/wasmline aot sync --rebuild
+```
+
+This discards the lock, re-resolves every named distribution, and rewrites all
+four generated files. Use it for the first publication, or to normalize hand
+edits, and never after a tag is pushed.
+
+### Publishing
+
+```bash
+./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+git tag "$(./scripts/release.sh expected-tag)"
+git push origin "$(./scripts/release.sh expected-tag)"
+```
+
+The tag is `release-<Maven-version>.<Wasmtime-code>`, where the code is
+`major × 100 + minor × 10 + patch` from `wasmtime_version`. The workflow
+re-runs `versions check`, `aot check`, the Python suites, and the native AOT
+gates before publishing. See [Releasing](/en/docs/releasing) for the credential
+and job layout.
+
+## Failure Messages
+
+| Message | Cause |
+|---|---|
+| `The final AOT range distribution must match versions.json` | `aot-compatibility.json` final range distribution differs from `versions.json:wasmtime_release_version` |
+| `currentWasmlineVersion must match versions.json` | The catalog right edge was not updated with `wasmline_version` |
+| `AOT range starts must be strictly increasing` | Two ranges share a `fromWasmlineVersion`, or one starts earlier than its predecessor |
+| `AOT generations must start at 1 and increase without gaps` | A generation number was skipped, reordered, or reused |
+| `changedBackends does not match detailed profile metadata` | The declared backend list differs from the computed profile digests |
+| `Published AOT compatibility profile ... cannot be removed` | `aot sync` without `--rebuild` tried to rewrite a recorded generation |
+| `AOT rebuild is only allowed before the first release tag` | `--rebuild` was requested after a `release-*` tag existed |
+| `Toolchain lock versions do not match versions.json` | `versions sync` did not finish after a toolchain key changed |
+
+## Inspecting the Current State
+
+```bash
+./scripts/wasmline versions list
+./scripts/wasmline aot check
+./wasmline-cli/cli.sh aot-profiles list
+./wasmline-cli/cli.sh aot-profiles describe sha256:<digest>
+```
+
+`versions list` prints the manifest as `key=value`. `aot check` validates the
+public catalog, the packaged copy, and both identity files offline.
+`aot-profiles list` and `aot-profiles describe` read
+`META-INF/wasmline/aot/aot-compatibility-lock.json` from the CLI and print one
+tab-separated row per profile (Wasmtime version, backend, introducing Wasmline
+version, profile ID), or the full descriptor including build hosts and source
+revision.

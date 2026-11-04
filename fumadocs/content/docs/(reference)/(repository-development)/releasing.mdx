@@ -8,18 +8,20 @@ updatedAt: 2026-11-02
 # Releasing
 
 The release workflow is `.github/workflows/release.yml`. Pushes to `main` run CI;
-formal Maven publication starts when a valid release tag is pushed.
+Maven publication starts when a valid release tag is pushed, including alpha
+and beta releases.
 
 ## Version Identities and Tags
 
 | Input in `versions.json` | Meaning |
 |---|---|
-| `wasmline_version` | One `x.y.z` Maven version for runtime, loader, plugins, CLI, and engines |
+| `wasmline_version` | One Maven version for runtime, loader, plugins, CLI, BOM, and engines: `x.y.z`, `x.y.z-alphaN`, or `x.y.z-betaN` |
 | `wasmtime_version` | Three-part upstream Wasmtime version linked by the engines |
 | `wasmtime_release_version` | Exact four-part Wasmtime fork distribution used for downloads |
 
-Release tags use `release-x.y.z.v`. The first three parts are the Wasmline Maven
-version. The last part encodes the three-part Wasmtime version:
+Release tags use `release-<Maven-version>.<Wasmtime-code>`. The complete Maven
+version comes before the final dot. The last part encodes the three-part
+Wasmtime version:
 
 ```text
 v = major × 100 + minor × 10 + patch
@@ -29,20 +31,86 @@ For example, Wasmline `1.2.3` with Wasmtime `12.3.4` produces
 `release-1.2.3.1234` because `12 × 100 + 3 × 10 + 4 = 1234`.
 The fork distribution `12.3.4.2` still produces `1234`: its final `.2` identifies
 the fork build and is recorded separately in the catalog and release notes.
+With Maven version `1.2.3-beta1`, the same toolchain produces
+`release-1.2.3-beta1.1234`.
 
 The suffix is neither a fourth Maven version component nor an AOT generation
 number. Minor and patch must each fit in one digit while this encoding is used.
-Tags and Maven versions are immutable; each formal Maven release has one tag.
+Tags and Maven versions are immutable; each Maven release has one tag.
+
+| Maven version example | Use when |
+|---|---|
+| `1.2.3-alpha5` | Core behavior, public APIs, or configuration are still changing |
+| `1.2.3-beta1` | Main features are complete and consumer testing and fixes remain |
+| `1.2.3` | Installation, public APIs, and compatibility commitments have been verified |
+
+The iteration is a positive integer without leading zeros. Use `alpha5` and
+`beta1`, without a dot before the number. For the same numeric base,
+alpha precedes beta, then stable; iteration numbers compare numerically
+(`beta2 < beta10`). Dependencies, the BOM, and the Gradle plugin all use the
+complete Maven version, including its prerelease suffix.
+
+Keep the iteration attached to the stage name rather than writing
+`1.2.3-beta.1`. Both forms are valid SemVer, but only `beta1` is ordered
+numerically by Maven `ComparableVersion` and Gradle: they split a trailing
+number into its own segment, so `beta2` precedes `beta10`. Strict SemVer
+compares `beta1` as one alphanumeric identifier and would order
+`beta10 < beta2`; no Wasmline tool chain uses that comparison, and Kotlin,
+Compose, and KtLint publish the attached form as well.
 
 Read the expected tag from the current manifest:
 
 ```bash
 ./scripts/release.sh expected-tag
 ./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+./scripts/release.sh github-release-metadata
 ```
 
 These commands print and validate release inputs. Tag creation is a separate
 release operation.
+
+The metadata command prints `version`, `tag`, `prerelease`, and `make_latest`.
+Alpha/beta versions produce `prerelease=true` and `make_latest=false`; stable
+versions produce `prerelease=false` and `make_latest=true`. The workflow uses
+these values to create a release titled `Wasmline <Maven-version>`.
+
+## Synchronize Release Inputs
+
+Edit `wasmline_version` in root `versions.json` and
+`currentWasmlineVersion` in root `aot-compatibility.json` for the candidate.
+Keep `sample_plugin_version` and protocol versions independent.
+
+Before the first publication only, set `minimumSupportedWasmlineVersion` and
+the first range's `fromWasmlineVersion` to the same initial alpha/beta version.
+Preserve generation `1` and the intended Wasmtime fork distribution. Replace
+the unpublished generated history from the repository root:
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline aot sync --rebuild
+```
+
+Rebuild requires no local or origin `release-*` tags and stops if a tag exists
+or a lookup fails. Confirm that no Maven release exists before using it. It
+resolves the fork release and verifies its five full compiler archives again,
+so network access is required. Generated locks and runtime identities are
+written by the synchronizer and must not be edited manually.
+
+For later beta iterations or promotion to stable, retain the published range
+starts, profiles, and compiler bindings. With unchanged backend profiles,
+update only the current catalog version and use normal synchronization:
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline aot sync
+```
+
+A Maven version change alone does not add an AOT generation. A changed backend
+profile requires a new range and generation. The field-by-field rules, the
+`changedBackends` derivation, and the difference between `aot sync` and
+`aot sync --rebuild` are on
+[AOT Catalog and Versions](/en/docs/aot-and-versioning); the plugin-side
+selection DSL is on [Wasmtime Download and AOT](/en/docs/wasmtime-download).
 
 ## Prepare the Candidate
 
@@ -55,6 +123,7 @@ and JNI assets. From the repository root, verify the environment and inputs:
 ./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
 python3 scripts/tests/test_versions.py
 python3 scripts/tests/test_publications.py
+python3 scripts/tests/test_release.py
 ```
 
 Run the JVM suites, including the plugin core and Gradle plugin tests:
@@ -73,8 +142,8 @@ simulator tests. Review the results for the exact candidate commit.
 
 ## Verify Published Artifacts
 
-Use macOS for a complete formal publication because Apple targets are declared
-only on macOS. After preparing the native assets, run:
+Use macOS for a complete multiplatform publication because Apple targets are
+declared only on macOS. After preparing the native assets, run:
 
 ```bash
 ./gradlew publishToMavenLocal --no-daemon
@@ -111,10 +180,15 @@ Configure these repository Actions secrets before pushing the release tag:
 | `MAVEN_CENTRAL_SIGNING_KEY_PASSWORD` | Passphrase when the signing key is protected |
 
 The publishing account needs permission for the `io.github.crowforkotlin`
-namespace, which is used by all Wasmline Maven modules and the Gradle plugin ID.
+namespace, which covers all Wasmline Maven modules and the
+`io.github.crowforkotlin.wasmline` Gradle plugin ID. Central grants the whole
+sub-namespace with the top-level group, so the plugin marker needs no separate
+verification.
 Sign in to the [Central Portal](https://central.sonatype.com) with the
 `crowforkotlin` GitHub account and confirm this namespace is verified before
 creating the publishing token.
+The corresponding GPG public key must also be available from a public keyserver
+so Central can verify artifact signatures.
 
 Keep release changes in the `Unreleased` section of `CHANGELOG.md`. The release
 script adds those changes to the generated compatibility metadata:
@@ -124,16 +198,76 @@ script adds those changes to the generated compatibility metadata:
 ./scripts/release.sh write-notes build/release-notes.md
 ```
 
-## Formal Release
+Review `build/release-notes.md` before tagging. The workflow uses it as the
+GitHub Release body, with the Wasmtime fork distribution, AOT generation,
+changed backends, and whether this release introduces a generation. Keep the
+changelog entry under `Unreleased` until Central publication succeeds.
 
-Push the verified candidate to `main` and review CI for that commit. Push the
-tag printed by `expected-tag` as the formal release operation.
+## Push the Tag and Publish
 
-The workflow validates the tag and catalog, runs Linux JVM/native AOT and iOS
-gates, prepares all Maven artifacts on macOS, checks local publications, and
-tests the published consumer before invoking `publishToMavenCentral`.
-It then creates the GitHub Release with `aot-compatibility.json` and its checksum.
+Commit the synchronized candidate, including new tooling and test files, and
+push it directly to `main`:
+
+```bash
+git push origin main
+```
+
+Review CI for that exact commit. Confirm that the candidate Maven version has
+never been published and its tag does not already exist. Then derive, verify,
+and push the matching tag from the intended `main` commit:
+
+```bash
+git switch main
+git pull --ff-only origin main
+release_tag="$(./scripts/release.sh expected-tag)"
+./scripts/release.sh verify-tag "${release_tag}"
+git tag "${release_tag}"
+git push origin "${release_tag}"
+```
+
+Tag push starts **Release Wasmline** in
+[GitHub Actions](https://github.com/crowforkotlin/wasmline/actions).
+
+| Job | Work |
+|---|---|
+| `validate-release` | Validate the tag, versions, AOT catalog, tooling, and required secrets |
+| `validate-native-aot-jvm` | Build JVM/Android engine assets and run native AOT, JVM, and dynamic plugin tests |
+| `validate-native-aot-ios` | Run the iOS simulator Pulley tests in parallel with the JVM job |
+| `publish-maven` | Prepare all targets on macOS, verify local publications and consumers, then publish to Central |
+| `create-github-release` | Create the release from the generated notes and upload the catalog and checksum |
+
+Alpha/beta releases are marked **Pre-release** and do not become **Latest**.
+The advisory AOT check continues to use the latest stable catalog; before the
+first stable release it may report remote status unavailable.
+
+## Verify Central and Consumers
+
+In [Central Portal](https://central.sonatype.com), open Deployments and wait for
+`PUBLISHED`. Automatic release is enabled, but repository synchronization can
+take additional time. Confirm that the candidate's POM can be downloaded at:
+
+```text
+https://repo.maven.apache.org/maven2/io/github/crowforkotlin/wasmline/<Maven-version>/wasmline-<Maven-version>.pom
+```
+
+In the consumer's `settings.gradle.kts`, declare `mavenCentral()` in both
+`pluginManagement.repositories` and `dependencyResolutionManagement.repositories`.
+Replace every `<Maven-version>` below with the released version, including
+the alpha/beta suffix when present:
+
+```kotlin
+plugins {
+    id("io.github.crowforkotlin.wasmline") version "<Maven-version>"
+}
+
+dependencies {
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:<Maven-version>"))
+    implementation("io.github.crowforkotlin:wasmline-loader")
+    implementation("io.github.crowforkotlin:wasmline-engine-pulley")
+}
+```
 
 After Maven Central makes the artifacts available, verify installation from
 Maven Central, update the local-only distribution notes in both READMEs and
-installation pages, and move the changelog entry under the released version.
+installation pages, and move the changelog entry under the released Maven
+version, including its alpha/beta suffix.

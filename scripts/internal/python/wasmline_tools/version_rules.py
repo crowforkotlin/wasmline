@@ -102,11 +102,19 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: f"minimum required Kotlin version is **{v['kotlin_min_version']}**",
             min_count=0,
         ),
+        Rule(
+            r"(wasmline-bom:)[0-9A-Za-z.\-]+",
+            lambda v: rf"\g<1>{v['wasmline_version']}",
+        ),
     )
     readme_zh = badge_rules() + (
         Rule(
             r"最低需要 \*\*Kotlin [0-9A-Za-z.\-]+\*\* 版本",
             lambda v: f"最低需要 **Kotlin {v['kotlin_min_version']}** 版本",
+        ),
+        Rule(
+            r"(wasmline-bom:)[0-9A-Za-z.\-]+",
+            lambda v: rf"\g<1>{v['wasmline_version']}",
         ),
     )
 
@@ -156,13 +164,17 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: f"minimum required Kotlin version is **{v['kotlin_min_version']}**",
         ),
         Rule(
-            r'(?m)(id\("io\.github\.crowforkotlin"\) version ")[0-9A-Za-z.\-]+(")',
+            r'(?m)(id\("io\.github\.crowforkotlin\.wasmline"\) version ")[0-9A-Za-z.\-]+(")',
             lambda v: rf"\g<1>{v['wasmline_version']}\g<2>",
         ),
         Rule(
             r"(io\.github\.crowforkotlin:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+",
             lambda v: rf"\g<1>{v['wasmline_version']}",
             min_count=0,
+        ),
+        Rule(
+            r'(?m)^(val wasmlineVersion = ")[0-9A-Za-z.\-]+(")$',
+            lambda v: rf"\g<1>{v['wasmline_version']}\g<2>",
         ),
     )
     installation_zh = (
@@ -176,13 +188,17 @@ def file_specs() -> tuple[FileSpec, ...]:
             lambda v: f"最低需要 **Kotlin {v['kotlin_min_version']}** 版本",
         ),
         Rule(
-            r'(?m)(id\("io\.github\.crowforkotlin"\) version ")[0-9A-Za-z.\-]+(")',
+            r'(?m)(id\("io\.github\.crowforkotlin\.wasmline"\) version ")[0-9A-Za-z.\-]+(")',
             lambda v: rf"\g<1>{v['wasmline_version']}\g<2>",
         ),
         Rule(
             r"(io\.github\.crowforkotlin:[A-Za-z0-9_.-]+:)[0-9A-Za-z.\-]+",
             lambda v: rf"\g<1>{v['wasmline_version']}",
             min_count=0,
+        ),
+        Rule(
+            r'(?m)^(val wasmlineVersion = ")[0-9A-Za-z.\-]+(")$',
+            lambda v: rf"\g<1>{v['wasmline_version']}\g<2>",
         ),
     )
 
@@ -479,14 +495,14 @@ def file_specs() -> tuple[FileSpec, ...]:
                     lambda v: f'wasmline = "{v["wasmline_version"]}"',
                 ),
                 Rule(
-                    r'(?m)^wasmline = \{ id = "io\.github\.crowforkotlin", version = ".*" \}$',
-                    lambda v: f'wasmline = {{ id = "io.github.crowforkotlin", version = "{v["wasmline_version"]}" }}',
+                    r'(?m)^wasmline = \{ id = "io\.github\.crowforkotlin\.wasmline", version = ".*" \}$',
+                    lambda v: f'wasmline = {{ id = "io.github.crowforkotlin.wasmline", version = "{v["wasmline_version"]}" }}',
                 ),
             ),
         ),
         FileSpec(
             "docs/ir/box-ir.md",
-            readme_en,
+            badge_rules(),
         ),
         FileSpec("README.md", readme_en),
         FileSpec("README_zh.md", readme_zh),
@@ -500,8 +516,8 @@ def file_specs() -> tuple[FileSpec, ...]:
         ),
         FileSpec("fumadocs/content/docs/installation.mdx", installation_en),
         FileSpec("fumadocs/content/docs/installation.zh.mdx", installation_zh),
-        FileSpec("fumadocs/content/docs/(reference)/(runtime)/architecture.mdx", architecture_rules),
-        FileSpec("fumadocs/content/docs/(reference)/(runtime)/architecture.zh.mdx", architecture_rules),
+        FileSpec("fumadocs/content/docs/(reference)/(repository-development)/(runtime)/architecture.mdx", architecture_rules),
+        FileSpec("fumadocs/content/docs/(reference)/(repository-development)/(runtime)/architecture.zh.mdx", architecture_rules),
         FileSpec(
             "fumadocs/content/docs/(reference)/(repository-development)/testing.mdx",
             version_sync_docs_rules,
@@ -513,8 +529,10 @@ def file_specs() -> tuple[FileSpec, ...]:
         FileSpec(
             "docs/native-library-loading.md",
             (
+                # Repeated suffixes repair documents written by the old partial-version rule.
                 Rule(
-                    r"(?<![0-9.])[0-9]+\.[0-9]+\.[0-9]+(?![0-9])",
+                    r"(?<![0-9.])[0-9]+\.[0-9]+\.[0-9]+"
+                    r"(?:-(?:alpha|beta)[1-9][0-9]*)*(?![0-9])",
                     lambda v: v["wasmline_version"],
                     min_count=0,
                 ),
@@ -743,7 +761,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/(plugin)/component-service.mdx",
             (
                 Rule(
                     rf'(`wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'
@@ -756,7 +774,7 @@ def file_specs() -> tuple[FileSpec, ...]:
             ),
         ),
         FileSpec(
-            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/(plugin)/component-service.zh.mdx",
             (
                 Rule(
                     rf'(`wit-bindgen ){SEMANTIC_VERSION_TOKEN_PATTERN}'

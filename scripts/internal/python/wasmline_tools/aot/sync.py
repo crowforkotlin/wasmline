@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from typing import Any, Mapping
 
@@ -17,6 +18,7 @@ from .catalog import (
     AotCompatibilityError,
     load_public_catalog,
     render_public_catalog_text,
+    validate_source,
 )
 from .lock import (
     _asset_distribution_and_host,
@@ -212,6 +214,35 @@ def _read_versions() -> dict[str, str]:
     return {str(key): str(value) for key, value in versions.items()}
 
 
+def _require_unpublished_rebuild() -> None:
+    """Allow a full history rebuild only before any local or origin release tag."""
+
+    commands = (
+        ("local repository", ["git", "for-each-ref", "--format=%(refname)", "refs/tags/release-*"]),
+        ("origin", ["git", "ls-remote", "--tags", "origin", "refs/tags/release-*"]),
+    )
+    for location, command in commands:
+        try:
+            result = subprocess.run(
+                command,
+                cwd=PROJECT_ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            raise AotCompatibilityError(
+                f"Cannot read release tags from {location}; AOT rebuild requires "
+                "confirming that no release tags exist."
+            ) from error
+        if result.stdout.strip():
+            raise AotCompatibilityError(
+                f"AOT rebuild is only allowed before the first release tag; "
+                f"release tags exist in {location}. Use normal 'aot sync' for published history."
+            )
+
+
 def sync_aot(
     *,
     check: bool = False,
@@ -224,12 +255,18 @@ def sync_aot(
     A normal run appends new generations to the existing lock and rejects any
     change to published history. ``rebuild`` discards the previous lock and
     regenerates every record from the public catalog, which is the only way to
-    remove generations; it is intended for unpublished local history.
+    remove generations. It requires no release tags locally or on origin and
+    can initialize the first alpha/beta release from unpublished local history.
     """
 
     console = Console(sys.stdout)
     versions = _read_versions()
     source = load_public_catalog()
+    validate_source(source, versions)
+    if rebuild:
+        if check:
+            raise AotCompatibilityError("AOT rebuild cannot run in check mode.")
+        _require_unpublished_rebuild()
     existing = {} if rebuild else load_lock()
     resolver = None if check else GitHubAotMetadataResolver(proxy=proxy, jobs=jobs)
     if rebuild and not check:

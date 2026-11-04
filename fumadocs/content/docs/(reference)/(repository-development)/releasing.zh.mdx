@@ -8,18 +8,18 @@ updatedAt: 2026-11-02
 # 发行
 
 发行工作流为 `.github/workflows/release.yml`。推送到 `main` 会运行 CI；
-推送有效的发行 tag 后才开始正式 Maven 发布。
+推送有效的发行 tag 后才开始 Maven 发布，包括 alpha 与 beta 版本。
 
 ## 版本与 Tag
 
 | `versions.json` 输入 | 含义 |
 |---|---|
-| `wasmline_version` | runtime、loader、插件、CLI 与 engine 共用的 `x.y.z` Maven 版本 |
+| `wasmline_version` | runtime、loader、插件、CLI、BOM 与 engine 共用的 Maven 版本：`x.y.z`、`x.y.z-alphaN` 或 `x.y.z-betaN` |
 | `wasmtime_version` | engine 链接的三段 Wasmtime 上游版本 |
 | `wasmtime_release_version` | 下载时使用的四段 Wasmtime fork 发行版本 |
 
-发行 tag 格式为 `release-x.y.z.v`。前三段是 Wasmline Maven 版本；
-最后一段按三段 Wasmtime 版本计算：
+发行 tag 格式为 `release-<Maven-version>.<Wasmtime-code>`。完整 Maven 版本
+位于最后一个点之前；最后一段按三段 Wasmtime 版本计算：
 
 ```text
 v = major × 100 + minor × 10 + patch
@@ -29,19 +29,76 @@ v = major × 100 + minor × 10 + patch
 `release-1.2.3.1234`，因为 `12 × 100 + 3 × 10 + 4 = 1234`。
 如果 fork 发行版本是 `12.3.4.2`，编码仍为 `1234`：最后的 `.2` 标识 fork
 构建，单独记录在 catalog 和发行说明中。
+如果 Maven 版本是 `1.2.3-beta1`，相同工具链对应的 tag 为
+`release-1.2.3-beta1.1234`。
 
 该后缀不是 Maven 的第四段版本，也不是 AOT generation 编号。使用此编码时，
 Wasmtime 的 minor 和 patch 必须各为一位数字。Tag 和 Maven 版本均不可覆盖；
-每次正式 Maven 发行对应一个 tag。
+每次 Maven 发行对应一个 tag。
+
+| Maven 版本示例 | 适用情况 |
+|---|---|
+| `1.2.3-alpha5` | 核心行为、公开 API 或配置方式仍在调整 |
+| `1.2.3-beta1` | 主要功能已经完成，重点是使用方验证和修复问题 |
+| `1.2.3` | 已验证实际安装、公开 API 和兼容性承诺 |
+
+序号必须是无前导零的正整数，使用 `alpha5` 和 `beta1`，名称与序号之间没有点。
+同一基础版本按 alpha、beta、正式版排序，序号按数值比较（`beta2 < beta10`）。
+依赖、BOM 和 Gradle 插件均使用包含预发行后缀的完整 Maven 版本。
+
+序号直接贴在阶段名后面，而不是写成 `1.2.3-beta.1`。两种写法都是合法的 SemVer，
+但只有 `beta1` 会被 Maven `ComparableVersion` 和 Gradle 按数值排序：二者会把
+结尾数字拆成独立段，因此 `beta2` 在 `beta10` 之前。严格 SemVer 会把 `beta1`
+当作单个字母数字标识符按字典序比较，得到 `beta10 < beta2`；Wasmline 的工具链
+没有任何一环使用该比较，且 Kotlin、Compose、KtLint 也都发布无点写法。
 
 从当前 manifest 读取预期 tag：
 
 ```bash
 ./scripts/release.sh expected-tag
 ./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+./scripts/release.sh github-release-metadata
 ```
 
-上述命令输出并校验发行输入。创建 tag 属于后续正式发行操作。
+上述命令输出并校验发行输入。创建并推送 tag 是后续发布操作。
+
+metadata 命令会输出 `version`、`tag`、`prerelease` 和 `make_latest`。
+alpha/beta 版本对应 `prerelease=true`、`make_latest=false`；正式版对应
+`prerelease=false`、`make_latest=true`。工作流读取这些值，创建标题为
+`Wasmline <Maven-version>` 的 GitHub Release。
+
+## 同步发行输入
+
+在根目录 `versions.json` 中修改候选版本的 `wasmline_version`，并在根目录
+`aot-compatibility.json` 中修改 `currentWasmlineVersion`。
+`sample_plugin_version` 和协议版本保持独立。
+
+仅在首次发布前，将 `minimumSupportedWasmlineVersion` 和第一条 range 的
+`fromWasmlineVersion` 一并设为初始 alpha/beta 版本，保留 generation `1` 与
+计划使用的 Wasmtime fork distribution。在仓库根目录重新生成未发布的记录：
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline aot sync --rebuild
+```
+
+`--rebuild` 要求本地与 origin 都没有 `release-*` tag；已有 tag 或查询失败时
+命令会停止。使用前还要确认没有 Maven 版本已经发布。它会重新解析 fork release，
+验证五个完整 compiler archive，因此需要网络访问。生成的 lock 和 runtime
+identity 必须由同步命令写入，不能手动修改。
+
+后续 beta 序号更新或升为正式版时，保留已发布的 range 起点、profile 和 compiler
+binding。两个 backend profile 未改变时，只更新 catalog 当前版本并执行普通同步：
+
+```bash
+./scripts/wasmline versions sync
+./scripts/wasmline aot sync
+```
+
+Maven 版本变化本身不会增加 AOT generation。backend profile 改变时，需要新增
+range 与 generation。逐字段规则、`changedBackends` 的推导方式，以及 `aot sync` 与
+`aot sync --rebuild` 的区别见 [AOT Catalog 与版本](/zh/docs/aot-and-versioning)；
+插件侧的选择 DSL 见 [Wasmtime 下载与 AOT](/zh/docs/wasmtime-download)。
 
 ## 准备候选版本
 
@@ -54,6 +111,7 @@ Wasmtime 的 minor 和 patch 必须各为一位数字。Tag 和 Maven 版本均�
 ./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
 python3 scripts/tests/test_versions.py
 python3 scripts/tests/test_publications.py
+python3 scripts/tests/test_release.py
 ```
 
 运行 JVM 测试，包括 plugin core 和 Gradle 插件测试：
@@ -72,7 +130,7 @@ CI 还运行浏览器、Node、Kotlin/Native 和 iOS 模拟器测试。确认结
 
 ## 验证发布构件
 
-完整正式发行需要 macOS，因为 Apple 目标仅在 macOS 上声明。准备好原生文件后执行：
+完整多平台发布需要 macOS，因为 Apple 目标仅在 macOS 上声明。准备好原生文件后执行：
 
 ```bash
 ./gradlew publishToMavenLocal --no-daemon
@@ -105,10 +163,12 @@ Linux 上省略 `--require-apple`，可检查本机声明的目标。Apple 编�
 | `MAVEN_CENTRAL_SIGNING_KEY` | ASCII-armored 格式的私有签名密钥 |
 | `MAVEN_CENTRAL_SIGNING_KEY_PASSWORD` | 受密码保护的签名密钥口令 |
 
-发布账号需要拥有 `io.github.crowforkotlin` namespace 的发布权限。全部 Wasmline
-Maven 模块和 Gradle 插件 ID 均使用该命名空间。使用 `crowforkotlin` GitHub 账号
-登录 [Central Portal](https://central.sonatype.com)，确认该命名空间已验证后，再
-创建发布 token。
+发布账号需要拥有 `io.github.crowforkotlin` namespace 的发布权限，全部 Wasmline
+Maven 模块与 Gradle 插件 ID `io.github.crowforkotlin.wasmline` 均位于该命名空间下。
+Central 会随顶层 group 一并授予子命名空间，插件 marker 无需单独验证。使用
+`crowforkotlin` GitHub 账号登录 [Central Portal](https://central.sonatype.com)，确认
+该命名空间已验证后，再创建发布 token。
+对应的 GPG 公钥还必须上传到公开密钥服务器，供 Central 验证构件签名。
 
 将本次变化写入 `CHANGELOG.md` 的 `Unreleased` 部分，发行脚本会将其加入
 生成的兼容性信息：
@@ -118,15 +178,70 @@ Maven 模块和 Gradle 插件 ID 均使用该命名空间。使用 `crowforkotli
 ./scripts/release.sh write-notes build/release-notes.md
 ```
 
-## 正式发行
+创建 tag 前查看 `build/release-notes.md`。工作流将该文件作为 GitHub Release
+正文，其中包含 Wasmtime fork distribution、AOT generation、changed backends
+以及本次是否引入新 generation。Central 发布成功前，changelog 保留在 `Unreleased` 下。
 
-将已验证的候选提交推送到 `main`，确认该提交的 CI。将 `expected-tag` 输出的
-tag 推送作为正式发行操作。
+## 推送标签并发布
 
-工作流会校验 tag 和 catalog，运行 Linux JVM、原生 AOT 与 iOS 测试，在 macOS
-准备完整 Maven 构件，检查本地发布结果并测试实际使用方，再调用
-`publishToMavenCentral`。随后创建 GitHub Release，并上传
-`aot-compatibility.json` 及其摘要。
+提交同步后的候选版本，包括新增的发布工具和测试文件，直接推送到 `main`：
+
+```bash
+git push origin main
+```
+
+确认该提交的 CI 通过，并确认候选 Maven 版本从未发布、对应 tag 尚不存在。
+然后从计划发布的 `main` 提交读取、校验并推送 tag：
+
+```bash
+git switch main
+git pull --ff-only origin main
+release_tag="$(./scripts/release.sh expected-tag)"
+./scripts/release.sh verify-tag "${release_tag}"
+git tag "${release_tag}"
+git push origin "${release_tag}"
+```
+
+推送 tag 后，在 [GitHub Actions](https://github.com/crowforkotlin/wasmline/actions)
+查看 **Release Wasmline**：
+
+| Job | 执行内容 |
+|---|---|
+| `validate-release` | 检查 tag、版本、AOT catalog、发布工具与必要 secrets |
+| `validate-native-aot-jvm` | 构建 JVM/Android engine 文件，运行原生 AOT、JVM 和动态插件测试 |
+| `validate-native-aot-ios` | 与 JVM job 并行运行 iOS 模拟器 Pulley 测试 |
+| `publish-maven` | 在 macOS 准备完整目标，验证本地发布与使用方，然后发布 Central |
+| `create-github-release` | 使用生成的正文创建 Release，上传 catalog 与摘要 |
+
+alpha/beta 版本会标记为 **Pre-release**，不会成为 **Latest**。
+AOT 建议检查仍使用最新稳定 catalog；首次正式版发布前可能报告远程状态不可用。
+
+## 确认 Central 和使用方
+
+在 [Central Portal](https://central.sonatype.com) 的 Deployments 页面等待状态达到
+`PUBLISHED`。仓库已启用自动发布，但下载服务器同步还需要时间。确认候选版本的
+POM 可以从下列地址下载：
+
+```text
+https://repo.maven.apache.org/maven2/io/github/crowforkotlin/wasmline/<Maven-version>/wasmline-<Maven-version>.pom
+```
+
+使用方 `settings.gradle.kts` 的 `pluginManagement.repositories` 与
+`dependencyResolutionManagement.repositories` 都要声明 `mavenCentral()`。
+将下列所有 `<Maven-version>` 替换为实际发布版本，alpha/beta 后缀也要包含：
+
+```kotlin
+plugins {
+    id("io.github.crowforkotlin.wasmline") version "<Maven-version>"
+}
+
+dependencies {
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:<Maven-version>"))
+    implementation("io.github.crowforkotlin:wasmline-loader")
+    implementation("io.github.crowforkotlin:wasmline-engine-pulley")
+}
+```
 
 Maven Central 构件可用后，验证从 Maven Central 安装，同步更新两个 README
-和安装页中仅本地分发的说明，并将 changelog 条目移到已发布版本下。
+和安装页中仅本地分发的说明，并将 changelog 条目移到包含 alpha/beta 后缀的
+已发布 Maven 版本下。

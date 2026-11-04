@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * Maps stable Wasmline release ranges to sequential native AOT generations.
+ * Maps Wasmline release ranges to sequential native AOT generations.
  *
  * Date: 2026-08-29
  * Author: crowforkotlin
@@ -24,11 +24,11 @@ data class WasmlineAotReleaseCatalog(
         require(schemaVersion == CURRENT_SCHEMA_VERSION) {
             "Unsupported Wasmline AOT release catalog schema $schemaVersion."
         }
-        require(isStableWasmlineVersion(currentWasmlineVersion)) {
-            "AOT catalog currentWasmlineVersion must use x.y.z."
+        require(isWasmlineReleaseVersion(currentWasmlineVersion)) {
+            "AOT catalog currentWasmlineVersion must use x.y.z with an optional -alphaN or -betaN."
         }
-        require(isStableWasmlineVersion(minimumSupportedWasmlineVersion)) {
-            "AOT catalog minimumSupportedWasmlineVersion must use x.y.z."
+        require(isWasmlineReleaseVersion(minimumSupportedWasmlineVersion)) {
+            "AOT catalog minimumSupportedWasmlineVersion must use x.y.z with an optional -alphaN or -betaN."
         }
         require(compareWasmlineVersions(minimumSupportedWasmlineVersion, currentWasmlineVersion) <= 0) {
             "AOT catalog minimum supported version exceeds its current version."
@@ -37,7 +37,7 @@ data class WasmlineAotReleaseCatalog(
         val profilesById = profiles.associateBy(AotCompatibilityProfileSpec::id)
         var previous: WasmlineAotReleaseRange? = null
         ranges.forEachIndexed { index, range ->
-            require(isStableWasmlineVersion(range.fromWasmlineVersion)) {
+            require(isWasmlineReleaseVersion(range.fromWasmlineVersion)) {
                 "AOT generation ${range.aotGeneration} has an invalid range start."
             }
             require(range.aotGeneration == index + 1) {

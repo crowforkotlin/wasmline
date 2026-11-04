@@ -16,7 +16,7 @@ data class AotCompatibilitySelection(val strategies: List<AotGenerations> = empt
 }
 
 /**
- * Defines one closed interval of concrete stable Wasmline versions.
+ * Defines one closed interval of concrete Wasmline release versions.
  *
  * Date: 2026-08-29
  * Author: crowforkotlin
@@ -24,11 +24,11 @@ data class AotCompatibilitySelection(val strategies: List<AotGenerations> = empt
 @InternalWasmlineToolingApi
 data class WasmlineVersionRange(val from: String, val through: String) {
     init {
-        require(isStableWasmlineVersion(from)) {
-            "AOT range from version must use x.y.z: '$from'."
+        require(isWasmlineReleaseVersion(from)) {
+            "AOT range from version must use x.y.z with an optional -alphaN or -betaN: '$from'."
         }
-        require(isStableWasmlineVersion(through)) {
-            "AOT range through version must use x.y.z: '$through'."
+        require(isWasmlineReleaseVersion(through)) {
+            "AOT range through version must use x.y.z with an optional -alphaN or -betaN: '$through'."
         }
         require(compareWasmlineVersions(from, through) <= 0) {
             "AOT range start '$from' must not exceed its end '$through'."
@@ -152,7 +152,9 @@ object AotCompatibilitySelectionResolver {
     }
 
     private fun generationIndex(version: String, catalog: WasmlineAotReleaseCatalog): Int {
-        require(isStableWasmlineVersion(version)) { "Current Wasmline version must use x.y.z: '$version'." }
+        require(isWasmlineReleaseVersion(version)) {
+            "Current Wasmline version must use x.y.z with an optional -alphaN or -betaN: '$version'."
+        }
         require(
             compareWasmlineVersions(version, catalog.minimumSupportedWasmlineVersion) >= 0 &&
                 compareWasmlineVersions(version, catalog.currentWasmlineVersion) <= 0,
@@ -235,24 +237,38 @@ internal val AOT_PROFILE_ORDER: Comparator<AotCompatibilityProfileSpec> = compar
     AotCompatibilityProfileSpec::id,
 )
 
-internal fun isStableWasmlineVersion(value: String): Boolean = STABLE_WASMLINE_VERSION.matches(value)
+internal fun isWasmlineReleaseVersion(value: String): Boolean = WASMLINE_RELEASE_VERSION.matches(value)
 
 internal fun compareWasmlineVersions(left: String, right: String): Int {
-    require(isStableWasmlineVersion(left)) { "Invalid Wasmline version '$left'." }
-    require(isStableWasmlineVersion(right)) { "Invalid Wasmline version '$right'." }
-    val leftParts = left.split('.')
-    val rightParts = right.split('.')
+    val leftMatch = WASMLINE_RELEASE_VERSION.matchEntire(left)
+        ?: throw IllegalArgumentException("Invalid Wasmline version '$left'.")
+    val rightMatch = WASMLINE_RELEASE_VERSION.matchEntire(right)
+        ?: throw IllegalArgumentException("Invalid Wasmline version '$right'.")
+    val leftParts = left.substringBefore('-').split('.')
+    val rightParts = right.substringBefore('-').split('.')
     leftParts.indices.forEach { index ->
-        val leftPart = leftParts[index].trimStart('0').ifEmpty { "0" }
-        val rightPart = rightParts[index].trimStart('0').ifEmpty { "0" }
-        val lengthOrder = leftPart.length.compareTo(rightPart.length)
-        if (lengthOrder != 0) return lengthOrder
-        val lexicalOrder = leftPart.compareTo(rightPart)
-        if (lexicalOrder != 0) return lexicalOrder
+        val order = compareVersionNumber(leftParts[index], rightParts[index])
+        if (order != 0) return order
     }
-    return 0
+    val stageOrder = releaseStageOrder(leftMatch.groupValues[1])
+        .compareTo(releaseStageOrder(rightMatch.groupValues[1]))
+    if (stageOrder != 0) return stageOrder
+    return compareVersionNumber(leftMatch.groupValues[2], rightMatch.groupValues[2])
 }
 
-private val STABLE_WASMLINE_VERSION: Regex = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+$")
+private fun compareVersionNumber(left: String, right: String): Int {
+    val leftNumber = left.trimStart('0').ifEmpty { "0" }
+    val rightNumber = right.trimStart('0').ifEmpty { "0" }
+    val lengthOrder = leftNumber.length.compareTo(rightNumber.length)
+    return if (lengthOrder != 0) lengthOrder else leftNumber.compareTo(rightNumber)
+}
+
+private fun releaseStageOrder(stage: String): Int = when (stage) {
+    "alpha" -> 0
+    "beta" -> 1
+    else -> 2
+}
+
+private val WASMLINE_RELEASE_VERSION: Regex = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(?:-(alpha|beta)([1-9][0-9]*))?$")
 
 internal const val AOT_COMPATIBILITY_SELECTOR: String = "generations"

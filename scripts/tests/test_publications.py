@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -14,7 +15,14 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "scripts/internal/python"))
 
-from wasmline_tools.publications import GROUP, JNI_PLATFORMS, MODULES, PublicationError, verify_publications
+from wasmline_tools.publications import (
+    GROUP,
+    JNI_PLATFORMS,
+    MODULES,
+    PLUGIN_ID,
+    PublicationError,
+    verify_publications,
+)
 
 
 class PublicationTest(unittest.TestCase):
@@ -23,22 +31,23 @@ class PublicationTest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.repository = Path(self.temporary.name)
         self.version = "12.3.4"
-        for module in (*MODULES, f"{GROUP}.gradle.plugin"):
+        for module in MODULES:
             self.write_module(module)
+        self.write_module(f"{PLUGIN_ID}.gradle.plugin", group=PLUGIN_ID)
 
-    def directory(self, module: str) -> Path:
-        return self.repository.joinpath(*GROUP.split("."), module, self.version)
+    def directory(self, module: str, group: str = GROUP) -> Path:
+        return self.repository.joinpath(*group.split("."), module, self.version)
 
-    def write_module(self, module: str, variants: list | None = None) -> None:
-        directory = self.directory(module)
+    def write_module(self, module: str, variants: list | None = None, group: str = GROUP) -> None:
+        directory = self.directory(module, group)
         directory.mkdir(parents=True, exist_ok=True)
         directory.joinpath(f"{module}-{self.version}.pom").write_text(
-            f'<project xmlns="http://maven.apache.org/POM/4.0.0"><groupId>{GROUP}</groupId>'
+            f'<project xmlns="http://maven.apache.org/POM/4.0.0"><groupId>{group}</groupId>'
             f"<artifactId>{module}</artifactId><version>{self.version}</version></project>",
             encoding="utf-8",
         )
         directory.joinpath(f"{module}-{self.version}.module").write_text(
-            json.dumps({"component": {"group": GROUP, "module": module, "version": self.version}, "variants": variants or []}),
+            json.dumps({"component": {"group": group, "module": module, "version": self.version}, "variants": variants or []}),
             encoding="utf-8",
         )
 
@@ -57,6 +66,13 @@ class PublicationTest(unittest.TestCase):
             "url": f"../../{target}/{self.version}/{target}-{self.version}.module",
         }}])
         self.assertEqual((len(MODULES) + 1, 1), verify_publications(self.repository, self.version))
+
+    def test_rejects_marker_outside_plugin_id_namespace(self) -> None:
+        marker = f"{PLUGIN_ID}.gradle.plugin"
+        shutil.rmtree(self.directory(marker, PLUGIN_ID))
+        self.write_module(f"{GROUP}.gradle.plugin")
+        with self.assertRaisesRegex(PublicationError, f"Missing Maven POM: {PLUGIN_ID}:"):
+            verify_publications(self.repository, self.version)
 
     def test_rejects_stale_metadata(self) -> None:
         path = self.directory("wasmline") / f"wasmline-{self.version}.module"

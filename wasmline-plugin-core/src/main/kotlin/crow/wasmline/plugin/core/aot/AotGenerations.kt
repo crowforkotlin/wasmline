@@ -28,7 +28,7 @@ public sealed interface AotGenerations {
         public operator fun invoke(): AotGenerations = this
     }
 
-    /** Concrete stable Wasmline versions, or a closed `min`..`max` version interval. */
+    /** Concrete Wasmline release versions, or a closed `min`..`max` version interval. */
     public class Versions internal constructor(internal val ranges: List<WasmlineVersionRange>) : AotGenerations {
         public constructor(version: String) : this(listOf(WasmlineVersionRange(version, version)))
 

@@ -105,6 +105,35 @@ class FixedAotMetadataResolver:
         )
 
 
+def native_library_version_example(version: str) -> str:
+    """Representative coordinates, Maven paths, and platform artifact names."""
+    coordinates = tuple(
+        f'implementation("io.github.crowforkotlin:{module}:{version}")'
+        for module in ("wasmline", "wasmline-loader", "wasmline-engine-pulley", "wasmline-engine-cranelift")
+    )
+    artifacts = tuple(
+        f"wasmline-engine-pulley-jvm-{version}{suffix}"
+        for suffix in (
+            ".jar",
+            ".module",
+            "-linux-x86_64.jar",
+            "-linux-aarch64.jar",
+            "-darwin-aarch64.jar",
+            "-darwin-x86_64.jar",
+            "-windows-x86_64.jar",
+            "-linux-x86_64",
+        )
+    )
+    return "\n".join(
+        (
+            *coordinates,
+            *artifacts,
+            f"~/.m2/repository/io/github/crowforkotlin/wasmline-engine-pulley-jvm/{version}/",
+            f'"version": "{version}"',
+        )
+    )
+
+
 class SyncVersionTest(unittest.TestCase):
     """Checks that the manifest and all managed version targets stay aligned."""
 
@@ -216,10 +245,10 @@ class SyncVersionTest(unittest.TestCase):
             "fumadocs/content/docs/installation.zh.mdx",
             "fumadocs/content/docs/(reference)/(repository-development)/building-from-source.mdx",
             "fumadocs/content/docs/(reference)/(repository-development)/building-from-source.zh.mdx",
-            "fumadocs/content/docs/(reference)/(runtime)/architecture.mdx",
-            "fumadocs/content/docs/(reference)/(runtime)/architecture.zh.mdx",
-            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx",
-            "fumadocs/content/docs/(reference)/(plugin-development)/component-service.zh.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/(runtime)/architecture.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/(runtime)/architecture.zh.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/(plugin)/component-service.mdx",
+            "fumadocs/content/docs/(reference)/(repository-development)/(plugin)/component-service.zh.mdx",
             "samples/multiplatform-app/run-ios.sh",
             "wasmline-build-logic/app/src/main/kotlin/wasmline.engine.gradle.kts",
             ".github/workflows/release.yml",
@@ -357,6 +386,36 @@ class SyncVersionTest(unittest.TestCase):
             rendered["docs/native-library-loading.md"],
         )
 
+    def test_native_library_versions_preserve_artifacts_across_repeated_syncs(self) -> None:
+        """Alpha/beta replacements retain classifiers and remain unchanged on a second sync."""
+        spec = next(spec for spec in file_specs() if spec.path == "docs/native-library-loading.md")
+        for previous in ("12.3.4", "12.3.4-alpha5", "12.3.4-beta1"):
+            for target in ("9.8.7-alpha5", "9.8.7-beta2", "9.8.7"):
+                with self.subTest(previous=previous, target=target):
+                    versions = {"wasmline_version": target}
+                    once = apply_rules(native_library_version_example(previous), spec, versions)
+                    twice = apply_rules(once, spec, versions)
+                    self.assertEqual(native_library_version_example(target), once)
+                    self.assertEqual(once, twice)
+
+    def test_native_library_versions_recover_repeated_prerelease_suffixes(self) -> None:
+        """The next sync removes suffixes accumulated by the previous numeric-only rule."""
+        spec = next(spec for spec in file_specs() if spec.path == "docs/native-library-loading.md")
+        for previous in (
+            "12.3.4-beta1-beta1",
+            "12.3.4-beta1-beta1-beta1",
+            "12.3.4-alpha5-alpha5",
+            "12.3.4-alpha5-beta1",
+        ):
+            for target in ("9.8.7-beta2", "9.8.7"):
+                with self.subTest(previous=previous, target=target):
+                    rendered = apply_rules(
+                        native_library_version_example(previous),
+                        spec,
+                        {"wasmline_version": target},
+                    )
+                    self.assertEqual(native_library_version_example(target), rendered)
+
     def test_toolchain_versions_update_external_component_tooling(self) -> None:
         """Toolchain versions must reach external build checks and guidance."""
         versions = {
@@ -492,6 +551,55 @@ class SyncVersionTest(unittest.TestCase):
         source["ranges"][0]["changedBackends"].reverse()
         with self.assertRaisesRegex(catalog.AotCompatibilityError, "canonical backend order"):
             catalog.validate_source(source, sync_version.load_manifest()["versions"])
+
+    def test_aot_sync_initializes_beta_history_and_preserves_it_on_promotion(self) -> None:
+        """An initial beta can generate complete bindings and keep them in stable."""
+        source = {
+            "schemaVersion": 1,
+            "currentWasmlineVersion": "12.3.4-beta1",
+            "minimumSupportedWasmlineVersion": "12.3.4-beta1",
+            "ranges": [
+                {
+                    "fromWasmlineVersion": "12.3.4-beta1",
+                    "aotGeneration": 1,
+                    "wasmtimeDistributionVersion": "5.6.7.2",
+                    "changedBackends": ["CRANELIFT", "PULLEY"],
+                }
+            ],
+        }
+        versions = dict(sync_version.load_manifest()["versions"])
+        versions.update(
+            wasmline_version="12.3.4-beta1",
+            wasmtime_version="5.6.7",
+            wasmtime_release_version="5.6.7.2",
+        )
+        resolver = FixedAotMetadataResolver("5.6.7.2")
+        resolved_metadata = aot_sync.prepare_metadata_for_catalog(source, {}, resolver)
+        generated = lock.render_lock(source, versions, resolved_metadata)
+        lock.validate_lock_against_source(generated, source, versions)
+
+        self.assertEqual(["5.6.7.2"], resolver.requested)
+        self.assertEqual(2, len(generated["profiles"]))
+        self.assertEqual(5, len(generated["compilerAssets"]))
+        self.assertEqual(10, len(generated["profileCompilerBindings"]))
+        self.assertEqual(
+            {"12.3.4-beta1"},
+            {profile["introducedInWasmlineVersion"] for profile in generated["profiles"]},
+        )
+        self.assertEqual("12.3.4-beta1", generated["releaseCatalog"]["currentWasmlineVersion"])
+        self.assertEqual("12.3.4-beta1", generated["releaseCatalog"]["minimumSupportedWasmlineVersion"])
+        self.assertEqual("12.3.4-beta1", generated["releaseCatalog"]["ranges"][0]["fromWasmlineVersion"])
+
+        stable_source = copy.deepcopy(source)
+        stable_source["currentWasmlineVersion"] = "12.3.4"
+        stable_versions = dict(versions, wasmline_version="12.3.4")
+        stable_metadata = aot_sync.prepare_metadata_for_catalog(stable_source, generated, None)
+        stable = lock.render_lock(stable_source, stable_versions, stable_metadata)
+        lock.validate_lock_against_source(stable, stable_source, stable_versions)
+        lock.validate_append_only(generated, stable)
+        self.assertEqual(generated["releaseCatalog"]["ranges"], stable["releaseCatalog"]["ranges"])
+        for key in ("profiles", "compilerAssets", "profileCompilerBindings", "currentDefaultProfileIdsByBackend"):
+            self.assertEqual(generated[key], stable[key])
 
     def test_aot_sync_resolves_metadata_for_a_new_distribution(self) -> None:
         """A new generation obtains detailed metadata without expanding versions.json."""

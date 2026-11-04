@@ -11,6 +11,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ./scripts/release.sh expected-tag
+  ./scripts/release.sh github-release-metadata
   ./scripts/release.sh verify [release-tag]
   ./scripts/release.sh verify-tag <release-tag>
   ./scripts/release.sh verify-publications [--repository <path>] [--require-apple]
@@ -56,9 +57,34 @@ expected_tag() {
   require_command jq
   local wasmline_version wasmtime_version expected_code
   wasmline_version="$(json_value '.versions.wasmline_version')"
+  validate_wasmline_version "${wasmline_version}"
   wasmtime_version="$(json_value '.versions.wasmtime_version')"
   expected_code="$(wasmtime_tag_code "${wasmtime_version}")"
   printf 'release-%s.%s\n' "${wasmline_version}" "${expected_code}"
+}
+
+validate_wasmline_version() {
+  local version="$1"
+  local version_pattern='^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)[1-9][0-9]*)?$'
+  [[ "${version}" =~ ${version_pattern} ]] || {
+    printf 'Invalid Wasmline release version: %s. Expected x.y.z with an optional -alphaN or -betaN.\n' \
+      "${version}" >&2
+    exit 2
+  }
+}
+
+github_release_metadata() {
+  require_command jq
+  local wasmline_version release_tag prerelease=false make_latest=true
+  wasmline_version="$(json_value '.versions.wasmline_version')"
+  validate_wasmline_version "${wasmline_version}"
+  release_tag="$(expected_tag)"
+  if [[ "${wasmline_version}" == *-* ]]; then
+    prerelease=true
+    make_latest=false
+  fi
+  printf 'version=%s\ntag=%s\nprerelease=%s\nmake_latest=%s\n' \
+    "${wasmline_version}" "${release_tag}" "${prerelease}" "${make_latest}"
 }
 
 verify_tag() {
@@ -66,13 +92,20 @@ verify_tag() {
   local wasmline_version wasmtime_version wasmtime_release_version expected_code
   local tag_version tag_code release_base catalog_version
 
-  if [[ ! "${tag}" =~ ^release-([0-9]+\.[0-9]+\.[0-9]+)\.([0-9]+)$ ]]; then
-    printf 'Release tag must use release-x.y.z.v: %s\n' "${tag}" >&2
+  if [[ "${tag}" != release-* ]]; then
+    printf 'Release tag must use release-x.y.z[-alphaN|-betaN].v: %s\n' "${tag}" >&2
     exit 2
   fi
-  tag_version="${BASH_REMATCH[1]}"
-  tag_code="${BASH_REMATCH[2]}"
+  tag_version="${tag#release-}"
+  tag_code="${tag_version##*.}"
+  tag_version="${tag_version%.*}"
+  if [[ ! "${tag_code}" =~ ^[0-9]+$ ]]; then
+    printf 'Release tag must end with a numeric Wasmtime code: %s\n' "${tag}" >&2
+    exit 2
+  fi
+  validate_wasmline_version "${tag_version}"
   wasmline_version="$(json_value '.versions.wasmline_version')"
+  validate_wasmline_version "${wasmline_version}"
   wasmtime_version="$(json_value '.versions.wasmtime_version')"
   wasmtime_release_version="$(json_value '.versions.wasmtime_release_version')"
   expected_code="$(wasmtime_tag_code "${wasmtime_version}")"
@@ -173,8 +206,9 @@ write_notes() {
   generation="$(catalog_value '.ranges[-1].aotGeneration')"
   distribution="$(catalog_value '.ranges[-1].wasmtimeDistributionVersion')"
   changed="$(catalog_value '.ranges[-1].changedBackends | join(", ")')"
+  # jq -e treats a boolean false as failure; a string preserves a successful query.
   added="$(catalog_value --arg version "${wasmline_version}" \
-    '.ranges[-1].fromWasmlineVersion == $version')"
+    '(.ranges[-1].fromWasmlineVersion == $version) | tostring')"
   temporary_file="$(mktemp "${output_file}.XXXXXX")"
   {
     printf '# Wasmline %s\n\n' "${wasmline_version}"
@@ -194,6 +228,9 @@ main() {
   case "${command}" in
     expected-tag)
       expected_tag
+      ;;
+    github-release-metadata)
+      github_release_metadata
       ;;
     verify)
       verify_repository

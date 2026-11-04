@@ -11,9 +11,9 @@ kotlin {
     sourceSets {
         val nativeMain by getting {
             dependencies {
-                implementation("io.github.crowforkotlin:wasmline:1.0.0")
-                implementation("io.github.crowforkotlin:wasmline-loader:1.0.0")
-                implementation("io.github.crowforkotlin:wasmline-engine-pulley:1.0.0")
+                implementation("io.github.crowforkotlin:wasmline:1.0.0-beta1")
+                implementation("io.github.crowforkotlin:wasmline-loader:1.0.0-beta1")
+                implementation("io.github.crowforkotlin:wasmline-engine-pulley:1.0.0-beta1")
             }
         }
     }
@@ -57,8 +57,8 @@ The native library loading system has three layers:
 │  └── windows/x86_64/libwasmline.dll                 │
 │                                                     │
 │  Build output (MavenLocal):                         │
-│  wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar  │
-│  wasmline-engine-pulley-jvm-1.0.0-darwin-aarch64.jar│
+│  wasmline-engine-pulley-jvm-1.0.0-beta1-linux-x86_64.jar  │
+│  wasmline-engine-pulley-jvm-1.0.0-beta1-darwin-aarch64.jar│
 │  ...                                                │
 └──────────────────────┬──────────────────────────────┘
                        │ Gradle resolves platform JAR
@@ -72,8 +72,8 @@ The native library loading system has three layers:
 │  }                                                  │
 │                                                     │
 │  Classpath contains:                                │
-│  ├── wasmline-engine-pulley-jvm-1.0.0.jar           │
-│  └── wasmline-engine-pulley-jvm-1.0.0-linux-x86_64  │
+│  ├── wasmline-engine-pulley-jvm-1.0.0-beta1.jar           │
+│  └── wasmline-engine-pulley-jvm-1.0.0-beta1-linux-x86_64  │
 └──────────────────────┬──────────────────────────────┘
                        │ At runtime
                        ▼
@@ -171,7 +171,7 @@ Each entry produces a JAR task with:
 Example output:
 
 ```
-wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar
+wasmline-engine-pulley-jvm-1.0.0-beta1-linux-x86_64.jar
 └── jni/linux/x86_64/libwasmline.so
 ```
 
@@ -191,14 +191,14 @@ publishing.publications {
 This produces the following MavenLocal layout:
 
 ```
-~/.m2/repository/io/github/crowforkotlin/wasmline-engine-pulley-jvm/1.0.0/
-├── wasmline-engine-pulley-jvm-1.0.0.jar                  (main JAR, no native libs)
-├── wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar     (classifier: linux-x86_64)
-├── wasmline-engine-pulley-jvm-1.0.0-linux-aarch64.jar    (classifier: linux-aarch64)
-├── wasmline-engine-pulley-jvm-1.0.0-darwin-aarch64.jar   (classifier: darwin-aarch64)
-├── wasmline-engine-pulley-jvm-1.0.0-darwin-x86_64.jar    (classifier: darwin-x86_64)
-├── wasmline-engine-pulley-jvm-1.0.0-windows-x86_64.jar   (classifier: windows-x86_64)
-└── wasmline-engine-pulley-jvm-1.0.0.module               (Gradle module metadata)
+~/.m2/repository/io/github/crowforkotlin/wasmline-engine-pulley-jvm/1.0.0-beta1/
+├── wasmline-engine-pulley-jvm-1.0.0-beta1.jar                  (main JAR, no native libs)
+├── wasmline-engine-pulley-jvm-1.0.0-beta1-linux-x86_64.jar     (classifier: linux-x86_64)
+├── wasmline-engine-pulley-jvm-1.0.0-beta1-linux-aarch64.jar    (classifier: linux-aarch64)
+├── wasmline-engine-pulley-jvm-1.0.0-beta1-darwin-aarch64.jar   (classifier: darwin-aarch64)
+├── wasmline-engine-pulley-jvm-1.0.0-beta1-darwin-x86_64.jar    (classifier: darwin-x86_64)
+├── wasmline-engine-pulley-jvm-1.0.0-beta1-windows-x86_64.jar   (classifier: windows-x86_64)
+└── wasmline-engine-pulley-jvm-1.0.0-beta1.module               (Gradle module metadata)
 ```
 
 ### Module Metadata Variant Injection
@@ -222,8 +222,8 @@ tasks.withType<GenerateModuleMetadata>().configureEach {
                 "org.gradle.native.architecture" to "x86-64"
             ),
             "files" to listOf(mapOf(
-                "name" to "wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar",
-                "url" to "wasmline-engine-pulley-jvm-1.0.0-linux-x86_64.jar"
+                "name" to "wasmline-engine-pulley-jvm-1.0.0-beta1-linux-x86_64.jar",
+                "url" to "wasmline-engine-pulley-jvm-1.0.0-beta1-linux-x86_64.jar"
             ))
         ))
     }
@@ -234,7 +234,7 @@ The attributes serve two purposes:
 
 - **Standard JVM attributes** (first five) — tell Gradle this is a standard JVM library.
 - **OS/architecture attributes** (last two) — standard Gradle attributes used by
-  the `io.github.crowforkotlin` Gradle plugin for automatic variant-aware resolution.
+  the `io.github.crowforkotlin.wasmline` Gradle plugin for automatic variant-aware resolution.
 
 ---
 
@@ -245,29 +245,29 @@ The attributes serve two purposes:
 When a consumer adds a dependency on the engine module, Gradle's Kotlin Multiplatform resolution redirects to the JVM sub-module:
 
 ```
-io.github.crowforkotlin:wasmline-engine-pulley:1.0.0
-    → io.github.crowforkotlin:wasmline-engine-pulley-jvm:1.0.0
+io.github.crowforkotlin:wasmline-engine-pulley:1.0.0-beta1
+    → io.github.crowforkotlin:wasmline-engine-pulley-jvm:1.0.0-beta1
 ```
 
-The main JVM JAR (`wasmline-engine-pulley-jvm-1.0.0.jar`) contains no native libraries. The platform-specific JAR must be added separately.
+The main JVM JAR (`wasmline-engine-pulley-jvm-1.0.0-beta1.jar`) contains no native libraries. The platform-specific JAR must be added separately.
 
 ### Consumer Dependency Configuration
 
-With the `io.github.crowforkotlin` Gradle plugin applied, consumers only need a single dependency declaration. The plugin automatically configures JVM runtime configurations with OS/architecture attributes, enabling Gradle's variant-aware resolution to select the correct platform-specific native JAR:
+With the `io.github.crowforkotlin.wasmline` Gradle plugin applied, consumers only need a single dependency declaration. The plugin automatically configures JVM runtime configurations with OS/architecture attributes, enabling Gradle's variant-aware resolution to select the correct platform-specific native JAR:
 
-The JVM host resolver is included in `io.github.crowforkotlin`; no separate runtime-only
+The JVM host resolver is included in `io.github.crowforkotlin.wasmline`; no separate runtime-only
 plugin is needed.
 
 ```kotlin
 val desktopMain by getting {
     dependencies {
-        // Single dependency — the `io.github.crowforkotlin` plugin handles native variant resolution
+        // Single dependency — the `io.github.crowforkotlin.wasmline` plugin handles native variant resolution
         implementation(libs.crow.wasmline.engine.pulley)
     }
 }
 ```
 
-The `io.github.crowforkotlin` Gradle plugin:
+The `io.github.crowforkotlin.wasmline` Gradle plugin:
 1. Detects the current build machine's OS and architecture.
 2. Sets the standard Gradle OS and architecture attributes on JVM runtime classpath configurations.
 3. Uses Gradle's built-in attribute matching to select the exact platform variant while keeping dependencies without these attributes compatible.
@@ -303,7 +303,7 @@ In the `.module` metadata, each native variant declares:
     {
         "group": "io.github.crowforkotlin",
         "name": "wasmline-engine-pulley-jvm",
-        "version": "1.0.0"
+        "version": "1.0.0-beta1"
     }
 ]
 ```
@@ -402,7 +402,7 @@ Resolution time:
        ↓
   implementation(libs.crow.wasmline.engine.pulley)
        ↓
-  `io.github.crowforkotlin` plugin sets Gradle OS/architecture attributes
+  `io.github.crowforkotlin.wasmline` plugin sets Gradle OS/architecture attributes
        ↓
   Gradle variant-aware resolution selects matching native JAR
        ↓

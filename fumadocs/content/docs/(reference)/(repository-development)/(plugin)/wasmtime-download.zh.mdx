@@ -2,7 +2,7 @@
 title: Wasmtime AOT 兼容性
 description: 选择兼容的 Wasmtime profile 与经过校验的 compiler asset
 createdAt: 2026-08-15
-updatedAt: 2026-10-26
+updatedAt: 2026-11-02
 ---
 
 # Wasmtime AOT 兼容性
@@ -75,13 +75,14 @@ wasmline {
 | `generations(AotGenerations.Latest)` | 本地保留的最新 generation |
 | `generations(AotGenerations.Earliest)` | 本地保留的最早 generation |
 | `generations(AotGenerations.All)` | 本地 catalog 中保留的全部 generation |
-| `generations("1.0.0")` | 包含该具体稳定 Wasmline 版本的 generation |
+| `generations("1.0.0")` | 包含该具体 Wasmline 发行版本的 generation |
 | `generations(AotGenerations.Versions(min = "1.0.0", max = "1.0.1"))` | 直接以类型化方式表达相同的点、集合或闭区间选择 |
 | `generations(versions = listOf(...))` | 包含这些具体版本的 generation |
 | `generations(min = "1.0.0", max = "1.0.1")` | 与具体版本闭区间相交的全部 generation |
 | 省略 `aotCompatibility` | 当前 generation |
 
-每个具体版本都必须是稳定的 `x.y.z` Wasmline 版本，并位于 catalog 的
+每个具体版本都必须使用 `x.y.z`、`x.y.z-alphaN` 或 `x.y.z-betaN`，其中 `N` 是无
+前导零的正整数，并位于 catalog 的
 `minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 边界内。不存在符号版本
 字符串，也没有 `from`/`through` 重载；`All` 需要显式选择，因为编译全部保留
 generation 代价可能很高。倒置区间、越界 endpoint、本地不存在的窗口相邻 generation
@@ -92,6 +93,10 @@ profile 摘要和 fork distribution 版本永远不是用户输入。仓库根�
 `./scripts/wasmline aot sync`；该命令会校验条目并生成构建工具使用的 packaged
 lock。generation 只是目录中的顺序编号，不是运行时凭据。加载仍要求与已链接
 engine 报告的 profile ID 完全匹配。
+
+使用 `beta1` 或 `alpha5`，名称与序号之间没有点。同一基础版本按 alpha、beta、
+正式版排序，序号按数值比较（`beta2 < beta10`）。当两个 backend profile ID 都
+没有改变时，从 beta 升为正式版仍使用同一个 generation。
 
 ## 已发布范围
 

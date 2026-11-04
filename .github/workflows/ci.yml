@@ -260,6 +260,7 @@ jobs:
           ./scripts/release.sh verify
           python3 scripts/tests/test_versions.py
           python3 scripts/tests/test_publications.py
+          python3 scripts/tests/test_release.py
 
       - name: Run JVM tests
         working-directory: .

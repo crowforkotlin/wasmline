@@ -19,7 +19,7 @@ WIT="${SAMPLE_ROOT}/../../../../wasmline-plugin-core/src/main/resources/META-INF
 TOOL_CACHE="${WASMLINE_TOOL_CACHE:-${HOME}/.wasmline/tools}"
 WIT_BINDGEN_VERSION="0.57.1"
 WASM_TOOLS_VERSION="1.262.0"
-ADAPTER_VERSION="50.0.0"
+ADAPTER_VERSION="50.0.1"
 
 : "${WASI_SDK_PATH:?WASI_SDK_PATH must point to a WASI SDK 33 installation}"
 

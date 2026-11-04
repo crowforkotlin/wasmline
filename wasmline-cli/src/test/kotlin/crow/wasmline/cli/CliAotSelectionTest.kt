@@ -52,6 +52,28 @@ class CliAotSelectionTest {
     }
 
     @Test
+    fun alphaAndBetaTokensResolveNumericIterationsWithinTheCatalog() {
+        val (originalCatalog, profiles) = syntheticWindowCatalog()
+        val catalog = originalCatalog.copy(currentWasmlineVersion = "1.0.4-beta10")
+        val lastGeneration = catalog.ranges.last().aotGeneration
+
+        assertEquals(
+            listOf(lastGeneration),
+            resolve(catalog, profiles, listOf("1.0.4-beta2")).selectedGenerations,
+        )
+        assertEquals(
+            listOf(lastGeneration),
+            resolve(catalog, profiles, listOf("1.0.4-alpha5..1.0.4-beta10")).selectedGenerations,
+        )
+        assertFailsWith<IllegalArgumentException> {
+            resolve(catalog, profiles, listOf("1.0.4-beta11"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            resolve(catalog, profiles, listOf("1.0.4"))
+        }
+    }
+
+    @Test
     fun closedConcreteRangesAndRepeatedTokensUnionDeduplicatedGenerations() {
         val catalog = AotCompatibilityCatalog.releaseCatalog()
         val minimumVersion = catalog.minimumSupportedWasmlineVersion
@@ -261,14 +283,16 @@ class CliAotSelectionTest {
     }
 }
 
-/** Returns the stable version immediately below one local catalog version. */
+/** Returns a stable version below one local catalog version. */
 internal fun predecessorAotVersion(version: String): String = shiftAotVersion(version, -1)
 
-/** Returns the stable version immediately above one local catalog version. */
+/** Returns a stable version above one local catalog version. */
 internal fun successorAotVersion(version: String): String = shiftAotVersion(version, 1)
 
 private fun shiftAotVersion(version: String, delta: Int): String {
-    val parts = version.split('.').map { segment -> segment.toLong() }
+    val stableVersion = version.substringBefore('-')
+    if (delta > 0 && stableVersion != version) return stableVersion
+    val parts = stableVersion.split('.').map { segment -> segment.toLong() }
     val shiftedPatch = parts[2] + delta
     if (shiftedPatch in 0L..9L) return "${parts[0]}.${parts[1]}.$shiftedPatch"
     return if (delta < 0) {

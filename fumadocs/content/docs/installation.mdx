@@ -25,7 +25,7 @@ repository itself, see [Building from Source](/en/docs/building-from-source).
 
 For a published release, declare Maven Central in both repository blocks in
 `settings.gradle.kts`. Gradle plugin resolution uses `pluginManagement`; adding
-`mavenCentral()` only to dependency repositories does not resolve `io.github.crowforkotlin`.
+`mavenCentral()` only to dependency repositories does not resolve `io.github.crowforkotlin.wasmline`.
 
 ```kotlin
 pluginManagement {
@@ -55,7 +55,7 @@ Apply the plugin to each compilation that uses generated `link<T>()` or
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("io.github.crowforkotlin") version "1.0.0"
+    id("io.github.crowforkotlin.wasmline") version "1.0.0-beta1"
 }
 ```
 
@@ -71,7 +71,7 @@ download a remote manifest or an artifact that is not cached.
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0"))
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta1"))
     implementation("io.github.crowforkotlin:wasmline-loader")
     implementation("io.github.crowforkotlin:wasmline-engine-pulley")
 
@@ -103,7 +103,7 @@ Multiplatform metadata selects the matching static Wasmtime bridge for iOS,
 macOS, Linux, or Windows.
 
 ```kotlin
-val wasmlineVersion = "1.0.0"
+val wasmlineVersion = "1.0.0-beta1"
 
 kotlin {
     sourceSets {

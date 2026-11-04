@@ -85,3 +85,6 @@ wasmline-engine-cranelift/src/androidMain/jniLibs/**/*.so
 wasmline-engine-cranelift/src/jvmMain/resources/jni/**
 !wasmline-engine-*/src/**/jniLibs/**/.gitkeep
 !wasmline-engine-*/src/**/resources/jni/**/.gitkeep
+
+# FVM Version Cache
+.fvm/

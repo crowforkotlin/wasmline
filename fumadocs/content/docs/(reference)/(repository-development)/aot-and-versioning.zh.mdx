@@ -1,0 +1,308 @@
+---
+title: AOT Catalog 与版本
+description: 每个版本由哪个文件负责、generation 与 profile ID 如何推导、以及每类版本变更要执行哪些命令
+createdAt: 2026-11-04
+updatedAt: 2026-11-04
+---
+
+# AOT Catalog 与版本
+
+本页说明两个权威 JSON 文件、它们生成的文件，以及每类版本变更的完整命令顺序。
+面向修改本仓库的人。
+
+<Callout type="info" title="两个不同的版本问题">
+  “我在用哪个 Wasmline 发行版”由 `versions.json` 回答。
+  “这个引擎能加载哪些预编译产物”由 `aot-compatibility.json` 回答。两者独立变化。
+</Callout>
+
+## 权威文件
+
+| 文件 | 手工编辑 | 范围 |
+|---|---|---|
+| `versions.json` | 是 | 标量项目版本与工具链版本，每个键一个值 |
+| `aot-compatibility.json` | 是 | AOT 发行区间、generation，以及每档绑定的 Wasmtime fork distribution |
+
+其余文件都是生成的。`scripts/internal/python/wasmline_tools/aot/catalog.py` 与
+`aot/profiles.py` 保存生成时使用的契约常量。
+
+### `versions.json` 中的相关键
+
+| 键 | 使用方 |
+|---|---|
+| `wasmline_version` | 全部 Maven 坐标、Gradle 插件 marker、`gradle.properties`、`libs.versions.toml`、运行时版本标识 |
+| `wasmtime_version` | 引擎链接版本、release tag 编码、`gradle.properties` |
+| `wasmtime_release_version` | `aot sync` 下载的 fork distribution；前三段必须等于 `wasmtime_version` |
+| `wasm_tools_version`、`wit_bindgen_version` | 锁定的 Component CLI 资源 |
+| `sample_plugin_version` | 仅 sample manifest，与 `wasmline_version` 无关 |
+
+`scripts/internal/python/wasmline_tools/versions.py` 的 `validate_versions()`
+会拒绝前三段与 `wasmtime_version` 不一致的 `wasmtime_release_version`，也会拒绝
+minor 或 patch 超过一位数字的 `wasmtime_version`。
+
+### `aot-compatibility.json` 字段
+
+| 字段 | 含义 | 变更规则 |
+|---|---|---|
+| `schemaVersion` | 格式版本，当前为 `1` | 日常不修改 |
+| `currentWasmlineVersion` | 支持区间的右端点 | 每次发行都等于 `versions.json:wasmline_version` |
+| `minimumSupportedWasmlineVersion` | 支持区间的左端点 | 只在放弃旧版本支持时提高 |
+| `ranges[].fromWasmlineVersion` | 该档的起始 Wasmline 版本 | 严格递增 |
+| `ranges[].aotGeneration` | 顺序编号 `1..N` | 从 1 开始、不跳号，发布后不再改写 |
+| `ranges[].wasmtimeDistributionVersion` | 该档绑定的 fork distribution | 最后一档必须等于 `versions.json:wasmtime_release_version` |
+| `ranges[].changedBackends` | 相对上一档哪些 backend 的 profile 变了 | 由实际 profile 摘要推导，见下文 |
+
+一档从自己的 `fromWasmlineVersion` 开始，到下一条 range 的
+`fromWasmlineVersion` 之前结束；最后一档结束于 `currentWasmlineVersion`。
+`AotCompatibilitySelection.generationIndex()` 的实现是
+`ranges.indexOfLast { from <= version }`，所以一档覆盖的是一段版本区间，而不是单个点。
+
+## `currentWasmlineVersion` 为什么重复一份
+
+`aot-compatibility.json` 是**对外发布**的文件。`release.sh` 把它复制到
+`build/release/aot-compatibility.json` 并附带 `.sha256` 一起上传；构建工具读取的是
+打包在 `META-INF/wasmline/aot/aot-compatibility.json` 的那一份。远端消费者只下载
+一个 JSON 文件，因此该文件必须自带区间信息。
+
+`versions.json` 从不打包：它不出现在任何 `src/*/resources` 目录下。所以
+`aot/catalog.py` 的 `validate_source()` 只在仓库内比对两个文件。两者不一致会让
+`aot sync` 与 `aot check` 失败，但不会传达到消费者。
+
+## 生成文件
+
+| 文件 | 写入者 | 内容 |
+|---|---|---|
+| `wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility-lock.json` | `aot sync` | 不可变 profile、去重后的 compiler asset、每个 profile 的构建宿主绑定 |
+| `wasmline-plugin-core/src/main/resources/META-INF/wasmline/aot/aot-compatibility.json` | `aot sync` | 与根 catalog 字节相同 |
+| `wasmline-core/include/wasmline/internal/runtime/NativeBuildIdentity.h` | `aot sync` | release 版本、bridge ABI 版本、两个当前 profile ID |
+| `wasmline/src/commonMain/kotlin/crow/wasmline/WasmlineReleaseIdentity.kt` | `versions sync` 与 `aot sync` | Kotlin 侧读取的 release 版本与 bridge ABI 版本 |
+| `wasmline-plugin-core/src/main/resources/META-INF/wasmline/toolchain/toolchain-lock.json` | `versions sync` | 每个 Component CLI 平台的 GitHub release、asset ID、大小、URL 与 SHA-256 |
+| `gradle.properties`、`gradle/libs.versions.toml`、README、安装页、sample 构建脚本 | `versions sync` | 标量版本引用 |
+
+不要手工修改任何生成文件。`./scripts/wasmline versions check` 与
+`./scripts/wasmline aot check` 会检测差异并失败。
+
+## Native 标识常量
+
+`NativeBuildIdentity.h` 与 `WasmlineReleaseIdentity.kt` 携带相同的两个值——release
+版本与 bridge ABI 版本，原生引擎上报它们，Kotlin 在加载任何产物之前校验。头文件
+额外携带两个 profile ID。
+
+| 常量 | 来源 | 作用 |
+|---|---|---|
+| `WASMLINE_RELEASE_VERSION` | `versions.json:wasmline_version` | 拒绝与运行时 release 不一致的 jar |
+| `WASMLINE_NATIVE_BRIDGE_ABI_VERSION` | `aot/catalog.py` 的 `NATIVE_BRIDGE_ABI_VERSION` | `WasmlineNativeRuntimeIdentity` 结构体的布局代数 |
+| `WASMLINE_CRANELIFT_AOT_COMPATIBILITY_PROFILE_ID` | 计算得到的 profile 摘要 | Cranelift 引擎能反序列化哪些 `.cwasm` |
+| `WASMLINE_PULLEY_AOT_COMPATIBILITY_PROFILE_ID` | 计算得到的 profile 摘要 | Pulley 引擎能反序列化哪些 `.pwasm` |
+
+`WasmlineRuntimeCapabilities.validatedNativeIdentity()` 对 bridge ABI 版本和 release
+版本做严格相等比较；`WasmlineNativeRuntimeInfo` 只要求 ABI 版本为正数。ABI 值是
+标识而不是序号：`1` 与 `2` 不是“旧”与“新”，而是两种必须在两侧一致的布局。
+
+修改 `NATIVE_BRIDGE_ABI_VERSION` 就是在 `aot/catalog.py` 中改一个常量，然后执行
+`aot sync`，命令会重写两个文件。该值不进入 profile 摘要，所以单独修改它不会让任何
+产物被判定为不兼容。
+
+## Profile ID
+
+每个 backend profile 由一个 SHA-256 摘要标识，摘要输入是
+`aot/profiles.py` 中 `canonical_profile_bytes()` 编码的七个字段：
+
+```text
+artifactBackend
+compileProfileSchemaVersion
+engineConfigurationProfile
+serializedArtifactFormatIdentity
+wasmtimeDistributionVersion
+wasmtimeSourceRevision
+wasmtimeVersion
+```
+
+bridge ABI 版本不在这七个字段中。新的 fork distribution 或新的上游 Wasmtime 版本会
+改变至少两个输入，所以两个 backend 都会得到新摘要。只有某一个 backend 的
+`engineConfigurationProfile` 变化时，才只有该 backend 变动。
+
+lock 的确定性来自排序规则：profile 按 `id`、compiler binding 按
+`(profileId, buildHost)`、compiler asset 按 `(archiveSha256, buildHost)`，每档的
+`profileIdsByBackend` 按 key 排序。无论源 catalog 中的书写顺序如何，`changedBackends`
+都会按 `BACKENDS` 顺序（`CRANELIFT`、`PULLEY`）重新输出。
+
+## `changedBackends`
+
+该字段记录本档中哪些 backend 换了新 profile。唯一的读取方是
+`WasmlineAotCompatibilityChecker.profileEpochs()`，它为每个 backend 维护一个计数器：
+只有 backend 出现在 `changedBackends` 中时计数器才加一，否则沿用上一档的 profile。
+
+| generation | `changedBackends` | Cranelift 计数 | Pulley 计数 |
+|---|---|---|---|
+| 1 | `CRANELIFT`、`PULLEY` | 0 | 0 |
+| 2 | `CRANELIFT`、`PULLEY` | 1 | 1 |
+| 3 | 仅 `PULLEY` | 1（未变） | 2 |
+
+这些计数驱动 advisory 检查：选中 generation 未覆盖的计数会被报告为受影响 backend。
+第 1 计数下生成的第 3 代 `.cwasm` 仍然可加载，报告不会要求重新生成。
+
+该值必须与实际产生的摘要一致。换 distribution 却未标记两个 backend 时，`sync.py`
+直接拒绝；`changedBackends` 与计算出的差异不一致时，`lock.py` 的
+`validate_append_only` 和 `render_lock` 中的绑定比对会拒绝。换 distribution 时写两个
+总是正确的；只写一个仅当另一个 profile 摘要确实未变时才正确。
+
+## 命令行为
+
+| 命令 | 追加历史 | 改写历史 | 网络 |
+|---|---|---|---|
+| `versions check` | 不写 | 不写 | 否 |
+| `versions sync` | 改写生成的标量 | 改写生成的标量 | 仅当 `wasmtime_version`、`wasm_tools_version` 或 `wit_bindgen_version` 变化时 |
+| `aot check` | 不写 | 不写 | 否 |
+| `aot sync` | 追加新 range 与 profile | 拒绝删除或修改已有 profile | 仅当指定 distribution 不在 lock 中 |
+| `aot sync --rebuild` | 全部重新生成 | 允许 | 是 |
+
+`aot sync --rebuild` 会调用 `_require_unpublished_rebuild()`：本地或 origin 存在任何
+`release-*` tag，或任一次查询失败，都会拒绝执行。它服务于首次发布之前；之后生成的
+历史只能追加。
+
+## 变更流程
+
+### 只改 Wasmline 版本
+
+AOT 后端契约未变，因此不新增 range。
+
+```bash
+# 1. 更新 Maven 版本以及所有受管的标量引用。
+./scripts/wasmline versions sync --set wasmline_version=1.2.3
+```
+
+`aot-compatibility.json` 不在版本同步范围内，需在同一次提交中手工更新右端点：
+
+```diff
+  {
+    "schemaVersion": 1,
+-   "currentWasmlineVersion": "1.2.3-beta3",
++   "currentWasmlineVersion": "1.2.3",
+    "minimumSupportedWasmlineVersion": "1.2.3-beta1",
+    "ranges": [
+      {
+        "fromWasmlineVersion": "1.2.3-beta1",
+        "aotGeneration": 1,
+        "wasmtimeDistributionVersion": "12.3.4.1",
+        "changedBackends": ["CRANELIFT", "PULLEY"]
+      }
+    ]
+  }
+```
+
+```bash
+# 2. 重新生成打包 catalog 与两个标识文件。离线。
+./scripts/wasmline aot sync
+
+# 3. 校验。
+./scripts/wasmline versions check
+./scripts/wasmline aot check
+```
+
+`ranges` 不变。第 1 档的区间从 `1.2.3-beta1..1.2.3-beta1` 扩展为
+`1.2.3-beta1..1.2.3`，已有 `.cwasm` 与 `.pwasm` 仍可加载，因为两个 profile 摘要未变。
+
+### 只改 Wasmtime
+
+新的 fork distribution 会产生新的 profile 摘要，因此需要新增一档 range。新增 range
+需要起始版本，所以 Wasmline 版本必须一起移动。
+
+```bash
+./scripts/wasmline versions sync \
+  --set wasmline_version=1.2.3 \
+  --set wasmtime_version=12.4.0 \
+  --set wasmtime_release_version=12.4.0.1
+```
+
+最后一段要与 fork 的 release tag 一致：`aot sync` 请求
+`https://api.github.com/repos/crowforkotlin/wasmtime/releases/tags/v<distribution>`。
+
+```diff
+  {
+    "schemaVersion": 1,
+-   "currentWasmlineVersion": "1.2.3-beta3",
++   "currentWasmlineVersion": "1.2.3",
+    "minimumSupportedWasmlineVersion": "1.2.3-beta1",
+    "ranges": [
+      {
+        "fromWasmlineVersion": "1.2.3-beta1",
+        "aotGeneration": 1,
+        "wasmtimeDistributionVersion": "12.3.4.1",
+        "changedBackends": ["CRANELIFT", "PULLEY"]
+-     }
++     },
++     {
++       "fromWasmlineVersion": "1.2.3",
++       "aotGeneration": 2,
++       "wasmtimeDistributionVersion": "12.4.0.1",
++       "changedBackends": ["CRANELIFT", "PULLEY"]
++     }
+    ]
+  }
+```
+
+```bash
+./scripts/wasmline aot sync     # 解析 fork release、校验 SHA256SUMS、记录摘要
+./scripts/wasmline aot check
+```
+
+`aot sync` 会一次性下载五个完整 CLI 归档，为每个受支持构建宿主哈希编译器可执行文件。
+后续运行直接复用已记录的 asset，不访问网络。可用 `--proxy <url>` 与 `--jobs <count>`。
+
+### backend 契约变化但 distribution 不变
+
+修改 `aot/profiles.py` 中的常量，然后追加一档 range，`wasmtimeDistributionVersion`
+保持不变，并且只在 `changedBackends` 中列出摘要确实变化的 backend。省略未变的
+backend 会沿用其摘要，此前用该 backend 构建的产物仍然有效。
+
+### 首次发布之前
+
+在没有任何 `release-*` tag 时，可以修正已写入的 generation，而不必追加：
+
+```bash
+./scripts/wasmline aot sync --rebuild
+```
+
+该命令丢弃 lock、重新解析每个已命名的 distribution，并重写全部四个生成文件。用于首次
+发布或规范化手工改动；tag 推送之后不可再用。
+
+### 发布
+
+```bash
+./scripts/release.sh verify-tag "$(./scripts/release.sh expected-tag)"
+git tag "$(./scripts/release.sh expected-tag)"
+git push origin "$(./scripts/release.sh expected-tag)"
+```
+
+tag 形式为 `release-<Maven-version>.<Wasmtime-code>`，其中 code 由
+`wasmtime_version` 计算：`major × 100 + minor × 10 + patch`。工作流在发布前会重跑
+`versions check`、`aot check`、Python 测试与原生 AOT 检查。凭据与 job 结构见
+[发行](/zh/docs/releasing)。
+
+## 失败信息
+
+| 信息 | 原因 |
+|---|---|
+| `The final AOT range distribution must match versions.json` | `aot-compatibility.json` 最后一档的 distribution 与 `versions.json:wasmtime_release_version` 不一致 |
+| `currentWasmlineVersion must match versions.json` | catalog 右端点没有随 `wasmline_version` 更新 |
+| `AOT range starts must be strictly increasing` | 两档共用同一个 `fromWasmlineVersion`，或后一档起点早于前一档 |
+| `AOT generations must start at 1 and increase without gaps` | generation 跳号、乱序或复用 |
+| `changedBackends does not match detailed profile metadata` | 声明的 backend 列表与计算出的 profile 摘要不一致 |
+| `Published AOT compatibility profile ... cannot be removed` | 未加 `--rebuild` 的 `aot sync` 试图改写已记录的 generation |
+| `AOT rebuild is only allowed before the first release tag` | 已存在 `release-*` tag 时请求 `--rebuild` |
+| `Toolchain lock versions do not match versions.json` | 工具链键变更后 `versions sync` 未完成 |
+
+## 查看当前状态
+
+```bash
+./scripts/wasmline versions list
+./scripts/wasmline aot check
+./wasmline-cli/cli.sh aot-profiles list
+./wasmline-cli/cli.sh aot-profiles describe sha256:<digest>
+```
+
+`versions list` 以 `key=value` 打印清单。`aot check` 离线校验公开 catalog、打包副本与
+两个标识文件。`aot-profiles list` 与 `aot-profiles describe` 读取 CLI 中的
+`META-INF/wasmline/aot/aot-compatibility-lock.json`，前者为每个 profile 打印一行
+制表符分隔的记录（Wasmtime 版本、backend、引入它的 Wasmline 版本、profile ID），
+后者输出完整描述，含构建宿主与源码 revision。

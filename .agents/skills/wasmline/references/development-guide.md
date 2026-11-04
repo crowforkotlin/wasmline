@@ -132,7 +132,7 @@ Read [`web-bindings-guide.md`](./web-bindings-guide.md) before changing `webMain
 
 ### Component Model
 
-Read the [Component Service Guide](<../../../../fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>) before changing WIT, Component build stages, generated host bindings, or cross-language fixtures.
+Read the [Component Service Guide](<../../../../fumadocs/content/docs/(reference)/(repository-development)/(plugin)/component-service.mdx>) before changing WIT, Component build stages, generated host bindings, or cross-language fixtures.
 
 ## Generated Artifact Rules
 

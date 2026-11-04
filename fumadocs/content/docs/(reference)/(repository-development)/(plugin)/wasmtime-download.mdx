@@ -2,7 +2,7 @@
 title: Wasmtime AOT Compatibility
 description: Select compatible Wasmtime profiles and verified compiler assets
 createdAt: 2026-08-15
-updatedAt: 2026-10-26
+updatedAt: 2026-11-02
 ---
 
 # Wasmtime AOT Compatibility
@@ -80,14 +80,14 @@ wasmline {
 | `generations(AotGenerations.Latest)` | The newest generation retained locally |
 | `generations(AotGenerations.Earliest)` | The oldest generation retained locally |
 | `generations(AotGenerations.All)` | Every generation retained in the local catalog |
-| `generations("1.0.0")` | The generation containing that concrete stable Wasmline version |
+| `generations("1.0.0")` | The generation containing that concrete Wasmline release version |
 | `generations(AotGenerations.Versions(min = "1.0.0", max = "1.0.1"))` | The same typed point, collection, or closed-interval selection |
 | `generations(versions = listOf(...))` | The generations containing those concrete versions |
 | `generations(min = "1.0.0", max = "1.0.1")` | Every generation intersecting the closed concrete interval |
 | Omitted `aotCompatibility` | The current generation |
 
-Each concrete version must be a stable `x.y.z` Wasmline version and must lie
-inside the catalog's
+Each concrete version must use `x.y.z`, `x.y.z-alphaN`, or `x.y.z-betaN`, where
+`N` is a positive integer without leading zeros, and must lie inside the catalog's
 `minimumSupportedWasmlineVersion`..`currentWasmlineVersion` bounds. Symbolic
 version strings do not exist, there is no `from`/`through` overload, and
 `All` is opt-in because compiling every retained generation can be expensive.
@@ -101,6 +101,11 @@ profile digests and fork distribution versions are never user input. The root
 and generates the packaged lock. A generation is an ordering label, not a
 runtime credential. Loading still requires the exact profile ID reported by the
 linked engine.
+
+Use `beta1` or `alpha5`, without a dot before the iteration. For the same base
+version, alpha precedes beta, then stable; iteration numbers compare
+numerically (`beta2 < beta10`). Promoting beta to stable keeps the same
+generation when both backend profile IDs remain unchanged.
 
 ## Published Ranges
 

@@ -5,7 +5,7 @@
   "versions": {
     "wit_bindgen_version": "0.57.1",
     "wasm_tools_version": "1.262.0",
-    "wasmtime_version": "50.0.0"
+    "wasmtime_version": "50.0.1"
   },
   "tools": [
     {
@@ -210,20 +210,20 @@
     },
     {
       "tool": "WASI_PREVIEW1_REACTOR_ADAPTER",
-      "version": "50.0.0",
+      "version": "50.0.1",
       "versionKey": "wasmtime_version",
       "repository": "bytecodealliance/wasmtime",
-      "releaseTag": "v50.0.0",
-      "releaseId": 418616550,
+      "releaseTag": "v50.0.1",
+      "releaseId": 428211943,
       "assets": [
         {
           "platform": "universal",
-          "assetId": 659840060,
+          "assetId": 689409127,
           "size": 51660,
-          "updatedAt": "2026-10-20T16:22:33Z",
+          "updatedAt": "2026-10-29T17:54:13Z",
           "archiveName": "wasi_snapshot_preview1.reactor.wasm",
-          "downloadUrl": "https://github.com/bytecodealliance/wasmtime/releases/download/v50.0.0/wasi_snapshot_preview1.reactor.wasm",
-          "sha256": "73b01f85e42e99c890efbbf619cd765e04e5809da36d976b87fc64abd87f5812",
+          "downloadUrl": "https://github.com/bytecodealliance/wasmtime/releases/download/v50.0.1/wasi_snapshot_preview1.reactor.wasm",
+          "sha256": "6d52112df28f0caee9018f911f279f94f848230b2f0ed02138290363e925671f",
           "distribution": "FILE",
           "entryFileName": "wasi_snapshot_preview1.reactor.wasm",
           "executable": false

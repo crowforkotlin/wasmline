@@ -13,6 +13,8 @@ from .manifest import load_versions
 
 
 GROUP = "io.github.crowforkotlin"
+# The Gradle plugin marker lives in the plugin ID namespace, not the artifact group.
+PLUGIN_ID = "io.github.crowforkotlin.wasmline"
 MODULES = (
     "wasmline",
     "wasmline-loader",
@@ -65,14 +67,14 @@ def verify_publications(repository: Path, version: str, require_apple: bool = Fa
     checked_artifacts: set[Path] = set()
     namespace = {"m": "http://maven.apache.org/POM/4.0.0"}
 
-    def coordinate_path(module: str, extension: str) -> Path:
-        return repository.joinpath(*GROUP.split("."), module, version, f"{module}-{version}.{extension}")
+    def coordinate_path(module: str, extension: str, group: str = GROUP) -> Path:
+        return repository.joinpath(*group.split("."), module, version, f"{module}-{version}.{extension}")
 
-    def verify_pom(module: str) -> None:
-        path = coordinate_path(module, "pom")
-        _require(path.is_file(), f"Missing Maven POM: {module}:{version}")
+    def verify_pom(module: str, group: str = GROUP) -> None:
+        path = coordinate_path(module, "pom", group)
+        _require(path.is_file(), f"Missing Maven POM: {group}:{module}:{version}")
         pom = ET.parse(path).getroot()
-        for field, expected in (("groupId", GROUP), ("artifactId", module), ("version", version)):
+        for field, expected in (("groupId", group), ("artifactId", module), ("version", version)):
             _require(
                 pom.findtext(f"m:{field}", namespaces=namespace) == expected,
                 f"{module}: unexpected POM {field}; expected {expected}",
@@ -189,7 +191,7 @@ def verify_publications(repository: Path, version: str, require_apple: bool = Fa
 
     for module in MODULES:
         verify_module(module)
-    verify_pom(f"{GROUP}.gradle.plugin")
+    verify_pom(f"{PLUGIN_ID}.gradle.plugin", PLUGIN_ID)
     return len(checked_modules), len(checked_artifacts)
 
 

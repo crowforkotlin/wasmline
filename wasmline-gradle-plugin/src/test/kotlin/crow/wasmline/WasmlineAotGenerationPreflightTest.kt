@@ -88,7 +88,7 @@ class WasmlineAotGenerationPreflightTest {
             """
             plugins {
                 id 'org.jetbrains.kotlin.multiplatform'
-                id 'io.github.crowforkotlin'
+                id 'io.github.crowforkotlin.wasmline'
             }
             kotlin {
                 wasmWasi {

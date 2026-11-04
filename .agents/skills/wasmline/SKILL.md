@@ -47,9 +47,10 @@ Read only the documents required by the current task.
 | [`version-sync.md`](./references/version-sync.md) | Version changes or additions of duplicated version references |
 | [`branching-and-release.md`](./references/branching-and-release.md) | Branches, tags, Maven publication, releases, or hotfixes |
 | [`aot-compatibility.md`](./references/aot-compatibility.md) | AOT generation catalogs, `generations` DSL, compatibility checks, or release assets |
+| [AOT Catalog and Versions](<../../../fumadocs/content/docs/(reference)/(repository-development)/aot-and-versioning.mdx>) | `versions.json` versus `aot-compatibility.json`, profile IDs, `changedBackends`, `aot sync` versus `--rebuild`, or generated identity files |
 | [`web-bindings-guide.md`](./references/web-bindings-guide.md) | `webMain`, `jsMain`, `wasmJsMain`, browser loading, or Web tests |
 | [Technical Mind Map](../../../docs/design-mind.md) | Runtime architecture, execution models, invocation protocols, Component Model, or IR flow |
-| [Component Service Guide](<../../../fumadocs/content/docs/(reference)/(plugin-development)/component-service.mdx>) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
+| [Component Service Guide](<../../../fumadocs/content/docs/(reference)/(repository-development)/(plugin)/component-service.mdx>) | WIT, Component build pipelines, generated host bindings, or cross-language Component fixtures |
 | [IR Test Documentation](../../../docs/ir/index.md) | Compiler-plugin fixtures, generated runners, or IR snapshots |
 
 ## Hard Constraints
@@ -59,10 +60,10 @@ Read only the documents required by the current task.
 3. **Generated files are not edited manually.** This includes `test-gen/`, `*.fir.txt`, `*.fir.ir.txt`, `**/build/`, `build/platforms/`, `.zig-cache/`, and `zig-out/`.
 4. **Select the owning module first.** Confirm the module and source set before changing code.
 5. **Scalar versions come from one root manifest.** Root `versions.json` contains only duplicated project and toolchain versions. Edit the source manifest and provide `./scripts/wasmline versions sync` for manual execution unless synchronization is explicitly authorized. Native AOT compatibility history is maintained separately in root `aot-compatibility.json`; the same execution policy applies to `./scripts/wasmline aot sync`.
-6. **Tags and Maven releases remain paired.** The release tag format is `release-x.y.z.v`. Do not create a release tag without its Maven release, and do not publish a Maven release without its tag.
-7. **Maven modules use one project version.** All published modules, including engine modules, use `wasmline.version` in `x.y.z` form. Do not introduce four-segment engine Maven versions.
+6. **Tags and Maven releases remain paired.** The release tag format is `release-<wasmline_version>.<v>`, for example `release-1.2.3-beta1.1234`. Do not create a release tag without its Maven release, and do not publish a Maven release without its tag.
+7. **Maven modules use one project version.** All published modules, including engine modules, use `wasmline.version` in `x.y.z`, `x.y.z-alphaN`, or `x.y.z-betaN` form. `N` is a positive integer without leading zeros; use `beta1`, not `beta.1`. Do not introduce four-segment engine Maven versions.
 8. **Use `main` and temporary sub-branches.** Do not create long-lived release or Wasmtime-version branches.
-9. **Wasmtime tag encoding is fixed.** `v = major×100 + minor×10 + patch` (50.0.0 → `5000`). Minor and patch must remain single digits while this format is in use.
+9. **Wasmtime tag encoding is fixed.** `v = major×100 + minor×10 + patch` (50.0.1 → `5001`). Minor and patch must remain single digits while this format is in use.
 10. **Shell profiles are read-only.** Never modify `~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`.
 
 ## Artifact and Execution Model
@@ -78,10 +79,10 @@ Read only the documents required by the current task.
 - Package artifacts use `artifacts/sha256/{prefix}/{digest}.{extension}`. Core Web `.wasm` is profile-independent and stored once; remote loading downloads only the manifest and one selected artifact.
 - Runtime, loader, build tools, and engine modules share one Maven version. Do not upgrade an engine independently; use the BOM where its Gradle platform is consumable.
 - Native AOT selection uses typed strategies and concrete Wasmline versions: `generations(AotGenerations.Current)`, `Current(before = 1, after = 1)`, `Latest(before = 1)`, `Earliest(after = 1)`, `All`, `generations("x.y.z")`, `generations(versions = listOf(...))`, `generations(min = "x.y.z", max = "x.y.z")`, and the equivalent `AotGenerations.Versions`.
-- An omitted, empty, or warning-only `aotCompatibility` block selects `Current`: the generation containing the currently introduced build-tool version. Explicit `All` is the opt-in for every locally retained generation; the first call replaces the default and later calls add to the union. Window counts are extra adjacent AOT generations and include the anchor. Concrete versions must be stable `x.y.z` and inside the locally supported catalog interval; an unavailable neighbor, a symbolic version string, a `from`/`through` call, or out-of-range/inverted input fails instead of being clipped.
+- An omitted, empty, or warning-only `aotCompatibility` block selects `Current`: the generation containing the currently introduced build-tool version. Explicit `All` is the opt-in for every locally retained generation; the first call replaces the default and later calls add to the union. Window counts are extra adjacent AOT generations and include the anchor. Concrete versions must use the Wasmline Maven version forms above and lie inside the locally supported catalog interval. For the same base version, alpha precedes beta, then stable; iteration numbers compare numerically (`beta2 < beta10`). An unavailable neighbor, a symbolic version string, a `from`/`through` call, or out-of-range/inverted input fails instead of being clipped.
 - `wasmlineCheckAotCompatibility` is advisory and runs after a successful Wasmline assemble. Warnings are enabled by default; `suppressCompatibilityWarning.set(true)` suppresses only the log message.
 - The root `aot-compatibility.json` is the only manually maintained AOT compatibility catalog. `./scripts/wasmline aot sync` validates it, resolves verified fork release metadata only for a newly appended current distribution, generates the internal lock, packages an identical classpath resource, and updates `NativeBuildIdentity.h` plus `WasmlineReleaseIdentity.kt`. Remote catalog data never enters AOT task inputs.
-- Stable releases use `release-x.y.z.v`; `v` encodes the fork Wasmtime `x.y.z` as `major×100 + minor×10 + patch`. The release workflow validates the tag before Maven publication.
+- Release tags put the complete Maven version before the final dot; `v` encodes the upstream Wasmtime `x.y.z` as `major×100 + minor×10 + patch`. The release workflow validates the tag before Maven publication. Alpha/beta GitHub Releases are Pre-releases and never Latest; stable releases are Latest. Before the first release only, `aot sync --rebuild` can initialize unpublished AOT history after confirming that no local or origin `release-*` tags exist; published history remains immutable.
 
 ## Workflow
 

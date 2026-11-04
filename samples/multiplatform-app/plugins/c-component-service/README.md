@@ -26,7 +26,7 @@ version, and the pins stay in sync with `versions.json`.
 | WASI SDK | 33.0 | <https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-33> | yes, `WASI_SDK_PATH` |
 | `wit-bindgen` | 0.57.1 | <https://github.com/bytecodealliance/wit-bindgen/releases/tag/v0.57.1> | yes |
 | `wasm-tools` | 1.256.0 | <https://github.com/bytecodealliance/wasm-tools/releases/tag/v1.256.0> | yes |
-| Preview 1 reactor adapter | 50.0.0 | <https://github.com/bytecodealliance/wasmtime/releases/tag/v50.0.0> | only when the guest imports `wasi_snapshot_preview1` |
+| Preview 1 reactor adapter | 50.0.1 | <https://github.com/bytecodealliance/wasmtime/releases/tag/v50.0.1> | only when the guest imports `wasi_snapshot_preview1` |
 
 This fixture uses the `c` and `cpp` generators, which upstream ships, so the
 official `wit-bindgen` release works. Wasmline also publishes the same version

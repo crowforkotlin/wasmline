@@ -20,6 +20,10 @@ jobs:
   validate:
     name: validate-release
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release-metadata.outputs.version }}
+      prerelease: ${{ steps.release-metadata.outputs.prerelease }}
+      make_latest: ${{ steps.release-metadata.outputs.make_latest }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -27,6 +31,10 @@ jobs:
 
       - name: Validate tag and release inputs
         run: ./scripts/release.sh verify-tag "${GITHUB_REF_NAME}"
+
+      - name: Read GitHub Release metadata
+        id: release-metadata
+        run: ./scripts/release.sh github-release-metadata >> "$GITHUB_OUTPUT"
 
       - name: Verify managed versions
         run: ./scripts/wasmline versions check
@@ -38,6 +46,7 @@ jobs:
         run: |
           python3 scripts/tests/test_versions.py
           python3 scripts/tests/test_publications.py
+          python3 scripts/tests/test_release.py
 
       - name: Confirm tag commit is reachable from main
         run: |
@@ -352,7 +361,7 @@ jobs:
 
   create-release:
     name: create-github-release
-    needs: publish
+    needs: [validate, publish]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -367,11 +376,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Wasmline ${{ github.ref_name }}
+          name: Wasmline ${{ needs.validate.outputs.version }}
           body_path: build/release-notes.md
           files: |
             build/release/aot-compatibility.json
             build/release/aot-compatibility.json.sha256
           draft: false
-          prerelease: false
-          make_latest: true
+          prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.validate.outputs.make_latest }}

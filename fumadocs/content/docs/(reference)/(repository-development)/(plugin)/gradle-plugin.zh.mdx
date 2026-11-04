@@ -7,9 +7,9 @@ updatedAt: 2026-11-02
 
 # Gradle 插件
 
-`io.github.crowforkotlin` 插件会为声明 `wasmWasi` 目标的 Kotlin Multiplatform 模块注册
-构建任务。它与 CLI 使用相同的 AOT catalog、compiler resolver、签名代码和
-package 写入代码。
+`io.github.crowforkotlin.wasmline` 插件会为声明 `wasmWasi` 目标的 Kotlin
+Multiplatform 模块注册构建任务。它与 CLI 使用相同的 AOT catalog、compiler
+resolver、签名代码和 package 写入代码。
 
 ## 签名与宿主信任公钥
 
@@ -120,7 +120,7 @@ wasmline {
 | `generations(AotGenerations.Latest)` / `Latest(before = 1)` | 本地最新 generation，可选地带上更早的相邻 generation |
 | `generations(AotGenerations.Earliest(after = 1))` | 本地最早 generation 加一个更晚的相邻 generation |
 | `generations(AotGenerations.All)` | 本地 catalog 中保留的全部 generation |
-| `generations("1.0.0")` | 包含该具体稳定 Wasmline 版本的 generation |
+| `generations("1.0.0")` | 包含该具体 Wasmline 发行版本的 generation |
 | `generations(AotGenerations.Versions(...))` | 直接以类型化方式表达相同的点、集合或闭区间选择 |
 | `generations(versions = listOf(...))` | 包含这些具体版本的 generation；集合不能为空 |
 | `generations(min = "1.0.0", max = "1.0.1")` | 与具体版本闭区间相交的全部 generation |
@@ -136,7 +136,8 @@ packaged 构建工具发行版本解析，因此在没有更新 generation 保�
 请求的相邻 generation 在本地不存在时会失败，不会被裁剪。
 
 一旦显式调用替换了默认值，后续调用只会并入并集，而不是在当前默认值上追加。版本
-重载接受的字符串始终是具体 `x.y.z` 版本：不存在符号版本字符串，也没有
+重载接受具体的 `x.y.z`、`x.y.z-alphaN` 或 `x.y.z-betaN` 版本：不存在符号版本
+字符串，也没有
 `from`/`through` 重载，更不存在可能把两个版本静默解读为区间的 vararg 形式。每个
 具体版本都必须位于 catalog 的
 `minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 支持范围内；区间倒置、
@@ -144,6 +145,11 @@ packaged 构建工具发行版本解析，因此在没有更新 generation 保�
 复用的 backend profile 都会去重并确定性排序，因此同一 generation 内的多个版本只编译
 一次。这些输入是用于选择 catalog generation 的 Wasmline 版本，绝不是 Wasmtime
 distribution 版本或 profile 摘要。
+
+alpha/beta 序号必须是无前导零的正整数，使用 `beta1` 或 `alpha5`，名称与序号
+之间没有点。同一基础版本按 alpha、beta、正式版排序，序号按数值比较
+（`beta2 < beta10`）。当两个 backend profile ID 都没有改变时，从 beta 升为
+正式版仍使用同一个 generation。
 
 在声明了 WASI assemble graph 的项目中，被拒绝的选择会在 Gradle 配置该 graph 阶段
 失败，并以 `[WLAOT100]` 报告；AOT 构建与检查 task action 仍会校验各自已求值的

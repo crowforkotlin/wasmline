@@ -1,4 +1,13 @@
 {
   "title": "Repository Development",
-  "pages": ["building-from-source", "testing", "compiler-plugin", "releasing"]
+  "pages": [
+    "(plugin)",
+    "(runtime)",
+    "(documentation-site)",
+    "aot-and-versioning",
+    "building-from-source",
+    "testing",
+    "compiler-plugin",
+    "releasing"
+  ]
 }

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..paths import PROJECT_ROOT
+from ..release_versions import WASMLINE_VERSION_PATTERN, wasmline_version_key
 
 AOT_LOCK_PATH = (
     PROJECT_ROOT
@@ -54,7 +55,7 @@ KOTLIN_RELEASE_IDENTITY_PATH = (
 
 GENERATOR = "scripts/wasmline aot sync"
 SOURCE_CATALOG = "aot-compatibility.json"
-NATIVE_BRIDGE_ABI_VERSION = 2
+NATIVE_BRIDGE_ABI_VERSION = 1
 
 BACKENDS = ("CRANELIFT", "PULLEY")
 COMPILER_DISTRIBUTION = "FULL"
@@ -62,7 +63,7 @@ CURRENT_SERIALIZED_ARTIFACT_FORMAT_IDENTITY = "wasmtime-module-version-strategy-
 
 PROFILE_ID_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-SEMANTIC_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+SEMANTIC_VERSION_PATTERN = WASMLINE_VERSION_PATTERN
 RELEASE_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+\.[1-9][0-9]*$")
 
 
@@ -70,12 +71,13 @@ class AotCompatibilityError(RuntimeError):
     """Raised when the public AOT catalog or its generated lock is invalid."""
 
 
-def _semantic_version_key(value: str) -> tuple[int, int, int]:
-    """Return a comparable key for one stable Wasmline version."""
+def _semantic_version_key(value: str) -> tuple[int, int, int, int, int]:
+    """Return a comparable key for a stable, alpha, or beta Wasmline release."""
 
-    if not SEMANTIC_VERSION_PATTERN.fullmatch(value):
-        raise AotCompatibilityError(f"Invalid stable Wasmline version: {value!r}.")
-    return tuple(int(part) for part in value.split("."))
+    try:
+        return wasmline_version_key(value)
+    except ValueError as error:
+        raise AotCompatibilityError(str(error)) from error
 
 
 def _source_from(value: Mapping[str, Any] | None) -> Mapping[str, Any]:
@@ -134,9 +136,9 @@ def validate_source(
     current = source.get("currentWasmlineVersion")
     minimum = source.get("minimumSupportedWasmlineVersion")
     if not isinstance(current, str) or not SEMANTIC_VERSION_PATTERN.fullmatch(current):
-        raise AotCompatibilityError("currentWasmlineVersion must use x.y.z.")
+        raise AotCompatibilityError("currentWasmlineVersion must use x.y.z with an optional -alphaN or -betaN.")
     if not isinstance(minimum, str) or not SEMANTIC_VERSION_PATTERN.fullmatch(minimum):
-        raise AotCompatibilityError("minimumSupportedWasmlineVersion must use x.y.z.")
+        raise AotCompatibilityError("minimumSupportedWasmlineVersion must use x.y.z with an optional -alphaN or -betaN.")
     if _semantic_version_key(minimum) > _semantic_version_key(current):
         raise AotCompatibilityError("minimumSupportedWasmlineVersion cannot exceed currentWasmlineVersion.")
     ranges = source.get("ranges")

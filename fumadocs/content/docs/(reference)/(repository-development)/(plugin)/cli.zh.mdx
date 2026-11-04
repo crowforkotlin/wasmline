@@ -2,13 +2,12 @@
 title: CLI 参考
 description: 使用 CLI 构建、签名、检查和打包 Wasmline 插件
 createdAt: 2026-07-18
-updatedAt: 2026-10-27
+updatedAt: 2026-11-02
 ---
 
 # CLI 参考
 
-在 `` 下运行 CLI。仓库启动脚本会构建 CLI distribution，
-并转发全部参数：
+在仓库根目录运行 CLI。启动脚本会构建 CLI distribution，并转发全部参数：
 
 ```bash
 ./wasmline-cli/cli.sh <command> [options]
@@ -86,11 +85,16 @@ executable。AOT compiler 必须来自摘要锁定的 catalog。已删除的
 `--aot-generations` 可以重复传入；省略该 option 时选择 `current`。每个取值只能是
 以下之一：
 
-- 具体的稳定 `x.y.z` 版本；
+- 具体 Wasmline 版本：`x.y.z`、`x.y.z-alphaN` 或 `x.y.z-betaN`；
 - 具体的 `MIN..MAX` 闭区间；
 - 精确的小写策略 token：`current`、`latest`、`earliest` 或 `all`；
 - 形如 `current:before=N`、`current:after=N`（两种字段顺序均可的
   `current:before=N:after=M`）、`latest:before=N` 或 `earliest:after=N` 的窗口。
+
+alpha/beta 序号必须是无前导零的正整数，使用 `beta1` 或 `alpha5`，名称与序号
+之间没有点。同一基础版本按 alpha、beta、正式版排序，序号按数值比较
+（`beta2 < beta10`）。区间两端也可以使用这些版本格式，并且必须位于内置
+catalog 的支持范围内。
 
 `current` 选择包含 CLI 内置 catalog 的 Wasmline 版本所在的 generation。
 `latest` 与 `earliest` 分别选择本地保留的最新与最早 generation；`all` 显式选择

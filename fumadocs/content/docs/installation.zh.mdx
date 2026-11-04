@@ -24,7 +24,7 @@ updatedAt: 2026-11-02
 
 使用已发布的版本时，在 `settings.gradle.kts` 的两个仓库配置中添加 Maven
 Central。Gradle 插件通过 `pluginManagement` 解析；只在依赖仓库中添加
-`mavenCentral()`，无法解析 `io.github.crowforkotlin` 插件。
+`mavenCentral()`，无法解析 `io.github.crowforkotlin.wasmline` 插件。
 
 ```kotlin
 pluginManagement {
@@ -53,7 +53,7 @@ Wasmline 尚未发布到 Maven Central。接入当前本地构建时，按下方
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("io.github.crowforkotlin") version "1.0.0"
+    id("io.github.crowforkotlin.wasmline") version "1.0.0-beta1"
 }
 ```
 
@@ -69,7 +69,7 @@ network 模块。
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0"))
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta1"))
     implementation("io.github.crowforkotlin:wasmline-loader")
     implementation("io.github.crowforkotlin:wasmline-engine-pulley")
 
@@ -99,7 +99,7 @@ Gradle 会自动选择 Android 目标构件。源码目录 `wasmline-android/` �
 metadata 会为 iOS、macOS、Linux 或 Windows 选择匹配的静态 Wasmtime bridge。
 
 ```kotlin
-val wasmlineVersion = "1.0.0"
+val wasmlineVersion = "1.0.0-beta1"
 
 kotlin {
     sourceSets {

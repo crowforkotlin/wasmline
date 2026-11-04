@@ -220,7 +220,7 @@ private fun parseCliAotGeneration(value: String): AotGenerations = when (value) 
 private fun parseAotGenerationValue(value: String): AotGenerations =
     if (AOT_GENERATION_WINDOW_SEPARATOR in value) parseAotGenerationWindow(value) else parseAotGenerationVersions(value)
 
-/** Parses one concrete x.y.z point or closed MIN..MAX interval without symbolic endpoints. */
+/** Parses one concrete Wasmline release point or closed MIN..MAX interval without symbolic endpoints. */
 private fun parseAotGenerationVersions(value: String): AotGenerations {
     val separatorIndex = value.indexOf(AOT_GENERATION_RANGE_SEPARATOR)
     if (separatorIndex < 0) return AotGenerations.Versions(value)

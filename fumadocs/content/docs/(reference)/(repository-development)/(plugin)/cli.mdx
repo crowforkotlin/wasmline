@@ -2,13 +2,13 @@
 title: CLI Reference
 description: Build, sign, inspect, and package Wasmline plugins
 createdAt: 2026-07-18
-updatedAt: 2026-10-27
+updatedAt: 2026-11-02
 ---
 
 # CLI Reference
 
-Run the CLI from ``. The repository launcher builds the
-CLI distribution and forwards its arguments:
+Run the CLI from the repository root. The launcher builds the CLI distribution
+and forwards every argument:
 
 ```bash
 ./wasmline-cli/cli.sh <command> [options]
@@ -90,12 +90,18 @@ before generation, and the command fails if the generator writes none of them.
 `--aot-generations` is repeatable, and omitting it selects `current`. Each
 occurrence accepts exactly one of:
 
-- a concrete stable `x.y.z` version;
+- a concrete Wasmline version: `x.y.z`, `x.y.z-alphaN`, or `x.y.z-betaN`;
 - a concrete closed `MIN..MAX` version interval;
 - the exact lowercase strategy token `current`, `latest`, `earliest`, or `all`;
 - a window such as `current:before=N`, `current:after=N`,
   `current:before=N:after=M` in either distinct-field order, `latest:before=N`,
   or `earliest:after=N`.
+
+The alpha/beta iteration is a positive integer without leading zeros: use
+`beta1` or `alpha5`, without a dot before the number. For the same base version,
+alpha precedes beta, then stable; iteration numbers compare numerically
+(`beta2 < beta10`). Both endpoints of an interval may use these version forms
+and must lie inside the packaged catalog's supported bounds.
 
 `current` selects the generation that contains the Wasmline version of the
 catalog packaged into the CLI. `latest` and `earliest` select the newest and

@@ -41,6 +41,14 @@ command.
 
 Do not add a second authoritative version file.
 
+`wasmline_version` accepts `x.y.z`, `x.y.z-alphaN`, and `x.y.z-betaN`, where `N`
+is positive and has no leading zeros. Use `alpha5` or `beta1`, not `beta.1`.
+Every Maven module, the BOM, and the Gradle plugin use the complete version.
+The release tag adds a separate Wasmtime code after it. AOT comparisons order
+the numeric base first, then alpha, beta, and stable, then the numeric iteration.
+Other toolchain keys retain their own version syntax; this restriction does
+not remove Kotlin RC support or change `sample_plugin_version`.
+
 ## Entry Points
 
 Use the singular command in documentation and normal work:
@@ -92,6 +100,15 @@ the scalar Wasmtime versions, then run `versions sync`, `aot sync`, and
 verifies its source revision and full compiler archives from the fork GitHub
 release before generating the detailed lock. Do not put profile descriptors,
 compiler assets, or range bindings in `versions.json`.
+
+Before the first unpublished alpha/beta release, update the catalog's current,
+minimum, and first range-start versions together with `wasmline_version`.
+Run `versions sync`, then `aot sync --rebuild`. Rebuild requires no local or
+origin `release-*` tags and verifies the fork compiler archives over the
+network. After publication, use normal `aot sync`; retain the original minimum
+and range starts unless changing the supported interval deliberately. A later
+beta or stable release with unchanged backend profiles updates only the
+current catalog version and does not add a generation.
 
 ## Adding a Version Reference
 
@@ -154,6 +171,7 @@ the checked-in toolchain lock.
 ```bash
 ./scripts/wasmline versions check
 python3 scripts/tests/test_versions.py
+python3 scripts/tests/test_release.py
 ```
 
 `versions check` validates the repository's current values. The regression suite also renders synthetic values, which detects stale patterns that happen to match the current manifest but would fail during the next upgrade.

@@ -7,9 +7,9 @@ updatedAt: 2026-11-02
 
 # Gradle Plugin
 
-The `io.github.crowforkotlin` plugin registers build tasks for Kotlin Multiplatform
-modules that declare a `wasmWasi` target. It uses the same AOT catalog,
-compiler resolver, signing code, and package writer as the CLI.
+The `io.github.crowforkotlin.wasmline` plugin registers build tasks for Kotlin
+Multiplatform modules that declare a `wasmWasi` target. It uses the same AOT
+catalog, compiler resolver, signing code, and package writer as the CLI.
 
 ## Signing and Host Trust
 
@@ -130,7 +130,7 @@ wasmline {
 | `generations(AotGenerations.Latest)` / `Latest(before = 1)` | The newest local generation, optionally with earlier neighbors |
 | `generations(AotGenerations.Earliest(after = 1))` | The oldest local generation plus one later neighbor |
 | `generations(AotGenerations.All)` | Every generation retained in the local catalog |
-| `generations("1.0.0")` | The generation containing that concrete stable Wasmline version |
+| `generations("1.0.0")` | The generation containing that concrete Wasmline release version |
 | `generations(AotGenerations.Versions(...))` | The same point, collection, or closed-interval selection typed directly |
 | `generations(versions = listOf(...))` | The generations containing those concrete versions; at least one required |
 | `generations(min = "1.0.0", max = "1.0.1")` | Every generation intersecting the closed concrete interval |
@@ -149,8 +149,8 @@ backend profile changes. A requested neighbor that does not exist locally fails
 instead of being clipped.
 
 Once an explicit call replaced the default, later calls contribute to a union
-instead of being appended to the current default. Strings passed to the
-version overloads are always concrete `x.y.z` versions; there is no symbolic
+instead of being appended to the current default. The version overloads accept
+concrete `x.y.z`, `x.y.z-alphaN`, or `x.y.z-betaN` versions; there is no symbolic
 version string, no `from`/`through` overload, and no vararg form that could
 silently read two versions as an interval. Every concrete version must lie
 inside the catalog's supported
@@ -161,6 +161,12 @@ backend profiles are deduplicated and sorted deterministically, so several
 versions from one generation compile once. These inputs are Wasmline versions
 that select catalog generations, never Wasmtime distribution versions or
 profile digests.
+
+Alpha/beta iterations are positive integers without leading zeros. Use
+`beta1` or `alpha5`, without a dot before the number. For the same base version,
+alpha precedes beta, then stable, with numeric iteration ordering
+(`beta2 < beta10`). Promoting beta to stable keeps the same generation when
+both backend profile IDs remain unchanged.
 
 In a project that declares a WASI assemble graph, a rejected selection fails
 while Gradle configures that graph and is reported as `[WLAOT100]`; the AOT

@@ -218,8 +218,8 @@ class WasmlineAotCompatibilityChecker(
     }
 
     private fun validateRequest(request: WasmlineAotCompatibilityCheckRequest) {
-        require(isStableWasmlineVersion(request.localWasmlineVersion)) {
-            "AOT checker local Wasmline version must use x.y.z."
+        require(isWasmlineReleaseVersion(request.localWasmlineVersion)) {
+            "AOT checker local Wasmline version must use x.y.z with an optional -alphaN or -betaN."
         }
         require(compareWasmlineVersions(request.localWasmlineVersion, request.localCatalog.currentWasmlineVersion) == 0) {
             "AOT checker local Wasmline version does not match the local catalog."
@@ -856,4 +856,4 @@ private val REPORT_JSON = Json {
 private const val DEFAULT_REMOTE_CATALOG_URL: String =
     "https://github.com/crowforkotlin/wasmline/releases/latest/download/aot-compatibility.json"
 private const val DEFAULT_DOCUMENTATION_URL: String =
-    "https://github.com/crowforkotlin/wasmline/blob/main/fumadocs/content/docs/%28reference%29/%28plugin-development%29/wasmtime-download.mdx"
+    "https://github.com/crowforkotlin/wasmline/blob/main/fumadocs/content/docs/%28reference%29/%28repository-development%29/%28plugin%29/wasmtime-download.mdx"

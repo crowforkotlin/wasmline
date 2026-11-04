@@ -1,5 +1,5 @@
 {
-  "title": "Plugin Development",
+  "title": "Plugin",
   "pages": [
     "component-service",
     "gradle-plugin",
