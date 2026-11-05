@@ -31,9 +31,10 @@ compose.desktop {
                 TargetFormat.Pkg,
             )
             packageName = "Wasmline"
-            // jpackage accepts only MAJOR.MINOR.BUILD; drop any -alphaN/-betaN suffix.
-            packageVersion = (project.findProperty("wasmline.version") as? String ?: "1.0.0-beta1")
-                .substringBefore('-')
+            // jpackage accepts only MAJOR.MINOR.BUILD; the property may carry an -alphaN/-betaN suffix.
+            packageVersion = requireNotNull(providers.gradleProperty("wasmline.version").orNull) {
+                "wasmline.version must be defined in gradle.properties."
+            }.substringBefore('-')
             description = "Wasmline Sample Desktop Application"
             copyright = "© 2026 Wasmline. All rights reserved."
             vendor = "Wasmline"
