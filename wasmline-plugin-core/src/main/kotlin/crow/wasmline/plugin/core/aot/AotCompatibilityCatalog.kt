@@ -218,7 +218,7 @@ object AotCompatibilityCatalog {
             require(profile.engineConfigurationProfile.isNotBlank()) {
                 "AOT compatibility profile '${profile.id}' has an empty engine configuration profile."
             }
-            require(SEMANTIC_VERSION_PATTERN.matches(profile.introducedInWasmlineVersion)) {
+            require(isWasmlineReleaseVersion(profile.introducedInWasmlineVersion)) {
                 "AOT compatibility profile '${profile.id}' has an invalid introduced Wasmline version."
             }
             require(compareWasmlineVersions(profile.introducedInWasmlineVersion, value.releaseCatalog.currentWasmlineVersion) <= 0) {

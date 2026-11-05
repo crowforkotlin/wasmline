@@ -433,10 +433,11 @@ def file_specs() -> tuple[FileSpec, ...]:
             sample_output_rules
             + (
                 Rule(
-                    r'(?m)^            packageVersion = project\.findProperty\("wasmline\.version"\) as\? String \?: "[0-9A-Za-z.\-]+"$',
+                    r'(?m)^            packageVersion = \(project\.findProperty\("wasmline\.version"\) as\? '
+                    r'String \?: "[0-9A-Za-z.\-]+"\)$',
                     lambda v: (
-                        '            packageVersion = project.findProperty("wasmline.version") as? '
-                        f'String ?: "{v["wasmline_version"]}"'
+                        '            packageVersion = (project.findProperty("wasmline.version") as? '
+                        f'String ?: "{v["wasmline_version"]}")'
                     ),
                 ),
             ),

@@ -31,7 +31,9 @@ compose.desktop {
                 TargetFormat.Pkg,
             )
             packageName = "Wasmline"
-            packageVersion = project.findProperty("wasmline.version") as? String ?: "1.0.0-beta1"
+            // jpackage accepts only MAJOR.MINOR.BUILD; drop any -alphaN/-betaN suffix.
+            packageVersion = (project.findProperty("wasmline.version") as? String ?: "1.0.0-beta1")
+                .substringBefore('-')
             description = "Wasmline Sample Desktop Application"
             copyright = "© 2026 Wasmline. All rights reserved."
             vendor = "Wasmline"

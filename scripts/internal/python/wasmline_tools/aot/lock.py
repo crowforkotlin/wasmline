@@ -23,6 +23,7 @@ from .catalog import (
     validate_source,
 )
 from .profiles import BACKENDS, compatibility_id
+from ..release_versions import WASMLINE_VERSION_PATTERN
 
 
 def _load_existing_lock() -> dict[str, Any]:
@@ -246,7 +247,7 @@ def _validate_profile_record(
     if len(engine_profile) > 4096:
         raise AotCompatibilityError(f"{context} engine configuration profile is too long.")
     introduced = _required_string(profile, "introducedInWasmlineVersion", context)
-    if not SEMANTIC_VERSION_PATTERN.fullmatch(introduced):
+    if not WASMLINE_VERSION_PATTERN.fullmatch(introduced):
         raise AotCompatibilityError(f"{context} has an invalid introduced Wasmline version.")
     if _semantic_version_key(introduced) > _semantic_version_key(current_wasmline_version):
         raise AotCompatibilityError(f"{context} is introduced after the current Wasmline release.")

@@ -141,7 +141,7 @@ class WasmlineAotGenerationPreflightTest {
         private val catalog = AotCompatibilityCatalog.releaseCatalog()
         private val minimumVersion = catalog.minimumSupportedWasmlineVersion
         private val currentVersion = catalog.currentWasmlineVersion
-        private val upperVersion = currentVersion.split('.')
+        private val upperVersion = currentVersion.substringBefore('-').split('.')
             .let { parts -> "${parts[0]}.${parts[1]}.${parts[2].toBigInteger() + BigInteger.ONE}" }
     }
 }

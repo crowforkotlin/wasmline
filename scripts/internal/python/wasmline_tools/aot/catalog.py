@@ -63,7 +63,7 @@ CURRENT_SERIALIZED_ARTIFACT_FORMAT_IDENTITY = "wasmtime-module-version-strategy-
 
 PROFILE_ID_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-SEMANTIC_VERSION_PATTERN = WASMLINE_VERSION_PATTERN
+SEMANTIC_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 RELEASE_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+\.[1-9][0-9]*$")
 
 
@@ -135,9 +135,9 @@ def validate_source(
         raise AotCompatibilityError("aot-compatibility.json schemaVersion must be 1.")
     current = source.get("currentWasmlineVersion")
     minimum = source.get("minimumSupportedWasmlineVersion")
-    if not isinstance(current, str) or not SEMANTIC_VERSION_PATTERN.fullmatch(current):
+    if not isinstance(current, str) or not WASMLINE_VERSION_PATTERN.fullmatch(current):
         raise AotCompatibilityError("currentWasmlineVersion must use x.y.z with an optional -alphaN or -betaN.")
-    if not isinstance(minimum, str) or not SEMANTIC_VERSION_PATTERN.fullmatch(minimum):
+    if not isinstance(minimum, str) or not WASMLINE_VERSION_PATTERN.fullmatch(minimum):
         raise AotCompatibilityError("minimumSupportedWasmlineVersion must use x.y.z with an optional -alphaN or -betaN.")
     if _semantic_version_key(minimum) > _semantic_version_key(current):
         raise AotCompatibilityError("minimumSupportedWasmlineVersion cannot exceed currentWasmlineVersion.")
@@ -145,12 +145,12 @@ def validate_source(
     if not isinstance(ranges, list) or not ranges:
         raise AotCompatibilityError("aot-compatibility.json ranges must not be empty.")
 
-    previous_start: tuple[int, int, int] | None = None
+    previous_start: tuple[int, int, int, int, int] | None = None
     for index, item in enumerate(ranges):
         if not isinstance(item, Mapping):
             raise AotCompatibilityError("AOT range entries must be objects.")
         start = item.get("fromWasmlineVersion")
-        if not isinstance(start, str) or not SEMANTIC_VERSION_PATTERN.fullmatch(start):
+        if not isinstance(start, str) or not WASMLINE_VERSION_PATTERN.fullmatch(start):
             raise AotCompatibilityError(
                 f"AOT range {index + 1} has an invalid fromWasmlineVersion."
             )
