@@ -353,8 +353,8 @@ engine. It does not infer compatibility from a Maven version or filename.
 ## Installation
 
 > [!NOTE]
-> Wasmline is currently distributed through `mavenLocal()` and is not yet
-> available from Maven Central. See [Installation](fumadocs/content/docs/installation.mdx).
+> Wasmline is published to Maven Central as `io.github.crowforkotlin`.
+> See [Installation](fumadocs/content/docs/installation.mdx).
 
 > [!WARNING]
 > The minimum required Kotlin version is **2.4.0**.

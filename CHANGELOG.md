@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No unreleased changes.
+
+## 1.0.0-beta1
+
 Initial Wasmline beta release.
 
 Public APIs and Gradle configuration may change before 1.0.0.

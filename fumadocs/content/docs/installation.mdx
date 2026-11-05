@@ -44,9 +44,6 @@ dependencyResolutionManagement {
 }
 ```
 
-Wasmline has not yet been published to Maven Central. To consume the current
-local build, follow [Current Distribution](#current-distribution) below.
-
 ## Apply the Gradle Plugin
 
 Apply the plugin to each compilation that uses generated `link<T>()` or
@@ -129,23 +126,23 @@ iOS uses `pulley64` `.pwasm` only.
   uses `WasmlineWeb.prefetch()` instead of either native network module.
 </Callout>
 
-## Current Distribution
+## Local Development Distribution
 
-Wasmline is currently distributed through `mavenLocal()`. From this repository,
-run the following command before consuming the artifacts from another local
-project:
-
-Prepare the locked Wasmtime and JNI assets as described in
-[Building from Source](/en/docs/building-from-source), then run from the repository root:
+Released versions resolve from Maven Central. To consume an unreleased local
+build instead, prepare the locked Wasmtime and JNI assets as described in
+[Building from Source](/en/docs/building-from-source), then run from the
+repository root:
 
 ```bash
 ./gradlew publishToMavenLocal --no-daemon
 ```
 
 In the consuming project's `settings.gradle.kts`, add `mavenLocal()` at the start
-of both repository blocks shown above. Linux local publication contains the
-targets declared on Linux. Use macOS to prepare and verify the complete Apple
-publications, as described in [Releasing](/en/docs/releasing).
+of both repository blocks shown above. Gradle resolves the locally published
+version ahead of Maven Central, so the requested version must match the local
+build. Linux local publication contains the targets declared on Linux. Use macOS
+to prepare and verify the complete Apple publications, as described in
+[Releasing](/en/docs/releasing).
 
 ## Next Pages
 

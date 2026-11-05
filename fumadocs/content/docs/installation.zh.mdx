@@ -43,9 +43,6 @@ dependencyResolutionManagement {
 }
 ```
 
-Wasmline 尚未发布到 Maven Central。接入当前本地构建时，按下方
-[当前分发方式](#当前分发方式)配置。
-
 ## 应用 Gradle 插件
 
 在使用生成的 `link<T>()` 或 `bind(impl)` 调用的编译单元中应用插件：
@@ -125,20 +122,19 @@ kotlin {
   network 模块。
 </Callout>
 
-## 当前分发方式
+## 本地开发分发
 
-Wasmline 当前通过 `mavenLocal()` 分发。在本仓库执行下面命令后，其他本地项目可
-引用这些构件：
-
-先按[从源码编译](/zh/docs/building-from-source)准备锁定版本的 Wasmtime 与
-JNI 文件，再从仓库根目录执行：
+已发布的版本从 Maven Central 解析。若要引用未发布的本地构建，先按
+[从源码编译](/zh/docs/building-from-source)准备锁定版本的 Wasmtime 与 JNI 文件，
+再从仓库根目录执行：
 
 ```bash
 ./gradlew publishToMavenLocal --no-daemon
 ```
 
 在使用方项目的 `settings.gradle.kts` 中，将 `mavenLocal()` 加到上方两个仓库
-配置的开头。Linux 本地发布只包含 Linux 上声明的目标。完整 Apple 构件需要
+配置的开头。Gradle 会先于 Maven Central 命中本地发布的版本，因此请求的版本号
+必须与本地构建一致。Linux 本地发布只包含 Linux 上声明的目标。完整 Apple 构件需要
 在 macOS 上生成并验证，参阅[发行](/zh/docs/releasing)。
 
 ## 后续页面

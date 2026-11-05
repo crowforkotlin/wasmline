@@ -190,18 +190,27 @@ write_notes() {
 
   require_command jq
   verify_repository
-  release_changes="$(awk '
-    /^## Unreleased$/ { release_section = 1; next }
+  wasmline_version="$(json_value '.versions.wasmline_version')"
+  release_changes="$(awk -v heading="## ${wasmline_version}" '
+    $0 == heading { release_section = 1; next }
     /^## / && release_section { exit }
     release_section && !release_content && /^[[:space:]]*$/ { next }
     release_section { release_content = 1; print }
   ' "${REPOSITORY_ROOT}/CHANGELOG.md")"
+  if [[ -z "${release_changes//[[:space:]]/}" ]]; then
+    release_changes="$(awk '
+      /^## Unreleased$/ { release_section = 1; next }
+      /^## / && release_section { exit }
+      release_section && !release_content && /^[[:space:]]*$/ { next }
+      release_section { release_content = 1; print }
+    ' "${REPOSITORY_ROOT}/CHANGELOG.md")"
+  fi
   [[ -n "${release_changes//[[:space:]]/}" ]] || {
-    printf 'CHANGELOG.md must contain non-empty Unreleased release notes.\n' >&2
+    printf 'CHANGELOG.md must contain non-empty release notes for %s or Unreleased.\n' \
+      "${wasmline_version}" >&2
     exit 2
   }
   mkdir -p "$(dirname "${output_file}")"
-  wasmline_version="$(json_value '.versions.wasmline_version')"
   wasmtime_release_version="$(json_value '.versions.wasmtime_release_version')"
   generation="$(catalog_value '.ranges[-1].aotGeneration')"
   distribution="$(catalog_value '.ranges[-1].wasmtimeDistributionVersion')"

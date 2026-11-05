@@ -325,7 +325,7 @@ Native 选择使用已链接 engine 实际报告的 AOT compatibility profile ID
 ## 安装
 
 > [!NOTE]
-> Wasmline 当前通过 `mavenLocal()` 分发，尚未发布到 Maven Central。请参阅[安装说明](fumadocs/content/docs/installation.zh.mdx)。
+> Wasmline 以 `io.github.crowforkotlin` 发布到 Maven Central。请参阅[安装说明](fumadocs/content/docs/installation.zh.mdx)。
 
 > [!WARNING]
 > 最低需要 **Kotlin 2.4.0** 版本。
