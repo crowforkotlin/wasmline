@@ -34,7 +34,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.sampleApps.multiplatform.shared)
             implementation(projects.sampleCommon)
-            implementation(libs.wasmline.runtime)
+            implementation(libs.wasmline)
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.coroutines)
         }

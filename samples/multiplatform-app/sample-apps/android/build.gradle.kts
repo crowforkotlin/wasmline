@@ -106,7 +106,7 @@ dependencies {
     api(projects.sampleCommon)
     api(projects.sampleApps.multiplatform.shared)
 
-    api(libs.wasmline.runtime)
+    api(libs.wasmline)
     api(libs.wasmline.loader)
     // Consumers select exactly one engine; Pulley is the Android default.
     if (wasmlineEngine == "cranelift") {

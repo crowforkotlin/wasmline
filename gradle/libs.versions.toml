@@ -310,7 +310,7 @@ gradle-maven-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-pl
 gradle-dokka-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 
-wasmline-runtime = { module = "io.github.crowforkotlin:wasmline", version.ref = "wasmline" }
+wasmline = { module = "io.github.crowforkotlin:wasmline", version.ref = "wasmline" }
 wasmline-loader = { module = "io.github.crowforkotlin:wasmline-loader", version.ref = "wasmline" }
 wasmline-network-ktor = { module = "io.github.crowforkotlin:wasmline-network-ktor", version.ref = "wasmline" }
 wasmline-engine-pulley = { module = "io.github.crowforkotlin:wasmline-engine-pulley", version.ref = "wasmline" }

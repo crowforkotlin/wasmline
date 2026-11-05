@@ -19,6 +19,6 @@ kotlin {
     wasmJs { browser() }
     wasmWasi { nodejs() }
     sourceSets {
-        commonMain.dependencies { api(libs.wasmline.runtime) }
+        commonMain.dependencies { api(libs.wasmline) }
     }
 }

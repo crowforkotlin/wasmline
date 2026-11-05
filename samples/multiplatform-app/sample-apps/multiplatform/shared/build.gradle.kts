@@ -46,7 +46,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.wasmline.runtime)
+                api(libs.wasmline)
                 api(libs.wasmline.loader)
                 api(libs.wasmline.network.ktor)
 

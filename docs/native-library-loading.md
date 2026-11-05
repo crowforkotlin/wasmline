@@ -262,7 +262,7 @@ plugin is needed.
 val desktopMain by getting {
     dependencies {
         // Single dependency — the `io.github.crowforkotlin.wasmline` plugin handles native variant resolution
-        implementation(libs.crow.wasmline.engine.pulley)
+        implementation(libs.wasmline.engine.pulley)
     }
 }
 ```
@@ -279,7 +279,7 @@ For Android targets, the engine module provides native libraries through `androi
 ```kotlin
 val androidMain by getting {
     dependencies {
-        implementation(libs.crow.wasmline.engine.pulley)
+        implementation(libs.wasmline.engine.pulley)
     }
 }
 ```
@@ -311,8 +311,8 @@ In the `.module` metadata, each native variant declares:
 If a consumer accidentally adds both engines:
 
 ```kotlin
-implementation(libs.crow.wasmline.engine.pulley)
-implementation(libs.crow.wasmline.engine.cranelift)  // CONFLICT
+implementation(libs.wasmline.engine.pulley)
+implementation(libs.wasmline.engine.cranelift)  // CONFLICT
 ```
 
 Gradle reports a capability conflict and the build fails. The developer must choose one engine.
@@ -400,7 +400,7 @@ Build time:
 Resolution time:
   Consumer build.gradle.kts
        ↓
-  implementation(libs.crow.wasmline.engine.pulley)
+  implementation(libs.wasmline.engine.pulley)
        ↓
   `io.github.crowforkotlin.wasmline` plugin sets Gradle OS/architecture attributes
        ↓
