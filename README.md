@@ -179,9 +179,9 @@ wasmline {
             generations(AotGenerations.Current(before = 1))
             generations(AotGenerations.Latest)
             generations(AotGenerations.Earliest(after = 1))
-            generations(AotGenerations.Versions(min = "1.0.0", max = "1.0.1"))
-            generations(versions = listOf("1.0.0", "1.0.1"))
-            generations(min = "1.0.0", max = "1.0.1")
+            generations(AotGenerations.Versions(min = "1.0.0-beta1", max = "1.0.0-beta1"))
+            generations(versions = listOf("1.0.0-beta1"))
+            generations(min = "1.0.0-beta1", max = "1.0.0-beta1")
         }
     }
 }
@@ -207,8 +207,9 @@ wasmline {
 }
 ```
 
-`generations(version)` selects the generation containing one concrete `x.y.z`
-Wasmline version, `generations(versions = listOf(...))` selects a non-empty
+`generations(version)` selects the generation containing one concrete `x.y.z`,
+`x.y.z-alphaN`, or `x.y.z-betaN` Wasmline version,
+`generations(versions = listOf(...))` selects a non-empty
 collection of concrete versions, and `generations(min = ..., max = ...)`
 selects the closed interval between two concrete versions. The typed
 `AotGenerations.Versions` form is equivalent to those overloads:

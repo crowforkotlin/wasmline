@@ -46,9 +46,9 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.crow.wasmline)
-                api(libs.crow.wasmline.loader)
-                api(libs.crow.wasmline.network.ktor)
+                api(libs.wasmline.runtime)
+                api(libs.wasmline.loader)
+                api(libs.wasmline.network.ktor)
 
                 api(projects.sampleCommon)
 
@@ -77,9 +77,9 @@ kotlin {
                 api(libs.ktor.client.okhttp)
                 // Consumers select exactly one engine; Pulley is the Android default.
                 if (wasmlineEngine == "cranelift") {
-                    implementation(libs.crow.wasmline.engine.cranelift)
+                    implementation(libs.wasmline.engine.cranelift)
                 } else {
-                    implementation(libs.crow.wasmline.engine.pulley)
+                    implementation(libs.wasmline.engine.pulley)
                 }
             }
         }
@@ -91,9 +91,9 @@ kotlin {
                 api(libs.ktor.client.cio)
                 // Engine module: selected via `wasmline.engine` property in gradle.properties
                 if (wasmlineEngine == "cranelift") {
-                    implementation(libs.crow.wasmline.engine.cranelift)
+                    implementation(libs.wasmline.engine.cranelift)
                 } else {
-                    implementation(libs.crow.wasmline.engine.pulley)
+                    implementation(libs.wasmline.engine.pulley)
                 }
             }
         }

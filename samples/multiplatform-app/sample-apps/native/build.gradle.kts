@@ -54,12 +54,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.crow.wasmline.loader)
+            implementation(libs.wasmline.loader)
             implementation(libs.kotlinx.coroutines)
             if (wasmlineEngine == "cranelift") {
-                implementation(libs.crow.wasmline.engine.cranelift)
+                implementation(libs.wasmline.engine.cranelift)
             } else {
-                implementation(libs.crow.wasmline.engine.pulley)
+                implementation(libs.wasmline.engine.pulley)
             }
         }
     }

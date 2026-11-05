@@ -218,7 +218,7 @@ write_notes() {
     printf -- '- AOT generation: `%s`\n' "${generation}"
     printf -- '- New AOT generation in this release: `%s`\n' "${added}"
     printf -- '- Changed backends: `%s`\n\n' "${changed}"
-    printf 'Review the [AOT compatibility documentation](https://crowforkotlin.github.io/wasmline/en/docs/wasmtime-download) before selecting native artifacts.\n'
+    printf 'Review the [AOT compatibility documentation](https://wuya.click/wasmline/en/docs/wasmtime-download) before selecting native artifacts.\n'
   } >"${temporary_file}"
   mv -f "${temporary_file}" "${output_file}"
 }

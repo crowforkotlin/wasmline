@@ -26,7 +26,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.crow.wasmline)
+            implementation(libs.wasmline.runtime)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.serialization.protobuf)
             implementation(libs.kotlin.stdlib)
@@ -34,8 +34,8 @@ kotlin {
         jvmTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines)
-            implementation(libs.crow.wasmline.loader)
-            implementation(libs.crow.wasmline.engine.cranelift)
+            implementation(libs.wasmline.loader)
+            implementation(libs.wasmline.engine.cranelift)
         }
     }
 }

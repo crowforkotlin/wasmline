@@ -27,23 +27,23 @@ kotlin {
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)
             api(libs.jetbrains.compose.material)
-            api(libs.crow.wasmline.loader)
+            api(libs.wasmline.loader)
             api(libs.kotlinx.coroutines)
         }
         androidMain.dependencies {
             implementation(libs.kotlinx.coroutines.android)
-            implementation(libs.crow.wasmline.engine.pulley)
+            implementation(libs.wasmline.engine.pulley)
         }
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
-                implementation(libs.crow.wasmline.engine.pulley)
+                implementation(libs.wasmline.engine.pulley)
                 implementation(libs.slf4j.nop)
             }
         }
         webMain.dependencies {
-            implementation(libs.crow.wasmline.network.ktor)
+            implementation(libs.wasmline.network.ktor)
             implementation(libs.ktor.client.js)
         }
     }

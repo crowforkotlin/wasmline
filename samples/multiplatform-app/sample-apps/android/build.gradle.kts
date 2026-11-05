@@ -106,13 +106,13 @@ dependencies {
     api(projects.sampleCommon)
     api(projects.sampleApps.multiplatform.shared)
 
-    api(libs.crow.wasmline)
-    api(libs.crow.wasmline.loader)
+    api(libs.wasmline.runtime)
+    api(libs.wasmline.loader)
     // Consumers select exactly one engine; Pulley is the Android default.
     if (wasmlineEngine == "cranelift") {
-        implementation(libs.crow.wasmline.engine.cranelift)
+        implementation(libs.wasmline.engine.cranelift)
     } else {
-        implementation(libs.crow.wasmline.engine.pulley)
+        implementation(libs.wasmline.engine.pulley)
     }
     api(libs.ktor.client.okhttp)
 }

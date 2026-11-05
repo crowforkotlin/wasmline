@@ -176,9 +176,9 @@ wasmline {
             generations(AotGenerations.Current(before = 1))
             generations(AotGenerations.Latest)
             generations(AotGenerations.Earliest(after = 1))
-            generations(AotGenerations.Versions(min = "1.0.0", max = "1.0.1"))
-            generations(versions = listOf("1.0.0", "1.0.1"))
-            generations(min = "1.0.0", max = "1.0.1")
+            generations(AotGenerations.Versions(min = "1.0.0-beta1", max = "1.0.0-beta1"))
+            generations(versions = listOf("1.0.0-beta1"))
+            generations(min = "1.0.0-beta1", max = "1.0.0-beta1")
         }
     }
 }
@@ -202,7 +202,8 @@ wasmline {
 }
 ```
 
-`generations(version)` 选择包含该具体 `x.y.z` Wasmline 版本的 generation，
+`generations(version)` 选择包含该具体 `x.y.z`、`x.y.z-alphaN` 或 `x.y.z-betaN`
+Wasmline 版本的 generation，
 `generations(versions = listOf(...))` 选择非空的具体版本集合，
 `generations(min = ..., max = ...)` 选择两个具体版本之间的闭区间。类型化的
 `AotGenerations.Versions` 与这些重载等价：`Versions(version)`、`Versions(versions)`

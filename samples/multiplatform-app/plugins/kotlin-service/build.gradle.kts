@@ -25,7 +25,7 @@ kotlin {
     sourceSets {
         wasmWasiMain.dependencies {
             implementation(projects.sampleCommon)
-            implementation(libs.crow.wasmline)
+            implementation(libs.wasmline.runtime)
             implementation(libs.okio.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.serialization.protobuf)

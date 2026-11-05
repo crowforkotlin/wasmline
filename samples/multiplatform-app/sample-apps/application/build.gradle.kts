@@ -19,10 +19,10 @@ java {
 application { mainClass = "crow.wasmline.sample.application.MainKt" }
 
 dependencies {
-    implementation(libs.crow.wasmline.loader)
-    implementation(libs.crow.wasmline.network.ktor)
+    implementation(libs.wasmline.loader)
+    implementation(libs.wasmline.network.ktor)
     // Cranelift includes both native CWASM and portable PWASM loading.
-    implementation(libs.crow.wasmline.engine.cranelift)
+    implementation(libs.wasmline.engine.cranelift)
     implementation(libs.ktor.client.cio)
     runtimeOnly(libs.slf4j.nop)
     implementation(libs.kotlinx.serialization.protobuf)

@@ -856,4 +856,4 @@ private val REPORT_JSON = Json {
 private const val DEFAULT_REMOTE_CATALOG_URL: String =
     "https://github.com/crowforkotlin/wasmline/releases/latest/download/aot-compatibility.json"
 private const val DEFAULT_DOCUMENTATION_URL: String =
-    "https://github.com/crowforkotlin/wasmline/blob/main/fumadocs/content/docs/%28reference%29/%28repository-development%29/%28plugin%29/wasmtime-download.mdx"
+    "https://wuya.click/wasmline/en/docs/wasmtime-download"
