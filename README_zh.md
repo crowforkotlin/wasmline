@@ -131,9 +131,8 @@ suspend fun main() {
 
 ## Package 与 AOT 兼容性
 
-一个插件发行版只使用一个 `manifest.wlm`，用于描述全部已配置的 AOT
-generation 和物理 target。插件作者选择 Wasmline 发行 generation；随构建工具
-打包的本地 catalog 负责解析不可变且区分 backend 的 profile ID。
+声明要编译的 target 与 AOT generation。省略 `aotCompatibility` 时只编译
+当前 Wasmline 构建工具版本所在的 generation：
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
@@ -141,7 +140,6 @@ import crow.wasmline.plugin.core.aot.AotGenerations
 
 wasmline {
     wasmtime {
-        // Omit `aotCompatibility` to compile the current generation only.
         aotCompatibility {
             generations(AotGenerations.Current)
         }
@@ -155,78 +153,15 @@ wasmline {
 }
 ```
 
-省略该块、使用空块，或只设置 `suppressCompatibilityWarning`，都会选择包含当前
-引入的 Wasmline 构建工具版本的那个 generation：
+`AotGenerations` 还提供 `Latest`、`Earliest`、`All`，窗口形式如
+`Current(before = 1, after = 1)`，以及具体版本选择：
+`generations(version)`、`generations(versions = listOf(...))`、
+`generations(min = ..., max = ...)`。
 
-```kotlin
-wasmline {
-    wasmtime {
-        // No `aotCompatibility` call: compile the current generation only.
-    }
-}
-```
+选择规则、catalog 字段与兼容性检查见
+[Wasmtime 下载与 AOT](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/wasmtime-download.zh.mdx>)。
 
-类型化策略与具体版本选择可以写在同一个块中；第一次显式调用替换隐式的 current
-默认值，之后每次调用都并入结果并集：
-
-```kotlin
-wasmline {
-    wasmtime {
-        aotCompatibility {
-            generations(AotGenerations.Current(before = 1))
-            generations(AotGenerations.Latest)
-            generations(AotGenerations.Earliest(after = 1))
-            generations(AotGenerations.Versions(min = "1.0.0-beta1", max = "1.0.0-beta1"))
-            generations(versions = listOf("1.0.0-beta1"))
-            generations(min = "1.0.0-beta1", max = "1.0.0-beta1")
-        }
-    }
-}
-```
-
-`AotGenerations.Current`、`Latest`、`Earliest` 与 `All` 各自选择一种策略，
-`Current(before = 1, after = 1)`、`Latest(before = 1)` 和 `Earliest(after = 1)`
-再附加相邻的 AOT generation。计数是额外的相邻数量：锚点 generation 始终包含在内，
-因此当两个方向的相邻 generation 都存在时，`Current(before = 1, after = 1)` 覆盖三个
-generation。窗口计数的是 AOT generation，不是 Maven 发行版本；请求的相邻 generation
-在本地不存在时构建会失败，不会被裁剪。`All` 需要显式选择，可能编译 packaged catalog
-中保留的全部 generation：
-
-```kotlin
-wasmline {
-    wasmtime {
-        aotCompatibility {
-            generations(AotGenerations.All)
-        }
-    }
-}
-```
-
-`generations(version)` 选择包含该具体 `x.y.z`、`x.y.z-alphaN` 或 `x.y.z-betaN`
-Wasmline 版本的 generation，
-`generations(versions = listOf(...))` 选择非空的具体版本集合，
-`generations(min = ..., max = ...)` 选择两个具体版本之间的闭区间。类型化的
-`AotGenerations.Versions` 与这些重载等价：`Versions(version)`、`Versions(versions)`
-和 `Versions(min, max)`。字符串输入始终是具体版本，不存在符号版本字符串，也没有
-`from`/`through` 重载。`Latest` 是本地保留的最新 generation，`Earliest` 是最早的
-generation，`Current` 以构建工具发行版本为锚点；当 packaged catalog 中没有更新的
-generation 时，`Current` 与 `Latest` 指向同一个 generation。第一次显式调用会替换
-隐式的 current 默认值，后续调用取并集。重复 generation 与复用的 backend profile
-会去重，因此同一 generation 内的多个版本只编译一次。选择完全基于随构建工具打包的
-本地 catalog 解析，不访问网络。每个具体版本都必须位于本地支持的
-`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` 区间内；越界、倒置或
-不可用的输入会直接构建失败，不会被裁剪。声明了 WASI assemble graph 的项目会在配置
-阶段以 `[WLAOT100]` 失败；其他项目的 AOT 与检查 task action 会在下载 compiler 或
-签名 package 之前拒绝该选择。公共输入是 Wasmline 发行版本；Wasmtime distribution
-版本与 profile digest 属于内部 catalog 与诊断信息。
-
-assemble 成功后，`wasmlineCheckAotCompatibility` 会将本地选择与最新稳定
-catalog 比较，并写入 `build/reports/wasmline/aot-compatibility-check.json`。
-即使 generation gap 为零也会输出警告。审查报告后可以设置
-`suppressCompatibilityWarning.set(true)`；该设置只抑制日志，不会关闭检查或
-改变报告与 AOT 产物。Web raw `.wasm` 不在该 native AOT 检查范围内。
-
-Package 按 SHA-256 保存 artifact：
+Package 按 SHA-256 存放 artifact，并为每个选中的 generation 保留同一个 manifest：
 
 ```text
 {pluginId}-{version}/
@@ -237,19 +172,6 @@ Package 按 SHA-256 保存 artifact：
     ├── aot-build-record.json
     └── artifact-index.json
 ```
-
-Core Web `.wasm` 只生成和保存一次，不随 Wasmtime 版本重复。Native CWASM
-与 PWASM 只针对 backend 相同的 profile 编译。离线 ZIP 包含该 Package 选择的全部
-artifact；远程加载只获取 manifest 和一个已选择 artifact，不下载 ZIP 或无关 target。
-
-Pulley 按 pointer width 选择 `pulley32` 或 `pulley64`。Cranelift 要求 profile、
-操作系统、架构、pointer width 与 CPU feature 精确匹配。只有不存在兼容 CWASM，
-且 runtime 报告匹配的 Pulley profile 并支持 PWASM 时，才能使用 PWASM。
-Artifact 下载或摘要失败不会触发回退。
-
-Compiler archive 由 catalog 锁定，并按摘要缓存在
-`~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/`。构建不接受任意
-本地 compiler executable。
 
 ## 执行模型与调用结果
 
@@ -324,14 +246,34 @@ Native 选择使用已链接 engine 实际报告的 AOT compatibility profile ID
 
 ## 安装
 
-> [!NOTE]
-> Wasmline 以 `io.github.crowforkotlin` 发布到 Maven Central。请参阅[安装说明](fumadocs/content/docs/installation.zh.mdx)。
-
 > [!WARNING]
 > 最低需要 **Kotlin 2.4.0** 版本。
 >
-> 本次发行产物使用该 Kotlin 版本编译并验证。较早的 Kotlin/Native 编译器可能拒绝发布的 KLIB ABI；
-> 使用更高版本时，需要重新验证运行时产物与编译器插件的兼容性。
+> 较早的 Kotlin/Native 编译器可能拒绝发布的 KLIB ABI；使用更高版本时，需要
+> 重新验证运行时产物与编译器插件的兼容性。
+
+### 应用 Gradle 插件
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+// build.gradle.kts
+plugins {
+    id("io.github.crowforkotlin.wasmline") version "1.0.0-beta1"
+}
+```
+
+插件注册打包任务，并应用 `wasmline-kotlin-plugin`；后者重写 `link<T>()` 与
+`bind(impl)`。
+
+### 添加运行时依赖
 
 JVM 与 Android 使用 BOM，使 runtime、Loader、network adapter 与 engine
 解析为同一个 strict Wasmline 版本：
@@ -346,25 +288,24 @@ dependencies {
 ```
 
 Kotlin Multiplatform source set 应为全部 Wasmline coordinate 使用同一个版本
-变量。Engine 模块不能单独升级。Native 启动会在加载 AOT artifact 前校验
-Wasmline release identity 与 bridge ABI。
+变量；engine 模块不能单独升级。
 
-## Gradle Wrapper 任务
+模块清单与各平台配置见[安装说明](fumadocs/content/docs/installation.zh.mdx)。
 
-在使用方项目中应用已发布的 Wasmline Gradle 插件后，可直接执行：
+## 命令
+
+### 插件打包任务
+
+在应用 `id("io.github.crowforkotlin.wasmline")` 的项目中运行：
 
 ```bash
-# 构建调试包，用于本地测试
-./gradlew wasmlineAssembleDebug
-
-# 构建用于发布的发行包
-./gradlew wasmlineAssembleRelease
-
-# 构建并启动构件服务
-./gradlew wasmlineServerDeploy
+./gradlew wasmlineAssembleDebug     # 本地测试用 debug package
+./gradlew wasmlineAssembleRelease   # 分发的 release package
+./gradlew wasmlineServerDeploy      # 构建并提供配置的 package
 ```
 
-使用类型安全的变体配置选择 `wasmlineServerDeploy` 提供的构件：
+`wasmlineServerDeploy` 以 `DEBUG` 变体在 `http://localhost:8080` 提供服务。
+用类型化值切换变体：
 
 ```kotlin
 import crow.wasmline.gradle.WasmlineBuildVariant
@@ -376,44 +317,36 @@ wasmline {
 }
 ```
 
-默认值为 `DEBUG`，服务地址为 `http://localhost:8080`。
-`wasmlineServerDeploy` 会构建并提供所选变体的 package。[Gradle 插件任务参考](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/gradle-plugin.zh.mdx>)
-列出当前任务及其注册条件。
+### 仓库构建任务
 
-## Release 构建
-
-以下命令均从仓库根目录执行。每条命令使用其所属项目的 Gradle wrapper：
+从仓库根目录运行。每条命令使用所构建项目自己的 Gradle wrapper：
 
 ```bash
-# Wasmline 模块与 Android AAR
-./gradlew assemble
-
-# JVM 校验与 Gradle plugin 集成测试
-./gradlew :wasmline:jvmTest
-(cd wasmline-plugin-test && ./gradlew jvmTest)
-
-# Web production distribution
-./gradlew :wasmline:jsBrowserProductionLibraryDistribution
+./gradlew assemble                                            # 模块与 Android AAR
+./gradlew :wasmline:jvmTest                                   # JVM 测试
+(cd wasmline-plugin-test && ./gradlew jvmTest)                # 插件集成测试
+./gradlew :wasmline:jsBrowserProductionLibraryDistribution    # JS 分发
 ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution
-
-# Apple binary（需要 macOS）
-./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries
-
-# 当前操作系统的 Desktop 分发包
+./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries   # macOS 主机
 (cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
 ```
 
-GitHub Actions 的发布任务会构建可发布的 Wasmline 模块、校验 AOT catalog，并上传
-`aot-compatibility.json` 及其 SHA-256 摘要。该发布任务只响应
-`release-x.y.z.v` 格式的 tag；推送到 `main` 不会发布。`x.y.z` 是 Wasmline
-Maven 版本，`v` 按三段 Wasmtime 版本计算为
-`major × 100 + minor × 10 + patch`。例如 Wasmline `1.2.3` 配合
-Wasmtime `12.3.4`，tag 为 `release-1.2.3.1234`。Fork 发行版本
-`12.3.4.2` 的最后一段构建号单独记录，不参与该后缀计算。
+### 示例应用
 
-`./scripts/release.sh expected-tag` 会输出当前 manifest 对应的 tag。
-[发行文档](<fumadocs/content/docs/(reference)/(repository-development)/releasing.zh.mdx>)
-说明了构件检查、凭据配置，以及如何测试实际 Maven 构件。
+```bash
+(cd samples/minimal-service && ./gradlew run)                  # 最小 service 示例
+(cd samples/minimal-raw-export && ./gradlew run)               # 最小 raw export 示例
+(cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:run)
+(cd samples/multiplatform-app && ./gradlew :sample-apps:native:runKotlinNativeSample)
+```
+
+### 发布
+
+`./scripts/release.sh expected-tag` 打印当前 manifest 对应的 tag。只有 release
+tag 会触发发布，推送到 `main` 不会发布。tag 格式、发布检查、凭据与产物验证见
+[发行](<fumadocs/content/docs/(reference)/(repository-development)/releasing.zh.mdx>)，
+完整任务列表见
+[Gradle 插件任务参考](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/gradle-plugin.zh.mdx>)。
 
 ## 架构图
 

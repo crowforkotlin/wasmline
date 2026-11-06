@@ -131,10 +131,8 @@ Repeated loads of the same artifact have independent handles and service binding
 
 ## Package and AOT Compatibility
 
-A plugin release uses one `manifest.wlm` for every configured AOT compatibility
-generation and physical target. Plugin authors select Wasmline release
-generations; the packaged local catalog resolves immutable, backend-specific
-profile IDs.
+Declare the targets and AOT generations to compile. Omitting `aotCompatibility`
+compiles the generation of the Wasmline build-tool version:
 
 ```kotlin
 import crow.wasmline.gradle.WasmtimeTarget
@@ -142,7 +140,6 @@ import crow.wasmline.plugin.core.aot.AotGenerations
 
 wasmline {
     wasmtime {
-        // Omit `aotCompatibility` to compile the current generation only.
         aotCompatibility {
             generations(AotGenerations.Current)
         }
@@ -156,91 +153,17 @@ wasmline {
 }
 ```
 
-Omitting the block, leaving it empty, or only setting
-`suppressCompatibilityWarning` selects the generation that contains the
-currently introduced Wasmline build-tool version:
+`AotGenerations` also provides `Latest`, `Earliest`, `All`, windowed forms such as
+`Current(before = 1, after = 1)`, and concrete version selection with
+`generations(version)`, `generations(versions = listOf(...))`, or
+`generations(min = ..., max = ...)`.
 
-```kotlin
-wasmline {
-    wasmtime {
-        // No `aotCompatibility` call: compile the current generation only.
-    }
-}
-```
+Selection rules, the packaged catalog fields, and the compatibility check are
+documented in
+[Wasmtime Download and AOT](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/wasmtime-download.mdx>).
 
-Typed strategies and concrete version selections can be combined in one block;
-the first explicit call replaces the implicit current default and every later
-call is a union:
-
-```kotlin
-wasmline {
-    wasmtime {
-        aotCompatibility {
-            generations(AotGenerations.Current(before = 1))
-            generations(AotGenerations.Latest)
-            generations(AotGenerations.Earliest(after = 1))
-            generations(AotGenerations.Versions(min = "1.0.0-beta1", max = "1.0.0-beta1"))
-            generations(versions = listOf("1.0.0-beta1"))
-            generations(min = "1.0.0-beta1", max = "1.0.0-beta1")
-        }
-    }
-}
-```
-
-`AotGenerations.Current`, `Latest`, `Earliest`, and `All` each select one
-strategy, and `Current(before = 1, after = 1)`, `Latest(before = 1)`, and
-`Earliest(after = 1)` add adjacent AOT generations. The counts are additional
-neighbors: the anchor generation is always included, so
-`Current(before = 1, after = 1)` covers three generations when both neighbors
-exist locally. Windows count AOT generations, not Maven release versions, and a
-requested neighbor that does not exist locally fails the build instead of being
-clipped. `All` is opt-in and may compile every generation retained in the
-packaged catalog:
-
-```kotlin
-wasmline {
-    wasmtime {
-        aotCompatibility {
-            generations(AotGenerations.All)
-        }
-    }
-}
-```
-
-`generations(version)` selects the generation containing one concrete `x.y.z`,
-`x.y.z-alphaN`, or `x.y.z-betaN` Wasmline version,
-`generations(versions = listOf(...))` selects a non-empty
-collection of concrete versions, and `generations(min = ..., max = ...)`
-selects the closed interval between two concrete versions. The typed
-`AotGenerations.Versions` form is equivalent to those overloads:
-`Versions(version)`, `Versions(versions)`, and `Versions(min, max)`. The string
-inputs are always concrete versions; there is no symbolic version string, and
-`from`/`through` overloads do not exist. `Latest` is the newest generation
-retained locally, `Earliest` is the oldest, and `Current` anchors on the
-build-tool release version, so `Current` and `Latest` coincide while the
-packaged catalog retains no newer generation. The first explicit call replaces
-the implicit current default and later calls add their generations to the
-union. Duplicate generations and reused backend profiles are deduplicated, so
-several versions from one generation compile once. Selection is resolved
-entirely from the packaged local catalog and never reads the network. Every
-concrete version must lie inside the locally supported
-`minimumSupportedWasmlineVersion`..`currentWasmlineVersion` interval, and
-out-of-range, inverted, or unavailable input fails the build instead of being
-clipped. A project with a WASI assemble graph fails at configuration time with
-`[WLAOT100]`; AOT and check task actions otherwise reject the selection before
-downloading compilers or signing a package. The public input is a Wasmline
-release version; Wasmtime distribution versions and profile digests are internal
-catalog and diagnostic values.
-
-After a successful assemble, `wasmlineCheckAotCompatibility` compares the local
-selection with the latest stable catalog and writes a report to
-`build/reports/wasmline/aot-compatibility-check.json`. The task emits a warning
-even when the generation gap is zero. Set
-`suppressCompatibilityWarning.set(true)` only after reviewing the report; this
-suppresses the log message and leaves the check and report enabled. Web raw
-`.wasm` is outside this native AOT check.
-
-The package stores artifacts by SHA-256:
+The package stores artifacts by SHA-256 and keeps one manifest for every
+selected generation:
 
 ```text
 {pluginId}-{version}/
@@ -251,22 +174,6 @@ The package stores artifacts by SHA-256:
     ├── aot-build-record.json
     └── artifact-index.json
 ```
-
-Core Web `.wasm` is generated and stored once; it is not repeated for every
-Wasmtime version. Native CWASM and PWASM variants are compiled only for profiles
-with the same backend. The offline ZIP contains every artifact selected for the
-package. Remote loading fetches the manifest and one selected artifact, not the
-ZIP or unrelated targets.
-
-Pulley selects `pulley32` or `pulley64` by pointer width. Cranelift requires an
-exact profile, operating system, architecture, pointer width, and CPU feature
-match. It may use PWASM when no compatible CWASM exists and the runtime
-reports a matching Pulley profile and support for PWASM. Artifact download or
-digest failure does not trigger fallback.
-
-Compiler archives are catalog-locked and cached by digest under
-`~/.wasmline/toolchains/wasmtime/compiler-assets/sha256/`. Builds do not accept
-an arbitrary local compiler executable.
 
 ## Execution Models and Call Results
 
@@ -352,16 +259,35 @@ engine. It does not infer compatibility from a Maven version or filename.
 
 ## Installation
 
-> [!NOTE]
-> Wasmline is published to Maven Central as `io.github.crowforkotlin`.
-> See [Installation](fumadocs/content/docs/installation.mdx).
-
 > [!WARNING]
 > The minimum required Kotlin version is **2.4.0**.
 >
-> This release is built and verified with that Kotlin version. Earlier Kotlin/Native
-> compilers may reject the published KLIB ABI; newer compiler versions require
-> separate validation of the runtime artifacts and compiler plugin.
+> Earlier Kotlin/Native compilers may reject the published KLIB ABI; newer
+> compiler versions require separate validation of the runtime artifacts and
+> compiler plugin.
+
+### Apply the Gradle plugin
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+// build.gradle.kts
+plugins {
+    id("io.github.crowforkotlin.wasmline") version "1.0.0-beta1"
+}
+```
+
+The plugin registers the packaging tasks and applies `wasmline-kotlin-plugin`,
+which rewrites `link<T>()` and `bind(impl)`.
+
+### Add runtime dependencies
 
 Use the BOM on JVM and Android so the runtime, Loader, network adapter, and
 engine resolve to one strict Wasmline version:
@@ -376,26 +302,25 @@ dependencies {
 ```
 
 Kotlin Multiplatform source sets should use one shared version variable for all
-Wasmline coordinates. Engine modules are not versioned independently. Native
-startup validates the Wasmline release identity and bridge ABI before loading an
-AOT artifact.
+Wasmline coordinates; engine modules are not versioned independently.
 
-## Gradle Wrapper Tasks
+See [Installation](fumadocs/content/docs/installation.mdx) for the full module
+table and per-platform setup.
 
-After applying the released Wasmline Gradle plugin, run:
+## Commands
+
+### Plugin packaging tasks
+
+Run in a project that applies `id("io.github.crowforkotlin.wasmline")`:
 
 ```bash
-# Build a debug package for local testing
-./gradlew wasmlineAssembleDebug
-
-# Build a release package for distribution
-./gradlew wasmlineAssembleRelease
-
-# Build and serve the configured package
-./gradlew wasmlineServerDeploy
+./gradlew wasmlineAssembleDebug     # debug package for local testing
+./gradlew wasmlineAssembleRelease   # release package for distribution
+./gradlew wasmlineServerDeploy      # build and serve the configured package
 ```
 
-Select the package served by `wasmlineServerDeploy` with a typed value:
+`wasmlineServerDeploy` serves the `DEBUG` variant at `http://localhost:8080`.
+Select another variant with a typed value:
 
 ```kotlin
 import crow.wasmline.gradle.WasmlineBuildVariant
@@ -407,48 +332,38 @@ wasmline {
 }
 ```
 
-The default is `DEBUG`, served at `http://localhost:8080`.
-`wasmlineServerDeploy` builds and serves the package directory for the selected
-variant. See the
-[Gradle plugin task reference](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/gradle-plugin.mdx>) for the
-current task set and registration conditions.
+### Repository build tasks
 
-## Release Build
-
-Run the commands below from the repository root. Each command uses the Gradle
-wrapper belonging to the project that it builds:
+Run from the repository root. Each command uses the Gradle wrapper of the
+project it builds:
 
 ```bash
-# Wasmline modules and Android AARs
-./gradlew assemble
-
-# JVM verification and Gradle plugin integration tests
-./gradlew :wasmline:jvmTest
-(cd wasmline-plugin-test && ./gradlew jvmTest)
-
-# Web production distributions
-./gradlew :wasmline:jsBrowserProductionLibraryDistribution
+./gradlew assemble                                            # modules and Android AARs
+./gradlew :wasmline:jvmTest                                   # JVM tests
+(cd wasmline-plugin-test && ./gradlew jvmTest)                # plugin integration tests
+./gradlew :wasmline:jsBrowserProductionLibraryDistribution    # JS distribution
 ./gradlew :wasmline:wasmJsBrowserProductionLibraryDistribution
-
-# Apple binaries (macOS host)
-./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries
-
-# Desktop distribution for the current operating system
+./gradlew :wasmline:iosArm64Binaries :wasmline:iosSimulatorArm64Binaries   # macOS host
 (cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:packageDistributionForCurrentOS)
 ```
 
-The GitHub Actions release job builds the publishable Wasmline modules,
-validates the AOT catalog, and uploads `aot-compatibility.json` with its
-SHA-256 checksum. It runs only for a tag named `release-x.y.z.v`; pushes to
-`main` never publish a release. Here `x.y.z` is the Wasmline Maven version and
-`v` is `major × 100 + minor × 10 + patch` for the three-part Wasmtime version.
-For example, Wasmline `1.2.3` with Wasmtime `12.3.4` uses
-`release-1.2.3.1234`. The final fork build number in `12.3.4.2` is recorded
-separately and does not enter that suffix.
+### Sample applications
+
+```bash
+(cd samples/minimal-service && ./gradlew run)                  # minimal service
+(cd samples/minimal-raw-export && ./gradlew run)               # minimal raw export
+(cd samples/multiplatform-app && ./gradlew :sample-apps:multiplatform:desktopApp:run)
+(cd samples/multiplatform-app && ./gradlew :sample-apps:native:runKotlinNativeSample)
+```
+
+### Release
 
 `./scripts/release.sh expected-tag` prints the tag for the current manifest.
+Publication runs only for a release tag; pushing to `main` never publishes.
 See [Releasing](<fumadocs/content/docs/(reference)/(repository-development)/releasing.mdx>)
-for publication checks, credentials, and testing the actual Maven artifacts.
+for the tag format, publication checks, credentials, and artifact verification,
+and [Gradle plugin task reference](<fumadocs/content/docs/(reference)/(repository-development)/(plugin)/gradle-plugin.mdx>)
+for the complete task set.
 
 ## Architecture Diagram
 

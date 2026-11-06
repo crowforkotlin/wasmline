@@ -84,8 +84,12 @@ allprojects {
                 signAllPublications()
             }
             pom {
-                description.set("Wasmline")
-                name.set("Wasmline")
+                description.set(
+                    "Kotlin Multiplatform APIs for loading and calling WASI WebAssembly plugins " +
+                        "on Android, iOS, macOS, Linux, Windows, and the Web, with Wasmtime-backed " +
+                        "AOT execution and signed plugin packages.",
+                )
+                name.set(project.name)
                 url.set("https://github.com/crowforkotlin/wasmline/")
                 licenses {
                     license {
