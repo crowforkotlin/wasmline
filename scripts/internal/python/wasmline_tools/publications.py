@@ -96,6 +96,8 @@ def verify_publications(repository: Path, version: str, require_apple: bool = Fa
         _require(metadata["component"]["version"] == version, f"{module}: stale module metadata version")
         checked_modules.add(module)
         native_platforms: set[tuple[str, str]] = set()
+        native_cinterop_variants: set[str] = set()
+        native_library_variants: set[str] = set()
         for variant in metadata["variants"]:
             attributes = variant.get("attributes", {})
             available = variant.get("available-at")
@@ -171,12 +173,24 @@ def verify_publications(repository: Path, version: str, require_apple: bool = Fa
                             ),
                             f"{module}: KLIB does not embed libwasmline_native.a",
                         )
-            if not available and module.startswith("wasmline-engine-") and attributes.get("org.jetbrains.kotlin.platform.type") == "native":
-                if attributes.get("org.gradle.category") == "library":
-                    _require(
-                        any(item["url"].endswith("-cinterop-wasmline.klib") for item in variant.get("files", [])),
-                        f"{module}: missing Native engine cinterop artifact",
-                    )
+            if (
+                not available
+                and module.startswith("wasmline-engine-")
+                and attributes.get("org.jetbrains.kotlin.platform.type") == "native"
+                and attributes.get("org.gradle.category") == "library"
+            ):
+                native_library_variants.add(variant["name"])
+                if any(item["url"].endswith("-cinterop-wasmline.klib") for item in variant.get("files", [])):
+                    native_cinterop_variants.add(variant["name"])
+        if module.startswith("wasmline-engine-") and native_library_variants:
+            # Each Native target publishes an ApiElements variant that must carry the
+            # cinterop KLIB. Metadata elements only ship the metadata JAR.
+            api_elements = {name for name in native_library_variants if name.endswith("ApiElements-published")}
+            _require(
+                api_elements <= native_cinterop_variants,
+                f"{module}: missing Native engine cinterop artifact in "
+                + ", ".join(sorted(api_elements - native_cinterop_variants)),
+            )
         if module in ("wasmline-engine-pulley-jvm", "wasmline-engine-cranelift-jvm"):
             _require(native_platforms == JNI_PLATFORMS.keys(), f"{module}: missing JVM native variants")
         if require_apple and module in APPLE_TARGETS:
