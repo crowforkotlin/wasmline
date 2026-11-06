@@ -105,16 +105,22 @@ jobs:
 
       - name: Install native build dependencies
         run: |
-          # Cap a stalled mirror at about one minute instead of hanging the job.
-          sudo apt-get update \
-            -o Acquire::Retries=2 \
-            -o Acquire::http::Timeout=20 \
-            -o Acquire::https::Timeout=20
-          sudo apt-get install -y \
-            -o Acquire::Retries=2 \
-            -o Acquire::http::Timeout=20 \
-            -o Acquire::https::Timeout=20 \
-            mingw-w64
+          # Zig cross-compiles and links itself; it only needs the MinGW runtime
+          # archives. The compiler package group is ~277 MB and stalled the job.
+          sudo timeout 120 apt-get update \
+            -o Acquire::Retries=1 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 ||
+            echo "apt-get update timed out or failed; continuing with cached indexes" >&2
+          sudo timeout 300 apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=1 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            mingw-w64-x86-64-dev
+          test -f /usr/x86_64-w64-mingw32/lib/libmingwex.a || {
+            echo "MinGW runtime archives are missing after install" >&2
+            exit 1
+          }
           NDK_DIR=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)
           if [ -z "$NDK_DIR" ]; then
             sdkmanager --install "ndk;27.0.12077973"
