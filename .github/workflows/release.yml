@@ -262,10 +262,17 @@ jobs:
         run: ./scripts/wasmline wasmtime download --engine all --jobs 4
 
       - name: Prepare Kotlin Native cross toolchains
+        # Apple targets are declared only on macOS, so the iOS/macOS cinterop
+        # tasks exist only on that host. Publication verification requires a
+        # cinterop KLIB in every published Native variant.
         run: >-
           ./gradlew :wasmline:cinteropWasmlineLinuxX64
           :wasmline:cinteropWasmlineLinuxArm64
           :wasmline:cinteropWasmlineMingwX64
+          :wasmline-engine-pulley:cinteropWasmlineIosArm64
+          :wasmline-engine-pulley:cinteropWasmlineIosSimulatorArm64
+          :wasmline-engine-pulley:cinteropWasmlineMacosArm64
+          :wasmline-engine-cranelift:cinteropWasmlineMacosArm64
           --no-daemon
 
       - name: Generate all multiplatform publication metadata
