@@ -118,7 +118,7 @@ jobs:
 
       - name: Setup Android NDK
         run: |
-          NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)
+          NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort | tail -1)
           if [ -z "$NDK_DIR" ]; then
             sdkmanager --install "ndk;27.0.12077973"
             NDK_DIR="$ANDROID_HOME/ndk/27.0.12077973"
@@ -211,7 +211,7 @@ jobs:
 
       - name: Setup Android NDK
         run: |
-          NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)
+          NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort | tail -1)
           if [ -z "$NDK_DIR" ]; then
             sdkmanager --install "ndk;27.0.12077973"
             NDK_DIR="$ANDROID_HOME/ndk/27.0.12077973"

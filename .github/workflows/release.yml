@@ -121,7 +121,8 @@ jobs:
             echo "MinGW runtime archives are missing after install" >&2
             exit 1
           }
-          NDK_DIR=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)
+          # BSD sort has no -V; sorting by path is enough for version-named directories.
+          NDK_DIR=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort | tail -1)
           if [ -z "$NDK_DIR" ]; then
             sdkmanager --install "ndk;27.0.12077973"
             NDK_DIR="$ANDROID_HOME/ndk/27.0.12077973"
@@ -238,23 +239,10 @@ jobs:
 
       - name: Install configured Android platform
         run: |
-          compile_sdk="$(python3 -c 'import tomllib; print(tomllib.load(open("gradle/libs.versions.toml", "rb"))["versions"]["android-compileSdk"])')"
-          # SDK packages carry a minor segment from API 36 on: android-37.0, not android-37.
-          available="$(sdkmanager --list | grep -oP 'platforms;android-\K[0-9]+(\.[0-9]+)?(?= )' | sort -u)"
-          package=""
-          for candidate in "${compile_sdk}" "${compile_sdk}.0"; do
-            if grep -qx "${candidate}" <<<"${available}"; then
-              package="${candidate}"
-              break
-            fi
-          done
-          if [ -z "${package}" ]; then
-            package="$(grep -x "${compile_sdk%%.*}\(\.[0-9]\+\)\?" <<<"${available}" | sort -V | tail -1)"
-          fi
-          if [ -z "${package}" ]; then
-            echo "No Android platform matches compileSdk ${compile_sdk}; available: ${available//$'\n'/, }" >&2
-            exit 1
-          fi
+          sdkmanager --list > "${RUNNER_TEMP}/sdkmanager-list.txt"
+          package="$(python3 scripts/internal/python/resolve_android_platform.py \
+            --compile-sdk "$(python3 -c 'import tomllib; print(tomllib.load(open("gradle/libs.versions.toml", "rb"))["versions"]["android-compileSdk"])')" \
+            --listing-file "${RUNNER_TEMP}/sdkmanager-list.txt")"
           echo "Installing platforms;android-${package}"
           sdkmanager "platforms;android-${package}"
 
