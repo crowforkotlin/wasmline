@@ -287,6 +287,9 @@ jobs:
       - name: Prepare local Maven publications
         run: ./gradlew publishToMavenLocal --no-daemon
 
+      - name: Inspect published Native variants
+        run: python3 scripts/internal/python/inspect_native_variants.py
+
       - name: Verify complete Maven publications
         run: ./scripts/release.sh verify-publications --require-apple
 
