@@ -179,17 +179,18 @@ def verify_publications(repository: Path, version: str, require_apple: bool = Fa
                 and attributes.get("org.jetbrains.kotlin.platform.type") == "native"
                 and attributes.get("org.gradle.category") == "library"
             ):
-                native_library_variants.add(variant["name"])
-                if any(item["url"].endswith("-cinterop-wasmline.klib") for item in variant.get("files", [])):
-                    native_cinterop_variants.add(variant["name"])
+                urls = [item["url"] for item in variant.get("files", [])]
+                # Metadata variants publish only the metadata JAR; the ApiElements
+                # variant for the same target publishes the KLIB pair.
+                if any(url.endswith("-metadata.jar") for url in urls):
+                    continue
+                native_library_variants.add(variant.get("name", ""))
+                if any(url.endswith("-cinterop-wasmline.klib") for url in urls):
+                    native_cinterop_variants.add(variant.get("name", ""))
         if module.startswith("wasmline-engine-") and native_library_variants:
-            # Each Native target publishes an ApiElements variant that must carry the
-            # cinterop KLIB. Metadata elements only ship the metadata JAR.
-            api_elements = {name for name in native_library_variants if name.endswith("ApiElements-published")}
             _require(
-                api_elements <= native_cinterop_variants,
-                f"{module}: missing Native engine cinterop artifact in "
-                + ", ".join(sorted(api_elements - native_cinterop_variants)),
+                len(native_cinterop_variants) > 0 and native_library_variants <= native_cinterop_variants,
+                f"{module}: missing Native engine cinterop artifact",
             )
         if module in ("wasmline-engine-pulley-jvm", "wasmline-engine-cranelift-jvm"):
             _require(native_platforms == JNI_PLATFORMS.keys(), f"{module}: missing JVM native variants")
