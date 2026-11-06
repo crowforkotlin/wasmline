@@ -233,7 +233,24 @@ jobs:
       - name: Install configured Android platform
         run: |
           compile_sdk="$(python3 -c 'import tomllib; print(tomllib.load(open("gradle/libs.versions.toml", "rb"))["versions"]["android-compileSdk"])')"
-          sdkmanager "platforms;${compile_sdk}"
+          # SDK packages carry a minor segment from API 36 on: android-37.0, not android-37.
+          available="$(sdkmanager --list | grep -oP 'platforms;android-\K[0-9]+(\.[0-9]+)?(?= )' | sort -u)"
+          package=""
+          for candidate in "${compile_sdk}" "${compile_sdk}.0"; do
+            if grep -qx "${candidate}" <<<"${available}"; then
+              package="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${package}" ]; then
+            package="$(grep -x "${compile_sdk%%.*}\(\.[0-9]\+\)\?" <<<"${available}" | sort -V | tail -1)"
+          fi
+          if [ -z "${package}" ]; then
+            echo "No Android platform matches compileSdk ${compile_sdk}; available: ${available//$'\n'/, }" >&2
+            exit 1
+          fi
+          echo "Installing platforms;android-${package}"
+          sdkmanager "platforms;android-${package}"
 
       - name: Download verified JVM and Android engine assets
         uses: actions/download-artifact@v4
