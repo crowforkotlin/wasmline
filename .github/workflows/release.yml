@@ -297,7 +297,7 @@ jobs:
         working-directory: wasmline-plugin-test
         run: ./gradlew jvmTest -Pwasmline.source=false --no-daemon
 
-      - name: Prepare release catalog assets
+      - name: Prepare release assets
         run: ./scripts/release.sh prepare-assets build/release
 
       - name: Generate release notes
@@ -319,6 +319,8 @@ jobs:
           path: |
             build/release/aot-compatibility.json
             build/release/aot-compatibility.json.sha256
+            build/release/wasmline.wit
+            build/release/wasmline.wit.sha256
             build/release-notes.md
           if-no-files-found: error
           retention-days: 1
@@ -412,6 +414,9 @@ jobs:
           files: |
             build/release/aot-compatibility.json
             build/release/aot-compatibility.json.sha256
+            build/release/wasmline.wit
+            build/release/wasmline.wit.sha256
+          fail_on_unmatched_files: true
           draft: false
           prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
           make_latest: ${{ needs.validate.outputs.make_latest }}

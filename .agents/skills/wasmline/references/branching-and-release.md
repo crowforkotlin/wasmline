@@ -130,7 +130,7 @@ Before either action:
 4. Confirm Maven credentials and signing configuration.
 5. Push the matching release tag to trigger publication of the same Maven version.
 
-The GitHub Actions CI workflow has no publication or release jobs; a successful CI run is not a release. Publication is implemented by `.github/workflows/release.yml`, which runs only for a validated release tag in the format above. It publishes Maven artifacts, then creates the matching GitHub Release with `aot-compatibility.json` and its checksum. The local `scripts/release.sh` validates inputs and prepares release notes/assets but never creates tags or publishes artifacts. A candidate can be committed and pushed directly to `main`; the release procedure does not require a PR.
+The GitHub Actions CI workflow has no publication or release jobs; a successful CI run is not a release. Publication is implemented by `.github/workflows/release.yml`, which runs only for a validated release tag in the format above. It publishes Maven artifacts, then creates the matching GitHub Release with `aot-compatibility.json`, canonical `wasmline.wit`, and their SHA-256 checksums. The local `scripts/release.sh` validates inputs and prepares release notes/assets but never creates tags or publishes artifacts. A candidate can be committed and pushed directly to `main`; the release procedure does not require a PR.
 
 For the first unpublished alpha/beta release, set `wasmline_version` and the
 catalog's current, minimum, and first range-start versions to the candidate.

@@ -2,7 +2,7 @@
 title: Releasing
 description: Prepare Maven artifacts, verify consumers, and understand release tags
 createdAt: 2026-10-30
-updatedAt: 2026-11-02
+updatedAt: 2026-11-07
 ---
 
 # Releasing
@@ -198,6 +198,18 @@ script adds those changes to the generated compatibility metadata:
 ./scripts/release.sh write-notes build/release-notes.md
 ```
 
+`prepare-assets` writes four release assets to `build/release/`:
+
+- `aot-compatibility.json` and `aot-compatibility.json.sha256`;
+- `wasmline.wit` and `wasmline.wit.sha256`.
+
+The WIT is copied unchanged from the canonical resource in
+`wasmline-plugin-core/src/main/resources/META-INF/wasmline/wit/wasmline-service/wasmline.wit`.
+Non-Kotlin developers can download it from the matching GitHub Release and use
+`wit-bindgen` to generate bindings for `WASMLINE_SERVICE` Component plugins.
+Components using custom `COMPONENT_EXPORT` interfaces share their own business
+WIT instead.
+
 Review `build/release-notes.md` before tagging. The workflow uses it as the
 GitHub Release body, with the Wasmtime fork distribution, AOT generation,
 changed backends, and whether this release introduces a generation. Keep the
@@ -234,7 +246,7 @@ Tag push starts **Release Wasmline** in
 | `validate-native-aot-jvm` | Build JVM/Android engine assets and run native AOT, JVM, and dynamic plugin tests |
 | `validate-native-aot-ios` | Run the iOS simulator Pulley tests in parallel with the JVM job |
 | `publish-maven` | Prepare all targets on macOS, verify local publications and consumers, then publish to Central |
-| `create-github-release` | Create the release from the generated notes and upload the catalog and checksum |
+| `create-github-release` | Create the release from the generated notes and upload the catalog, WIT, and their checksums |
 
 Alpha/beta releases are marked **Pre-release** and do not become **Latest**.
 The advisory AOT check continues to use the latest stable catalog; before the

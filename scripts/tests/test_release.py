@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Regression tests for prerelease versions, release tags, and AOT rebuilds."""
+"""Regression tests for release versions, tags, assets, and AOT rebuilds."""
 
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import shutil
 import subprocess
@@ -182,7 +183,7 @@ class ReleaseScriptTest(unittest.TestCase):
         scripts.mkdir()
         self.script = scripts / "release.sh"
         shutil.copyfile(PROJECT_ROOT / "scripts" / "release.sh", self.script)
-        # Isolate the release script's tag validation from the separate version/AOT suites.
+        # Isolate release script behavior from the separate version/AOT suites.
         tooling = scripts / "wasmline"
         tooling.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
         tooling.chmod(0o700)
@@ -256,6 +257,47 @@ class ReleaseScriptTest(unittest.TestCase):
         ):
             with self.subTest(tag=tag):
                 self.assertNotEqual(0, self.run_script("verify-tag", tag).returncode)
+
+    @unittest.skipUnless(
+        shutil.which("sha256sum") or shutil.which("shasum"),
+        "Release assets require sha256sum or shasum.",
+    )
+    def test_assets_include_canonical_wit_and_checksums(self) -> None:
+        self.write_inputs("12.3.4-beta1")
+        wit_resource = Path(
+            "wasmline-plugin-core/src/main/resources/META-INF/wasmline/wit/wasmline-service/wasmline.wit"
+        )
+        input_wit = self.root / wit_resource
+        input_wit.parent.mkdir(parents=True)
+        shutil.copyfile(PROJECT_ROOT / wit_resource, input_wit)
+        sources = {
+            "aot-compatibility.json": self.root / "aot-compatibility.json",
+            "wasmline.wit": input_wit,
+        }
+        expected_files = set(sources) | {f"{name}.sha256" for name in sources}
+        custom_output = self.root / "release assets"
+        for arguments, output_directory in (
+            ((), self.root / "build" / "release"),
+            ((str(custom_output),), custom_output),
+        ):
+            with self.subTest(output_directory=output_directory):
+                result = self.run_script("prepare-assets", *arguments)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(expected_files, {path.name for path in output_directory.iterdir()})
+                for name, source in sources.items():
+                    expected_bytes = source.read_bytes()
+                    self.assertEqual(expected_bytes, (output_directory / name).read_bytes())
+                    self.assertEqual(
+                        f"{hashlib.sha256(expected_bytes).hexdigest()}  {name}\n",
+                        (output_directory / f"{name}.sha256").read_text(encoding="utf-8"),
+                    )
+
+    def test_assets_fail_when_canonical_wit_is_missing(self) -> None:
+        self.write_inputs("12.3.4-beta1")
+        result = self.run_script("prepare-assets", str(self.root / "build" / "release"))
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("wasmline.wit", result.stderr)
+        self.assertNotIn("Release assets prepared", result.stdout)
 
     def test_notes_include_changelog_with_and_without_a_new_generation(self) -> None:
         (self.root / "CHANGELOG.md").write_text(

@@ -284,7 +284,14 @@ Maven credentials and signing material are supplied through the corresponding
 artifacts. The workflow then creates these release assets:
 
 - `aot-compatibility.json`;
-- `aot-compatibility.json.sha256`.
+- `aot-compatibility.json.sha256`;
+- `wasmline.wit`;
+- `wasmline.wit.sha256`.
+
+The WIT asset is copied unchanged from the canonical Wasmline Service resource
+in `wasmline-plugin-core`. Non-Kotlin Component plugins using `WASMLINE_SERVICE`
+can use it to generate language bindings; custom `COMPONENT_EXPORT` interfaces
+use their own business WIT.
 
 Release notes include the Wasmtime fork distribution, AOT generation, changed
 backends, whether the current range introduces a generation, and the stable

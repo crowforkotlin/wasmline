@@ -2,7 +2,7 @@
 title: 发行
 description: 准备 Maven 构件，验证使用方，并说明发行 tag 的含义
 createdAt: 2026-10-30
-updatedAt: 2026-11-02
+updatedAt: 2026-11-07
 ---
 
 # 发行
@@ -178,6 +178,17 @@ Central 会随顶层 group 一并授予子命名空间，插件 marker 无需单
 ./scripts/release.sh write-notes build/release-notes.md
 ```
 
+`prepare-assets` 在 `build/release/` 中生成四个发行附件：
+
+- `aot-compatibility.json` 和 `aot-compatibility.json.sha256`；
+- `wasmline.wit` 和 `wasmline.wit.sha256`。
+
+WIT 原样复制自插件模块中的接口定义文件
+`wasmline-plugin-core/src/main/resources/META-INF/wasmline/wit/wasmline-service/wasmline.wit`。
+非 Kotlin 开发者可以从对应的 GitHub Release 下载它，并用 `wit-bindgen`
+为 `WASMLINE_SERVICE` 组件插件生成绑定。使用自定义 `COMPONENT_EXPORT`
+接口的组件则共享自己的业务 WIT。
+
 创建 tag 前查看 `build/release-notes.md`。工作流将该文件作为 GitHub Release
 正文，其中包含 Wasmtime fork distribution、AOT generation、changed backends
 以及本次是否引入新 generation。Central 发布成功前，changelog 保留在 `Unreleased` 下。
@@ -211,7 +222,7 @@ git push origin "${release_tag}"
 | `validate-native-aot-jvm` | 构建 JVM/Android engine 文件，运行原生 AOT、JVM 和动态插件测试 |
 | `validate-native-aot-ios` | 与 JVM job 并行运行 iOS 模拟器 Pulley 测试 |
 | `publish-maven` | 在 macOS 准备完整目标，验证本地发布与使用方，然后发布 Central |
-| `create-github-release` | 使用生成的正文创建 Release，上传 catalog 与摘要 |
+| `create-github-release` | 使用生成的正文创建 Release，上传 catalog、WIT 及其摘要文件 |
 
 alpha/beta 版本会标记为 **Pre-release**，不会成为 **Latest**。
 AOT 建议检查仍使用最新稳定 catalog；首次正式版发布前可能报告远程状态不可用。

@@ -6,6 +6,7 @@ SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd "${SCRIPT_ROOT}/.." && pwd)"
 MANIFEST_FILE="${REPOSITORY_ROOT}/versions.json"
 CATALOG_FILE="${REPOSITORY_ROOT}/aot-compatibility.json"
+WIT_FILE="${REPOSITORY_ROOT}/wasmline-plugin-core/src/main/resources/META-INF/wasmline/wit/wasmline-service/wasmline.wit"
 
 usage() {
   cat <<'EOF'
@@ -170,16 +171,20 @@ sha256_digest() {
 prepare_assets() {
   local output_directory="${1:-${REPOSITORY_ROOT}/build/release}"
   local output_catalog="${output_directory}/aot-compatibility.json"
-  local output_checksum="${output_directory}/aot-compatibility.json.sha256"
-  local digest temporary_checksum
+  local output_wit="${output_directory}/wasmline.wit"
+  local output_file output_checksum digest temporary_checksum
 
   verify_repository
   mkdir -p "${output_directory}"
   cp "${CATALOG_FILE}" "${output_catalog}"
-  digest="$(sha256_digest "${output_catalog}")"
-  temporary_checksum="$(mktemp "${output_checksum}.XXXXXX")"
-  printf '%s  aot-compatibility.json\n' "${digest}" >"${temporary_checksum}"
-  mv -f "${temporary_checksum}" "${output_checksum}"
+  cp "${WIT_FILE}" "${output_wit}"
+  for output_file in "${output_catalog}" "${output_wit}"; do
+    output_checksum="${output_file}.sha256"
+    digest="$(sha256_digest "${output_file}")"
+    temporary_checksum="$(mktemp "${output_checksum}.XXXXXX")"
+    printf '%s  %s\n' "${digest}" "${output_file##*/}" >"${temporary_checksum}"
+    mv -f "${temporary_checksum}" "${output_checksum}"
+  done
   printf 'Release assets prepared in %s.\n' "${output_directory}"
 }
 

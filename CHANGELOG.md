@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-No unreleased changes.
+- Publish canonical `wasmline.wit` and its SHA-256 checksum as GitHub Release
+  assets for non-Kotlin Wasmline Service Component plugins.
 
 ## 1.0.0-beta1
 
