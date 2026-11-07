@@ -283,7 +283,13 @@ class ReleaseScriptTest(unittest.TestCase):
                 result = self.run_script("write-notes", str(output_file))
                 self.assertEqual(0, result.returncode, result.stderr)
                 notes = output_file.read_text(encoding="utf-8")
-                self.assertIn(f"# Wasmline {version}", notes)
+                # GitHub renders the release name as the heading, so the body
+                # must not repeat it.
+                self.assertFalse(
+                    any(line.startswith("#") and "wasmline" in line.lower() and version in line
+                        for line in notes.splitlines()),
+                    notes,
+                )
                 self.assertIn("A synthetic candidate.", notes)
                 self.assertIn("- Consumer verification.", notes)
                 self.assertIn(f"- New AOT generation in this release: `{added}`", notes)

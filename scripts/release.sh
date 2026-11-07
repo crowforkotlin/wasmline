@@ -220,7 +220,8 @@ write_notes() {
     '(.ranges[-1].fromWasmlineVersion == $version) | tostring')"
   temporary_file="$(mktemp "${output_file}.XXXXXX")"
   {
-    printf '# Wasmline %s\n\n' "${wasmline_version}"
+    # GitHub renders the release name as the page heading; repeating it in the
+    # body would show the same title twice.
     printf '%s\n\n' "${release_changes}"
     printf '## Runtime compatibility\n\n'
     printf -- '- Wasmtime fork distribution: `%s`\n' "${wasmtime_release_version}"

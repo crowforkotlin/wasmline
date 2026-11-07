@@ -290,7 +290,7 @@ Release notes include the Wasmtime fork distribution, AOT generation, changed
 backends, whether the current range introduces a generation, and the stable
 compatibility documentation URL.
 
-The title is `Wasmline <Maven-version>`. Alpha/beta releases use
+The title is `wasmline <Maven-version>`. Alpha/beta releases use
 `prerelease=true` and `make_latest=false`; stable releases use
 `prerelease=false` and `make_latest=true`. Prereleases do not replace the
 `releases/latest` catalog used by the advisory check. Before the first stable

@@ -111,7 +111,7 @@ Tags are immutable. Do not move or reuse a release tag.
 `prerelease`, and `make_latest` values consumed by the workflow. Alpha/beta
 versions use `prerelease=true` and `make_latest=false`; stable versions use
 `prerelease=false` and `make_latest=true`. The GitHub Release title is
-`Wasmline <Maven-version>`, and its body comes from `CHANGELOG.md` plus generated
+`wasmline <Maven-version>`, and its body comes from `CHANGELOG.md` plus generated
 runtime compatibility metadata.
 
 The tag suffix describes the Wasmtime version linked by that Wasmline release.

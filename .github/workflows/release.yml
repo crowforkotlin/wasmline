@@ -407,7 +407,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Wasmline ${{ needs.validate.outputs.version }}
+          name: wasmline ${{ needs.validate.outputs.version }}
           body_path: build/release-notes.md
           files: |
             build/release/aot-compatibility.json
