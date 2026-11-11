@@ -44,7 +44,7 @@ internal abstract class WasmlineServerDeployTask : DefaultTask() {
     @get:Input
     abstract val port: Property<Int>
 
-    /** Host address the HTTP server binds to. Default: "0.0.0.0". */
+    /** Host address the HTTP server binds to. Default: "127.0.0.1" (loopback only). */
     @get:Input
     abstract val host: Property<String>
 
