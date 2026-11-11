@@ -588,14 +588,36 @@ internal object WasmlineRemotePackageResolution {
         null
     }
 
+    /**
+     * Returns the manifest URL for [sourceUrl], keeping any query or fragment intact.
+     *
+     * A URL that does not name a `.wlm` file is treated as a package directory,
+     * so `https://host/plugin?channel=stable` becomes
+     * `https://host/plugin/manifest.wlm?channel=stable`.
+     */
     private fun resolveManifestUrl(sourceUrl: String): String {
         val url = sourceUrl.trim()
-        return if (url.endsWith(".wlm")) url else url.trimEnd('/') + "/$MANIFEST_FILE_NAME"
+        if (url.isEmpty()) return MANIFEST_FILE_NAME
+        val suffixStart = url.indexOfAny(charArrayOf('?', '#'))
+        val path = if (suffixStart < 0) url else url.substring(0, suffixStart)
+        val suffix = if (suffixStart < 0) "" else url.substring(suffixStart)
+        if (path.endsWith(".wlm")) return path + suffix
+        return path.trimEnd('/') + "/$MANIFEST_FILE_NAME" + suffix
     }
 
+    /**
+     * Returns the content-addressed URL for [relativePath] beside [manifestUrl].
+     *
+     * The query and fragment of the manifest URL are preserved so signed or
+     * tokenized package URLs keep working for the artifact request.
+     */
     private fun resolveContentAddressedUrl(manifestUrl: String, relativePath: String): String {
-        val baseUrl = manifestUrl.substringBeforeLast('/', missingDelimiterValue = "")
-        return if (baseUrl.isEmpty()) relativePath else "$baseUrl/$relativePath"
+        val suffixStart = manifestUrl.indexOfAny(charArrayOf('?', '#'))
+        val path = if (suffixStart < 0) manifestUrl else manifestUrl.substring(0, suffixStart)
+        val suffix = if (suffixStart < 0) "" else manifestUrl.substring(suffixStart)
+        val baseUrl = path.substringBeforeLast('/', missingDelimiterValue = "")
+        val artifactPath = if (baseUrl.isEmpty()) relativePath else "$baseUrl/$relativePath"
+        return artifactPath + suffix
     }
 
     private fun defaultFileCacheOrNull(maxCacheBytes: Long): WasmlineFileCache? =

@@ -97,6 +97,48 @@ class WasmlineRemotePackageCacheContractTest {
         )
     }
 
+    @Test
+    fun manifestUrlQueryIsPreservedForManifestAndArtifact() = runTest {
+        val artifactBytes = byteArrayOf(1, 1, 1)
+        val digest = artifactBytes.toByteString().sha256().hex()
+        val envelopeBytes = signAndEncode(rawManifest(digest, artifactBytes.size.toLong()))
+        val requested = mutableListOf<String>()
+
+        val resolution = resolve(
+            manifestUrl = "$MANIFEST_URL?channel=stable",
+            cache = WasmlineNoOpCache,
+            networkClient = object : WasmlineNetworkClient {
+                override suspend fun fetch(url: String): WasmlineHttpResponse = error("Remote packages stream with fetchTo.")
+
+                override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+                    requested += url
+                    return when {
+                        url == "$MANIFEST_URL?channel=stable" -> {
+                            sink.write(envelopeBytes, 0, envelopeBytes.size)
+                            WasmlineHttpStatus(200)
+                        }
+
+                        url.endsWith("$digest.wasm?channel=stable") -> {
+                            sink.write(artifactBytes, 0, artifactBytes.size)
+                            WasmlineHttpStatus(200)
+                        }
+
+                        else -> WasmlineHttpStatus(404)
+                    }
+                }
+            },
+        )
+
+        val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
+        val artifact = assertIs<WasmlineSource.LocalArtifactPath>(continuation.source)
+        assertEquals("$MANIFEST_URL?channel=stable", requested.first())
+        assertTrue(
+            requested[1].endsWith(".wasm?channel=stable"),
+            "Artifact request must keep the query string, got ${requested[1]}",
+        )
+        assertTrue(File(artifact.path).isFile)
+    }
+
     private fun clientFor(envelopeBytes: ByteArray, artifactBytes: ByteArray, digest: String): WasmlineNetworkClient =
         object : WasmlineNetworkClient {
             override suspend fun fetch(url: String): WasmlineHttpResponse = error("Remote packages stream with fetchTo.")
