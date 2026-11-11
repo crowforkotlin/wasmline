@@ -319,7 +319,11 @@ Run in a project that applies `id("io.github.crowforkotlin.wasmline")`:
 ./gradlew wasmlineServerDeploy      # build and serve the configured package
 ```
 
-`wasmlineServerDeploy` serves the `DEBUG` variant at `http://localhost:8080`.
+`wasmlineServerDeploy` serves the `DEBUG` variant at `http://localhost:8080` and
+binds to `127.0.0.1` by default, so only the local host can reach it. Requests
+resolve inside the served package directory only: `..` segments, absolute
+paths, and symlinks that leave the directory return 404. Set `server.host` to a
+specific interface address when another machine must download the package.
 Select another variant with a typed value:
 
 ```kotlin

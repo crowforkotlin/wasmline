@@ -20,6 +20,15 @@ internal object WasmlineTypedInvocationCodec {
     private const val MAX_STRING_SIZE = 16L * 1024L * 1024L
     private const val MAX_DEPTH = 64
 
+    /** Smallest encoded component value: one tag byte plus one payload byte. */
+    private const val MIN_COMPONENT_VALUE_BYTES = 2
+
+    /** Smallest encoded raw scalar: one tag byte plus an i32/f32 payload. */
+    private const val MIN_RAW_VALUE_BYTES = 1 + 4
+
+    /** Smallest encoded string: its u32 length prefix. */
+    private const val MIN_STRING_BYTES = 4
+
     /** Encodes scalar Core Wasm values for a native raw-session call. */
     fun encodeRawArguments(values: List<RawValue>): WasmlineCallResult<ByteArray> = encodeArguments { writer ->
         writer.count(values.size)
@@ -29,7 +38,7 @@ internal object WasmlineTypedInvocationCodec {
     /** Decodes canonical Core Wasm values passed to a native host import. */
     fun decodeRawArguments(bytes: ByteArray): WasmlineCallResult<List<RawValue>> {
         val reader = Reader(bytes)
-        val count = reader.count() ?: return reader.failure()
+        val count = reader.count(MIN_RAW_VALUE_BYTES) ?: return reader.failure()
         val values = ArrayList<RawValue>(count.toInt())
         repeat(count.toInt()) {
             values += readRawValue(reader) ?: return reader.failure()
@@ -77,7 +86,7 @@ internal object WasmlineTypedInvocationCodec {
 
     fun decodeComponentArguments(bytes: ByteArray): WasmlineCallResult<List<WasmlineComponentValue>> {
         val reader = Reader(bytes)
-        val count = reader.count() ?: return reader.failure()
+        val count = reader.count(MIN_COMPONENT_VALUE_BYTES) ?: return reader.failure()
         val values = ArrayList<WasmlineComponentValue>(count.toInt())
         repeat(count.toInt()) {
             values += readComponentValue(reader, 0) ?: return reader.failure()
@@ -338,7 +347,9 @@ internal object WasmlineTypedInvocationCodec {
         val rawCode = reader.u32() ?: return reader.fail("Typed invocation response error code is missing.")
         val message = reader.string() ?: return reader.fail("Typed invocation response message is truncated.")
         val details = reader.rawBytes() ?: return reader.fail("Typed invocation response details are truncated.")
-        val valueCount = reader.count() ?: return reader.fail("Typed invocation response value count is invalid.")
+        val minimumItemBytes = if (expectedKind == RAW_KIND) MIN_RAW_VALUE_BYTES else MIN_COMPONENT_VALUE_BYTES
+        val valueCount = reader.count(minimumItemBytes)
+            ?: return reader.fail("Typed invocation response value count is invalid.")
 
         if (kind != expectedKind) return reader.fail("Typed invocation response value kind is invalid.")
         if (status != STATUS_SUCCESS && status != STATUS_FAILURE) return reader.fail("Typed invocation response status is invalid.")
@@ -401,7 +412,7 @@ internal object WasmlineTypedInvocationCodec {
     }
 
     private fun readValues(reader: Reader, depth: Int): List<WasmlineComponentValue>? {
-        val count = reader.count() ?: return null
+        val count = reader.count(MIN_COMPONENT_VALUE_BYTES) ?: return null
         val values = ArrayList<WasmlineComponentValue>(count.toInt())
         repeat(count.toInt()) {
             values += readComponentValue(reader, depth + 1) ?: return null
@@ -410,7 +421,7 @@ internal object WasmlineTypedInvocationCodec {
     }
 
     private fun readRecord(reader: Reader, depth: Int): List<WasmlineComponentValue.RecordField>? {
-        val count = reader.count() ?: return null
+        val count = reader.count(MIN_STRING_BYTES + MIN_COMPONENT_VALUE_BYTES) ?: return null
         val fields = ArrayList<WasmlineComponentValue.RecordField>(count.toInt())
         repeat(count.toInt()) {
             val name = reader.string() ?: return null
@@ -445,14 +456,14 @@ internal object WasmlineTypedInvocationCodec {
     }
 
     private fun readFlags(reader: Reader): List<String>? {
-        val count = reader.count() ?: return null
+        val count = reader.count(MIN_STRING_BYTES) ?: return null
         val names = ArrayList<String>(count.toInt())
         repeat(count.toInt()) { names += reader.string() ?: return null }
         return names
     }
 
     private fun readMap(reader: Reader, depth: Int): List<WasmlineComponentValue.MapEntry>? {
-        val count = reader.count() ?: return null
+        val count = reader.count(2 * MIN_COMPONENT_VALUE_BYTES) ?: return null
         val entries = ArrayList<WasmlineComponentValue.MapEntry>(count.toInt())
         repeat(count.toInt()) {
             val key = readComponentValue(reader, depth + 1) ?: return null
@@ -623,10 +634,21 @@ internal object WasmlineTypedInvocationCodec {
             return value
         }
 
-        fun count(): Long? {
+        /**
+         * Reads a checked element count.
+         *
+         * @param minimumItemBytes smallest encoded size of one element. A count
+         *   that cannot be satisfied by the remaining payload is rejected before
+         *   any caller sizes a collection from it.
+         */
+        fun count(minimumItemBytes: Int): Long? {
             val value = u32() ?: return null
             if (value > MAX_COLLECTION_SIZE) {
                 fail("Typed invocation collection is too large.")
+                return null
+            }
+            if (value > remaining() / minimumItemBytes) {
+                fail("Typed invocation collection is truncated.")
                 return null
             }
             return value

@@ -14,7 +14,14 @@ import crow.wasmline.WasmlineInvocationProtocol
  * Author: crowforkotlin
  */
 object WasmlineManifestWireFormat {
-    const val CURRENT_FORMAT_VERSION: Int = 1
+    /**
+     * Current manifest wire version.
+     *
+     * Version 2 signs `publicKeyId`, so the key identifier cannot be relabelled
+     * on an existing signed envelope. Version 1 signed only the format version
+     * and the payload.
+     */
+    const val CURRENT_FORMAT_VERSION: Int = 2
     const val SIGNATURE_ALGORITHM: String = "Ed25519"
     const val SIGNATURE_SIZE_BYTES: Int = 64
 
@@ -126,20 +133,50 @@ data class WasmlineManifestLimits(
 object WasmlineManifestProtocol {
     private const val SIGNING_DOMAIN: String = "wasmline.manifest\u0000"
 
-    /** Builds the exact domain-separated Ed25519 signing input. */
-    fun signingMessage(formatVersion: Int, payload: ByteArray): ByteArray {
+    /** Format version that signed only the version number and the payload. */
+    private const val LEGACY_FORMAT_VERSION: Int = 1
+
+    /**
+     * Builds the exact domain-separated Ed25519 signing input.
+     *
+     * @param publicKeyId key identifier carried by the envelope. It is signed
+     *   from [CURRENT_FORMAT_VERSION] onward and omitted for version 1.
+     */
+    fun signingMessage(formatVersion: Int, publicKeyId: String?, payload: ByteArray): ByteArray {
         require(formatVersion > 0) { "Manifest formatVersion must be positive." }
         val domain = SIGNING_DOMAIN.encodeToByteArray()
-        return ByteArray(domain.size + UInt.SIZE_BYTES + payload.size).also { result ->
+        if (formatVersion == LEGACY_FORMAT_VERSION) {
+            return ByteArray(domain.size + UInt.SIZE_BYTES + payload.size).also { result ->
+                domain.copyInto(result)
+                val offset = domain.size
+                result[offset] = (formatVersion ushr 24).toByte()
+                result[offset + 1] = (formatVersion ushr 16).toByte()
+                result[offset + 2] = (formatVersion ushr 8).toByte()
+                result[offset + 3] = formatVersion.toByte()
+                payload.copyInto(result, destinationOffset = offset + UInt.SIZE_BYTES)
+            }
+        }
+        val keyIdBytes = publicKeyId?.encodeToByteArray() ?: ByteArray(0)
+        val headerSize = domain.size + UInt.SIZE_BYTES + UInt.SIZE_BYTES + keyIdBytes.size
+        return ByteArray(headerSize + payload.size).also { result ->
             domain.copyInto(result)
             val offset = domain.size
             result[offset] = (formatVersion ushr 24).toByte()
             result[offset + 1] = (formatVersion ushr 16).toByte()
             result[offset + 2] = (formatVersion ushr 8).toByte()
             result[offset + 3] = formatVersion.toByte()
-            payload.copyInto(result, destinationOffset = offset + UInt.SIZE_BYTES)
+            val keyIdOffset = offset + UInt.SIZE_BYTES
+            result[keyIdOffset] = (keyIdBytes.size ushr 24).toByte()
+            result[keyIdOffset + 1] = (keyIdBytes.size ushr 16).toByte()
+            result[keyIdOffset + 2] = (keyIdBytes.size ushr 8).toByte()
+            result[keyIdOffset + 3] = keyIdBytes.size.toByte()
+            keyIdBytes.copyInto(result, destinationOffset = keyIdOffset + UInt.SIZE_BYTES)
+            payload.copyInto(result, destinationOffset = headerSize)
         }
     }
+
+    /** Builds a signing input for an envelope whose key identifier is unused. */
+    fun signingMessage(formatVersion: Int, payload: ByteArray): ByteArray = signingMessage(formatVersion, null, payload)
 
     /** Resolves the immutable package-relative artifact path for a digest and format. */
     fun artifactRelativePath(sha256: String, format: WasmlineArtifactFormat): String {

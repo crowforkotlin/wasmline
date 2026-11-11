@@ -135,7 +135,7 @@ class ManifestSigner {
         val formatVersion = WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION
         val privateKey = resolveKey(request.signingKey).decodeHex().toByteArray()
         val signature = WasmlineSigningTooling.signEd25519(
-            WasmlineManifestProtocol.signingMessage(formatVersion, payload),
+            WasmlineManifestProtocol.signingMessage(formatVersion, request.publicKeyId, payload),
             privateKey,
         )
         val envelope = SignedManifestEnvelope(

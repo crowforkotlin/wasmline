@@ -27,10 +27,7 @@ internal class WebWasmPlugin(binary: ByteArray) {
     private var memory: WebWasmMemory? = null
     private val entryFunction: WebWasmFunction
 
-    private var inboundAction: ByteArray = EMPTY
-    private var inboundPayload: ByteArray = EMPTY
-    private var inboundResponse: ByteArray = EMPTY
-    private var outboundOverflow: ByteArray = EMPTY
+    private val invocation = WebWasmInvocationState()
 
     init {
         val module = WebWasmRuntime.compile(binary)
@@ -45,29 +42,33 @@ internal class WebWasmPlugin(binary: ByteArray) {
         this.dispatcher = dispatcher
     }
 
-    /** Calls the wasm entry function with action and payload. */
+    /**
+     * Calls the wasm entry function with action and payload.
+     *
+     * A nested call on the same module is answered with
+     * [WasmlineErrorCode.REENTRANT_CALL] instead of silently overwriting the
+     * outer invocation state, matching the native backend.
+     */
     fun call(action: String, payload: ByteArray): ByteArray {
-        inboundAction = action.encodeToByteArray()
-        inboundPayload = payload
-        inboundResponse = EMPTY
-        outboundOverflow = EMPTY
-
-        entryFunction.invoke(
-            args = listOf(
-                WebWasmValue.I32(inboundAction.size),
-                WebWasmValue.I32(inboundPayload.size),
-            ),
-        )
-        return inboundResponse
+        invocation.begin(action, payload)?.let { return it }
+        return try {
+            entryFunction.invoke(
+                args = listOf(
+                    WebWasmValue.I32(invocation.inboundSize(0)),
+                    WebWasmValue.I32(invocation.inboundSize(1)),
+                ),
+            )
+            invocation.end()
+        } catch (error: Throwable) {
+            invocation.end()
+            throw error
+        }
     }
 
     fun close() {
         dispatcher = null
         memory = null
-        inboundAction = EMPTY
-        inboundPayload = EMPTY
-        inboundResponse = EMPTY
-        outboundOverflow = EMPTY
+        invocation.reset()
     }
 
     /** Builds the import object with all necessary WASI and bridge functions. */
@@ -107,12 +108,20 @@ internal class WebWasmPlugin(binary: ByteArray) {
         }
         .function(
             module = ENV_MODULE,
+            name = "bridge_inbound_get_size",
+            paramTypes = listOf(WebWasmType.I32),
+            resultTypes = listOf(WebWasmType.I32),
+        ) { args ->
+            listOf(WebWasmValue.I32(invocation.inboundSize(args[0].i32())))
+        }
+        .function(
+            module = ENV_MODULE,
             name = "bridge_inbound_copy_params",
             paramTypes = listOf(WebWasmType.I32, WebWasmType.I32, WebWasmType.I32),
             resultTypes = emptyList(),
         ) { args ->
-            val source = if (args[0].i32() == 0) inboundAction else inboundPayload
-            requireMemory().write(args[1].i32(), source.copyOf(args[2].i32()))
+            val copied = invocation.inboundCopy(args[0].i32(), args[2].i32())
+            if (copied.isNotEmpty()) requireMemory().write(args[1].i32(), copied)
             emptyList()
         }
         .function(
@@ -122,7 +131,7 @@ internal class WebWasmPlugin(binary: ByteArray) {
             resultTypes = emptyList(),
         ) { args ->
             val length = args[1].i32()
-            inboundResponse = if (length == 0) EMPTY else requireMemory().read(args[0].i32(), length)
+            invocation.setResponse(if (length == 0) EMPTY else requireMemory().read(args[0].i32(), length))
             emptyList()
         }
         .function(
@@ -154,7 +163,7 @@ internal class WebWasmPlugin(binary: ByteArray) {
             paramTypes = listOf(WebWasmType.I32),
             resultTypes = emptyList(),
         ) { args ->
-            requireMemory().write(args[0].i32(), outboundOverflow)
+            requireMemory().write(args[0].i32(), invocation.overflowResponse())
             emptyList()
         }
         .build()
@@ -224,7 +233,7 @@ internal class WebWasmPlugin(binary: ByteArray) {
             memory.write(outPointer, response)
             response.size
         } else {
-            outboundOverflow = response
+            invocation.setOverflow(response)
             -response.size
         }
     }

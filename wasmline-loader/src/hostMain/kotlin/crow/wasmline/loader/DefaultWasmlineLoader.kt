@@ -10,6 +10,7 @@ import crow.wasmline.internal.runtime.WasmlineRuntimeBridge
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.loader.internal.WasmlineLocalPackageResolution
 import crow.wasmline.loader.internal.WasmlineRemotePackageResolution
+import crow.wasmline.loader.internal.WasmlineTransientArtifacts
 import crow.wasmline.loader.internal.structuredLoadFailure
 
 /**
@@ -43,7 +44,13 @@ internal object DefaultWasmlineLoader {
         return when (source) {
             is WasmlineSource.LocalArtifactPath -> {
                 val descriptor = source.descriptor ?: WasmlineArtifactDescriptor(path = source.path)
-                loadLocalArtifact(descriptor, request)
+                // A staged artifact exists only for this load; remove it once the runtime
+                // has opened the file, whether the load succeeds or fails.
+                try {
+                    loadLocalArtifact(descriptor, request)
+                } finally {
+                    runCatching { WasmlineTransientArtifacts.deleteIfTransient(descriptor.path) }
+                }
             }
 
             is WasmlineSource.LocalManifestPath -> {

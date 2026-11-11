@@ -71,6 +71,7 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
         │     clock_time_get   — Date.now() converted from milliseconds to nanoseconds
         │
         └── Import namespace: env  (Wasmline bridge protocol)
+              bridge_inbound_get_size        — return the real action or payload length
               bridge_inbound_copy_params     — write action + payload into Wasm linear memory
               bridge_inbound_set_response    — extract response bytes from Wasm linear memory
               bridge_outbound_call_host      — synchronous plugin-to-host dispatch callback
@@ -96,8 +97,12 @@ SignedManifest
 
 The manifest format and signature algorithm are fixed. The loader checks the
 format version, resolves a trusted key, verifies Ed25519 over the original
-payload bytes, and then decodes and validates the manifest. Artifact paths use
-the digest and extension:
+payload bytes, and then decodes and validates the manifest.
+
+The signed input is the domain string, the format version, the envelope
+`publicKeyId`, and the payload bytes. Format version 2 signs `publicKeyId`, so
+changing the key identifier invalidates the signature; version 1 did not.
+Artifact paths use the digest and extension:
 
 ```text
 artifacts/sha256/{digest-prefix}/{digest}.{extension}

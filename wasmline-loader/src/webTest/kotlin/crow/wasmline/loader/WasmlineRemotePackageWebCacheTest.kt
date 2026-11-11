@@ -209,7 +209,7 @@ class WasmlineRemotePackageWebCacheTest {
         val formatVersion = WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION
         val envelope = SignedManifestEnvelope(
             signature = Ed25519.sign(
-                WasmlineManifestProtocol.signingMessage(formatVersion, payload).toByteString(),
+                WasmlineManifestProtocol.signingMessage(formatVersion, null, payload).toByteString(),
                 privateKey,
             ).toByteArray(),
             formatVersion = formatVersion,

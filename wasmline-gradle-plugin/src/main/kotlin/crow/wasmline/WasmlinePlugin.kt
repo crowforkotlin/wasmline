@@ -24,6 +24,7 @@ import crow.wasmline.plugin.core.aot.WasmlineArtifactTargetFactory
 import crow.wasmline.plugin.core.aot.WasmlineRawAbiMetadataCodec
 import crow.wasmline.plugin.core.aot.decodeAotGenerations
 import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
+import crow.wasmline.plugin.core.trust.PersistentKeyFiles
 import crow.wasmline.plugin.core.util.PlatformDetector
 import org.gradle.api.GradleException
 import org.gradle.api.Project
@@ -732,24 +733,40 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
     private fun createGenerateKeyPairTasks(project: Project) {
         project.tasks.register("generateWasmlineManifestKeyPairEd25519") { task ->
             task.group = "wasmline"
-            task.description = "Generate an Ed25519 manifest signing key pair"
+            task.description = "Generate an Ed25519 manifest signing key pair in build/wasmline/keys"
             task.doLast {
-                generateKeyPair()
+                generateKeyPair(project.layout.buildDirectory.dir("wasmline/keys").get().asFile)
             }
         }
     }
 
     private companion object {
         const val GUEST_TRANSPORT_OPTION = "guestTransport"
+        const val PRIVATE_KEY_FILE_NAME = "ed25519_private.key"
+        const val PUBLIC_KEY_FILE_NAME = "ed25519_public.key"
+        const val KEY_DIRECTORY_NOTICE = "Signing keys are written to the key directory; " +
+            "the private key is not printed so build logs cannot capture it."
     }
 
-    private fun generateKeyPair() {
+    /**
+     * Writes a fresh key pair to [keyDirectory] and reports only the public key.
+     *
+     * The private key never reaches the build log; it is written with owner-only
+     * permissions under [keyDirectory] and the path is reported instead.
+     */
+    private fun generateKeyPair(keyDirectory: File) {
         val logger = LoggerFactory.getLogger(WasmlinePlugin::class.java)
         val keyPair = ManifestKeyGenerator.generate()
+        keyDirectory.mkdirs()
+        val privateKeyFile = File(keyDirectory, PRIVATE_KEY_FILE_NAME)
+        val publicKeyFile = File(keyDirectory, PUBLIC_KEY_FILE_NAME)
+        PersistentKeyFiles.writePrivateKey(privateKeyFile, keyPair.privateKeyHex)
+        publicKeyFile.writeText(keyPair.publicKeyHex)
         logger.warn("---------------- ----------------------------------------------------------------")
         logger.warn("    ALGORITHM: Ed25519")
         logger.warn("    PUBLIC KEY: ${keyPair.publicKeyHex}")
-        logger.warn("    PRIVATE KEY: ${keyPair.privateKeyHex}")
+        logger.warn("    PRIVATE KEY FILE: ${privateKeyFile.absolutePath}")
+        logger.warn("    $KEY_DIRECTORY_NOTICE")
         logger.warn("---------------- ----------------------------------------------------------------")
     }
 }

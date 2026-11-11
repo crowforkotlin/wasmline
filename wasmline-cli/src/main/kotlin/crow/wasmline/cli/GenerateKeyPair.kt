@@ -23,11 +23,17 @@ import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import crow.wasmline.plugin.core.manifest.ManifestKeyGenerator
+import crow.wasmline.plugin.core.trust.PersistentKeyFiles
 import java.io.File
 import java.io.PrintStream
 
 /**
  * Generates the Ed25519 key pair required by the current manifest format.
+ *
+ * The private key is printed only when it is not saved: `--save` writes both
+ * keys to files and reports just the public key and the file paths, so build
+ * logs never capture the signing key. The saved private key is restricted to
+ * the owner on file systems that support POSIX permissions.
  *
  * Date: 2026-08-28
  * Author: crowforkotlin
@@ -47,23 +53,30 @@ internal class GenerateKeyPair(private val out: PrintStream = System.out) : Clik
         val publicKeyHex = keyPair.publicKeyHex
         val privateKeyHex = keyPair.privateKeyHex
 
+        if (!save) {
+            out.println(
+                """
+      |ALGORITHM: Ed25519
+      |PUBLIC KEY: $publicKeyHex
+      |PRIVATE KEY: $privateKeyHex
+                """.trimMargin(),
+            )
+            return
+        }
+
+        if (!outputDir.exists()) outputDir.mkdirs()
+        val privateKeyFile = File(outputDir, PRIVATE_KEY_FILE_NAME)
+        val publicKeyFile = File(outputDir, PUBLIC_KEY_FILE_NAME)
+        PersistentKeyFiles.writePrivateKey(privateKeyFile, privateKeyHex)
+        publicKeyFile.writeText(publicKeyHex)
         out.println(
             """
       |ALGORITHM: Ed25519
       |PUBLIC KEY: $publicKeyHex
-      |PRIVATE KEY: $privateKeyHex
             """.trimMargin(),
         )
-
-        if (save) {
-            if (!outputDir.exists()) outputDir.mkdirs()
-            val privateKeyFile = File(outputDir, "ed25519_private.key")
-            val publicKeyFile = File(outputDir, "ed25519_public.key")
-            privateKeyFile.writeText(privateKeyHex)
-            publicKeyFile.writeText(publicKeyHex)
-            out.println("Private key saved to: ${privateKeyFile.absolutePath}")
-            out.println("Public key saved to: ${publicKeyFile.absolutePath}")
-        }
+        out.println("Private key saved to: ${privateKeyFile.absolutePath}")
+        out.println("Public key saved to: ${publicKeyFile.absolutePath}")
     }
 
     /**
@@ -75,5 +88,7 @@ internal class GenerateKeyPair(private val out: PrintStream = System.out) : Clik
     companion object {
         const val NAME = "generate-key-pair"
         const val DEFAULT_OUTPUT_DIR = "build/wasmline/keys"
+        const val PRIVATE_KEY_FILE_NAME = "ed25519_private.key"
+        const val PUBLIC_KEY_FILE_NAME = "ed25519_public.key"
     }
 }

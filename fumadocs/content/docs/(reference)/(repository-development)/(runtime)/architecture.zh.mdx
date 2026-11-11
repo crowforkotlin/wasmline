@@ -70,6 +70,7 @@ Browser WebAssembly API  (WebAssembly.Module + WebAssembly.Instance)
         │     clock_time_get   — 将 Date.now() 的毫秒值转换为纳秒值
         │
         └── Import namespace: env  (Wasmline bridge protocol)
+              bridge_inbound_get_size        — 返回 action 或 payload 的真实长度
               bridge_inbound_copy_params     — write action + payload into Wasm linear memory
               bridge_inbound_set_response    — extract response bytes from Wasm linear memory
               bridge_outbound_call_host      — synchronous plugin-to-host dispatch callback
@@ -94,8 +95,11 @@ SignedManifest
 ```
 
 Manifest 格式和签名算法固定。Loader 先检查 format version、解析 trusted key，
-对原始 payload 字节执行 Ed25519 校验，再解码和验证 manifest。产物路径使用摘要
-和扩展名：
+对原始 payload 字节执行 Ed25519 校验，再解码和验证 manifest。
+
+被签名的输入是 domain 字符串、format version、envelope 的 `publicKeyId` 和
+payload 字节。format version 2 将 `publicKeyId` 纳入签名，改动 key ID 会使签名
+失效；version 1 不包含该字段。产物路径使用摘要和扩展名：
 
 ```text
 artifacts/sha256/{digest-prefix}/{digest}.{extension}

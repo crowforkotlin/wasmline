@@ -15,7 +15,7 @@ import javax.inject.Inject
  * wasmline {
  *     server {
  *         port = 8080
- *         host = "0.0.0.0"
+ *         host = "127.0.0.1"
  *         deployVariant = WasmlineBuildVariant.RELEASE
  *     }
  * }
@@ -29,8 +29,8 @@ public abstract class ServerExtension @Inject constructor(objects: ObjectFactory
     /** The TCP port the HTTP server binds to. Default: 8080. */
     public val port: Property<Int> = objects.property(Int::class.java).convention(8080)
 
-    /** The host address the HTTP server binds to. Default: "0.0.0.0". */
-    public val host: Property<String> = objects.property(String::class.java).convention("0.0.0.0")
+    /** The host address the HTTP server binds to. Default: "127.0.0.1" (loopback only). */
+    public val host: Property<String> = objects.property(String::class.java).convention("127.0.0.1")
 
     /** Package variant built before the server starts. Default: [WasmlineBuildVariant.DEBUG]. */
     public val deployVariant: Property<WasmlineBuildVariant> =

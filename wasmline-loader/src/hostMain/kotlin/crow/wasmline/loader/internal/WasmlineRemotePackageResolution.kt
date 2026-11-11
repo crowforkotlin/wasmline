@@ -261,6 +261,7 @@ internal object WasmlineRemotePackageResolution {
         expectedSizeBytes: Long,
         maxArtifactBytes: Long,
     ): ArtifactFileResolution {
+        // A caller-supplied file cache owns the artifact file directly.
         if (cache is WasmlineFileCache) {
             return cache.resolveArtifact(
                 key = cacheKey,
@@ -272,37 +273,41 @@ internal object WasmlineRemotePackageResolution {
                 artifactUrl = artifactUrl,
             )
         }
+
+        // A caller-supplied byte cache is authoritative: read from it, write back to
+        // it, and never persist anything in the built-in cache directory.
         if (cache != null && cache !== WasmlineNoOpCache) {
-            when (
-                val customCached = resolveCustomCachedArtifact(
-                    cache = cache,
-                    cacheKey = cacheKey,
-                    extension = extension,
-                    defaultFileCache = defaultFileCache,
-                    platformCacheKey = artifactUrl,
-                    expectedSha256 = expectedSha256,
-                    expectedSizeBytes = expectedSizeBytes,
-                    maxArtifactBytes = maxArtifactBytes,
-                )
-            ) {
-                is ArtifactFileResolution.Ready -> return customCached
-
-                is ArtifactFileResolution.HashMismatch,
-                is ArtifactFileResolution.SizeMismatch,
-                -> if (networkClient == null) return customCached
-
-                is ArtifactFileResolution.WriteFailure -> if (networkClient == null) return customCached
-
-                is ArtifactFileResolution.HttpFailure,
-                ArtifactFileResolution.Missing,
-                null,
-                -> Unit
+            resolveCustomCachedArtifact(
+                cache = cache,
+                cacheKey = cacheKey,
+                extension = extension,
+                platformCacheKey = artifactUrl,
+                expectedSha256 = expectedSha256,
+                expectedSizeBytes = expectedSizeBytes,
+                maxArtifactBytes = maxArtifactBytes,
+            )?.let { cached ->
+                // A verified hit wins; a stale or corrupt entry falls through to a download.
+                if (cached is ArtifactFileResolution.Ready || networkClient == null) return cached
             }
+            if (networkClient == null) return ArtifactFileResolution.Missing
+            return stageCustomCachedArtifact(
+                cache = cache,
+                cacheKey = cacheKey,
+                extension = extension,
+                networkClient = networkClient,
+                artifactUrl = artifactUrl,
+                expectedSha256 = expectedSha256,
+                expectedSizeBytes = expectedSizeBytes,
+                maxArtifactBytes = maxArtifactBytes,
+            )
         }
+
+        // No caller cache: the built-in file cache is the storage for this load.
         if (defaultFileCache == null) {
             return resolvePlatformCachedArtifact(
                 cache = cache,
                 cacheKey = cacheKey,
+                platformCacheKey = artifactUrl,
                 networkClient = networkClient,
                 artifactUrl = artifactUrl,
                 expectedSha256 = expectedSha256,
@@ -310,21 +315,17 @@ internal object WasmlineRemotePackageResolution {
                 maxArtifactBytes = maxArtifactBytes,
             )
         }
-        val stagingCache = defaultFileCache
-        if (cache === WasmlineNoOpCache || cache == null) {
-            if (networkClient == null) return ArtifactFileResolution.Missing
-            return stagingCache.downloadArtifact(
-                key = cacheKey,
+        if (cache === WasmlineNoOpCache) {
+            return stageNoOpCachedArtifact(
                 extension = extension,
+                networkClient = networkClient,
+                artifactUrl = artifactUrl,
                 expectedSha256 = expectedSha256,
                 expectedSizeBytes = expectedSizeBytes,
                 maxArtifactBytes = maxArtifactBytes,
-                networkClient = networkClient,
-                artifactUrl = artifactUrl,
             )
         }
-
-        return stagingCache.resolveArtifact(
+        return defaultFileCache.resolveArtifact(
             key = cacheKey,
             extension = extension,
             expectedSha256 = expectedSha256,
@@ -335,11 +336,11 @@ internal object WasmlineRemotePackageResolution {
         )
     }
 
-    private fun resolveCustomCachedArtifact(
+    /** Reads and verifies one artifact from a caller-supplied byte cache. */
+    private suspend fun resolveCustomCachedArtifact(
         cache: WasmlineCache,
         cacheKey: String,
         extension: String,
-        defaultFileCache: WasmlineFileCache?,
         platformCacheKey: String,
         expectedSha256: String,
         expectedSizeBytes: Long,
@@ -355,33 +356,146 @@ internal object WasmlineRemotePackageResolution {
         val actualSha256 = sha256Hex(bytes)
         if (actualSha256 != expectedSha256) return ArtifactFileResolution.HashMismatch(actualSha256)
 
-        val path = if (defaultFileCache != null) {
-            defaultFileCache.storeVerifiedArtifact(cacheKey, extension, bytes)
-        } else if (cachePlatformResolvedArtifact(platformCacheKey, bytes)) {
-            platformCacheKey
-        } else {
-            null
-        }
-        return if (path != null) {
-            ArtifactFileResolution.Ready(path = path, cacheHit = true)
+        val fileSystem = defaultHostFileSystem() ?: return if (cachePlatformResolvedArtifact(platformCacheKey, bytes)) {
+            ArtifactFileResolution.Ready(path = platformCacheKey, cacheHit = true)
         } else {
             ArtifactFileResolution.WriteFailure(
-                IllegalStateException("Failed to materialize the custom artifact cache entry."),
+                IllegalStateException("The platform cannot serve a cached $extension artifact."),
             )
+        }
+        val directory = WasmlineArtifactStaging.transientDirectory(fileSystem)
+            ?: return ArtifactFileResolution.WriteFailure(
+                IllegalStateException("No transient directory is available for a cached artifact."),
+            )
+        val target = WasmlineArtifactStaging.transientFile(directory, extension)
+        val written = WasmlineArtifactStaging.writeVerified(
+            target = target,
+            fileSystem = fileSystem,
+            bytes = bytes,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+        )
+        if (written !is ArtifactFileResolution.Ready) return written
+        WasmlineTransientArtifacts.register(written.path)
+        return written.copy(cacheHit = true)
+    }
+
+    /**
+     * Downloads into a caller-supplied byte cache and stages one transient file copy
+     * for the runtime. Nothing is written to the built-in cache directory.
+     */
+    private suspend fun stageCustomCachedArtifact(
+        cache: WasmlineCache,
+        cacheKey: String,
+        extension: String,
+        networkClient: WasmlineNetworkClient,
+        artifactUrl: String,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+    ): ArtifactFileResolution {
+        val fileSystem = defaultHostFileSystem() ?: return resolvePlatformCachedArtifact(
+            cache = cache,
+            cacheKey = cacheKey,
+            platformCacheKey = artifactUrl,
+            networkClient = networkClient,
+            artifactUrl = artifactUrl,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+        )
+        val directory = WasmlineArtifactStaging.transientDirectory(fileSystem)
+            ?: return ArtifactFileResolution.WriteFailure(
+                IllegalStateException("No transient directory is available for a downloaded artifact."),
+            )
+        val target = WasmlineArtifactStaging.transientFile(directory, extension)
+        val staged = WasmlineArtifactStaging.download(
+            target = target,
+            fileSystem = fileSystem,
+            networkClient = networkClient,
+            artifactUrl = artifactUrl,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+            keepBytes = true,
+        )
+        return when (staged) {
+            is StagedArtifact.Failed -> staged.resolution
+
+            is StagedArtifact.Ready -> {
+                staged.bytes?.let { bytes ->
+                    runCatching { cache.put(cacheKey, bytes) }
+                        .onFailure { error ->
+                            WasmlineLog.logger?.warn("$P Custom artifact cache write failed: ${error.message}")
+                        }
+                }
+                WasmlineTransientArtifacts.register(staged.path)
+                ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
+            }
         }
     }
 
-    private suspend fun resolvePlatformCachedArtifact(
-        cache: WasmlineCache?,
-        cacheKey: String,
+    /**
+     * Honors `WasmlineNoOpCache` by downloading into a transient file that is deleted
+     * after the runtime opens it, instead of the built-in cache directory.
+     */
+    private suspend fun stageNoOpCachedArtifact(
+        extension: String,
         networkClient: WasmlineNetworkClient?,
         artifactUrl: String,
         expectedSha256: String,
         expectedSizeBytes: Long,
         maxArtifactBytes: Long,
     ): ArtifactFileResolution {
-        if (platformResolvedArtifactExists(artifactUrl)) {
-            return ArtifactFileResolution.Ready(path = artifactUrl, cacheHit = true)
+        if (networkClient == null) return ArtifactFileResolution.Missing
+        val fileSystem = defaultHostFileSystem() ?: return resolvePlatformCachedArtifact(
+            cache = null,
+            cacheKey = artifactUrl,
+            platformCacheKey = artifactUrl,
+            networkClient = networkClient,
+            artifactUrl = artifactUrl,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+        )
+        val directory = WasmlineArtifactStaging.transientDirectory(fileSystem)
+            ?: return ArtifactFileResolution.WriteFailure(
+                IllegalStateException("No transient directory is available for a downloaded artifact."),
+            )
+        val target = WasmlineArtifactStaging.transientFile(directory, extension)
+        val staged = WasmlineArtifactStaging.download(
+            target = target,
+            fileSystem = fileSystem,
+            networkClient = networkClient,
+            artifactUrl = artifactUrl,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+            keepBytes = false,
+        )
+        return when (staged) {
+            is StagedArtifact.Failed -> staged.resolution
+
+            is StagedArtifact.Ready -> {
+                WasmlineTransientArtifacts.register(staged.path)
+                ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
+            }
+        }
+    }
+
+    private suspend fun resolvePlatformCachedArtifact(
+        cache: WasmlineCache?,
+        cacheKey: String,
+        platformCacheKey: String,
+        networkClient: WasmlineNetworkClient?,
+        artifactUrl: String,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+    ): ArtifactFileResolution {
+        if (platformResolvedArtifactExists(platformCacheKey)) {
+            return ArtifactFileResolution.Ready(path = platformCacheKey, cacheHit = true)
         }
         if (networkClient == null) return ArtifactFileResolution.Missing
         if (expectedSizeBytes > Int.MAX_VALUE) {
@@ -411,7 +525,7 @@ internal object WasmlineRemotePackageResolution {
             val actualSha256 = hashingSink.hash.hex()
             if (actualSha256 != expectedSha256) return ArtifactFileResolution.HashMismatch(actualSha256)
             val bytes = buffer.readByteArray()
-            if (!cachePlatformResolvedArtifact(artifactUrl, bytes)) {
+            if (!cachePlatformResolvedArtifact(platformCacheKey, bytes)) {
                 ArtifactFileResolution.WriteFailure(
                     IllegalStateException("The platform cannot cache the selected artifact bytes."),
                 )
@@ -420,7 +534,7 @@ internal object WasmlineRemotePackageResolution {
                     runCatching { cache.put(cacheKey, bytes) }
                         .onFailure { error -> WasmlineLog.logger?.warn("$P Custom artifact cache write failed: ${error.message}") }
                 }
-                ArtifactFileResolution.Ready(path = artifactUrl, cacheHit = false)
+                ArtifactFileResolution.Ready(path = platformCacheKey, cacheHit = false)
             }
         } catch (error: CancellationException) {
             throw error
@@ -474,14 +588,36 @@ internal object WasmlineRemotePackageResolution {
         null
     }
 
+    /**
+     * Returns the manifest URL for [sourceUrl], keeping any query or fragment intact.
+     *
+     * A URL that does not name a `.wlm` file is treated as a package directory,
+     * so `https://host/plugin?channel=stable` becomes
+     * `https://host/plugin/manifest.wlm?channel=stable`.
+     */
     private fun resolveManifestUrl(sourceUrl: String): String {
         val url = sourceUrl.trim()
-        return if (url.endsWith(".wlm")) url else url.trimEnd('/') + "/$MANIFEST_FILE_NAME"
+        if (url.isEmpty()) return MANIFEST_FILE_NAME
+        val suffixStart = url.indexOfAny(charArrayOf('?', '#'))
+        val path = if (suffixStart < 0) url else url.substring(0, suffixStart)
+        val suffix = if (suffixStart < 0) "" else url.substring(suffixStart)
+        if (path.endsWith(".wlm")) return path + suffix
+        return path.trimEnd('/') + "/$MANIFEST_FILE_NAME" + suffix
     }
 
+    /**
+     * Returns the content-addressed URL for [relativePath] beside [manifestUrl].
+     *
+     * The query and fragment of the manifest URL are preserved so signed or
+     * tokenized package URLs keep working for the artifact request.
+     */
     private fun resolveContentAddressedUrl(manifestUrl: String, relativePath: String): String {
-        val baseUrl = manifestUrl.substringBeforeLast('/', missingDelimiterValue = "")
-        return if (baseUrl.isEmpty()) relativePath else "$baseUrl/$relativePath"
+        val suffixStart = manifestUrl.indexOfAny(charArrayOf('?', '#'))
+        val path = if (suffixStart < 0) manifestUrl else manifestUrl.substring(0, suffixStart)
+        val suffix = if (suffixStart < 0) "" else manifestUrl.substring(suffixStart)
+        val baseUrl = path.substringBeforeLast('/', missingDelimiterValue = "")
+        val artifactPath = if (baseUrl.isEmpty()) relativePath else "$baseUrl/$relativePath"
+        return artifactPath + suffix
     }
 
     private fun defaultFileCacheOrNull(maxCacheBytes: Long): WasmlineFileCache? =

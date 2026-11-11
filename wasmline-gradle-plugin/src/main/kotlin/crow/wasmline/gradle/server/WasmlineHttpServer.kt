@@ -8,8 +8,9 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.http.content.LocalFileContent
 import io.ktor.server.response.header
-import io.ktor.server.response.respondBytes
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -33,10 +34,14 @@ internal object WasmlineHttpServer {
      *
      * Routes:
      * - `GET /` — HTML index page listing all downloadable files.
-     * - `GET /{filename}` — download any file in the serve directory.
+     * - `GET /{filename}` — download one file directly inside [serveDirectory].
+     *
+     * Every request path is resolved by [WasmlineArtifactServing.resolveServedFile],
+     * which rejects `..` segments, absolute paths, and symlink escapes, and the
+     * file is streamed with [LocalFileContent] instead of being read into heap.
      *
      * @param serveDirectory directory containing the build artifacts
-     * @param host           bind address (default "0.0.0.0")
+     * @param host           bind address (default "127.0.0.1")
      * @param port           TCP port (default 8080)
      * @param logger         Gradle logger for startup/shutdown messages
      */
@@ -46,8 +51,10 @@ internal object WasmlineHttpServer {
             return
         }
 
+        val root = serveDirectory.toPath().toAbsolutePath().normalize()
+
         logger.lifecycle("========== Wasmline Server Deploy ==========")
-        logger.lifecycle("Serving artifacts from: ${serveDirectory.absolutePath}")
+        logger.lifecycle("Serving artifacts from: $root")
         logger.lifecycle("Server starting at: http://$host:$port")
         logger.lifecycle("Press Ctrl+C to stop the server.")
         logger.lifecycle("=============================================")
@@ -56,7 +63,7 @@ internal object WasmlineHttpServer {
             routing {
                 // Index page: list all files in the serve directory.
                 get("/") {
-                    val files = serveDirectory.listFiles()
+                    val files = root.toFile().listFiles()
                         ?.filter { it.isFile }
                         ?.sortedBy { it.name }
                         ?: emptyList()
@@ -73,8 +80,7 @@ internal object WasmlineHttpServer {
                         append("<h1>Wasmline Artifacts</h1>")
                         append("<ul>")
                         for (file in files) {
-                            val sizeKb = file.length() / 1024.0
-                            append("<li><a href=\"/${file.name}\">${file.name}</a> ($sizeKb KB)</li>")
+                            append(WasmlineArtifactServing.renderIndexEntry(file))
                         }
                         append("</ul>")
                         append("</body></html>")
@@ -82,36 +88,40 @@ internal object WasmlineHttpServer {
                     call.respondText(html, ContentType.Text.Html)
                 }
 
-                // File download: serve any file in the directory.
+                // File download: serve one file that is directly inside the serve directory.
                 get("/{filename}") {
                     val filename = call.parameters["filename"] ?: return@get
-                    val file = File(serveDirectory, filename)
+                    val file = WasmlineArtifactServing.resolveServedFile(root, filename)
 
-                    if (file.isFile && file.exists()) {
-                        call.response.header(
-                            HttpHeaders.ContentDisposition,
-                            ContentDisposition.Attachment
-                                .withParameter(ContentDisposition.Parameters.FileName, file.name)
-                                .toString(),
-                        )
-                        val contentType = when (file.extension.lowercase()) {
-                            "wasm" -> ContentType.Application.OctetStream
-                            "wlm" -> ContentType.Application.OctetStream
-                            "cwasm" -> ContentType.Application.OctetStream
-                            "pwasm" -> ContentType.Application.OctetStream
-                            "json" -> ContentType.Application.Json
-                            "zip" -> ContentType.Application.Zip
-                            else -> ContentType.Application.OctetStream
-                        }
-                        call.respondBytes(file.readBytes(), contentType)
-                    } else {
+                    if (file == null) {
                         call.respondText(
-                            "File not found: $filename",
+                            "File not found: ${WasmlineArtifactServing.escapeHtml(filename)}",
                             status = HttpStatusCode.NotFound,
                         )
+                        return@get
                     }
+
+                    call.response.header(
+                        HttpHeaders.ContentDisposition,
+                        ContentDisposition.Attachment
+                            .withParameter(ContentDisposition.Parameters.FileName, file.name)
+                            .toString(),
+                    )
+                    call.respond(
+                        LocalFileContent(
+                            file = file,
+                            contentType = contentTypeFor(file.extension.lowercase()),
+                        ),
+                    )
                 }
             }
         }.start(wait = true)
+    }
+
+    private fun contentTypeFor(extension: String): ContentType = when (extension) {
+        "wasm", "wlm", "cwasm", "pwasm" -> ContentType.Application.OctetStream
+        "json" -> ContentType.Application.Json
+        "zip" -> ContentType.Application.Zip
+        else -> ContentType.Application.OctetStream
     }
 }
