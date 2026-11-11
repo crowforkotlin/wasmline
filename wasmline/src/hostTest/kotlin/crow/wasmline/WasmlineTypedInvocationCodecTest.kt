@@ -280,6 +280,63 @@ class WasmlineTypedInvocationCodecTest {
         assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
     }
 
+    /** Rejects a component payload whose declared list count cannot fit the payload. */
+    @Test
+    fun rejectsComponentCollectionCountBeyondPayload() {
+        // Argument count 1, one LIST value that declares 1_000_000 elements with no items.
+        val payload = byteArrayOf(1, 0, 0, 0, 13, 0x40, 0x42, 0x0F, 0x00)
+
+        val result = assertIs<WasmlineCallResult.Failure>(
+            WasmlineTypedInvocationCodec.decodeComponentArguments(payload),
+        )
+
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
+        assertEquals("Typed invocation collection is truncated.", result.failure.message)
+    }
+
+    /** Rejects a nested list header before allocating a collection for each level. */
+    @Test
+    fun rejectsNestedComponentCollectionCountsBeyondPayload() {
+        val payload = buildList<Byte> {
+            addAll(listOf(1, 0, 0, 0))
+            repeat(48) {
+                add(13)
+                addAll(listOf(0x40, 0x42, 0x0F, 0x00))
+            }
+        }.toByteArray()
+
+        val result = assertIs<WasmlineCallResult.Failure>(
+            WasmlineTypedInvocationCodec.decodeComponentArguments(payload),
+        )
+
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
+    }
+
+    /** Rejects a raw payload whose declared argument count cannot fit the payload. */
+    @Test
+    fun rejectsRawArgumentCountBeyondPayload() {
+        val payload = byteArrayOf(1, 0, 0, 0)
+
+        val result = assertIs<WasmlineCallResult.Failure>(
+            WasmlineTypedInvocationCodec.decodeRawArguments(payload),
+        )
+
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
+        assertEquals("Typed invocation collection is truncated.", result.failure.message)
+    }
+
+    /** Rejects a map count that cannot supply a key and a value for every entry. */
+    @Test
+    fun rejectsComponentMapCountBeyondPayload() {
+        val payload = byteArrayOf(1, 0, 0, 0, 21, 2, 0, 0, 0)
+
+        val result = assertIs<WasmlineCallResult.Failure>(
+            WasmlineTypedInvocationCodec.decodeComponentArguments(payload),
+        )
+
+        assertEquals(WasmlineErrorCode.INVALID_PAYLOAD, result.failure.code)
+    }
+
     @Test
     fun rejectsFailedResponseWithValues() {
         val response = response(
