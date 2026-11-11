@@ -304,7 +304,10 @@ Kotlin Multiplatform source set 应为全部 Wasmline coordinate 使用同一个
 ./gradlew wasmlineServerDeploy      # 构建并提供配置的 package
 ```
 
-`wasmlineServerDeploy` 以 `DEBUG` 变体在 `http://localhost:8080` 提供服务。
+`wasmlineServerDeploy` 以 `DEBUG` 变体在 `http://localhost:8080` 提供服务，默认
+绑定 `127.0.0.1`，只有本机可以访问。请求只会在被服务的 package 目录内解析：
+包含 `..`、绝对路径、以及指向目录外的符号链接一律返回 404。需要其他机器下载
+package 时，把 `server.host` 设为具体的网卡地址。
 用类型化值切换变体：
 
 ```kotlin

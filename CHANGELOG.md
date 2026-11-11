@@ -4,6 +4,27 @@
 
 - Publish canonical `wasmline.wit` and its SHA-256 checksum as GitHub Release
   assets for non-Kotlin Wasmline Service Component plugins.
+- `wasmlineServerDeploy` binds to `127.0.0.1` by default and serves only files
+  directly inside the package directory; `..`, absolute paths, and symlink
+  escapes return 404, index entries are HTML-escaped, and downloads stream
+  instead of loading the whole file. Set `server.host` to expose the server.
+- `WasmlineLoadOptions.cache` is authoritative: a supplied cache receives every
+  artifact, and `WasmlineNoOpCache` no longer writes into the built-in cache
+  directory. Artifact downloads are staged in a transient file that is deleted
+  after the runtime opens it.
+- Manifest format version 2 signs the envelope `publicKeyId`, so changing the
+  key identifier now invalidates the signature. The loader accepts only the
+  current format version, so version 1 packages must be re-signed.
+- Remote manifest URLs keep their query string for both the manifest and the
+  content-addressed artifact request.
+- The browser `env` bridge implements `bridge_inbound_get_size`, clamps
+  `bridge_inbound_copy_params` to the available bytes, and returns
+  `REENTRANT_CALL` for a nested invocation instead of overwriting call state.
+- The Kotlin typed-invocation decoder rejects a collection count that cannot fit
+  the remaining payload, matching the native decoder.
+- `generate-key-pair --save` writes the private key with owner-only permissions
+  and stops printing it; the Gradle key task writes both keys under
+  `build/wasmline/keys` and reports only the public key.
 
 ## 1.0.0-beta1
 
