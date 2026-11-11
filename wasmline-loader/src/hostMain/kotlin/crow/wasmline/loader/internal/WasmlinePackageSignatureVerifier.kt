@@ -80,7 +80,11 @@ internal object WasmlinePackageSignatureVerifier {
                 stage = WasmlineLoadStage.SIGNATURE_VERIFICATION,
                 code = WasmlineErrorCode.SIGNATURE_VERIFICATION_FAILED,
             )
-        val signingMessage = WasmlineManifestProtocol.signingMessage(envelope.formatVersion, envelope.payload)
+        val signingMessage = WasmlineManifestProtocol.signingMessage(
+            envelope.formatVersion,
+            envelope.publicKeyId,
+            envelope.payload,
+        )
         val verified = runCatching {
             Ed25519.verify(
                 message = signingMessage.toByteString(),

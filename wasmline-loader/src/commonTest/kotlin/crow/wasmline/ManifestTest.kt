@@ -312,7 +312,7 @@ class ManifestTest {
         val payload = ProtoBuf.encodeToByteArray(WasmlineManifest.serializer(), manifest)
         val formatVersion = WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION
         val signature = Ed25519.sign(
-            WasmlineManifestProtocol.signingMessage(formatVersion, payload).toByteString(),
+            WasmlineManifestProtocol.signingMessage(formatVersion, null, payload).toByteString(),
             privateKey,
         )
         return SignedManifestEnvelope(
@@ -323,7 +323,7 @@ class ManifestTest {
     }
 
     private fun verify(envelope: SignedManifestEnvelope): Boolean = Ed25519.verify(
-        WasmlineManifestProtocol.signingMessage(envelope.formatVersion, envelope.payload).toByteString(),
+        WasmlineManifestProtocol.signingMessage(envelope.formatVersion, envelope.publicKeyId, envelope.payload).toByteString(),
         envelope.signature.toByteString(),
         publicKey,
     )

@@ -379,7 +379,7 @@ class WasmlineRemotePackageResolutionTest {
         val version = WasmlineManifestWireFormat.CURRENT_FORMAT_VERSION
         val envelope = SignedManifestEnvelope(
             signature = Ed25519.sign(
-                WasmlineManifestProtocol.signingMessage(version, payload).toByteString(),
+                WasmlineManifestProtocol.signingMessage(version, null, payload).toByteString(),
                 privateKey,
             ).toByteArray(),
             formatVersion = version,
