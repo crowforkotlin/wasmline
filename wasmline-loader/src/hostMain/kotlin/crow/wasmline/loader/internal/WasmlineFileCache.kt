@@ -3,11 +3,8 @@ package crow.wasmline.loader.internal
 import crow.wasmline.WasmlineLog
 import crow.wasmline.loader.WasmlineCache
 import crow.wasmline.loader.network.WasmlineNetworkClient
-import crow.wasmline.loader.network.WasmlineNetworkSink
-import kotlinx.coroutines.CancellationException
 import okio.Buffer
 import okio.FileSystem
-import okio.HashingSink
 import okio.HashingSource
 import okio.Path
 import okio.Path.Companion.toPath
@@ -115,32 +112,6 @@ internal class WasmlineFileCache(
         )
     }
 
-    /** Atomically materializes bytes already verified by the package resolver. */
-    fun storeVerifiedArtifact(key: String, extension: String, bytes: ByteArray): String? {
-        val target = artifactPath(key, extension)
-        if (!writeBytesAtomically(target, bytes)) return null
-        trimToSize(protectedPaths = setOf(target))
-        return target.toString()
-    }
-
-    /** Streams a fresh artifact to disk without consulting an existing entry. */
-    suspend fun downloadArtifact(
-        key: String,
-        extension: String,
-        expectedSha256: String,
-        expectedSizeBytes: Long,
-        maxArtifactBytes: Long,
-        networkClient: WasmlineNetworkClient,
-        artifactUrl: String,
-    ): ArtifactFileResolution = downloadArtifact(
-        target = artifactPath(key, extension),
-        expectedSha256 = expectedSha256,
-        expectedSizeBytes = expectedSizeBytes,
-        maxArtifactBytes = maxArtifactBytes,
-        networkClient = networkClient,
-        artifactUrl = artifactUrl,
-    )
-
     private suspend fun downloadArtifact(
         target: Path,
         expectedSha256: String,
@@ -149,67 +120,23 @@ internal class WasmlineFileCache(
         networkClient: WasmlineNetworkClient,
         artifactUrl: String,
     ): ArtifactFileResolution {
-        val temporary = temporaryPath(target)
-        val hashingSink = try {
-            fileSystem.createDirectories(directory)
-            HashingSink.sha256(fileSystem.sink(temporary, mustCreate = true))
-        } catch (error: Exception) {
-            deleteQuietly(temporary)
-            return ArtifactFileResolution.WriteFailure(error)
-        }
-        val sink = hashingSink.buffer()
+        val staged = WasmlineArtifactStaging.download(
+            target = target,
+            fileSystem = fileSystem,
+            networkClient = networkClient,
+            artifactUrl = artifactUrl,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+            keepBytes = false,
+        )
+        return when (staged) {
+            is StagedArtifact.Failed -> staged.resolution
 
-        var downloadedBytes = 0L
-        val status = try {
-            val result = networkClient.fetchTo(
-                url = artifactUrl,
-                sink = WasmlineNetworkSink { bytes, offset, byteCount ->
-                    val nextSize = downloadedBytes + byteCount
-                    if (nextSize > expectedSizeBytes || nextSize > maxArtifactBytes) {
-                        throw ArtifactSizeLimitException(nextSize)
-                    }
-                    sink.write(bytes, offset, byteCount)
-                    downloadedBytes = nextSize
-                },
-            )
-            sink.close()
-            result
-        } catch (error: ArtifactSizeLimitException) {
-            runCatching { sink.close() }
-            deleteQuietly(temporary)
-            return ArtifactFileResolution.SizeMismatch(error.actualSizeBytes)
-        } catch (error: CancellationException) {
-            runCatching { sink.close() }
-            deleteQuietly(temporary)
-            throw error
-        } catch (error: Exception) {
-            runCatching { sink.close() }
-            deleteQuietly(temporary)
-            return ArtifactFileResolution.WriteFailure(error)
-        }
-
-        if (!status.isSuccess) {
-            deleteQuietly(temporary)
-            return ArtifactFileResolution.HttpFailure(status.statusCode)
-        }
-        if (downloadedBytes != expectedSizeBytes) {
-            deleteQuietly(temporary)
-            return ArtifactFileResolution.SizeMismatch(downloadedBytes)
-        }
-
-        val actualSha256 = hashingSink.hash.hex()
-        if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
-            deleteQuietly(temporary)
-            return ArtifactFileResolution.HashMismatch(actualSha256)
-        }
-
-        return try {
-            fileSystem.atomicMove(temporary, target)
-            trimToSize(protectedPaths = setOf(target))
-            ArtifactFileResolution.Ready(path = target.toString(), cacheHit = false)
-        } catch (error: Exception) {
-            deleteQuietly(temporary)
-            ArtifactFileResolution.WriteFailure(error)
+            is StagedArtifact.Ready -> {
+                trimToSize(protectedPaths = setOf(target))
+                ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
+            }
         }
     }
 
@@ -341,14 +268,6 @@ internal class WasmlineFileCache(
         data class SizeMismatch(val actualSizeBytes: Long) : CachedArtifactVerification
         data object Missing : CachedArtifactVerification
     }
-
-    /**
-     * Stops a streamed artifact write after its declared or configured size limit is exceeded.
-     *
-     * Date: 2026-08-28
-     * Author: crowforkotlin
-     */
-    private class ArtifactSizeLimitException(val actualSizeBytes: Long) : RuntimeException()
 
     private companion object {
         const val P: String = "[WasmlineFileCache]"

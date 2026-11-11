@@ -13,8 +13,15 @@ import crow.wasmline.loader.network.WasmlineNetworkClient
  *
  * A remote package can load without [networkClient] when its fresh manifest and
  * selected artifact are already in [cache]. A cache miss requires a client or a
- * custom resolver. [maxCacheBytes] bounds the loader's built-in file cache; a
- * custom [cache] remains responsible for its own capacity policy.
+ * custom resolver.
+ *
+ * [cache] is authoritative for artifacts. A supplied cache receives every
+ * downloaded artifact and is the only place the loader consults; the loader
+ * never falls back to its built-in directory. Passing [WasmlineNoOpCache]
+ * therefore performs no durable caching: a downloaded artifact is staged in a
+ * transient file that is deleted after the runtime opens it.
+ * [maxCacheBytes] bounds the built-in file cache used when [cache] is `null`.
+ * A custom [cache] remains responsible for its own capacity policy.
  *
  * Date: 2026-08-28
  * Author: crowforkotlin
