@@ -116,6 +116,11 @@ data class WasmlineRuntimeContract(
  * Date: 2026-08-28
  * Author: crowforkotlin
  *
+ * The identifier is authoritative: it is the only value compared with the linked
+ * runtime's profile IDs. The remaining fields are descriptive, except
+ * `compileProfileSchemaVersion`, which the loader checks against the schema it
+ * supports. The producer hashes all of them into `id`.
+ *
  * @property id Canonical SHA-256 compatibility identifier.
  * @property artifactBackend Backend that creates and loads artifacts for this profile.
  * @property wasmtimeVersion Upstream Wasmtime semantic version.

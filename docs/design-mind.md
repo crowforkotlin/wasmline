@@ -63,7 +63,7 @@ several AOT generations and their Cranelift or Pulley variants. Browser Core
 
 For package sources, the loader verifies the manifest signature against the
 configured trusted keys, selects one compatible artifact, and checks its size
-and SHA-256 before loading. Ed25519 and ECDSA-P256 signatures are supported.
+and SHA-256 before loading. Ed25519 is the only supported signature algorithm.
 Remote resolution downloads the manifest and the selected artifact.
 
 `WasmlineArtifactSelector.select()` first looks for a unique compatible CWASM

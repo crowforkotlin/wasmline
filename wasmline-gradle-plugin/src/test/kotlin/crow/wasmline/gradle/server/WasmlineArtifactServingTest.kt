@@ -63,10 +63,41 @@ class WasmlineArtifactServingTest {
     }
 
     @Test
-    fun `escapes markup in the index entry`() = withServedDirectory { _, directory ->
+    fun `resolves a nested content-addressed artifact`() = withServedDirectory { root, directory ->
+        val artifact = File(directory, "artifacts/sha256/ab/abcdef.wasm").apply {
+            parentFile.mkdirs()
+            writeText("bytes")
+        }
+
+        val resolved = assertNotNull(WasmlineArtifactServing.resolveServedFile(root, "artifacts/sha256/ab/abcdef.wasm"))
+
+        assertEquals(artifact.canonicalFile, resolved)
+    }
+
+    @Test
+    fun `rejects nested traversal outside the serve directory`() = withServedDirectory { root, _ ->
+        assertNull(WasmlineArtifactServing.resolveServedFile(root, "artifacts/../../outside-secret.txt"))
+    }
+
+    @Test
+    fun `lists nested artifacts with slash-separated relative paths`() = withServedDirectory { root, directory ->
+        File(directory, "manifest.wlm").writeText("x")
+        File(directory, "artifacts/sha256/ab/abcdef.pwasm").apply {
+            parentFile.mkdirs()
+            writeText("y")
+        }
+
+        val relative = WasmlineArtifactServing.listServedFiles(root).map { WasmlineArtifactServing.relativePath(root.toFile(), it) }
+
+        assertEquals(listOf("artifacts/sha256/ab/abcdef.pwasm", "manifest.wlm"), relative)
+        assertTrue(WasmlineArtifactServing.encodeUrlPath(relative.first()).contains("/sha256/"))
+    }
+
+    @Test
+    fun `escapes markup in the index entry`() = withServedDirectory { root, directory ->
         val artifact = File(directory, "<img src=x onerror=alert(1)>.wasm").apply { writeText("x") }
 
-        val entry = WasmlineArtifactServing.renderIndexEntry(artifact)
+        val entry = WasmlineArtifactServing.renderIndexEntry(root.toFile(), artifact)
 
         assertFalse(entry.contains("<img"))
         assertTrue(entry.contains("&lt;img src=x onerror=alert(1)&gt;.wasm"))
@@ -74,10 +105,10 @@ class WasmlineArtifactServingTest {
     }
 
     @Test
-    fun `keeps an ordinary artifact name readable`() = withServedDirectory { _, directory ->
+    fun `keeps an ordinary artifact name readable`() = withServedDirectory { root, directory ->
         val artifact = File(directory, "plugin-linux-x86_64.cwasm").apply { writeText("x") }
 
-        val entry = WasmlineArtifactServing.renderIndexEntry(artifact)
+        val entry = WasmlineArtifactServing.renderIndexEntry(root.toFile(), artifact)
 
         assertTrue(entry.contains("href=\"/plugin-linux-x86_64.cwasm\""))
         assertTrue(entry.contains(">plugin-linux-x86_64.cwasm<"))

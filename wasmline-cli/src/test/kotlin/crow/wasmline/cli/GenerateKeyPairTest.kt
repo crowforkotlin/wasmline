@@ -86,6 +86,27 @@ class GenerateKeyPairTest {
         }
     }
 
+    @Test fun saveRestrictsAnExistingPrivateKeyToTheOwner() {
+        val outputDirectory = createTempDirectory("wasmline-keys-existing-mode").toFile()
+        try {
+            if (!supportsPosixPermissions(outputDirectory)) return
+            val privateKeyFile = File(outputDirectory, GenerateKeyPair.PRIVATE_KEY_FILE_NAME)
+            privateKeyFile.writeText("00")
+            Files.setPosixFilePermissions(
+                privateKeyFile.toPath(),
+                setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_READ),
+            )
+
+            runCommand("--save", "-o", outputDirectory.absolutePath)
+
+            val permissions = Files.getPosixFilePermissions(privateKeyFile.toPath())
+            assertEquals(setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE), permissions)
+            assertTrue(PRIVATE_KEY_FILE_PATTERN.matches(privateKeyFile.readText()))
+        } finally {
+            outputDirectory.deleteRecursively()
+        }
+    }
+
     private fun supportsPosixPermissions(directory: File): Boolean =
         runCatching { Files.getFileStore(directory.toPath()).supportsFileAttributeView("posix") }.getOrDefault(false)
 

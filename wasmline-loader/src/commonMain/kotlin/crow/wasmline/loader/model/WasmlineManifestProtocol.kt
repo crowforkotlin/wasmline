@@ -25,6 +25,15 @@ object WasmlineManifestWireFormat {
     const val SIGNATURE_ALGORITHM: String = "Ed25519"
     const val SIGNATURE_SIZE_BYTES: Int = 64
 
+    /**
+     * Compile-profile schema version this loader can interpret.
+     *
+     * A manifest profile that declares a different value is rejected before artifact
+     * selection instead of reaching `wasmtime_module_deserialize_file`, which would
+     * fail with an unrelated format error.
+     */
+    const val SUPPORTED_COMPILE_PROFILE_SCHEMA_VERSION: Int = 1
+
     /** Active field numbers in [SignedManifestEnvelope]. */
     val envelopeFieldNumbers: Set<Int> = setOf(1, 2, 3, 5, 6)
 
@@ -174,9 +183,6 @@ object WasmlineManifestProtocol {
             payload.copyInto(result, destinationOffset = headerSize)
         }
     }
-
-    /** Builds a signing input for an envelope whose key identifier is unused. */
-    fun signingMessage(formatVersion: Int, payload: ByteArray): ByteArray = signingMessage(formatVersion, null, payload)
 
     /** Resolves the immutable package-relative artifact path for a digest and format. */
     fun artifactRelativePath(sha256: String, format: WasmlineArtifactFormat): String {
@@ -399,6 +405,11 @@ object WasmlineManifestProtocol {
         }
         if (profile.compileProfileSchemaVersion <= 0) {
             return "AOT profile '${profile.id}' compileProfileSchemaVersion must be positive."
+        }
+        if (profile.compileProfileSchemaVersion != WasmlineManifestWireFormat.SUPPORTED_COMPILE_PROFILE_SCHEMA_VERSION) {
+            return "AOT profile '${profile.id}' uses compile-profile schema " +
+                "${profile.compileProfileSchemaVersion}, but this loader supports " +
+                "${WasmlineManifestWireFormat.SUPPORTED_COMPILE_PROFILE_SCHEMA_VERSION}."
         }
         return null
     }
