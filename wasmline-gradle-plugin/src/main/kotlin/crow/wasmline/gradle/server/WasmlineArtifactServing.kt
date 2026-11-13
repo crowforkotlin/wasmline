@@ -18,6 +18,8 @@ internal object WasmlineArtifactServing {
     /**
      * Resolves [filename] to a regular file inside [root].
      *
+     * [filename] is a `/`-separated path such as `artifacts/sha256/ab/ab12.pwasm`.
+     *
      * @return the canonical file, or `null` when the request escapes [root],
      *   names a directory, or does not exist.
      */
@@ -33,13 +35,37 @@ internal object WasmlineArtifactServing {
         return canonicalFile
     }
 
+    /**
+     * Lists every regular file below [root], including the nested
+     * `artifacts/sha256/{prefix}/` package objects.
+     *
+     * @return files ordered by their `/`-separated relative path.
+     */
+    fun listServedFiles(root: Path): List<File> {
+        val rootFile = root.toAbsolutePath().normalize().toFile()
+        if (!rootFile.isDirectory) return emptyList()
+        return rootFile
+            .walkTopDown()
+            .onEnter { it == rootFile || !it.name.startsWith(".") }
+            .filter { it.isFile }
+            .sortedBy { relativePath(rootFile, it) }
+            .toList()
+    }
+
+    /** Returns [file] relative to [root] with `/` separators. */
+    fun relativePath(root: File, file: File): String = file.relativeTo(root).invariantSeparatorsPath
+
     /** Renders one index entry with escaped text and a percent-encoded link. */
-    fun renderIndexEntry(file: File): String {
-        val escapedName = escapeHtml(file.name)
-        val href = escapeHtml(encodeUrlPathSegment(file.name))
+    fun renderIndexEntry(root: File, file: File): String {
+        val relative = relativePath(root, file)
+        val escapedName = escapeHtml(relative)
+        val href = escapeHtml(encodeUrlPath(relative))
         val sizeKb = file.length() / 1024.0
         return "<li><a href=\"/$href\">$escapedName</a> ($sizeKb KB)</li>"
     }
+
+    /** Percent-encodes each segment of a `/`-separated relative path. */
+    fun encodeUrlPath(value: String): String = value.split('/').joinToString("/") { segment -> encodeUrlPathSegment(segment) }
 
     /** Escapes text for HTML element content and double-quoted attributes. */
     fun escapeHtml(value: String): String = buildString(value.length) {

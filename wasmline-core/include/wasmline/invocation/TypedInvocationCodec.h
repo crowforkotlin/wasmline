@@ -18,6 +18,12 @@ namespace wasmline {
     /**
      * Identifies the value encoding used by a typed invocation.
      *
+     * The encoded result frame - status byte, this kind byte, `uint32` error code,
+     * message, details, value count - is part of `WASMLINE_NATIVE_BRIDGE_ABI_VERSION`.
+     * Changing the field order, a field width, or a value of this enum requires
+     * bumping that ABI version, so a Kotlin peer on the other revision fails the
+     * native identity check instead of misparsing the frame.
+     *
      * Date: 2026-08-25
      * Author: crowforkotlin
      */

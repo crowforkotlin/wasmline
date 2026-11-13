@@ -42,8 +42,15 @@ internal class WasmlineFileCache(
 
     override fun put(key: String, bytes: ByteArray) {
         val target = pathForKey(key)
+        if (!reserveSpace(bytes.size.toLong(), protectedPaths = setOf(target))) {
+            WasmlineLog.logger?.warn(
+                "$P Skipping cache entry '$key': ${bytes.size} bytes does not fit in maxCacheBytes=$maxCacheBytes " +
+                    "without evicting an entry younger than $minimumEvictionAgeMs ms.",
+            )
+            return
+        }
         if (writeBytesAtomically(target, bytes)) {
-            trimToSize(protectedPaths = setOf(target))
+            removeStaleTemporaryFiles(protectedPaths = setOf(target))
         }
     }
 
@@ -65,7 +72,7 @@ internal class WasmlineFileCache(
         val cachedVerification = verifyArtifact(target, expectedSha256, expectedSizeBytes, maxArtifactBytes)
         when (cachedVerification) {
             is CachedArtifactVerification.Valid -> {
-                trimToSize(protectedPaths = setOf(target))
+                removeStaleTemporaryFiles(protectedPaths = setOf(target))
                 return ArtifactFileResolution.Ready(path = target.toString(), cacheHit = true)
             }
 
@@ -98,10 +105,31 @@ internal class WasmlineFileCache(
                 }
             }
 
+            is CachedArtifactVerification.Oversized -> {
+                WasmlineLog.logger?.warn(
+                    "$P Removing cache entry '$target' with ${cachedVerification.size} bytes: " +
+                        "it exceeds maxCacheBytes=$maxCacheBytes.",
+                )
+                deleteQuietly(target)
+            }
+
             CachedArtifactVerification.Missing -> Unit
         }
 
         if (networkClient == null) return ArtifactFileResolution.Missing
+        // The cache never exceeds maxCacheBytes: an artifact that does not fit - because it
+        // is larger than the whole limit, or because entries younger than the eviction grace
+        // window still occupy the budget - goes to a transient file instead, and that file is
+        // removed once the runtime has opened it.
+        if (!reserveSpace(expectedSizeBytes, protectedPaths = setOf(target))) {
+            return stageTransientArtifact(
+                expectedSha256 = expectedSha256,
+                expectedSizeBytes = expectedSizeBytes,
+                maxArtifactBytes = maxArtifactBytes,
+                networkClient = networkClient,
+                artifactUrl = artifactUrl,
+            )
+        }
         return downloadArtifact(
             target = target,
             expectedSha256 = expectedSha256,
@@ -110,6 +138,46 @@ internal class WasmlineFileCache(
             networkClient = networkClient,
             artifactUrl = artifactUrl,
         )
+    }
+
+    /**
+     * Downloads an artifact that cannot fit in the cache into a transient file.
+     *
+     * The verified bytes reach the runtime through the returned path and are removed
+     * after the load finishes, so `maxCacheBytes` stays a hard bound on the cache
+     * directory.
+     */
+    private suspend fun stageTransientArtifact(
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+        networkClient: WasmlineNetworkClient,
+        artifactUrl: String,
+    ): ArtifactFileResolution {
+        val transientDirectory = WasmlineArtifactStaging.transientDirectory(fileSystem)
+            ?: return ArtifactFileResolution.WriteFailure(
+                IllegalStateException("No transient directory is available for an oversized artifact."),
+            )
+        val extension = artifactUrl.substringAfterLast('.', missingDelimiterValue = "")
+        val target = WasmlineArtifactStaging.transientFile(transientDirectory, if (extension.isEmpty()) "" else ".$extension")
+        val staged = WasmlineArtifactStaging.download(
+            target = target,
+            fileSystem = fileSystem,
+            networkClient = networkClient,
+            artifactUrl = artifactUrl,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+            keepBytes = false,
+        )
+        return when (staged) {
+            is StagedArtifact.Failed -> staged.resolution
+
+            is StagedArtifact.Ready -> {
+                WasmlineTransientArtifacts.register(staged.path)
+                ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
+            }
+        }
     }
 
     private suspend fun downloadArtifact(
@@ -134,7 +202,7 @@ internal class WasmlineFileCache(
             is StagedArtifact.Failed -> staged.resolution
 
             is StagedArtifact.Ready -> {
-                trimToSize(protectedPaths = setOf(target))
+                removeStaleTemporaryFiles(protectedPaths = setOf(target))
                 ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
             }
         }
@@ -155,6 +223,7 @@ internal class WasmlineFileCache(
             if (actualSize != expectedSizeBytes || actualSize > maxArtifactBytes) {
                 return CachedArtifactVerification.SizeMismatch(actualSize)
             }
+            if (actualSize > maxCacheBytes) return CachedArtifactVerification.Oversized(actualSize)
             val hashingSource = HashingSource.sha256(fileSystem.source(path))
             hashingSource.buffer().use { source ->
                 val discard = Buffer()
@@ -187,42 +256,72 @@ internal class WasmlineFileCache(
         }
     }
 
-    private fun trimToSize(protectedPaths: Set<Path>) {
-        runCatching {
+    /**
+     * Ensures [requiredBytes] fit in the cache directory without exceeding [maxCacheBytes].
+     *
+     * Entries past [minimumEvictionAgeMs] are evicted oldest-first to make room. An entry
+     * inside that grace window is never deleted: a concurrent load may already hold its
+     * path, so when only young entries are left the caller must take a different route.
+     *
+     * @return `true` when the bytes fit after eviction, `false` when the caller must not
+     *   write into the cache directory.
+     */
+    private fun reserveSpace(requiredBytes: Long, protectedPaths: Set<Path>): Boolean {
+        if (requiredBytes > maxCacheBytes) return false
+        return runCatching {
+            fileSystem.createDirectories(directory)
             val now = hostCurrentTimeMs()
-            val entries = fileSystem.list(directory).mapNotNull { path ->
-                val metadata = fileSystem.metadataOrNull(path) ?: return@mapNotNull null
-                if (!metadata.isRegularFile) return@mapNotNull null
-                val lastUsedAt = listOfNotNull(
-                    metadata.lastAccessedAtMillis,
-                    metadata.lastModifiedAtMillis,
-                    metadata.createdAtMillis,
-                ).maxOrNull() ?: 0L
-                CacheEntry(path = path, size = metadata.size ?: 0L, lastUsedAt = lastUsedAt)
-            }.toMutableList()
+            var entries = listEntries()
+            removeStaleTemporaryFiles(entries, now, protectedPaths)
+            entries = entries.filterNot { it.path.name.startsWith(TEMPORARY_PREFIX) }
 
-            entries.removeAll { entry ->
-                val isStaleTemporary = entry.path.name.startsWith(TEMPORARY_PREFIX) &&
-                    entry.path !in protectedPaths &&
-                    ageMs(now, entry.lastUsedAt) >= STALE_TEMPORARY_AGE_MS
-                isStaleTemporary && deleteQuietly(entry.path)
-            }
+            val protectedSize = entries.filter { it.path in protectedPaths }.sumOf(CacheEntry::size)
+            var totalBytes = entries.sumOf(CacheEntry::size) - protectedSize
+            if (totalBytes + requiredBytes <= maxCacheBytes) return@runCatching true
 
-            var totalBytes = entries.sumOf(CacheEntry::size)
-            if (totalBytes <= maxCacheBytes) return@runCatching
-
-            entries.asSequence()
-                .filterNot { it.path.name.startsWith(TEMPORARY_PREFIX) }
+            entries
                 .filterNot { it.path in protectedPaths }
                 .filter { ageMs(now, it.lastUsedAt) >= minimumEvictionAgeMs }
                 .sortedBy(CacheEntry::lastUsedAt)
                 .forEach { entry ->
-                    if (totalBytes <= maxCacheBytes) return@forEach
+                    if (totalBytes + requiredBytes <= maxCacheBytes) return@forEach
                     if (deleteQuietly(entry.path)) totalBytes -= entry.size
                 }
+            totalBytes + requiredBytes <= maxCacheBytes
         }.onFailure { error ->
             WasmlineLog.logger?.warn("$P Failed to enforce cache capacity: ${error.message}")
+        }.getOrDefault(false)
+    }
+
+    /** Deletes abandoned temporary files and reports the remaining entries. */
+    private fun removeStaleTemporaryFiles(protectedPaths: Set<Path>) {
+        runCatching {
+            removeStaleTemporaryFiles(listEntries(), hostCurrentTimeMs(), protectedPaths)
+        }.onFailure { error ->
+            WasmlineLog.logger?.warn("$P Failed to clean temporary cache files: ${error.message}")
         }
+    }
+
+    private fun removeStaleTemporaryFiles(entries: List<CacheEntry>, now: Long, protectedPaths: Set<Path>) {
+        entries.forEach { entry ->
+            val isStaleTemporary = entry.path.name.startsWith(TEMPORARY_PREFIX) &&
+                entry.path !in protectedPaths &&
+                ageMs(now, entry.lastUsedAt) >= STALE_TEMPORARY_AGE_MS
+            if (isStaleTemporary) deleteQuietly(entry.path)
+        }
+    }
+
+    private fun listEntries(): List<CacheEntry> = runCatching {
+        fileSystem.list(directory)
+    }.getOrDefault(emptyList()).mapNotNull { path ->
+        val metadata = fileSystem.metadataOrNull(path) ?: return@mapNotNull null
+        if (!metadata.isRegularFile) return@mapNotNull null
+        val lastUsedAt = listOfNotNull(
+            metadata.lastAccessedAtMillis,
+            metadata.lastModifiedAtMillis,
+            metadata.createdAtMillis,
+        ).maxOrNull() ?: 0L
+        CacheEntry(path = path, size = metadata.size ?: 0L, lastUsedAt = lastUsedAt)
     }
 
     private fun pathForKey(key: String): Path {
@@ -266,6 +365,9 @@ internal class WasmlineFileCache(
          * Author: crowforkotlin
          */
         data class SizeMismatch(val actualSizeBytes: Long) : CachedArtifactVerification
+
+        /** Reports a cached entry that alone exceeds the configured cache limit. */
+        data class Oversized(val size: Long) : CachedArtifactVerification
         data object Missing : CachedArtifactVerification
     }
 

@@ -137,6 +137,62 @@ class WasmlineFileCacheTest {
         }
     }
 
+    @Test
+    fun `bounds a burst of entries written inside the eviction grace window`() {
+        val directory = Files.createTempDirectory("wasmline-cache-burst").toFile()
+        try {
+            val cache = WasmlineFileCache(cacheDirectory = directory.absolutePath, maxCacheBytes = 1024L)
+            repeat(40) { cache.put("artifact_$it", ByteArray(100)) }
+            val total = directory.listFiles().orEmpty().sumOf(File::length)
+
+            assertTrue(total <= 1024L, "cache holds $total bytes with maxCacheBytes=1024")
+            assertTrue(directory.listFiles().orEmpty().size < 40, "entries below the grace window were not evicted")
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `refuses a single entry larger than the limit`() {
+        val directory = Files.createTempDirectory("wasmline-cache-oversize").toFile()
+        try {
+            val cache = WasmlineFileCache(cacheDirectory = directory.absolutePath, maxCacheBytes = 1024L)
+            cache.put("artifact_huge", ByteArray(8 * 1024 * 1024))
+            val total = directory.listFiles().orEmpty().sumOf(File::length)
+
+            assertEquals(0L, total)
+            assertNull(cache.get("artifact_huge"))
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `removes a cached artifact that exceeds the limit before using it`() = runTest {
+        val directory = Files.createTempDirectory("wasmline-cache-stale-oversize").toFile()
+        try {
+            val cache = WasmlineFileCache(cacheDirectory = directory.absolutePath, maxCacheBytes = 1024L)
+            val oversized = ByteArray(8 * 1024 * 1024) { 7 }
+            File(directory, "artifact_oversized.wasm").writeBytes(oversized)
+            val sha256 = oversized.toByteString().sha256().hex()
+
+            val resolution = cache.resolveArtifact(
+                key = "artifact_oversized",
+                extension = ".wasm",
+                expectedSha256 = sha256,
+                expectedSizeBytes = oversized.size.toLong(),
+                maxArtifactBytes = 16L * 1024L * 1024L,
+                networkClient = null,
+                artifactUrl = "https://example.invalid/oversized.wasm",
+            )
+
+            assertIs<ArtifactFileResolution.Missing>(resolution)
+            assertFalse(File(directory, "artifact_oversized.wasm").exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
     private suspend fun withTemporaryCache(block: suspend (File, WasmlineFileCache) -> Unit) {
         val directory = Files.createTempDirectory("wasmline-file-cache").toFile()
         try {

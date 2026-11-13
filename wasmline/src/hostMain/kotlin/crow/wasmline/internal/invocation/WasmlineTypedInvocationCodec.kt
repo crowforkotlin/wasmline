@@ -8,6 +8,16 @@ import crow.wasmline.invocation.WasmlineFailure
 /**
  * Encodes typed invocation values for native host bridges.
  *
+ * The result frame layout - status byte, kind byte, `u32` error code, message,
+ * details, value count - is part of `NATIVE_BRIDGE_ABI_VERSION`. Changing the
+ * field order, a field width, or a tag value requires bumping
+ * [crow.wasmline.WasmlineReleaseIdentity.NATIVE_BRIDGE_ABI_VERSION] and the
+ * matching `WASMLINE_NATIVE_BRIDGE_ABI_VERSION` in the native build identity, so a
+ * peer on the other revision fails the identity check instead of misparsing the
+ * frame. The Core Service response frame carries its own revision
+ * ([crow.wasmline.internal.protocol.WasmlineResponseCodec.FRAME_VERSION]); this
+ * frame relies on the bridge ABI version instead.
+ *
  * Date: 2026-08-02
  * Author: crowforkotlin
  */

@@ -33,8 +33,9 @@ internal object WasmlineHttpServer {
      * Start the HTTP server and serve files from [serveDirectory].
      *
      * Routes:
-     * - `GET /` — HTML index page listing all downloadable files.
-     * - `GET /{filename}` — download one file directly inside [serveDirectory].
+     * - `GET /` — HTML index page listing every downloadable file below [serveDirectory].
+     * - `GET /{path...}` — download any file below [serveDirectory], including
+     *   `artifacts/sha256/{prefix}/{digest}.{ext}` package objects.
      *
      * Every request path is resolved by [WasmlineArtifactServing.resolveServedFile],
      * which rejects `..` segments, absolute paths, and symlink escapes, and the
@@ -61,12 +62,10 @@ internal object WasmlineHttpServer {
 
         embeddedServer(CIO, host = host, port = port) {
             routing {
-                // Index page: list all files in the serve directory.
+                // Index page: list every file below the serve directory, including nested package objects.
                 get("/") {
-                    val files = root.toFile().listFiles()
-                        ?.filter { it.isFile }
-                        ?.sortedBy { it.name }
-                        ?: emptyList()
+                    val files = WasmlineArtifactServing.listServedFiles(root)
+                    val rootFile = root.toFile()
 
                     val html = buildString {
                         append("<!DOCTYPE html>")
@@ -80,7 +79,7 @@ internal object WasmlineHttpServer {
                         append("<h1>Wasmline Artifacts</h1>")
                         append("<ul>")
                         for (file in files) {
-                            append(WasmlineArtifactServing.renderIndexEntry(file))
+                            append(WasmlineArtifactServing.renderIndexEntry(rootFile, file))
                         }
                         append("</ul>")
                         append("</body></html>")
@@ -88,9 +87,11 @@ internal object WasmlineHttpServer {
                     call.respondText(html, ContentType.Text.Html)
                 }
 
-                // File download: serve one file that is directly inside the serve directory.
-                get("/{filename}") {
-                    val filename = call.parameters["filename"] ?: return@get
+                // File download: serve any file below the serve directory, including
+                // `artifacts/sha256/{prefix}/{digest}.{ext}` package objects.
+                get("/{path...}") {
+                    val segments = call.parameters.getAll("path").orEmpty()
+                    val filename = segments.joinToString("/")
                     val file = WasmlineArtifactServing.resolveServedFile(root, filename)
 
                     if (file == null) {

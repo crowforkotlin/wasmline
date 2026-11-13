@@ -153,6 +153,19 @@ class ManifestTest {
     }
 
     @Test
+    fun rejectsAProfileFromAnUnsupportedCompileSchema() {
+        val manifest = canonicalManifest().let { value ->
+            value.copy(
+                aotCompatibilityProfiles = value.aotCompatibilityProfiles.map {
+                    it.copy(compileProfileSchemaVersion = WasmlineManifestWireFormat.SUPPORTED_COMPILE_PROFILE_SCHEMA_VERSION + 1)
+                },
+            )
+        }
+
+        assertValidationContains(manifest, "but this loader supports")
+    }
+
+    @Test
     fun rejectsInvalidRawAndAotVariantShapes() {
         val rawWithProfile = canonicalManifest().copy(
             artifactTargets = listOf(
