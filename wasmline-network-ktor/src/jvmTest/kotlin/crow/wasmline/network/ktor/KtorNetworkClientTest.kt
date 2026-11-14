@@ -80,9 +80,12 @@ class KtorNetworkClientTest {
             }
             assertEquals(200, status.statusCode)
             assertEquals(listOf<Byte>(1, 2, 3), bytes)
-            assertEquals(404, adapter.fetchTo("http://127.0.0.1:${server.address.port}/missing") { _, _, _ ->
-                error("Error body must not reach sink")
-            }.statusCode)
+            assertEquals(
+                404,
+                adapter.fetchTo("http://127.0.0.1:${server.address.port}/missing") { _, _, _ ->
+                    error("Error body must not reach sink")
+                }.statusCode,
+            )
         } finally {
             client.close()
             server.stop(0)

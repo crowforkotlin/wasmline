@@ -522,9 +522,13 @@ private class KotlinEmitter(
         out.appendLine("        require(value <= 0x10FFFFu && value !in 0xD800u..0xDFFFu) { \"Expected a Unicode scalar value.\" }")
         out.appendLine("        return value")
         out.appendLine("    }")
-        out.appendLine("    private fun encodeChar(value: UInt): WasmlineComponentValue = WasmlineComponentValue.CharValue(unicodeScalar(value))")
+        out.appendLine(
+            "    private fun encodeChar(value: UInt): WasmlineComponentValue = WasmlineComponentValue.CharValue(unicodeScalar(value))",
+        )
         out.appendLine("    private fun decodeChar(value: WasmlineComponentValue): UInt =")
-        out.appendLine("        unicodeScalar(requireNotNull(value as? WasmlineComponentValue.CharValue) { \"Expected char value.\" }.value)")
+        out.appendLine(
+            "        unicodeScalar(requireNotNull(value as? WasmlineComponentValue.CharValue) { \"Expected char value.\" }.value)",
+        )
         out.appendLine()
         out.appendLine("    private fun WasmlineComponentValue.recordFields(type: String): Map<String, WasmlineComponentValue> {")
         out.appendLine(
