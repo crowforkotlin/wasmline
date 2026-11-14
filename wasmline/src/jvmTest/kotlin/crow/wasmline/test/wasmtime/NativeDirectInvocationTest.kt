@@ -700,6 +700,131 @@ class NativeDirectInvocationTest {
         }
     }
 
+    @Test
+    fun startImportCanCreateAnIndependentRawSession() {
+        val sourceArtifact = NativeFixtureTestSupport.copy("raw-export-start-import")
+        val targetArtifact = copyAotCoreFixture()
+        try {
+            val source = loadAotCore(sourceArtifact)
+            val target = loadAotCore(targetArtifact)
+            try {
+                val sourceModule = source.asCoreWasmModule().getOrThrow()
+                val targetModule = target.asCoreWasmModule().getOrThrow()
+                var nestedValue: List<RawValue>? = null
+                val handler = RawImport("env", "host", RawFunctionSignature()) { _, _ ->
+                    targetModule.instantiate().getOrThrow().use { nested ->
+                        nestedValue = nested.invoke("add", listOf(RawValue.I32(3), RawValue.I32(4))).getOrThrow()
+                    }
+                    WasmlineCallResult.Success(emptyList())
+                }
+                sourceModule.instantiate(listOf(handler)).getOrThrow().use { session ->
+                    assertEquals(listOf(RawValue.I32(7)), nestedValue)
+                    assertEquals(
+                        listOf(RawValue.I32(5)),
+                        session.invoke("add", listOf(RawValue.I32(2), RawValue.I32(3))).getOrThrow(),
+                    )
+                }
+            } finally {
+                source.close()
+                target.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            sourceArtifact.delete()
+            targetArtifact.delete()
+        }
+    }
+
+    @Test
+    fun startImportFailureRetainsItsStructuredFields() {
+        val artifact = NativeFixtureTestSupport.copy("raw-export-start-import")
+        try {
+            val handle = loadAotCore(artifact)
+            try {
+                val module = handle.asCoreWasmModule().getOrThrow()
+                val original = WasmlineFailure(WasmlineErrorCode.IMPORT_HANDLER_FAILED, "start-import-failure", byteArrayOf(7, 8))
+                val handler = RawImport("env", "host", RawFunctionSignature()) { _, _ -> WasmlineCallResult.Failure(original) }
+                val failed = assertIs<WasmlineCallResult.Failure>(module.instantiate(listOf(handler))).failure
+                assertEquals(original.code, failed.code)
+                assertEquals(original.message, failed.message)
+                assertContentEquals(original.details, failed.details)
+                val successfulHandler = RawImport("env", "host", RawFunctionSignature()) { _, _ ->
+                    WasmlineCallResult.Success(emptyList())
+                }
+                module.instantiate(listOf(successfulHandler)).getOrThrow().close()
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun startCallbackCannotRepublishAReleasedPendingSession() {
+        val artifact = NativeFixtureTestSupport.copy("raw-export-start-import")
+        val sessionKey = "start-cancelled-session"
+        try {
+            platformWasmlineRuntimeCapabilities()
+            JniWasmlineBindings.loadModule(artifact.path, artifact.path, WasmlineArtifactFormat.CWASM).getOrThrow()
+            val import = RawImport("env", "host", RawFunctionSignature()) { _, _ ->
+                WasmlineCallResult.Success(emptyList())
+            }
+            val imports = CoreWasmNativeCodec.encodeImports(listOf(import))
+            val dispatcher = object {
+                var cancelPending = true
+
+                @Suppress("UNUSED_PARAMETER")
+                fun dispatchRaw(module: String, name: String, arguments: ByteArray): ByteArray {
+                    if (cancelPending) JniWasmlineBindings.coreReleaseSession(sessionKey)
+                    return WasmlineTypedInvocationCodec.encodeRawResult(WasmlineCallResult.Success(emptyList())).getOrThrow()
+                }
+            }
+            val first = WasmlineTypedInvocationCodec.decodeRawValues(
+                requireNotNull(JniWasmlineBindings.coreCreateSession(artifact.path, sessionKey, imports, dispatcher, null)),
+            )
+            assertEquals(WasmlineErrorCode.SESSION_CLOSED, assertIs<WasmlineCallResult.Failure>(first).failure.code)
+            dispatcher.cancelPending = false
+            WasmlineTypedInvocationCodec.decodeRawValues(
+                requireNotNull(JniWasmlineBindings.coreCreateSession(artifact.path, sessionKey, imports, dispatcher, null)),
+            ).getOrThrow()
+            JniWasmlineBindings.coreReleaseSession(sessionKey)
+        } finally {
+            JniWasmlineBindings.releaseModule(artifact.path)
+            WasmlineRuntime.shutdown()
+            artifact.delete()
+        }
+    }
+
+    @Test
+    fun supplementaryNamesAndPathsUseStandardUtf8() {
+        val fixture = NativeFixtureTestSupport.copy("raw-export-unicode")
+        val directory = java.nio.file.Files.createTempDirectory("wasmline-unicode-path").toFile()
+        val name = String(Character.toChars(0x1F600))
+        try {
+            val artifact = fixture.copyTo(File(directory, "$name.cwasm"))
+            val handle = loadAotCore(artifact)
+            try {
+                assertEquals(listOf(RawValue.I32(42)), invokeRawValues(handle, name))
+                val module = handle.asCoreWasmModule().getOrThrow()
+                assertTrue(module.exports.any { it.name == name })
+                module.instantiate(CoreWasmSessionOptions(memoryExportName = "memory-$name")).getOrThrow().use { session ->
+                    assertEquals(listOf(RawValue.I32(42)), session.invoke(name).getOrThrow())
+                    val memory = requireNotNull(session.memory)
+                    memory.write(0, byteArrayOf(7, 8)).getOrThrow()
+                    assertContentEquals(byteArrayOf(7, 8), memory.read(0, 2).getOrThrow())
+                }
+            } finally {
+                handle.close()
+            }
+        } finally {
+            WasmlineRuntime.shutdown()
+            fixture.delete()
+            directory.deleteRecursively()
+        }
+    }
+
     /** Verifies a guest may import one host function twice and both occurrences reach the single handler. */
     @Test
     fun duplicateGuestImportsShareOneHostDefinition() {

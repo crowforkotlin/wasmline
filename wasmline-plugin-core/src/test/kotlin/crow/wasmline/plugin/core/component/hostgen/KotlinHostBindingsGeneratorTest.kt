@@ -4,10 +4,13 @@ import crow.wasmline.WasmlineComponentContract
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 import java.io.File
+import java.lang.reflect.InvocationTargetException
+import java.net.URLClassLoader
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class KotlinHostBindingsGeneratorTest {
@@ -292,6 +295,84 @@ class KotlinHostBindingsGeneratorTest {
         assertEquals(ExitCode.OK, compile)
         assertTrue(File(output, "generated/kv/KvPluginWorld\$Bucket.class").isFile)
         assertTrue(File(output, "generated/kv/KvPluginWorld\$WatchHandle.class").isFile)
+    }
+
+    @Test
+    fun resourceVariantsCompileWithTheirInstanceParameter() = withGeneratorDirectory { root ->
+        val wit = File(root, "wit").apply { mkdirs() }
+        File(wit, "world.wit").writeText(
+            """
+            package sample:resource-variant@1.0.0;
+            interface api {
+              resource handle { constructor(); }
+              variant choice { empty, one(own<handle>), many(list<own<handle>>), }
+              record wrapped { choice: choice, }
+              get: func() -> choice;
+              get-wrapped: func() -> wrapped;
+            }
+            world plugin { export api; }
+            """.trimIndent(),
+        )
+        val generated = KotlinHostBindingsGenerator.generate(
+            KotlinHostBindingsRequest(wit, File(root, "generated"), "plugin", "generated.variant", allowResources = true),
+        )
+        assertTrue(
+            generated.outputFile.readText().contains("decodeChoice(value: WasmlineComponentValue, instance: WasmlineComponentInstance)"),
+        )
+        compileGenerated(generated.outputFile, File(root, "classes"))
+    }
+
+    @Test
+    fun generatedCharCodecsPreserveAndValidateUnicodeScalars() = withGeneratorDirectory { root ->
+        val wit = File(root, "wit").apply { mkdirs() }
+        File(wit, "world.wit").writeText(
+            """
+            package sample:scalar@1.0.0;
+            interface api { echo: func(value: char) -> char; }
+            world plugin { export api; }
+            """.trimIndent(),
+        )
+        val generated = KotlinHostBindingsGenerator.generate(
+            KotlinHostBindingsRequest(wit, File(root, "generated"), "plugin", "generated.scalar"),
+        )
+        assertTrue(generated.outputFile.readText().contains("echo(value: UInt): WasmlineCallResult<UInt>"))
+        val output = File(root, "classes")
+        compileGenerated(generated.outputFile, output)
+        URLClassLoader(arrayOf(output.toURI().toURL()), javaClass.classLoader).use { loader ->
+            val world = loader.loadClass("generated.scalar.PluginWorld")
+            val instance = world.getField("INSTANCE").get(null)
+            val encode = world.declaredMethods.single { it.name.startsWith("encodeChar-") }.apply { isAccessible = true }
+            val decode = world.declaredMethods.single { it.name.startsWith("decodeChar-") }.apply { isAccessible = true }
+            listOf(0u, 0xD7FFu, 0xE000u, 0x1F600u, 0x10FFFFu).forEach { scalar ->
+                val encoded = assertIs<crow.wasmline.WasmlineComponentValue.CharValue>(
+                    encode.invoke(instance, scalar.toInt()),
+                )
+                assertEquals(scalar, encoded.value)
+                assertEquals(scalar, (decode.invoke(instance, encoded) as Int).toUInt())
+            }
+            listOf(0xD800u, 0xDFFFu, 0x110000u, UInt.MAX_VALUE).forEach { scalar ->
+                val failure = assertFailsWith<InvocationTargetException> { encode.invoke(instance, scalar.toInt()) }
+                assertIs<IllegalArgumentException>(failure.cause)
+                val invalid = crow.wasmline.WasmlineComponentValue.CharValue(scalar)
+                val decodeFailure = assertFailsWith<InvocationTargetException> { decode.invoke(instance, invalid) }
+                assertIs<IllegalArgumentException>(decodeFailure.cause)
+            }
+        }
+    }
+
+    private fun compileGenerated(source: File, output: File) {
+        val runtimeJar = File(WasmlineComponentContract::class.java.protectionDomain.codeSource.location.toURI())
+        val stdlibJar = File(Unit::class.java.protectionDomain.codeSource.location.toURI())
+        val result = K2JVMCompiler().exec(
+            System.err,
+            "-no-reflect",
+            "-classpath",
+            listOf(runtimeJar, stdlibJar).joinToString(File.pathSeparator, transform = File::getAbsolutePath),
+            "-d",
+            output.absolutePath,
+            source.absolutePath,
+        )
+        assertEquals(ExitCode.OK, result)
     }
 
     private fun sampleRoot(): File {

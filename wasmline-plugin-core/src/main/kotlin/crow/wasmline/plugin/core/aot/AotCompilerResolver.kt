@@ -5,6 +5,7 @@ import crow.wasmline.plugin.core.compiler.WasmtimeCompiler
 import crow.wasmline.plugin.core.toolchain.FileDigest
 import crow.wasmline.plugin.core.toolchain.SecureArchiveExtractor
 import crow.wasmline.plugin.core.toolchain.ToolDistribution
+import crow.wasmline.plugin.core.toolchain.sameHttpOrigin
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -253,6 +254,7 @@ class AotCompilerResolver(private val cache: AotCompilerCache) : Closeable {
         withContext(Dispatchers.IO) {
             var current = URI(url)
             var redirects = 0
+            var forwardAuthorization = true
             while (true) {
                 require(current.scheme == "https") { "Compiler archive URL must use HTTPS: $current" }
                 val connection = current.toURL().openConnection() as HttpURLConnection
@@ -262,14 +264,16 @@ class AotCompilerResolver(private val cache: AotCompilerCache) : Closeable {
                     connection.readTimeout = READ_TIMEOUT_MILLIS
                     connection.requestMethod = "GET"
                     if (!githubToken.isNullOrBlank()) {
-                        connection.setRequestProperty("Authorization", "Bearer $githubToken")
+                        if (forwardAuthorization) connection.setRequestProperty("Authorization", "Bearer $githubToken")
                     }
                     val status = connection.responseCode
                     if (status in 300..399 && status != HTTP_NOT_MODIFIED) {
                         val location = connection.getHeaderField("Location")
                         require(!location.isNullOrBlank()) { "Compiler archive redirect omitted Location." }
                         require(++redirects <= MAX_REDIRECTS) { "Compiler archive redirect limit exceeded." }
-                        current = current.resolve(location)
+                        val next = current.resolve(location)
+                        forwardAuthorization = forwardAuthorization && sameHttpOrigin(current, next)
+                        current = next
                         continue
                     }
                     check(status in 200..299) { "HTTP $status" }

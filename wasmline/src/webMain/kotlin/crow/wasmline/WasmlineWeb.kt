@@ -36,6 +36,10 @@ object WasmlineWeb {
     /** Returns whether raw Wasm bytes are already available under [key]. */
     fun hasBytes(key: String): Boolean = WebWasmArtifacts.contains(key)
 
+    /** Identifies the current immutable byte registration for the signed loader. */
+    @InternalWasmlineRuntimeApi
+    fun bytesIdentity(key: String): Any? = WebWasmArtifacts.identityOrNull(key)
+
     /**
      * Downloads and caches the artifact at [url].
      *

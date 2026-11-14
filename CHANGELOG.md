@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Tool and AOT compiler downloads stop forwarding authorization after a redirect
+  changes the scheme, host, or port. External tool timeouts also bound output
+  draining and process cleanup.
+- Native Core Wasm start callbacks can create an independent raw session without
+  holding the session registry locks. Releasing a pending session prevents its
+  publication, and start import failures retain their error code and details.
+- JNI converts artifact paths and export names from UTF-16 to standard UTF-8,
+  including supplementary Unicode characters.
+- Generated Host WIT bindings represent `char` as a validated `UInt` Unicode
+  scalar instead of Kotlin `Char`. Regenerate bindings and migrate `Char` inputs
+  to scalar values. Resource-containing variant decoders receive their instance.
+- Signed browser loads associate verification with the current byte registration.
+  Concurrent in-process file-cache writes reserve capacity across cache instances,
+  and Ktor artifact downloads deliver bytes to the sink before buffering the full
+  response.
 - Publish canonical `wasmline.wit` and its SHA-256 checksum as GitHub Release
   assets for non-Kotlin Wasmline Service Component plugins.
 - `wasmlineServerDeploy` binds to `127.0.0.1` by default and serves only files

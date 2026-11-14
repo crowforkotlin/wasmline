@@ -42,15 +42,20 @@ internal class WasmlineFileCache(
 
     override fun put(key: String, bytes: ByteArray) {
         val target = pathForKey(key)
-        if (!reserveSpace(bytes.size.toLong(), protectedPaths = setOf(target))) {
+        val reservation = reserveSpace(bytes.size.toLong(), target)
+        if (reservation == null) {
             WasmlineLog.logger?.warn(
                 "$P Skipping cache entry '$key': ${bytes.size} bytes does not fit in maxCacheBytes=$maxCacheBytes " +
                     "without evicting an entry younger than $minimumEvictionAgeMs ms.",
             )
             return
         }
-        if (writeBytesAtomically(target, bytes)) {
-            removeStaleTemporaryFiles(protectedPaths = setOf(target))
+        try {
+            if (writeBytesAtomically(target, bytes)) {
+                removeStaleTemporaryFiles(protectedPaths = setOf(target))
+            }
+        } finally {
+            reservation.release()
         }
     }
 
@@ -117,11 +122,12 @@ internal class WasmlineFileCache(
         }
 
         if (networkClient == null) return ArtifactFileResolution.Missing
-        // The cache never exceeds maxCacheBytes: an artifact that does not fit - because it
+        // Concurrent in-process writes reserve capacity: an artifact that does not fit - because it
         // is larger than the whole limit, or because entries younger than the eviction grace
         // window still occupy the budget - goes to a transient file instead, and that file is
         // removed once the runtime has opened it.
-        if (!reserveSpace(expectedSizeBytes, protectedPaths = setOf(target))) {
+        val reservation = reserveSpace(expectedSizeBytes, target)
+        if (reservation == null) {
             return stageTransientArtifact(
                 expectedSha256 = expectedSha256,
                 expectedSizeBytes = expectedSizeBytes,
@@ -130,14 +136,18 @@ internal class WasmlineFileCache(
                 artifactUrl = artifactUrl,
             )
         }
-        return downloadArtifact(
-            target = target,
-            expectedSha256 = expectedSha256,
-            expectedSizeBytes = expectedSizeBytes,
-            maxArtifactBytes = maxArtifactBytes,
-            networkClient = networkClient,
-            artifactUrl = artifactUrl,
-        )
+        return try {
+            downloadArtifact(
+                target = target,
+                expectedSha256 = expectedSha256,
+                expectedSizeBytes = expectedSizeBytes,
+                maxArtifactBytes = maxArtifactBytes,
+                networkClient = networkClient,
+                artifactUrl = artifactUrl,
+            )
+        } finally {
+            reservation.release()
+        }
     }
 
     /**
@@ -263,34 +273,61 @@ internal class WasmlineFileCache(
      * inside that grace window is never deleted: a concurrent load may already hold its
      * path, so when only young entries are left the caller must take a different route.
      *
-     * @return `true` when the bytes fit after eviction, `false` when the caller must not
-     *   write into the cache directory.
+     * The reservation includes concurrent writers sharing this filesystem and directory.
+     * Callers release it after publication or failure, including coroutine cancellation.
      */
-    private fun reserveSpace(requiredBytes: Long, protectedPaths: Set<Path>): Boolean {
-        if (requiredBytes > maxCacheBytes) return false
-        return runCatching {
+    private fun reserveSpace(requiredBytes: Long, target: Path): CacheReservation? = runCatching {
+        CacheCapacity.lock.withLock {
+            if (requiredBytes < 0 || requiredBytes > maxCacheBytes) return@withLock null
             fileSystem.createDirectories(directory)
+            val identity = CacheDirectory(fileSystem, fileSystem.canonicalize(directory))
+            val pending = CacheCapacity.reservations[identity].orEmpty()
+            if (target.name in pending) return@withLock null
             val now = hostCurrentTimeMs()
             var entries = listEntries()
+            val protectedPaths = entries.filter { entry ->
+                entry.path == target || pending.keys.any { name ->
+                    entry.path.name == name || entry.path.name.startsWith("$TEMPORARY_PREFIX$name-")
+                }
+            }.mapTo(mutableSetOf(), CacheEntry::path)
             removeStaleTemporaryFiles(entries, now, protectedPaths)
             entries = entries.filterNot { it.path.name.startsWith(TEMPORARY_PREFIX) }
 
-            val protectedSize = entries.filter { it.path in protectedPaths }.sumOf(CacheEntry::size)
-            var totalBytes = entries.sumOf(CacheEntry::size) - protectedSize
-            if (totalBytes + requiredBytes <= maxCacheBytes) return@runCatching true
+            val reservationBytes = maxOf(requiredBytes, entries.firstOrNull { it.path == target }?.size ?: 0L)
+            val reservedBytes = pending.values.sum()
+            if (reservationBytes > maxCacheBytes || reservedBytes > maxCacheBytes - reservationBytes) return@withLock null
+            val availableBytes = maxCacheBytes - reservationBytes - reservedBytes
+            var totalBytes = entries.filterNot { it.path in protectedPaths }.sumOf(CacheEntry::size)
 
             entries
                 .filterNot { it.path in protectedPaths }
                 .filter { ageMs(now, it.lastUsedAt) >= minimumEvictionAgeMs }
                 .sortedBy(CacheEntry::lastUsedAt)
                 .forEach { entry ->
-                    if (totalBytes + requiredBytes <= maxCacheBytes) return@forEach
+                    if (totalBytes <= availableBytes) return@forEach
                     if (deleteQuietly(entry.path)) totalBytes -= entry.size
                 }
-            totalBytes + requiredBytes <= maxCacheBytes
-        }.onFailure { error ->
-            WasmlineLog.logger?.warn("$P Failed to enforce cache capacity: ${error.message}")
-        }.getOrDefault(false)
+            if (totalBytes > availableBytes) return@withLock null
+            CacheCapacity.reservations.getOrPut(identity) { mutableMapOf() }[target.name] = reservationBytes
+            CacheReservation(identity, target.name)
+        }
+    }.onFailure { error ->
+        WasmlineLog.logger?.warn("$P Failed to enforce cache capacity: ${error.message}")
+    }.getOrNull()
+
+    private data class CacheDirectory(val fileSystem: FileSystem, val path: Path)
+
+    private object CacheCapacity {
+        val lock = WasmlineCacheLock()
+        val reservations = mutableMapOf<CacheDirectory, MutableMap<String, Long>>()
+    }
+
+    private class CacheReservation(private val directory: CacheDirectory, private val name: String) {
+        fun release() = CacheCapacity.lock.withLock {
+            val pending = CacheCapacity.reservations[directory] ?: return@withLock
+            pending.remove(name)
+            if (pending.isEmpty()) CacheCapacity.reservations.remove(directory)
+        }
     }
 
     /** Deletes abandoned temporary files and reports the remaining entries. */

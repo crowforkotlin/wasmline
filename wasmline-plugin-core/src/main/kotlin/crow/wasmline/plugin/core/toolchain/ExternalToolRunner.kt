@@ -2,6 +2,7 @@ package crow.wasmline.plugin.core.toolchain
 
 import crow.wasmline.plugin.core.InternalWasmlineToolingApi
 import java.io.File
+import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -38,28 +39,38 @@ class ExternalToolRunner(private val defaultTimeoutMillis: Long = 120_000, priva
         processBuilder.environment().putAll(environment)
 
         val process = processBuilder.start()
+        val startedAt = System.nanoTime()
         val lines = Collections.synchronizedList(mutableListOf<String>())
         val reader = thread(name = "wasmline-tool-output", isDaemon = true) {
-            process.inputStream.bufferedReader().useLines { outputLines ->
-                outputLines.forEach { line ->
-                    lines += line
-                    logger(line)
+            try {
+                process.inputStream.bufferedReader().useLines { outputLines ->
+                    outputLines.forEach { line ->
+                        lines += line
+                        logger(line)
+                    }
                 }
+            } catch (_: IOException) {
+                // Timeout cleanup may close the pipe while it is being read.
             }
         }
 
-        val finished = process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)
-        if (!finished) {
-            process.destroyForcibly()
-            process.waitFor()
+        val timedOut = try {
+            val finished = process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)
+            val remainingMillis = timeoutMillis - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt)
+            if (finished && remainingMillis > 0) reader.join(remainingMillis)
+            !finished || reader.isAlive
+        } catch (error: InterruptedException) {
+            terminate(process, reader)
+            Thread.currentThread().interrupt()
+            throw error
         }
-        reader.join()
+        if (timedOut) terminate(process, reader)
         val result = ToolExecutionResult(
             command = command,
-            exitCode = process.exitValue(),
-            output = lines.joinToString(System.lineSeparator()),
+            exitCode = if (process.isAlive) -1 else process.exitValue(),
+            output = synchronized(lines) { lines.joinToString(System.lineSeparator()) },
         )
-        if (!finished) {
+        if (timedOut) {
             throw ToolExecutionException(
                 "Tool timed out after " + timeoutMillis + " ms: " + describe(command),
                 result,
@@ -75,6 +86,30 @@ class ExternalToolRunner(private val defaultTimeoutMillis: Long = 120_000, priva
         return result
     }
 
+    private fun terminate(process: Process, reader: Thread) {
+        val descendants = runCatching { process.descendants().use { it.toList() } }.getOrDefault(emptyList())
+        descendants.asReversed().forEach { child -> runCatching { child.destroyForcibly() } }
+        runCatching { process.destroyForcibly() }
+        try {
+            process.waitFor(CLEANUP_WAIT_MILLIS, TimeUnit.MILLISECONDS)
+            reader.join(CLEANUP_WAIT_MILLIS)
+            if (reader.isAlive) {
+                // A pipe close can itself wait for a blocked read held by an
+                // untracked descendant. Do not move that wait onto the caller.
+                thread(name = "wasmline-tool-output-close", isDaemon = true) {
+                    runCatching { process.inputStream.close() }
+                }
+                reader.join(CLEANUP_WAIT_MILLIS)
+            }
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+    }
+
     private fun describe(command: List<String>): String =
         command.joinToString(" ") { argument -> if (argument.any(Char::isWhitespace)) "\"$argument\"" else argument }
+
+    private companion object {
+        const val CLEANUP_WAIT_MILLIS: Long = 250
+    }
 }

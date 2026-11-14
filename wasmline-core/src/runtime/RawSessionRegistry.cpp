@@ -88,30 +88,53 @@ namespace wasmline {
         }
 
         std::shared_ptr<RawModuleSession> session;
-        std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
-        std::unique_lock<std::mutex> creationLock(creationMutex_);
-        if (findExplicit(sessionKey)) {
-            return InvocationResult::failure(WasmlineErrorCode::CONCURRENT_ACCESS, "Raw session key is already active.");
+        {
+            std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
+            std::unique_lock<std::mutex> creationLock(creationMutex_);
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            if (explicitSessions_.count(sessionKey) || pendingSessions_.count(sessionKey)) {
+                return InvocationResult::failure(WasmlineErrorCode::CONCURRENT_ACCESS, "Raw session key is already active.");
+            }
+
+            wasm_engine_t* engine = Engine::getInstance().getEngine();
+            wasmtime_module_t* module = Module::getInstance().get(artifactKey);
+            if (!engine || !module) {
+                return InvocationResult::failure(WasmlineErrorCode::ENGINE_NOT_INITIALIZED, "Raw module artifact is not loaded.");
+            }
+            session = std::make_shared<RawModuleSession>(engine, module, sessionKey);
+            session->adoptImportUser(callbackUserOwner.release(), userFinalizer);
+            pendingSessions_.emplace(sessionKey, ExplicitEntry{artifactKey, session});
         }
 
-        wasm_engine_t* engine = Engine::getInstance().getEngine();
-        wasmtime_module_t* module = Module::getInstance().get(artifactKey);
-        if (!engine || !module) {
-            return InvocationResult::failure(WasmlineErrorCode::ENGINE_NOT_INITIALIZED, "Raw module artifact is not loaded.");
+        // The session owns engine/module clones. Guest start callbacks must run
+        // without registry or lifecycle locks, and pending keys are not callable.
+        const auto discardPending = [&] {
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            const auto pending = pendingSessions_.find(sessionKey);
+            if (pending != pendingSessions_.end() && pending->second.session == session) pendingSessions_.erase(pending);
+        };
+        bool initialized;
+        try {
+            initialized = session->initialize(imports, callback, bufferFree, false, std::move(memoryExportName));
+        } catch (...) {
+            discardPending();
+            throw;
         }
-
-        session = std::make_shared<RawModuleSession>(engine, module, sessionKey);
-        session->adoptImportUser(callbackUserOwner.release(), userFinalizer);
-        if (!session->initialize(imports, callback, bufferFree, false, std::move(memoryExportName))) {
+        if (!initialized) {
             InvocationResult failure = session->takeLastImportFailure();
             if (failure.isSuccess()) {
                 failure =
                     InvocationResult::failure(WasmlineErrorCode::INSTANTIATION_FAILED, "Raw module session could not be instantiated.");
             }
+            discardPending();
             return failure;
         }
 
+        std::unique_lock<std::mutex> creationLock(creationMutex_);
         std::unique_lock<std::shared_mutex> lock(mutex_);
+        const auto pending = pendingSessions_.find(sessionKey);
+        if (pending == pendingSessions_.end() || pending->second.session != session) return closedRawSession();
+        pendingSessions_.erase(pending);
         if (!explicitSessions_.emplace(sessionKey, ExplicitEntry{artifactKey, session}).second) {
             lock.unlock();
             return InvocationResult::failure(WasmlineErrorCode::CONCURRENT_ACCESS, "Raw session key became active during instantiation.");
@@ -156,6 +179,12 @@ namespace wasmline {
                 if (found != explicitSessions_.end()) {
                     session = std::move(found->second.session);
                     explicitSessions_.erase(found);
+                } else {
+                    const auto pending = pendingSessions_.find(sessionKey);
+                    if (pending != pendingSessions_.end()) {
+                        session = std::move(pending->second.session);
+                        pendingSessions_.erase(pending);
+                    }
                 }
             }
         }
@@ -167,7 +196,7 @@ namespace wasmline {
         std::vector<std::shared_ptr<RawModuleSession>> detached;
         {
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            detached.reserve(1 + explicitSessions_.size());
+            detached.reserve(1 + explicitSessions_.size() + pendingSessions_.size());
             const auto implicit = implicitSessions_.find(artifactKey);
             if (implicit != implicitSessions_.end()) {
                 detached.push_back(std::move(implicit->second));
@@ -181,6 +210,14 @@ namespace wasmline {
                     ++session;
                 }
             }
+            for (auto session = pendingSessions_.begin(); session != pendingSessions_.end();) {
+                if (session->second.artifactKey == artifactKey) {
+                    detached.push_back(std::move(session->second.session));
+                    session = pendingSessions_.erase(session);
+                } else {
+                    ++session;
+                }
+            }
         }
         return detached;
     }
@@ -190,13 +227,16 @@ namespace wasmline {
         std::vector<std::shared_ptr<RawModuleSession>> detached;
         {
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            detached.reserve(implicitSessions_.size() + explicitSessions_.size());
+            detached.reserve(implicitSessions_.size() + explicitSessions_.size() + pendingSessions_.size());
             for (auto& entry : implicitSessions_)
                 detached.push_back(std::move(entry.second));
             for (auto& entry : explicitSessions_)
                 detached.push_back(std::move(entry.second.session));
+            for (auto& entry : pendingSessions_)
+                detached.push_back(std::move(entry.second.session));
             implicitSessions_.clear();
             explicitSessions_.clear();
+            pendingSessions_.clear();
         }
         return detached;
     }

@@ -6,6 +6,7 @@ import crow.wasmline.WasmlineArtifactFormat
 import crow.wasmline.WasmlineExecutionModel
 import crow.wasmline.WasmlineInvocationProtocol
 import crow.wasmline.WasmlineLoadState
+import crow.wasmline.WasmlineRuntime
 import crow.wasmline.WasmlineWeb
 import crow.wasmline.extensions.Keys
 import crow.wasmline.invocation.WasmlineErrorCode
@@ -91,6 +92,35 @@ class WasmlineRemotePackageWebCacheTest {
             assertIs<WasmlineSourceResolution.ContinueWith>(resolve(manifestUrl, client, cache))
             assertEquals(listOf(manifestUrl, artifactUrl, artifactUrl), requests)
             assertTrue(WasmlineWeb.hasBytes(artifactUrl))
+        } finally {
+            WasmlineWeb.invalidate(artifactUrl)
+        }
+    }
+
+    @Test
+    fun replacementInvalidatesSignedVerificationEvenWithoutAnEmptyCache() = runTest {
+        val manifestUrl = "https://cache.invalid/web-replaced/manifest.wlm"
+        val artifactBytes = byteArrayOf(1, 2, 3, 4)
+        val digest = artifactBytes.toByteString().sha256().hex()
+        val artifactUrl = artifactUrl(manifestUrl, digest)
+        val envelopeBytes = signAndEncode(manifest(digest, artifactBytes.size.toLong()))
+        val requests = mutableListOf<String>()
+        val client = networkClient(requests, manifestUrl, envelopeBytes, artifactUrl, artifactBytes)
+        try {
+            assertIs<WasmlineSourceResolution.ContinueWith>(resolve(manifestUrl, client, WasmlineNoOpCache))
+            WasmlineWeb.registerBytes(artifactUrl, byteArrayOf(4, 3, 2, 1))
+            assertIs<WasmlineSourceResolution.ContinueWith>(resolve(manifestUrl, client, WasmlineNoOpCache))
+            assertEquals(2, requests.count { it == artifactUrl })
+
+            WasmlineWeb.invalidate(artifactUrl)
+            WasmlineWeb.registerBytes(artifactUrl, byteArrayOf(5, 6, 7, 8))
+            assertIs<WasmlineSourceResolution.ContinueWith>(resolve(manifestUrl, client, WasmlineNoOpCache))
+            assertEquals(3, requests.count { it == artifactUrl })
+
+            WasmlineRuntime.shutdown()
+            WasmlineWeb.registerBytes(artifactUrl, byteArrayOf(8, 7, 6, 5))
+            assertIs<WasmlineSourceResolution.ContinueWith>(resolve(manifestUrl, client, WasmlineNoOpCache))
+            assertEquals(4, requests.count { it == artifactUrl })
         } finally {
             WasmlineWeb.invalidate(artifactUrl)
         }
