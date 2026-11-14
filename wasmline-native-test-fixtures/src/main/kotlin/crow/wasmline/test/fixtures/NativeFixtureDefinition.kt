@@ -51,6 +51,8 @@ object NativeFixtureDefinitions {
         coreRawExport("raw-export-import-memory", "core/raw-export-import-memory.wat"),
         coreRawExport("raw-export-duplicate-import", "core/raw-export-duplicate-import.wat"),
         coreRawExport("raw-export-duplicate-import-mismatch", "core/raw-export-duplicate-import-mismatch.wat"),
+        coreRawExport("raw-export-start-import", "core/raw-export-start-import.wat"),
+        coreRawExport("raw-export-unicode", "core/raw-export-unicode.wat"),
         coreService("core-service-bridge", "service/core-service-bridge.wat"),
         componentExport("component-direct", NativeFixtureSourceKind.COMPONENT_WASM),
         componentExport("component-typed-host", NativeFixtureSourceKind.COMPONENT_WAT, "component/typed-host-import.component.wat"),

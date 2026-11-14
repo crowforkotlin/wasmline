@@ -6,6 +6,7 @@ import crow.wasmline.loader.network.WasmlineNetworkClient
 import crow.wasmline.loader.network.WasmlineNetworkSink
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.cancel
@@ -37,22 +38,22 @@ class KtorNetworkClient(private val client: HttpClient = HttpClient()) : Wasmlin
         )
     }
 
-    override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
-        val response = client.get(url)
+    override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus = client.prepareGet(url).execute { response ->
         val status = WasmlineHttpStatus(response.status.value)
         val channel = response.bodyAsChannel()
-        if (!status.isSuccess) {
+        try {
+            if (status.isSuccess) {
+                val buffer = ByteArray(STREAM_BUFFER_SIZE)
+                while (true) {
+                    val byteCount = channel.readAvailable(buffer)
+                    if (byteCount < 0) break
+                    if (byteCount > 0) sink.write(buffer, offset = 0, byteCount = byteCount)
+                }
+            }
+            status
+        } finally {
             channel.cancel()
-            return status
         }
-
-        val buffer = ByteArray(STREAM_BUFFER_SIZE)
-        while (true) {
-            val byteCount = channel.readAvailable(buffer)
-            if (byteCount < 0) break
-            if (byteCount > 0) sink.write(buffer, offset = 0, byteCount = byteCount)
-        }
-        return status
     }
 
     private companion object {

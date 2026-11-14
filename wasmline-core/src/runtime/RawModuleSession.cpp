@@ -264,13 +264,17 @@ namespace wasmline {
             const std::string message = wasmtime::errorMessage(instantiateError);
             wasmtime_error_delete(instantiateError);
             if (trap) wasm_trap_delete(trap);
-            lastImportFailure_ = InvocationResult::failure(WasmlineErrorCode::INSTANTIATION_FAILED, message);
+            if (lastImportFailure_.isSuccess()) {
+                lastImportFailure_ = InvocationResult::failure(WasmlineErrorCode::INSTANTIATION_FAILED, message);
+            }
             return false;
         }
         if (trap) {
             const std::string message = wasmtime::trapMessage(trap);
             wasm_trap_delete(trap);
-            lastImportFailure_ = InvocationResult::failure(WasmlineErrorCode::WASM_TRAP, message);
+            if (lastImportFailure_.isSuccess()) {
+                lastImportFailure_ = InvocationResult::failure(WasmlineErrorCode::WASM_TRAP, message);
+            }
             return false;
         }
         initialized_ = true;

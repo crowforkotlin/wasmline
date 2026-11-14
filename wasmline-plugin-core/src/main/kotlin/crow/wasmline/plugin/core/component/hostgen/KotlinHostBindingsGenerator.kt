@@ -518,6 +518,14 @@ private class KotlinEmitter(
         out.appendLine("    private fun bindingFailure(message: String): WasmlineCallResult.Failure =")
         out.appendLine("        WasmlineCallResult.Failure(WasmlineFailure(WasmlineErrorCode.INVALID_PAYLOAD, message))")
         out.appendLine()
+        out.appendLine("    private fun unicodeScalar(value: UInt): UInt {")
+        out.appendLine("        require(value <= 0x10FFFFu && value !in 0xD800u..0xDFFFu) { \"Expected a Unicode scalar value.\" }")
+        out.appendLine("        return value")
+        out.appendLine("    }")
+        out.appendLine("    private fun encodeChar(value: UInt): WasmlineComponentValue = WasmlineComponentValue.CharValue(unicodeScalar(value))")
+        out.appendLine("    private fun decodeChar(value: WasmlineComponentValue): UInt =")
+        out.appendLine("        unicodeScalar(requireNotNull(value as? WasmlineComponentValue.CharValue) { \"Expected char value.\" }.value)")
+        out.appendLine()
         out.appendLine("    private fun WasmlineComponentValue.recordFields(type: String): Map<String, WasmlineComponentValue> {")
         out.appendLine(
             "        val record = this as? WasmlineComponentValue.RecordValue ?: error(\"Expected ${'$'}type record, found ${'$'}this.\")",
@@ -636,7 +644,7 @@ private class KotlinEmitter(
                     out.appendLine("        is $caseType -> WasmlineComponentValue.VariantValue(${case.name.quoted()}$encoded)")
                 }
                 out.appendLine("    }")
-                out.appendLine("    private fun decode$suffix(value: WasmlineComponentValue): $kotlinName {")
+                out.appendLine("    private fun decode$suffix(value: WasmlineComponentValue$instanceParameter): $kotlinName {")
                 out.appendLine(
                     "        val variant = value as? WasmlineComponentValue.VariantValue ?: error(\"Expected ${definition.name} variant, found ${'$'}value.\")",
                 )
@@ -704,7 +712,7 @@ private class KotlinEmitter(
             "u64" -> "ULong"
             "f32" -> "Float"
             "f64" -> "Double"
-            "char" -> "Char"
+            "char" -> "UInt"
             "string" -> "String"
             else -> error("Unknown WIT primitive '${type.name}'.")
         }
@@ -747,7 +755,7 @@ private class KotlinEmitter(
             "u64" -> "WasmlineComponentValue.U64($value)"
             "f32" -> "WasmlineComponentValue.F32($value)"
             "f64" -> "WasmlineComponentValue.F64($value)"
-            "char" -> "WasmlineComponentValue.CharValue($value.code.toUInt())"
+            "char" -> "encodeChar($value)"
             "string" -> "WasmlineComponentValue.StringValue($value)"
             else -> error("Unknown WIT primitive '${type.name}'.")
         }
@@ -797,8 +805,11 @@ private class KotlinEmitter(
                 "string" -> "StringValue"
                 else -> error("Unknown WIT primitive '${type.name}'.")
             }
-            val access = if (type.name == "char") ".value.toInt().toChar()" else ".value"
-            "requireNotNull($value as? WasmlineComponentValue.$componentType) { \"Expected ${type.name} value.\" }$access"
+            if (type.name == "char") {
+                "decodeChar($value)"
+            } else {
+                "requireNotNull($value as? WasmlineComponentValue.$componentType) { \"Expected ${type.name} value.\" }.value"
+            }
         }
 
         is WitType.Named -> "decode${type.name.upperCamel()}($value${if (typeContainsResource(

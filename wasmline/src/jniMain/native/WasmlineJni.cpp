@@ -18,6 +18,7 @@ int _fltused = 0;
 #include "WasmlineJni.h"
 #include "../../nativeMain/native/WasmlineNative.h"
 #include "JniRawImportHandler.h"
+#include "JniUtf8String.h"
 #include "wasmline/invocation/TypedInvocationCodec.h"
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/runtime/AotLoadPathDiagnostics.h"
@@ -66,10 +67,9 @@ static jbyteArray loadPrecompiledModuleWithFormatCommon(JNIEnv *env,
   if (!env || !keyStr || !pathStr)
     return transportFailure(env, "JNI Core Wasm load received a null input.");
   const char *key = env->GetStringUTFChars(keyStr, nullptr);
-  const char *path = env->GetStringUTFChars(pathStr, nullptr);
+  const JniUtf8String pathUtf8(env, pathStr);
+  const char *path = pathUtf8.cString();
   if (!key || !path) {
-    if (path)
-      env->ReleaseStringUTFChars(pathStr, path);
     if (key)
       env->ReleaseStringUTFChars(keyStr, key);
     return transportFailure(env, "JNI Core Wasm load could not read its input.");
@@ -78,7 +78,6 @@ static jbyteArray loadPrecompiledModuleWithFormatCommon(JNIEnv *env,
   char *response = wasmline_load_module_with_format(
       key, path, static_cast<int32_t>(formatCode), unsafe, &outLen);
   env->ReleaseStringUTFChars(keyStr, key);
-  env->ReleaseStringUTFChars(pathStr, path);
   if (!response)
     return transportFailure(env, "JNI Core Wasm load returned no response.");
   jbyteArray result = newByteArray(env, response, outLen);
@@ -94,10 +93,9 @@ static jbyteArray loadPrecompiledComponentWithFormatCommon(JNIEnv *env,
   if (!env || !keyStr || !pathStr)
     return transportFailure(env, "JNI Component load received a null input.");
   const char *key = env->GetStringUTFChars(keyStr, nullptr);
-  const char *path = env->GetStringUTFChars(pathStr, nullptr);
+  const JniUtf8String pathUtf8(env, pathStr);
+  const char *path = pathUtf8.cString();
   if (!key || !path) {
-    if (path)
-      env->ReleaseStringUTFChars(pathStr, path);
     if (key)
       env->ReleaseStringUTFChars(keyStr, key);
     return transportFailure(env, "JNI Component load could not read its input.");
@@ -106,7 +104,6 @@ static jbyteArray loadPrecompiledComponentWithFormatCommon(JNIEnv *env,
   char *response = wasmline_load_component_with_format(
       key, path, static_cast<int32_t>(formatCode), unsafe, &outLen);
   env->ReleaseStringUTFChars(keyStr, key);
-  env->ReleaseStringUTFChars(pathStr, path);
   if (!response)
     return transportFailure(env, "JNI Component load returned no response.");
   jbyteArray result = newByteArray(env, response, outLen);
@@ -295,8 +292,8 @@ static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr,
       "Typed invocation could not be executed.");
 
   const char *key = keyStr ? env->GetStringUTFChars(keyStr, nullptr) : nullptr;
-  const char *exportName =
-      exportStr ? env->GetStringUTFChars(exportStr, nullptr) : nullptr;
+  const JniUtf8String exportUtf8(env, exportStr);
+  const char *exportName = exportUtf8.data();
   jsize inputLen = 0;
   jbyte *input = nullptr;
   std::string inputData;
@@ -333,7 +330,8 @@ static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr,
             decodeError.empty() ? "Raw invocation payload is invalid."
                                 : decodeError);
       } else {
-        result = wasmline::Api::invokeRaw(key, exportName, arguments);
+        result = wasmline::Api::invokeRaw(
+            key, std::string_view(exportName, exportUtf8.size()), arguments);
       }
     } else {
       std::vector<wasmline::ComponentValue> arguments;
@@ -346,9 +344,12 @@ static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr,
       } else {
         result =
             componentInstance
-                ? wasmline::Api::invokeComponentInstance(key, exportName,
-                                                         arguments)
-                : wasmline::Api::invokeComponent(key, exportName, arguments);
+                ? wasmline::Api::invokeComponentInstance(
+                      key, std::string_view(exportName, exportUtf8.size()),
+                      arguments)
+                : wasmline::Api::invokeComponent(
+                      key, std::string_view(exportName, exportUtf8.size()),
+                      arguments);
       }
     }
   }
@@ -357,8 +358,6 @@ static jbyteArray invokeTypedCommon(JNIEnv *env, jstring keyStr,
       wasmline::TypedInvocationCodec::encodeResult(result, kind);
   if (input)
     env->ReleaseByteArrayElements(inputBytes, input, JNI_ABORT);
-  if (exportName)
-    env->ReleaseStringUTFChars(exportStr, exportName);
   if (key)
     env->ReleaseStringUTFChars(keyStr, key);
 
@@ -403,9 +402,8 @@ Java_crow_wasmline_JniWasmlineBindings_nativeCoreCreateSession(
   }
   const char *artifactKey = env->GetStringUTFChars(artifactKeyStr, nullptr);
   const char *sessionKey = env->GetStringUTFChars(sessionKeyStr, nullptr);
-  const char *memoryExportName =
-      memoryExportNameStr ? env->GetStringUTFChars(memoryExportNameStr, nullptr)
-                          : nullptr;
+  const JniUtf8String memoryExportUtf8(env, memoryExportNameStr);
+  const char *memoryExportName = memoryExportUtf8.cString();
   jsize importsLength = env->GetArrayLength(importsBytes);
   jbyte *imports = importsLength > 0
                        ? env->GetByteArrayElements(importsBytes, nullptr)
@@ -414,8 +412,6 @@ Java_crow_wasmline_JniWasmlineBindings_nativeCoreCreateSession(
       (memoryExportNameStr && !memoryExportName)) {
     if (imports)
       env->ReleaseByteArrayElements(importsBytes, imports, JNI_ABORT);
-    if (memoryExportName)
-      env->ReleaseStringUTFChars(memoryExportNameStr, memoryExportName);
     if (sessionKey)
       env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
     if (artifactKey)
@@ -452,8 +448,6 @@ Java_crow_wasmline_JniWasmlineBindings_nativeCoreCreateSession(
   }
   if (imports)
     env->ReleaseByteArrayElements(importsBytes, imports, JNI_ABORT);
-  if (memoryExportName)
-    env->ReleaseStringUTFChars(memoryExportNameStr, memoryExportName);
   env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
   env->ReleaseStringUTFChars(artifactKeyStr, artifactKey);
   return newByteArray(env, response);
@@ -468,26 +462,24 @@ Java_crow_wasmline_JniWasmlineBindings_nativeCoreInvoke(JNIEnv *env,
   if (!env || !sessionKeyStr || !exportStr || !inputBytes)
     return nullptr;
   const char *sessionKey = env->GetStringUTFChars(sessionKeyStr, nullptr);
-  const char *exportName = env->GetStringUTFChars(exportStr, nullptr);
+  const JniUtf8String exportUtf8(env, exportStr);
+  const char *exportName = exportUtf8.data();
   const jsize length = env->GetArrayLength(inputBytes);
   jbyte *input =
       length > 0 ? env->GetByteArrayElements(inputBytes, nullptr) : nullptr;
   if (!sessionKey || !exportName || (length > 0 && !input)) {
     if (input)
       env->ReleaseByteArrayElements(inputBytes, input, JNI_ABORT);
-    if (exportName)
-      env->ReleaseStringUTFChars(exportStr, exportName);
     if (sessionKey)
       env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
     return nullptr;
   }
   size_t outLength = 0;
   char *output = wasmline_core_invoke(sessionKey, exportName,
-                                      env->GetStringUTFLength(exportStr), input,
+                                      exportUtf8.size(), input,
                                       static_cast<size_t>(length), &outLength);
   if (input)
     env->ReleaseByteArrayElements(inputBytes, input, JNI_ABORT);
-  env->ReleaseStringUTFChars(exportStr, exportName);
   env->ReleaseStringUTFChars(sessionKeyStr, sessionKey);
   if (!output)
     return nullptr;

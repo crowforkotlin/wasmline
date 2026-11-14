@@ -101,6 +101,7 @@ class ToolDownloader(private val logger: (String) -> Unit = {}) : Closeable {
     private suspend fun downloadFile(url: String, destination: File, githubToken: String?) = withContext(Dispatchers.IO) {
         var current = URI(url)
         var redirects = 0
+        var forwardAuthorization = true
         while (true) {
             require(current.scheme == "https") { "Tool URL must use HTTPS: $current" }
             val connection = current.toURL().openConnection() as HttpURLConnection
@@ -110,7 +111,7 @@ class ToolDownloader(private val logger: (String) -> Unit = {}) : Closeable {
                 connection.readTimeout = READ_TIMEOUT_MILLIS
                 connection.requestMethod = "GET"
                 if (!githubToken.isNullOrBlank()) {
-                    connection.setRequestProperty("Authorization", "Bearer $githubToken")
+                    if (forwardAuthorization) connection.setRequestProperty("Authorization", "Bearer $githubToken")
                     connection.setRequestProperty("Accept", "application/octet-stream")
                 }
                 val status = connection.responseCode
@@ -118,7 +119,9 @@ class ToolDownloader(private val logger: (String) -> Unit = {}) : Closeable {
                     val location = connection.getHeaderField("Location")
                     require(!location.isNullOrBlank()) { "Tool download redirect omitted Location." }
                     require(++redirects <= MAX_REDIRECTS) { "Tool download redirect limit exceeded." }
-                    current = current.resolve(location)
+                    val next = current.resolve(location)
+                    forwardAuthorization = forwardAuthorization && sameHttpOrigin(current, next)
+                    current = next
                     continue
                 }
                 check(status in 200..299) { "Download failed with HTTP " + status + ": " + url }

@@ -4,6 +4,12 @@ import crow.wasmline.loader.network.WasmlineHttpResponse
 import crow.wasmline.loader.network.WasmlineHttpStatus
 import crow.wasmline.loader.network.WasmlineNetworkClient
 import crow.wasmline.loader.network.WasmlineNetworkSink
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import okio.ByteString.Companion.toByteString
 import java.io.File
@@ -190,6 +196,84 @@ class WasmlineFileCacheTest {
             assertFalse(File(directory, "artifact_oversized.wasm").exists())
         } finally {
             directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `concurrent artifact downloads share capacity across cache instances`() = runTest {
+        val directory = Files.createTempDirectory("wasmline-cache-concurrent").toFile()
+        val paths = mutableListOf<String>()
+        try {
+            val firstCache = WasmlineFileCache(directory.absolutePath, maxCacheBytes = 8)
+            val secondCache = WasmlineFileCache(directory.absolutePath, maxCacheBytes = 8)
+            val firstStarted = CompletableDeferred<Unit>()
+            val secondStarted = CompletableDeferred<Unit>()
+            val firstBytes = byteArrayOf(1, 2, 3, 4, 5, 6)
+            val secondBytes = byteArrayOf(6, 5, 4, 3, 2, 1)
+            val firstClient = gatedClient(firstBytes, firstStarted, secondStarted)
+            val secondClient = gatedClient(secondBytes, secondStarted, firstStarted)
+            val first = async(Dispatchers.Default) { resolve(firstCache, firstBytes, firstClient) }
+            firstStarted.await()
+            val second = async(Dispatchers.Default) { resolve(secondCache, secondBytes, secondClient) }
+            val ready = listOf(first, second).awaitAll().map { assertIs<ArtifactFileResolution.Ready>(it) }
+            paths += ready.map(ArtifactFileResolution.Ready::path)
+
+            assertContentEquals(firstBytes, File(ready[0].path).readBytes())
+            assertContentEquals(secondBytes, File(ready[1].path).readBytes())
+            assertEquals(6L, directory.listFiles().orEmpty().sumOf(File::length))
+            assertEquals(1, ready.count { File(it.path).parentFile == directory })
+            assertFalse(directory.listFiles().orEmpty().any { it.name.startsWith(".tmp-") })
+        } finally {
+            paths.forEach { WasmlineTransientArtifacts.deleteIfTransient(it) }
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `failed and cancelled downloads release capacity reservations`() = runTest {
+        val directory = Files.createTempDirectory("wasmline-cache-reservation").toFile()
+        try {
+            val cache = WasmlineFileCache(directory.absolutePath, maxCacheBytes = 6)
+            val bytes = byteArrayOf(1, 2, 3, 4, 5, 6)
+            val corrupt = bytes.reversedArray()
+            assertIs<ArtifactFileResolution.HashMismatch>(resolve(cache, bytes, streamingClient(corrupt)))
+            val started = CompletableDeferred<Unit>()
+            val neverReleased = CompletableDeferred<Unit>()
+            val job = launch { resolve(cache, bytes, gatedClient(bytes, started, neverReleased)) }
+            started.await()
+            job.cancelAndJoin()
+
+            val ready = assertIs<ArtifactFileResolution.Ready>(resolve(cache, bytes, streamingClient(bytes)))
+            assertEquals(directory, File(ready.path).parentFile)
+            assertEquals(6L, directory.listFiles().orEmpty().sumOf(File::length))
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    private suspend fun resolve(cache: WasmlineFileCache, bytes: ByteArray, client: WasmlineNetworkClient): ArtifactFileResolution =
+        cache.resolveArtifact(
+            "artifact_${bytes.sha256()}",
+            ".cwasm",
+            bytes.sha256(),
+            bytes.size.toLong(),
+            100,
+            client,
+            "https://cache.invalid/artifact.cwasm",
+        )
+
+    private fun gatedClient(
+        bytes: ByteArray,
+        started: CompletableDeferred<Unit>,
+        proceed: CompletableDeferred<Unit>,
+    ): WasmlineNetworkClient = object : WasmlineNetworkClient {
+        override suspend fun fetch(url: String): WasmlineHttpResponse = error("Unexpected whole-response fetch")
+
+        override suspend fun fetchTo(url: String, sink: WasmlineNetworkSink): WasmlineHttpStatus {
+            started.complete(Unit)
+            proceed.await()
+            sink.write(bytes, 0, bytes.size)
+            return WasmlineHttpStatus(200)
         }
     }
 

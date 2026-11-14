@@ -88,5 +88,6 @@ namespace wasmline {
         mutable std::shared_mutex mutex_;
         std::unordered_map<std::string, std::shared_ptr<RawModuleSession>> implicitSessions_;
         std::unordered_map<std::string, ExplicitEntry> explicitSessions_;
+        std::unordered_map<std::string, ExplicitEntry> pendingSessions_;
     };
 } // namespace wasmline

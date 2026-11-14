@@ -1,6 +1,7 @@
 package crow.wasmline.plugin.core.toolchain
 
 import java.io.File
+import kotlin.system.measureTimeMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -41,6 +42,31 @@ class ExternalToolRunnerTest {
 
         assertTrue(error.message.orEmpty().contains("timed out", ignoreCase = true))
         assertTrue(error.result != null)
+    }
+
+    @Test
+    fun timeoutDoesNotWaitForDescendantOutput() {
+        if (!File("/bin/sh").canExecute()) return
+        val elapsed = measureTimeMillis {
+            val failure = assertFailsWith<ToolExecutionException> {
+                ExternalToolRunner().run(File("/bin/sh"), listOf("-c", "sleep 3 & wait"), timeoutMillis = 150)
+            }
+            assertTrue(failure.message.orEmpty().contains("timed out"))
+        }
+        assertTrue(elapsed < 2_000, "150 ms timeout took $elapsed ms")
+    }
+
+    @Test
+    fun exitedParentDoesNotLeaveOutputWaitUnbounded() {
+        if (!File("/bin/sh").canExecute()) return
+        val elapsed = measureTimeMillis {
+            try {
+                ExternalToolRunner().run(File("/bin/sh"), listOf("-c", "sleep 3 &"), timeoutMillis = 150)
+            } catch (failure: ToolExecutionException) {
+                assertTrue(failure.message.orEmpty().contains("timed out"))
+            }
+        }
+        assertTrue(elapsed < 2_000, "output cleanup took $elapsed ms")
     }
 
     private fun javaExecutable(): File {
