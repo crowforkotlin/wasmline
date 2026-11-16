@@ -115,13 +115,6 @@ interface WasmlineComponentImportBindingFactory<in Implementation : Any> {
 }
 
 /**
- * Preserves the distinction between a WIT business result and a Wasmline runtime failure.
- *
- * Date: 2026-09-02
- * Author: crowforkotlin
- */
-
-/**
  * Represents a WIT `option<T>` value without collapsing nesting levels.
  *
  * A Kotlin nullable type cannot distinguish `none` from `some(none)` when `T`
@@ -130,8 +123,7 @@ interface WasmlineComponentImportBindingFactory<in Implementation : Any> {
  * Date: 2026-11-16
  * Author: crowforkotlin
  */
-@JvmInline
-value class WasmlineWitOption<out T>(val value: T?) {
+class WasmlineWitOption<out T>(val value: T?) {
     /** Returns whether this value carries a payload. */
     val isSome: Boolean get() = value != null
 
@@ -144,6 +136,12 @@ value class WasmlineWitOption<out T>(val value: T?) {
     }
 }
 
+/**
+ * Preserves the distinction between a WIT business result and a Wasmline runtime failure.
+ *
+ * Date: 2026-09-02
+ * Author: crowforkotlin
+ */
 sealed interface WasmlineWitResult<out Success, out Error> {
     /**
      * Represents a successful WIT result.
