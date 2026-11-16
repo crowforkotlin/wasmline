@@ -66,13 +66,34 @@ private class KotlinEmitter(
     private val worldObject = "${world.name.upperCamel()}World"
 
     init {
+        interfaces.forEach(::collectInterfaceTypes)
+        // `use` brings types into an interface without importing the owning
+        // interface into the world, so resolve those references as well.
         interfaces.forEach { interfaceDefinition ->
-            interfaceDefinition.types.forEach { definition ->
-                check(types.put(definition.name, definition) == null) {
-                    "Host WIT generator cannot flatten duplicate type '${definition.name}' in world '${world.name}'."
+            interfaceDefinition.uses.forEach { use ->
+                val provider = witPackage.interfaces[use.interfaceName]
+                    ?: throw WitParseException(
+                        "Interface '${use.interfaceName}' referenced by 'use' was not found in WIT package '${witPackage.packageId}'.",
+                    )
+                use.names.forEach { name ->
+                    val definition = provider.types.firstOrNull { it.name == name }
+                        ?: throw WitParseException(
+                            "Type '$name' referenced by 'use ${use.interfaceName}' was not declared by that interface.",
+                        )
+                    if (types.putIfAbsent(definition.name, definition) == null) {
+                        typeOwners[definition.name] = provider.name
+                    }
                 }
-                typeOwners[definition.name] = interfaceDefinition.name
             }
+        }
+    }
+
+    private fun collectInterfaceTypes(interfaceDefinition: WitInterface) {
+        interfaceDefinition.types.forEach { definition ->
+            check(types.put(definition.name, definition) == null) {
+                "Host WIT generator cannot flatten duplicate type '${definition.name}' in world '${world.name}'."
+            }
+            typeOwners[definition.name] = interfaceDefinition.name
         }
     }
 
@@ -97,6 +118,7 @@ private class KotlinEmitter(
         appendLine("import crow.wasmline.WasmlineHostComponentResource")
         appendLine("import crow.wasmline.WasmlineComponentHostResourceBinding")
         appendLine("import crow.wasmline.WasmlineComponentResourceId")
+        appendLine("import crow.wasmline.WasmlineWitOption")
         appendLine("import crow.wasmline.WasmlineWitResult")
         appendLine("import crow.wasmline.invocation.WasmlineFailure")
         appendLine("import crow.wasmline.invocation.WasmlineCallResult")
@@ -198,7 +220,7 @@ private class KotlinEmitter(
             val parameters = parameterDeclaration(function)
             val args = buildList {
                 add("toComponentValue()")
-                addAll(function.parameters.map { encodeExpression(it.type, it.name.lowerCamel().identifier()) })
+                addAll(function.parameters.map { encodeExpression(it.type, parameterName(it.name)) })
             }.joinToString()
             out.appendLine(
                 "        fun ${function.name.lowerCamel().identifier()}($parameters): WasmlineCallResult<${returnType(function.result)}> =",
@@ -320,7 +342,7 @@ private class KotlinEmitter(
         resource: WitTypeDefinition.Resource,
         constructor: WitFunction,
     ) {
-        val args = constructor.parameters.joinToString(", ") { encodeExpression(it.type, it.name.lowerCamel().identifier()) }
+        val args = constructor.parameters.joinToString(", ") { encodeExpression(it.type, parameterName(it.name)) }
         out.appendLine(
             "            override fun create${resource.name.upperCamel()}(${parameterDeclaration(
                 constructor,
@@ -333,7 +355,7 @@ private class KotlinEmitter(
 
     private fun emitClientFunction(out: StringBuilder, owner: WitInterface, function: WitFunction) {
         val parameters = parameterDeclaration(function)
-        val args = function.parameters.joinToString(", ") { encodeExpression(it.type, it.name.lowerCamel().identifier()) }
+        val args = function.parameters.joinToString(", ") { encodeExpression(it.type, parameterName(it.name)) }
         out.appendLine(
             "            override fun ${function.name.lowerCamel().identifier()}($parameters): WasmlineCallResult<${returnType(
                 function.result,
@@ -696,14 +718,40 @@ private class KotlinEmitter(
     }
 
     private fun parameterDeclaration(function: WitFunction): String = function.parameters.joinToString(", ") {
-        "${it.name.lowerCamel().identifier()}: ${kotlinType(it.type)}"
+        "${parameterName(it.name)}: ${kotlinType(it.type)}"
     }
+
+    /**
+     * Maps one WIT parameter name to a Kotlin identifier that cannot shadow a
+     * generated local such as the Component instance.
+     */
+    private fun parameterName(witName: String): String {
+        val candidate = witName.lowerCamel().identifier()
+        // Rename rather than escape: an escaped `instance` still hides the
+        // generated parameter of the same name.
+        return if (candidate.removeSurrounding("`") in RESERVED_PARAMETER_NAMES) "${candidate}Value" else candidate
+    }
+
+    /**
+     * Returns the Kotlin type of one WIT option.
+     *
+     * A nullable type cannot distinguish `none` from `some(none)`, so an option
+     * whose payload is itself an option uses [WasmlineWitOption]. A single-level
+     * option keeps the nullable form that existing callers already use.
+     */
+    private fun optionType(type: WitType.Option, nested: Boolean): String = if (wrapsOption(type, nested)) {
+        "WasmlineWitOption<${kotlinType(type.value, nested = true)}>"
+    } else {
+        "${kotlinType(type.value, nested = true)}?"
+    }
+
+    private fun wrapsOption(type: WitType.Option, nested: Boolean): Boolean = nested || type.value is WitType.Option
 
     private fun returnType(type: WitType?): String = type?.let(::kotlinType) ?: "Unit"
 
     private fun plainReturnType(type: WitType?): String = type?.let(::kotlinType) ?: "Unit"
 
-    private fun kotlinType(type: WitType): String = when (type) {
+    private fun kotlinType(type: WitType, nested: Boolean = false): String = when (type) {
         is WitType.Primitive -> when (type.name) {
             "bool" -> "Boolean"
             "s8" -> "Byte"
@@ -723,21 +771,26 @@ private class KotlinEmitter(
 
         is WitType.Named -> type.name.upperCamel()
 
-        is WitType.ListType -> "List<${kotlinType(type.element)}>"
+        is WitType.ListType -> "List<${kotlinType(type.element, nested)}>"
 
-        is WitType.Option -> "${kotlinType(type.value)}?"
+        is WitType.Option -> optionType(type, nested)
 
         is WitType.Tuple -> when (type.values.size) {
-            2 -> "Pair<${kotlinType(type.values[0])}, ${kotlinType(type.values[1])}>"
+            2 -> "Pair<${kotlinType(type.values[0], nested)}, ${kotlinType(type.values[1], nested)}>"
 
-            3 -> "Triple<${kotlinType(type.values[0])}, ${kotlinType(type.values[1])}, ${kotlinType(type.values[2])}>"
+            3 -> "Triple<${kotlinType(
+                type.values[0],
+                nested,
+            )}, ${kotlinType(type.values[1], nested)}, ${kotlinType(type.values[2], nested)}>"
 
             else -> throw UnsupportedWitFeatureException(
                 "Host WIT generator supports tuples with two or three elements, found ${type.values.size}.",
             )
         }
 
-        is WitType.Result -> "WasmlineWitResult<${type.ok?.let(::kotlinType) ?: "Unit"}, ${type.error?.let(::kotlinType) ?: "Unit"}>"
+        is WitType.Result ->
+            "WasmlineWitResult<${type.ok?.let { kotlinType(it, nested) } ?: "Unit"}, " +
+                "${type.error?.let { kotlinType(it, nested) } ?: "Unit"}>"
 
         is WitType.Own -> type.resource.upperCamel()
 
@@ -746,7 +799,7 @@ private class KotlinEmitter(
         WitType.UnitType -> "Unit"
     }
 
-    private fun encodeExpression(type: WitType, value: String): String = when (type) {
+    private fun encodeExpression(type: WitType, value: String, nested: Boolean = false): String = when (type) {
         is WitType.Primitive -> when (type.name) {
             "bool" -> "WasmlineComponentValue.Bool($value)"
             "s8" -> "WasmlineComponentValue.S8($value)"
@@ -766,9 +819,13 @@ private class KotlinEmitter(
 
         is WitType.Named -> "encode${type.name.upperCamel()}($value)"
 
-        is WitType.ListType -> "WasmlineComponentValue.ListValue($value.map { item -> ${encodeExpression(type.element, "item")} })"
+        is WitType.ListType -> "WasmlineComponentValue.ListValue($value.map { item -> ${encodeExpression(type.element, "item", nested)} })"
 
-        is WitType.Option -> "WasmlineComponentValue.OptionValue($value?.let { item -> ${encodeExpression(type.value, "item")} })"
+        is WitType.Option -> if (wrapsOption(type, nested)) {
+            "WasmlineComponentValue.OptionValue($value.value?.let { item -> ${encodeExpression(type.value, "item", nested = true)} })"
+        } else {
+            "WasmlineComponentValue.OptionValue($value?.let { item -> ${encodeExpression(type.value, "item", nested = true)} })"
+        }
 
         is WitType.Tuple -> {
             val values = type.values.mapIndexed { index, child -> encodeExpression(child, tupleAccess(value, index, type.values.size)) }
@@ -791,7 +848,7 @@ private class KotlinEmitter(
         WitType.UnitType -> "WasmlineComponentValue.TupleValue(emptyList())"
     }
 
-    private fun decodeExpression(type: WitType, value: String, instance: String? = null): String = when (type) {
+    private fun decodeExpression(type: WitType, value: String, instance: String? = null, nested: Boolean = false): String = when (type) {
         is WitType.Primitive -> {
             val componentType = when (type.name) {
                 "bool" -> "Bool"
@@ -826,15 +883,20 @@ private class KotlinEmitter(
         }})"
 
         is WitType.ListType -> {
-            val item = decodeExpression(type.element, "item", instance)
+            val item = decodeExpression(type.element, "item", instance, nested)
             "requireNotNull($value as? WasmlineComponentValue.ListValue) { \"Expected list value.\" }" +
                 ".values.map { item -> $item }"
         }
 
         is WitType.Option -> {
-            val item = decodeExpression(type.value, "item", instance)
-            "requireNotNull($value as? WasmlineComponentValue.OptionValue) { \"Expected option value.\" }" +
-                ".value?.let { item -> $item }"
+            val item = decodeExpression(type.value, "item", instance, nested = true)
+            if (wrapsOption(type, nested)) {
+                "WasmlineWitOption(requireNotNull($value as? WasmlineComponentValue.OptionValue) { \"Expected option value.\" }" +
+                    ".value?.let { item -> $item })"
+            } else {
+                "requireNotNull($value as? WasmlineComponentValue.OptionValue) { \"Expected option value.\" }" +
+                    ".value?.let { item -> $item }"
+            }
         }
 
         is WitType.Tuple -> {
@@ -964,6 +1026,8 @@ private class KotlinEmitter(
         return "$base/$name${if (version.isEmpty()) "" else "@$version"}"
     }
 }
+
+private val RESERVED_PARAMETER_NAMES = setOf("instance")
 
 private val KOTLIN_KEYWORDS = setOf(
     "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if", "in", "interface", "is", "null",

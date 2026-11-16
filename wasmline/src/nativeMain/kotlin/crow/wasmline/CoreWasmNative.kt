@@ -164,7 +164,7 @@ private class NativeCoreWasmSession(
                 wasmline_core_invoke(
                     sessionKey,
                     exportName,
-                    exportName.length.toULong(),
+                    exportName.utf8ByteLength(),
                     if (encoded.isEmpty()) null else pinned.addressOf(0),
                     encoded.size.toULong(),
                     outLen,

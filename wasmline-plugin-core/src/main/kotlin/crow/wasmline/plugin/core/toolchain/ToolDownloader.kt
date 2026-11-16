@@ -12,6 +12,8 @@ import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
 
 /**
  * Downloads locked tool assets into a verified local cache.
@@ -25,8 +27,10 @@ class ToolDownloader(private val logger: (String) -> Unit = {}) : Closeable {
     /**
      * Resolves a cached asset or downloads it when it is missing.
      *
-     * A per-asset file lock prevents concurrent Gradle or CLI processes from
-     * replacing the same cache directory.
+     * A process-wide per-asset monitor serializes callers inside one JVM, because
+     * `FileLock` is exclusive per JVM and a second acquisition throws
+     * `OverlappingFileLockException` instead of waiting. The file lock then
+     * covers other processes.
      */
     suspend fun resolveOrDownload(
         spec: ToolAssetSpec,
@@ -36,13 +40,22 @@ class ToolDownloader(private val logger: (String) -> Unit = {}) : Closeable {
     ): ResolvedToolAsset = withContext(Dispatchers.IO) {
         if (!force) cache.resolve(spec)?.let { return@withContext it }
 
-        val lockFile = cache.lockFileFor(spec)
-        lockFile.parentFile.mkdirs()
-        FileChannel.open(lockFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
-            channel.lock().use {
-                if (!force) cache.resolve(spec)?.let { return@withContext it }
-                install(spec, cache, githubToken)
+        val monitor = PROCESS_LOCKS.computeIfAbsent(cache.lockFileFor(spec).absolutePath) { ReentrantLock() }
+        // An explicit lock keeps the suspension point out of an inline critical section.
+        monitor.lock()
+        try {
+            if (!force) cache.resolve(spec)?.let { return@withContext it }
+
+            val lockFile = cache.lockFileFor(spec)
+            lockFile.parentFile.mkdirs()
+            FileChannel.open(lockFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
+                channel.lock().use {
+                    if (!force) cache.resolve(spec)?.let { return@withContext it }
+                    install(spec, cache, githubToken)
+                }
             }
+        } finally {
+            monitor.unlock()
         }
     }
 
@@ -170,6 +183,8 @@ class ToolDownloader(private val logger: (String) -> Unit = {}) : Closeable {
     }
 
     private companion object {
+        /** Serializes same-asset downloads inside this JVM; cross-process exclusion uses the file lock. */
+        val PROCESS_LOCKS = ConcurrentHashMap<String, ReentrantLock>()
         const val CONNECT_TIMEOUT_MILLIS: Int = 30_000
         const val READ_TIMEOUT_MILLIS: Int = 120_000
         const val MAX_REDIRECTS: Int = 5

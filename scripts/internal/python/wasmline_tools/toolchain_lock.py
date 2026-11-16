@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import Any, Mapping, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 from .paths import PROJECT_ROOT
+from .support.http import origin_scoped_opener
 
 
 GENERATOR = "scripts/wasmline versions sync"
@@ -104,7 +105,7 @@ class GitHubReleaseClient:
 
         request = Request(url, headers=headers)
         try:
-            with urlopen(request, timeout=self._timeout_seconds) as response:
+            with origin_scoped_opener().open(request, timeout=self._timeout_seconds) as response:
                 payload = response.read().decode("utf-8")
         except HTTPError as error:
             raise ToolchainLockError(

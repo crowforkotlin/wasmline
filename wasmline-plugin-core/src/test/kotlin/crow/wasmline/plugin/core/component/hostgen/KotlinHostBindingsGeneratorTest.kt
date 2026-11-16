@@ -1,6 +1,7 @@
 package crow.wasmline.plugin.core.component.hostgen
 
 import crow.wasmline.WasmlineComponentContract
+import crow.wasmline.WasmlineComponentValue
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 import java.io.File
@@ -295,6 +296,84 @@ class KotlinHostBindingsGeneratorTest {
         assertEquals(ExitCode.OK, compile)
         assertTrue(File(output, "generated/kv/KvPluginWorld\$Bucket.class").isFile)
         assertTrue(File(output, "generated/kv/KvPluginWorld\$WatchHandle.class").isFile)
+    }
+
+    @Test
+    fun resolvesTypesBroughtInByUseWithoutImportingTheOwner() = withGeneratorDirectory { root ->
+        val wit = File(root, "wit").apply { mkdirs() }
+        File(wit, "world.wit").writeText(
+            """
+            package sample:use@1.0.0;
+            interface types {
+              record data { value: u32, }
+            }
+            interface api {
+              use types.{data};
+              echo: func(input: data) -> data;
+            }
+            world plugin { export api; }
+            """.trimIndent(),
+        )
+        val generated = KotlinHostBindingsGenerator.generate(
+            KotlinHostBindingsRequest(wit, File(root, "generated"), "plugin", "generated.use"),
+        )
+        assertTrue(generated.outputFile.readText().contains("data class Data("))
+        compileGenerated(generated.outputFile, File(root, "classes"))
+    }
+
+    @Test
+    fun renamesParameterThatShadowsTheComponentInstance() = withGeneratorDirectory { root ->
+        val wit = File(root, "wit").apply { mkdirs() }
+        File(wit, "world.wit").writeText(
+            """
+            package sample:shadow@1.0.0;
+            interface api {
+              echo: func(instance: u32) -> u32;
+            }
+            world plugin { export api; }
+            """.trimIndent(),
+        )
+        val generated = KotlinHostBindingsGenerator.generate(
+            KotlinHostBindingsRequest(wit, File(root, "generated"), "plugin", "generated.shadow"),
+        )
+        assertTrue(generated.outputFile.readText().contains("fun echo(instanceValue: UInt)"))
+        compileGenerated(generated.outputFile, File(root, "classes"))
+    }
+
+    @Test
+    fun nestedOptionsKeepTheMissingInnerValue() = withGeneratorDirectory { root ->
+        val wit = File(root, "wit").apply { mkdirs() }
+        File(wit, "world.wit").writeText(
+            """
+            package sample:nested@1.0.0;
+            interface api {
+              record wrapped { value: option<option<u32>>, }
+              echo: func(input: wrapped) -> wrapped;
+            }
+            world plugin { export api; }
+            """.trimIndent(),
+        )
+        val generated = KotlinHostBindingsGenerator.generate(
+            KotlinHostBindingsRequest(wit, File(root, "generated"), "plugin", "generated.nested"),
+        )
+        assertTrue(generated.outputFile.readText().contains("val value: WasmlineWitOption<WasmlineWitOption<UInt>>"))
+        compileGenerated(generated.outputFile, File(root, "classes"))
+        val runtimeJar = File(WasmlineComponentContract::class.java.protectionDomain.codeSource.location.toURI())
+        val stdlibJar = File(Unit::class.java.protectionDomain.codeSource.location.toURI())
+        val loader = URLClassLoader(
+            arrayOf(File(root, "classes").toURI().toURL(), runtimeJar.toURI().toURL(), stdlibJar.toURI().toURL()),
+        )
+        val worldClass = loader.loadClass("generated.nested.PluginWorld")
+        val receiver = worldClass.getField("INSTANCE").get(null)
+        val decode = worldClass.declaredMethods.single { it.name == "decodeWrapped" }.apply { isAccessible = true }
+        val encode = worldClass.declaredMethods.single { it.name == "encodeWrapped" }.apply { isAccessible = true }
+        val innerNone = WasmlineComponentValue.OptionValue(null)
+        val someNone = WasmlineComponentValue.OptionValue(innerNone)
+        val input = WasmlineComponentValue.RecordValue(listOf(WasmlineComponentValue.RecordField("value", someNone)))
+        val decoded = decode.invoke(receiver, input)
+        val reencoded = encode.invoke(receiver, decoded) as WasmlineComponentValue.RecordValue
+        assertEquals(someNone, reencoded.fields.single().value)
+        loader.close()
     }
 
     @Test

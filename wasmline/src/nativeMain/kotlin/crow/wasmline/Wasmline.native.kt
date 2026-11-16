@@ -71,7 +71,7 @@ actual class Wasmline internal actual constructor(
             val resultPtr = wasmline_invoke_inbound(
                 keyCstr,
                 actionCstr,
-                action.length.toULong(),
+                action.utf8ByteLength(),
                 dataPtr,
                 dataSize,
                 outLen.ptr,
@@ -99,7 +99,7 @@ actual class Wasmline internal actual constructor(
 
     internal actual fun invokeRawCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         invokeTypedCarrier(arguments) { dataPtr, dataSize, outLen ->
-            wasmline_invoke_raw(moduleKey, exportName, exportName.length.toULong(), dataPtr, dataSize, outLen)
+            wasmline_invoke_raw(moduleKey, exportName, exportName.utf8ByteLength(), dataPtr, dataSize, outLen)
         }
 
     internal actual fun createCoreWasmBackend(): WasmlineCallResult<CoreWasmBackendModule> =
@@ -109,7 +109,7 @@ actual class Wasmline internal actual constructor(
 
     internal actual fun invokeComponentCarrier(exportName: String, arguments: ByteArray): WasmlineCallResult<ByteArray> =
         invokeTypedCarrier(arguments) { dataPtr, dataSize, outLen ->
-            wasmline_invoke_component(moduleKey, exportName, exportName.length.toULong(), dataPtr, dataSize, outLen)
+            wasmline_invoke_component(moduleKey, exportName, exportName.utf8ByteLength(), dataPtr, dataSize, outLen)
         }
 
     internal actual fun instantiateComponentInstance(instanceKey: String, dispatcher: WasmlineComponentHostDispatcher): Boolean {
@@ -127,7 +127,7 @@ actual class Wasmline internal actual constructor(
         wasmline_invoke_component_instance(
             instanceKey,
             exportName,
-            exportName.length.toULong(),
+            exportName.utf8ByteLength(),
             dataPtr,
             dataSize,
             outLen,

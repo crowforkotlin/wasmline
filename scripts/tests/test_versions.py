@@ -848,7 +848,7 @@ class SyncVersionTest(unittest.TestCase):
         opener = mock.Mock()
         opener.open.return_value = object()
 
-        with mock.patch.object(metadata, "build_opener", return_value=opener):
+        with mock.patch.object(metadata, "origin_scoped_opener", return_value=opener):
             resolver._open(f"{metadata.WASMTIME_API_ROOT}/commits/v49.0.0.1")
             api_request = opener.open.call_args.args[0]
             self.assertEqual("Bearer test-token", api_request.get_header("Authorization"))
@@ -859,6 +859,52 @@ class SyncVersionTest(unittest.TestCase):
             )
             asset_request = opener.open.call_args.args[0]
             self.assertIsNone(asset_request.get_header("Authorization"))
+
+    def test_cross_origin_redirect_drops_the_authorization_header(self) -> None:
+        """A redirect to another origin must not receive the GitHub token."""
+        from wasmline_tools.support.http import OriginScopedRedirectHandler, same_origin
+
+        self.assertTrue(same_origin("https://api.github.com/a", "https://api.github.com/b"))
+        self.assertFalse(same_origin("https://api.github.com/a", "https://objects.invalid/b"))
+        self.assertFalse(same_origin("https://api.github.com/a", "https://api.github.com:8443/b"))
+        self.assertFalse(same_origin("https://api.github.com/a", "http://api.github.com/b"))
+
+        class Request:
+            def __init__(self, url: str, headers: dict[str, str]) -> None:
+                self.full_url = url
+                self.headers = headers
+
+            def has_header(self, name: str) -> bool:
+                return name in self.headers
+
+        handler = OriginScopedRedirectHandler()
+        redirected = handler.redirect_request(
+            type("Request", (), {
+                "full_url": "https://api.github.com/repos/a",
+                "headers": {"Authorization": "Bearer t"},
+                "has_header": lambda self, name: name in self.headers,
+                "get_header": lambda self, name: self.headers.get(name),
+                "header_items": lambda self: list(self.headers.items()),
+                "unredirected_hdrs": {},
+                "data": None,
+                "origin_req_host": "api.github.com",
+                "unverifiable": False,
+                "method": "GET",
+                "type": "https",
+                "host": "api.github.com",
+                "get_method": lambda self: "GET",
+                "has_proxy": lambda self: False,
+                "add_unredirected_header": lambda self, name, value: self.headers.__setitem__(name, value),
+                "remove_header": lambda self, name: self.headers.pop(name, None),
+            })(),
+            None,
+            302,
+            "Found",
+            {"location": "https://objects.invalid/b"},
+            "https://objects.invalid/b",
+        )
+        self.assertIsNotNone(redirected)
+        self.assertIsNone(redirected.get_header("Authorization"))
 
     def test_github_aot_metadata_rejects_malformed_asset_urls(self) -> None:
         """Malformed release asset URLs produce the stable resolver error type."""

@@ -190,7 +190,13 @@ val nativeAotJvmLibrary = run {
         "src/jvmMain/resources/jni/$platform/$architecture/libwasmline.$extension",
     )
 }
-val nativeAotJvmLibraryPath = providers.environmentVariable("WASMLINE_NATIVE_LIBRARY_PATH")
+// An explicit override wins; otherwise the build-tree copy produced by the engine
+// asset task is used. The default path is git-ignored, so a fresh checkout has to
+// keep the input optional instead of failing task validation.
+val nativeAotJvmLibraryOverride = providers.environmentVariable("WASMLINE_NATIVE_LIBRARY_PATH")
+    .map { path -> file(path).absoluteFile }
+val nativeAotJvmLibraryPath: Provider<String> = nativeAotJvmLibraryOverride
+    .map { it.absolutePath }
     .orElse(nativeAotJvmLibrary.absolutePath)
 val nativeAotTestClassPatterns = listOf(
     "**/NativeDirectInvocationTest.class",
@@ -207,9 +213,11 @@ val nativeAotTestClassPatterns = listOf(
 val standardJvmTest = tasks.named<Test>("jvmTest") {
     exclude(*nativeAotTestClassPatterns.toTypedArray())
     // The engine JVM JAR is deliberately platform-neutral and excludes `jni/**`, so
-    // the loader cannot find the library on the test classpath. Point it at the
-    // build-tree copy instead, matching the nativeAotJvmTest setup.
-    inputs.file(nativeAotJvmLibrary).withPropertyName("wasmlineNativeLibrary").optional()
+    // the loader cannot find the library on the test classpath. A file collection
+    // keeps the input optional even when the git-ignored default path is absent.
+    inputs.files(nativeAotJvmLibraryOverride.map { it }.orElse(project.provider { nativeAotJvmLibrary }))
+        .withPropertyName("wasmlineNativeLibrary")
+        .optional()
     systemProperty("wasmline.native.library.path", nativeAotJvmLibraryPath.get())
 }
 
@@ -218,6 +226,9 @@ tasks.register<Test>("nativeAotJvmTest") {
     description = "Runs native JVM tests against generated and verified AOT fixture artifacts."
     dependsOn("jvmTestClasses", nativeAotFixtureTask)
     inputs.file(nativeAotFixtureIndex)
+    inputs.files(nativeAotJvmLibraryOverride.map { it }.orElse(project.provider { nativeAotJvmLibrary }))
+        .withPropertyName("wasmlineNativeLibrary")
+        .optional()
     testClassesDirs = standardJvmTest.get().testClassesDirs
     classpath = standardJvmTest.get().classpath
     include(*nativeAotTestClassPatterns.toTypedArray())

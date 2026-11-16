@@ -23,6 +23,7 @@ import crow.wasmline.loader.model.WasmlineManifestLimits
 import crow.wasmline.loader.model.WasmlineManifestProtocol
 import crow.wasmline.loader.model.WasmlineManifestWireFormat
 import crow.wasmline.loader.model.WasmlineRuntimeContract
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.ByteString.Companion.decodeHex
@@ -60,20 +61,27 @@ class WasmlineLocalPackageResolutionTest {
         }
         val source = WasmlineSource.LocalManifestPath(manifestFile.absolutePath)
 
-        val resolution = WasmlineLocalPackageResolution.resolve(
-            source = source,
-            request = WasmlineLoadRequest(
+        val resolution = runBlocking {
+            WasmlineLocalPackageResolution.resolve(
                 source = source,
-                options = WasmlineLoadOptions(trustedKeys = trustedKeys()),
-            ),
-            host = browserHost(),
-        )
+                request = WasmlineLoadRequest(
+                    source = source,
+                    options = WasmlineLoadOptions(trustedKeys = trustedKeys()),
+                ),
+                host = browserHost(),
+            )
+        }
 
         val continuation = assertIs<WasmlineSourceResolution.ContinueWith>(resolution)
         val selected = assertIs<WasmlineSource.LocalArtifactPath>(continuation.source)
         val selectedDescriptor = assertNotNull(selected.descriptor)
-        assertEquals(artifact.canonicalPath, File(selectedDescriptor.path).canonicalPath)
+        // The runtime reopens the returned path, so it must hold the verified bytes in a
+        // copy that a writer cannot replace between verification and the native open.
+        assertTrue(File(selectedDescriptor.path).readBytes().contentEquals(artifactBytes))
+        assertTrue(File(selectedDescriptor.path).canonicalPath != artifact.canonicalPath)
+        assertTrue(artifact.readBytes().contentEquals(artifactBytes))
         assertEquals(WasmlineArtifactFormat.RAW_WASM, selectedDescriptor.artifactFormat)
+        runBlocking { WasmlineTransientArtifacts.deleteIfTransient(selectedDescriptor.path) }
     }
 
     @Test
@@ -190,11 +198,13 @@ class WasmlineLocalPackageResolutionTest {
         }
         val source = WasmlineSource.LocalManifestPath(manifestFile.absolutePath)
 
-        val resolution = WasmlineLocalPackageResolution.resolve(
-            source,
-            WasmlineLoadRequest(source, options = WasmlineLoadOptions(trustedKeys = trustedKeys())),
-            browserHost(),
-        )
+        val resolution = runBlocking {
+            WasmlineLocalPackageResolution.resolve(
+                source,
+                WasmlineLoadRequest(source, options = WasmlineLoadOptions(trustedKeys = trustedKeys())),
+                browserHost(),
+            )
+        }
 
         val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
         val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
@@ -213,11 +223,13 @@ class WasmlineLocalPackageResolutionTest {
         }
         val source = WasmlineSource.LocalManifestPath(manifestFile.absolutePath)
 
-        val resolution = WasmlineLocalPackageResolution.resolve(
-            source,
-            WasmlineLoadRequest(source, options = WasmlineLoadOptions(trustedKeys = trustedKeys())),
-            browserHost(),
-        )
+        val resolution = runBlocking {
+            WasmlineLocalPackageResolution.resolve(
+                source,
+                WasmlineLoadRequest(source, options = WasmlineLoadOptions(trustedKeys = trustedKeys())),
+                browserHost(),
+            )
+        }
 
         val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
         val failure = assertIs<WasmlineLoadState.Failure>(complete.state)
@@ -231,14 +243,16 @@ class WasmlineLocalPackageResolutionTest {
         val source = WasmlineSource.LocalManifestPath(manifestFile.absolutePath)
         val limits = WasmlineManifestLimits(maxManifestBytes = 64, maxPayloadBytes = 64)
 
-        val resolution = WasmlineLocalPackageResolution.resolve(
-            source,
-            WasmlineLoadRequest(
+        val resolution = runBlocking {
+            WasmlineLocalPackageResolution.resolve(
                 source,
-                options = WasmlineLoadOptions(trustedKeys = trustedKeys(), manifestLimits = limits),
-            ),
-            browserHost(),
-        )
+                WasmlineLoadRequest(
+                    source,
+                    options = WasmlineLoadOptions(trustedKeys = trustedKeys(), manifestLimits = limits),
+                ),
+                browserHost(),
+            )
+        }
 
         val complete = assertIs<WasmlineSourceResolution.Complete>(resolution)
         val failure = assertIs<WasmlineLoadState.Failure>(complete.state)

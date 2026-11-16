@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 from . import toolchain_lock
 from .aot.catalog import KOTLIN_RELEASE_IDENTITY_PATH
@@ -21,6 +21,7 @@ from .aot.lock import render_kotlin_release_identity
 from .release_versions import WASMLINE_VERSION_PATTERN
 from .terminal import Console
 from .paths import MANIFEST_PATH, PROJECT_ROOT
+from .support.http import origin_scoped_opener
 from .support.text import write_text_atomic
 from .version_rules import VersionMap, apply_rules, file_specs
 
@@ -186,7 +187,7 @@ def latest_ktlint_version() -> str:
         headers=headers,
     )
     try:
-        with urlopen(request, timeout=20) as response:
+        with origin_scoped_opener().open(request, timeout=20) as response:
             payload = json.load(response)
     except (OSError, ValueError) as error:
         raise KtlintReleaseError(f"Failed to resolve the latest KtLint release: {error}") from error

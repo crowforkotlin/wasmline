@@ -12,8 +12,6 @@ import crow.wasmline.loader.model.WasmlineManifestProtocol
 import crow.wasmline.loader.toDescriptor
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
-import okio.Buffer
-import okio.HashingSource
 import okio.Path.Companion.toPath
 import okio.buffer
 import okio.use
@@ -25,8 +23,13 @@ import okio.use
  * Author: crowforkotlin
  */
 internal object WasmlineLocalPackageResolution {
-    /** Resolves one local manifest and its selected content-addressed artifact. */
-    fun resolve(
+    /**
+     * Resolves one local manifest and its selected content-addressed artifact.
+     *
+     * The selected artifact is copied into transient storage while it is hashed,
+     * so the runtime opens the same bytes that were verified.
+     */
+    suspend fun resolve(
         source: WasmlineSource.LocalManifestPath,
         request: WasmlineLoadRequest,
         host: WasmlineHostArtifactTarget? = null,
@@ -129,48 +132,114 @@ internal object WasmlineLocalPackageResolution {
             )
         }
 
-        val identity = localArtifactIdentity(artifactPath) ?: return failure(
-            "Failed to read artifact '$relativePath' referenced by local package '${source.path}'.",
-            WasmlineLoadStage.ARTIFACT_RESOLUTION,
-            WasmlineErrorCode.ARTIFACT_IO_FAILED,
+        val staged = stageVerifiedCopy(
+            artifactPath = artifactPath,
+            relativePath = relativePath,
+            expectedSha256 = variant.sha256,
+            expectedSizeBytes = variant.sizeBytes,
+            maxArtifactBytes = request.options.maxArtifactBytes,
         )
-        if (identity.first != variant.sizeBytes) {
-            return failure(
-                "Artifact '$relativePath' has size ${identity.first}, expected ${variant.sizeBytes} bytes.",
-                WasmlineLoadStage.ARTIFACT_VALIDATION,
-                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
-            )
-        }
-        if (identity.second != variant.sha256) {
-            return failure(
-                "Artifact '$relativePath' failed SHA-256 verification. " +
-                    "Expected ${variant.sha256}, actual ${identity.second}.",
-                WasmlineLoadStage.ARTIFACT_VALIDATION,
-                WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
-            )
-        }
+        if (staged is LocalArtifactOutcome.Failed) return staged.resolution
+        val stagedPath = (staged as LocalArtifactOutcome.Staged).path
 
         return WasmlineSourceResolution.ContinueWith(
-            WasmlineSource.LocalArtifactPath(path = descriptor.path, descriptor = descriptor),
+            WasmlineSource.LocalArtifactPath(path = stagedPath, descriptor = descriptor.copy(path = stagedPath)),
         )
     }
 
-    private fun localArtifactIdentity(path: String): Pair<Long, String>? {
-        val fileSystem = defaultHostFileSystem()
-        if (fileSystem == null) {
-            val bytes = readHostFileBytes(path) ?: return null
-            return bytes.size.toLong() to okio.ByteString.of(*bytes).sha256().hex()
-        }
-        return runCatching {
-            val filePath = path.toPath()
-            val size = fileSystem.metadata(filePath).size ?: error("Artifact size is unavailable.")
-            val hashingSource = HashingSource.sha256(fileSystem.source(filePath))
-            hashingSource.buffer().use { source ->
-                val discard = Buffer()
-                while (source.read(discard, STREAM_BUFFER_SIZE) != -1L) discard.clear()
+    /**
+     * Copies the selected artifact into transient storage while hashing it.
+     *
+     * The runtime reopens the returned path, so the copy must hold exactly the
+     * bytes whose SHA-256 matched the signed manifest.
+     */
+    private suspend fun stageVerifiedCopy(
+        artifactPath: String,
+        relativePath: String,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+    ): LocalArtifactOutcome {
+        val fileSystem = defaultHostFileSystem() ?: return LocalArtifactOutcome.Failed(
+            failure(
+                "Artifact '$relativePath' cannot be staged on this platform.",
+                WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_IO_FAILED,
+            ),
+        )
+        val directory = WasmlineArtifactStaging.transientDirectory(fileSystem) ?: return LocalArtifactOutcome.Failed(
+            failure(
+                "No transient directory is available to stage artifact '$relativePath'.",
+                WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                WasmlineErrorCode.ARTIFACT_IO_FAILED,
+            ),
+        )
+        val extension = relativePath.substringAfterLast('.', missingDelimiterValue = "")
+            .let { if (it.isEmpty()) ".wasm" else ".$it" }
+        val target = WasmlineArtifactStaging.transientFile(directory, extension)
+        val resolution = WasmlineArtifactStaging.copyVerified(
+            sourcePath = artifactPath.toPath(),
+            target = target,
+            fileSystem = fileSystem,
+            expectedSha256 = expectedSha256,
+            expectedSizeBytes = expectedSizeBytes,
+            maxArtifactBytes = maxArtifactBytes,
+        )
+        return when (resolution) {
+            is ArtifactFileResolution.Ready -> {
+                WasmlineTransientArtifacts.register(resolution.path)
+                LocalArtifactOutcome.Staged(resolution.path)
             }
-            size to hashingSource.hash.hex()
-        }.getOrNull()
+
+            is ArtifactFileResolution.HashMismatch -> LocalArtifactOutcome.Failed(
+                failure(
+                    "Artifact '$relativePath' failed SHA-256 verification. Expected $expectedSha256, actual ${resolution.actualSha256}.",
+                    WasmlineLoadStage.ARTIFACT_VALIDATION,
+                    WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+                ),
+            )
+
+            is ArtifactFileResolution.SizeMismatch -> LocalArtifactOutcome.Failed(
+                failure(
+                    "Artifact '$relativePath' has size ${resolution.actualSizeBytes}, expected $expectedSizeBytes bytes.",
+                    WasmlineLoadStage.ARTIFACT_VALIDATION,
+                    WasmlineErrorCode.ARTIFACT_INTEGRITY_FAILED,
+                ),
+            )
+
+            is ArtifactFileResolution.WriteFailure -> LocalArtifactOutcome.Failed(
+                failure(
+                    "Failed to stage artifact '$relativePath' for the runtime: ${resolution.cause.message ?: "unknown error"}.",
+                    WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                    WasmlineErrorCode.ARTIFACT_IO_FAILED,
+                ),
+            )
+
+            is ArtifactFileResolution.HttpFailure -> LocalArtifactOutcome.Failed(
+                failure(
+                    "Failed to stage artifact '$relativePath' for the runtime.",
+                    WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                    WasmlineErrorCode.ARTIFACT_IO_FAILED,
+                ),
+            )
+
+            ArtifactFileResolution.Missing -> LocalArtifactOutcome.Failed(
+                failure(
+                    "Artifact '$relativePath' disappeared while it was staged.",
+                    WasmlineLoadStage.ARTIFACT_RESOLUTION,
+                    WasmlineErrorCode.ARTIFACT_IO_FAILED,
+                ),
+            )
+        }
+    }
+
+    /** Result of staging the verified local artifact for the runtime. */
+    private sealed interface LocalArtifactOutcome {
+        /** Path holding exactly the verified bytes. */
+        data class Staged(val path: String) : LocalArtifactOutcome
+
+        /** Terminal failure to report to the caller. */
+        data class Failed(val resolution: WasmlineSourceResolution.Complete) : LocalArtifactOutcome
     }
 
     private fun describe(target: WasmlineHostArtifactTarget): String =

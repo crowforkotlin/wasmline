@@ -16,7 +16,9 @@ from pathlib import Path
 from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
-from urllib.request import ProxyHandler, Request, build_opener
+from urllib.request import ProxyHandler, Request
+
+from ..support.http import origin_scoped_opener
 
 
 WASMTIME_REPOSITORY = "crowforkotlin/wasmtime"
@@ -290,7 +292,9 @@ class GitHubAotMetadataResolver:
         if self._token and parsed_url.scheme == "https" and parsed_url.hostname == "api.github.com":
             headers["Authorization"] = f"Bearer {self._token}"
         proxy = self._proxy if not self._proxy or "://" in self._proxy else f"http://{self._proxy}"
-        opener = build_opener(ProxyHandler({"http": proxy, "https": proxy})) if proxy else build_opener()
+        opener = (
+            origin_scoped_opener(ProxyHandler({"http": proxy, "https": proxy})) if proxy else origin_scoped_opener()
+        )
         return opener.open(Request(url, headers=headers), timeout=self._timeout_seconds)
 
     @staticmethod

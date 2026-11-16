@@ -115,6 +115,28 @@ interface WasmlineComponentImportBindingFactory<in Implementation : Any> {
 }
 
 /**
+ * Represents a WIT `option<T>` value without collapsing nesting levels.
+ *
+ * A Kotlin nullable type cannot distinguish `none` from `some(none)` when `T`
+ * is itself an option, so generated bindings use this wrapper instead.
+ *
+ * Date: 2026-11-16
+ * Author: crowforkotlin
+ */
+class WasmlineWitOption<out T>(val value: T?) {
+    /** Returns whether this value carries a payload. */
+    val isSome: Boolean get() = value != null
+
+    companion object {
+        /** The WIT `none` value. */
+        fun <T> none(): WasmlineWitOption<T> = WasmlineWitOption(null)
+
+        /** Wraps [value] as a WIT `some` value. */
+        fun <T> some(value: T): WasmlineWitOption<T> = WasmlineWitOption(value)
+    }
+}
+
+/**
  * Preserves the distinction between a WIT business result and a Wasmline runtime failure.
  *
  * Date: 2026-09-02
