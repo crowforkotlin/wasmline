@@ -120,6 +120,7 @@ interface WasmlineComponentImportBindingFactory<in Implementation : Any> {
  * Date: 2026-09-02
  * Author: crowforkotlin
  */
+
 /**
  * Represents a WIT `option<T>` value without collapsing nesting levels.
  *

@@ -739,12 +739,11 @@ private class KotlinEmitter(
      * whose payload is itself an option uses [WasmlineWitOption]. A single-level
      * option keeps the nullable form that existing callers already use.
      */
-    private fun optionType(type: WitType.Option, nested: Boolean): String =
-        if (wrapsOption(type, nested)) {
-            "WasmlineWitOption<${kotlinType(type.value, nested = true)}>"
-        } else {
-            "${kotlinType(type.value, nested = true)}?"
-        }
+    private fun optionType(type: WitType.Option, nested: Boolean): String = if (wrapsOption(type, nested)) {
+        "WasmlineWitOption<${kotlinType(type.value, nested = true)}>"
+    } else {
+        "${kotlinType(type.value, nested = true)}?"
+    }
 
     private fun wrapsOption(type: WitType.Option, nested: Boolean): Boolean = nested || type.value is WitType.Option
 
@@ -779,7 +778,10 @@ private class KotlinEmitter(
         is WitType.Tuple -> when (type.values.size) {
             2 -> "Pair<${kotlinType(type.values[0], nested)}, ${kotlinType(type.values[1], nested)}>"
 
-            3 -> "Triple<${kotlinType(type.values[0], nested)}, ${kotlinType(type.values[1], nested)}, ${kotlinType(type.values[2], nested)}>"
+            3 -> "Triple<${kotlinType(
+                type.values[0],
+                nested,
+            )}, ${kotlinType(type.values[1], nested)}, ${kotlinType(type.values[2], nested)}>"
 
             else -> throw UnsupportedWitFeatureException(
                 "Host WIT generator supports tuples with two or three elements, found ${type.values.size}.",
@@ -846,12 +848,7 @@ private class KotlinEmitter(
         WitType.UnitType -> "WasmlineComponentValue.TupleValue(emptyList())"
     }
 
-    private fun decodeExpression(
-        type: WitType,
-        value: String,
-        instance: String? = null,
-        nested: Boolean = false,
-    ): String = when (type) {
+    private fun decodeExpression(type: WitType, value: String, instance: String? = null, nested: Boolean = false): String = when (type) {
         is WitType.Primitive -> {
             val componentType = when (type.name) {
                 "bool" -> "Bool"

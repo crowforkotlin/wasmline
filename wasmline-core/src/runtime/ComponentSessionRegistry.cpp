@@ -40,7 +40,7 @@ namespace wasmline {
     }
 
     void ComponentSessionRegistry::discardPendingImplicit(const std::string& artifactKey,
-                                                         const std::shared_ptr<ComponentSession>& session) {
+                                                          const std::shared_ptr<ComponentSession>& session) {
         std::unique_lock<std::shared_mutex> lock(mutex_);
         const auto pending = pendingImplicitSessions_.find(artifactKey);
         if (pending != pendingImplicitSessions_.end() && pending->second.session == session) {
@@ -50,7 +50,7 @@ namespace wasmline {
     }
 
     void ComponentSessionRegistry::discardPendingExplicit(const std::string& instanceKey,
-                                                         const std::shared_ptr<ComponentSession>& session) {
+                                                          const std::shared_ptr<ComponentSession>& session) {
         std::unique_lock<std::shared_mutex> lock(mutex_);
         const auto pending = pendingExplicitSessions_.find(instanceKey);
         if (pending != pendingExplicitSessions_.end() && pending->second.session == session) {
@@ -288,8 +288,8 @@ namespace wasmline {
         std::vector<std::shared_ptr<ComponentSession>> detached;
         {
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            detached.reserve(implicitSessions_.size() + explicitSessions_.size() +
-                             pendingImplicitSessions_.size() + pendingExplicitSessions_.size());
+            detached.reserve(implicitSessions_.size() + explicitSessions_.size() + pendingImplicitSessions_.size() +
+                             pendingExplicitSessions_.size());
             for (auto& entry : implicitSessions_)
                 detached.push_back(std::move(entry.second));
             for (auto& entry : explicitSessions_)
