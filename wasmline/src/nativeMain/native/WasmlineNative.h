@@ -29,11 +29,17 @@ void wasmline_native_engine_link_anchor();
 /** Returns whether a host filesystem path exists. */
 bool wasmline_path_exists(const char* path);
 
-/** Enters the process-wide bridge lock. */
-void wasmline_lock();
+/** Creates one recursive host runtime lock. */
+void* wasmline_lock_create();
 
-/** Leaves the process-wide bridge lock. */
-void wasmline_unlock();
+/** Destroys a lock returned by wasmline_lock_create(). */
+void wasmline_lock_destroy(void* handle);
+
+/** Acquires one host runtime lock. */
+void wasmline_lock_acquire(void* handle);
+
+/** Releases one host runtime lock. */
+void wasmline_lock_release(void* handle);
 
 /** Loads a Core Wasm artifact and returns a WLMF result carrier. */
 char* wasmline_load_module_with_format(const char* key,

@@ -8,6 +8,7 @@
 #include "wasmline/internal/runtime/ComponentSessionRegistry.h"
 
 #include <mutex>
+#include <thread>
 
 #include "wasmline/internal/logging/NativeLogger.h"
 #include "wasmline/runtime/Component.h"
@@ -38,22 +39,72 @@ namespace wasmline {
         return std::make_shared<ComponentSession>(engine, component, instanceKey);
     }
 
+    void ComponentSessionRegistry::discardPendingImplicit(const std::string& artifactKey,
+                                                         const std::shared_ptr<ComponentSession>& session) {
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+        const auto pending = pendingImplicitSessions_.find(artifactKey);
+        if (pending != pendingImplicitSessions_.end() && pending->second.session == session) {
+            pendingImplicitSessions_.erase(pending);
+        }
+        creationSignal_.notify_all();
+    }
+
+    void ComponentSessionRegistry::discardPendingExplicit(const std::string& instanceKey,
+                                                         const std::shared_ptr<ComponentSession>& session) {
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+        const auto pending = pendingExplicitSessions_.find(instanceKey);
+        if (pending != pendingExplicitSessions_.end() && pending->second.session == session) {
+            pendingExplicitSessions_.erase(pending);
+        }
+    }
+
     std::shared_ptr<ComponentSession> ComponentSessionRegistry::getOrCreate(const std::string& artifactKey) {
         if (const auto cached = findImplicit(artifactKey)) return cached;
 
         std::shared_ptr<ComponentSession> session;
-        std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
-        std::unique_lock<std::mutex> creationLock(creationMutex_);
-        if (const auto cached = findImplicit(artifactKey)) return cached;
-        session = create(artifactKey, artifactKey);
-        if (!session) return nullptr;
-        if (!session->initialize()) {
+        {
+            std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            while (true) {
+                if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
+                    return cached->second;
+                }
+                const auto pending = pendingImplicitSessions_.find(artifactKey);
+                if (pending == pendingImplicitSessions_.end()) break;
+                // Guest start callbacks run without registry locks, so a nested
+                // request for the session that is still initializing reports a
+                // failure instead of waiting on the caller itself.
+                if (pending->second.owner == std::this_thread::get_id()) return nullptr;
+                creationSignal_.wait(lock);
+            }
+            session = create(artifactKey, artifactKey);
+            if (!session) return nullptr;
+            pendingImplicitSessions_.emplace(artifactKey, PendingSession{session, std::this_thread::get_id()});
+        }
+
+        bool initialized = false;
+        try {
+            initialized = session->initialize();
+        } catch (...) {
+            discardPendingImplicit(artifactKey, session);
+            throw;
+        }
+        if (!initialized) {
+            discardPendingImplicit(artifactKey, session);
             return nullptr;
         }
 
         std::unique_lock<std::shared_mutex> lock(mutex_);
+        const auto pending = pendingImplicitSessions_.find(artifactKey);
+        if (pending == pendingImplicitSessions_.end() || pending->second.session != session) {
+            session.reset();
+            creationSignal_.notify_all();
+            return nullptr;
+        }
+        pendingImplicitSessions_.erase(pending);
         const auto [cached, inserted] = implicitSessions_.emplace(artifactKey, session);
-        return inserted ? std::move(session) : cached->second;
+        creationSignal_.notify_all();
+        return cached->second;
     }
 
     InvocationResult ComponentSessionRegistry::invoke(const std::string& artifactKey, std::string_view exportName,
@@ -75,26 +126,55 @@ namespace wasmline {
         if (!handler) return false;
 
         std::shared_ptr<ComponentSession> session;
-        std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
-        std::unique_lock<std::mutex> creationLock(creationMutex_);
-        if (const auto session = findImplicit(artifactKey)) {
+        {
+            std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            while (true) {
+                if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
+                    lock.unlock();
+                    cached->second->setComponentHostHandler(std::move(handler));
+                    return true;
+                }
+                const auto pending = pendingImplicitSessions_.find(artifactKey);
+                if (pending == pendingImplicitSessions_.end()) break;
+                if (pending->second.owner == std::this_thread::get_id()) {
+                    LOGE("[Wasmtime] ComponentSessionRegistry --> Session is initializing on this thread: %s", artifactKey.c_str());
+                    return false;
+                }
+                creationSignal_.wait(lock);
+            }
+            session = create(artifactKey, artifactKey);
+            if (!session) {
+                LOGE("[Wasmtime] ComponentSessionRegistry --> Cannot install host handler for %s", artifactKey.c_str());
+                return false;
+            }
             session->setComponentHostHandler(std::move(handler));
-            return true;
+            pendingImplicitSessions_.emplace(artifactKey, PendingSession{session, std::this_thread::get_id()});
         }
 
-        session = create(artifactKey, artifactKey);
-        if (!session) {
-            LOGE("[Wasmtime] ComponentSessionRegistry --> Cannot install host handler for %s", artifactKey.c_str());
-            return false;
+        bool initialized = false;
+        try {
+            initialized = session->initialize();
+        } catch (...) {
+            discardPendingImplicit(artifactKey, session);
+            throw;
         }
-        session->setComponentHostHandler(std::move(handler));
-        if (!session->initialize()) {
+        if (!initialized) {
+            discardPendingImplicit(artifactKey, session);
             LOGE("[Wasmtime] ComponentSessionRegistry --> Failed to initialize session for %s", artifactKey.c_str());
             return false;
         }
 
         std::unique_lock<std::shared_mutex> lock(mutex_);
-        return implicitSessions_.emplace(artifactKey, std::move(session)).second;
+        const auto pending = pendingImplicitSessions_.find(artifactKey);
+        if (pending == pendingImplicitSessions_.end() || pending->second.session != session) {
+            creationSignal_.notify_all();
+            return false;
+        }
+        pendingImplicitSessions_.erase(pending);
+        const bool inserted = implicitSessions_.emplace(artifactKey, session).second;
+        creationSignal_.notify_all();
+        return inserted;
     }
 
     bool ComponentSessionRegistry::instantiate(const std::string& artifactKey, const std::string& instanceKey,
@@ -102,17 +182,32 @@ namespace wasmline {
         if (artifactKey.empty() || instanceKey.empty() || !handler) return false;
 
         std::shared_ptr<ComponentSession> session;
-        std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
-        std::unique_lock<std::mutex> creationLock(creationMutex_);
-        if (findExplicit(instanceKey)) return false;
-        session = create(artifactKey, instanceKey);
-        if (!session) return false;
-        session->setComponentHostHandler(std::move(handler));
-        if (!session->initialize()) {
+        {
+            std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            if (explicitSessions_.count(instanceKey) || pendingExplicitSessions_.count(instanceKey)) return false;
+            session = create(artifactKey, instanceKey);
+            if (!session) return false;
+            session->setComponentHostHandler(std::move(handler));
+            pendingExplicitSessions_.emplace(instanceKey, PendingSession{session, std::this_thread::get_id()});
+        }
+
+        bool initialized = false;
+        try {
+            initialized = session->initialize();
+        } catch (...) {
+            discardPendingExplicit(instanceKey, session);
+            throw;
+        }
+        if (!initialized) {
+            discardPendingExplicit(instanceKey, session);
             return false;
         }
 
         std::unique_lock<std::shared_mutex> lock(mutex_);
+        const auto pending = pendingExplicitSessions_.find(instanceKey);
+        if (pending == pendingExplicitSessions_.end() || pending->second.session != session) return false;
+        pendingExplicitSessions_.erase(pending);
         return explicitSessions_.emplace(instanceKey, ExplicitEntry{artifactKey, std::move(session)}).second;
     }
 
@@ -147,14 +242,15 @@ namespace wasmline {
         std::shared_ptr<ComponentSession> session;
         {
             std::lock_guard<std::mutex> creationLock(creationMutex_);
-            {
-                std::unique_lock<std::shared_mutex> lock(mutex_);
-                const auto found = explicitSessions_.find(instanceKey);
-                if (found != explicitSessions_.end()) {
-                    session = std::move(found->second.session);
-                    explicitSessions_.erase(found);
-                }
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            const auto found = explicitSessions_.find(instanceKey);
+            if (found != explicitSessions_.end()) {
+                session = std::move(found->second.session);
+                explicitSessions_.erase(found);
             }
+            // A release during the instance's own start callback retires the
+            // pending entry so the publishing thread observes the cancellation.
+            pendingExplicitSessions_.erase(instanceKey);
         }
         session.reset();
     }
@@ -164,7 +260,12 @@ namespace wasmline {
         std::vector<std::shared_ptr<ComponentSession>> detached;
         {
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            detached.reserve(1 + explicitSessions_.size());
+            if (const auto pending = pendingImplicitSessions_.find(artifactKey); pending != pendingImplicitSessions_.end()) {
+                detached.push_back(std::move(pending->second.session));
+                pendingImplicitSessions_.erase(pending);
+                creationSignal_.notify_all();
+            }
+            detached.reserve(2 + explicitSessions_.size());
             const auto implicit = implicitSessions_.find(artifactKey);
             if (implicit != implicitSessions_.end()) {
                 detached.push_back(std::move(implicit->second));
@@ -187,13 +288,21 @@ namespace wasmline {
         std::vector<std::shared_ptr<ComponentSession>> detached;
         {
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            detached.reserve(implicitSessions_.size() + explicitSessions_.size());
+            detached.reserve(implicitSessions_.size() + explicitSessions_.size() +
+                             pendingImplicitSessions_.size() + pendingExplicitSessions_.size());
             for (auto& entry : implicitSessions_)
                 detached.push_back(std::move(entry.second));
             for (auto& entry : explicitSessions_)
                 detached.push_back(std::move(entry.second.session));
+            for (auto& entry : pendingImplicitSessions_)
+                detached.push_back(std::move(entry.second.session));
+            for (auto& entry : pendingExplicitSessions_)
+                detached.push_back(std::move(entry.second.session));
             implicitSessions_.clear();
             explicitSessions_.clear();
+            pendingImplicitSessions_.clear();
+            pendingExplicitSessions_.clear();
+            creationSignal_.notify_all();
         }
         return detached;
     }

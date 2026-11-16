@@ -104,6 +104,57 @@ internal object WasmlineArtifactStaging {
         }
     }
 
+    /**
+     * Copies [sourcePath] into [target] while verifying its size and SHA-256.
+     *
+     * The returned path holds exactly the bytes that were hashed, so a later
+     * reopen of that path cannot observe a replacement of the original artifact.
+     */
+    fun copyVerified(
+        sourcePath: Path,
+        target: Path,
+        fileSystem: FileSystem,
+        expectedSha256: String,
+        expectedSizeBytes: Long,
+        maxArtifactBytes: Long,
+    ): ArtifactFileResolution {
+        if (expectedSizeBytes > maxArtifactBytes) {
+            return ArtifactFileResolution.SizeMismatch(expectedSizeBytes)
+        }
+        val temporary = temporaryPath(target)
+        val copied = try {
+            target.parent?.let(fileSystem::createDirectories)
+            val hashingSink = HashingSink.sha256(fileSystem.sink(temporary, mustCreate = true))
+            hashingSink.buffer().use { sink ->
+                fileSystem.source(sourcePath).use { source ->
+                    val buffer = Buffer()
+                    var copiedBytes = 0L
+                    while (true) {
+                        val read = source.read(buffer, COPY_BUFFER_SIZE)
+                        if (read == -1L) break
+                        copiedBytes += read
+                        if (copiedBytes > expectedSizeBytes || copiedBytes > maxArtifactBytes) {
+                            throw ArtifactSizeLimitException(copiedBytes)
+                        }
+                        sink.writeAll(buffer)
+                    }
+                    copiedBytes
+                }
+            }
+        } catch (error: ArtifactSizeLimitException) {
+            deleteQuietly(fileSystem, temporary)
+            return ArtifactFileResolution.SizeMismatch(error.actualSizeBytes)
+        } catch (error: Exception) {
+            deleteQuietly(fileSystem, temporary)
+            return ArtifactFileResolution.WriteFailure(error)
+        }
+        if (copied != expectedSizeBytes) {
+            deleteQuietly(fileSystem, temporary)
+            return ArtifactFileResolution.SizeMismatch(copied)
+        }
+        return publish(fileSystem, temporary, target)
+    }
+
     /** Writes already verified [bytes] into [target] with the same atomic publication. */
     fun writeVerified(
         target: Path,
@@ -152,6 +203,8 @@ internal object WasmlineArtifactStaging {
         deleteQuietly(fileSystem, temporary)
         ArtifactFileResolution.WriteFailure(error)
     }
+
+    private const val COPY_BUFFER_SIZE: Long = 64L * 1024L
 
     private fun temporaryPath(target: Path): Path {
         val parent = target.parent

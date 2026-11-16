@@ -7,12 +7,14 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -81,6 +83,21 @@ namespace wasmline {
             std::shared_ptr<ComponentSession> session;
         };
 
+        /**
+         * Tracks one session whose guest start callbacks are still running.
+         *
+         * Date: 2026-11-16
+         * Author: crowforkotlin
+         */
+        struct PendingSession {
+            /** Session being initialized. */
+            std::shared_ptr<ComponentSession> session;
+            /** Thread that runs the initialization. */
+            std::thread::id owner;
+        };
+
+        void discardPendingImplicit(const std::string& artifactKey, const std::shared_ptr<ComponentSession>& session);
+        void discardPendingExplicit(const std::string& instanceKey, const std::shared_ptr<ComponentSession>& session);
         std::shared_ptr<ComponentSession> findImplicit(const std::string& artifactKey) const;
         std::shared_ptr<ComponentSession> findExplicit(const std::string& instanceKey) const;
         std::shared_ptr<ComponentSession> getOrCreate(const std::string& artifactKey);
@@ -91,5 +108,10 @@ namespace wasmline {
         mutable std::shared_mutex mutex_;
         std::unordered_map<std::string, std::shared_ptr<ComponentSession>> implicitSessions_;
         std::unordered_map<std::string, ExplicitEntry> explicitSessions_;
+        /** Sessions whose guest start callbacks are still running; never callable. */
+        std::unordered_map<std::string, PendingSession> pendingImplicitSessions_;
+        std::unordered_map<std::string, PendingSession> pendingExplicitSessions_;
+        /** Signals waiters when a pending implicit session is published or discarded. */
+        std::condition_variable_any creationSignal_;
     };
 } // namespace wasmline

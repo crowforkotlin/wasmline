@@ -16,11 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from threading import Lock
 from urllib.error import HTTPError, URLError
-from urllib.request import ProxyHandler, Request, build_opener
+from urllib.request import ProxyHandler, Request
 
 from .manifest import version as manifest_version
 from .terminal import Console
 from .paths import PLATFORMS_ROOT
+from .support.http import origin_scoped_opener
 from .targets import ENGINES, Target, load_targets, target_by_id
 
 
@@ -139,9 +140,9 @@ def _parse_sha256sums(value: str) -> dict[str, str]:
 
 def _opener(proxy: str | None):
     if not proxy:
-        return build_opener()
+        return origin_scoped_opener()
     address = proxy if "://" in proxy else f"http://{proxy}"
-    return build_opener(ProxyHandler({"http": address, "https": address}))
+    return origin_scoped_opener(ProxyHandler({"http": address, "https": address}))
 
 
 def _request_json(url: str, proxy: str | None) -> dict:

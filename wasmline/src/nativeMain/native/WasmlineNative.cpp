@@ -115,11 +115,6 @@ public:
 };
 
 namespace {
-std::recursive_mutex &nativeBridgeMutex() {
-  static std::recursive_mutex mutex;
-  return mutex;
-}
-
 char *copyNativeBytes(const void *data, size_t size, size_t *outLen) {
   if (outLen)
     *outLen = 0;
@@ -191,9 +186,21 @@ bool wasmline_path_exists(const char *path) {
   return io::exists(std::string(path));
 }
 
-void wasmline_lock() { nativeBridgeMutex().lock(); }
+void *wasmline_lock_create() { return new std::recursive_mutex(); }
 
-void wasmline_unlock() { nativeBridgeMutex().unlock(); }
+void wasmline_lock_destroy(void *handle) {
+  delete static_cast<std::recursive_mutex *>(handle);
+}
+
+void wasmline_lock_acquire(void *handle) {
+  if (handle)
+    static_cast<std::recursive_mutex *>(handle)->lock();
+}
+
+void wasmline_lock_release(void *handle) {
+  if (handle)
+    static_cast<std::recursive_mutex *>(handle)->unlock();
+}
 
 char *wasmline_load_module_with_format(const char *key, const char *path,
                                        int32_t formatCode, bool isUnsafe,
