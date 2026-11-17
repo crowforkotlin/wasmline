@@ -17,7 +17,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "scripts/internal/python"))
 import verify_native_release_identity as gate
 
 
-def engine_binary(release: str, wasmtime: str = "50.0.1") -> bytes:
+def engine_binary(release: str, wasmtime: str = "9.8.7") -> bytes:
     """Build a minimal stand-in carrying the same C strings an engine embeds."""
 
     return b"\x7fELF\x00" + wasmtime.encode() + b"\x00" + release.encode() + b"\x00"
@@ -68,7 +68,7 @@ class ReleaseIdentityGateTest(unittest.TestCase):
         self.assertIn("Rebuild the engine assets", message)
 
     def test_wasmtime_version_is_not_treated_as_the_release(self) -> None:
-        """The binary also carries 50.0.1, which must not fail the gate."""
+        """The binary also carries the Wasmtime version, which must not fail the gate."""
 
         self.write("1.0.0-beta2")
         found = gate.embedded_versions(self.assets / "libwasmline.so", "1.0.0-beta2")
