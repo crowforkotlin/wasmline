@@ -290,6 +290,9 @@ jobs:
           python3 scripts/tests/test_publications.py
           python3 scripts/tests/test_release.py
 
+      - name: Verify the downloaded engines match the release version
+        run: python3 scripts/internal/python/verify_native_release_identity.py
+
       - name: Run JVM tests
         working-directory: .
         env:
@@ -353,6 +356,9 @@ jobs:
         with:
           name: jni-cranelift-linux-x64
           path: wasmline-engine-cranelift/src/jvmMain/resources/jni/linux/x86_64
+
+      - name: Verify the downloaded engines match the release version
+        run: python3 scripts/internal/python/verify_native_release_identity.py
 
       - name: Run native AOT JVM tests
         working-directory: .
@@ -613,6 +619,9 @@ jobs:
         with:
           path: wasmline-plugin-test/build/wasmline/wasmtime/
           key: plugin-wasmtime-${{ runner.os }}-${{ hashFiles('versions.json', 'scripts/config/wasmtime-targets.json', 'wasmline-plugin-test/build.gradle.kts') }}
+
+      - name: Verify the downloaded engines match the release version
+        run: python3 scripts/internal/python/verify_native_release_identity.py
 
       - name: Run plugin integration tests
         working-directory: wasmline-plugin-test

@@ -293,6 +293,9 @@ jobs:
       - name: Verify complete Maven publications
         run: ./scripts/release.sh verify-publications --require-apple
 
+      - name: Verify linked engines match the release version
+        run: python3 scripts/internal/python/verify_native_release_identity.py
+
       - name: Verify published plugin and native runtime
         working-directory: wasmline-plugin-test
         run: ./gradlew jvmTest -Pwasmline.source=false --no-daemon

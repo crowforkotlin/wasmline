@@ -56,7 +56,6 @@ pub fn build(b: *std.Build) !void {
         try readWasmtimeReleaseVersion(b, repo_root);
     const wasmtime_variant = b.option([]const u8, "wasmtime-variant", "Engine variant (pulley or cranelift)") orelse "pulley";
     const wasmtime_dir = b.pathJoin(&.{ repo_root, "build", "platforms", wasmtime_version, wasmtime_variant, platform_subdir });
-    const core_dir = b.pathJoin(&.{ repo_root, "wasmline-core" });
     const java_home = try autoDetectJavaHome(b, target);
 
     // Print debug info
@@ -72,10 +71,10 @@ pub fn build(b: *std.Build) !void {
     configureOptimization(lib, target, optimize);
 
     // 5. Add Sources
-    try addSourceFiles(b, lib, core_dir);
+    try addSourceFiles(b, lib);
 
     // 6. Add Include Paths
-    addIncludePaths(b, lib, core_dir, wasmtime_dir, java_home);
+    addIncludePaths(b, lib, wasmtime_dir, java_home);
 
     // 7. Link wasmtime static library into libwasmline (whole-archive to export all symbols)
     linkWasmtimeStatic(b, lib, wasmtime_dir, target);
@@ -163,7 +162,7 @@ fn configureOptimization(lib: *std.Build.Step.Compile, target: std.Build.Resolve
     }
 }
 
-fn addSourceFiles(b: *std.Build, lib: *std.Build.Step.Compile, core_dir: []const u8) !void {
+fn addSourceFiles(b: *std.Build, lib: *std.Build.Step.Compile) !void {
     // Native JNI
     lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/WasmlineJni.cpp"), .flags = CPP_FLAGS });
     lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniRawImportHandler.cpp"), .flags = CPP_FLAGS });
@@ -175,23 +174,24 @@ fn addSourceFiles(b: *std.Build, lib: *std.Build.Step.Compile, core_dir: []const
     lib.root_module.addCSourceFile(.{ .file = b.path("src/jniMain/native/JniHostHandler.cpp"), .flags = CPP_FLAGS });
 
     // External Core Sources
+    // Paths stay relative to the build root so Zig records them as build inputs.
+    // An absolute `.cwd_relative` path is a literal string to the cache, so a
+    // changed core source or header silently reused a stale object file.
     for (EXTERNAL_SOURCES) |src| {
-        const full_src_path = b.pathJoin(&.{ core_dir, src });
-        lib.root_module.addCSourceFile(.{ .file = .{ .cwd_relative = full_src_path }, .flags = CPP_FLAGS });
+        lib.root_module.addCSourceFile(.{ .file = b.path(b.pathJoin(&.{ "..", "wasmline-core", src })), .flags = CPP_FLAGS });
     }
 }
 
 fn addIncludePaths(
     b: *std.Build,
     lib: *std.Build.Step.Compile,
-    core_dir: []const u8,
     wasmtime_dir: []const u8,
     java_home: []const u8,
 ) void {
     lib.root_module.addIncludePath(b.path("src/jniMain/native"));
     lib.root_module.addIncludePath(b.path("src/jvmMain/native")); // ConsoleLogger might be here
 
-    lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ core_dir, "include" }) });
+    lib.root_module.addIncludePath(b.path(b.pathJoin(&.{ "..", "wasmline-core", "include" })));
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ wasmtime_dir, "include" }) });
     lib.root_module.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ java_home, "include" }) });
 
