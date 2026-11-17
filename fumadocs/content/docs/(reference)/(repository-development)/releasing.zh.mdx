@@ -193,6 +193,31 @@ WIT 原样复制自插件模块中的接口定义文件
 正文，其中包含 Wasmtime fork distribution、AOT generation、changed backends
 以及本次是否引入新 generation。Central 发布成功前，changelog 保留在 `Unreleased` 下。
 
+## 发布产物的形态
+
+每个 Maven 坐标发布空 javadoc jar。不要改回 `JavadocJar.Dokka(...)`：每个
+Kotlin Multiplatform 平台变体都会各自生成一份 Dokka 站点，而文档站点打包了
+一个预压缩的 10.9 MB `.woff2` 字体，放进 jar 里无法再压缩。按变体发布文档
+站点会产生同一字体的 40 份副本，占 578 MB 版本的 482 MB。Maven Central 要求
+存在 javadoc jar，并不要求其中包含文档，其他 Kotlin Multiplatform 库也发布
+同样的空 jar。生成的站点由 `deploy-docs.yml` 一次性发布到 GitHub Pages。
+
+一次发布包含 57 个坐标、约 1321 个文件：约 330 个产物各自附带一个 GPG 签名
+以及强制的 `.md5`、`.sha1` 校验和。Maven Central 免费额度为每个组织每月
+1000 个文件、80 MB，因此该形态需要在两个指标上都获得批准的提额。规划发布前
+先查看组织在 [Usage
+Center](https://central.sonatype.com/publishing/usage) 中的状态，并确认
+已批准的提额覆盖当月的用量。
+
+发布前确认产物形态：
+
+```bash
+./gradlew publishToMavenLocal --no-daemon
+find ~/.m2/repository/io/github/crowforkotlin -name '*javadoc.jar' -size +1k
+```
+
+第二条命令不应输出任何内容。
+
 ## 推送标签并发布
 
 提交同步后的候选版本，包括新增的发布工具和测试文件，直接推送到 `main`：

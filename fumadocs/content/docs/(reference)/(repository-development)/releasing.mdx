@@ -215,6 +215,34 @@ GitHub Release body, with the Wasmtime fork distribution, AOT generation,
 changed backends, and whether this release introduces a generation. Keep the
 changelog entry under `Unreleased` until Central publication succeeds.
 
+## Published Artifact Shape
+
+Every Maven coordinate publishes an empty javadoc jar. Do not switch it back to
+`JavadocJar.Dokka(...)`: each Kotlin Multiplatform platform variant generates
+its own Dokka site, and the documentation site bundles a pre-compressed 10.9 MB
+`.woff2` font that does not compress further inside a jar. Publishing the site
+per variant produced 40 copies of the same font and accounted for 482 MB of a
+578 MB release. Maven Central requires a javadoc jar, not that it contain
+documentation, and other Kotlin Multiplatform libraries publish the same empty
+jar. The generated site is published once by `deploy-docs.yml` to GitHub Pages.
+
+A release publishes 57 coordinates and about 1,321 files: each of roughly 330
+artifacts carries a GPG signature plus mandatory `.md5` and `.sha1` checksums.
+Maven Central's free plan allows 1,000 files and 80 MB per month per
+organization, so this shape needs an approved limit increase on both metrics.
+Check the organization's standing in the [Usage
+Center](https://central.sonatype.com/publishing/usage) before planning a
+release, and confirm an approved increase covers the month.
+
+To confirm the shape before publishing:
+
+```bash
+./gradlew publishToMavenLocal --no-daemon
+find ~/.m2/repository/io/github/crowforkotlin -name '*javadoc.jar' -size +1k
+```
+
+The second command must print nothing.
+
 ## Push the Tag and Publish
 
 Commit the synchronized candidate, including new tooling and test files, and

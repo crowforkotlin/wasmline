@@ -1,8 +1,12 @@
 # Changelog
 
+## Unreleased
+
+No unreleased changes.
+
 ## 1.0.0-beta2
 
-Published 2026-11-17. Covers every change merged or pushed after `1.0.0-beta1`.
+Covers every change merged or pushed after `1.0.0-beta1`.
 
 Public APIs, Gradle configuration, and the manifest format may still change
 before 1.0.0.
