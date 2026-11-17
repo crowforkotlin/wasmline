@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "currentWasmlineVersion": "1.0.0-beta1",
+  "currentWasmlineVersion": "1.0.0-beta2",
   "minimumSupportedWasmlineVersion": "1.0.0-beta1",
   "ranges": [
     {

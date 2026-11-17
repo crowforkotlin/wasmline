@@ -20,7 +20,7 @@ plugins {
 configure<MavenPublishBaseExtension> {
     configure(
         platform = KotlinJvm(
-            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
+            javadocJar = JavadocJar.Empty(),
         ),
     )
 }

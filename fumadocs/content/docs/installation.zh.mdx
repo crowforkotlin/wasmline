@@ -50,7 +50,7 @@ dependencyResolutionManagement {
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("io.github.crowforkotlin.wasmline") version "1.0.0-beta1"
+    id("io.github.crowforkotlin.wasmline") version "1.0.0-beta2"
 }
 ```
 
@@ -66,7 +66,7 @@ network 模块。
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta1"))
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta2"))
     implementation("io.github.crowforkotlin:wasmline-loader")
     implementation("io.github.crowforkotlin:wasmline-engine-pulley")
 
@@ -96,7 +96,7 @@ Gradle 会自动选择 Android 目标构件。源码目录 `wasmline-android/` �
 metadata 会为 iOS、macOS、Linux 或 Windows 选择匹配的静态 Wasmtime bridge。
 
 ```kotlin
-val wasmlineVersion = "1.0.0-beta1"
+val wasmlineVersion = "1.0.0-beta2"
 
 kotlin {
     sourceSets {

@@ -50,7 +50,7 @@ val androidMinSdk = versionCatalog.findVersion("android-minSdk").get().requiredV
 configure<MavenPublishBaseExtension> {
     configure(
         platform = KotlinMultiplatform(
-            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
+            javadocJar = JavadocJar.Empty(),
             androidVariantsToPublish = emptyList(),
         ),
     )

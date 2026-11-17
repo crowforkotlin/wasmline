@@ -294,7 +294,7 @@ engine resolve to one strict Wasmline version:
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta1"))
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta2"))
     implementation("io.github.crowforkotlin:wasmline-loader")
     implementation("io.github.crowforkotlin:wasmline-network-ktor")
     implementation("io.github.crowforkotlin:wasmline-engine-cranelift")

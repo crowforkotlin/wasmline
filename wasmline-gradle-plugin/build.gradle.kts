@@ -93,7 +93,7 @@ gradlePlugin {
 configure<MavenPublishBaseExtension> {
     configure(
         platform = GradlePlugin(
-            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
+            javadocJar = JavadocJar.Empty(),
         ),
     )
 }

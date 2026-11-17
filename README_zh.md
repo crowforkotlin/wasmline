@@ -280,7 +280,7 @@ JVM 与 Android 使用 BOM，使 runtime、Loader、network adapter 与 engine
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta1"))
+    implementation(platform("io.github.crowforkotlin:wasmline-bom:1.0.0-beta2"))
     implementation("io.github.crowforkotlin:wasmline-loader")
     implementation("io.github.crowforkotlin:wasmline-network-ktor")
     implementation("io.github.crowforkotlin:wasmline-engine-cranelift")

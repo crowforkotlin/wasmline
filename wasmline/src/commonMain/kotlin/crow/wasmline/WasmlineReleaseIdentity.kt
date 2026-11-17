@@ -7,6 +7,6 @@ package crow.wasmline
  * Author: crowforkotlin
  */
 internal object WasmlineReleaseIdentity {
-    const val RELEASE_VERSION: String = "1.0.0-beta1"
+    const val RELEASE_VERSION: String = "1.0.0-beta2"
     const val NATIVE_BRIDGE_ABI_VERSION: Int = 1
 }

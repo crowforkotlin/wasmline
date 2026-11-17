@@ -16,7 +16,7 @@ plugins {
 configure<MavenPublishBaseExtension> {
     configure(
         platform = KotlinMultiplatform(
-            javadocJar = JavadocJar.Dokka("dokkaGeneratePublicationHtml"),
+            javadocJar = JavadocJar.Empty(),
             androidVariantsToPublish = emptyList(),
         ),
     )
