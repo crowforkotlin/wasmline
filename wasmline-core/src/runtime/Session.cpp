@@ -326,10 +326,14 @@ namespace wasmline {
                           std::initializer_list<wasm_valkind_t> results) -> bool {
             std::vector<wasm_valtype_t*> p_arr;
             p_arr.reserve(params.size());
-            for (auto k : params) p_arr.push_back(wasm_valtype_new(k));
+            for (auto k : params) {
+                p_arr.push_back(wasm_valtype_new(k));
+            }
             std::vector<wasm_valtype_t*> r_arr;
             r_arr.reserve(results.size());
-            for (auto k : results) r_arr.push_back(wasm_valtype_new(k));
+            for (auto k : results) {
+                r_arr.push_back(wasm_valtype_new(k));
+            }
 
             wasm_valtype_vec_t p_vec, r_vec;
             wasm_valtype_vec_new(&p_vec, p_arr.size(), p_arr.data());

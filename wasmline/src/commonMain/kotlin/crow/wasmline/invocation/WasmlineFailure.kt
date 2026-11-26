@@ -15,7 +15,12 @@ package crow.wasmline.invocation
  * @property details Optional backend-specific diagnostic bytes.
  * @property rawCode Original numeric error code received across a bridge.
  */
-data class WasmlineFailure(val code: WasmlineErrorCode, val message: String, val details: ByteArray? = null, val rawCode: Int = code.value) {
+data class WasmlineFailure(
+    val code: WasmlineErrorCode,
+    val message: String,
+    val details: ByteArray? = null,
+    val rawCode: Int = code.value,
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is WasmlineFailure) return false
