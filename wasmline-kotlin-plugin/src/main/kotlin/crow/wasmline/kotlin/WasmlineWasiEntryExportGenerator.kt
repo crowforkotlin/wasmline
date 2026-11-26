@@ -46,7 +46,7 @@ internal fun generateWasiEntryExport(
     val functions = files.asSequence()
         .flatMap { file -> file.declarations.filterIsInstance<IrSimpleFunction>().asSequence() }
 
-    val existingInit = functions.firstOrNull(::isManualWasmlineInit)
+    val existingInit = functions.firstOrNull { function -> isManualWasmlineInit(function, pluginContext) }
     if (existingInit == null) {
         val userMain = files.asSequence()
             .flatMap { file -> file.declarations.filterIsInstance<IrSimpleFunction>().asSequence() }
@@ -75,7 +75,7 @@ internal fun generateWasiEntryExport(
 
     val existingEntry = files.asSequence()
         .flatMap { file -> file.declarations.filterIsInstance<IrSimpleFunction>().asSequence() }
-        .firstOrNull(::isManualWasmlineEntry)
+        .firstOrNull { function -> isManualWasmlineEntry(function, pluginContext) }
     if (existingEntry != null) {
         messageCollector.report(
             CompilerMessageSeverity.INFO,
@@ -213,16 +213,23 @@ private fun createWasmlineEntryFunction(
 
 private fun isUserMain(function: IrSimpleFunction, pluginContext: IrPluginContext): Boolean = function.name.asString() == "main" &&
     function.parent is IrFile &&
+    !function.isSuspend &&
     function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
     function.parameters.count { it.kind == IrParameterKind.Regular } == 0 &&
     function.returnType == pluginContext.irBuiltIns.unitType
 
-private fun isManualWasmlineInit(function: IrSimpleFunction): Boolean = function.name.asString() == WASMLINE_INIT_EXPORT_NAME &&
-    function.parent is IrFile &&
-    function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
-    function.parameters.count { it.kind == IrParameterKind.Regular } == 0
+private fun isManualWasmlineInit(function: IrSimpleFunction, pluginContext: IrPluginContext): Boolean =
+    function.name.asString() == WASMLINE_INIT_EXPORT_NAME &&
+        function.parent is IrFile &&
+        !function.isSuspend &&
+        function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
+        function.parameters.count { it.kind == IrParameterKind.Regular } == 0 &&
+        function.returnType == pluginContext.irBuiltIns.unitType
 
-private fun isManualWasmlineEntry(function: IrSimpleFunction): Boolean = function.name.asString() == WASMLINE_ENTRY_EXPORT_NAME &&
-    function.parent is IrFile &&
-    function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
-    function.parameters.count { it.kind == IrParameterKind.Regular } == 2
+private fun isManualWasmlineEntry(function: IrSimpleFunction, pluginContext: IrPluginContext): Boolean =
+    function.name.asString() == WASMLINE_ENTRY_EXPORT_NAME &&
+        function.parent is IrFile &&
+        !function.isSuspend &&
+        function.parameters.none { it.kind == IrParameterKind.ExtensionReceiver } &&
+        function.parameters.count { it.kind == IrParameterKind.Regular } == 2 &&
+        function.returnType == pluginContext.irBuiltIns.unitType

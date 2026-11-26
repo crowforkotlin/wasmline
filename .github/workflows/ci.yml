@@ -10,13 +10,15 @@ on:
     paths-ignore: ["fumadocs/**", "*.md", ".agents/**"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   ZIG_VERSION: "0.16.0"
-  GITHUB_TOKEN: ${{ github.token }}
 
 jobs:
   lint-kotlin:

@@ -7,16 +7,9 @@ on:
     branches: ["main"]
     paths:
       - "fumadocs/**"
-      - "**"
       - ".github/workflows/deploy-docs.yml"
   # Allow manual run
   workflow_dispatch:
-
-# Set deployment permissions
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 
 # Prevent concurrent deployments
 concurrency:
@@ -27,6 +20,8 @@ jobs:
   # Build Job
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -96,6 +91,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

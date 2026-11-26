@@ -36,9 +36,10 @@ public object PersistentKeyFiles {
         }
         if (Files.notExists(path)) {
             Files.createFile(path, PosixFilePermissions.asFileAttribute(PRIVATE_KEY_PERMISSIONS))
+        } else {
+            Files.setPosixFilePermissions(path, PRIVATE_KEY_PERMISSIONS)
         }
         Files.writeString(path, privateKeyHex)
-        Files.setPosixFilePermissions(path, PRIVATE_KEY_PERMISSIONS)
     }
 
     private fun supportsPosixAttributes(path: Path): Boolean = runCatching {

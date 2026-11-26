@@ -84,9 +84,10 @@ internal class Build : CliktCommand(name = "build") {
     private val wasmToolsVersion by option("--wasm-tools-version").default(ToolchainCatalog.WASM_TOOLS_VERSION)
 
     override fun run() = runBlocking {
-        val productName = name ?: inputFile.nameWithoutExtension
-        val packageId = pluginId ?: productName
-        val folderName = "$packageId-$version"
+        val productName = requirePathSegment(name ?: inputFile.nameWithoutExtension, "name")
+        val packageId = requirePathSegment(pluginId ?: productName, "plugin id")
+        val safeVersion = requirePathSegment(version, "version")
+        val folderName = "$packageId-$safeVersion"
         val destination = File("build/wasmline/output", folderName)
         val distributionDirectory = File("build/wasmline/dist").apply { mkdirs() }
         val finalZip = File(distributionDirectory, "$folderName.zip")
@@ -131,7 +132,7 @@ internal class Build : CliktCommand(name = "build") {
                     WasmlineManifestSigningRequest(
                         buildRecord = record,
                         pluginId = packageId,
-                        version = version,
+                        version = safeVersion,
                         versionCode = versionCode,
                         buildTimestamp = buildTimestamp,
                         signingKey = key,
@@ -210,4 +211,13 @@ internal fun parseKeyValueEntries(entries: Collection<String>, label: String): M
     val separator = entry.indexOf('=')
     require(separator > 0) { "$label must use key=value: $entry" }
     entry.substring(0, separator) to entry.substring(separator + 1)
+}
+
+/** Rejects values that would escape a single output path segment. */
+internal fun requirePathSegment(value: String, label: String): String {
+    require(value.isNotBlank()) { "$label must not be blank." }
+    require(value.none { it == '/' || it == '\\' || it == '\u0000' }) {
+        "$label must not contain a path separator: $value"
+    }
+    return value
 }

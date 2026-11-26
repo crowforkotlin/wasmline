@@ -51,7 +51,7 @@ def main() -> int:
         parser.exit(1, f"Missing group directory: {repository}\n")
     mismatches = describe(repository)
     print(f"Native variants without a cinterop KLIB: {mismatches}")
-    return 0
+    return 0 if mismatches == 0 else 1
 
 
 if __name__ == "__main__":

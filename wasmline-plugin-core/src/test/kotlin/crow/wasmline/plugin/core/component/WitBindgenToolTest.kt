@@ -35,6 +35,7 @@ class WitBindgenToolTest {
         val wit = witDirectory(root)
         val output = File(root, "generated").apply {
             mkdirs()
+            File(this, ".wasmline-generated").writeText("marker")
             File(this, "Stale.kt").writeText("stale")
             File(this, "Stale.c").writeText("stale")
         }
@@ -50,6 +51,29 @@ class WitBindgenToolTest {
 
         assertTrue(!File(output, "Stale.c").exists())
         assertTrue(File(output, "Stale.kt").isFile)
+    }
+
+    @Test
+    fun refusesToCleanAnUnmarkedDirectory() = withToolDirectory { root ->
+        val wit = witDirectory(root)
+        val output = File(root, "generated").apply {
+            mkdirs()
+            File(this, "user.kt").writeText("user")
+        }
+
+        val failure = assertFailsWith<IllegalArgumentException> {
+            WitBindgenTool(stubGenerator(root, File(root, "invocations.txt"), listOf("plugin.c"))).generate(
+                WitBindingsRequest(
+                    witDirectory = wit,
+                    outputDirectory = output,
+                    language = WitBindgenLanguage.C,
+                    world = "plugin",
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("marker"), failure.message.orEmpty())
+        assertTrue(File(output, "user.kt").isFile)
     }
 
     @Test
