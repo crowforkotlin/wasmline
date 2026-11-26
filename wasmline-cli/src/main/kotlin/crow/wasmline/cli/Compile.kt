@@ -73,7 +73,9 @@ internal class Compile : CliktCommand(name = "compile") {
 
     override fun run() = runBlocking {
         val productName = name ?: inputFile.nameWithoutExtension
-        val destination = File(outputRoot, "$productName-$version")
+        val safeProductName = requirePathSegment(productName, "name")
+        val safeVersion = requirePathSegment(version, "version")
+        val destination = File(outputRoot, "$safeProductName-$safeVersion")
         try {
             val invocation = resolveInvocation()
             val resolution = resolveCliAotSelection(parseCliAotSelection(aotGenerations), targets)
@@ -96,7 +98,7 @@ internal class Compile : CliktCommand(name = "compile") {
                         CliComponentPreparationRequest(
                             inputFile = inputFile,
                             outputDirectory = componentInputDirectory,
-                            productName = productName,
+                            productName = safeProductName,
                             invocation = invocation,
                             inputIsRawComponent = rawComponent,
                             witPath = witPath,

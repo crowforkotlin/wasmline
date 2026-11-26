@@ -5,6 +5,7 @@ import crow.wasmline.gradle.trust.WasmlineTrustedPublicKeySpecCodec
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
@@ -16,10 +17,14 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 import java.nio.charset.StandardCharsets
+import javax.inject.Inject
 
 /** Generates the configured Host trust set as common Kotlin source. */
 @CacheableTask
 internal abstract class WasmlineGenerateTrustedKeysTask : DefaultTask() {
+    @get:Inject
+    abstract val fileSystemOperations: FileSystemOperations
+
     @get:Input
     abstract val inlinePublicKeySpecs: ListProperty<String>
 
@@ -52,7 +57,7 @@ internal abstract class WasmlineGenerateTrustedKeysTask : DefaultTask() {
         requireKotlinIdentifier(generatedObjectName, "Generated trust object name")
 
         val output = outputDirectory.get().asFile
-        project.delete(output)
+        fileSystemOperations.delete { spec -> spec.delete(output) }
         val sourceFile = output.resolve(packageName.replace('.', File.separatorChar)).resolve("$generatedObjectName.kt")
         sourceFile.parentFile.mkdirs()
         sourceFile.writeText(renderSource(packageName, generatedObjectName, resolvedKeys), StandardCharsets.UTF_8)

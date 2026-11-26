@@ -4,6 +4,7 @@ import crow.wasmline.plugin.core.component.hostgen.KotlinHostBindingsGenerator
 import crow.wasmline.plugin.core.component.hostgen.KotlinHostBindingsRequest
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
@@ -12,10 +13,14 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import javax.inject.Inject
 
 /** Generates JVM/Native Host facades from WIT without invoking the Kotlin compiler plugin. */
 @CacheableTask
 internal abstract class WasmlineGenerateHostWitBindingsTask : DefaultTask() {
+    @get:Inject
+    abstract val fileSystemOperations: FileSystemOperations
+
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val witDirectory: DirectoryProperty
@@ -38,7 +43,7 @@ internal abstract class WasmlineGenerateHostWitBindingsTask : DefaultTask() {
     @TaskAction
     fun generate() {
         val output = outputDirectory.get().asFile
-        project.delete(output)
+        fileSystemOperations.delete { spec -> spec.delete(output) }
         KotlinHostBindingsGenerator.generate(
             KotlinHostBindingsRequest(
                 witPath = witDirectory.get().asFile,

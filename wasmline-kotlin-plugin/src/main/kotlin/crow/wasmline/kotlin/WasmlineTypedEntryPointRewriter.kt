@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -60,6 +61,15 @@ internal class WasmlineTypedEntryPointRewriter(
                     ownerDeclarations.addLast(declaration)
                     return try {
                         super.visitConstructor(declaration)
+                    } finally {
+                        ownerDeclarations.removeLast()
+                    }
+                }
+
+                override fun visitProperty(declaration: IrProperty): IrStatement {
+                    ownerDeclarations.addLast(declaration)
+                    return try {
+                        super.visitProperty(declaration)
                     } finally {
                         ownerDeclarations.removeLast()
                     }

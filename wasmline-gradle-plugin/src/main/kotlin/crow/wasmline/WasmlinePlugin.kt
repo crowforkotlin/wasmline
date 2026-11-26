@@ -756,10 +756,14 @@ public class WasmlinePlugin private constructor(@Suppress("UNUSED_PARAMETER") ma
      */
     private fun generateKeyPair(keyDirectory: File) {
         val logger = LoggerFactory.getLogger(WasmlinePlugin::class.java)
-        val keyPair = ManifestKeyGenerator.generate()
         keyDirectory.mkdirs()
         val privateKeyFile = File(keyDirectory, PRIVATE_KEY_FILE_NAME)
         val publicKeyFile = File(keyDirectory, PUBLIC_KEY_FILE_NAME)
+        check(!privateKeyFile.exists() && !publicKeyFile.exists()) {
+            "Refusing to overwrite existing signing keys in ${keyDirectory.absolutePath}. " +
+                "Remove both key files explicitly to rotate the signing identity."
+        }
+        val keyPair = ManifestKeyGenerator.generate()
         PersistentKeyFiles.writePrivateKey(privateKeyFile, keyPair.privateKeyHex)
         publicKeyFile.writeText(keyPair.publicKeyHex)
         logger.warn("---------------- ----------------------------------------------------------------")
