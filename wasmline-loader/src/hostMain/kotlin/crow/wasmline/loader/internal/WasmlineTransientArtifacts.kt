@@ -17,18 +17,20 @@ import kotlinx.coroutines.sync.withLock
  */
 internal object WasmlineTransientArtifacts {
     private val lock = Mutex()
-    private val paths = mutableSetOf<String>()
+    private val paths = mutableMapOf<String, String>()
 
-    /** Records [path] as transient so it is deleted after the runtime finishes loading it. */
-    suspend fun register(path: String) {
-        lock.withLock { paths += path }
+    /** Records [path] and its staging [directoryPath] so both are deleted after the load. */
+    suspend fun register(path: String, directoryPath: String) {
+        lock.withLock { paths[path] = directoryPath }
     }
 
-    /** Deletes [path] when it was registered as transient; other paths are ignored. */
+    /** Deletes [path] and its empty staging directory when it was registered; other paths are ignored. */
     suspend fun deleteIfTransient(path: String) {
-        val registered = lock.withLock { paths.remove(path) }
-        if (!registered) return
-        if (hostDeleteFile(path)) return
+        val directoryPath = lock.withLock { paths.remove(path) } ?: return
+        if (hostDeleteFile(path)) {
+            hostDeleteFile(directoryPath)
+            return
+        }
         WasmlineLog.logger?.debug("[WasmlineTransientArtifacts] Staged artifact could not be removed: $path")
     }
 }

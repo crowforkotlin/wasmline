@@ -11,7 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.Closeable
@@ -24,6 +26,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.util.Properties
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Contains one verified compiler executable resolved for an AOT profile.
@@ -159,15 +162,18 @@ class AotCompilerResolver(private val cache: AotCompilerCache) : Closeable {
     ): Map<String, ResolvedAotCompiler> = withContext(Dispatchers.IO) {
         require(profiles.isNotEmpty()) { "At least one AOT profile is required for a compiler asset." }
         val lockFile = cache.lockFileFor(asset).apply { parentFile.mkdirs() }
-        FileChannel.open(lockFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
-            channel.lock().use {
-                val first = profiles.first()
-                cache.resolve(first, asset) ?: install(first, asset, githubToken)
-                profiles.associate { profile ->
-                    profile.id to (
-                        cache.resolve(profile, asset)
-                            ?: error("AOT compiler cache verification failed for profile '${profile.id}'.")
-                        )
+        val processLock = PROCESS_LOCKS.computeIfAbsent(lockFile.absolutePath) { Mutex() }
+        processLock.withLock {
+            FileChannel.open(lockFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
+                channel.lock().use {
+                    val first = profiles.first()
+                    cache.resolve(first, asset) ?: install(first, asset, githubToken)
+                    profiles.associate { profile ->
+                        profile.id to (
+                            cache.resolve(profile, asset)
+                                ?: error("AOT compiler cache verification failed for profile '${profile.id}'.")
+                            )
+                    }
                 }
             }
         }
@@ -323,6 +329,7 @@ class AotCompilerResolver(private val cache: AotCompilerCache) : Closeable {
      * Author: crowforkotlin
      */
     private companion object {
+        val PROCESS_LOCKS: ConcurrentHashMap<String, Mutex> = ConcurrentHashMap()
         const val DEFAULT_MAX_PARALLEL_DOWNLOADS: Int = 2
         const val CONNECT_TIMEOUT_MILLIS: Int = 30_000
         const val READ_TIMEOUT_MILLIS: Int = 120_000

@@ -187,7 +187,7 @@ internal object WasmlineLocalPackageResolution {
         )
         return when (resolution) {
             is ArtifactFileResolution.Ready -> {
-                WasmlineTransientArtifacts.register(resolution.path)
+                WasmlineTransientArtifacts.register(resolution.path, directory.toString())
                 LocalArtifactOutcome.Staged(resolution.path)
             }
 
