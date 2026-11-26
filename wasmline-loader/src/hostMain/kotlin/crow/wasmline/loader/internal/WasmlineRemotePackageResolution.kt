@@ -377,7 +377,7 @@ internal object WasmlineRemotePackageResolution {
             maxArtifactBytes = maxArtifactBytes,
         )
         if (written !is ArtifactFileResolution.Ready) return written
-        WasmlineTransientArtifacts.register(written.path)
+        WasmlineTransientArtifacts.register(written.path, directory.toString())
         return written.copy(cacheHit = true)
     }
 
@@ -430,7 +430,7 @@ internal object WasmlineRemotePackageResolution {
                             WasmlineLog.logger?.warn("$P Custom artifact cache write failed: ${error.message}")
                         }
                 }
-                WasmlineTransientArtifacts.register(staged.path)
+                WasmlineTransientArtifacts.register(staged.path, directory.toString())
                 ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
             }
         }
@@ -478,7 +478,7 @@ internal object WasmlineRemotePackageResolution {
             is StagedArtifact.Failed -> staged.resolution
 
             is StagedArtifact.Ready -> {
-                WasmlineTransientArtifacts.register(staged.path)
+                WasmlineTransientArtifacts.register(staged.path, directory.toString())
                 ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
             }
         }

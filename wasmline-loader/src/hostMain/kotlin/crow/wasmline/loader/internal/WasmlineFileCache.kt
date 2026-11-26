@@ -184,7 +184,7 @@ internal class WasmlineFileCache(
             is StagedArtifact.Failed -> staged.resolution
 
             is StagedArtifact.Ready -> {
-                WasmlineTransientArtifacts.register(staged.path)
+                WasmlineTransientArtifacts.register(staged.path, transientDirectory.toString())
                 ArtifactFileResolution.Ready(path = staged.path, cacheHit = false)
             }
         }

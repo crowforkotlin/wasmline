@@ -122,25 +122,28 @@ internal object WasmlineArtifactStaging {
             return ArtifactFileResolution.SizeMismatch(expectedSizeBytes)
         }
         val temporary = temporaryPath(target)
+        var actualSha256 = ""
         val copied = try {
             target.parent?.let(fileSystem::createDirectories)
             val hashingSink = HashingSink.sha256(fileSystem.sink(temporary, mustCreate = true))
-            hashingSink.buffer().use { sink ->
+            val copiedBytes = hashingSink.buffer().use { sink ->
                 fileSystem.source(sourcePath).use { source ->
                     val buffer = Buffer()
-                    var copiedBytes = 0L
+                    var bytesRead = 0L
                     while (true) {
                         val read = source.read(buffer, COPY_BUFFER_SIZE)
                         if (read == -1L) break
-                        copiedBytes += read
-                        if (copiedBytes > expectedSizeBytes || copiedBytes > maxArtifactBytes) {
-                            throw ArtifactSizeLimitException(copiedBytes)
+                        bytesRead += read
+                        if (bytesRead > expectedSizeBytes || bytesRead > maxArtifactBytes) {
+                            throw ArtifactSizeLimitException(bytesRead)
                         }
                         sink.writeAll(buffer)
                     }
-                    copiedBytes
+                    bytesRead
                 }
             }
+            actualSha256 = hashingSink.hash.hex()
+            copiedBytes
         } catch (error: ArtifactSizeLimitException) {
             deleteQuietly(fileSystem, temporary)
             return ArtifactFileResolution.SizeMismatch(error.actualSizeBytes)
@@ -151,6 +154,10 @@ internal object WasmlineArtifactStaging {
         if (copied != expectedSizeBytes) {
             deleteQuietly(fileSystem, temporary)
             return ArtifactFileResolution.SizeMismatch(copied)
+        }
+        if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
+            deleteQuietly(fileSystem, temporary)
+            return ArtifactFileResolution.HashMismatch(actualSha256)
         }
         return publish(fileSystem, temporary, target)
     }
@@ -185,8 +192,10 @@ internal object WasmlineArtifactStaging {
 
     /** Returns a fresh transient directory for one load operation. */
     fun transientDirectory(fileSystem: FileSystem): Path? = runCatching {
-        val directory = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / TRANSIENT_DIRECTORY_NAME
-        fileSystem.createDirectories(directory)
+        val directory = FileSystem.SYSTEM_TEMPORARY_DIRECTORY /
+            "$TRANSIENT_DIRECTORY_PREFIX${Random.nextLong().toULong().toString(16)}"
+        fileSystem.createDirectories(directory, mustCreate = true)
+        hardenTransientDirectory(directory)
         directory
     }.onFailure { error ->
         WasmlineLog.logger?.warn("[WasmlineArtifactStaging] Transient directory is unavailable: ${error.message}")
@@ -224,8 +233,11 @@ internal object WasmlineArtifactStaging {
      */
     internal class ArtifactSizeLimitException(val actualSizeBytes: Long) : RuntimeException()
 
-    private const val TRANSIENT_DIRECTORY_NAME: String = "wasmline-transient"
+    private const val TRANSIENT_DIRECTORY_PREFIX: String = "wasmline-transient-"
 }
+
+/** Restricts a freshly created transient directory to the current user where the host supports it. */
+internal expect fun hardenTransientDirectory(directory: Path)
 
 /**
  * Reports the outcome of staging one artifact file, including the verified bytes
