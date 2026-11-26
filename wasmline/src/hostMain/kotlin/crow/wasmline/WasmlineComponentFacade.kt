@@ -237,7 +237,7 @@ class WasmlineComponentInstance internal constructor(
     ): WasmlineCallResult<WasmlineComponentCallResult> = lock.withLock {
         if (closed) {
             return@withLock componentFailure(
-                WasmlineErrorCode.ENGINE_NOT_INITIALIZED,
+                WasmlineErrorCode.SESSION_CLOSED,
                 "Component instance is closed.",
             )
         }

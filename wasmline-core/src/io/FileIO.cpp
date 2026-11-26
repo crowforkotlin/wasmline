@@ -35,6 +35,7 @@ namespace wasmline::io {
         std::ofstream file(path, std::ios::binary);
         if (!file) return false;
         file.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(len));
-        return true;
+        file.flush();
+        return file.good();
     }
 } // namespace wasmline::io

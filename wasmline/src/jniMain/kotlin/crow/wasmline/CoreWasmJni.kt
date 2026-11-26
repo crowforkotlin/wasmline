@@ -64,7 +64,11 @@ private class JniCoreWasmModule(
             ?.takeIf { memoryName -> exports.any { it.name == memoryName && it.kind == RawExportKind.MEMORY } }
             ?.let { JniCoreWasmMemory(sessionKey) }
         val importDispatcher = JniRawImportDispatcher(options.imports, dispatcher, memory)
-        val imports = CoreWasmNativeCodec.encodeImports(options.imports)
+        val imports = try {
+            CoreWasmNativeCodec.encodeImports(options.imports)
+        } catch (error: IllegalArgumentException) {
+            return coreFailure(WasmlineErrorCode.INVALID_PAYLOAD, error.message ?: "Core Wasm imports are invalid.")
+        }
         val carrier = JniWasmlineBindings.coreCreateSession(
             artifactKey = moduleKey,
             sessionKey = sessionKey,

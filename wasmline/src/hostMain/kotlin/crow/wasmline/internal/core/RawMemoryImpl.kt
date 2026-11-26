@@ -5,6 +5,7 @@ import crow.wasmline.coreFailure
 import crow.wasmline.invocation.WasmlineCallResult
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
+import kotlinx.coroutines.CancellationException
 
 /**
  * Applies checked public memory operations to a backend memory implementation.
@@ -23,6 +24,7 @@ internal class RawMemoryImpl(
 
     override fun read(offset: Long, length: Int): WasmlineCallResult<ByteArray> = memoryOperation {
         val failure = checkMemoryInputRange(offset, length)
+            ?: checkMemorySizeRange(backend.byteSize, offset, length)
         if (failure != null) throw RawMemoryRangeException(failure)
         ByteArray(length).also { destination ->
             backend.readInto(destination, 0, offset, length)
@@ -71,7 +73,9 @@ internal class RawMemoryImpl(
             WasmlineCallResult.Failure(failure.failure)
         } catch (failure: CoreWasmBackendFailure) {
             WasmlineCallResult.Failure(failure.failure)
-        } catch (failure: Throwable) {
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (failure: Exception) {
             coreFailure(
                 WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
                 "Core Wasm memory operation failed: ${failure.message ?: failure}",
@@ -95,6 +99,16 @@ private fun checkMemoryInputRange(offset: Long, length: Int): WasmlineFailure? {
         return WasmlineFailure(
             WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
             "Linear memory range offset=$offset length=$length is invalid.",
+        )
+    }
+    return null
+}
+
+private fun checkMemorySizeRange(size: Long, offset: Long, length: Int): WasmlineFailure? {
+    if (offset > size || length.toLong() > size - offset) {
+        return WasmlineFailure(
+            WasmlineErrorCode.MEMORY_OUT_OF_BOUNDS,
+            "Linear memory range offset=$offset length=$length exceeds size=$size.",
         )
     }
     return null

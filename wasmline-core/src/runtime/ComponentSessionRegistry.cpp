@@ -59,27 +59,41 @@ namespace wasmline {
     }
 
     std::shared_ptr<ComponentSession> ComponentSessionRegistry::getOrCreate(const std::string& artifactKey) {
-        if (const auto cached = findImplicit(artifactKey)) return cached;
-
         std::shared_ptr<ComponentSession> session;
-        {
+        for (;;) {
+            {
+                std::unique_lock<std::shared_mutex> lock(mutex_);
+                while (true) {
+                    if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
+                        return cached->second;
+                    }
+                    const auto pending = pendingImplicitSessions_.find(artifactKey);
+                    if (pending == pendingImplicitSessions_.end()) break;
+                    // Guest start callbacks run without registry locks, so a nested
+                    // request for the session that is still initializing reports a
+                    // failure instead of waiting on the caller itself.
+                    if (pending->second.owner == std::this_thread::get_id()) return nullptr;
+                    // Wait without the lifecycle lock so a guest start callback that
+                    // closes another artifact can acquire the lifecycle write lock.
+                    creationSignal_.wait(lock);
+                }
+            }
+
             std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            while (true) {
-                if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
-                    return cached->second;
-                }
-                const auto pending = pendingImplicitSessions_.find(artifactKey);
-                if (pending == pendingImplicitSessions_.end()) break;
-                // Guest start callbacks run without registry locks, so a nested
-                // request for the session that is still initializing reports a
-                // failure instead of waiting on the caller itself.
-                if (pending->second.owner == std::this_thread::get_id()) return nullptr;
-                creationSignal_.wait(lock);
+            if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
+                return cached->second;
             }
+            if (pendingImplicitSessions_.find(artifactKey) != pendingImplicitSessions_.end()) {
+                lock.unlock();
+                lifecycleLock.unlock();
+                continue;
+            }
+
             session = create(artifactKey, artifactKey);
             if (!session) return nullptr;
             pendingImplicitSessions_.emplace(artifactKey, PendingSession{session, std::this_thread::get_id()});
+            break;
         }
 
         bool initialized = false;
@@ -126,23 +140,40 @@ namespace wasmline {
         if (!handler) return false;
 
         std::shared_ptr<ComponentSession> session;
-        {
+        for (;;) {
+            {
+                std::unique_lock<std::shared_mutex> lock(mutex_);
+                while (true) {
+                    if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
+                        session = cached->second;
+                        lock.unlock();
+                        session->setComponentHostHandler(std::move(handler));
+                        return true;
+                    }
+                    const auto pending = pendingImplicitSessions_.find(artifactKey);
+                    if (pending == pendingImplicitSessions_.end()) break;
+                    if (pending->second.owner == std::this_thread::get_id()) {
+                        LOGE("[Wasmtime] ComponentSessionRegistry --> Session is initializing on this thread: %s", artifactKey.c_str());
+                        return false;
+                    }
+                    creationSignal_.wait(lock);
+                }
+            }
+
             std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            while (true) {
-                if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
-                    lock.unlock();
-                    cached->second->setComponentHostHandler(std::move(handler));
-                    return true;
-                }
-                const auto pending = pendingImplicitSessions_.find(artifactKey);
-                if (pending == pendingImplicitSessions_.end()) break;
-                if (pending->second.owner == std::this_thread::get_id()) {
-                    LOGE("[Wasmtime] ComponentSessionRegistry --> Session is initializing on this thread: %s", artifactKey.c_str());
-                    return false;
-                }
-                creationSignal_.wait(lock);
+            if (const auto cached = implicitSessions_.find(artifactKey); cached != implicitSessions_.end()) {
+                session = cached->second;
+                lock.unlock();
+                session->setComponentHostHandler(std::move(handler));
+                return true;
             }
+            if (pendingImplicitSessions_.find(artifactKey) != pendingImplicitSessions_.end()) {
+                lock.unlock();
+                lifecycleLock.unlock();
+                continue;
+            }
+
             session = create(artifactKey, artifactKey);
             if (!session) {
                 LOGE("[Wasmtime] ComponentSessionRegistry --> Cannot install host handler for %s", artifactKey.c_str());
@@ -150,6 +181,7 @@ namespace wasmline {
             }
             session->setComponentHostHandler(std::move(handler));
             pendingImplicitSessions_.emplace(artifactKey, PendingSession{session, std::this_thread::get_id()});
+            break;
         }
 
         bool initialized = false;

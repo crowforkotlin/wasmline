@@ -6,6 +6,7 @@
  */
 
 #include "JniRawImportHandler.h"
+#include "JniUtf8String.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -87,8 +88,8 @@ char* JniRawImportHandler::invoke(const char* sessionKey, const char* module, si
     };
     const std::string moduleText(module, moduleLen);
     const std::string nameText(name, nameLen);
-    jstring jModule = env->NewStringUTF(moduleText.c_str());
-    jstring jName = env->NewStringUTF(nameText.c_str());
+    jstring jModule = newJavaStringFromUtf8(env, moduleText);
+    jstring jName = newJavaStringFromUtf8(env, nameText);
     jbyteArray jArguments = env->NewByteArray(static_cast<jsize>(argumentsLen));
     if (!jModule || !jName || !jArguments) {
         if (env->ExceptionCheck()) env->ExceptionClear();
