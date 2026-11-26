@@ -36,4 +36,23 @@ data class WasmlineLoadFailure(
     val message: String,
     val details: ByteArray? = null,
     val rawCode: Int = code.value,
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is WasmlineLoadFailure) return false
+        return stage == other.stage &&
+            code == other.code &&
+            message == other.message &&
+            rawCode == other.rawCode &&
+            details.contentEquals(other.details)
+    }
+
+    override fun hashCode(): Int {
+        var result = stage.hashCode()
+        result = 31 * result + code.hashCode()
+        result = 31 * result + message.hashCode()
+        result = 31 * result + rawCode
+        result = 31 * result + (details?.contentHashCode() ?: 0)
+        return result
+    }
+}

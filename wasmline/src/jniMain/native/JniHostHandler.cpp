@@ -6,6 +6,7 @@
  */
 
 #include "JniHostHandler.h"
+#include "JniUtf8String.h"
 #include <limits>
 #include "wasmline/protocol/WasmlineProtocol.h"
 #include "wasmline/internal/logging/NativeLogger.h"
@@ -92,7 +93,7 @@ std::string JniHostHandler::onOutboundInvoke(const std::string_view action, cons
     }
 
     const std::string actionText(action);
-    jstring jAction = env->NewStringUTF(actionText.c_str());
+    jstring jAction = newJavaStringFromUtf8(env, actionText);
     jbyteArray jPayload = env->NewByteArray((jsize)payload.size());
     if (!jAction || !jPayload) {
         if (jAction) env->DeleteLocalRef(jAction);

@@ -33,8 +33,8 @@ internal class WasmlineComponentHostDispatcher(private val registry: WasmlineCom
 
     fun createResource(resourceId: WasmlineComponentResourceId, implementation: Any): UInt = lock.withLock {
         check(resourceId in registry.resources) { "Component Host resource type is not registered: $resourceId." }
+        check(nextRepresentation != 0u) { "Component Host resource representation space is exhausted." }
         val representation = nextRepresentation++
-        check(representation != 0u) { "Component Host resource representation space is exhausted." }
         hostResources[representation] = HostResourceEntry(resourceId, implementation)
         representation
     }

@@ -6,6 +6,7 @@
  */
 
 #include "JniComponentHostHandler.h"
+#include "JniUtf8String.h"
 
 #include <limits>
 #include <string>
@@ -121,8 +122,8 @@ wasmline::InvocationResult JniComponentHostHandler::onComponentHostInvoke(
 
   const std::string interfaceText(interfaceName);
   const std::string functionText(functionName);
-  jstring javaInterface = env->NewStringUTF(interfaceText.c_str());
-  jstring javaFunction = env->NewStringUTF(functionText.c_str());
+  jstring javaInterface = newJavaStringFromUtf8(env, interfaceText);
+  jstring javaFunction = newJavaStringFromUtf8(env, functionText);
   jbyteArray javaArguments =
       env->NewByteArray(static_cast<jsize>(encodedArguments.size()));
   if (!javaInterface || !javaFunction || !javaArguments) {

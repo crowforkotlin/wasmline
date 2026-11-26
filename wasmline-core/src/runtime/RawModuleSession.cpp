@@ -484,7 +484,8 @@ namespace wasmline {
     wasm_trap_t* RawModuleSession::importTrampoline(void* env, wasmtime_caller_t* caller, const wasmtime_val_t* args, size_t nargs,
                                                     wasmtime_val_t* results, size_t nresults) {
         auto* binding = static_cast<ImportBinding*>(env);
-        if (!binding || !binding->session) return wasmtime_trap_new("Raw import session is unavailable", 35);
+        if (!binding || !binding->session)
+            return wasmtime_trap_new("Raw import session is unavailable", sizeof("Raw import session is unavailable") - 1);
         return binding->session->invokeImport(*binding, caller, args, nargs, results, nresults);
     }
 

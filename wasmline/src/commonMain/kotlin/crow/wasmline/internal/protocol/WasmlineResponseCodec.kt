@@ -101,7 +101,9 @@ internal object WasmlineResponseCodec {
     }
 
     fun decodeLegacyCompatible(bytes: ByteArray): WasmlineCallResult<ByteArray> {
-        if (bytes.isEmpty()) return WasmlineCallResult.Success(ByteArray(0))
+        if (bytes.isEmpty()) {
+            return failure(WasmlineErrorCode.RESPONSE_MISSING, "Wasmline response is missing.")
+        }
         return if (hasMagic(bytes)) decode(bytes) else WasmlineCallResult.Success(bytes)
     }
 

@@ -26,22 +26,34 @@ namespace wasmline {
     }
 
     std::shared_ptr<Session> ServiceSessionRegistry::getOrCreate(const std::string& artifactKey) {
-        if (const auto cached = find(artifactKey)) return cached;
-
         std::shared_ptr<Session> session;
-        {
+        for (;;) {
+            {
+                std::unique_lock<std::shared_mutex> lock(mutex_);
+                while (true) {
+                    if (const auto cached = sessions_.find(artifactKey); cached != sessions_.end()) {
+                        return cached->second;
+                    }
+                    const auto pending = pendingSessions_.find(artifactKey);
+                    if (pending == pendingSessions_.end()) break;
+                    // The reactor initialization of this session runs on the calling
+                    // thread inside initialize(); a nested request cannot complete.
+                    if (pending->second.owner == std::this_thread::get_id()) return nullptr;
+                    // Wait without the lifecycle lock so a guest start callback that
+                    // closes another artifact can acquire the lifecycle write lock.
+                    creationSignal_.wait(lock);
+                }
+            }
+
             std::shared_lock<std::shared_mutex> lifecycleLock(lifecycleMutex_);
             std::unique_lock<std::shared_mutex> lock(mutex_);
-            while (true) {
-                if (const auto cached = sessions_.find(artifactKey); cached != sessions_.end()) {
-                    return cached->second;
-                }
-                const auto pending = pendingSessions_.find(artifactKey);
-                if (pending == pendingSessions_.end()) break;
-                // The reactor initialization of this session runs on the calling
-                // thread inside initialize(); a nested request cannot complete.
-                if (pending->second.owner == std::this_thread::get_id()) return nullptr;
-                creationSignal_.wait(lock);
+            if (const auto cached = sessions_.find(artifactKey); cached != sessions_.end()) {
+                return cached->second;
+            }
+            if (pendingSessions_.find(artifactKey) != pendingSessions_.end()) {
+                lock.unlock();
+                lifecycleLock.unlock();
+                continue;
             }
 
             wasm_engine_t* engine = Engine::getInstance().getEngine();
@@ -52,6 +64,7 @@ namespace wasmline {
             }
             session = std::make_shared<Session>(engine, module, artifactKey);
             pendingSessions_.emplace(artifactKey, SessionPending{session, std::this_thread::get_id()});
+            break;
         }
 
         bool initialized = false;

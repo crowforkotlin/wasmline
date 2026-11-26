@@ -94,18 +94,23 @@ namespace wasmline::cache {
             return result;
         }
 
+        // The maps are synchronized; "unsafe" means this path does not wait for an
+        // in-flight load of the same artifact, so duplicate deserialization is possible.
         Handle* loadUnsafe(const std::string& key, const std::string& path, const Loader& loader) {
-            const auto cached = cache_.find(key);
-            if (cached != cache_.end()) {
-                ++cached->second.references;
-                return cached->second.handle;
-            }
-            const auto artifact = artifacts_.find(path);
-            if (artifact != artifacts_.end()) {
-                try {
-                    return bind(key, artifact);
-                } catch (...) {
-                    return nullptr;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                const auto cached = cache_.find(key);
+                if (cached != cache_.end()) {
+                    ++cached->second.references;
+                    return cached->second.handle;
+                }
+                const auto artifact = artifacts_.find(path);
+                if (artifact != artifacts_.end()) {
+                    try {
+                        return bind(key, artifact);
+                    } catch (...) {
+                        return nullptr;
+                    }
                 }
             }
 
@@ -118,7 +123,13 @@ namespace wasmline::cache {
             if (!loaded) return nullptr;
 
             std::unique_ptr<Handle, Deleter> owned(loaded, deleter_);
+            std::lock_guard<std::mutex> lock(mutex_);
             try {
+                const auto cached = cache_.find(key);
+                if (cached != cache_.end()) {
+                    ++cached->second.references;
+                    return cached->second.handle;
+                }
                 const auto [created, inserted] = artifacts_.emplace(path, Artifact{loaded, 0});
                 Handle* result;
                 try {

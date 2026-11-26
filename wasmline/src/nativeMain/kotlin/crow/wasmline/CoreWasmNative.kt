@@ -67,8 +67,12 @@ private class NativeCoreWasmModule(
             ?.takeIf { memoryName -> exports.any { it.name == memoryName && it.kind == RawExportKind.MEMORY } }
             ?.let { NativeCoreWasmMemory(sessionKey) }
         val holder = NativeRawImportDispatcher(options.imports, dispatcher, memory)
+        val imports = try {
+            CoreWasmNativeCodec.encodeImports(options.imports)
+        } catch (error: IllegalArgumentException) {
+            return coreFailure(WasmlineErrorCode.INVALID_PAYLOAD, error.message ?: "Core Wasm imports are invalid.")
+        }
         NativeRawImportRegistry.register(sessionKey, holder)
-        val imports = CoreWasmNativeCodec.encodeImports(options.imports)
         val carrier = memScoped {
             val outLen = alloc<ULongVar>()
             imports.usePinned { pinned ->

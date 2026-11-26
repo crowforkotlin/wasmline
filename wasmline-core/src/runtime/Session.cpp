@@ -22,6 +22,9 @@ namespace wasmline {
         /** Enforces the signed i32 Core Wasm invocation ABI on host-provided lengths. */
         constexpr size_t kMaxBridgeLength = static_cast<size_t>(std::numeric_limits<int32_t>::max());
 
+        /** Bounds one guest response before it is copied into host memory. */
+        constexpr size_t kMaxResponseBytes = 64 * 1024 * 1024;
+
         /** Reports the guest as having provided an invalid length or capacity. */
         constexpr const char* kNegativeBridgeLengthTrap = "Wasmline Core bridge received a negative guest length or capacity.";
 
@@ -321,19 +324,16 @@ namespace wasmline {
 
         auto define = [&](const char* name, wasmtime_func_callback_t cb, std::initializer_list<wasm_valkind_t> params,
                           std::initializer_list<wasm_valkind_t> results) -> bool {
-            wasm_valtype_t* p_arr[6] = {nullptr};
-            wasm_valtype_t* r_arr[2] = {nullptr};
-
-            int i = 0;
-            for (auto k : params)
-                if (i < 6) p_arr[i++] = wasm_valtype_new(k);
-            int j = 0;
-            for (auto k : results)
-                if (j < 2) r_arr[j++] = wasm_valtype_new(k);
+            std::vector<wasm_valtype_t*> p_arr;
+            p_arr.reserve(params.size());
+            for (auto k : params) p_arr.push_back(wasm_valtype_new(k));
+            std::vector<wasm_valtype_t*> r_arr;
+            r_arr.reserve(results.size());
+            for (auto k : results) r_arr.push_back(wasm_valtype_new(k));
 
             wasm_valtype_vec_t p_vec, r_vec;
-            wasm_valtype_vec_new(&p_vec, params.size(), p_arr);
-            wasm_valtype_vec_new(&r_vec, results.size(), r_arr);
+            wasm_valtype_vec_new(&p_vec, p_arr.size(), p_arr.data());
+            wasm_valtype_vec_new(&r_vec, r_arr.size(), r_arr.data());
 
             wasm_functype_t* ty = wasm_functype_new(&p_vec, &r_vec);
             wasmtime_error_t* defineErr = wasmtime_linker_define_func(linker, "env", 3, name, strlen(name), ty, cb, nullptr, nullptr);
@@ -419,6 +419,10 @@ namespace wasmline {
         const int32_t len = args[1].of.i32;
         if (len < 0) return bridgeTrap(kNegativeBridgeLengthTrap);
         if (len == 0) return nullptr;
+        if (self->inbound.responseBuffer.size() > kMaxResponseBytes ||
+            static_cast<size_t>(len) > kMaxResponseBytes - self->inbound.responseBuffer.size()) {
+            return bridgeTrap("Wasmline Core bridge response exceeds the configured limit.");
+        }
 
         const uint8_t* rawMemory = wasmtime_memory_data(self->context, &self->memory);
         const size_t memorySize = wasmtime_memory_data_size(self->context, &self->memory);

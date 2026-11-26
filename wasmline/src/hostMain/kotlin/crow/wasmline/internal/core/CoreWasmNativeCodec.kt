@@ -75,13 +75,21 @@ internal object CoreWasmNativeCodec {
     private class Writer {
         private val data = ArrayList<Byte>()
         private var valid = true
+        private var invalidReason: String? = null
+
+        private fun invalidate(reason: String) {
+            if (valid) {
+                valid = false
+                invalidReason = reason
+            }
+        }
 
         fun byte(value: Int) {
             if (valid) data += value.toByte()
         }
 
         fun u32(value: Int) {
-            if (value < 0) valid = false
+            if (value < 0) invalidate("Native bridge record contains a negative length.")
             if (!valid) return
             repeat(4) { shift -> data += ((value ushr (shift * 8)) and 0xff).toByte() }
         }
@@ -89,7 +97,7 @@ internal object CoreWasmNativeCodec {
         fun text(value: String) {
             val bytes = value.encodeToByteArray()
             if (bytes.size > MAX_TEXT) {
-                valid = false
+                invalidate("Native bridge text exceeds the $MAX_TEXT byte limit.")
                 return
             }
             u32(bytes.size)
@@ -98,7 +106,7 @@ internal object CoreWasmNativeCodec {
 
         fun bytes(value: ByteArray) {
             if (value.size > MAX_TEXT) {
-                valid = false
+                invalidate("Native bridge bytes exceed the $MAX_TEXT byte limit.")
                 return
             }
             u32(value.size)
@@ -106,13 +114,24 @@ internal object CoreWasmNativeCodec {
         }
 
         fun signature(signature: RawFunctionSignature) {
+            if (signature.parameters.size > MAX_COUNT) {
+                invalidate("Native bridge signature has more than $MAX_COUNT parameters.")
+                return
+            }
+            if (signature.results.size > MAX_COUNT) {
+                invalidate("Native bridge signature has more than $MAX_COUNT results.")
+                return
+            }
             u32(signature.parameters.size)
             signature.parameters.forEach { byte(it.ordinal) }
             u32(signature.results.size)
             signature.results.forEach { byte(it.ordinal) }
         }
 
-        fun finish(): ByteArray = if (valid) ByteArray(data.size) { data[it] } else ByteArray(0)
+        fun finish(): ByteArray {
+            require(valid) { invalidReason ?: "Native bridge record is invalid." }
+            return ByteArray(data.size) { data[it] }
+        }
     }
 
     /**

@@ -248,14 +248,12 @@ Java_crow_wasmline_JniWasmlineBindings_nativeInvokeInbound(
                             "JNI inbound invocation received a null input.");
   }
 
-  const char *key = env->GetStringUTFChars(keyStr, nullptr);
-  const char *action = env->GetStringUTFChars(actionStr, nullptr);
-  jsize actionLen = env->GetStringUTFLength(actionStr);
-  if (!key || !action || actionLen < 0) {
-    if (action)
-      env->ReleaseStringUTFChars(actionStr, action);
-    if (key)
-      env->ReleaseStringUTFChars(keyStr, key);
+  const JniUtf8String keyUtf8(env, keyStr);
+  const JniUtf8String actionUtf8(env, actionStr);
+  const char *key = keyUtf8.cString();
+  const char *action = actionUtf8.cString();
+  const size_t actionLen = actionUtf8.size();
+  if (!key || !action) {
     return transportFailure(
         env, "JNI inbound invocation could not read its string input.");
   }
@@ -266,19 +264,15 @@ Java_crow_wasmline_JniWasmlineBindings_nativeInvokeInbound(
   if (dataLen < 0 || (dataLen > 0 && !dataPtr)) {
     if (dataPtr)
       env->ReleaseByteArrayElements(inputBytes, dataPtr, JNI_ABORT);
-    env->ReleaseStringUTFChars(actionStr, action);
-    env->ReleaseStringUTFChars(keyStr, key);
     return transportFailure(
         env, "JNI inbound invocation could not read its byte input.");
   }
 
   std::string resultData = wasmline::Api::invokeInbound(
-      key, action, (size_t)actionLen, (const char *)dataPtr, (size_t)dataLen);
+      key, action, actionLen, (const char *)dataPtr, (size_t)dataLen);
 
   if (dataPtr)
     env->ReleaseByteArrayElements(inputBytes, dataPtr, JNI_ABORT);
-  env->ReleaseStringUTFChars(actionStr, action);
-  env->ReleaseStringUTFChars(keyStr, key);
 
   return newByteArray(env, resultData);
 }
@@ -698,9 +692,11 @@ Java_crow_wasmline_JniWasmlineBindings_nativeDropComponentResource(
   const auto *input = reinterpret_cast<const uint8_t *>(bytes);
   std::vector<wasmline::ComponentValue> values;
   std::string error;
+  const std::string_view payload =
+      length == 0 ? std::string_view{}
+                  : std::string_view(reinterpret_cast<const char *>(input), static_cast<size_t>(length));
   const bool decoded = wasmline::TypedInvocationCodec::decodeComponentArguments(
-      std::string_view(reinterpret_cast<const char *>(input),
-                       static_cast<size_t>(length)),
+      payload,
       &values, &error);
   jbyteArray carrier = nullptr;
   if (decoded && values.size() == 1 &&

@@ -182,6 +182,12 @@ class WasmlineResponseCodecTest {
     }
 
     @Test
+    fun treatsAnEmptyLegacyResponseAsMissing() {
+        val result = assertIs<WasmlineCallResult.Failure>(WasmlineResponseCodec.decodeLegacyCompatible(ByteArray(0)))
+        assertEquals(WasmlineErrorCode.RESPONSE_MISSING, result.failure.code)
+    }
+
+    @Test
     fun keepsLegacyPayloadForCompatibility() {
         val payload = "legacy".encodeToByteArray()
 
