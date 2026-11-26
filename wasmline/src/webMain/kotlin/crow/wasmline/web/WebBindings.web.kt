@@ -184,6 +184,9 @@ internal expect fun webBytesCopyIn(bytes: WebBytes, source: ByteArray, sourceOff
 /** Current epoch time in milliseconds (`Date.now()`). */
 internal expect fun webNowMillis(): Double
 
+/** Returns [size] bytes from the platform cryptographic random source. */
+internal expect fun webSecureRandomBytes(size: Int): ByteArray
+
 /**
  * Downloads a binary resource with the Fetch API. Exactly one callback is
  * invoked: [onSuccess] with the body bytes on a 2xx response, otherwise

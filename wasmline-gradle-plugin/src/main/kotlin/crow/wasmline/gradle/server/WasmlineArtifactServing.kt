@@ -1,7 +1,11 @@
 package crow.wasmline.gradle.server
 
 import java.io.File
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
 
 /**
  * Resolves one HTTP request path to a served artifact file and formats index entries.
@@ -44,12 +48,25 @@ internal object WasmlineArtifactServing {
     fun listServedFiles(root: Path): List<File> {
         val rootFile = root.toAbsolutePath().normalize().toFile()
         if (!rootFile.isDirectory) return emptyList()
-        return rootFile
-            .walkTopDown()
-            .onEnter { it == rootFile || !it.name.startsWith(".") }
-            .filter { it.isFile }
-            .sortedBy { relativePath(rootFile, it) }
-            .toList()
+        val rootPath = rootFile.toPath()
+        val files = mutableListOf<File>()
+        Files.walkFileTree(
+            rootPath,
+            object : SimpleFileVisitor<Path>() {
+                override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                    if (dir != rootPath && dir.fileName.toString().startsWith(".")) {
+                        return FileVisitResult.SKIP_SUBTREE
+                    }
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                    if (attrs.isRegularFile) files += file.toFile()
+                    return FileVisitResult.CONTINUE
+                }
+            },
+        )
+        return files.sortedBy { relativePath(rootFile, it) }
     }
 
     /** Returns [file] relative to [root] with `/` separators. */

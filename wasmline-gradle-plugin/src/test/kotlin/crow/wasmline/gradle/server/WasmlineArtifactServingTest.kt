@@ -94,6 +94,18 @@ class WasmlineArtifactServingTest {
     }
 
     @Test
+    fun `index does not follow a symlinked directory`() = withServedDirectory { root, directory ->
+        val outside = File(directory.parentFile, "outside").apply { mkdirs() }
+        File(outside, "secret.wasm").writeText("x")
+        Files.createSymbolicLink(File(directory, "link").toPath(), outside.toPath())
+
+        val relative = WasmlineArtifactServing.listServedFiles(root)
+            .map { WasmlineArtifactServing.relativePath(root.toFile(), it) }
+
+        assertFalse(relative.any { it.contains("secret.wasm") }, relative.toString())
+    }
+
+    @Test
     fun `escapes markup in the index entry`() = withServedDirectory { root, directory ->
         val artifact = File(directory, "<img src=x onerror=alert(1)>.wasm").apply { writeText("x") }
 

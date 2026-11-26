@@ -188,6 +188,13 @@ internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray, sourceOff
 
 internal actual fun webNowMillis(): Double = rawNowMillis()
 
+internal actual fun webSecureRandomBytes(size: Int): ByteArray {
+    require(size >= 0) { "Random byte count must not be negative." }
+    val array = rawNewUint8Array(size)
+    rawCryptoGetRandomValues(array)
+    return webBytesCopyOut(WebBytes(array))
+}
+
 internal actual fun webFetchBytes(url: String, onSuccess: (ByteArray) -> Unit, onFailure: (String) -> Unit) {
     rawFetchBytes(
         url = url,
@@ -279,6 +286,8 @@ private fun rawMemoryByteSize(memory: JsAny): Double = js("memory.buffer.byteLen
 private fun rawMemoryGrow(memory: JsAny, deltaPages: Int): Double = js("memory.grow(deltaPages)")
 
 private fun rawNowMillis(): Double = js("Date.now()")
+
+private fun rawCryptoGetRandomValues(array: JsAny): Unit = js("crypto.getRandomValues(array)")
 
 private fun rawVariadicFunction(handler: (JsAny) -> JsAny?): JsAny = js("((...args) => handler(args))")
 
