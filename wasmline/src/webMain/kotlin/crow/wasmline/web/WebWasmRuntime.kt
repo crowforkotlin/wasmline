@@ -128,6 +128,7 @@ internal class WebWasmMemory internal constructor(private val memory: WebJsValue
 
     fun read(pointer: Int, length: Int): ByteArray {
         require(length >= 0) { "WebAssembly memory length must not be negative." }
+        requireValidRange(pointer, length)
         return ByteArray(length).also { destination ->
             readInto(destination, 0, pointer, length)
         }

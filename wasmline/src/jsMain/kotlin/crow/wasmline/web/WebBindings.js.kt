@@ -163,6 +163,13 @@ internal actual fun webBytesCopyIn(bytes: WebBytes, source: ByteArray, sourceOff
 
 internal actual fun webNowMillis(): Double = rawNowMillis()
 
+internal actual fun webSecureRandomBytes(size: Int): ByteArray {
+    require(size >= 0) { "Random byte count must not be negative." }
+    val array = Int8Array(size)
+    rawCryptoGetRandomValues(array)
+    return array.unsafeCast<ByteArray>()
+}
+
 internal actual fun webFetchBytes(url: String, onSuccess: (ByteArray) -> Unit, onFailure: (String) -> Unit) {
     fetch(url)
         .then { response ->
@@ -212,6 +219,8 @@ private fun rawTryApplyFunction(fn: Any, args: Array<Any?>): Any = js(
 private fun rawOutcomeSucceeded(outcome: Any): Boolean = js("outcome.ok === true")
 
 private fun rawNowMillis(): Double = js("Date.now()")
+
+private fun rawCryptoGetRandomValues(array: Int8Array): Unit = js("crypto.getRandomValues(array)")
 
 private fun rawVariadicFunction(handler: (Array<Any?>) -> Any?): Any =
     js("(function () { return handler(Array.prototype.slice.call(arguments)); })")

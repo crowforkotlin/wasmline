@@ -4,7 +4,6 @@ import crow.wasmline.WasmlineLog
 import crow.wasmline.internal.protocol.WasmlineResponseCodec
 import crow.wasmline.invocation.WasmlineErrorCode
 import crow.wasmline.invocation.WasmlineFailure
-import kotlin.random.Random
 
 /**
  * Live wasm plugin module driven by the web bindings toolkit.
@@ -58,10 +57,25 @@ internal class WebWasmPlugin(binary: ByteArray) {
                     WebWasmValue.I32(invocation.inboundSize(1)),
                 ),
             )
-            invocation.end()
+            val response = invocation.end()
+            if (response.isEmpty()) {
+                WasmlineResponseCodec.encodeFailure(
+                    WasmlineFailure(
+                        code = WasmlineErrorCode.RESPONSE_MISSING,
+                        message = "WebAssembly guest did not write a Wasmline response.",
+                    ),
+                )
+            } else {
+                response
+            }
         } catch (error: Throwable) {
             invocation.end()
-            throw error
+            WasmlineResponseCodec.encodeFailure(
+                WasmlineFailure(
+                    code = WasmlineErrorCode.CORE_TRAP,
+                    message = error.message ?: "WebAssembly guest call failed.",
+                ),
+            )
         }
     }
 
@@ -79,13 +93,16 @@ internal class WebWasmPlugin(binary: ByteArray) {
             paramTypes = listOf(WebWasmType.I32, WebWasmType.I32, WebWasmType.I32, WebWasmType.I32),
             resultTypes = listOf(WebWasmType.I32),
         ) { args ->
-            wasiFdWrite(
-                fd = args[0].i32(),
-                iovsPointer = args[1].i32(),
-                iovsCount = args[2].i32(),
-                writtenPointer = args[3].i32(),
+            listOf(
+                WebWasmValue.I32(
+                    wasiFdWrite(
+                        fd = args[0].i32(),
+                        iovsPointer = args[1].i32(),
+                        iovsCount = args[2].i32(),
+                        writtenPointer = args[3].i32(),
+                    ),
+                ),
             )
-            listOf(WebWasmValue.I32(0))
         }
         .function(
             module = WASI_MODULE,
@@ -93,7 +110,7 @@ internal class WebWasmPlugin(binary: ByteArray) {
             paramTypes = listOf(WebWasmType.I32, WebWasmType.I32),
             resultTypes = listOf(WebWasmType.I32),
         ) { args ->
-            requireMemory().write(args[0].i32(), Random.nextBytes(args[1].i32()))
+            requireMemory().write(args[0].i32(), webSecureRandomBytes(args[1].i32()))
             listOf(WebWasmValue.I32(0))
         }
         .function(
@@ -168,31 +185,38 @@ internal class WebWasmPlugin(binary: ByteArray) {
         }
         .build()
 
-    /** Writes WASI stdout/stderr using fd_write shim. */
-    private fun wasiFdWrite(fd: Int, iovsPointer: Int, iovsCount: Int, writtenPointer: Int) {
+    /** Writes WASI stdout/stderr using the fd_write shim and returns a WASI errno. */
+    private fun wasiFdWrite(fd: Int, iovsPointer: Int, iovsCount: Int, writtenPointer: Int): Int {
+        if (iovsCount < 0) return WASI_ERRNO_INVAL
+        val iovecBytes = iovsCount.toLong() * IOVEC_SIZE
         val memory = requireMemory()
-        val iovecs = memory.read(iovsPointer, iovsCount * IOVEC_SIZE)
+        if (iovecBytes > Int.MAX_VALUE || iovecBytes > memory.byteSize) return WASI_ERRNO_INVAL
+        val iovecs = memory.read(iovsPointer, iovecBytes.toInt())
 
-        var total = 0
+        var total = 0L
         val merged = StringBuilder()
         for (index in 0 until iovsCount) {
             val pointer = iovecs.readI32Le(index * IOVEC_SIZE)
             val length = iovecs.readI32Le(index * IOVEC_SIZE + 4)
+            if (length < 0) return WASI_ERRNO_INVAL
             if (length > 0) merged.append(memory.readText(pointer, length))
             total += length
+            if (total > Int.MAX_VALUE) return WASI_ERRNO_INVAL
         }
         if (writtenPointer != 0) {
-            memory.write(writtenPointer, total.toLeBytes())
+            memory.write(writtenPointer, total.toInt().toLeBytes())
         }
 
         val text = merged.toString().trimEnd()
-        if (text.isEmpty()) return
-        val log = WasmlineLog.logger
-        when {
-            fd == STDERR_FD && log != null -> log.error(text)
-            log != null -> log.info(text)
-            else -> println(text)
+        if (text.isNotEmpty()) {
+            val log = WasmlineLog.logger
+            when {
+                fd == STDERR_FD && log != null -> log.error(text)
+                log != null -> log.info(text)
+                else -> println(text)
+            }
         }
+        return WASI_ERRNO_SUCCESS
     }
 
     /** Invokes the host dispatcher with action/payload; handles overflow responses. */
@@ -250,6 +274,8 @@ internal class WebWasmPlugin(binary: ByteArray) {
         const val ENTRY_EXPORT = "__wasmline_wasi_entry"
         const val IOVEC_SIZE = 8
         const val STDERR_FD = 2
+        const val WASI_ERRNO_SUCCESS = 0
+        const val WASI_ERRNO_INVAL = 28
         const val NANOS_PER_MILLI = 1_000_000L
     }
 }

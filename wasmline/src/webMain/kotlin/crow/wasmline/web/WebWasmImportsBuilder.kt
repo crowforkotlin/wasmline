@@ -60,7 +60,14 @@ internal class WebWasmImportsBuilder {
 
     fun build(): WebJsObject = root
 
-    private fun namespace(module: String): WebJsObject = webObjectReadObject(root, module) ?: webNewObject().also { created ->
-        webObjectWriteObject(root, module, created)
+    private fun namespace(module: String): WebJsObject {
+        require(module !in RESERVED_NAMESPACES) { "Import module name is reserved: $module" }
+        return webObjectReadObject(root, module) ?: webNewObject().also { created ->
+            webObjectWriteObject(root, module, created)
+        }
+    }
+
+    private companion object {
+        val RESERVED_NAMESPACES: Set<String> = setOf("__proto__", "prototype", "constructor")
     }
 }
